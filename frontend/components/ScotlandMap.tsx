@@ -358,6 +358,7 @@ export default function ScotlandMap() {
   const [band, setBand] = useState<RentBand | null>(null);
   const [statsOpen, setStatsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
   const markerRef = useRef<maplibregl.Marker | null>(null);
 
   const applyResult = useCallback((payload: SquareResponse) => {
@@ -525,6 +526,22 @@ export default function ScotlandMap() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [toolsOpen, result, error, clearPlace]);
+
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map?.getLayer("satellite") || !map.getLayer("basemap")) return;
+    map.setLayoutProperty(
+      "basemap",
+      "visibility",
+      mapStyle === "streets" ? "visible" : "none",
+    );
+    map.setLayoutProperty(
+      "satellite",
+      "visibility",
+      mapStyle === "satellite" ? "visible" : "none",
+    );
+  }, [mapReady, mapStyle]);
 
   const runSearch = async () => {
     const q = query.trim();
@@ -812,6 +829,24 @@ export default function ScotlandMap() {
         source: "selected-square",
         paint: { "line-color": "#e11f26", "line-width": 2.75 },
       });
+
+      map.addSource("satellite", {
+        type: "raster",
+        tiles: [
+          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        ],
+        tileSize: 256,
+        attribution: "Tiles © Esri",
+      });
+      map.addLayer(
+        {
+          id: "satellite",
+          type: "raster",
+          source: "satellite",
+          layout: { visibility: "none" },
+        },
+        "basemap",
+      );
 
       setMapReady(true);
 
@@ -1248,6 +1283,22 @@ export default function ScotlandMap() {
         </button>
         <button
           type="button"
+          className={mapStyle === "satellite" ? "hud-layers-btn on" : "hud-layers-btn"}
+          title={
+            mapStyle === "satellite"
+              ? "Switch to streets map"
+              : "Switch to satellite imagery"
+          }
+          onClick={() =>
+            setMapStyle((current) =>
+              current === "streets" ? "satellite" : "streets",
+            )
+          }
+        >
+          Satellite
+        </button>
+        <button
+          type="button"
           className="hud-layers-btn"
           title="Use my location"
           onClick={() => locateMe()}
@@ -1305,6 +1356,23 @@ export default function ScotlandMap() {
       <aside className="hud-card hud-tools">
         <div className="layer-panel">
               <p className="hud-tools-title">Map layers</p>
+              <label className="layer-select-label">Basemap</label>
+              <div className="layer-chips">
+                <button
+                  type="button"
+                  className={mapStyle === "streets" ? "chip active" : "chip"}
+                  onClick={() => setMapStyle("streets")}
+                >
+                  Streets
+                </button>
+                <button
+                  type="button"
+                  className={mapStyle === "satellite" ? "chip active" : "chip"}
+                  onClick={() => setMapStyle("satellite")}
+                >
+                  Satellite
+                </button>
+              </div>
               <label className="layer-select-label">Stories</label>
               <div className="layer-chips story-chips">
                 {STORIES.map((s) => (

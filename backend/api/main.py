@@ -32,6 +32,7 @@ from layers.councils_layer import build_councils_agr_geojson
 from layers.council_metrics import build_council_metrics_geojson
 from layers.grid_layer import build_w3w_agr_grid
 from layers.platform import platform_catalog
+from spatial.address import search_door
 from spatial.parcels import TRANSPARENT_PNG, fetch_parcel_tile_png, lookup_parcel_geojson
 from validation.glasgow_ward_18 import run_validation
 from validation.ratio_study import ratio_study_points
@@ -579,3 +580,19 @@ def get_postcode_square(
         "country": result.get("country"),
     }
     return square_payload
+
+
+@app.get("/address")
+def get_address(
+    postcode: str = Query(description="Scottish postcode already found"),
+    door: str = Query(description="Door number, such as 12, 12A, or 2/1"),
+    lat: float | None = Query(default=None, description="Postcode centre latitude"),
+    lng: float | None = Query(default=None, description="Postcode centre longitude"),
+) -> dict:
+    """Point for a door in a postcode. The rent is looked up separately."""
+    try:
+        return search_door(postcode, door, lat=lat, lng=lng)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (httpx.HTTPError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=502, detail="Address search is unavailable.") from exc

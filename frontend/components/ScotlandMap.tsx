@@ -49,6 +49,22 @@ type SquareResponse = {
   platform?: import("./AgrBreakdown").PlatformContext | null;
 };
 
+type AddressMatch = {
+  lat: number;
+  lng: number;
+  street: string;
+  housenumber: string;
+  label: string;
+};
+
+type AddressLookup = {
+  postcode: string;
+  door: string;
+  status: "one" | "many" | "none";
+  matches: AddressMatch[];
+  note: string;
+};
+
 type FiscalSummary = {
   enabled: boolean;
   scenario: string;
@@ -336,6 +352,13 @@ export default function ScotlandMap() {
   const mapRef = useRef<Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [query, setQuery] = useState("");
+  const [postcodeReady, setPostcodeReady] = useState<string | null>(null);
+  const [postcodeCentre, setPostcodeCentre] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
+  const [doorQuery, setDoorQuery] = useState("");
+  const [doorMatches, setDoorMatches] = useState<AddressMatch[] | null>(null);
+  const [addressLine, setAddressLine] = useState<string | null>(null);
   const [scenario, setScenario] = useState<ScenarioId>("full_agr");
   const [choropleth, setChoropleth] = useState<MetricId | "off">("gross_liability");
   const [showBoundaries, setShowBoundaries] = useState(false);
@@ -431,7 +454,19 @@ export default function ScotlandMap() {
   }, []);
 
   const fetchSquare = useCallback(
-    async (nextLat: number, nextLng: number, nextScenario?: ScenarioId) => {
+    async (
+      nextLat: number,
+      nextLng: number,
+      nextScenario?: ScenarioId,
+      keepDoor = false,
+    ) => {
+      if (!keepDoor) {
+        setPostcodeReady(null);
+        setPostcodeCentre(null);
+        setDoorQuery("");
+        setDoorMatches(null);
+        setAddressLine(null);
+      }
       setLoading(true);
       setError(null);
       const sc = nextScenario ?? scenario;
@@ -464,6 +499,11 @@ export default function ScotlandMap() {
   const clearPlace = useCallback(() => {
     setResult(null);
     setError(null);
+    setPostcodeReady(null);
+    setPostcodeCentre(null);
+    setDoorQuery("");
+    setDoorMatches(null);
+    setAddressLine(null);
     markerRef.current?.remove();
     markerRef.current = null;
     const map = mapRef.current;
@@ -551,12 +591,27 @@ export default function ScotlandMap() {
           `/square?words=${encoded}&scenario=${scenario}`,
         );
         applyResult((await response.json()) as SquareResponse);
+        setPostcodeReady(null);
+        setPostcodeCentre(null);
+        setDoorQuery("");
+        setDoorMatches(null);
+        setAddressLine(null);
       } else if (looksLikePostcode(q) || q.length >= 5) {
         const encoded = encodeURIComponent(q);
         const response = await apiFetch(
           `/postcode/${encoded}?scenario=${scenario}`,
         );
-        applyResult((await response.json()) as SquareResponse);
+        const payload = (await response.json()) as SquareResponse;
+        applyResult(payload);
+        setPostcodeReady(payload.postcode?.postcode ?? null);
+        setPostcodeCentre(
+          payload.postcode?.postcode
+            ? { lat: payload.square.lat, lng: payload.square.lng }
+            : null,
+        );
+        setDoorQuery("");
+        setDoorMatches(null);
+        setAddressLine(null);
       } else {
         setError("Enter a postcode (e.g. EH1 1YZ) or What3Words (word.word.word)");
         setLoading(false);
@@ -570,6 +625,54 @@ export default function ScotlandMap() {
         setApiOk(false);
       }
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const pickDoor = (match: AddressMatch) => {
+    setDoorMatches(null);
+    setAddressLine(match.label);
+    setError(null);
+    void fetchSquare(match.lat, match.lng, undefined, true);
+  };
+
+  const runDoor = async () => {
+    const door = doorQuery.trim();
+    if (!postcodeReady || !door) return;
+    setLoading(true);
+    setError(null);
+    setDoorMatches(null);
+    try {
+      const centre = postcodeCentre
+        ? `&lat=${postcodeCentre.lat}&lng=${postcodeCentre.lng}`
+        : "";
+      const response = await apiFetch(
+        `/address?postcode=${encodeURIComponent(postcodeReady)}&door=${encodeURIComponent(door)}${centre}`,
+      );
+      const body = (await response.json()) as AddressLookup;
+      if (body.status === "none" || body.matches.length === 0) {
+        setAddressLine(null);
+        setDoorMatches(null);
+        if (postcodeCentre) {
+          await fetchSquare(postcodeCentre.lat, postcodeCentre.lng, undefined, true);
+        } else {
+          setLoading(false);
+        }
+        setError(
+          body.note ||
+            "That door is not in the open address set. The map stays on the postcode centre.",
+        );
+        return;
+      }
+      if (body.status === "many") {
+        setDoorMatches(body.matches);
+        setLoading(false);
+        return;
+      }
+      pickDoor(body.matches[0]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Address search failed";
+      setError(message);
       setLoading(false);
     }
   };
@@ -626,7 +729,7 @@ export default function ScotlandMap() {
   // Re-assess selection when scenario changes so fiscal gross/net update
   useEffect(() => {
     if (!result) return;
-    void fetchSquare(result.square.lat, result.square.lng, scenario);
+    void fetchSquare(result.square.lat, result.square.lng, scenario, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scenario]);
 
@@ -1290,7 +1393,17 @@ export default function ScotlandMap() {
         >
           Locate
         </button>
-        <div className={loading ? "hud-search loading" : "hud-search"}>
+        <div
+          className={
+            loading
+              ? postcodeReady
+                ? "hud-search has-door loading"
+                : "hud-search loading"
+              : postcodeReady
+                ? "hud-search has-door"
+                : "hud-search"
+          }
+        >
           <label className="sr-only" htmlFor="place-query">
             Search a Scottish postcode
           </label>
@@ -1305,6 +1418,31 @@ export default function ScotlandMap() {
             placeholder="Search a Scottish postcode"
             disabled={loading || apiOk === false}
           />
+          {postcodeReady && (
+            <>
+              <label className="sr-only" htmlFor="door-query">
+                Door number
+              </label>
+              <input
+                id="door-query"
+                value={doorQuery}
+                onChange={(e) => setDoorQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void runDoor();
+                }}
+                placeholder="Door number"
+                disabled={loading || apiOk === false}
+              />
+              <button
+                type="button"
+                className="hud-search-go"
+                disabled={loading || apiOk === false || !doorQuery.trim()}
+                onClick={() => void runDoor()}
+              >
+                {loading ? "…" : "Find"}
+              </button>
+            </>
+          )}
           <button
             type="button"
             className="hud-search-go"
@@ -1313,6 +1451,17 @@ export default function ScotlandMap() {
           >
             {loading ? "…" : "Search"}
           </button>
+          {doorMatches && doorMatches.length > 1 && (
+            <ul className="door-matches">
+              {doorMatches.map((match) => (
+                <li key={`${match.lat},${match.lng},${match.label}`}>
+                  <button type="button" onClick={() => pickDoor(match)}>
+                    {match.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
         <nav className="hud-nav">
           <a href="/methodology">About</a>
@@ -1661,6 +1810,7 @@ export default function ScotlandMap() {
                 agr={result.agr}
                 areaSqm={result.square.area_sqm}
                 postcode={result.postcode?.postcode}
+                doorLabel={addressLine}
                 lat={result.square.lat}
                 lng={result.square.lng}
                 what3words={result.what3words}

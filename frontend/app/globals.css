@@ -92,16 +92,20 @@ a.hud-slrg img {
 }
 
 .hud-wordmark {
+  display: block;
   flex-shrink: 0;
-  background: #fff;
-  color: var(--slrg-text);
+  line-height: 0;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
   text-decoration: none;
-  font-weight: 700;
-  font-size: 0.92rem;
-  letter-spacing: -0.02em;
-  padding: 0.7rem 0.95rem;
-  border-radius: 999px;
-  box-shadow: var(--hud-shadow);
+}
+
+.hud-wordmark img {
+  display: block;
+  height: 56px;
+  width: auto;
 }
 
 .hud-layers-btn {

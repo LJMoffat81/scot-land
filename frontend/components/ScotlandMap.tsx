@@ -1369,8 +1369,8 @@ export default function ScotlandMap() {
           >
             <img src="/slrg-logo.jpg" alt="Scottish Land Revenue Group" />
           </a>
-          <a className="hud-wordmark" href="/">
-            Scot-LAND
+          <a className="hud-wordmark" href="/" aria-label="Scot-LAND">
+            <img src="/scot-land-mark.svg" alt="Scot-LAND" />
           </a>
         </div>
         <button

@@ -244,6 +244,39 @@ input {
   padding: 2.1rem 1.15rem 1.2rem;
 }
 
+.hud-scotland {
+  position: absolute;
+  z-index: 3;
+  left: 1.1rem;
+  bottom: 1.25rem;
+  width: min(380px, calc(100vw - 2rem));
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: var(--hud-radius);
+  box-shadow: var(--hud-shadow);
+  padding: 0.85rem 1rem 0.75rem;
+}
+
+.hud-scotland-job {
+  margin: 0 0 0.45rem;
+  font-weight: 700;
+  color: var(--slrg-navy);
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.hud-scotland-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.hud-scotland-note {
+  margin: 0.45rem 0 0;
+  color: var(--slrg-muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
 .hud-fold {
   display: block;
   width: 100%;
@@ -871,5 +904,12 @@ button.linkish:disabled {
 
   .map-hint {
     bottom: 42vh;
+  }
+
+  .hud-scotland {
+    left: 0.7rem;
+    right: 0.7rem;
+    bottom: 0.7rem;
+    width: auto;
   }
 }

@@ -341,7 +341,7 @@ export default function ScotlandMap() {
   const [showBoundaries, setShowBoundaries] = useState(true);
   const [showCellGrid, setShowCellGrid] = useState(false);
   const [showVdl, setShowVdl] = useState(false);
-  const [showPublicLand, setShowPublicLand] = useState(true);
+  const [showPublicLand, setShowPublicLand] = useState(false);
   const [showMethod, setShowMethod] = useState(false);
   const [layerBusy, setLayerBusy] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -873,7 +873,7 @@ export default function ScotlandMap() {
           try {
             const encoded = encodeURIComponent(qWords);
             const response = await apiFetch(
-              `/square?words=${encoded}&scenario=full_agr`,
+              `/square?words=${encoded}&scenario=replace_full_basket`,
             );
             applyResult((await response.json()) as SquareResponse);
             setApiOk(true);
@@ -1307,7 +1307,7 @@ export default function ScotlandMap() {
         </button>
         <div className={loading ? "hud-search loading" : "hud-search"}>
           <label className="sr-only" htmlFor="place-query">
-            Postcode or What3Words
+            Search a Scottish postcode
           </label>
           <input
             id="place-query"
@@ -1317,7 +1317,7 @@ export default function ScotlandMap() {
             onKeyDown={(e) => {
               if (e.key === "Enter") void runSearch();
             }}
-            placeholder="Search postcode or /// three.word.address"
+            placeholder="Search a Scottish postcode"
             disabled={loading || apiOk === false}
           />
           <button
@@ -1331,13 +1331,51 @@ export default function ScotlandMap() {
         </div>
         <nav className="hud-nav">
           <a href="/methodology">About</a>
-          <a href="/downloads">Downloads</a>
-          <a href="/open-api">API</a>
           <a href="https://www.slrg.scot" target="_blank" rel="noreferrer">
             SLRG
           </a>
         </nav>
       </header>
+
+      <aside className="hud-scotland" aria-label="Scotland illustration">
+        <p className="hud-scotland-job">
+          A charge on land, instead of tax on wages and production.
+        </p>
+        {fiscalSummary?.enabled && scenario !== "full_agr" && (
+          <div className="hud-scotland-grid">
+            <div>
+              <span className="fd-label">Listed taxes</span>
+              <span className="fd-value">
+                {formatBn(fiscalSummary.basket.total_gbp)}
+              </span>
+            </div>
+            <div>
+              <span className="fd-label">Scaled charge</span>
+              <span className="fd-value">
+                {formatBn(fiscalSummary.collection.annual_gbp)}
+              </span>
+            </div>
+            <div>
+              <span className="fd-label">
+                {fiscalSummary.surplus_gbp >= 0 ? "Above the list" : "Short of the list"}
+              </span>
+              <span className="fd-value">
+                {formatBn(Math.abs(fiscalSummary.surplus_gbp))}
+              </span>
+            </div>
+          </div>
+        )}
+        {fiscalSummary?.enabled && scenario === "full_agr" && (
+          <p className="hud-scotland-note">
+            The full-rent view uses a separate national illustration. It is not
+            rent already collected, and it is not the sum of the map.
+          </p>
+        )}
+        <p className="hud-scotland-note">
+          Research illustration, not a rates bill and not today&apos;s Scottish
+          budget. Map squares are not added up to it.
+        </p>
+      </aside>
 
       {apiOk === false && (
         <div className="hud-banner">
@@ -1595,9 +1633,8 @@ export default function ScotlandMap() {
                           ? "Revenue neutral or better under this scenario"
                           : "Short of the tax basket under this scenario"}
                         {" · "}
-                        Dividend{" "}
+                        One-person comparison{" "}
                         {formatGbp0(fiscalSummary.dividend.per_person_gbp)}
-                        /person
                       </p>
                     </div>
                   )}

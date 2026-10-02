@@ -160,17 +160,16 @@ type Props = {
 };
 
 const SCENARIO_ORDER: ScenarioId[] = [
-  "replace_full_basket",
-  "full_agr",
   "replace_income_tax",
   "revenue_neutral",
+  "replace_full_basket",
 ];
 
 const SCENARIO_SHORT: Record<ScenarioId, string> = {
-  replace_full_basket: "Replace all taxes",
-  full_agr: "Full rent + surplus",
-  replace_income_tax: "Income tax only",
-  revenue_neutral: "CT + rates",
+  replace_full_basket: "Listed taxes",
+  full_agr: "Full rent",
+  replace_income_tax: "Income tax",
+  revenue_neutral: "Council tax and rates",
 };
 
 function formatGbp(value: number, digits = 2) {
@@ -224,7 +223,6 @@ export default function AgrBreakdown({
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
   const [ownershipOpen, setOwnershipOpen] = useState(false);
-  const [fiscalOpen, setFiscalOpen] = useState(false);
 
   const netRole = fiscal?.role;
   const netClass =
@@ -291,7 +289,7 @@ export default function AgrBreakdown({
 
       <p className="headline-caption">
         {fiscal
-          ? "Land rent liability (site only \u2014 not buildings or wages)"
+          ? "Research estimate for the land, not the building. Not a rates bill."
           : headlineIsParcel
             ? `Property parcel${parcelLabel ? ` ${parcelLabel}` : ""}${
                 parcelAreaSqm
@@ -305,26 +303,19 @@ export default function AgrBreakdown({
 
       {fiscal && (
         <div className="fiscal-place">
-          <button
-            type="button"
-            className="ownership-heading ownership-toggle"
-            onClick={() => setFiscalOpen((v) => !v)}
-          >
+          <p className="ownership-heading">
             {fiscal.role === "net_receiver"
-              ? `Net receipt ${formatGbp(Math.abs(fiscal.net_gbp), 0)}`
+              ? `One-person comparison: receives ${formatGbp(Math.abs(fiscal.net_gbp), 0)}`
               : fiscal.role === "net_contributor"
-                ? `Net contribution +${formatGbp(fiscal.net_gbp, 0)}`
-                : "Net position roughly even"}
-            <span>{fiscalOpen ? "–" : "+"}</span>
-          </button>
-          {fiscalOpen && (
-            <>
+                ? `One-person comparison: pays ${formatGbp(fiscal.net_gbp, 0)}`
+                : "One-person comparison: about even"}
+          </p>
           <div className="fiscal-row">
-            <span>Gross land rent</span>
+            <span>Land charge</span>
             <strong>{formatGbp(fiscal.gross_plot_gbp, 0)}</strong>
           </div>
           <div className="fiscal-row">
-            <span>Equal dividend (1 person)</span>
+            <span>One person&apos;s share of the list</span>
             <strong>\u2212{formatGbp(fiscal.dividend_gbp, 0)}</strong>
           </div>
           {fiscal.remote_credit_gbp > 0 && (
@@ -334,21 +325,16 @@ export default function AgrBreakdown({
             </div>
           )}
           <div className={`fiscal-row net ${netClass}`}>
-            <span>Net {fiscal.net_gbp < 0 ? "receipt" : "contribution"}</span>
+            <span>{fiscal.net_gbp < 0 ? "Receives" : "Pays"}</span>
             <strong>
               {fiscal.net_gbp < 0 ? "" : "+"}
               {formatGbp(fiscal.net_gbp, 0)}
             </strong>
           </div>
           <p className="fiscal-role-tag">
-            {fiscal.role === "net_receiver"
-              ? "Net receiver \u2014 low rent / remote support"
-              : fiscal.role === "net_contributor"
-                ? "Net contributor \u2014 higher land rent funds the state"
-                : "Roughly neutral"}
+            A one-person comparison for this place. Not a share of the soil,
+            and not a rates bill.
           </p>
-            </>
-          )}
         </div>
       )}
 

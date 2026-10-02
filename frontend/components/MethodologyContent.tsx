@@ -126,6 +126,11 @@ export default function MethodologyContent() {
         official tax bill. The Sandilands national rent pool is a separate macro concept —
         map squares are not calibrated to sum to that pool.
       </p>
+      <p>
+        On the map, &ldquo;Listed taxes&rdquo; means the research basket of Scottish
+        income tax, Council Tax and non-domestic rates. It is not every tax, and it
+        does not say which of those the current Parliament can replace.
+      </p>
 
       <section>
         <h2>Two rent concepts</h2>

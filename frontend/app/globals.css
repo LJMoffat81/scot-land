@@ -213,6 +213,7 @@ input {
 .hud-nav {
   margin-left: auto;
   display: flex;
+  align-items: center;
   gap: 0.2rem;
   background: #fff;
   border-radius: 999px;
@@ -243,10 +244,9 @@ input {
 
 .hud-nav a.hud-slrg img {
   display: block;
-  height: 36px;
-  width: 36px;
-  object-fit: cover;
-  border-radius: 6px;
+  height: 150px;
+  width: 150px;
+  object-fit: contain;
 }
 
 .hud-banner {
@@ -286,9 +286,9 @@ input {
 
 .hud-place {
   right: 1.1rem;
-  top: 5.25rem;
+  top: 12.5rem;
   width: min(360px, calc(100vw - 2rem));
-  max-height: calc(100vh - 6.5rem);
+  max-height: calc(100vh - 13.5rem);
   padding: 2.1rem 1.15rem 1.2rem;
 }
 
@@ -958,11 +958,6 @@ button.linkish:disabled {
     margin-left: 0;
   }
 
-  .hud-nav a.hud-slrg img {
-    height: 32px;
-    width: 32px;
-  }
-
   .hud-search {
     order: 2;
     flex-basis: 100%;
@@ -980,7 +975,7 @@ button.linkish:disabled {
   }
 
   .hud-place {
-    top: 7.6rem;
+    top: 16.5rem;
     right: 0.7rem;
     left: 0.7rem;
     width: auto;

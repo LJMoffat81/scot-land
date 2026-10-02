@@ -113,35 +113,33 @@ export default function MethodologyContent() {
         {" · "}
         <a href="/open-api">Public API</a>
       </p>
-      <h1>Methodology</h1>
+      <h1>About</h1>
       <p>
-        Scot-LAND estimates Annual Ground Rent (AGR) for each What3Words
-        3×3 metre square (9 m²) using a <strong>valuer residual roll</strong>: market
-        value − DRC of buildings (Wightman), Pickard economic base, then 5% yield,
-        plus Sandilands policy scenarios. The wider intellectual lineage explains what
-        ground-rent is and why the community may claim it.
-      </p>
-      <p className="integrity-banner" role="note">
-        {config?.integrity?.estimate_label ?? "Map residual AGR (research)"} is not an
-        official tax bill. The Sandilands national rent pool is a separate macro concept —
-        map squares are not calibrated to sum to that pool.
+        Scot-LAND shows one charge: Annual Ground Rent. It is the yearly rental
+        value of the land alone. The building, and any other improvement, stays
+        with the person who made it. Collecting that rent is the alternative to
+        taxing wages and production.
       </p>
       <p>
-        The map shows one charge: Annual Ground Rent, the full rental value of
-        the land. The three notes under a place use the signed-off labels for
-        how far that same charge would go. They are not a menu of other taxes.
-        The income-tax note scales the parcel rent by the Group&apos;s £11.5
-        billion against their £90 billion national illustration. That scale is
-        not a sum of parcels. &ldquo;Replace all listed taxes (neutral)&rdquo;
-        means the research basket of Scottish income tax, Council Tax and
-        non-domestic rates. It is not every tax.
+        Search a postcode, or click the map. The large figure is the research
+        estimate for that piece of land. It is not a rates bill, not this
+        year&apos;s Scottish budget, and not a sum of every place on the map.
       </p>
       <p>
-        The Group&apos;s homepage illustrates a typical home as about 60% site
-        value, and says prices and rents would fall by at least half. Those
-        claims are not the parcel calculation. The signed-off display flag for
-        that 60% share is off, so a parcel uses the residual rent, not that
-        illustration.
+        Under the figure, the Scottish Land Revenue Group&apos;s illustration is
+        separate: economic rent of about half of national income, a national
+        pool of £90 billion, and one person&apos;s share of that pool. Parcel
+        rents are not added up to the pool. How far the same charge would go
+        stays closed until opened. Those notes are not a menu of other taxes.
+        The income-tax note scales this rent by the Group&apos;s £11.5 billion
+        against their £90 billion pool. &ldquo;Replace all listed taxes
+        (neutral)&rdquo; means the research basket of Scottish income tax,
+        Council Tax and non-domestic rates. It is not every tax.
+      </p>
+      <p>
+        <a href="#tradition">The tradition</a>
+        {" · "}
+        <a href="#calculation">How a place is calculated</a>
       </p>
 
       <section id="tradition">
@@ -178,6 +176,29 @@ export default function MethodologyContent() {
         <p>
           The School of Cooperative Individualism is the public library for the
           classical texts. It is not a second tax.
+        </p>
+      </section>
+
+      <section id="calculation">
+        <h2>How a place is calculated</h2>
+        <p>
+          In a town council, the rent for a piece of land is that council&apos;s
+          residual rent per square metre times the area of the piece. The
+          residual starts from the average home price, takes off the cost of
+          the building, takes off the speculative part of the price, and then
+          applies a 5% yield. In a rural council the same step uses farmland
+          productive value instead of a house price, and the map colour is one
+          hectare of that farmland. A click shows the piece of land itself.
+        </p>
+        <p>
+          The Group&apos;s homepage illustrates a typical home as about 60% site
+          value, and says prices and rents would fall by at least half. Those
+          claims are not this calculation. The signed-off display flag for that
+          60% share is off.
+        </p>
+        <p className="meta">
+          The sections below keep the working formulae. They do not change the
+          figure on the map.
         </p>
       </section>
 
@@ -354,12 +375,13 @@ annual_rent = site_capital_economic × yield`}
       </section>
 
       <section>
-        <h2>Equal-share illustration (Ogilvie / Paine / Unitism)</h2>
+        <h2>One person&apos;s share of the pool</h2>
         <p>
-          Each cell&apos;s economic rent is shown as a fraction of one Scot&apos;s equal
-          annual claim on the national rent pool (framing only). That claim could fund
-          public services or a citizen dividend (Unitism / Paine), without changing the
-          residual maths.
+          The place card compares this rent with one person&apos;s share of the
+          Group&apos;s national pool. That is a cash illustration. It is not
+          William Ogilvie&apos;s equal right to a share of the soil, and it is
+          not a payment the address receives. The formula is the pool divided
+          by population. It does not change the rent on the parcel.
         </p>
         <pre className="formula">
           {`equal_share_per_person = rent_pool ÷ population
@@ -379,7 +401,7 @@ square_share = economic_rent_of_square ÷ equal_share_per_person`}
               : "…"}
           </li>
           <li>
-            Equal claim ≈{" "}
+            One person&apos;s share ≈{" "}
             {equalSharePerPerson
               ? `£${Math.round(equalSharePerPerson).toLocaleString("en-GB")}/person/year`
               : "…"}
@@ -395,7 +417,7 @@ square_share = economic_rent_of_square ÷ equal_share_per_person`}
 3. despeculated = site_capital × discount_factor         [Pickard]
 4. economic_rent = despeculated × yield_rate
 5. scenario_charge = policy adjustment (see below)
-6. equal-share stats from national rent pool             [Ogilvie/Paine]`}
+6. one person's share of the national pool               [illustration]`}
         </pre>
       </section>
 

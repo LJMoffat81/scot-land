@@ -1,0 +1,19 @@
+id: gers-2025-26
+title: Government Expenditure and Revenue Scotland 2025-26
+published: 2026-08-12
+url: https://www.gov.scot/publications/government-expenditure-revenue-scotland-2025-26/
+# Table 1.1, Scotland, including a geographic share of North Sea revenue.
+revenue_gbp: 98262000000
+# Table 5.1, Scotland net fiscal balance, 2025-26.
+net_fiscal_balance_gbp: -25304000000
+# Table 1.1. Revenue divided by this share is this year's GDP.
+revenue_share_of_gdp: 0.422
+taxes:
+  # Chapter 4, currently devolved taxes, 2025-26.
+  # Scottish income tax is non-savings, non-dividend liabilities, not all income tax.
+  scottish_income_tax_gbp: 20280000000
+  council_tax_gbp: 3298000000
+  non_domestic_rates_gbp: 3184000000
+notes:
+  - Spending is revenue minus the net fiscal balance. The published key point rounds it to £123.6 billion.
+  - These figures are what government raises and spends. They are not the economic rent of land.

@@ -133,3 +133,15 @@ Append only. Do not rewrite an earlier entry. The public pounds are unchanged. T
 **Rejected:** A new Wick rent. A vacant-land pound. A garden split. A change to `data/config/agr.yaml` or the public page.
 
 **Would fail if:** The note returned a different pound from the live assessment, or a gap carried a proposed rent.
+
+## 2 October 2026 — GERS and the Group's rule
+
+**Decision:** GERS 2025-26 is stored in `data/fiscal/gers-2025-26.yml` as the record of what government raises and spends. The potential rent is the Group's rule, half of that year's national income, applied in `backend/agr/fiscal_year.py`. Revenue of £98.262 billion is 42.2 per cent of GDP, so national income is £232.848 billion and half of it is £116.424 billion. That is £18.162 billion above taxes already raised and £7.142 billion short of spending of £123.566 billion. The signed £90 billion pool is not replaced. Parcel rents are not changed. ATCOR is stated: today's taxes have already come out of rent. EBCOR is named and given no extra billion. Ricardo's law is stated: only the surplus over the margin is rent. The comparison is not on the public page.
+
+**Reason:** The £90 billion result is older than this GERS year and is below the taxes already raised, so it cannot show a gain. The gain comes from applying the same half-of-income rule to this year's income. GERS is not itself the rent.
+
+**Source:** Government Expenditure and Revenue Scotland 2025-26, published 12 August 2026, Tables 1.1 and 5.1 and Chapter 4. https://www.gov.scot/publications/government-expenditure-revenue-scotland-2025-26/ The half-of-income rule is `rent_share_of_gdp` in `data/config/agr.yaml`. ATCOR and EBCOR are the Group's application of Gaffney, already marked true in that file. Ricardo's law is the surplus over the least productive land in use. `marginal_land_rent` is already 0.
+
+**Rejected:** Replacing the £90 billion pool with GERS revenue. Editing `data/config/agr.yaml`. Moving Glasgow or Wick. Putting the comparison on the place card. Inventing an EBCOR bonus. Treating the national figure as a flat charge on land at the margin.
+
+**Would fail if:** The refreshed rent were not half of the GERS year's national income, the signed pool moved, or a shortfall were shown as a surplus.

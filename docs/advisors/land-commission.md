@@ -1,6 +1,6 @@
 # Scottish Land Commission reading
 
-A reading of the Commission's published reports. Not the Commission. Do not claim it endorses Scotland Open Land.
+A reading of the Commission's published reports. Not the Commission. Do not claim it endorses Scot-LAND.
 
 ## Question
 

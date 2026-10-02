@@ -11,7 +11,7 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "Scot-LAND",
   description:
-    "Annual Ground Rent at every place in Scotland. The intended address is scot-land.scot.",
+    "Annual Ground Rent at every place in Scotland. https://www.scot-land.scot",
 };
 
 export default function RootLayout({

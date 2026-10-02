@@ -6,7 +6,7 @@ That document is the guide for this repository. Implementation follows it. The b
 
 **Annual Ground Rent assessment at the core of a free, public, open land information system for Scotland.**
 
-Scotland AGR Map began as a professional, SLRG-aligned tool that estimates **Annual Ground Rent** (the rental value of land alone, excluding buildings and improvements) for every location in Scotland. It remains the analytical heart of the project.
+Scot-LAND began as a professional, SLRG-aligned tool that estimates **Annual Ground Rent** (the rental value of land alone, excluding buildings and improvements) for every location in Scotland. It remains the analytical heart of the project.
 
 We are now expanding it into a broader **open land information platform** — a single free public resource that brings together:
 
@@ -243,11 +243,11 @@ Free-tier friendly: **Vercel** (frontend) + **Railway** (API). No paid map or da
 
 | Variable | Value |
 |----------|-------|
-| `ALLOWED_ORIGINS` | Your Vercel URL, e.g. `https://scotland-agr-map.vercel.app` |
+| `ALLOWED_ORIGINS` | Your frontend URL, e.g. `https://your-frontend.vercel.app` |
 | `ALLOW_VERCEL_PREVIEWS` | `true` (allows `*.vercel.app` preview deploys) |
 | `W3W_API_KEY` | Optional — after SLRG nonprofit approval |
 
-4. Copy the public Railway URL (e.g. `https://scotland-agr-map-api.up.railway.app`).
+4. Copy the public API URL (e.g. `https://your-api.up.railway.app`).
 
 Health check: `GET /health`
 

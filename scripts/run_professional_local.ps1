@@ -8,7 +8,7 @@ if (-not (Test-Path "$Root\backend")) {
   $Root = Split-Path -Parent $Root
 }
 
-Write-Host "Scotland Open Land — professional local checks" -ForegroundColor Cyan
+Write-Host "Scot-LAND — professional local checks" -ForegroundColor Cyan
 Write-Host "Repo: $Root"
 
 Set-Location "$Root\backend"

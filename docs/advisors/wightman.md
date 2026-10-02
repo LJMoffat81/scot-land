@@ -1,6 +1,6 @@
 # Wightman reading
 
-A reading of Andy Wightman's published work. Not Andy Wightman. Do not write in his voice. Do not claim he endorses Scotland Open Land.
+A reading of Andy Wightman's published work. Not Andy Wightman. Do not write in his voice. Do not claim he endorses Scot-LAND.
 
 ## Question
 

@@ -1,4 +1,4 @@
-"""Canonical sales transaction schema for Scotland AGR assessments.
+"""Canonical sales transaction schema for Scot-LAND assessments.
 
 Designed for Registers of Scotland (and other *licensed*) extracts.
 Not for scraped portal listings.

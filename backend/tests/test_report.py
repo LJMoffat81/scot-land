@@ -10,7 +10,7 @@ def test_assessment_report_structure():
     assert report["roll_lines"]["grid_cell_annual_gbp"] > 0
     assert report["place"]["grid"] == "what3words_3m"
     assert "markdown" in report
-    assert "Scotland AGR Assessment Report" in report["markdown"]
+    assert "Scot-LAND Assessment Report" in report["markdown"]
     assert "Research estimate" in report["markdown"]
 
 

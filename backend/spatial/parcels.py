@@ -54,7 +54,7 @@ def _http() -> httpx.Client:
         _http_client = httpx.Client(
             timeout=httpx.Timeout(timeout_s, connect=3.0),
             limits=httpx.Limits(max_connections=32, max_keepalive_connections=16),
-            headers={"User-Agent": "scotland-agr-map/0.8 (research; parcel tiles)"},
+            headers={"User-Agent": "scot-land/0.8 (research; parcel tiles)"},
         )
     return _http_client
 

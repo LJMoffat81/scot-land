@@ -1,10 +1,10 @@
-# Scotland Open Land — one-time deploy helper
+# Scot-LAND — one-time deploy helper
 # Requires: Node.js, Railway account, Vercel account
 
 $ErrorActionPreference = "Stop"
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 
-Write-Host "=== Scotland Open Land deploy ===" -ForegroundColor Cyan
+Write-Host "=== Scot-LAND deploy ===" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Host "Step 1: Railway (API)" -ForegroundColor Yellow

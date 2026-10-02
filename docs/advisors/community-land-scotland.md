@@ -1,6 +1,6 @@
 # Community Land Scotland reading
 
-A reading of Community Land Scotland's public briefings. Not the organisation. Do not claim it endorses Scotland Open Land.
+A reading of Community Land Scotland's public briefings. Not the organisation. Do not claim it endorses Scot-LAND.
 
 ## Question
 

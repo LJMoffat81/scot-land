@@ -4,7 +4,7 @@ This is the product brief. Build toward it. Do not shrink it to match the curren
 
 **Annual Ground Rent assessment at the core of a free, public, open land information system for Scotland.**
 
-Scotland AGR Map began as a professional, SLRG-aligned tool that estimates **Annual Ground Rent** (the rental value of land alone, excluding buildings and improvements) for every location in Scotland. It remains the analytical heart of the project.
+Scot-LAND began as a professional, SLRG-aligned tool that estimates **Annual Ground Rent** (the rental value of land alone, excluding buildings and improvements) for every location in Scotland. It remains the analytical heart of the project.
 
 We are now expanding it into a broader **open land information platform** — a single free public resource that brings together:
 

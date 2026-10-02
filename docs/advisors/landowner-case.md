@@ -1,6 +1,6 @@
 # Landowner case
 
-A reading of public statements from Scottish Land & Estates. This seat states that interest and labels every claim as the landowner case. It is not the organisation. Do not claim it endorses Scotland Open Land.
+A reading of public statements from Scottish Land & Estates. This seat states that interest and labels every claim as the landowner case. It is not the organisation. Do not claim it endorses Scot-LAND.
 
 ## Question
 

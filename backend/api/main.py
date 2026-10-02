@@ -37,7 +37,7 @@ from validation.glasgow_ward_18 import run_validation
 from validation.ratio_study import ratio_study_points
 
 app = FastAPI(
-    title="Scotland Open Land API",
+    title="Scot-LAND API",
     description=(
         "Professional Annual Ground Rent assessments for Scotland "
         "(What3Words 3×3 m grid, SLRG-aligned residual roll)."
@@ -181,7 +181,7 @@ def health() -> dict:
     signoff = config.get("economist_signoff", {})
     return {
         "status": "ok",
-        "service": "scotland-agr-map-api",
+        "service": "scot-land",
         "version": API_VERSION,
         "w3w_configured": w3w_is_configured(),
         "economist_signoff_status": signoff.get("status", "unknown"),

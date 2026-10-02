@@ -1229,7 +1229,7 @@ export default function ScotlandMap() {
         `/assessment/report?lat=${result.square.lat}&lng=${result.square.lng}` +
         `&scenario=${scenario}&format=${format === "json" ? "json" : "markdown"}`;
       const response = await apiFetch(path);
-      const base = `scotland-agr-${result.square.lat.toFixed(5)}_${result.square.lng.toFixed(5)}`;
+      const base = `scot-land-${result.square.lat.toFixed(5)}_${result.square.lng.toFixed(5)}`;
       if (format === "json") {
         const data = await response.json();
         const blob = new Blob([JSON.stringify(data, null, 2)], {

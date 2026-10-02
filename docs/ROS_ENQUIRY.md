@@ -1,6 +1,6 @@
 # Registers of Scotland — research data enquiry (template)
 
-Use this when requesting a pilot extract for Scotland Open Land.
+Use this when requesting a pilot extract for Scot-LAND.
 
 ---
 
@@ -8,7 +8,7 @@ Use this when requesting a pilot extract for Scotland Open Land.
 
 Dear Registers of Scotland data team,
 
-We are developing an open **Annual Ground Rent (AGR)** research and education tool for the Scottish Land Revenue Group (SLRG). The tool estimates site-only rental values using a professional residual method (market value less depreciated replacement cost of improvements), aligned with published SLRG/Wightman methodology.
+We are developing **Scot-LAND**, an open **Annual Ground Rent (AGR)** research and education tool for the Scottish Land Revenue Group (SLRG). The tool estimates site-only rental values using a professional residual method (market value less depreciated replacement cost of improvements), aligned with published SLRG/Wightman methodology.
 
 We would like to obtain a **licensed research extract** of completed residential property transactions to:
 

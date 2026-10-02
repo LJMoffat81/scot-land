@@ -1,6 +1,6 @@
 # Sandilands reading
 
-A reading of Roger Sandilands' published Scotland work. Not Roger Sandilands. Do not write in his voice. Do not claim he endorses Scotland Open Land.
+A reading of Roger Sandilands' published Scotland work. Not Roger Sandilands. Do not write in his voice. Do not claim he endorses Scot-LAND.
 
 ## Question
 

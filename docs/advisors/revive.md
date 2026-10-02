@@ -1,6 +1,6 @@
 # Revive reading
 
-A reading of Revive's published campaign material. A campaign group, labeled as such. Not Revive speaking. Do not claim it endorses Scotland Open Land.
+A reading of Revive's published campaign material. A campaign group, labeled as such. Not Revive speaking. Do not claim it endorses Scot-LAND.
 
 ## Question
 

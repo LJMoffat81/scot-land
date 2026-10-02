@@ -4,7 +4,7 @@ Sitting of 2 October 2026. The editor returned a verdict. This sitting did not f
 
 ## The site job
 
-Scotland Open Land is a simple place where people and politicians can see a charge on land as a replacement for taxes on wages and production, for the current Scottish budget and for a future independent Scotland. This sitting does not treat that replacement as already shown. The base of the charge, the taxes it would stand in for, and what an independent Scotland could fund from ground rent are disputed below. A pound on a map square is an open-data research estimate, not a rates bill, not half of UK gross national income, and not the Scottish budget.
+Scot-LAND is a simple place where people and politicians can see a charge on land as a replacement for taxes on wages and production, for the current Scottish budget and for a future independent Scotland. This sitting does not treat that replacement as already shown. The base of the charge, the taxes it would stand in for, and what an independent Scotland could fund from ground rent are disputed below. A pound on a map square is an open-data research estimate, not a rates bill, not half of UK gross national income, and not the Scottish budget.
 
 ## What is solid
 

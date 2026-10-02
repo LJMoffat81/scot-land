@@ -1,6 +1,6 @@
 # Fraser of Allander reading
 
-A reading of the Fraser of Allander Institute's published fiscal work. Not the Institute. Do not claim it endorses Scotland Open Land or a land-value tax.
+A reading of the Fraser of Allander Institute's published fiscal work. Not the Institute. Do not claim it endorses Scot-LAND or a land-value tax.
 
 ## Question
 

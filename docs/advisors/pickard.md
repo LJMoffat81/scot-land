@@ -1,6 +1,6 @@
 # Pickard reading
 
-A reading of Duncan Pickard's published economic-rent approach. Not Duncan Pickard. Do not write in his voice. Do not claim he endorses Scotland Open Land.
+A reading of Duncan Pickard's published economic-rent approach. Not Duncan Pickard. Do not write in his voice. Do not claim he endorses Scot-LAND.
 
 ## Question
 

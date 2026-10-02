@@ -1,6 +1,6 @@
 # Common Weal reading
 
-A reading of Common Weal's published papers. Not Common Weal. Do not claim it endorses Scotland Open Land.
+A reading of Common Weal's published papers. Not Common Weal. Do not claim it endorses Scot-LAND.
 
 ## Question
 

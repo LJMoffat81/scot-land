@@ -243,9 +243,10 @@ input {
 
 .hud-nav a.hud-slrg img {
   display: block;
-  height: 38px;
-  width: auto;
-  max-width: 160px;
+  height: 36px;
+  width: 36px;
+  object-fit: cover;
+  border-radius: 6px;
 }
 
 .hud-banner {
@@ -958,8 +959,8 @@ button.linkish:disabled {
   }
 
   .hud-nav a.hud-slrg img {
-    height: 30px;
-    max-width: 112px;
+    height: 32px;
+    width: 32px;
   }
 
   .hud-search {

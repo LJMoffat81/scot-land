@@ -1472,7 +1472,7 @@ export default function ScotlandMap() {
             rel="noreferrer"
             aria-label="Scottish Land Revenue Group"
           >
-            <img src="/agr-banner.png" alt="Annual Ground Rent" />
+            <img src="/slrg-logo.jpg" alt="Scottish Land Revenue Group" />
           </a>
         </nav>
       </header>

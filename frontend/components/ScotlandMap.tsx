@@ -1359,9 +1359,20 @@ export default function ScotlandMap() {
       </div>
 
       <header className="hud-top">
-        <a className="hud-wordmark" href="/">
-          Scot-LAND
-        </a>
+        <div className="hud-brand">
+          <a
+            className="hud-slrg"
+            href="https://www.slrg.scot"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Scottish Land Revenue Group"
+          >
+            <img src="/slrg-logo.jpg" alt="Scottish Land Revenue Group" />
+          </a>
+          <a className="hud-wordmark" href="/">
+            Scot-LAND
+          </a>
+        </div>
         <button
           type="button"
           className={toolsOpen ? "hud-layers-btn on" : "hud-layers-btn"}
@@ -1465,24 +1476,12 @@ export default function ScotlandMap() {
         </div>
         <nav className="hud-nav">
           <a href="/methodology">About</a>
-          <a
-            className="hud-slrg"
-            href="https://www.slrg.scot"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Scottish Land Revenue Group"
-          >
-            <img src="/slrg-logo.jpg" alt="Scottish Land Revenue Group" />
-          </a>
         </nav>
       </header>
 
       <aside className="hud-scotland" aria-label="Scotland illustration">
-        <p className="hud-scotland-job">
-          Annual Ground Rent: a land value tax on the land alone, as the
-          Scottish Land Revenue Group argues, instead of a tax on work and
-          trade.
-        </p>
+        <p className="hud-scotland-job">Annual Ground Rent</p>
+        <p className="hud-scotland-lead">A charge on the land alone.</p>
         {fiscalSummary?.enabled && scenario !== "full_agr" && (
           <div className="hud-scotland-grid">
             <div>
@@ -1509,7 +1508,9 @@ export default function ScotlandMap() {
         )}
         {legendMetric && (
           <div className="map-legend">
-            <p className="map-legend-title">{legendMetric.label}</p>
+            {legendMetric.id !== "gross_liability" && (
+              <p className="map-legend-title">{legendMetric.label}</p>
+            )}
             <div
               className="map-legend-bar"
               style={{ background: legendGradient(legendMetric.stops) }}
@@ -1527,11 +1528,8 @@ export default function ScotlandMap() {
             <p className="hud-scotland-note">{legendCaption(legendMetric.id)}</p>
           </div>
         )}
-        <p className="hud-scotland-note">
-          Research estimate, not a rates bill.{" "}
-          <a href="/methodology">About</a>
-          {" · "}
-          <a href="/methodology#tradition">The tradition</a>
+        <p className="hud-scotland-foot">
+          Research estimate, not a rates bill. <a href="/methodology">About</a>
         </p>
       </aside>
 
@@ -1872,7 +1870,7 @@ function legendCaption(id: MetricId): string {
   switch (id) {
     case "gross_liability":
     case "agr_plot":
-      return "Town councils show a typical home plot. Rural councils show one hectare of farmland. A click shows that piece of land.";
+      return "Town: a home plot. Rural: one hectare.";
     case "rent_per_sqm":
       return "Annual Ground Rent per square metre of land.";
     case "net_contribution":

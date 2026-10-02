@@ -58,10 +58,33 @@ input {
   right: 0;
   z-index: 4;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
   padding: 1rem 1.1rem;
   pointer-events: none;
+}
+
+.hud-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+a.hud-slrg {
+  display: block;
+  line-height: 0;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+a.hud-slrg img {
+  display: block;
+  width: 150px;
+  height: 150px;
+  object-fit: contain;
 }
 
 .hud-top > * {
@@ -235,20 +258,6 @@ input {
   background: #f3f5f7;
 }
 
-.hud-nav a.hud-slrg {
-  display: flex;
-  align-items: center;
-  padding: 0.2rem 0.45rem;
-  background: #fff;
-}
-
-.hud-nav a.hud-slrg img {
-  display: block;
-  height: 150px;
-  width: 150px;
-  object-fit: contain;
-}
-
 .hud-banner {
   position: absolute;
   top: 5.1rem;
@@ -277,18 +286,18 @@ input {
 }
 
 .hud-tools {
-  top: 5.25rem;
+  top: 11.75rem;
   left: 1.1rem;
   width: min(332px, calc(100vw - 2rem));
-  max-height: calc(100vh - 6.5rem);
+  max-height: calc(100vh - 13rem);
   padding: 0.9rem 1rem 1rem;
 }
 
 .hud-place {
   right: 1.1rem;
-  top: 12.5rem;
+  top: 5.25rem;
   width: min(360px, calc(100vw - 2rem));
-  max-height: calc(100vh - 13.5rem);
+  max-height: calc(100vh - 6.5rem);
   padding: 2.1rem 1.15rem 1.2rem;
 }
 
@@ -305,11 +314,32 @@ input {
 }
 
 .hud-scotland-job {
-  margin: 0 0 0.45rem;
+  margin: 0;
   font-weight: 700;
   color: var(--slrg-navy);
-  font-size: 0.95rem;
+  font-size: 1.05rem;
+  line-height: 1.3;
+}
+
+.hud-scotland-lead {
+  margin: 0.2rem 0 0;
+  color: var(--slrg-text);
+  font-size: 0.92rem;
   line-height: 1.35;
+}
+
+.hud-scotland-foot {
+  margin: 0.7rem 0 0;
+  padding-top: 0.55rem;
+  border-top: 1px solid #e4e8ee;
+  color: var(--slrg-muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.hud-scotland-foot a {
+  color: var(--slrg-navy);
+  font-weight: 650;
 }
 
 .hud-scotland-grid {
@@ -326,7 +356,7 @@ input {
 }
 
 .map-legend {
-  margin-top: 0.7rem;
+  margin-top: 0.75rem;
 }
 
 .map-legend-title {
@@ -949,13 +979,14 @@ button.linkish:disabled {
     padding: 0.7rem;
   }
 
-  .hud-wordmark {
+  .hud-brand {
     order: 0;
+    flex-basis: 100%;
   }
 
   .hud-nav {
     order: 1;
-    margin-left: 0;
+    margin-left: auto;
   }
 
   .hud-search {
@@ -975,7 +1006,7 @@ button.linkish:disabled {
   }
 
   .hud-place {
-    top: 16.5rem;
+    top: 19rem;
     right: 0.7rem;
     left: 0.7rem;
     width: auto;

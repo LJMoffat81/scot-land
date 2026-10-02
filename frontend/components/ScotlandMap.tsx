@@ -1260,6 +1260,10 @@ export default function ScotlandMap() {
 
   const valueMetrics = METRICS.filter((m) => m.group === "value");
   const contextMetrics = METRICS.filter((m) => m.group === "context");
+  const legendMetric =
+    choropleth === "off"
+      ? null
+      : (METRICS.find((m) => m.id === choropleth) ?? null);
 
   return (
     <div className="app-shell">
@@ -1380,6 +1384,26 @@ export default function ScotlandMap() {
           Research illustration, not a rates bill and not today&apos;s Scottish
           budget. Map squares are not added up to it.
         </p>
+        {legendMetric && (
+          <div className="map-legend">
+            <p className="map-legend-title">{legendMetric.label}</p>
+            <div
+              className="map-legend-bar"
+              style={{ background: legendGradient(legendMetric.stops) }}
+              aria-hidden="true"
+            />
+            <div className="map-legend-stops">
+              <span>{formatLegendStop(legendMetric.stops[0][0], legendMetric.id)}</span>
+              <span>
+                {formatLegendStop(
+                  legendMetric.stops[legendMetric.stops.length - 1][0],
+                  legendMetric.id,
+                )}
+              </span>
+            </div>
+            <p className="hud-scotland-note">{legendCaption(legendMetric.id)}</p>
+          </div>
+        )}
       </aside>
 
       {apiOk === false && (
@@ -1689,6 +1713,63 @@ export default function ScotlandMap() {
           )}
     </div>
   );
+}
+
+function legendGradient(stops: [number, string][]): string {
+  const min = stops[0][0];
+  const max = stops[stops.length - 1][0];
+  const span = max - min || 1;
+  const parts = stops.map(([value, color]) => {
+    const pct = ((value - min) / span) * 100;
+    return `${color} ${pct}%`;
+  });
+  return `linear-gradient(to right, ${parts.join(", ")})`;
+}
+
+function formatLegendStop(value: number, id: MetricId): string {
+  if (id === "agr_price_pct" || id === "land_share" || id === "simd") {
+    return `${value}%`;
+  }
+  if (id === "pop_density") {
+    return value >= 1000 ? `${value / 1000}k` : String(value);
+  }
+  const sign = value < 0 ? "\u2212" : "";
+  const abs = Math.abs(value);
+  if (id === "vacant_residual" && abs >= 1_000_000) {
+    return `${sign}\u00a3${Math.round(abs / 1_000_000)}m`;
+  }
+  if (abs >= 1000) {
+    return `${sign}\u00a3${Math.round(abs / 1000).toLocaleString("en-GB")}k`;
+  }
+  return `${sign}\u00a3${Math.round(abs)}`;
+}
+
+function legendCaption(id: MetricId): string {
+  switch (id) {
+    case "gross_liability":
+    case "agr_plot":
+      return "Town councils show a typical home plot. Rural councils show one hectare of farmland. A click shows that piece of land. Research estimate, not a rates bill.";
+    case "rent_per_sqm":
+      return "Annual Ground Rent per square metre of land. Research estimate, not a rates bill.";
+    case "net_contribution":
+      return "A typical plot set against one person's share. Teal is below that share. Orange is above it.";
+    case "vacant_residual":
+      return "Illustrative rent on surveyed vacant land in the council. Not a rates bill.";
+    case "house_price":
+      return "Average house price in the council, building and land together.";
+    case "agr_price_pct":
+      return "The plot's Annual Ground Rent as a share of the average house price.";
+    case "land_share":
+      return "The land share used in that council's calculation.";
+    case "site_capital":
+      return "Economic land value per square metre, after the speculative cut.";
+    case "simd":
+      return "Share of data zones in the most deprived fifth. Context only, not the charge.";
+    case "pop_density":
+      return "People per square kilometre. Context only, not the charge.";
+    default:
+      return "Research estimate, not a rates bill.";
+  }
 }
 
 function formatRange(min: number, max: number, unit: string): string {

@@ -181,7 +181,6 @@ export default function AgrBreakdown({
   lat,
   lng,
   what3words,
-  parcelLabel,
   parcelAreaSqm,
   fiscal,
   platform,
@@ -242,16 +241,16 @@ export default function AgrBreakdown({
 
       <p className="headline-caption">
         {hasParcel
-          ? `Annual Ground Rent for this cadastral parcel${
-              parcelLabel ? ` ${parcelLabel}` : ""
-            }${
-              parcelAreaSqm
-                ? `, ${Math.round(parcelAreaSqm).toLocaleString("en-GB")} m\u00b2`
-                : ""
-            }.`
-          : headlineIsPlot
-            ? `Annual Ground Rent for a typical plot in this council (~${agr.notional_plot_sqm?.toLocaleString("en-GB")} m\u00b2).`
-            : `Annual Ground Rent for this ${areaSqm} m\u00b2 cell.`}
+          ? `This piece of land, ${Math.round(parcelAreaSqm as number).toLocaleString("en-GB")} m\u00b2.`
+          : agr.method === "productive_land_use"
+            ? "One hectare of farmland in this council."
+            : headlineIsPlot
+              ? `A typical home plot in this council${
+                  agr.notional_plot_sqm
+                    ? ` (about ${Math.round(agr.notional_plot_sqm).toLocaleString("en-GB")} m\u00b2)`
+                    : ""
+                }.`
+              : `This ${areaSqm} m\u00b2 square.`}
         {" "}
         Land only, not the building. Research estimate, not a rates bill.
       </p>

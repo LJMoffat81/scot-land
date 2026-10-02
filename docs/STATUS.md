@@ -1,6 +1,6 @@
 # Status
 
-Done: the public name is Scot-LAND. The place card leads with that parcel's Annual Ground Rent. The Group's illustration sits under the rent. How far the rent would go stays closed until opened. The git folder is `C:\Projects\scot-land` and the GitHub repo is LJMoffat81/scot-land. `scot-land.scot` is registered. Cloudflare nameservers are `corey.ns.cloudflare.com` and `deborah.ns.cloudflare.com`. The site is this PC, through the tunnel, at `https://www.scot-land.scot` and `https://scot-land.scot`. Mail is Proton.
+Done: the public name is Scot-LAND. The place card leads with that parcel's Annual Ground Rent. The Group's illustration sits under the rent. How far the rent would go stays closed until opened. The map key stays on the first screen: town councils are a typical home plot, and rural councils are one hectare of farmland. The git folder is `C:\Projects\scot-land` and the GitHub repo is LJMoffat81/scot-land. `scot-land.scot` is registered. Cloudflare nameservers are `corey.ns.cloudflare.com` and `deborah.ns.cloudflare.com`. The site is this PC, through the tunnel, at `https://www.scot-land.scot` and `https://scot-land.scot`. Mail is Proton.
 
 Next: a finer parcel value still needs sales the project does not have. The launch rent stays the signed-off council residual times the parcel area.
 

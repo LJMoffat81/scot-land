@@ -336,7 +336,7 @@ export default function ScotlandMap() {
   const mapRef = useRef<Map | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [query, setQuery] = useState("");
-  const [scenario, setScenario] = useState<ScenarioId>("replace_full_basket");
+  const [scenario, setScenario] = useState<ScenarioId>("full_agr");
   const [choropleth, setChoropleth] = useState<MetricId | "off">("gross_liability");
   const [showBoundaries, setShowBoundaries] = useState(true);
   const [showCellGrid, setShowCellGrid] = useState(false);
@@ -873,7 +873,7 @@ export default function ScotlandMap() {
           try {
             const encoded = encodeURIComponent(qWords);
             const response = await apiFetch(
-              `/square?words=${encoded}&scenario=replace_full_basket`,
+              `/square?words=${encoded}&scenario=full_agr`,
             );
             applyResult((await response.json()) as SquareResponse);
             setApiOk(true);
@@ -1339,7 +1339,11 @@ export default function ScotlandMap() {
 
       <aside className="hud-scotland" aria-label="Scotland illustration">
         <p className="hud-scotland-job">
-          A charge on land, instead of tax on wages and production.
+          A land value tax, on the land alone, instead of a tax on work and
+          trade.
+        </p>
+        <p className="hud-scotland-note">
+          <a href="/methodology#tradition">The tradition</a>
         </p>
         {fiscalSummary?.enabled && scenario !== "full_agr" && (
           <div className="hud-scotland-grid">
@@ -1666,8 +1670,6 @@ export default function ScotlandMap() {
               <AgrBreakdown
                 agr={result.agr}
                 areaSqm={result.square.area_sqm}
-                scenario={scenario}
-                onScenarioChange={setScenario}
                 postcode={result.postcode?.postcode}
                 lat={result.square.lat}
                 lng={result.square.lng}

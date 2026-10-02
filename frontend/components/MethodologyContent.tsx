@@ -127,10 +127,49 @@ export default function MethodologyContent() {
         map squares are not calibrated to sum to that pool.
       </p>
       <p>
-        On the map, &ldquo;Listed taxes&rdquo; means the research basket of Scottish
-        income tax, Council Tax and non-domestic rates. It is not every tax, and it
-        does not say which of those the current Parliament can replace.
+        The map shows one tax: the full rental value of the land. The three notes
+        under a place use the signed-off labels for how far that same charge would
+        go. They are not a menu of other taxes. &ldquo;Replace all listed taxes
+        (neutral)&rdquo; means the research basket of Scottish income tax, Council
+        Tax and non-domestic rates. It is not every tax.
       </p>
+
+      <section id="tradition">
+        <h2>The tradition</h2>
+        <p>
+          The charge follows the classical and modern advocates of land value tax.
+          Henry George&apos;s <em>Progress and Poverty</em> is the case for taking
+          the full rent of land as public revenue. The book is named here, not
+          reprinted.
+        </p>
+        <h3>Classical</h3>
+        <ul>
+          <li>Adam Smith: ground-rent can bear a charge without taxing labour or buildings.</li>
+          <li>David Ricardo: a better location yields a surplus.</li>
+          <li>Thomas Paine: land rent can fund an equal citizen dividend.</li>
+          <li>William Ogilvie: an equal right in the land, and the improver keeps the improvement.</li>
+          <li>John Stuart Mill: society has a claim on the unearned rise in land value.</li>
+          <li>Henry George: the full rent of land is public revenue.</li>
+          <li>The 1909 land campaign associated with Churchill: the British political case.</li>
+        </ul>
+        <h3>Modern</h3>
+        <ul>
+          <li>Mason Gaffney: taxes on work end up as a burden on land rent.</li>
+          <li>Fred Harrison: speculation inflates the price above economic rent.</li>
+          <li>Joseph Stiglitz: public goods capitalise into land value.</li>
+          <li>Roger Sandilands: the Scottish case for replacing taxes on earned income.</li>
+          <li>Duncan Pickard: charge productive rent after the speculative premium.</li>
+          <li>Andy Wightman: the 2010 land-only levy, and the residual method this engine uses.</li>
+          <li>Laurie Macfarlane: the housing crisis is largely a land market.</li>
+          <li>Martin Adams: collect the land rent and leave wages and buildings untaxed.</li>
+          <li>Lars Doucet and the Center for Land Economics: the modern path to a finer assessment.</li>
+          <li>The Scottish Land Revenue Group holds this case in Scotland.</li>
+        </ul>
+        <p>
+          The School of Cooperative Individualism is the public library for the
+          classical texts. It is not a second tax.
+        </p>
+      </section>
 
       <section>
         <h2>Two rent concepts</h2>

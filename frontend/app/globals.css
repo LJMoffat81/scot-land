@@ -814,6 +814,13 @@ button.linkish:disabled {
 .methodology-page h3 {
   font-size: 1rem;
   color: var(--slrg-navy);
+  margin-top: 1.1rem;
+  margin-bottom: 0.35rem;
+}
+
+.methodology-page h3 {
+  font-size: 1rem;
+  color: var(--slrg-navy);
   margin-top: 1.25rem;
 }
 

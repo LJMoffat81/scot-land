@@ -145,8 +145,6 @@ export type PlatformContext = {
 type Props = {
   agr: AgrResult;
   areaSqm: number;
-  scenario: ScenarioId;
-  onScenarioChange: (scenario: ScenarioId) => void;
   postcode?: string;
   lat: number;
   lng: number;
@@ -159,18 +157,11 @@ type Props = {
   reportDownloading?: boolean;
 };
 
-const SCENARIO_ORDER: ScenarioId[] = [
+const EXTENT_ORDER: ScenarioId[] = [
   "replace_income_tax",
   "revenue_neutral",
   "replace_full_basket",
 ];
-
-const SCENARIO_SHORT: Record<ScenarioId, string> = {
-  replace_full_basket: "Listed taxes",
-  full_agr: "Full rent",
-  replace_income_tax: "Income tax",
-  revenue_neutral: "Council tax and rates",
-};
 
 function formatGbp(value: number, digits = 2) {
   return `\u00a3${value.toLocaleString("en-GB", {
@@ -182,8 +173,6 @@ function formatGbp(value: number, digits = 2) {
 export default function AgrBreakdown({
   agr,
   areaSqm,
-  scenario,
-  onScenarioChange,
   postcode,
   lat,
   lng,
@@ -195,7 +184,7 @@ export default function AgrBreakdown({
   onDownloadReport,
   reportDownloading,
 }: Props) {
-  const active = agr.scenarios[scenario] ?? agr.scenarios.full_agr;
+  const active = agr.scenarios.full_agr;
   const plotFull = agr.roll_annual_rent_notional_plot_gbp;
   const cellFull = agr.economic_annual_rent_gbp;
   const scale = cellFull > 0 ? active.annual_charge_gbp / cellFull : 1;
@@ -289,7 +278,7 @@ export default function AgrBreakdown({
 
       <p className="headline-caption">
         {fiscal
-          ? "Research estimate for the land, not the building. Not a rates bill."
+          ? "Land value tax on the land alone. Research estimate, not a rates bill. An equal right in the land. What people build stays theirs."
           : headlineIsParcel
             ? `Property parcel${parcelLabel ? ` ${parcelLabel}` : ""}${
                 parcelAreaSqm
@@ -315,7 +304,7 @@ export default function AgrBreakdown({
             <strong>{formatGbp(fiscal.gross_plot_gbp, 0)}</strong>
           </div>
           <div className="fiscal-row">
-            <span>One person&apos;s share of the list</span>
+            <span>One person&apos;s comparison share</span>
             <strong>\u2212{formatGbp(fiscal.dividend_gbp, 0)}</strong>
           </div>
           {fiscal.remote_credit_gbp > 0 && (
@@ -332,26 +321,29 @@ export default function AgrBreakdown({
             </strong>
           </div>
           <p className="fiscal-role-tag">
-            A one-person comparison for this place. Not a share of the soil,
-            and not a rates bill.
+            A one-person comparison of this charge. Not an acre sum from the
+            essay, and not a rates bill.
           </p>
         </div>
       )}
 
-      <div className="scenario-pills" role="tablist" aria-label="Tax replacement scenario">
-        {SCENARIO_ORDER.map((id) => {
-          if (!agr.scenarios[id]) return null;
+      <div className="extent-notes">
+        <p className="headline-caption">The same land value tax, only as far as:</p>
+        {EXTENT_ORDER.map((id) => {
+          const item = agr.scenarios[id];
+          if (!item || cellFull <= 0) return null;
+          const extentScale = item.annual_charge_gbp / cellFull;
+          const extent =
+            parcelAreaSqm != null && parcelAreaSqm > 0
+              ? agr.site_rental_per_sqm_gbp * parcelAreaSqm * extentScale
+              : plotFull != null && plotFull > 0
+                ? plotFull * extentScale
+                : item.annual_charge_gbp;
           return (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={scenario === id}
-              className={scenario === id ? "scenario-pill active" : "scenario-pill"}
-              onClick={() => onScenarioChange(id)}
-            >
-              {SCENARIO_SHORT[id]}
-            </button>
+            <div className="fiscal-row" key={id}>
+              <span>{item.label}</span>
+              <strong>{formatGbp(extent, extent >= 100 ? 0 : 2)}</strong>
+            </div>
           );
         })}
       </div>

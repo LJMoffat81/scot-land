@@ -1465,8 +1465,14 @@ export default function ScotlandMap() {
         </div>
         <nav className="hud-nav">
           <a href="/methodology">About</a>
-          <a href="https://www.slrg.scot" target="_blank" rel="noreferrer">
-            SLRG
+          <a
+            className="hud-slrg"
+            href="https://www.slrg.scot"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Scottish Land Revenue Group"
+          >
+            <img src="/agr-banner.png" alt="Annual Ground Rent" />
           </a>
         </nav>
       </header>

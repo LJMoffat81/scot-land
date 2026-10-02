@@ -234,6 +234,20 @@ input {
   background: #f3f5f7;
 }
 
+.hud-nav a.hud-slrg {
+  display: flex;
+  align-items: center;
+  padding: 0.2rem 0.45rem;
+  background: #fff;
+}
+
+.hud-nav a.hud-slrg img {
+  display: block;
+  height: 38px;
+  width: auto;
+  max-width: 160px;
+}
+
 .hud-banner {
   position: absolute;
   top: 5.1rem;
@@ -941,6 +955,11 @@ button.linkish:disabled {
   .hud-nav {
     order: 1;
     margin-left: 0;
+  }
+
+  .hud-nav a.hud-slrg img {
+    height: 30px;
+    max-width: 112px;
   }
 
   .hud-search {

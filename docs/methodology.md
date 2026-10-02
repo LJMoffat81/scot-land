@@ -101,7 +101,7 @@ The map can be used as a **fiscal incidence instrument**:
 2. **AGR collection** — under each scenario, how much of the Sandilands **national rent pool** is collected.
 3. **Surplus** — collection − basket (**revenue neutral or better** when ≥ 0). Full economic rent typically shows a large surplus.
 4. **Who pays** — highest land-rent places have the highest **gross** liability (map residual plot AGR).
-5. **Net position** — gross − **equal dividend** (pool ÷ population) − optional **remote/island credit**. Low-rent and remote councils can be **net receivers** (negative net tax), encouraging people to thrive outside the hot core.
+5. **Net position** — gross − **equal dividend** (pool ÷ population) − optional **remote/island credit**. The land charge itself stays at or above zero. A household can still be ahead when one person's share exceeds the rent of their land. The remote credit is a per-person research knob, not a payment that scales with hectares.
 
 Scenarios include **Replace all listed taxes (neutral)** (`replace_full_basket`), full rent with surplus, income tax only, and CT+NDR.
 

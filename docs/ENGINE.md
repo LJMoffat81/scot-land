@@ -64,6 +64,12 @@ The free James Hutton sheets can describe farmland, hill, and forestry on a parc
 
 This formula does not apply those other 2009 capitals, and it does not sum band rents into a new charge. Where the existing use is agriculture and the parcel is not code 888, the only intensity is the signed agriculture rate above. Trees, drains, fences, and buildings stay with the person who made them. Afforestation on bare land, and any other hope, is a difference that is recorded and not added. A missing polygon cannot wipe the charge.
 
+## The floor
+
+The charge does not go below zero. Land at the margin pays nothing, which is the signed marginal rent of 0. A payment to remote land, meant to draw people there, is not the charge. A settlement grant, a ferry, or a clinic can be spent out of the rent pool. That spending is not the parcel rent.
+
+People in a remote place gain because their charge falls with the surplus, taxes on wages, trade, and buildings come off, and one person's share of the national pool is the same as in Glasgow. The research credit of £500 a year per person in Na h-Eileanan Siar, Orkney, Shetland, Highland, and Argyll and Bute stays that per-person knob. It is not a negative assessment and it does not scale with hectares. A cheque on the land would be bid into the price, and the largest holding would take the largest cheque.
+
 ## Henry George
 
 The draft did not pass. The failing sentence said that Highland is rural, so Wick KW1 4AA stays on that field rate for about 1,897 square metres, near £8.28, even though the postcode is a remote small town and both anchors are code 888. That sentence is not the rule. Code 888 is the urban class. The field rate left on Wick is not the rent of that small-town land, and it is not the value the public made by making the location a town.
@@ -88,7 +94,7 @@ The two items the economist could not correct without a new signed number stay u
 
 ## What is not claimed
 
-This formula does not claim that Wick is a field, that £8.28 is the rent of that small-town land, or that £8.28 is the value the public made by making the location a town. It does not sign a town-land intensity for Wick. It does not price a vacant site. It does not add hope, a zone median, or a ward median. It does not use the 60 percent site share. It does not show floor area. It does not cut Glasgow to 280 square metres. It does not tax wages, trade, or the building. It does not sum parcels into the national rent pool. It does not reopen the full Annual Ground Rent. It does not scrape Zoopla, Rightmove, ESPC, OnTheMarket, or the Scottish Assessors portal. It does not say that Henry George or Adam Smith endorses the site. The Registers of Scotland polygon remains an indicative extent, not the legal title.
+This formula does not claim that Wick is a field, that £8.28 is the rent of that small-town land, or that £8.28 is the value the public made by making the location a town. It does not sign a town-land intensity for Wick. It does not price a vacant site. It does not add hope, a zone median, or a ward median. It does not use the 60 percent site share. It does not show floor area. It does not cut Glasgow to 280 square metres. It does not tax wages, trade, or the building. It does not sum parcels into the national rent pool. It does not pay a negative charge on remote land. It does not reopen the full Annual Ground Rent. It does not scrape Zoopla, Rightmove, ESPC, OnTheMarket, or the Scottish Assessors portal. It does not say that Henry George or Adam Smith endorses the site. The Registers of Scotland polygon remains an indicative extent, not the legal title.
 
 ## Glasgow and Wick
 

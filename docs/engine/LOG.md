@@ -145,3 +145,15 @@ Append only. Do not rewrite an earlier entry. The public pounds are unchanged. T
 **Rejected:** Replacing the £90 billion pool with GERS revenue. Editing `data/config/agr.yaml`. Moving Glasgow or Wick. Putting the comparison on the place card. Inventing an EBCOR bonus. Treating the national figure as a flat charge on land at the margin.
 
 **Would fail if:** The refreshed rent were not half of the GERS year's national income, the signed pool moved, or a shortfall were shown as a surplus.
+
+## 2 October 2026 — The floor of the charge
+
+**Decision:** A payment that makes the land charge negative, meant to draw people to remote places, is rejected. The charge stays the yearly rent of the parcel. At the margin that rent is zero. It does not become a payment. People in a remote place gain because their charge falls with the surplus, taxes on wages, trade, and buildings come off, and one person's share of the national pool is the same as in a city. The existing research credit of £500 a year per person in the Western Isles, Orkney, Shetland, Highland, and Argyll and Bute stays a per-person policy knob. It does not scale with hectares. A settlement grant is spending out of the pool and is not the parcel rent. The public pounds are unchanged.
+
+**Reason:** Ricardo's law says the rent is the surplus over the least productive land in use, and land at that margin pays nothing. Adam Smith treated a bounty that pulls labour onto poorer ground as a distortion. Henry George's invitation to the margin is that the settler keeps what their work produces, because there is no rent to collect. A cheque attached to the land is bid into the price, so the seller takes the encouragement. Paid per hectare, the largest holding takes the largest cheque, and the map stops being a measure of ground rent.
+
+**Source:** `marginal_land_rent` is 0 in `data/config/agr.yaml`. The remote-credit note in that file calls the £500 a research policy knob, not a statute, and lists Na h-Eileanan Siar, Orkney Islands, Shetland Islands, Highland, and Argyll and Bute. `backend/agr/fiscal_year.py` already states that land at the margin pays nothing.
+
+**Rejected:** A negative land assessment. Turning the remote credit into a per-hectare payment. Editing `data/config/agr.yaml`. Moving Glasgow or Wick. Putting a negative charge on the place card.
+
+**Would fail if:** A parcel rent were stored below zero, the margin were given a payment, or the £500 credit were scaled by land area.

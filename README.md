@@ -225,9 +225,15 @@ scotland-open-land/
 
 The original Streamlit prototype is preserved at git tag `legacy/streamlit-prototype`.
 
-## Deploy (standalone site)
+## Deploy
 
-Free-tier friendly: **Vercel** (frontend) + **Railway** (API). No paid map or data APIs required.
+The public site is this PC. `docker compose -f docker-compose.home.yml` serves the app on port 3000. The Cloudflare Tunnel `scot-land` publishes `https://www.scot-land.scot` and `https://scot-land.scot` from that port. Mail for the domain is Proton and is separate from this app. The git folder stays `scotland-open-land`.
+
+Vercel and Railway are an older split deploy. They are not the public host.
+
+## Older split deploy (not the public site)
+
+Free-tier friendly: **Vercel** (frontend) + **Railway** (API). No paid map or data APIs required. Do not point `scot-land.scot` at Vercel.
 
 ### 1. Railway — API
 
@@ -257,10 +263,9 @@ Health check: `GET /health`
 
 4. Deploy. `frontend/vercel.json` is included.
 
-### 3. Custom domain (optional)
+### 3. Custom domain
 
-- The public name is Scot-LAND. Register `scot-land.scot`, then point it at Vercel. It is not registered yet.
-- Add that URL to Railway `ALLOWED_ORIGINS`.
+Do not point `scot-land.scot` at Vercel. That name is already served from this PC. A separate Vercel hostname, if one is still used, belongs in Railway `ALLOWED_ORIGINS`.
 
 ### Economist sign-off
 

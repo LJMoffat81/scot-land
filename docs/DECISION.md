@@ -1,6 +1,6 @@
 # Decision
 
-The public name is Scot-LAND. The address to register is scot-land.scot. Domain names are lower case, so the hyphen stays and the capitals are the wordmark only. That name does not resolve yet. It is not registered from this machine. agr.slrg.scot is not the name. The git folder and the GitHub repo stay `scotland-open-land` until that rename is asked for.
+The public name is Scot-LAND. The address is scot-land.scot. Domain names are lower case, so the hyphen stays and the capitals are the wordmark only. The site is served from this PC at `https://www.scot-land.scot` and `https://scot-land.scot`. Mail is Proton. agr.slrg.scot is not the name. The git folder and the GitHub repo stay `scotland-open-land` until that rename is asked for.
 
 This site chooses a land value tax. The charge is the rental value of the land alone. Buildings and other improvements stay with the person who made them. Collecting that rent is the alternative to taxing wages and production.
 

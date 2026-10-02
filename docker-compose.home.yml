@@ -1,0 +1,31 @@
+# Staging stack for this office PC. The browser calls same-origin /backend,
+# and Next proxies to the API container. Vercel and Railway stay on docker-compose.yml.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./data:/app/data:ro
+    environment:
+      W3W_API_KEY: ${W3W_API_KEY:-}
+      ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://192.168.0.171:3000,http://100.94.77.68:3000
+      ALLOW_VERCEL_PREVIEWS: "false"
+      PORT: "8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: /backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: /backend
+      API_PROXY_TARGET: http://api:8000
+    depends_on:
+      - api

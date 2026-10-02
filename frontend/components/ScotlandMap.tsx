@@ -1607,17 +1607,17 @@ export default function ScotlandMap() {
                       }`}
                     >
                       <div className="fiscal-dash-title">
-                        Scotland fiscal picture
+                        Research placeholder
                       </div>
                       <div className="fiscal-dash-grid">
                         <div>
-                          <span className="fd-label">Taxes to replace</span>
+                          <span className="fd-label">Placeholder list</span>
                           <span className="fd-value">
                             {formatBn(fiscalSummary.basket.total_gbp)}
                           </span>
                         </div>
                         <div>
-                          <span className="fd-label">AGR collection</span>
+                          <span className="fd-label">Illustrated charge</span>
                           <span className="fd-value">
                             {formatBn(fiscalSummary.collection.annual_gbp)}
                           </span>
@@ -1625,8 +1625,8 @@ export default function ScotlandMap() {
                         <div>
                           <span className="fd-label">
                             {fiscalSummary.surplus_gbp >= 0
-                              ? "Surplus"
-                              : "Shortfall"}
+                              ? "Above the list"
+                              : "Short of the list"}
                           </span>
                           <span className="fd-value">
                             {formatBn(Math.abs(fiscalSummary.surplus_gbp))}
@@ -1634,11 +1634,8 @@ export default function ScotlandMap() {
                         </div>
                       </div>
                       <p className="fiscal-dash-note">
-                        {fiscalSummary.revenue_neutral_or_better
-                          ? "Revenue neutral or better under this scenario"
-                          : "Short of the tax basket under this scenario"}
-                        {" · "}
-                        One-person comparison{" "}
+                        Research placeholder, not a rates bill and not
+                        today&apos;s Scottish budget. One-person comparison{" "}
                         {formatGbp0(fiscalSummary.dividend.per_person_gbp)}
                       </p>
                     </div>

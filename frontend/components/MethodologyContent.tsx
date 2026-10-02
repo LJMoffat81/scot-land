@@ -127,11 +127,21 @@ export default function MethodologyContent() {
         map squares are not calibrated to sum to that pool.
       </p>
       <p>
-        The map shows one tax: the full rental value of the land. The three notes
-        under a place use the signed-off labels for how far that same charge would
-        go. They are not a menu of other taxes. &ldquo;Replace all listed taxes
-        (neutral)&rdquo; means the research basket of Scottish income tax, Council
-        Tax and non-domestic rates. It is not every tax.
+        The map shows one charge: Annual Ground Rent, the full rental value of
+        the land. The three notes under a place use the signed-off labels for
+        how far that same charge would go. They are not a menu of other taxes.
+        The income-tax note scales the parcel rent by the Group&apos;s £11.5
+        billion against their £90 billion national illustration. That scale is
+        not a sum of parcels. &ldquo;Replace all listed taxes (neutral)&rdquo;
+        means the research basket of Scottish income tax, Council Tax and
+        non-domestic rates. It is not every tax.
+      </p>
+      <p>
+        The Group&apos;s homepage illustrates a typical home as about 60% site
+        value, and says prices and rents would fall by at least half. Those
+        claims are not the parcel calculation. The signed-off display flag for
+        that 60% share is off, so a parcel uses the residual rent, not that
+        illustration.
       </p>
 
       <section id="tradition">

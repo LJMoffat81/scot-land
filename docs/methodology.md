@@ -120,7 +120,7 @@ This is **research**, not a live bill. National totals use the macro pool; place
 
 1. **Research estimate** — not VOA, ROS, or a rates bill.
 2. **Residual is a proxy** — urban path is largely `HPI average × site share ÷ dwelling m²`, not full `price − DRC` on every plot.
-3. **Site share** — display default **60% (SLRG)**; Wightman research share **49%** remains in config.
+3. **Site share** — the parcel rent is the residual, not a fixed share. The Group’s homepage illustration of a 60% site share, and the claim that prices fall by half, are not the display engine (`use_slrg_for_display` is false). The Wightman research share of 49% remains in config.
 4. **Spatial coarseness** — capital/m² is **council-level** (flat within council) except rural land-use fallbacks; Ricardo differential is national-to-local, not street-level.
 5. **HABU aspirational** — HPI embeds credit conditions and some hope value; Pickard discounts are **static** policy knobs (Harrison cycle not modelled year-by-year).
 6. **Residential-heavy** — non-domestic urban land is thin; NDR in the revenue-neutral *label* does not mean full commercial cadastral coverage.

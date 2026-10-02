@@ -12,6 +12,6 @@ The School of Cooperative Individualism is the public library for the classical 
 
 Common Weal, Revive, Scottish Land & Estates, Fraser of Allander, and the Scottish Land Commission are not this list. Their pages stay in `docs/PANEL.md` and `docs/WAY-FORWARD.md` as other views. They do not define the charge.
 
-The public screen opens on `full_agr`, the full charge. The other scenarios are notes on how far the same charge would go. They are not a menu of different taxes.
+The public screen opens on `full_agr`, the full charge, and calls it Annual Ground Rent, the Scottish Land Revenue Group’s name for this land value tax. The other scenarios are notes on how far the same charge would go. They are not a menu of different taxes. The Group’s national illustration, about half of national income and the £90 billion pool, is shown under the parcel rent. Parcel rents are not added up to that pool. The homepage’s 60% site share stays off the parcel calculation.
 
 A pound on the map is the signed-off research estimate. It is not an official rates bill, not this year's Scottish budget, and not the sum of the squares. Signed-off numbers in `data/config/agr.yaml` are unchanged. Ogilvie's sentence on the screen is the equal right and the private improvement. The cash line is a one-person comparison of this charge, not the essay's acre arithmetic.

@@ -170,6 +170,10 @@ function formatGbp(value: number, digits = 2) {
   })}`;
 }
 
+function formatBn(value: number) {
+  return `\u00a3${(value / 1e9).toFixed(1)}bn`;
+}
+
 export default function AgrBreakdown({
   agr,
   areaSqm,
@@ -202,9 +206,7 @@ export default function AgrBreakdown({
         : plotFull != null && plotFull > 0
           ? plotFull * scale
           : active.annual_charge_gbp;
-  const headlineIsParcel = parcelFull != null && parcelFull > 0 && !fiscal;
-  const headlineIsPlot =
-    !headlineIsParcel && plotFull != null && plotFull > 0 && !fiscal;
+  const headlineIsPlot = plotFull != null && plotFull > 0;
 
   const place = [postcode, agr.council_name].filter(Boolean).join(" \u00b7 ");
   const w3wClean = what3words ? what3words.replace(/^\/+/, "") : null;
@@ -221,8 +223,64 @@ export default function AgrBreakdown({
         ? "fiscal-net contributor"
         : "fiscal-net";
 
+  const hasParcel = parcelAreaSqm != null && parcelAreaSqm > 0;
+  const pool = agr.national_rent_pool_gbp;
+  const perPerson =
+    agr.equal_share_rent_per_person_gbp ?? fiscal?.dividend_gbp ?? null;
+
   return (
     <div className="clarity-result">
+      <p className="location-line">
+        {place || `${lat.toFixed(5)}, ${lng.toFixed(5)}`}
+      </p>
+
+      <div className="agr-value" aria-live="polite">
+        {formatGbp(headline, headline >= 100 ? 0 : 2)}
+        <span className="agr-unit">/year</span>
+      </div>
+
+      <p className="headline-caption">
+        {hasParcel
+          ? `Annual Ground Rent for this cadastral parcel${
+              parcelLabel ? ` ${parcelLabel}` : ""
+            }${
+              parcelAreaSqm
+                ? `, ${Math.round(parcelAreaSqm).toLocaleString("en-GB")} m\u00b2`
+                : ""
+            }.`
+          : headlineIsPlot
+            ? `Annual Ground Rent for a typical plot in this council (~${agr.notional_plot_sqm?.toLocaleString("en-GB")} m\u00b2).`
+            : `Annual Ground Rent for this ${areaSqm} m\u00b2 cell.`}
+        {" "}
+        Land only, not the building. Research estimate, not a rates bill.
+      </p>
+
+      <div className="extent-notes">
+        <p className="headline-caption">The same Annual Ground Rent, only as far as:</p>
+        {EXTENT_ORDER.map((id) => {
+          const item = agr.scenarios[id];
+          if (!item || cellFull <= 0) return null;
+          const extentScale = item.annual_charge_gbp / cellFull;
+          const extent =
+            hasParcel
+              ? agr.site_rental_per_sqm_gbp * (parcelAreaSqm as number) * extentScale
+              : plotFull != null && plotFull > 0
+                ? plotFull * extentScale
+                : item.annual_charge_gbp;
+          return (
+            <div className="fiscal-row" key={id}>
+              <span>{item.label}</span>
+              <strong>{formatGbp(extent, extent >= 100 ? 0 : 2)}</strong>
+            </div>
+          );
+        })}
+        <p className="fiscal-role-tag">
+          The income-tax line scales this rent by the Group&apos;s income-tax
+          figure against their national pool. That scale is not a sum of
+          parcels. Council Tax and rates in the basket are research placeholders.
+        </p>
+      </div>
+
       {w3wParts.length === 3 && (
         <div className="w3w-hero-row">
           <p className="w3w-hero" aria-label={`what3words ${w3wClean}`}>
@@ -267,86 +325,44 @@ export default function AgrBreakdown({
         </div>
       )}
 
-      <p className="location-line">
-        {place || `${lat.toFixed(5)}, ${lng.toFixed(5)}`}
-      </p>
-
-      <div className="agr-value" aria-live="polite">
-        {formatGbp(headline, headline >= 100 ? 0 : 2)}
-        <span className="agr-unit">/year gross</span>
-      </div>
-
-      <p className="headline-caption">
-        {fiscal
-          ? "Land value tax on the land alone. Research estimate, not a rates bill. An equal right in the land. What people build stays theirs."
-          : headlineIsParcel
-            ? `Property parcel${parcelLabel ? ` ${parcelLabel}` : ""}${
-                parcelAreaSqm
-                  ? ` \u00b7 ${Math.round(parcelAreaSqm).toLocaleString("en-GB")} m\u00b2`
-                  : ""
-              }`
-            : headlineIsPlot
-              ? `Typical plot (~${agr.notional_plot_sqm?.toLocaleString("en-GB")} m\u00b2)`
-              : `This ${areaSqm} m\u00b2 cell \u00b7 ${formatGbp(active.annual_charge_gbp)}/yr`}
-      </p>
-
-      {fiscal && (
+      {(pool != null || perPerson != null) && (
         <div className="fiscal-place">
           <p className="ownership-heading">
-            {fiscal.role === "net_receiver"
-              ? `One-person comparison: receives ${formatGbp(Math.abs(fiscal.net_gbp), 0)}`
-              : fiscal.role === "net_contributor"
-                ? `One-person comparison: pays ${formatGbp(fiscal.net_gbp, 0)}`
-                : "One-person comparison: about even"}
+            Scottish Land Revenue Group illustration
           </p>
-          <div className="fiscal-row">
-            <span>Land charge</span>
-            <strong>{formatGbp(fiscal.gross_plot_gbp, 0)}</strong>
-          </div>
-          <div className="fiscal-row">
-            <span>One person&apos;s comparison share</span>
-            <strong>\u2212{formatGbp(fiscal.dividend_gbp, 0)}</strong>
-          </div>
-          {fiscal.remote_credit_gbp > 0 && (
+          <p className="fiscal-role-tag">
+            Economic rent of about half of national income. Not this parcel,
+            not this year&apos;s Budget, and not the sum of the map.
+          </p>
+          {pool != null && (
             <div className="fiscal-row">
-              <span>Remote / island credit</span>
-              <strong>\u2212{formatGbp(fiscal.remote_credit_gbp, 0)}</strong>
+              <span>National rent pool</span>
+              <strong>{formatBn(pool)}</strong>
             </div>
           )}
-          <div className={`fiscal-row net ${netClass}`}>
-            <span>{fiscal.net_gbp < 0 ? "Receives" : "Pays"}</span>
-            <strong>
-              {fiscal.net_gbp < 0 ? "" : "+"}
-              {formatGbp(fiscal.net_gbp, 0)}
-            </strong>
-          </div>
-          <p className="fiscal-role-tag">
-            A one-person comparison of this charge. Not an acre sum from the
-            essay, and not a rates bill.
-          </p>
+          {perPerson != null && (
+            <div className="fiscal-row">
+              <span>One person&apos;s share of that pool</span>
+              <strong>{formatGbp(perPerson, 0)}</strong>
+            </div>
+          )}
+          {fiscal && (
+            <div className={`fiscal-row net ${netClass}`}>
+              <span>
+                Set against this rent, the comparison{" "}
+                {fiscal.net_gbp < 0 ? "receives" : "pays"}
+              </span>
+              <strong>{formatGbp(Math.abs(fiscal.net_gbp), 0)}</strong>
+            </div>
+          )}
+          {fiscal && fiscal.remote_credit_gbp > 0 && (
+            <p className="fiscal-role-tag">
+              Includes the research remote credit of{" "}
+              {formatGbp(fiscal.remote_credit_gbp, 0)}.
+            </p>
+          )}
         </div>
       )}
-
-      <div className="extent-notes">
-        <p className="headline-caption">The same land value tax, only as far as:</p>
-        {EXTENT_ORDER.map((id) => {
-          const item = agr.scenarios[id];
-          if (!item || cellFull <= 0) return null;
-          const extentScale = item.annual_charge_gbp / cellFull;
-          const extent =
-            parcelAreaSqm != null && parcelAreaSqm > 0
-              ? agr.site_rental_per_sqm_gbp * parcelAreaSqm * extentScale
-              : plotFull != null && plotFull > 0
-                ? plotFull * extentScale
-                : item.annual_charge_gbp;
-          return (
-            <div className="fiscal-row" key={id}>
-              <span>{item.label}</span>
-              <strong>{formatGbp(extent, extent >= 100 ? 0 : 2)}</strong>
-            </div>
-          );
-        })}
-      </div>
 
       {platform && (
         <div className="ownership-block">

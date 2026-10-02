@@ -206,7 +206,7 @@ const METRICS: MetricDef[] = [
   {
     id: "gross_liability",
     property: "gross_plot_liability_gbp",
-    label: "Who pays most (gross)",
+    label: "Annual Ground Rent",
     group: "fiscal",
     stops: [
       [0, "#ffffcc"],
@@ -248,9 +248,9 @@ const METRICS: MetricDef[] = [
 const STORIES: Array<{ id: StoryId; label: string; metric: MetricId; blurb: string }> = [
   {
     id: "who_pays",
-    label: "Who pays most",
+    label: "Annual Ground Rent",
     metric: "gross_liability",
-    blurb: "Highest land rent → highest gross liability",
+    blurb: "The full charge on the land alone",
   },
   {
     id: "net_position",
@@ -1266,7 +1266,7 @@ export default function ScotlandMap() {
       <div className="map-wrap">
         <div id="map" ref={mapContainer} />
         {!result && apiOk !== false && (
-          <div className="map-hint">Click any square for a place</div>
+          <div className="map-hint">Click a place for its Annual Ground Rent</div>
         )}
       </div>
 
@@ -1339,7 +1339,8 @@ export default function ScotlandMap() {
 
       <aside className="hud-scotland" aria-label="Scotland illustration">
         <p className="hud-scotland-job">
-          A land value tax, on the land alone, instead of a tax on work and
+          Annual Ground Rent: a land value tax on the land alone, as the
+          Scottish Land Revenue Group argues, instead of a tax on work and
           trade.
         </p>
         <p className="hud-scotland-note">
@@ -1371,8 +1372,8 @@ export default function ScotlandMap() {
         )}
         {fiscalSummary?.enabled && scenario === "full_agr" && (
           <p className="hud-scotland-note">
-            The full-rent view uses a separate national illustration. It is not
-            rent already collected, and it is not the sum of the map.
+            Their published illustration is economic rent of about half of
+            national income. Parcel rents are not added up to it.
           </p>
         )}
         <p className="hud-scotland-note">

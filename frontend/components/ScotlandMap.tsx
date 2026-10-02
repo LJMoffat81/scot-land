@@ -338,7 +338,7 @@ export default function ScotlandMap() {
   const [query, setQuery] = useState("");
   const [scenario, setScenario] = useState<ScenarioId>("full_agr");
   const [choropleth, setChoropleth] = useState<MetricId | "off">("gross_liability");
-  const [showBoundaries, setShowBoundaries] = useState(true);
+  const [showBoundaries, setShowBoundaries] = useState(false);
   const [showCellGrid, setShowCellGrid] = useState(false);
   const [showVdl, setShowVdl] = useState(false);
   const [showPublicLand, setShowPublicLand] = useState(false);
@@ -780,7 +780,7 @@ export default function ScotlandMap() {
         source: "parcels-wms",
         minzoom: 14,
         paint: { "raster-opacity": 0.9, "raster-fade-duration": 0 },
-        layout: { visibility: "visible" },
+        layout: { visibility: "none" },
       });
 
       map.addSource("selected-parcel", { type: "geojson", data: emptyCollection });
@@ -1328,9 +1328,6 @@ export default function ScotlandMap() {
           Scottish Land Revenue Group argues, instead of a tax on work and
           trade.
         </p>
-        <p className="hud-scotland-note">
-          <a href="/methodology#tradition">The tradition</a>
-        </p>
         {fiscalSummary?.enabled && scenario !== "full_agr" && (
           <div className="hud-scotland-grid">
             <div>
@@ -1355,16 +1352,6 @@ export default function ScotlandMap() {
             </div>
           </div>
         )}
-        {fiscalSummary?.enabled && scenario === "full_agr" && (
-          <p className="hud-scotland-note">
-            Their published illustration is economic rent of about half of
-            national income. Parcel rents are not added up to it.
-          </p>
-        )}
-        <p className="hud-scotland-note">
-          Research illustration, not a rates bill and not today&apos;s Scottish
-          budget. Map squares are not added up to it.
-        </p>
         {legendMetric && (
           <div className="map-legend">
             <p className="map-legend-title">{legendMetric.label}</p>
@@ -1385,6 +1372,12 @@ export default function ScotlandMap() {
             <p className="hud-scotland-note">{legendCaption(legendMetric.id)}</p>
           </div>
         )}
+        <p className="hud-scotland-note">
+          Research estimate, not a rates bill.{" "}
+          <a href="/methodology">About</a>
+          {" · "}
+          <a href="/methodology#tradition">The tradition</a>
+        </p>
       </aside>
 
       {apiOk === false && (
@@ -1729,13 +1722,13 @@ function legendCaption(id: MetricId): string {
   switch (id) {
     case "gross_liability":
     case "agr_plot":
-      return "Town councils show a typical home plot. Rural councils show one hectare of farmland. A click shows that piece of land. Research estimate, not a rates bill.";
+      return "Town councils show a typical home plot. Rural councils show one hectare of farmland. A click shows that piece of land.";
     case "rent_per_sqm":
-      return "Annual Ground Rent per square metre of land. Research estimate, not a rates bill.";
+      return "Annual Ground Rent per square metre of land.";
     case "net_contribution":
       return "A typical plot set against one person's share. Teal is below that share. Orange is above it.";
     case "vacant_residual":
-      return "Illustrative rent on surveyed vacant land in the council. Not a rates bill.";
+      return "Illustrative rent on surveyed vacant land in the council.";
     case "house_price":
       return "Average house price in the council, building and land together.";
     case "agr_price_pct":

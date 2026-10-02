@@ -101,7 +101,7 @@ const METRICS: MetricDef[] = [
   {
     id: "agr_plot",
     property: "annual_ground_rent_plot_gbp",
-    label: "AGR (plot)",
+    label: "Typical plot rent",
     group: "value",
     stops: [
       [0, "#ffffcc"],
@@ -115,7 +115,7 @@ const METRICS: MetricDef[] = [
   {
     id: "rent_per_sqm",
     property: "site_rental_per_sqm_gbp",
-    label: "Land rent £/m²",
+    label: "Rent per square metre",
     group: "value",
     stops: [
       [0, "#f7fcf5"],
@@ -141,7 +141,7 @@ const METRICS: MetricDef[] = [
   {
     id: "agr_price_pct",
     property: "agr_as_pct_of_price",
-    label: "AGR % of price",
+    label: "Rent as a share of price",
     group: "value",
     stops: [
       [0.5, "#f7fbff"],
@@ -167,7 +167,7 @@ const METRICS: MetricDef[] = [
   {
     id: "site_capital",
     property: "site_capital_per_sqm_gbp",
-    label: "Site capital £/m²",
+    label: "Land value per square metre",
     group: "value",
     stops: [
       [50, "#fcfbfd"],
@@ -180,7 +180,7 @@ const METRICS: MetricDef[] = [
   {
     id: "simd",
     property: "simd_pct_20most_deprived",
-    label: "Deprivation (SIMD)",
+    label: "Deprivation",
     group: "context",
     stops: [
       [0, "#ffffd4"],
@@ -193,7 +193,7 @@ const METRICS: MetricDef[] = [
   {
     id: "pop_density",
     property: "population_density_per_km2",
-    label: "Pop. density",
+    label: "People per square kilometre",
     group: "context",
     stops: [
       [10, "#f7fcf0"],
@@ -219,9 +219,9 @@ const METRICS: MetricDef[] = [
   {
     id: "net_contribution",
     property: "net_contribution_plot_gbp",
-    label: "Net fiscal position",
+    label: "Against one person's share",
     group: "fiscal",
-    // diverging: receivers (negative) → neutral → contributors
+    // Teal is below one person's share. Orange is above it.
     stops: [
       [-18000, "#01665e"],
       [-5000, "#80cdc1"],
@@ -233,7 +233,7 @@ const METRICS: MetricDef[] = [
   {
     id: "vacant_residual",
     property: "vacant_full_agr_gbp",
-    label: "Vacant land residual",
+    label: "Vacant land",
     group: "context",
     stops: [
       [0, "#fff5eb"],
@@ -254,33 +254,33 @@ const STORIES: Array<{ id: StoryId; label: string; metric: MetricId; blurb: stri
   },
   {
     id: "net_position",
-    label: "Net payers vs receivers",
+    label: "Against one person's share",
     metric: "net_contribution",
-    blurb: "After equal dividend + remote credit",
+    blurb: "Teal is below that share. Orange is above it.",
   },
   {
     id: "rent_intensity",
-    label: "Land rent intensity",
+    label: "Rent per square metre",
     metric: "rent_per_sqm",
-    blurb: "£/m²/year — Ricardo differential",
+    blurb: "The charge for each square metre of land.",
   },
   {
     id: "prices",
-    label: "Prices vs rent",
+    label: "Rent and house prices",
     metric: "agr_price_pct",
-    blurb: "AGR as % of local house prices",
+    blurb: "This rent as a share of the average house price.",
   },
   {
     id: "equity",
     label: "Deprivation",
     metric: "simd",
-    blurb: "SIMD context alongside land rent",
+    blurb: "Share of areas in the most deprived fifth. Not the charge.",
   },
   {
     id: "vacant_land",
     label: "Vacant land",
     metric: "vacant_residual",
-    blurb: "Illustrative residual on SVDLS hectares — not a bill",
+    blurb: "Surveyed vacant land in the council. Not a rates bill.",
   },
 ];
 
@@ -971,7 +971,7 @@ export default function ScotlandMap() {
     const meta = metricsMetaRef.current?.[choropleth];
     if (meta?.min != null && meta?.max != null) {
       setMetricNote(
-        `${meta.label ?? def.label}: ${formatRange(meta.min, meta.max, meta.unit ?? "")}`,
+        `${def.label}: ${formatRange(meta.min, meta.max, meta.unit ?? "")}`,
       );
     } else {
       setMetricNote(def.label);
@@ -1414,7 +1414,7 @@ export default function ScotlandMap() {
                   Satellite
                 </button>
               </div>
-              <label className="layer-select-label">Stories</label>
+              <label className="layer-select-label">Colour</label>
               <div className="layer-chips story-chips">
                 {STORIES.map((s) => (
                   <button
@@ -1435,7 +1435,7 @@ export default function ScotlandMap() {
                   type="button"
                   className={showVdl ? "chip active" : "chip"}
                   onClick={() => setShowVdl((v) => !v)}
-                  title="Show SVDLS vacant and derelict sites"
+                  title="Surveyed vacant and derelict land"
                 >
                   Vacant
                 </button>
@@ -1511,7 +1511,7 @@ export default function ScotlandMap() {
                   type="button"
                   className={showBoundaries ? "chip active" : "chip"}
                   onClick={() => setShowBoundaries((v) => !v)}
-                  title="ROS cadastral parcel outlines (zoom 14+)"
+                  title="Outlines of neighbouring pieces of land. Zoom in."
                 >
                   Boundaries
                 </button>
@@ -1519,17 +1519,17 @@ export default function ScotlandMap() {
                   type="button"
                   className={showCellGrid ? "chip active" : "chip"}
                   onClick={() => setShowCellGrid((v) => !v)}
-                  title="W3W cells with AGR (zoom 12+)"
+                  title="The small squares the estimate is built from. Zoom in."
                 >
-                  Cell grid
+                  Cells
                 </button>
                 <button
                   type="button"
                   className={showMethod ? "chip active" : "chip"}
                   onClick={() => setShowMethod((v) => !v)}
-                  title="Outline rural productive-method councils"
+                  title="Outline councils valued as farmland."
                 >
-                  Rural method
+                  Farmland councils
                 </button>
               </div>
               {showVdl && (
@@ -1656,12 +1656,6 @@ export default function ScotlandMap() {
               ×
             </button>
             {error && <p className="error-line">{error}</p>}
-            {!error && !result && (
-              <p className="idle-hint">
-                Search or click the map. High-rent places fund the state; remote
-                and low-rent places can be net receivers after dividend.
-              </p>
-            )}
             {result && (
               <AgrBreakdown
                 agr={result.agr}

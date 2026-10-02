@@ -1,9 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 56" role="img" aria-label="Scot-LAND">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 232 56" role="img" aria-label="Scot-LAND">
   <title>Scot-LAND</title>
-  <text x="2" y="42" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="40">
-    <tspan fill="#0b1220">Scot</tspan>
-  </text>
-  <line x1="92" y1="33" x2="100" y2="33" stroke="#0b1220" stroke-width="3" stroke-linecap="round"/>
-  <text x="104" y="42" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="40" fill="#e11f26">LAND</text>
-  <line x1="106" y1="50" x2="213" y2="50" stroke="#e11f26" stroke-width="3" stroke-linecap="round"/>
+  <rect x="2" y="6" width="44" height="44" rx="5" fill="#1f7a3a"/>
+  <rect x="6" y="28" width="36" height="18" rx="2" fill="#2f9a4a"/>
+  <text x="58" y="40" fill="#0b1220" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="32">Scot-LAND</text>
 </svg>

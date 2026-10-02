@@ -213,6 +213,7 @@ export default function AgrBreakdown({
   const w3wParts = w3wClean ? w3wClean.split(".") : [];
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [extentOpen, setExtentOpen] = useState(false);
   const [ownershipOpen, setOwnershipOpen] = useState(false);
 
   const netRole = fiscal?.role;
@@ -254,32 +255,6 @@ export default function AgrBreakdown({
         {" "}
         Land only, not the building. Research estimate, not a rates bill.
       </p>
-
-      <div className="extent-notes">
-        <p className="headline-caption">The same Annual Ground Rent, only as far as:</p>
-        {EXTENT_ORDER.map((id) => {
-          const item = agr.scenarios[id];
-          if (!item || cellFull <= 0) return null;
-          const extentScale = item.annual_charge_gbp / cellFull;
-          const extent =
-            hasParcel
-              ? agr.site_rental_per_sqm_gbp * (parcelAreaSqm as number) * extentScale
-              : plotFull != null && plotFull > 0
-                ? plotFull * extentScale
-                : item.annual_charge_gbp;
-          return (
-            <div className="fiscal-row" key={id}>
-              <span>{item.label}</span>
-              <strong>{formatGbp(extent, extent >= 100 ? 0 : 2)}</strong>
-            </div>
-          );
-        })}
-        <p className="fiscal-role-tag">
-          The income-tax line scales this rent by the Group&apos;s income-tax
-          figure against their national pool. That scale is not a sum of
-          parcels. Council Tax and rates in the basket are research placeholders.
-        </p>
-      </div>
 
       {w3wParts.length === 3 && (
         <div className="w3w-hero-row">
@@ -349,10 +324,15 @@ export default function AgrBreakdown({
           {fiscal && (
             <div className={`fiscal-row net ${netClass}`}>
               <span>
-                Set against this rent, the comparison{" "}
-                {fiscal.net_gbp < 0 ? "receives" : "pays"}
+                {fiscal.net_gbp < 0
+                  ? "This rent is below one person's share by"
+                  : fiscal.net_gbp > 0
+                    ? "This rent is above one person's share by"
+                    : "This rent matches one person's share"}
               </span>
-              <strong>{formatGbp(Math.abs(fiscal.net_gbp), 0)}</strong>
+              {fiscal.net_gbp !== 0 && (
+                <strong>{formatGbp(Math.abs(fiscal.net_gbp), 0)}</strong>
+              )}
             </div>
           )}
           {fiscal && fiscal.remote_credit_gbp > 0 && (
@@ -363,6 +343,45 @@ export default function AgrBreakdown({
           )}
         </div>
       )}
+
+      <div className="extent-notes">
+        <button
+          type="button"
+          className="ownership-heading ownership-toggle"
+          onClick={() => setExtentOpen((v) => !v)}
+        >
+          How far this rent would go
+          <span>{extentOpen ? "\u2013" : "+"}</span>
+        </button>
+        {extentOpen && (
+          <>
+            <p className="headline-caption">
+              The same Annual Ground Rent, only as far as:
+            </p>
+            {EXTENT_ORDER.map((id) => {
+              const item = agr.scenarios[id];
+              if (!item || cellFull <= 0) return null;
+              const extentScale = item.annual_charge_gbp / cellFull;
+              const extent = hasParcel
+                ? agr.site_rental_per_sqm_gbp * (parcelAreaSqm as number) * extentScale
+                : plotFull != null && plotFull > 0
+                  ? plotFull * extentScale
+                  : item.annual_charge_gbp;
+              return (
+                <div className="fiscal-row" key={id}>
+                  <span>{item.label}</span>
+                  <strong>{formatGbp(extent, extent >= 100 ? 0 : 2)}</strong>
+                </div>
+              );
+            })}
+            <p className="fiscal-role-tag">
+              The income-tax line scales this rent by the Group&apos;s income-tax
+              figure against their national pool. That scale is not a sum of
+              parcels. Council Tax and rates in the basket are research placeholders.
+            </p>
+          </>
+        )}
+      </div>
 
       {platform && (
         <div className="ownership-block">

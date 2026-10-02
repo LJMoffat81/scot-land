@@ -530,12 +530,7 @@ export default function ScotlandMap() {
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
-    if (!map?.getLayer("satellite") || !map.getLayer("basemap")) return;
-    map.setLayoutProperty(
-      "basemap",
-      "visibility",
-      mapStyle === "streets" ? "visible" : "none",
-    );
+    if (!map?.getLayer("satellite")) return;
     map.setLayoutProperty(
       "satellite",
       "visibility",
@@ -659,22 +654,8 @@ export default function ScotlandMap() {
 
     const map = new maplibregl.Map({
       container: mapContainer.current,
-      style: {
-        version: 8,
-        sources: {
-          basemap: {
-            type: "raster",
-            tiles: [
-              "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
-              "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
-              "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png",
-            ],
-            tileSize: 256,
-            attribution: "© OpenStreetMap contributors © CARTO",
-          },
-        },
-        layers: [{ id: "basemap", type: "raster", source: "basemap" }],
-      },
+      // CARTO's raster tiles now stamp "API key required" unless a key is set.
+      style: "https://tiles.openfreemap.org/styles/positron",
       center: [-4.2, 56.8],
       zoom: 6.2,
     });
@@ -845,7 +826,7 @@ export default function ScotlandMap() {
           source: "satellite",
           layout: { visibility: "none" },
         },
-        "basemap",
+        "council-fill",
       );
 
       setMapReady(true);

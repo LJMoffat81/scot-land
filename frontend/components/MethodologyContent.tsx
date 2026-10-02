@@ -115,7 +115,7 @@ export default function MethodologyContent() {
       </p>
       <h1>Methodology</h1>
       <p>
-        Scotland Open Land estimates Annual Ground Rent (AGR) for each What3Words
+        Scot-LAND estimates Annual Ground Rent (AGR) for each What3Words
         3×3 metre square (9 m²) using a <strong>valuer residual roll</strong>: market
         value − DRC of buildings (Wightman), Pickard economic base, then 5% yield,
         plus Sandilands policy scenarios. The wider intellectual lineage explains what

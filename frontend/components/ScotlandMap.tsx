@@ -1272,7 +1272,7 @@ export default function ScotlandMap() {
 
       <header className="hud-top">
         <a className="hud-wordmark" href="/">
-          Scotland Open Land
+          Scot-LAND
         </a>
         <button
           type="button"

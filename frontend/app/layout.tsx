@@ -9,9 +9,9 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Scotland Open Land",
+  title: "Scot-LAND",
   description:
-    "Open land information for Scotland — Annual Ground Rent at every place.",
+    "Annual Ground Rent at every place in Scotland. The intended address is scot-land.scot.",
 };
 
 export default function RootLayout({

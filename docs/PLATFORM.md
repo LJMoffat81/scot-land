@@ -1,4 +1,4 @@
-# Scotland Open Land
+# Scot-LAND
 
 This is the product brief. Build toward it. Do not shrink it to match the current codebase.
 

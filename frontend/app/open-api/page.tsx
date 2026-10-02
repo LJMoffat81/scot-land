@@ -10,7 +10,7 @@ export default function OpenApiPage() {
       </p>
       <h1>Public API</h1>
       <p>
-        Open JSON for Scotland Open Land. Research AGR figures are not a rates
+        Open JSON for Scot-LAND. Research AGR figures are not a rates
         bill. Public/Crown geometry is a viewport overlay, not a bulk extract.
         Interactive schema: backend <code>/docs</code>.
       </p>

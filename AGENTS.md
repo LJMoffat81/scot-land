@@ -1,4 +1,4 @@
-# AGENTS.md — working on Scotland Open Land
+# AGENTS.md — working on Scot-LAND
 
 ## Product
 

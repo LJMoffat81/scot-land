@@ -1,8 +1,8 @@
 # Status
 
-Done today: a parcel shows Annual Ground Rent first, in the Scottish Land Revenue Group’s terms. The local pounds are the signed-off residual. Their national illustration, about half of national income and the £90 billion pool, sits under that rent and is not the sum of parcels. The 60% site share stays off.
+Done today: the public name is Scot-LAND. The address to register is scot-land.scot. It does not resolve yet.
 
-Next: a finer parcel value needs sales the project does not have. A public hostname is still open.
+Next: register scot-land.scot when you want it live. A finer parcel value still needs sales the project does not have.
 
 Waiting on you: sending anything, a public hostname, a signed-off number in `data/config/agr.yaml` (including turning on the 60% share), and the day's push to GitHub.
 

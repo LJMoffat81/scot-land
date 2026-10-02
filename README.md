@@ -1,4 +1,4 @@
-# Scotland Open Land
+# Scot-LAND
 
 **Product brief:** [docs/PLATFORM.md](docs/PLATFORM.md)
 
@@ -259,7 +259,7 @@ Health check: `GET /health`
 
 ### 3. Custom domain (optional)
 
-- Point `agr.slrg.scot` (or similar) to Vercel.
+- The public name is Scot-LAND. Register `scot-land.scot`, then point it at Vercel. It is not registered yet.
 - Add that URL to Railway `ALLOWED_ORIGINS`.
 
 ### Economist sign-off

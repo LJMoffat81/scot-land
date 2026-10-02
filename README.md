@@ -213,7 +213,7 @@ Open data: http://localhost:3000/downloads · http://localhost:3000/open-api
 ## Project structure
 
 ```
-scotland-open-land/
+scot-land/
 ├── frontend/          # Next.js + MapLibre map UI
 ├── backend/           # FastAPI AGR engine
 ├── data/config/       # agr.yaml (SLRG parameters)
@@ -227,7 +227,7 @@ The original Streamlit prototype is preserved at git tag `legacy/streamlit-proto
 
 ## Deploy
 
-The public site is this PC. `docker compose -f docker-compose.home.yml` serves the app on port 3000. The Cloudflare Tunnel `scot-land` publishes `https://www.scot-land.scot` and `https://scot-land.scot` from that port. Mail for the domain is Proton and is separate from this app. The git folder stays `scotland-open-land`.
+The public site is this PC. `docker compose -f docker-compose.home.yml` serves the app on port 3000. The Cloudflare Tunnel `scot-land` publishes `https://www.scot-land.scot` and `https://scot-land.scot` from that port. Mail for the domain is Proton and is separate from this app. The git folder is `scot-land` and the GitHub repo is LJMoffat81/scot-land.
 
 Vercel and Railway are an older split deploy. They are not the public host.
 

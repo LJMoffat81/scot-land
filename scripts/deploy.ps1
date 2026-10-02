@@ -9,7 +9,7 @@ Write-Host ""
 
 Write-Host "Step 1: Railway (API)" -ForegroundColor Yellow
 Write-Host "  1. Go to https://railway.app → New Project → Deploy from GitHub"
-Write-Host "  2. Select scotland-open-land (uses railway.toml)"
+Write-Host "  2. Select scot-land (uses railway.toml)"
 Write-Host "  3. Set variables: ALLOWED_ORIGINS, ALLOW_VERCEL_PREVIEWS=true"
 Write-Host "  4. Copy the public URL"
 Write-Host ""
@@ -32,7 +32,7 @@ if ($railwayUrl) {
 
 Write-Host ""
 Write-Host "Step 2: Vercel (frontend)" -ForegroundColor Yellow
-Write-Host "  1. Go to https://vercel.com → Import scotland-open-land"
+Write-Host "  1. Go to https://vercel.com → Import scot-land"
 Write-Host "  2. Root Directory: frontend"
 Write-Host "  3. Env: NEXT_PUBLIC_API_URL = your Railway URL"
 Write-Host ""

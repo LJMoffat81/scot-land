@@ -89,8 +89,8 @@ input {
 
 .hud-wordmark img {
   display: block;
-  width: 150px;
-  height: 150px;
+  width: 104px;
+  height: 104px;
 }
 
 .hud-layers-btn {
@@ -275,7 +275,7 @@ input {
 }
 
 .hud-tools {
-  top: 11.75rem;
+  top: 8.6rem;
   left: 1.1rem;
   width: min(332px, calc(100vw - 2rem));
   max-height: calc(100vh - 13rem);
@@ -995,7 +995,7 @@ button.linkish:disabled {
   }
 
   .hud-place {
-    top: 18.75rem;
+    top: 15.75rem;
     right: 0.7rem;
     left: 0.7rem;
     width: auto;

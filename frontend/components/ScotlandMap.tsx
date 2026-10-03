@@ -13,8 +13,6 @@ import AgrBreakdown, {
   PlaceFiscal,
   ScenarioId,
 } from "./AgrBreakdown";
-import CoveragePanel, { CoverageLayer } from "./CoveragePanel";
-import NationalStats from "./NationalStats";
 import { ApiError, apiFetch, apiJson, pingApi } from "../lib/api";
 
 type ParcelFeature = GeoJSON.Feature<
@@ -65,17 +63,6 @@ type AddressLookup = {
   note: string;
 };
 
-type FiscalSummary = {
-  enabled: boolean;
-  scenario: string;
-  basket: { total_gbp: number; lines: Array<{ label: string; annual_gbp: number }> };
-  collection: { annual_gbp: number; method: string };
-  surplus_gbp: number;
-  revenue_neutral_or_better: boolean;
-  dividend: { per_person_gbp: number; mode: string };
-  remote_credit: { enabled: boolean; credit_gbp_per_person_year: number };
-};
-
 type MetricId =
   | "agr_plot"
   | "rent_per_sqm"
@@ -97,13 +84,7 @@ type MetricDef = {
   stops: [number, string][];
 };
 
-type StoryId =
-  | "who_pays"
-  | "net_position"
-  | "rent_intensity"
-  | "equity"
-  | "prices"
-  | "vacant_land";
+type StoryId = "who_pays" | "rent_intensity";
 
 type RentBand = "low" | "mid" | "high";
 
@@ -266,37 +247,13 @@ const STORIES: Array<{ id: StoryId; label: string; metric: MetricId; blurb: stri
     id: "who_pays",
     label: "Annual Ground Rent",
     metric: "gross_liability",
-    blurb: "The full charge on the land alone",
-  },
-  {
-    id: "net_position",
-    label: "Against one person's share",
-    metric: "net_contribution",
-    blurb: "Teal is below that share. Orange is above it.",
+    blurb: "The yearly rent of the land alone.",
   },
   {
     id: "rent_intensity",
     label: "Rent per square metre",
     metric: "rent_per_sqm",
-    blurb: "The charge for each square metre of land.",
-  },
-  {
-    id: "prices",
-    label: "Rent and house prices",
-    metric: "agr_price_pct",
-    blurb: "This rent as a share of the average house price.",
-  },
-  {
-    id: "equity",
-    label: "Deprivation",
-    metric: "simd",
-    blurb: "Share of areas in the most deprived fifth. Not the charge.",
-  },
-  {
-    id: "vacant_land",
-    label: "Vacant land",
-    metric: "vacant_residual",
-    blurb: "Surveyed vacant land in the council. Not a rates bill.",
+    blurb: "The rent for each square metre of land.",
   },
 ];
 
@@ -362,24 +319,18 @@ export default function ScotlandMap() {
   const [scenario, setScenario] = useState<ScenarioId>("full_agr");
   const [choropleth, setChoropleth] = useState<MetricId | "off">("gross_liability");
   const [showBoundaries, setShowBoundaries] = useState(false);
-  const [showCellGrid, setShowCellGrid] = useState(false);
-  const [showVdl, setShowVdl] = useState(false);
-  const [showPublicLand, setShowPublicLand] = useState(false);
+  const [showCellGrid] = useState(false);
+  const [showVdl] = useState(false);
+  const [showPublicLand] = useState(false);
   const [showMethod, setShowMethod] = useState(false);
   const [layerBusy, setLayerBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SquareResponse | null>(null);
   const [apiOk, setApiOk] = useState<boolean | null>(null);
-  const [reportDownloading, setReportDownloading] = useState(false);
   const [metricNote, setMetricNote] = useState<string | null>(null);
-  const [fiscalSummary, setFiscalSummary] = useState<FiscalSummary | null>(null);
   const [activeStory, setActiveStory] = useState<StoryId>("who_pays");
-  const [coverageLive, setCoverageLive] = useState<CoverageLayer[]>([]);
-  const [coverageGaps, setCoverageGaps] = useState<CoverageLayer[]>([]);
-  const [coverageOpen, setCoverageOpen] = useState(false);
   const [band, setBand] = useState<RentBand | null>(null);
-  const [statsOpen, setStatsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
   const markerRef = useRef<maplibregl.Marker | null>(null);
@@ -735,41 +686,7 @@ export default function ScotlandMap() {
     };
   }, []);
 
-  // National fiscal dashboard
-  useEffect(() => {
-    let cancelled = false;
-    void apiJson<FiscalSummary>(`/fiscal/summary?scenario=${scenario}`)
-      .then((data) => {
-        if (!cancelled) setFiscalSummary(data);
-      })
-      .catch(() => {
-        if (!cancelled) setFiscalSummary(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [scenario]);
-
-  useEffect(() => {
-    let cancelled = false;
-    void apiJson<{ live: CoverageLayer[]; gaps: CoverageLayer[] }>("/platform/gaps")
-      .then((data) => {
-        if (cancelled) return;
-        setCoverageLive(data.live ?? []);
-        setCoverageGaps(data.gaps ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setCoverageLive([]);
-          setCoverageGaps([]);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Re-assess selection when scenario changes so fiscal gross/net update
+  // Re-assess selection when scenario changes so the place rent stays current
   useEffect(() => {
     if (!result) return;
     void fetchSquare(result.square.lat, result.square.lng, scenario, true);
@@ -781,18 +698,6 @@ export default function ScotlandMap() {
     if (!story) return;
     setActiveStory(storyId);
     setChoropleth(story.metric);
-    if (storyId === "vacant_land") {
-      setShowVdl(true);
-    }
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      if (storyId === "vacant_land") {
-        url.searchParams.set("story", "vacant_land");
-      } else {
-        url.searchParams.delete("story");
-      }
-      window.history.replaceState({}, "", url.toString());
-    }
   };
 
   useEffect(() => {
@@ -981,15 +886,6 @@ export default function ScotlandMap() {
       const qWords = params.get("words");
       const qLat = params.get("lat");
       const qLng = params.get("lng");
-      const qStory = params.get("story");
-      if (qStory === "vacant_land") {
-        setActiveStory("vacant_land");
-        setChoropleth("vacant_residual");
-        setShowVdl(true);
-      }
-      if (params.get("vacant") === "1") setShowVdl(true);
-      if (params.get("public") === "0") setShowPublicLand(false);
-      if (params.get("public") === "1") setShowPublicLand(true);
       const qBand = params.get("band");
       if (qBand === "low" || qBand === "mid" || qBand === "high") {
         setBand(qBand);
@@ -1364,46 +1260,6 @@ export default function ScotlandMap() {
     );
   }, [mapReady, showMethod, choropleth]);
 
-  const downloadReport = async (format: "markdown" | "json") => {
-    if (!result) return;
-    setReportDownloading(true);
-    setError(null);
-    try {
-      const path =
-        `/assessment/report?lat=${result.square.lat}&lng=${result.square.lng}` +
-        `&scenario=${scenario}&format=${format === "json" ? "json" : "markdown"}`;
-      const response = await apiFetch(path);
-      const base = `scot-land-${result.square.lat.toFixed(5)}_${result.square.lng.toFixed(5)}`;
-      if (format === "json") {
-        const data = await response.json();
-        const blob = new Blob([JSON.stringify(data, null, 2)], {
-          type: "application/json",
-        });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${base}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        const text = await response.text();
-        const blob = new Blob([text], { type: "text/markdown;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${base}.md`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Report download failed");
-    } finally {
-      setReportDownloading(false);
-    }
-  };
-
-  const valueMetrics = METRICS.filter((m) => m.group === "value");
-  const contextMetrics = METRICS.filter((m) => m.group === "context");
   const legendMetric =
     choropleth === "off"
       ? null
@@ -1530,33 +1386,9 @@ export default function ScotlandMap() {
         </nav>
       </header>
 
-      <aside className="hud-scotland" aria-label="Scotland illustration" ref={scotlandRef}>
+      <aside className="hud-scotland" aria-label="Land rent" ref={scotlandRef}>
         <p className="hud-scotland-job">Annual Ground Rent</p>
         <p className="hud-scotland-lead">A charge on the land alone.</p>
-        {fiscalSummary?.enabled && scenario !== "full_agr" && (
-          <div className="hud-scotland-grid">
-            <div>
-              <span className="fd-label">Listed taxes</span>
-              <span className="fd-value">
-                {formatBn(fiscalSummary.basket.total_gbp)}
-              </span>
-            </div>
-            <div>
-              <span className="fd-label">Scaled charge</span>
-              <span className="fd-value">
-                {formatBn(fiscalSummary.collection.annual_gbp)}
-              </span>
-            </div>
-            <div>
-              <span className="fd-label">
-                {fiscalSummary.surplus_gbp >= 0 ? "Above the list" : "Short of the list"}
-              </span>
-              <span className="fd-value">
-                {formatBn(Math.abs(fiscalSummary.surplus_gbp))}
-              </span>
-            </div>
-          </div>
-        )}
         {legendMetric && (
           <div className="map-legend">
             {legendMetric.id !== "gross_liability" && (
@@ -1643,75 +1475,21 @@ export default function ScotlandMap() {
 
               <label className="layer-select-label">Filter</label>
               <div className="layer-chips">
-                <button
-                  type="button"
-                  className={showVdl ? "chip active" : "chip"}
-                  onClick={() => setShowVdl((v) => !v)}
-                  title="Surveyed vacant and derelict land"
-                >
-                  Vacant
-                </button>
-                <button
-                  type="button"
-                  className={showPublicLand ? "chip active" : "chip"}
-                  onClick={() => setShowPublicLand((v) => !v)}
-                  title="Show five-body public / Crown overlay"
-                >
-                  Public
-                </button>
                 {(["low", "mid", "high"] as RentBand[]).map((id) => (
                   <button
                     key={id}
                     type="button"
                     className={band === id ? "chip active" : "chip"}
                     onClick={() => setBand((cur) => (cur === id ? null : id))}
-                    title="Filter councils by plot AGR band (low < £1,500, mid, high ≥ £4,500)"
+                    title="Low is under £1,500 a year. High is £4,500 or more."
                   >
                     {id} rent
                   </button>
                 ))}
               </div>
               {band && (
-                <p className="layer-meta">
-                  Showing {band} rent-band councils only. Ownership is public or
-                  unknown — never labelled private from this overlay.
-                </p>
+                <p className="layer-meta">Showing {band} rent councils.</p>
               )}
-
-              <label className="layer-select-label" htmlFor="choropleth">
-                Colour map by
-              </label>
-              <select
-                id="choropleth"
-                className="layer-select"
-                value={choropleth}
-                onChange={(e) =>
-                  setChoropleth(e.target.value as MetricId | "off")
-                }
-              >
-                <optgroup label="Fiscal">
-                  {METRICS.filter((m) => m.group === "fiscal").map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Value">
-                  {valueMetrics.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Context">
-                  {contextMetrics.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.label}
-                    </option>
-                  ))}
-                </optgroup>
-                <option value="off">Off</option>
-              </select>
               {metricNote && choropleth !== "off" && (
                 <p className="layer-meta">
                   {layerBusy ? "Loading…" : metricNote}
@@ -1732,14 +1510,6 @@ export default function ScotlandMap() {
                 </button>
                 <button
                   type="button"
-                  className={showCellGrid ? "chip active" : "chip"}
-                  onClick={() => setShowCellGrid((v) => !v)}
-                  title="The small squares the estimate is built from. Zoom in."
-                >
-                  Cells
-                </button>
-                <button
-                  type="button"
                   className={showMethod ? "chip active" : "chip"}
                   onClick={() => setShowMethod((v) => !v)}
                   title="Outline councils valued as farmland."
@@ -1747,119 +1517,9 @@ export default function ScotlandMap() {
                   Farmland councils
                 </button>
               </div>
-              {showVdl && (
-                <p className="layer-meta">
-                  SVDLS survey sites (OGL) — owner class is not a title. Zoom 8+.
-                </p>
-              )}
-              {showPublicLand && (
-                <div className="public-legend">
-                  <p className="layer-meta">
-                    Not a title. Not council land. Zoom 6+.
-                  </p>
-                  <ul className="public-legend-swatches">
-                    <li>
-                      <span className="swatch" style={{ background: "#66c2a5" }} />
-                      Forestry and Land Scotland
-                    </li>
-                    <li>
-                      <span className="swatch" style={{ background: "#8da0cb" }} />
-                      NatureScot
-                    </li>
-                    <li>
-                      <span className="swatch" style={{ background: "#e78ac3" }} />
-                      Crown Estate
-                    </li>
-                    <li>
-                      <span className="swatch" style={{ background: "#a6d854" }} />
-                      Scottish Water
-                    </li>
-                    <li>
-                      <span className="swatch" style={{ background: "#fc8d62" }} />
-                      Crofting holdings
-                    </li>
-                  </ul>
-                </div>
-              )}
-              {(coverageLive.length > 0 || coverageGaps.length > 0) && (
-                <CoveragePanel
-                  live={coverageLive}
-                  gaps={coverageGaps}
-                  open={coverageOpen}
-                  onToggleOpen={() => setCoverageOpen((v) => !v)}
-                  activeLayerIds={[
-                    ...(showVdl ? ["vdl"] : []),
-                    ...(showPublicLand ? ["public_crown"] : []),
-                    ...(showBoundaries ? ["boundaries"] : []),
-                    ...(showCellGrid ? ["cell_grid"] : []),
-                  ]}
-                  onToggleLayer={(id) => {
-                    if (id === "vdl") setShowVdl((v) => !v);
-                    if (id === "public_crown") setShowPublicLand((v) => !v);
-                    if (id === "boundaries") setShowBoundaries((v) => !v);
-                    if (id === "cell_grid") setShowCellGrid((v) => !v);
-                  }}
-                />
-              )}
-
-              <button
-                type="button"
-                className="hud-fold"
-                onClick={() => setStatsOpen((v) => !v)}
-              >
-                {statsOpen ? "Hide national figures" : "Scotland figures"}
-              </button>
-              {statsOpen && (
-                <div className="hud-stats">
-                  {fiscalSummary?.enabled && (
-                    <div
-                      className={`fiscal-dash ${
-                        fiscalSummary.revenue_neutral_or_better
-                          ? "surplus"
-                          : "shortfall"
-                      }`}
-                    >
-                      <div className="fiscal-dash-title">
-                        Research placeholder
-                      </div>
-                      <div className="fiscal-dash-grid">
-                        <div>
-                          <span className="fd-label">Placeholder list</span>
-                          <span className="fd-value">
-                            {formatBn(fiscalSummary.basket.total_gbp)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="fd-label">Illustrated charge</span>
-                          <span className="fd-value">
-                            {formatBn(fiscalSummary.collection.annual_gbp)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="fd-label">
-                            {fiscalSummary.surplus_gbp >= 0
-                              ? "Above the list"
-                              : "Short of the list"}
-                          </span>
-                          <span className="fd-value">
-                            {formatBn(Math.abs(fiscalSummary.surplus_gbp))}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="fiscal-dash-note">
-                        Research placeholder, not a rates bill and not
-                        today&apos;s Scottish budget. One-person comparison{" "}
-                        {formatGbp0(fiscalSummary.dividend.per_person_gbp)}
-                      </p>
-                    </div>
-                  )}
-                  <NationalStats />
-                </div>
-              )}
             </div>
           </aside>
       )}
-
           {(result || error) && (
           <aside className="hud-card hud-place">
             <button
@@ -1889,8 +1549,6 @@ export default function ScotlandMap() {
                 }
                 fiscal={result.fiscal}
                 platform={result.platform}
-                onDownloadReport={(fmt) => void downloadReport(fmt)}
-                reportDownloading={reportDownloading}
               />
             )}
           </aside>
@@ -2008,10 +1666,4 @@ function formatRange(min: number, max: number, unit: string): string {
   return `${fmt(min)}–${fmt(max)}${u}`;
 }
 
-function formatBn(n: number): string {
-  return `£${(n / 1e9).toFixed(1)}bn`;
-}
 
-function formatGbp0(n: number): string {
-  return `£${Math.round(n).toLocaleString("en-GB")}`;
-}

@@ -154,25 +154,13 @@ type Props = {
   parcelAreaSqm?: number | null;
   fiscal?: PlaceFiscal | null;
   platform?: PlatformContext | null;
-  onDownloadReport?: (format: "markdown" | "json") => void;
-  reportDownloading?: boolean;
 };
-
-const EXTENT_ORDER: ScenarioId[] = [
-  "replace_income_tax",
-  "revenue_neutral",
-  "replace_full_basket",
-];
 
 function formatGbp(value: number, digits = 2) {
   return `\u00a3${value.toLocaleString("en-GB", {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   })}`;
-}
-
-function formatBn(value: number) {
-  return `\u00a3${(value / 1e9).toFixed(1)}bn`;
 }
 
 export default function AgrBreakdown({
@@ -183,11 +171,10 @@ export default function AgrBreakdown({
   lat,
   lng,
   what3words,
+  parcelLabel,
   parcelAreaSqm,
   fiscal,
   platform,
-  onDownloadReport,
-  reportDownloading,
 }: Props) {
   const active = agr.scenarios.full_agr;
   const plotFull = agr.roll_annual_rent_notional_plot_gbp;
@@ -214,21 +201,8 @@ export default function AgrBreakdown({
   const w3wParts = w3wClean ? w3wClean.split(".") : [];
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
-  const [extentOpen, setExtentOpen] = useState(false);
-  const [ownershipOpen, setOwnershipOpen] = useState(false);
-
-  const netRole = fiscal?.role;
-  const netClass =
-    netRole === "net_receiver"
-      ? "fiscal-net receiver"
-      : netRole === "net_contributor"
-        ? "fiscal-net contributor"
-        : "fiscal-net";
 
   const hasParcel = parcelAreaSqm != null && parcelAreaSqm > 0;
-  const pool = agr.national_rent_pool_gbp;
-  const perPerson =
-    agr.equal_share_rent_per_person_gbp ?? fiscal?.dividend_gbp ?? null;
 
   return (
     <div className="clarity-result">
@@ -255,6 +229,7 @@ export default function AgrBreakdown({
               : `This ${areaSqm} m\u00b2 square.`}
         {" "}
         Land only, not the building. Research estimate, not a rates bill.
+        The same rate on every street in this council.
         {doorLabel
           ? " This door finds the land. The figure is the whole piece, not one flat."
           : ""}
@@ -305,226 +280,7 @@ export default function AgrBreakdown({
         </div>
       )}
 
-      {(pool != null || perPerson != null) && (
-        <div className="fiscal-place">
-          <p className="ownership-heading">
-            Scottish Land Revenue Group illustration
-          </p>
-          <p className="fiscal-role-tag">
-            Economic rent of about half of national income. Not this parcel,
-            not this year&apos;s Budget, and not the sum of the map.
-          </p>
-          {pool != null && (
-            <div className="fiscal-row">
-              <span>National rent pool</span>
-              <strong>{formatBn(pool)}</strong>
-            </div>
-          )}
-          {perPerson != null && (
-            <div className="fiscal-row">
-              <span>One person&apos;s share of that pool</span>
-              <strong>{formatGbp(perPerson, 0)}</strong>
-            </div>
-          )}
-          {fiscal && (
-            <div className={`fiscal-row net ${netClass}`}>
-              <span>
-                {fiscal.net_gbp < 0
-                  ? "This rent is below one person's share by"
-                  : fiscal.net_gbp > 0
-                    ? "This rent is above one person's share by"
-                    : "This rent matches one person's share"}
-              </span>
-              {fiscal.net_gbp !== 0 && (
-                <strong>{formatGbp(Math.abs(fiscal.net_gbp), 0)}</strong>
-              )}
-            </div>
-          )}
-          {fiscal && fiscal.remote_credit_gbp > 0 && (
-            <p className="fiscal-role-tag">
-              Includes the research remote credit of{" "}
-              {formatGbp(fiscal.remote_credit_gbp, 0)}.
-            </p>
-          )}
-        </div>
-      )}
-
-      <div className="extent-notes">
-        <button
-          type="button"
-          className="ownership-heading ownership-toggle"
-          onClick={() => setExtentOpen((v) => !v)}
-        >
-          How far this rent would go
-          <span>{extentOpen ? "\u2013" : "+"}</span>
-        </button>
-        {extentOpen && (
-          <>
-            <p className="headline-caption">
-              The same Annual Ground Rent, only as far as:
-            </p>
-            {EXTENT_ORDER.map((id) => {
-              const item = agr.scenarios[id];
-              if (!item || cellFull <= 0) return null;
-              const extentScale = item.annual_charge_gbp / cellFull;
-              const extent = hasParcel
-                ? agr.site_rental_per_sqm_gbp * (parcelAreaSqm as number) * extentScale
-                : plotFull != null && plotFull > 0
-                  ? plotFull * extentScale
-                  : item.annual_charge_gbp;
-              return (
-                <div className="fiscal-row" key={id}>
-                  <span>{item.label}</span>
-                  <strong>{formatGbp(extent, extent >= 100 ? 0 : 2)}</strong>
-                </div>
-              );
-            })}
-            <p className="fiscal-role-tag">
-              The income-tax line scales this rent by the Group&apos;s income-tax
-              figure against their national pool. That scale is not a sum of
-              parcels. Council Tax and rates in the basket are research placeholders.
-            </p>
-          </>
-        )}
-      </div>
-
-      {platform && (
-        <div className="ownership-block">
-          <button
-            type="button"
-            className="ownership-heading ownership-toggle"
-            onClick={() => setOwnershipOpen((v) => !v)}
-          >
-            Who holds this land
-            <span>{ownershipOpen ? "–" : "+"}</span>
-          </button>
-          {ownershipOpen && (
-            <>
-          <div className="place-flags">
-            {platform.vacant_or_derelict && (
-              <span className="flag vacant">Vacant / derelict survey site</span>
-            )}
-            {platform.public_or_crown?.on_this_point && (
-              <span className="flag public">Public / Crown holding</span>
-            )}
-            {platform.filters?.value_band && (
-              <span className={`flag band-${platform.filters.value_band}`}>
-                {platform.filters.value_band} rent band
-              </span>
-            )}
-            {platform.parcel?.found === false && (
-              <span className="flag gap">No INSPIRE parcel here</span>
-            )}
-            {platform.filters?.public_private === "unknown" &&
-              !platform.public_or_crown?.on_this_point && (
-                <span className="flag gap">Ownership unknown here</span>
-              )}
-          </div>
-          <dl className="ownership-rows">
-            <div>
-              <dt>Cadastre</dt>
-              <dd>
-                {platform.parcel?.found
-                  ? platform.parcel.label ||
-                    platform.parcel.inspire_id ||
-                    "INSPIRE parcel (extent only)"
-                  : "No INSPIRE parcel at this point"}
-              </dd>
-            </div>
-            <div>
-              <dt>Public / Crown</dt>
-              <dd>
-                {platform.public_or_crown?.on_this_point
-                  ? [
-                      platform.public_or_crown.holdings?.[0]?.organisation,
-                      platform.public_or_crown.holdings?.[0]?.site_name,
-                    ]
-                      .filter(Boolean)
-                      .join(" \u00b7 ") || "In the five-body overlay"
-                  : "Not in the five-body overlay (not council land)"}
-              </dd>
-            </div>
-            <div>
-              <dt>Vacant / derelict</dt>
-              <dd>
-                {platform.vdl?.sites && platform.vdl.sites.length > 0
-                  ? [
-                      platform.vdl.sites[0].name || "SVDLS site",
-                      platform.vdl.sites[0].site_type,
-                    ]
-                      .filter(Boolean)
-                      .join(" \u00b7 ")
-                  : "Not on the SVDLS survey overlay"}
-              </dd>
-            </div>
-            <div>
-              <dt>Local authority</dt>
-              <dd>
-                {platform.local_authority_holding?.reason ||
-                  "National LA layer is not openly licensed"}
-              </dd>
-            </div>
-            <div>
-              <dt>Common Good</dt>
-              <dd>
-                {platform.common_good?.reason ||
-                  "No single open national spatial file"}
-              </dd>
-            </div>
-            <div>
-              <dt>Private / Sasine</dt>
-              <dd>
-                {platform.private_or_sasine?.note ||
-                  "Names stay on ScotLIS. Not invented here."}
-              </dd>
-            </div>
-          </dl>
-          {platform.registers && (
-            <p className="place-note">
-              {platform.registers.planning?.url && (
-                <>
-                  <a
-                    href={platform.registers.planning.url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {platform.registers.planning.scope === "council"
-                      ? "Planning applications"
-                      : "ePlanning Scotland"}
-                  </a>
-                  {" \u00b7 "}
-                </>
-              )}
-              {platform.registers.land_map?.url && (
-                <>
-                  <a
-                    href={platform.registers.land_map.url}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {platform.registers.name || "Council"} land map
-                  </a>
-                  {" \u00b7 "}
-                </>
-              )}
-              {platform.registers.cat?.url && (
-                <a
-                  href={platform.registers.cat.url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  CAT register
-                </a>
-              )}
-            </p>
-          )}
-          <p className="place-note muted">
-            Research overlay, not a title sheet. Confirm ownership on ScotLIS.
-          </p>
-            </>
-          )}
-        </div>
-      )}
+      {parcelLabel ? <p className="meta">Register parcel {parcelLabel}</p> : null}
 
       <p className="result-links">
         <a href="/methodology">How this is calculated</a>
@@ -539,31 +295,6 @@ export default function AgrBreakdown({
             >
               Official title (ScotLIS)
             </a>
-          </>
-        )}
-        {platform?.public_or_crown?.map_url && (
-          <>
-            {" \u00b7 "}
-            <a
-              href={platform.public_or_crown.map_url}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Public / Crown map
-            </a>
-          </>
-        )}
-        {onDownloadReport && (
-          <>
-            {" \u00b7 "}
-            <button
-              type="button"
-              className="linkish"
-              disabled={reportDownloading}
-              onClick={() => onDownloadReport("markdown")}
-            >
-              {reportDownloading ? "Preparing\u2026" : "MSP brief"}
-            </button>
           </>
         )}
       </p>

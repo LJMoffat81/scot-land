@@ -16,8 +16,8 @@ export default function MethodologyContent() {
       </p>
       <p>
         Two pieces of the same size in the same council get the same rent. The
-        rate is that council&apos;s average, so it does not change from one
-        street to the next.
+        rate is that council&apos;s, so it does not change from one street to
+        the next.
       </p>
       <p>
         <a href="#calculation">How a place is valued</a>
@@ -28,13 +28,12 @@ export default function MethodologyContent() {
       <section id="calculation">
         <h2>How a place is valued</h2>
         <p>
-          In a town council, the rent for a piece of land is that council&apos;s
-          residual rent per square metre times the area of the piece. The
-          residual starts from the average home price, takes off the cost of
-          the building, takes off the speculative part of the price, and then
-          applies a 5% yield. In a rural council the same step uses farmland
-          productive value instead of a house price, and the map colour is one
-          hectare of that farmland. A click shows the piece of land itself.
+          In a town council, the rent is that council&apos;s land rent for each
+          square metre, times the area of this piece. The land rent is what
+          remains after the building and the speculative part are taken off,
+          and a 5% yield is applied. In a rural council the rate is the
+          farmland rate, and the map colour is one hectare of that farmland.
+          A click shows the piece of land itself.
         </p>
       </section>
 

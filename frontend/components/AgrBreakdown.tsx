@@ -229,7 +229,7 @@ export default function AgrBreakdown({
               : `This ${areaSqm} m\u00b2 square.`}
         {" "}
         Land only, not the building. Research estimate, not a rates bill.
-        The same rate on every street in this council.
+        The rate is this council&apos;s, so two parcels of the same size here have the same rent.
         {doorLabel
           ? " This door finds the land. The figure is the whole piece, not one flat."
           : ""}

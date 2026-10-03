@@ -331,6 +331,7 @@ export default function ScotlandMap() {
   const [metricNote, setMetricNote] = useState<string | null>(null);
   const [activeStory, setActiveStory] = useState<StoryId>("who_pays");
   const [band, setBand] = useState<RentBand | null>(null);
+  const [streetScale, setStreetScale] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
   const markerRef = useRef<maplibregl.Marker | null>(null);
@@ -992,8 +993,17 @@ export default function ScotlandMap() {
       return;
     }
 
-    map.setLayoutProperty("council-fill", "visibility", "visible");
-    map.setLayoutProperty("council-line", "visibility", "visible");
+    const councilVisible = !streetScale;
+    map.setLayoutProperty(
+      "council-fill",
+      "visibility",
+      councilVisible ? "visible" : "none",
+    );
+    map.setLayoutProperty(
+      "council-line",
+      "visibility",
+      councilVisible ? "visible" : "none",
+    );
     const def = METRICS.find((m) => m.id === choropleth) ?? METRICS[0];
     map.setPaintProperty("council-fill", "fill-color", paintForMetric(def));
     const rent: FilterSpecification = [
@@ -1020,7 +1030,7 @@ export default function ScotlandMap() {
     } else {
       setMetricNote(def.label);
     }
-  }, [mapReady, choropleth, layerBusy, band]);
+  }, [mapReady, choropleth, layerBusy, band, streetScale]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1228,13 +1238,17 @@ export default function ScotlandMap() {
     const map = mapRef.current;
     if (!map) return;
     const sync = () => {
+      const close = map.getZoom() >= 14;
+      setStreetScale(close);
       if (boundariesTouched.current || map.isMoving()) return;
-      setShowBoundaries(map.getZoom() >= 14);
+      setShowBoundaries(close);
     };
     sync();
     map.on("zoomend", sync);
+    map.on("moveend", sync);
     return () => {
       map.off("zoomend", sync);
+      map.off("moveend", sync);
     };
   }, [mapReady]);
 
@@ -1256,9 +1270,9 @@ export default function ScotlandMap() {
     map.setLayoutProperty(
       "council-method",
       "visibility",
-      showMethod && choropleth !== "off" ? "visible" : "none",
+      showMethod && choropleth !== "off" && !streetScale ? "visible" : "none",
     );
-  }, [mapReady, showMethod, choropleth]);
+  }, [mapReady, showMethod, choropleth, streetScale]);
 
   const legendMetric =
     choropleth === "off"
@@ -1413,8 +1427,8 @@ export default function ScotlandMap() {
               choropleth === "agr_plot" ||
               choropleth === "rent_per_sqm") && (
               <p className="hud-scotland-note">
-                The colour is the council&apos;s average land rent, the same from
-                one street to the next.
+                The colour is one rate for the whole council, the same from street
+                to street.
               </p>
             )}
           </div>

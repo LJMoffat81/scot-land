@@ -383,20 +383,26 @@ export default function ScotlandMap() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
   const markerRef = useRef<maplibregl.Marker | null>(null);
+  const parcelLabelRef = useRef<maplibregl.Marker | null>(null);
+  const boundariesTouched = useRef(false);
   const headerRef = useRef<HTMLElement | null>(null);
+  const scotlandRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const header = headerRef.current;
-    if (!header) return;
+    const scotland = scotlandRef.current;
     const apply = () => {
-      header.parentElement?.style.setProperty(
-        "--hud-height",
-        `${header.offsetHeight}px`,
-      );
+      const shell = header?.parentElement ?? scotland?.parentElement;
+      if (!shell) return;
+      if (header) shell.style.setProperty("--hud-height", `${header.offsetHeight}px`);
+      if (scotland) {
+        shell.style.setProperty("--scotland-height", `${scotland.offsetHeight}px`);
+      }
     };
     apply();
     const observer = new ResizeObserver(apply);
-    observer.observe(header);
+    if (header) observer.observe(header);
+    if (scotland) observer.observe(scotland);
     return () => observer.disconnect();
   }, []);
 
@@ -410,6 +416,25 @@ export default function ScotlandMap() {
       markerRef.current = new maplibregl.Marker({ color: "#0076d3" })
         .setLngLat([payload.square.lng, payload.square.lat])
         .addTo(map);
+      parcelLabelRef.current?.remove();
+      parcelLabelRef.current = null;
+      const labelAt = payload.parcel?.geometry
+        ? polygonLabelPoint(payload.parcel.geometry)
+        : null;
+      const area = payload.agr.parcel_area_sqm;
+      const yearly = parcelYearlyRent(payload);
+      if (labelAt && area != null && yearly != null) {
+        const el = document.createElement("div");
+        el.className = "parcel-map-label";
+        el.textContent = `${Math.round(area).toLocaleString("en-GB")} m² · ${formatRent(yearly)}/year`;
+        parcelLabelRef.current = new maplibregl.Marker({
+          element: el,
+          anchor: "top",
+          offset: [0, 14],
+        })
+          .setLngLat(labelAt)
+          .addTo(map);
+      }
     }
     if (map?.getSource("selected-square")) {
       const source = map.getSource("selected-square") as GeoJSONSource;
@@ -448,7 +473,7 @@ export default function ScotlandMap() {
         : z < 6.5
           ? 7
           : Math.min(Math.max(z, 15), 18);
-      if (targetZoom >= 14) setShowCellGrid(true);
+      if (targetZoom >= 14 && !boundariesTouched.current) setShowBoundaries(true);
       map.flyTo({
         center: [payload.square.lng, payload.square.lat],
         zoom: Math.min(targetZoom, 18),
@@ -522,6 +547,8 @@ export default function ScotlandMap() {
     setAddressLine(null);
     markerRef.current?.remove();
     markerRef.current = null;
+    parcelLabelRef.current?.remove();
+    parcelLabelRef.current = null;
     const map = mapRef.current;
     if (map?.getSource("selected-square")) {
       (map.getSource("selected-square") as GeoJSONSource).setData(
@@ -1001,6 +1028,8 @@ export default function ScotlandMap() {
     return () => {
       markerRef.current?.remove();
       markerRef.current = null;
+      parcelLabelRef.current?.remove();
+      parcelLabelRef.current = null;
       map.remove();
       mapRef.current = null;
       setMapReady(false);
@@ -1301,6 +1330,21 @@ export default function ScotlandMap() {
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
+    if (!map) return;
+    const sync = () => {
+      if (boundariesTouched.current || map.isMoving()) return;
+      setShowBoundaries(map.getZoom() >= 14);
+    };
+    sync();
+    map.on("zoomend", sync);
+    return () => {
+      map.off("zoomend", sync);
+    };
+  }, [mapReady]);
+
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
     if (!map?.getLayer("parcels-wms")) return;
     map.setLayoutProperty(
       "parcels-wms",
@@ -1486,7 +1530,7 @@ export default function ScotlandMap() {
         </nav>
       </header>
 
-      <aside className="hud-scotland" aria-label="Scotland illustration">
+      <aside className="hud-scotland" aria-label="Scotland illustration" ref={scotlandRef}>
         <p className="hud-scotland-job">Annual Ground Rent</p>
         <p className="hud-scotland-lead">A charge on the land alone.</p>
         {fiscalSummary?.enabled && scenario !== "full_agr" && (
@@ -1533,6 +1577,14 @@ export default function ScotlandMap() {
               </span>
             </div>
             <p className="hud-scotland-note">{legendCaption(legendMetric.id)}</p>
+            {(choropleth === "gross_liability" ||
+              choropleth === "agr_plot" ||
+              choropleth === "rent_per_sqm") && (
+              <p className="hud-scotland-note">
+                The colour is the council&apos;s average land rent, the same from
+                one street to the next.
+              </p>
+            )}
           </div>
         )}
         <p className="hud-scotland-foot">
@@ -1670,7 +1722,10 @@ export default function ScotlandMap() {
                 <button
                   type="button"
                   className={showBoundaries ? "chip active" : "chip"}
-                  onClick={() => setShowBoundaries((v) => !v)}
+                  onClick={() => {
+                    boundariesTouched.current = true;
+                    setShowBoundaries((v) => !v);
+                  }}
                   title="Outlines of neighbouring pieces of land. Zoom in."
                 >
                   Boundaries
@@ -1871,6 +1926,44 @@ function formatLegendStop(value: number, id: MetricId): string {
     return `${sign}\u00a3${Math.round(abs / 1000).toLocaleString("en-GB")}k`;
   }
   return `${sign}\u00a3${Math.round(abs)}`;
+}
+
+function parcelYearlyRent(payload: SquareResponse): number | null {
+  const area = payload.agr.parcel_area_sqm;
+  if (area == null || area <= 0 || !payload.parcel?.geometry) return null;
+  const gross = payload.fiscal?.gross_plot_gbp;
+  if (gross != null && gross > 0) return gross;
+  const cell = payload.agr.economic_annual_rent_gbp;
+  const active = payload.agr.scenarios.full_agr.annual_charge_gbp;
+  const scale = cell > 0 ? active / cell : 1;
+  const parcel = payload.agr.site_rental_per_sqm_gbp * area * scale;
+  return parcel > 0 ? parcel : null;
+}
+
+function formatRent(value: number): string {
+  if (value >= 100) return `£${Math.round(value).toLocaleString("en-GB")}`;
+  return `£${value.toFixed(2)}`;
+}
+
+function polygonLabelPoint(
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon,
+): [number, number] | null {
+  const ring =
+    geometry.type === "Polygon"
+      ? geometry.coordinates[0]
+      : geometry.coordinates[0]?.[0];
+  if (!ring || ring.length === 0) return null;
+  const last = ring.length - 1;
+  const closed =
+    ring[0][0] === ring[last][0] && ring[0][1] === ring[last][1] && last > 0;
+  const count = closed ? last : ring.length;
+  let x = 0;
+  let y = 0;
+  for (let i = 0; i < count; i += 1) {
+    x += ring[i][0];
+    y += ring[i][1];
+  }
+  return [x / count, y / count];
 }
 
 function legendCaption(id: MetricId): string {

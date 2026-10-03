@@ -346,6 +346,19 @@ input {
   gap: 0.45rem;
 }
 
+.parcel-map-label {
+  background: rgba(255, 255, 255, 0.94);
+  color: #0b1e3a;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.25;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(11, 30, 58, 0.18);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 .hud-scotland-note {
   margin: 0.45rem 0 0;
   color: var(--slrg-muted);
@@ -1018,7 +1031,7 @@ button.linkish:disabled {
   .hud-place {
     top: calc(var(--hud-height, 15rem) + 0.45rem);
     right: 0.7rem;
-    bottom: 12.5rem;
+    bottom: calc(var(--scotland-height, 12.5rem) + 1.7rem);
     left: 0.7rem;
     width: auto;
     max-height: none;
@@ -1037,5 +1050,32 @@ button.linkish:disabled {
     right: 0.7rem;
     bottom: 0.7rem;
     width: auto;
+    padding: 0.45rem 0.75rem 0.35rem;
+  }
+
+  .hud-scotland-job {
+    font-size: 0.95rem;
+  }
+
+  .hud-scotland-lead {
+    margin-top: 0.1rem;
+    font-size: 0.82rem;
+  }
+
+  .map-legend {
+    margin-top: 0.25rem;
+  }
+
+  .map-legend-bar {
+    margin-top: 0.25rem;
+  }
+
+  .hud-scotland-note {
+    margin-top: 0.2rem;
+  }
+
+  .hud-scotland-foot {
+    margin-top: 0.2rem;
+    padding-top: 0.15rem;
   }
 }

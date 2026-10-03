@@ -190,6 +190,16 @@ export default function MethodologyContent() {
           building stays with the person who made it. The figure is not a rates
           bill, and it is not an official assessment.
         </p>
+        <h3>Contact</h3>
+        <p>
+          <a href="mailto:laurie.moffat@scot-land.scot">
+            laurie.moffat@scot-land.scot
+          </a>
+          <br />
+          <a href="https://x.com/LJMoffat81" target="_blank" rel="noreferrer">
+            X: @LJMoffat81
+          </a>
+        </p>
       </section>
       <p>
         Under the figure, the Scottish Land Revenue Group&apos;s illustration is

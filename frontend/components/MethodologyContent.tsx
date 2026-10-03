@@ -508,6 +508,11 @@ square_share = economic_rent_of_square ÷ equal_share_per_person`}
         Research estimate — not an official tax assessment. Full write-up:{" "}
         <code>docs/methodology.md</code>.
       </p>
+      <p className="meta">
+        The mark uses the &ldquo;Land&rdquo; icon by Adrien Coquet, from{" "}
+        <a href="https://thenounproject.com/browse/icons/term/land/">Noun Project</a>{" "}
+        (CC BY 3.0).
+      </p>
       <p>
         <a href="/">Back to map</a>
       </p>

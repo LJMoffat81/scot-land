@@ -383,6 +383,22 @@ export default function ScotlandMap() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
   const markerRef = useRef<maplibregl.Marker | null>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const apply = () => {
+      header.parentElement?.style.setProperty(
+        "--hud-height",
+        `${header.offsetHeight}px`,
+      );
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
 
   const applyResult = useCallback((payload: SquareResponse) => {
     setResult(payload);
@@ -1350,7 +1366,7 @@ export default function ScotlandMap() {
       : (METRICS.find((m) => m.id === choropleth) ?? null);
 
   return (
-    <div className="app-shell">
+    <div className={toolsOpen ? "app-shell tools-open" : "app-shell"}>
       <div className="map-wrap">
         <div id="map" ref={mapContainer} />
         {!result && apiOk !== false && (
@@ -1358,7 +1374,7 @@ export default function ScotlandMap() {
         )}
       </div>
 
-      <header className="hud-top">
+      <header className="hud-top" ref={headerRef}>
         <div className="hud-brand">
           <a className="hud-wordmark" href="/" aria-label="Scot-LAND">
             <img src="/scot-land-mark.png" alt="Scot-LAND" />

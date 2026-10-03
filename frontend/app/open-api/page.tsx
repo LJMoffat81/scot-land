@@ -10,73 +10,97 @@ export default function OpenApiPage() {
       </p>
       <h1>Public API</h1>
       <p>
-        Open JSON for Scot-LAND. Research AGR figures are not a rates
-        bill. Public/Crown geometry is a viewport overlay, not a bulk extract.
-        Interactive schema: backend <code>/docs</code>.
+        These addresses return the open figures behind the map. They are a
+        research estimate, not a rates bill. Public and Crown land here is the
+        five national bodies, not a title and not council land. The answers are
+        for the area in view, or for one place. They are not a download of
+        every land boundary.
       </p>
 
-      <h2>Assessment</h2>
+      <h2>One place</h2>
       <ul>
         <li>
-          <code>GET /square?lat=&amp;lng=</code> — AGR for a W3W cell, with
-          ownership place card
+          The Annual Ground Rent at a point on the map
+          <span className="download-path">GET /square?lat=&amp;lng=</span>
         </li>
         <li>
-          <code>GET /api/place.json?pc=EH1+1YZ</code> — compact AGR, parcel,
-          vacant, public/Crown, register links
+          A short card for one postcode
+          <span className="download-path">
+            <a href="/api/place.json?pc=EH1+1YZ">
+              GET /api/place.json?pc=EH1+1YZ
+            </a>
+          </span>
         </li>
         <li>
-          <code>GET /assessment/report?lat=&amp;lng=&amp;format=markdown</code> —
-          downloadable assessment
+          A written assessment you can download
+          <span className="download-path">
+            GET /assessment/report?lat=&amp;lng=&amp;format=markdown
+          </span>
         </li>
       </ul>
 
-      <h2>Open layers</h2>
+      <h2>Map layers</h2>
       <ul>
         <li>
-          <code>GET /layers/open/vdl?south=&amp;west=&amp;north=&amp;east=</code>{" "}
-          — SVDLS polygons in view (OGL)
+          Vacant and derelict land in view, from the Scottish Vacant and
+          Derelict Land Survey
+          <span className="download-path">
+            GET /layers/open/vdl?south=&amp;west=&amp;north=&amp;east=
+          </span>
         </li>
         <li>
-          <code>
+          Public and Crown land in view, for the five national bodies
+          <span className="download-path">
             GET /layers/open/public-land?south=&amp;west=&amp;north=&amp;east=
-          </code>{" "}
-          — five-body public/Crown polygons in view
+          </span>
         </li>
         <li>
-          <code>GET /layers/councils?scenario=full_agr</code> — council AGR
-          GeoJSON
+          Annual Ground Rent for each council, as a map file
+          <span className="download-path">
+            GET /layers/councils?scenario=full_agr
+          </span>
         </li>
       </ul>
 
-      <h2>Statistics</h2>
+      <h2>Tables</h2>
       <ul>
         <li>
-          <a href="/api/roll.json">/api/roll.json</a> — 32-council AGR roll +
-          vacant ha
+          <a href="/api/roll.json">Annual Ground Rent for each council</a>
+          <span className="download-path">/api/roll.json</span>
         </li>
         <li>
-          <a href="/api/roll.csv">/api/roll.csv</a>
+          <a href="/api/roll.csv">The same figures as a spreadsheet</a>
+          <span className="download-path">/api/roll.csv</span>
         </li>
         <li>
-          <a href="/api/public-land.json">/api/public-land.json</a> — hectares by
-          body
+          <a href="/api/public-land.json">
+            Public and Crown land, by the five national bodies
+          </a>
+          <span className="download-path">/api/public-land.json</span>
         </li>
         <li>
-          <a href="/api/vdl.json">/api/vdl.json</a> — SVDLS by owner class
+          <a href="/api/vdl.json">
+            Vacant and derelict land, from the Scottish Vacant and Derelict
+            Land Survey
+          </a>
+          <span className="download-path">/api/vdl.json</span>
         </li>
         <li>
-          <a href="/api/catalog.json">/api/catalog.json</a> — live / linked / gap
+          <a href="/api/catalog.json">
+            What is on the map, what is only linked, and what is missing
+          </a>
+          <span className="download-path">/api/catalog.json</span>
         </li>
         <li>
-          <a href="/api/registers.json">/api/registers.json</a> — official
-          landing pages
+          <a href="/api/registers.json">Official register pages</a>
+          <span className="download-path">/api/registers.json</span>
         </li>
       </ul>
 
       <p className="downloads-note">
-        No portal scraping. Local-authority ownership is a documented gap.
-        ScotLIS remains the official title service.
+        Council ownership is not in these files. ScotLIS remains the official
+        title record. A technical description is at <code>/docs</code> on the
+        API.
       </p>
     </main>
   );

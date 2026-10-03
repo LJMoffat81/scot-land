@@ -15,15 +15,46 @@ type DownloadItem = {
 type Downloads = { note?: string; items?: DownloadItem[] };
 
 const OPEN_JSON = [
-  { href: "/api/roll.json", label: "32-council AGR roll (JSON)" },
-  { href: "/api/roll.csv", label: "32-council AGR roll (CSV)" },
-  { href: "/api/public-land.json", label: "Public / Crown hectares by body" },
-  { href: "/api/vdl.json", label: "SVDLS vacant land by owner class" },
-  { href: "/api/vdl-councils.json", label: "Vacant hectares × illustrative AGR" },
-  { href: "/api/place.json?pc=EH1+1YZ", label: "Place card example (Edinburgh)" },
-  { href: "/api/catalog.json", label: "Live / linked / gap catalog" },
-  { href: "/api/registers.json", label: "Official register landing pages" },
+  {
+    href: "/api/roll.json",
+    name: "Annual Ground Rent for each of the 32 councils",
+  },
+  {
+    href: "/api/roll.csv",
+    name: "The same council figures as a spreadsheet",
+  },
+  {
+    href: "/api/public-land.json",
+    name: "Public and Crown land, by the five national bodies",
+  },
+  {
+    href: "/api/vdl.json",
+    name: "Vacant and derelict land, from the Scottish Vacant and Derelict Land Survey",
+  },
+  {
+    href: "/api/vdl-councils.json",
+    name: "Vacant hectares with an illustrative Annual Ground Rent",
+  },
+  {
+    href: "/api/place.json?pc=EH1+1YZ",
+    name: "One place, as an example (Edinburgh EH1 1YZ)",
+  },
+  {
+    href: "/api/catalog.json",
+    name: "What is on the map, what is only linked, and what is missing",
+  },
+  {
+    href: "/api/registers.json",
+    name: "Official register pages",
+  },
 ];
+
+const SOURCE_NAME: Record<string, string> = {
+  vdl_register: "Scottish Vacant and Derelict Land Survey",
+  inspire_parcels: "Registers of Scotland open land map",
+  public_crown_map: "Public and Crown land, five national bodies",
+  scotlis: "ScotLIS, the official title record",
+};
 
 export default function DownloadsPage() {
   const [data, setData] = useState<Downloads | null>(null);
@@ -43,36 +74,35 @@ export default function DownloadsPage() {
         {" · "}
         <a href="/methodology">About</a>
       </p>
-      <h1>Open downloads</h1>
+      <h1>Downloads</h1>
       <p>
-        Freely licensed statistics and official source links. Research AGR
-        figures are not a rates bill. Public/Crown polygons are a viewport
-        overlay, not a bulk dump.
+        These are the open figures behind the map. They are a research
+        estimate, not a rates bill. The files are tables and links. They are
+        not a download of every land boundary.
       </p>
       {data?.note && <p className="downloads-note">{data.note}</p>}
 
-      <h2>This API</h2>
-      <p className="downloads-note">
-        Interactive docs:{" "}
-        <a href={`${getApiBaseUrl()}/docs`}>OpenAPI /docs</a>. Assessment is{" "}
-        <code>/square</code>; open
-        layers are <code>/layers/open/vdl</code> and{" "}
-        <code>/layers/open/public-land</code>. Stats below are JSON/CSV only —
-        not a bulk polygon dump.
-      </p>
+      <h2>Figures from this site</h2>
       <ul>
         {OPEN_JSON.map((item) => (
           <li key={item.href}>
-            <a href={item.href}>{item.label}</a>
+            <a href={item.href}>{item.name}</a>
+            <span className="download-path">{item.href}</span>
           </li>
         ))}
         <li>
           <a href={`${getApiBaseUrl()}/layers/councils?scenario=full_agr`}>
-            Council AGR GeoJSON
+            Annual Ground Rent for each council, as a map file
           </a>
-          {" — research estimate + OGL inputs; not a title layer"}
+          <span className="download-path">
+            /layers/councils?scenario=full_agr — research estimate, not a title
+          </span>
         </li>
       </ul>
+      <p className="downloads-note">
+        A technical description of these addresses is on the{" "}
+        <a href={`${getApiBaseUrl()}/docs`}>API docs</a>.
+      </p>
 
       <h2>Official sources</h2>
       <ul>
@@ -81,10 +111,13 @@ export default function DownloadsPage() {
           .map((item) => (
             <li key={item.id}>
               <a href={item.url} target="_blank" rel="noreferrer">
-                {item.label}
+                {SOURCE_NAME[item.id] || item.label}
               </a>
-              {item.licence ? ` · ${item.licence}` : ""}
-              {item.note ? ` — ${item.note}` : ""}
+              <span className="download-path">
+                {item.label}
+                {item.licence ? ` · ${item.licence}` : ""}
+                {item.note ? ` — ${item.note}` : ""}
+              </span>
             </li>
           ))}
       </ul>

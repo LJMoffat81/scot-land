@@ -537,7 +537,14 @@ input {
 }
 
 .downloads-page li {
-  margin: 0.3rem 0;
+  margin: 0.55rem 0;
+}
+
+.download-path {
+  display: block;
+  color: var(--slrg-muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .fiscal-place {
@@ -1009,11 +1016,16 @@ button.linkish:disabled {
   }
 
   .hud-place {
-    top: 15rem;
+    top: calc(var(--hud-height, 15rem) + 0.45rem);
     right: 0.7rem;
+    bottom: 12.5rem;
     left: 0.7rem;
     width: auto;
-    max-height: 28vh;
+    max-height: none;
+  }
+
+  .app-shell.tools-open .hud-place {
+    bottom: calc(38vh + 0.5rem);
   }
 
   .map-hint {

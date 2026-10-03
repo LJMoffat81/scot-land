@@ -14,6 +14,7 @@ import AgrBreakdown, {
   ScenarioId,
 } from "./AgrBreakdown";
 import { ApiError, apiFetch, apiJson, pingApi } from "../lib/api";
+import { CONTEXT_GROUPS, CONTEXT_LAYERS } from "../lib/contextLayers";
 
 type ParcelFeature = GeoJSON.Feature<
   GeoJSON.Polygon | GeoJSON.MultiPolygon,
@@ -323,6 +324,10 @@ export default function ScotlandMap() {
   const [showVdl] = useState(false);
   const [showPublicLand] = useState(false);
   const [showMethod, setShowMethod] = useState(false);
+  const [contextOn, setContextOn] = useState<Record<string, boolean>>({});
+  const [contextNote, setContextNote] = useState<string | null>(null);
+  const contextLoaded = useRef<Set<string>>(new Set());
+  const contextFlight = useRef<Set<string>>(new Set());
   const [layerBusy, setLayerBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -817,6 +822,80 @@ export default function ScotlandMap() {
         paint: { "line-color": "#7a2e00", "line-width": 1.1, "line-opacity": 0.9 },
       });
 
+      for (const layer of CONTEXT_LAYERS) {
+        if (layer.kind === "raster") {
+          map.addSource(layer.id, {
+            type: "raster",
+            tiles: [`/api/context/${layer.id}/tiles/{z}/{x}/{y}`],
+            tileSize: 256,
+            minzoom: layer.minzoom,
+            maxzoom: layer.maxzoom,
+            scheme: "xyz",
+          });
+          map.addLayer({
+            id: layer.id,
+            type: "raster",
+            source: layer.id,
+            paint: {
+              "raster-opacity": layer.opacity ?? 0.85,
+              "raster-fade-duration": 0,
+            },
+            layout: { visibility: "none" },
+          });
+          continue;
+        }
+        map.addSource(`${layer.id}-src`, {
+          type: "geojson",
+          data: emptyCollection,
+        });
+        if (layer.kind === "fill") {
+          map.addLayer({
+            id: `${layer.id}-fill`,
+            type: "fill",
+            source: `${layer.id}-src`,
+            layout: { visibility: "none" },
+            paint: { "fill-color": layer.color, "fill-opacity": 0.28 },
+          });
+          map.addLayer({
+            id: `${layer.id}-line`,
+            type: "line",
+            source: `${layer.id}-src`,
+            layout: { visibility: "none" },
+            paint: {
+              "line-color": layer.color,
+              "line-width": 1.6,
+              "line-opacity": 0.95,
+            },
+          });
+        } else if (layer.kind === "line") {
+          map.addLayer({
+            id: layer.id,
+            type: "line",
+            source: `${layer.id}-src`,
+            layout: { visibility: "none" },
+            paint: {
+              "line-color": layer.color,
+              "line-width": 1.4,
+              "line-opacity": 0.9,
+            },
+          });
+        } else {
+          map.addLayer({
+            id: layer.id,
+            type: "circle",
+            source: `${layer.id}-src`,
+            layout: { visibility: "none" },
+            paint: {
+              "circle-radius": 4.5,
+              "circle-color": layer.color,
+              "circle-stroke-width": 1,
+              "circle-stroke-color": "#ffffff",
+              "circle-opacity": 0.9,
+            },
+          });
+        }
+      }
+
       map.addSource("parcels-wms", {
         type: "raster",
         tiles: ["/api/parcels/tiles/{z}/{x}/{y}"],
@@ -1266,6 +1345,55 @@ export default function ScotlandMap() {
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
+    if (!map) return;
+    let cancelled = false;
+    for (const layer of CONTEXT_LAYERS) {
+      const on = Boolean(contextOn[layer.id]);
+      const vis = on ? "visible" : "none";
+      if (layer.kind === "fill") {
+        for (const id of [`${layer.id}-fill`, `${layer.id}-line`]) {
+          if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
+        }
+      } else if (map.getLayer(layer.id)) {
+        map.setLayoutProperty(layer.id, "visibility", vis);
+      }
+      if (
+        !on ||
+        layer.kind === "raster" ||
+        contextLoaded.current.has(layer.id) ||
+        contextFlight.current.has(layer.id)
+      ) {
+        continue;
+      }
+      contextFlight.current.add(layer.id);
+      void apiJson<
+        GeoJSON.FeatureCollection & { meta?: { ok?: boolean; note?: string } }
+      >(`/layers/context/${layer.id}`)
+        .then((data) => {
+          contextFlight.current.delete(layer.id);
+          if (cancelled || data?.type !== "FeatureCollection") return;
+          const source = map.getSource(`${layer.id}-src`) as GeoJSONSource | undefined;
+          source?.setData(data);
+          if (data.meta?.ok === false) {
+            setContextNote(data.meta.note || "One layer did not load.");
+            return;
+          }
+          contextLoaded.current.add(layer.id);
+        })
+        .catch(() => {
+          contextFlight.current.delete(layer.id);
+          if (!cancelled) setContextNote("One layer did not load.");
+        });
+    }
+    return () => {
+      cancelled = true;
+      contextFlight.current.clear();
+    };
+  }, [mapReady, contextOn]);
+
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
     if (!map?.getLayer("council-method")) return;
     map.setLayoutProperty(
       "council-method",
@@ -1531,6 +1659,43 @@ export default function ScotlandMap() {
                   Farmland councils
                 </button>
               </div>
+              {CONTEXT_GROUPS.map((group) => (
+                <div key={group}>
+                  <label className="layer-select-label">{group}</label>
+                  <div className="layer-chips">
+                    {CONTEXT_LAYERS.filter((layer) => layer.group === group).map(
+                      (layer) => (
+                        <button
+                          key={layer.id}
+                          type="button"
+                          className={contextOn[layer.id] ? "chip active" : "chip"}
+                          title={layer.title}
+                          onClick={() =>
+                            setContextOn((cur) => ({
+                              ...cur,
+                              [layer.id]: !cur[layer.id],
+                            }))
+                          }
+                        >
+                          {layer.label}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                </div>
+              ))}
+              {CONTEXT_LAYERS.filter((layer) => contextOn[layer.id]).map((layer) => (
+                <p key={layer.id} className="layer-meta">
+                  {layer.attribution}
+                </p>
+              ))}
+              {contextNote && <p className="layer-meta">{contextNote}</p>}
+              <p className="layer-meta">
+                Not drawn: land capability (James Hutton, all rights reserved).
+                Small-area population, jobs, and Ordnance Survey roads, rail and
+                airports are not on this map yet. Wires, mains and broadband are
+                not an open national map.
+              </p>
             </div>
           </aside>
       )}

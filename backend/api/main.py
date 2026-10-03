@@ -33,6 +33,7 @@ from layers.council_metrics import build_council_metrics_geojson
 from layers.grid_layer import build_w3w_agr_grid
 from layers.platform import platform_catalog
 from spatial.address import search_door
+from spatial.context_tiles import fetch_context_geojson, fetch_context_tile
 from spatial.parcels import TRANSPARENT_PNG, fetch_parcel_tile_png, lookup_parcel_geojson
 from validation.glasgow_ward_18 import run_validation
 from validation.ratio_study import ratio_study_points
@@ -312,6 +313,40 @@ def layer_parcel_tiles_png(z: int, x: int, y: int) -> Response:
 def layer_parcel_tiles(z: int, x: int, y: int) -> Response:
     """ROS INSPIRE cadastral parcels as XYZ PNG (extensionless, preferred)."""
     return _parcel_tile_response(z, x, y)
+
+
+@app.get("/layers/context/{layer_id}/tiles/{z}/{x}/{y}")
+def layer_context_tiles(layer_id: str, z: int, x: int, y: int) -> Response:
+    """Allowlisted government context layer as an XYZ PNG. Never a 500."""
+    try:
+        png = fetch_context_tile(layer_id, z, x, y)
+    except Exception:
+        png = TRANSPARENT_PNG
+    return Response(
+        content=png,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "public, max-age=3600",
+            "X-Layer-Source": layer_id if layer_id.replace("-", "").isalnum() else "context",
+        },
+    )
+
+
+@app.get("/layers/context/{layer_id}")
+def layer_context_features(layer_id: str) -> JSONResponse:
+    """Allowlisted oil, lease, or renewable features. Empty when unknown."""
+    try:
+        geo = fetch_context_geojson(layer_id)
+    except Exception:
+        geo = {
+            "type": "FeatureCollection",
+            "features": [],
+            "meta": {"layer": layer_id, "ok": False, "count": 0},
+        }
+    return JSONResponse(
+        geo,
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
 
 
 @app.get("/layers/parcels/at")

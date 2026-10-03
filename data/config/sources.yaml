@@ -105,3 +105,8 @@ map_layers:
       source: SG PublicLand_2024_Update FeatureServer
       endpoint: /layers/open/public-land
       note: Five national bodies only; not a title; not local-authority land
+  # Context layers that can later take a weight. They do not change a parcel
+  # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
+  # Left off that list: James Hutton land capability; OS Open Zoomstack
+  # (no public map service); small-area population and jobs (tables, not a
+  # map service); wires, mains and broadband.

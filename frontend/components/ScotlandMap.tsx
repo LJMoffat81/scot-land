@@ -391,7 +391,7 @@ export default function ScotlandMap() {
     const map = mapRef.current;
     if (map) {
       markerRef.current?.remove();
-      markerRef.current = new maplibregl.Marker({ color: "#0065bd" })
+      markerRef.current = new maplibregl.Marker({ color: "#0076d3" })
         .setLngLat([payload.square.lng, payload.square.lat])
         .addTo(map);
     }
@@ -891,13 +891,13 @@ export default function ScotlandMap() {
         id: "selected-parcel-fill",
         type: "fill",
         source: "selected-parcel",
-        paint: { "fill-color": "#02498b", "fill-opacity": 0.12 },
+        paint: { "fill-color": "#0b1e3a", "fill-opacity": 0.12 },
       });
       map.addLayer({
         id: "selected-parcel-outline",
         type: "line",
         source: "selected-parcel",
-        paint: { "line-color": "#02498b", "line-width": 2.25, "line-opacity": 0.95 },
+        paint: { "line-color": "#0b1e3a", "line-width": 2.25, "line-opacity": 0.95 },
       });
 
       map.addSource("selected-square", { type: "geojson", data: emptyCollection });
@@ -905,13 +905,13 @@ export default function ScotlandMap() {
         id: "selected-square-fill",
         type: "fill",
         source: "selected-square",
-        paint: { "fill-color": "#0065bd", "fill-opacity": 0.18 },
+        paint: { "fill-color": "#0076d3", "fill-opacity": 0.18 },
       });
       map.addLayer({
         id: "selected-square-outline",
         type: "line",
         source: "selected-square",
-        paint: { "line-color": "#0065bd", "line-width": 2.75 },
+        paint: { "line-color": "#0076d3", "line-width": 2.75 },
       });
 
       map.addSource("satellite", {

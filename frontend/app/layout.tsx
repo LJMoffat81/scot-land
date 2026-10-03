@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import { DM_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import "./platform.css";
 
-const dmSans = DM_Sans({
-  subsets: ["latin"],
+const mona = localFont({
+  src: "../node_modules/@fontsource-variable/mona-sans/files/mona-sans-latin-wght-normal.woff2",
+  weight: "200 900",
   display: "swap",
+  fallback: ["Segoe UI", "Helvetica", "Arial", "sans-serif"],
 });
 
 export const metadata: Metadata = {
@@ -21,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={dmSans.className}>{children}</body>
+      <body className={mona.className}>{children}</body>
     </html>
   );
 }

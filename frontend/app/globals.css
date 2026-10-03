@@ -1,14 +1,18 @@
 :root {
-  /* Square blue from the mark, and the government saltire blue. */
+  /* The mark keeps its own blues. Page chrome follows Scottish Rugby. */
   --mark-field: #02498b;
   --mark-saltire: #0065bd;
-  --slrg-navy: var(--mark-field);
-  --slrg-bg: #f4f5f7;
+  --rugby-navy: #0b1e3a;
+  --rugby-hover: #004882;
+  --rugby-sky: #0076d3;
+  --slrg-navy: var(--rugby-navy);
+  --slrg-bg: #f2f5f8;
   --slrg-panel: #ffffff;
-  --slrg-text: #121417;
-  --slrg-muted: #5c6570;
+  --slrg-text: #0b1e3a;
+  --slrg-muted: #5f656c;
+  --line: #d2d0cd;
   --danger: #9b1c1c;
-  --hud-shadow: 0 10px 40px rgba(12, 18, 28, 0.14);
+  --hud-shadow: 0 10px 40px rgba(11, 30, 58, 0.14);
   --hud-radius: 18px;
 }
 
@@ -21,9 +25,8 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  font-family: "DM Sans", "Segoe UI", Helvetica, Arial, sans-serif;
   color: var(--slrg-text);
-  background: #dce3ea;
+  background: var(--slrg-bg);
 }
 
 a {
@@ -210,7 +213,7 @@ input {
 .hud-search-go {
   flex-shrink: 0;
   border: 0;
-  background: var(--mark-saltire);
+  background: var(--rugby-navy);
   color: #fff;
   font-weight: 700;
   padding: 0.7rem 1.15rem;
@@ -220,7 +223,7 @@ input {
 }
 
 .hud-search-go:hover:not(:disabled) {
-  background: var(--mark-field);
+  background: var(--rugby-hover);
 }
 
 .hud-search-go:disabled {
@@ -326,7 +329,7 @@ input {
 .hud-scotland-foot {
   margin: 0.7rem 0 0;
   padding-top: 0.55rem;
-  border-top: 1px solid #e4e8ee;
+  border-top: 1px solid var(--line);
   color: var(--slrg-muted);
   font-size: 0.75rem;
   line-height: 1.35;
@@ -405,7 +408,7 @@ input {
 .fiscal-dash {
   flex-shrink: 0;
   padding: 0.65rem 0.85rem;
-  border-bottom: 1px solid #d9e2ec;
+  border-bottom: 1px solid var(--line);
   background: #f0f4f8;
 }
 
@@ -457,7 +460,7 @@ input {
 .national-strip {
   flex-shrink: 0;
   padding: 0.55rem 0.85rem;
-  border-bottom: 1px solid #d9e2ec;
+  border-bottom: 1px solid var(--line);
   background: #f7f9fc;
 }
 
@@ -539,7 +542,7 @@ input {
 
 .fiscal-place {
   background: #f7f9fc;
-  border: 1px solid #d9e2ec;
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0.55rem 0.65rem;
   margin: 0 0 0.75rem;
@@ -555,7 +558,7 @@ input {
 }
 
 .fiscal-row.net {
-  border-top: 1px solid #d9e2ec;
+  border-top: 1px solid var(--line);
   margin-top: 0.25rem;
   padding-top: 0.4rem;
   font-size: 0.9rem;
@@ -598,7 +601,7 @@ input {
 
 .layer-select {
   width: 100%;
-  border: 1px solid #bcccdc;
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0.45rem 0.55rem;
   background: white;
@@ -607,7 +610,7 @@ input {
 }
 
 .layer-select:focus {
-  outline: 2px solid rgba(2, 73, 139, 0.35);
+  outline: 2px solid rgba(0, 118, 211, 0.45);
   border-color: var(--slrg-navy);
 }
 
@@ -626,7 +629,7 @@ input {
 }
 
 .chip {
-  border: 1px solid #bcccdc;
+  border: 1px solid var(--line);
   background: white;
   color: var(--slrg-muted);
   border-radius: 999px;
@@ -661,7 +664,7 @@ input {
 }
 
 button.primary {
-  background: var(--mark-saltire);
+  background: var(--rugby-navy);
   color: white;
   border: none;
   border-radius: 999px;
@@ -671,7 +674,7 @@ button.primary {
 }
 
 button.primary:hover:not(:disabled) {
-  background: var(--mark-field);
+  background: var(--rugby-hover);
 }
 
 button.primary:disabled {
@@ -707,7 +710,7 @@ button.primary:disabled {
 
 .w3w-slash,
 .w3w-dot {
-  color: var(--mark-saltire);
+  color: var(--rugby-sky);
   font-weight: 700;
 }
 
@@ -756,8 +759,9 @@ button.primary:disabled {
 }
 
 .agr-value {
-  font-size: 1.85rem;
-  font-weight: 700;
+  font-size: 2.15rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   color: var(--slrg-text);
   margin: 0.1rem 0 0.15rem;
   line-height: 1.1;
@@ -786,7 +790,7 @@ button.primary:disabled {
 
 .scenario-pill {
   background: white;
-  border: 1px solid #bcccdc;
+  border: 1px solid var(--line);
   border-radius: 999px;
   padding: 0.35rem 0.65rem;
   font-size: 0.75rem;
@@ -881,7 +885,7 @@ button.linkish:disabled {
   left: 50%;
   bottom: 1.25rem;
   transform: translateX(-50%);
-  background: rgba(2, 73, 139, 0.92);
+  background: rgba(11, 30, 58, 0.92);
   color: white;
   padding: 0.55rem 1rem;
   border-radius: 999px;
@@ -947,7 +951,7 @@ button.linkish:disabled {
 
 .formula {
   background: #f0f4f8;
-  border: 1px solid #d9e2ec;
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0.85rem 1rem;
   overflow-x: auto;
@@ -962,7 +966,7 @@ button.linkish:disabled {
 
 .panel {
   background: #f0f4f8;
-  border: 1px solid #d9e2ec;
+  border: 1px solid var(--line);
   border-radius: 10px;
   padding: 1rem;
 }

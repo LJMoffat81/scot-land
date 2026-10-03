@@ -125,6 +125,21 @@ export default function MethodologyContent() {
         estimate for that piece of land. It is not a rates bill, not this
         year&apos;s Scottish budget, and not a sum of every place on the map.
       </p>
+      <section id="why">
+        <h2>Why I am building this</h2>
+        <p>I am Laurie Moffat. I am building Scot-LAND because there is not a tool for this.</p>
+        <p>
+          One of the biggest hurdles in moving towards a charge on the rental
+          value of land is how that land is valued. There is a gap in knowledge,
+          information, and data. That gap has stalled the policy for too long.
+        </p>
+        <p>
+          This map lets a person look at one piece of land and see a research
+          estimate of its Annual Ground Rent. The building stays with the person
+          who made it. The figure is not a rates bill, and it is not an official
+          assessment.
+        </p>
+      </section>
       <p>
         Under the figure, the Scottish Land Revenue Group&apos;s illustration is
         separate: economic rent of about half of national income, a national
@@ -137,6 +152,8 @@ export default function MethodologyContent() {
         Council Tax and non-domestic rates. It is not every tax.
       </p>
       <p>
+        <a href="#why">Why I am building this</a>
+        {" · "}
         <a href="#tradition">The tradition</a>
         {" · "}
         <a href="#calculation">How a place is calculated</a>

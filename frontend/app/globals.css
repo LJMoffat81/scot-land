@@ -72,22 +72,6 @@ input {
   flex-shrink: 0;
 }
 
-a.hud-slrg {
-  display: block;
-  line-height: 0;
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-a.hud-slrg img {
-  display: block;
-  width: 150px;
-  height: 150px;
-  object-fit: contain;
-}
-
 .hud-top > * {
   pointer-events: auto;
 }
@@ -105,8 +89,8 @@ a.hud-slrg img {
 
 .hud-wordmark img {
   display: block;
-  height: 52px;
-  width: auto;
+  width: 150px;
+  height: 150px;
 }
 
 .hud-layers-btn {
@@ -1011,7 +995,7 @@ button.linkish:disabled {
   }
 
   .hud-place {
-    top: 19rem;
+    top: 18.75rem;
     right: 0.7rem;
     left: 0.7rem;
     width: auto;

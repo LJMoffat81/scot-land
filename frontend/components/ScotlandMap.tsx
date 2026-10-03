@@ -1360,17 +1360,8 @@ export default function ScotlandMap() {
 
       <header className="hud-top">
         <div className="hud-brand">
-          <a
-            className="hud-slrg"
-            href="https://www.slrg.scot"
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Scottish Land Revenue Group"
-          >
-            <img src="/slrg-logo.jpg" alt="Scottish Land Revenue Group" />
-          </a>
           <a className="hud-wordmark" href="/" aria-label="Scot-LAND">
-            <img src="/scot-land-mark.svg" alt="Scot-LAND" />
+            <img src="/scot-land-mark.png" alt="Scot-LAND" />
           </a>
         </div>
         <button

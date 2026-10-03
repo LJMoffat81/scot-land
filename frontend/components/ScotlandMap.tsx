@@ -1694,7 +1694,9 @@ export default function ScotlandMap() {
                 Not drawn: land capability (James Hutton, all rights reserved).
                 Small-area population, jobs, and Ordnance Survey roads, rail and
                 airports are not on this map yet. Wires, mains and broadband are
-                not an open national map.
+                not an open national map. Local development plan sites are not
+                on this map: the national file is for public bodies and
+                universities.
               </p>
             </div>
           </aside>

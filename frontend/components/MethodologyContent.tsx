@@ -129,15 +129,66 @@ export default function MethodologyContent() {
         <h2>Why I am building this</h2>
         <p>I am Laurie Moffat. I am building Scot-LAND because there is not a tool for this.</p>
         <p>
-          One of the biggest hurdles in moving towards a charge on the rental
-          value of land is how that land is valued. There is a gap in knowledge,
-          information, and data. That gap has stalled the policy for too long.
+          The catalyst was a run of official reports on how land is valued for
+          tax. They do not endorse this site. They name the gap that has stalled
+          the policy.
         </p>
         <p>
-          This map lets a person look at one piece of land and see a research
-          estimate of its Annual Ground Rent. The building stays with the person
-          who made it. The figure is not a rates bill, and it is not an official
-          assessment.
+          In October 2025 the Scottish Land Commission published{" "}
+          <a
+            href="https://www.landcommission.gov.scot/downloads/68f737cad6890_Approaches-to-land-valuation-in-the-tax-system.pdf"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Approaches to land valuation in the tax system
+          </a>
+          . Its comparison finds that a Scottish home is still valued on 1991
+          bands, that those bands include the building, and that the system
+          ignores a valuation of the land alone.{" "}
+          <a
+            href="https://www.landcommission.gov.scot/news-events/news/global-lessons-could-help-scotland-build-a-fairer-greener-land-tax-system"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Publishing the report
+          </a>
+          , the Commission said Scotland has no national process for revaluing
+          homes, and no single database joining the map, the register, and
+          sales.
+        </p>
+        <p>
+          In March 2026 its paper{" "}
+          <a
+            href="https://www.landcommission.gov.scot/next-steps-for-land-reform/4-delivery-co-ordinated-use-of-policy-tax-and-fiscal-levers"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Next steps for land reform
+          </a>{" "}
+          said there is not currently enough data on land use, value and
+          ownership for Scotland to use its tax powers in a transformative way.
+          It said Scotland falls behind other countries in gathering land data
+          for tax decisions. The same paper records public interest in land
+          value taxation. It does not set a rate.
+        </p>
+        <p>
+          In August 2026 its{" "}
+          <a
+            href="https://www.landcommission.gov.scot/a-five-year-route-to-modernising-land-tax-administration/the-case-for-modernising-land-tax-administration"
+            target="_blank"
+            rel="noreferrer"
+          >
+            five-year route to modernising land tax administration
+          </a>{" "}
+          said Scotland does not have an up-to-date or complete picture of land
+          value, and that these practical hurdles are regularly identified in
+          debates about land value taxation.
+        </p>
+        <p>
+          This map is my answer to that gap. A person can look at one piece of
+          land and see a research estimate of its Annual Ground Rent. The
+          building stays with the person who made it. The figure is not a rates
+          bill, and it is not an official assessment.
         </p>
       </section>
       <p>

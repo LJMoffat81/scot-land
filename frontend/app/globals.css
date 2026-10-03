@@ -1,11 +1,13 @@
 :root {
-  --slrg-navy: #0b1220;
-  --slrg-red: #e11f26;
-  --slrg-gold: #e11f26;
+  /* Square blue from the mark, and the government saltire blue. */
+  --mark-field: #02498b;
+  --mark-saltire: #0065bd;
+  --slrg-navy: var(--mark-field);
   --slrg-bg: #f4f5f7;
   --slrg-panel: #ffffff;
   --slrg-text: #121417;
   --slrg-muted: #5c6570;
+  --danger: #9b1c1c;
   --hud-shadow: 0 10px 40px rgba(12, 18, 28, 0.14);
   --hud-radius: 18px;
 }
@@ -208,13 +210,17 @@ input {
 .hud-search-go {
   flex-shrink: 0;
   border: 0;
-  background: var(--slrg-red);
+  background: var(--mark-saltire);
   color: #fff;
   font-weight: 700;
   padding: 0.7rem 1.15rem;
   margin: 0.3rem 0.3rem 0.3rem 0;
   border-radius: 999px;
   cursor: pointer;
+}
+
+.hud-search-go:hover:not(:disabled) {
+  background: var(--mark-field);
 }
 
 .hud-search-go:disabled {
@@ -601,7 +607,7 @@ input {
 }
 
 .layer-select:focus {
-  outline: 2px solid rgba(0, 26, 58, 0.25);
+  outline: 2px solid rgba(2, 73, 139, 0.35);
   border-color: var(--slrg-navy);
 }
 
@@ -651,17 +657,21 @@ input {
   margin: 0 0 0.75rem;
   font-size: 0.88rem;
   line-height: 1.4;
-  color: var(--slrg-red);
+  color: var(--danger);
 }
 
 button.primary {
-  background: var(--slrg-red);
+  background: var(--mark-saltire);
   color: white;
   border: none;
   border-radius: 999px;
   padding: 0.7rem 1rem;
   cursor: pointer;
   font-weight: 700;
+}
+
+button.primary:hover:not(:disabled) {
+  background: var(--mark-field);
 }
 
 button.primary:disabled {
@@ -697,7 +707,7 @@ button.primary:disabled {
 
 .w3w-slash,
 .w3w-dot {
-  color: var(--slrg-red);
+  color: var(--mark-saltire);
   font-weight: 700;
 }
 
@@ -871,7 +881,7 @@ button.linkish:disabled {
   left: 50%;
   bottom: 1.25rem;
   transform: translateX(-50%);
-  background: rgba(0, 26, 58, 0.88);
+  background: rgba(2, 73, 139, 0.92);
   color: white;
   padding: 0.55rem 1rem;
   border-radius: 999px;

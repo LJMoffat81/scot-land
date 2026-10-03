@@ -199,6 +199,10 @@ export default function MethodologyContent() {
           <a href="https://x.com/LJMoffat81" target="_blank" rel="noreferrer">
             X: @LJMoffat81
           </a>
+          <br />
+          <a href="https://github.com/LJMoffat81" target="_blank" rel="noreferrer">
+            GitHub: LJMoffat81
+          </a>
         </p>
       </section>
       <p>

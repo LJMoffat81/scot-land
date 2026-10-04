@@ -6,8 +6,11 @@ from spatial.context_tiles import (
     FEATURES,
     RASTER,
     _ssl_context,
+    data_zone_query_url,
+    data_zone_record,
     fetch_context_geojson,
     fetch_context_tile,
+    house_sale_median_2023,
     raster_request_url,
     tile_intersects_context,
     urban_rural_query_url,
@@ -89,6 +92,63 @@ def test_urban_rural_class_asks_only_for_the_eight_class_name():
     assert "ur2name" not in url
     assert "ur6name" not in url
     assert urban_rural_query_url(0, 0) is None
+
+
+def test_data_zone_tile_is_an_outline_and_stays_off_the_opening_view():
+    assert raster_request_url("data-zones", 8, 124, 79) is None
+    assert tile_intersects_context(12, 1992, 1272)
+    url = raster_request_url("data-zones", 12, 1992, 1272)
+    assert url is not None
+    parsed = urlparse(url)
+    assert parsed.netloc == "maps.gov.scot"
+    assert parsed.path.endswith("/StatisticalUnits/MapServer/export")
+    query = parse_qs(parsed.query)
+    assert "layers" not in query
+    drawing = query["dynamicLayers"][0]
+    assert '"mapLayerId":2' in drawing
+    assert "esriSFSNull" in drawing
+    assert "DataZoneBdry2022" not in url
+    assert "BroadRental" not in url
+
+
+def test_data_zone_query_asks_only_for_the_code_and_name():
+    url = data_zone_query_url(57.1497, -2.0943)
+    assert url is not None
+    parsed = urlparse(url)
+    assert parsed.path.endswith("/MapServer/2/query")
+    fields = parse_qs(parsed.query)
+    assert fields["outFields"] == ["datazone,name"]
+    assert fields["returnGeometry"] == ["false"]
+    assert data_zone_query_url(0, 0) is None
+
+
+def test_data_zone_record_keeps_the_house_price_out_of_the_rent(tmp_path):
+    prices = tmp_path / "dz.csv"
+    prices.write_text(
+        "dz2011,dz_med2023\nS01006646,150000\nS01006647,\n",
+        encoding="utf-8",
+    )
+    filled = data_zone_record(
+        {"features": [{"attributes": {"datazone": "S01006646", "name": "George Street - 02"}}]},
+        path=prices,
+    )
+    assert filled["code"] == "S01006646"
+    assert filled["name"] == "George Street - 02"
+    assert filled["house_sale_median_gbp"] == 150000
+    assert filled["house_sale_year"] == 2023
+    assert "Not a land rent" in filled["note"]
+    assert "annual" not in filled
+    blank = data_zone_record(
+        {"features": [{"attributes": {"datazone": "S01006647", "name": "Harbour"}}]},
+        path=prices,
+    )
+    assert blank == {"code": "S01006647", "name": "Harbour"}
+    assert house_sale_median_2023("S01006647", prices) is None
+    refused = data_zone_record(
+        {"features": [{"attributes": {"datazone": "nope", "name": "x"}}]},
+        path=prices,
+    )
+    assert refused == {"code": "", "name": ""}
 
 
 def test_repd_keeps_scottish_operating_solar_only():

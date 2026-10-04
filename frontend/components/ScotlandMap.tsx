@@ -404,6 +404,12 @@ export default function ScotlandMap() {
   const [showPublicLand, setShowPublicLand] = useState(false);
   const [contextOn, setContextOn] = useState<Record<string, boolean>>({});
   const [urbanRuralName, setUrbanRuralName] = useState<string | null>(null);
+  const [dataZone, setDataZone] = useState<{
+    code: string;
+    name?: string;
+    house_sale_median_gbp?: number | null;
+    house_sale_year?: number | null;
+  } | null>(null);
   const [contextNote, setContextNote] = useState<string | null>(null);
   const contextLoaded = useRef<Set<string>>(new Set());
   const contextFlight = useRef<Set<string>>(new Set());
@@ -1618,6 +1624,43 @@ export default function ScotlandMap() {
     };
   }, [contextOn, result]);
 
+  useEffect(() => {
+    if (!result?.agr) {
+      setDataZone(null);
+      return;
+    }
+    let cancelled = false;
+    const lat = result.square.lat;
+    const lng = result.square.lng;
+    setDataZone(null);
+    void apiJson<{
+      code?: string;
+      name?: string;
+      house_sale_median_gbp?: number | null;
+      house_sale_year?: number | null;
+    }>(
+      `/layers/context/data-zones/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+      { cache: "no-store" },
+    )
+      .then((data) => {
+        if (cancelled) return;
+        const code = data.code?.trim() ?? "";
+        if (!code) return;
+        setDataZone({
+          code,
+          name: data.name?.trim() || undefined,
+          house_sale_median_gbp: data.house_sale_median_gbp,
+          house_sale_year: data.house_sale_year,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setDataZone(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [result]);
+
   const legendMetric =
     choropleth === "off"
       ? null
@@ -1910,19 +1953,23 @@ export default function ScotlandMap() {
                 >
                   Register outlines
                 </button>
-                {CONTEXT_LAYERS.filter((layer) => layer.id === "urban-rural").map((layer) => (
-                  <button
-                    key={layer.id}
-                    type="button"
-                    className={contextOn[layer.id] ? "chip active" : "chip"}
-                    title={layer.title}
-                    onClick={() =>
-                      setContextOn((cur) => ({ ...cur, [layer.id]: !cur[layer.id] }))
-                    }
-                  >
-                    Town or countryside
-                  </button>
-                ))}
+                {["urban-rural", "data-zones"].map((id) => {
+                  const layer = CONTEXT_LAYERS.find((item) => item.id === id);
+                  if (!layer) return null;
+                  return (
+                    <button
+                      key={layer.id}
+                      type="button"
+                      className={contextOn[layer.id] ? "chip active" : "chip"}
+                      title={layer.title}
+                      onClick={() =>
+                        setContextOn((cur) => ({ ...cur, [layer.id]: !cur[layer.id] }))
+                      }
+                    >
+                      {layer.id === "urban-rural" ? "Town or countryside" : layer.label}
+                    </button>
+                  );
+                })}
               </div>
 
               <details className="layer-fold">
@@ -2063,6 +2110,7 @@ export default function ScotlandMap() {
                 fiscal={result.fiscal}
                 platform={result.platform}
                 locationClass={urbanRuralName}
+                dataZone={dataZone}
               />
             )}
           </aside>

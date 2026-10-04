@@ -161,6 +161,12 @@ type Props = {
   fiscal?: PlaceFiscal | null;
   platform?: PlatformContext | null;
   locationClass?: string | null;
+  dataZone?: {
+    code: string;
+    name?: string;
+    house_sale_median_gbp?: number | null;
+    house_sale_year?: number | null;
+  } | null;
 };
 
 const CARD_DEVELOPMENT_NOTICE =
@@ -229,6 +235,7 @@ export default function AgrBreakdown({
   fiscal,
   platform,
   locationClass,
+  dataZone,
 }: Props) {
   const active = agr.scenarios.full_agr;
   const plotFull = agr.roll_annual_rent_notional_plot_gbp;
@@ -284,6 +291,12 @@ export default function AgrBreakdown({
         {place || `${lat.toFixed(5)}, ${lng.toFixed(5)}`}
       </p>
       {locationClass ? <p className="meta">Location: {locationClass}</p> : null}
+      {dataZone?.code ? (
+        <p className="meta">
+          Data zone {dataZone.code}
+          {dataZone.name ? `, ${dataZone.name}` : ""}
+        </p>
+      ) : null}
 
       <div className="agr-value" aria-live="polite">
         {formatGbp(headline, headline >= 100 ? 0 : 2)}
@@ -300,6 +313,13 @@ export default function AgrBreakdown({
       <p className="headline-caption">
         Land only, not the building. Research estimate, not a rates bill. {rateLine}
       </p>
+      {dataZone?.house_sale_median_gbp != null && dataZone.house_sale_median_gbp > 0 ? (
+        <p className="meta">
+          House sales in this data zone, median{" "}
+          {formatGbp(dataZone.house_sale_median_gbp, 0)} in{" "}
+          {dataZone.house_sale_year ?? 2023}. The building is included. Not the land charge.
+        </p>
+      ) : null}
       <p className="result-links">
         <a href="/methodology#how-sure">How sure is this?</a>
       </p>

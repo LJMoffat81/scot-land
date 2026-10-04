@@ -45,6 +45,7 @@ from spatial.address import search_door, search_place
 from spatial.context_tiles import (
     fetch_context_geojson,
     fetch_context_tile,
+    fetch_data_zone_async,
     fetch_urban_rural_class_async,
 )
 from spatial.parcels import TRANSPARENT_PNG, fetch_parcel_tile_png, lookup_parcel_geojson
@@ -456,6 +457,24 @@ async def layer_urban_rural_class(
     except Exception:
         body = {"name": ""}
     cache = "public, max-age=86400" if body.get("name") else "no-store"
+    return JSONResponse(body, headers={"Cache-Control": cache})
+
+
+@app.get("/layers/context/data-zones/at")
+async def layer_data_zone_at(
+    lat: float = Query(...),
+    lng: float = Query(...),
+) -> JSONResponse:
+    """2011 data zone at a point, and the house-sale median when the cell is filled.
+
+    The median is a price of houses. It is not a land rent and it does not
+    change the charge.
+    """
+    try:
+        body = await fetch_data_zone_async(lat, lng)
+    except Exception:
+        body = {"code": "", "name": ""}
+    cache = "public, max-age=86400" if body.get("code") else "no-store"
     return JSONResponse(body, headers={"Cache-Control": cache})
 
 

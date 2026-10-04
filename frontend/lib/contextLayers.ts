@@ -154,6 +154,20 @@ export const CONTEXT_LAYERS: ContextLayer[] = [
     color: "#c47b00",
   },
   {
+    id: "data-zones",
+    label: "Data zones",
+    group: "Place",
+    kind: "raster",
+    attribution:
+      "Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right 2026. Licensed under the Open Government Licence v3.0.",
+    title:
+      "2011 data zones, the small areas other tables join to. Outlines only, not a rent. Zoom in. Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right 2026. Licensed under the Open Government Licence v3.0.",
+    minzoom: 11,
+    maxzoom: 18,
+    color: "#0b1e3a",
+    opacity: 0.9,
+  },
+  {
     id: "settlements",
     label: "Settlements",
     group: "Place",

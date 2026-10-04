@@ -22,6 +22,7 @@ from __future__ import annotations
 import csv
 import io
 import math
+import re
 import ssl
 import threading
 from dataclasses import dataclass
@@ -128,6 +129,9 @@ class RasterSpec:
     layers: str
     min_zoom: int
     max_zoom: int
+    # Outline-only drawing. When set, the export uses this instead of the
+    # service's own fill, so a boundary cannot paint over the charge.
+    dynamic_layers: str | None = None
 
 
 @dataclass(frozen=True)
@@ -195,6 +199,23 @@ RASTER: dict[str, RasterSpec] = {
         "8",
         6,
         18,
+    ),
+    # 2011 zones, the geography of the house-sale table already in the repo.
+    # Outline only. Hidden until zoom 11 so the opening council colour stays clear.
+    "data-zones": RasterSpec(
+        "data-zones",
+        "export",
+        "https://maps.gov.scot/server/rest/services/ScotGov/StatisticalUnits/MapServer/export",
+        "2",
+        11,
+        18,
+        (
+            '[{"id":2,"source":{"type":"mapLayer","mapLayerId":2},'
+            '"drawingInfo":{"renderer":{"type":"simple","symbol":'
+            '{"type":"esriSFS","style":"esriSFSNull","color":[0,0,0,0],'
+            '"outline":{"type":"esriSLS","style":"esriSLSSolid",'
+            '"color":[11,30,58,170],"width":0.8}}}}}]'
+        ),
     ),
     # Layer 1 only. The same service also holds SIMD and flood disadvantage.
     "urban-rural": RasterSpec(
@@ -320,9 +341,12 @@ def fetch_context_tile(layer_id: str, z: int, x: int, y: int) -> bytes:
                 "size": "256,256",
                 "format": "png32",
                 "transparent": "true",
-                "layers": f"show:{spec.layers}",
                 "f": "image",
             }
+            if spec.dynamic_layers:
+                params["dynamicLayers"] = spec.dynamic_layers
+            else:
+                params["layers"] = f"show:{spec.layers}"
         with _raster_slots:
             response = _http().get(spec.url, params=params)
         if response.status_code != 200:
@@ -601,6 +625,126 @@ async def fetch_urban_rural_class_async(lat: float, lng: float) -> dict:
         return {"name": ""}
 
 
+_DATA_ZONE_QUERY = (
+    "https://maps.gov.scot/server/rest/services/ScotGov/StatisticalUnits/"
+    "MapServer/2/query"
+)
+_DZ_PRICES = (
+    Path(__file__).resolve().parents[2] / "data" / "processed" / "dz2011_prices.csv"
+)
+_ZONE_CODE = re.compile(r"^S\d{8}$")
+_ZONE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 &'./-]{0,78}$")
+_median_cache: dict[str, dict[str, int]] = {}
+_median_lock = threading.Lock()
+
+
+def data_zone_query_url(lat: float, lng: float) -> str | None:
+    """Point query for the 2011 data zone code and name. None outside the box."""
+    if not _point_in_context(lat, lng) or not _host_allowed(_DATA_ZONE_QUERY):
+        return None
+    params = {
+        "geometry": f"{lng},{lat}",
+        "geometryType": "esriGeometryPoint",
+        "inSR": "4326",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": "datazone,name",
+        "returnGeometry": "false",
+        "f": "json",
+    }
+    return f"{_DATA_ZONE_QUERY}?{urlencode(params)}"
+
+
+def house_sale_median_2023(code: str, path: Path | None = None) -> int | None:
+    """2023 median house sale for one 2011 data zone. Blank cells stay absent.
+
+    This is the price of houses, building included. It is not a land rent.
+    """
+    source = path or _DZ_PRICES
+    key = str(source)
+    with _median_lock:
+        found = _median_cache.get(key)
+        if found is None:
+            found = {}
+            if source.is_file():
+                with source.open(encoding="utf-8", newline="") as handle:
+                    for row in csv.DictReader(handle):
+                        zone = (row.get("dz2011") or "").strip()
+                        raw = (row.get("dz_med2023") or "").strip()
+                        if not zone or not raw:
+                            continue
+                        try:
+                            value = int(float(raw))
+                        except ValueError:
+                            continue
+                        if value > 0:
+                            found[zone] = value
+            _median_cache[key] = found
+    return found.get(code)
+
+
+def data_zone_record(payload: dict, *, path: Path | None = None) -> dict:
+    """Zone identity from one query payload, plus the house-sale median when the cell is filled."""
+    features = payload.get("features") or []
+    if not features:
+        return {"code": "", "name": ""}
+    attrs = features[0].get("attributes") or {}
+    code = attrs.get("datazone") or ""
+    if not isinstance(code, str) or _ZONE_CODE.match(code) is None:
+        return {"code": "", "name": ""}
+    raw_name = attrs.get("name") or ""
+    name = " ".join(raw_name.split()) if isinstance(raw_name, str) else ""
+    if _ZONE_NAME.match(name) is None:
+        name = ""
+    record: dict = {"code": code, "name": name}
+    median = house_sale_median_2023(code, path)
+    if median is not None:
+        record["house_sale_median_gbp"] = median
+        record["house_sale_year"] = 2023
+        record["note"] = (
+            "Median price of houses sold in this data zone in 2023. "
+            "The building is included. Not a land rent."
+        )
+    return record
+
+
+def _fetch_data_zone_payload(url: str) -> dict:
+    response = _http().get(url, timeout=httpx.Timeout(12.0, connect=5.0))
+    if response.status_code != 200:
+        return {}
+    return response.json()
+
+
+def fetch_data_zone(lat: float, lng: float) -> dict:
+    """2011 data zone at one point. Empty when the service misses. Never a rent."""
+    url = data_zone_query_url(lat, lng)
+    if url is None:
+        return {"code": "", "name": ""}
+    try:
+        return data_zone_record(_fetch_data_zone_payload(url))
+    except Exception:
+        return {"code": "", "name": ""}
+
+
+async def fetch_data_zone_async(lat: float, lng: float) -> dict:
+    """Same lookup on the event loop, so parcel tiles cannot queue it."""
+    url = data_zone_query_url(lat, lng)
+    if url is None:
+        return {"code": "", "name": ""}
+    try:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(12.0, connect=5.0),
+            follow_redirects=True,
+            verify=_ssl_context(),
+            headers={"User-Agent": "scot-land/0.9 (https://scot-land.scot; context layers)"},
+        ) as client:
+            response = await client.get(url)
+        if response.status_code != 200:
+            return {"code": "", "name": ""}
+        return data_zone_record(response.json())
+    except Exception:
+        return {"code": "", "name": ""}
+
+
 def raster_request_url(layer_id: str, z: int, x: int, y: int) -> str | None:
     """Allowlisted GetMap or export URL, for tests. None when the tile is skipped."""
     spec = RASTER.get(layer_id)
@@ -619,7 +763,10 @@ def raster_request_url(layer_id: str, z: int, x: int, y: int) -> str | None:
     else:
         params = {
             "bbox": f"{minx},{miny},{maxx},{maxy}",
-            "layers": f"show:{spec.layers}",
             "f": "image",
         }
+        if spec.dynamic_layers:
+            params["dynamicLayers"] = spec.dynamic_layers
+        else:
+            params["layers"] = f"show:{spec.layers}"
     return f"{spec.url}?{urlencode(params)}"

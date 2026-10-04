@@ -8,6 +8,7 @@ import io
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse, PlainTextResponse
 
+from agr.export_stamp import current_stamp, stamp_comment, with_stamp
 from layers.open_stats import (
     catalog_json,
     public_land_json,
@@ -81,43 +82,44 @@ def platform_gaps() -> dict:
 
 @router.get("/api/catalog.json")
 def api_catalog() -> dict:
-    return catalog_json()
+    return with_stamp(catalog_json())
 
 
 @router.get("/api/public-land.json")
 def api_public_land() -> dict:
-    return public_land_json()
+    return with_stamp(public_land_json())
 
 
 @router.get("/api/vdl.json")
 def api_vdl() -> dict:
-    return vdl_json()
+    return with_stamp(vdl_json())
 
 
 @router.get("/api/vdl-councils.json")
 def api_vdl_councils(
     scenario: str = Query(default="full_agr"),
 ) -> dict:
-    return vdl_councils_json(scenario)
+    return with_stamp(vdl_councils_json(scenario))
 
 
 @router.get("/api/roll.json")
 def api_roll(scenario: str = Query(default="full_agr")) -> dict:
-    return roll_json(scenario)
+    return with_stamp(roll_json(scenario))
 
 
 @router.get("/api/roll.csv")
 def api_roll_csv(scenario: str = Query(default="full_agr")) -> PlainTextResponse:
     payload = roll_json(scenario)
     rows = payload.get("councils") or []
+    comment = stamp_comment(current_stamp())
     if not rows:
-        return PlainTextResponse("", media_type="text/csv")
+        return PlainTextResponse(comment + "\n", media_type="text/csv")
     fields = list(rows[0].keys())
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=fields, extrasaction="ignore")
     writer.writeheader()
     writer.writerows(rows)
-    return PlainTextResponse(buf.getvalue(), media_type="text/csv")
+    return PlainTextResponse(comment + "\n" + buf.getvalue(), media_type="text/csv")
 
 
 @router.get("/api/place.json")
@@ -179,18 +181,18 @@ def api_place(
         "method": breakdown.method,
         "disclaimer": "Research estimate, not a rates bill.",
     }
-    return card
+    return with_stamp(card)
 
 
 @router.get("/api/registers.json")
 def api_registers() -> dict:
-    return registers_payload()
+    return with_stamp(registers_payload())
 
 
 @router.get("/downloads")
 def open_downloads() -> dict:
     """Index of freely licensed layers and official sources."""
-    return {
+    return with_stamp({
         "note": (
             "Only openly licensed material is offered here. "
             "Spatial Hub login layers are listed as sources, not mirrored."
@@ -240,4 +242,4 @@ def open_downloads() -> dict:
                 "url": "https://scotlis.ros.gov.uk/",
             },
         ],
-    }
+    })

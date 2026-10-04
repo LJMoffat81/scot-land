@@ -290,8 +290,11 @@ def test_square_postcode_health_and_layer_carry_a_stamp(monkeypatch):
         params={"lat": 55.8642, "lng": -4.2518, "scenario": "full_agr", "include_sales_context": False},
     )
     assert report.status_code == 200, report.text
-    _assert_stamp(report.json()["assessment"]["stamp"])
-    assert "stamp" not in report.json()["markdown"]
+    body = report.json()
+    _assert_stamp(body["assessment"]["stamp"])
+    _assert_stamp(body["stamp"])
+    assert body["stamp"] == body["assessment"]["stamp"]
+    assert body["markdown"].splitlines()[0].startswith("# stamp: ")
 
     layer = client.get("/layers/councils-agr")
     assert layer.status_code == 200

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from agr.export_stamp import current_stamp, stamp_comment
 from agr.service import ValuationService
 from spatial.grid import snap_to_w3w_grid
 
@@ -56,17 +57,20 @@ def assess_points(
 def write_jsonl(rows: list[dict[str, Any]], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
+        handle.write(json.dumps({"stamp": current_stamp()}, ensure_ascii=False) + "\n")
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 def write_csv(rows: list[dict[str, Any]], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    comment = stamp_comment(current_stamp()) + "\n"
     if not rows:
-        path.write_text("", encoding="utf-8")
+        path.write_text(comment, encoding="utf-8")
         return
     fieldnames = list(rows[0].keys())
     with path.open("w", encoding="utf-8", newline="") as handle:
+        handle.write(comment)
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
@@ -83,4 +87,5 @@ def batch_meta(rows: list[dict[str, Any]], *, scenario: str) -> dict[str, Any]:
         "agr_mean_gbp": round(sum(rents) / len(rents), 2) if rents else None,
         "status": "research_estimate",
         "not_statutory": True,
+        "stamp": current_stamp(),
     }

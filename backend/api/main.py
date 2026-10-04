@@ -20,11 +20,12 @@ from fastapi.responses import PlainTextResponse
 
 from agr.engine import breakdown_to_dict
 from agr.config import load_config
+from agr.export_stamp import with_stamp
 from agr.layers import engine_stamp
 from agr.fiscal import fiscal_summary, place_fiscal
 from agr.overrides import merge_config_overrides
 from agr.batch import assess_points, batch_meta
-from agr.report import API_VERSION, build_assessment_report
+from agr.report import API_VERSION, build_assessment_report, render_report_markdown
 from agr.scenarios import resolve_active_scenario
 from agr.service import ValuationService
 from spatial.grid import METERS_PER_DEGREE_LAT, snap_to_w3w_grid
@@ -278,7 +279,8 @@ def layer_councils_metrics(
         geo = build_council_metrics_geojson(scenario)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return JSONResponse(geo)
+    # Copy so the cached layer is not given a stamp it did not have.
+    return JSONResponse(with_stamp(geo))
 
 
 # About 60 a minute, with a short burst so a zoom still draws. 8,000 km² is
@@ -504,7 +506,7 @@ def validate_glasgow_ward_18(
 ) -> dict:
     if not WARD_18_GEOJSON.exists():
         raise HTTPException(status_code=503, detail="Glasgow Ward 18 boundary not built yet.")
-    return run_validation(sample_count=samples)
+    return with_stamp(run_validation(sample_count=samples))
 
 
 @app.get("/validation/ratio-study")
@@ -523,7 +525,7 @@ def validation_ratio_study(
     study["note"] = (
         "Research structure for professional QA. Synthetic sales make production_ready=false."
     )
-    return study
+    return with_stamp(study)
 
 
 @app.get("/validation/ward18-qa-pack")
@@ -541,7 +543,7 @@ def ward18_qa_pack(
     ratios = ratio_study_points(points, scenario=scenario)
     roll_rows = assess_points(points, scenario=scenario, include_sales=True)
     meta = batch_meta(roll_rows, scenario=scenario)
-    return {
+    return with_stamp({
         "area": "glasgow_ward_18",
         "label": "East Centre — featured validation case study",
         "status": "research_estimate",
@@ -554,7 +556,7 @@ def ward18_qa_pack(
             "Re-run QA pack until production_ready on ratio_study",
             "Optional OpenAVMKit pilot on the same points",
         ],
-    }
+    })
 
 
 @app.get("/assessment/report")
@@ -582,8 +584,12 @@ def assessment_report(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    # On the breakdown dict, not in the markdown, and not inside valuation.py.
-    report["assessment"]["stamp"] = engine_stamp(config)
+    # Top-level stamp matches the config that made this export, including
+    # sensitivity overrides. Default config matches /health. Not in valuation.py.
+    stamp = engine_stamp(config)
+    report["stamp"] = stamp
+    report["assessment"]["stamp"] = stamp
+    report["markdown"] = render_report_markdown(report)
 
     if format.lower() in ("md", "markdown", "text"):
         return PlainTextResponse(

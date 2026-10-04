@@ -8,7 +8,9 @@ from typing import Any
 
 from agr.config import load_config
 from agr.engine import AgrBreakdown, breakdown_to_dict
+from agr.export_stamp import stamp_comment
 from agr.fiscal import fiscal_summary, place_fiscal
+from agr.layers import engine_stamp
 from agr.service import ValuationService
 from spatial.grid import snap_to_w3w_grid
 from spatial.w3w import try_coordinates_to_words
@@ -116,6 +118,9 @@ def build_assessment_report(
             "Intellectual lineage is pedagogical; charge maths are operational."
         ),
     }
+    stamp = engine_stamp(config)
+    report["stamp"] = stamp
+    report["assessment"]["stamp"] = stamp
     report["markdown"] = render_report_markdown(report)
     return report
 
@@ -127,8 +132,13 @@ def render_report_markdown(report: dict[str, Any]) -> str:
     w3w = place.get("what3words")
     w3w_line = f"///{w3w}" if w3w else "3×3 m W3W-aligned cell (words pending API key)"
 
-    lines = [
-        f"# Scot-LAND Assessment Report",
+    lines: list[str] = []
+    stamp = report.get("stamp")
+    if isinstance(stamp, dict):
+        lines.append(stamp_comment(stamp))
+        lines.append("")
+    lines += [
+        "# Scot-LAND Assessment Report",
         "",
         f"**Report ID:** `{report['report_id']}`  ",
         f"**Issued (UTC):** {report['issued_at_utc']}  ",

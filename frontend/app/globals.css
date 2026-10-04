@@ -241,14 +241,9 @@ input {
   font-size: 0.95rem;
 }
 
-.hud-search input:focus {
-  outline: none;
-}
-
-/* Inset so the search pill's overflow does not clip the ring. */
+.hud-search input:focus,
 .hud-search input:focus-visible {
-  outline: 3px solid #0076d3;
-  outline-offset: -3px;
+  outline: none;
 }
 
 .hud-search.loading {

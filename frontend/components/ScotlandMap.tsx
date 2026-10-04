@@ -1457,6 +1457,7 @@ export default function ScotlandMap() {
         <button
           type="button"
           className={toolsOpen ? "hud-layers-btn on" : "hud-layers-btn"}
+          aria-pressed={toolsOpen}
           onClick={() => setToolsOpen((v) => !v)}
         >
           Layers
@@ -1464,6 +1465,7 @@ export default function ScotlandMap() {
         <button
           type="button"
           className={mapStyle === "satellite" ? "hud-layers-btn on" : "hud-layers-btn"}
+          aria-pressed={mapStyle === "satellite"}
           title={
             mapStyle === "satellite"
               ? "Switch to streets map"
@@ -1501,7 +1503,6 @@ export default function ScotlandMap() {
           </label>
           <input
             id="place-query"
-            autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {

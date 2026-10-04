@@ -687,9 +687,10 @@ export default function ScotlandMap() {
     if (!q) return;
     const generation = ++lookupGen.current;
     suggestGen.current += 1;
+    if (suggestTimer.current) clearTimeout(suggestTimer.current);
     setLoading(true);
     setError(null);
-        clearSuggestions();
+    clearSuggestions();
     try {
       const response = await apiFetch(`/place?q=${encodeURIComponent(q)}`);
       const body = (await response.json()) as PlaceLookup;
@@ -879,8 +880,8 @@ export default function ScotlandMap() {
         ],
         {
           padding: narrow
-            ? { top: 132, bottom: 72, left: 12, right: 16 }
-            : { top: 96, bottom: 36, left: 24, right: 28 },
+            ? { top: 156, bottom: 72, left: 12, right: 16 }
+            : { top: 196, bottom: 36, left: 24, right: 28 },
           animate: false,
           maxZoom: 7.4,
         },
@@ -1702,7 +1703,6 @@ export default function ScotlandMap() {
             : "hud-search-dock"
         }
       >
-        <p className="hud-search-kicker">Find a piece of land</p>
         <div className={loading || suggesting ? "hud-search loading" : "hud-search"}>
           <label className="sr-only" htmlFor="place-query">
             Type part of an address or a postcode

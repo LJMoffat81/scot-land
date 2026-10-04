@@ -42,6 +42,7 @@ _ALLOWED_HOSTS = frozenset(
         "msmap1.atkinsgeospatial.com",
         "map.sepa.org.uk",
         "maps.gov.scot",
+        "ogc.nature.scot",
         "services-eu1.arcgis.com",
         "services3.arcgis.com",
         "assets.publishing.service.gov.uk",
@@ -177,6 +178,14 @@ RASTER: dict[str, RasterSpec] = {
         "https://msmap1.atkinsgeospatial.com/geoserver/nmp/wms",
         "nmp:smp_offshore_wind_energy_plan_options_2020",
         4,
+        18,
+    ),
+    "woodland": RasterSpec(
+        "woodland",
+        "wms",
+        "https://ogc.nature.scot/geoserver/scottishforestry/ows",
+        "National_Forest_Inventory_Woodland_Scotland",
+        7,
         18,
     ),
     "settlements": RasterSpec(

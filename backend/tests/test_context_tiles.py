@@ -40,6 +40,7 @@ def test_allowlist_hosts_are_the_government_ones():
             "msmap1.atkinsgeospatial.com",
             "map.sepa.org.uk",
             "maps.gov.scot",
+            "ogc.nature.scot",
         }
     for spec in FEATURES.values():
         host = spec.url.split("/")[2]

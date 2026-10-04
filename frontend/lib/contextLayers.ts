@@ -3,7 +3,7 @@ export type ContextKind = "raster" | "fill" | "line" | "circle";
 export type ContextLayer = {
   id: string;
   label: string;
-  group: "Sea" | "Energy" | "Place";
+  group: "Sea" | "Energy" | "Place" | "Use";
   kind: ContextKind;
   attribution: string;
   title: string;
@@ -181,6 +181,20 @@ export const CONTEXT_LAYERS: ContextLayer[] = [
     color: "#1d4e89",
     opacity: 0.55,
   },
+  {
+    id: "woodland",
+    label: "Woodland",
+    group: "Use",
+    kind: "raster",
+    attribution:
+      "Contains Forestry Commission information licensed under the Open Government Licence v3.0.",
+    title:
+      "National Forest Inventory woodland, at least 0.5 hectare. A use, not a rent. Contains Forestry Commission information licensed under the Open Government Licence v3.0.",
+    minzoom: 7,
+    maxzoom: 18,
+    color: "#1f6b3a",
+    opacity: 0.85,
+  },
 ];
 
-export const CONTEXT_GROUPS = ["Sea", "Energy", "Place"] as const;
+export const CONTEXT_GROUPS = ["Sea", "Energy", "Place", "Use"] as const;

@@ -321,8 +321,8 @@ export default function ScotlandMap() {
   const [choropleth, setChoropleth] = useState<MetricId | "off">("gross_liability");
   const [showBoundaries, setShowBoundaries] = useState(false);
   const [showCellGrid] = useState(false);
-  const [showVdl] = useState(false);
-  const [showPublicLand] = useState(false);
+  const [showVdl, setShowVdl] = useState(false);
+  const [showPublicLand, setShowPublicLand] = useState(false);
   const [showMethod, setShowMethod] = useState(false);
   const [contextOn, setContextOn] = useState<Record<string, boolean>>({});
   const [contextNote, setContextNote] = useState<string | null>(null);
@@ -1681,6 +1681,26 @@ export default function ScotlandMap() {
                         </button>
                       ),
                     )}
+                    {group === "Use" && (
+                      <>
+                        <button
+                          type="button"
+                          className={showVdl ? "chip active" : "chip"}
+                          title="Surveyed vacant and derelict land. A use, not a rent."
+                          onClick={() => setShowVdl((on) => !on)}
+                        >
+                          Vacant and derelict
+                        </button>
+                        <button
+                          type="button"
+                          className={showPublicLand ? "chip active" : "chip"}
+                          title="Five public and Crown holdings. Not a title and not a unique rent."
+                          onClick={() => setShowPublicLand((on) => !on)}
+                        >
+                          Public and Crown
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1689,11 +1709,25 @@ export default function ScotlandMap() {
                   {layer.attribution}
                 </p>
               ))}
+              {showVdl && (
+                <p className="layer-meta">
+                  Scottish Vacant and Derelict Land Survey. Contains public
+                  sector information licensed under the Open Government Licence
+                  v3.0. Survey polygons, not a title.
+                </p>
+              )}
+              {showPublicLand && (
+                <p className="layer-meta">
+                  Scottish Public and Crown Estate Land 2024. Five bodies only,
+                  not a title and not a unique rent.
+                </p>
+              )}
               {contextNote && <p className="layer-meta">{contextNote}</p>}
               <p className="layer-meta">
                 Not drawn: land capability (James Hutton, all rights reserved).
-                Small-area population, jobs, and Ordnance Survey roads, rail and
-                airports are not on this map yet. Wires, mains and broadband are
+                Small-area population, jobs, and Ordnance Survey roads, rail,
+                airports and greenspace are not on this map yet. Wires, mains
+                and broadband are
                 not an open national map. Local development plan sites are not
                 on this map: the national file is for public bodies and
                 universities.

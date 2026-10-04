@@ -368,6 +368,10 @@ export default function ScotlandMap() {
   const applyResult = useCallback((payload: SquareResponse) => {
     setResult(payload);
     setScenario(payload.agr.active_scenario);
+    // One shot per new result. Do not tie this to later renders, or Show legend cannot reopen it.
+    if (window.matchMedia("(max-width: 640px)").matches) {
+      setLegendOpen(false);
+    }
 
     const map = mapRef.current;
     if (map) {

@@ -74,6 +74,79 @@ type PlaceLookup = {
   note?: string;
 };
 
+type Suggestion = {
+  id: string;
+  label: string;
+  kind: "point" | "postcode" | "words";
+  lat?: number;
+  lng?: number;
+  postcode?: string;
+  words?: string;
+};
+
+function suggestionsFromLookup(
+  body: PlaceLookup,
+  typed: string,
+): { items: Suggestion[]; note: string | null } {
+  if (body.kind === "places" && body.matches && body.matches.length > 0) {
+    return {
+      items: body.matches.map((match) => ({
+        id: `${match.lat},${match.lng},${match.label}`,
+        label: match.label,
+        kind: "point",
+        lat: match.lat,
+        lng: match.lng,
+      })),
+      note: null,
+    };
+  }
+  if (body.kind === "point" && body.lat != null && body.lng != null) {
+    const label = body.label || typed;
+    return {
+      items: [
+        {
+          id: `${body.lat},${body.lng},${label}`,
+          label,
+          kind: "point",
+          lat: body.lat,
+          lng: body.lng,
+        },
+      ],
+      note: null,
+    };
+  }
+  if (body.kind === "postcode" && body.postcode) {
+    return {
+      items: [
+        {
+          id: `pc:${body.postcode}`,
+          label: body.postcode,
+          kind: "postcode",
+          postcode: body.postcode,
+        },
+      ],
+      note: null,
+    };
+  }
+  if (body.kind === "words" && body.words) {
+    return {
+      items: [
+        {
+          id: `w3w:${body.words}`,
+          label: `///${body.words}`,
+          kind: "words",
+          words: body.words,
+        },
+      ],
+      note: null,
+    };
+  }
+  return {
+    items: [],
+    note: body.note || "No place matched in Scotland. Try a postcode, or click the map.",
+  };
+}
+
 type MetricId =
   | "agr_plot"
   | "rent_per_sqm"
@@ -316,7 +389,12 @@ export default function ScotlandMap() {
   const lookupGen = useRef(0);
   const [mapReady, setMapReady] = useState(false);
   const [query, setQuery] = useState("");
-  const [placeMatches, setPlaceMatches] = useState<PlaceMatch[] | null>(null);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [suggestNote, setSuggestNote] = useState<string | null>(null);
+  const [suggesting, setSuggesting] = useState(false);
+  const [activeSuggest, setActiveSuggest] = useState(-1);
+  const suggestGen = useRef(0);
+  const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [addressLine, setAddressLine] = useState<string | null>(null);
   const [scenario, setScenario] = useState<ScenarioId>("full_agr");
   const [choropleth, setChoropleth] = useState<MetricId | "off">("gross_liability");
@@ -470,8 +548,7 @@ export default function ScotlandMap() {
     ) => {
       const gen = generation ?? ++lookupGen.current;
       if (!keepLabel) {
-        setPlaceMatches(null);
-        setAddressLine(null);
+                setAddressLine(null);
       }
       setLoading(true);
       setError(null);
@@ -502,8 +579,7 @@ export default function ScotlandMap() {
   const clearPlace = useCallback(() => {
     setResult(null);
     setError(null);
-    setPlaceMatches(null);
-    setAddressLine(null);
+        setAddressLine(null);
     markerRef.current?.remove();
     markerRef.current = null;
     parcelLabelRef.current?.remove();
@@ -586,8 +662,7 @@ export default function ScotlandMap() {
     );
     const payload = (await response.json()) as SquareResponse;
     if (generation !== lookupGen.current) return;
-    setPlaceMatches(null);
-    setAddressLine(null);
+        setAddressLine(null);
     applyResult(payload);
   };
 
@@ -597,18 +672,24 @@ export default function ScotlandMap() {
     );
     const payload = (await response.json()) as SquareResponse;
     if (generation !== lookupGen.current) return;
-    setPlaceMatches(null);
-    setAddressLine(null);
+        setAddressLine(null);
     applyResult(payload);
+  };
+
+  const clearSuggestions = () => {
+    setSuggestions([]);
+    setSuggestNote(null);
+    setActiveSuggest(-1);
   };
 
   const runSearch = async () => {
     const q = query.trim();
     if (!q) return;
     const generation = ++lookupGen.current;
+    suggestGen.current += 1;
     setLoading(true);
     setError(null);
-    setPlaceMatches(null);
+        clearSuggestions();
     try {
       const response = await apiFetch(`/place?q=${encodeURIComponent(q)}`);
       const body = (await response.json()) as PlaceLookup;
@@ -622,7 +703,9 @@ export default function ScotlandMap() {
         await fetchSquare(body.lat, body.lng, undefined, true, generation);
       } else if (body.kind === "places" && body.matches && body.matches.length > 1) {
         clearPlace();
-        setPlaceMatches(body.matches);
+        const found = suggestionsFromLookup(body, q);
+        setSuggestions(found.items);
+        setActiveSuggest(found.items.length ? 0 : -1);
       } else {
         clearPlace();
         setError(body.note || "No place matched. Try a postcode, or click the map.");
@@ -641,13 +724,87 @@ export default function ScotlandMap() {
     }
   };
 
-  const pickPlace = (match: PlaceMatch) => {
+  const chooseSuggestion = async (item: Suggestion) => {
     const generation = ++lookupGen.current;
-    setPlaceMatches(null);
-    setAddressLine(match.label);
-    setError(null);
-    void fetchSquare(match.lat, match.lng, undefined, true, generation);
+    suggestGen.current += 1;
+    if (suggestTimer.current) clearTimeout(suggestTimer.current);
+    clearSuggestions();
+    setQuery(item.label);
+        setError(null);
+    setLoading(true);
+    try {
+      if (item.kind === "words" && item.words) {
+        await openWords(item.words, generation);
+      } else if (item.kind === "postcode" && item.postcode) {
+        await openPostcode(item.postcode, generation);
+      } else if (item.lat != null && item.lng != null) {
+        setAddressLine(item.label);
+        await fetchSquare(item.lat, item.lng, undefined, true, generation);
+      }
+      if (generation === lookupGen.current) setApiOk(true);
+    } catch (err) {
+      if (generation !== lookupGen.current) return;
+      setError(visitorFacingError(err));
+      if (isServiceFailure(err)) {
+        void pingApi().then((s) => {
+          if (generation === lookupGen.current) setApiOk(s.ok);
+        });
+      }
+    } finally {
+      if (generation === lookupGen.current) setLoading(false);
+    }
   };
+
+  const loadSuggestions = async (text: string) => {
+    const generation = ++suggestGen.current;
+    setSuggesting(true);
+    try {
+      const response = await apiFetch(`/place?q=${encodeURIComponent(text)}`);
+      const body = (await response.json()) as PlaceLookup;
+      if (generation !== suggestGen.current) return;
+      const found = suggestionsFromLookup(body, text);
+      setSuggestions(found.items);
+      setSuggestNote(found.items.length ? null : found.note);
+      setActiveSuggest(found.items.length ? 0 : -1);
+    } catch (err) {
+      if (generation !== suggestGen.current) return;
+      setSuggestions([]);
+      setActiveSuggest(-1);
+      if (!isServiceFailure(err)) setSuggestNote(visitorFacingError(err));
+      else setSuggestNote(null);
+    } finally {
+      if (generation === suggestGen.current) setSuggesting(false);
+    }
+  };
+
+  const scheduleSuggest = (value: string) => {
+    if (suggestTimer.current) clearTimeout(suggestTimer.current);
+    const text = value.trim();
+    if (text.length < 3) {
+      suggestGen.current += 1;
+      clearSuggestions();
+      setSuggesting(false);
+      return;
+    }
+    suggestTimer.current = setTimeout(() => {
+      void loadSuggestions(text);
+    }, 450);
+  };
+
+  const clearQuery = () => {
+    suggestGen.current += 1;
+    if (suggestTimer.current) clearTimeout(suggestTimer.current);
+    setQuery("");
+        clearSuggestions();
+    setSuggesting(false);
+    document.getElementById("place-query")?.focus();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (suggestTimer.current) clearTimeout(suggestTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -1492,9 +1649,6 @@ export default function ScotlandMap() {
       <div className="map-stage">
       <div className="map-wrap">
         <div id="map" ref={mapContainer} />
-        {!result && apiOk !== false && (
-          <div className="map-hint">Click a place for its Annual Ground Rent</div>
-        )}
       </div>
 
       <header className="hud-top" ref={headerRef}>
@@ -1536,30 +1690,88 @@ export default function ScotlandMap() {
         >
           Locate
         </button>
-        <div
-          className={
-            loading
-              ? placeMatches && placeMatches.length > 1
-                ? "hud-search has-results loading"
-                : "hud-search loading"
-              : placeMatches && placeMatches.length > 1
-                ? "hud-search has-results"
-                : "hud-search"
-          }
-        >
+        <nav className="hud-nav">
+          <a href="/methodology">About</a>
+        </nav>
+      </header>
+
+      <div
+        className={
+          suggestions.length || suggestNote || suggesting
+            ? "hud-search-dock open"
+            : "hud-search-dock"
+        }
+      >
+        <p className="hud-search-kicker">Find a piece of land</p>
+        <div className={loading || suggesting ? "hud-search loading" : "hud-search"}>
           <label className="sr-only" htmlFor="place-query">
-            Postcode or address
+            Type part of an address or a postcode
           </label>
           <input
             id="place-query"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={suggestions.length > 0 || Boolean(suggestNote)}
+            aria-controls="place-suggestions"
+            aria-activedescendant={
+              activeSuggest >= 0 ? `suggest-${activeSuggest}` : undefined
+            }
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void runSearch();
-            }}
-            placeholder="Postcode or address"
+            autoComplete="off"
+            placeholder="Address or postcode"
             title="A title number is looked up only if it is in the open set"
+            onChange={(event) => {
+              setQuery(event.target.value);
+              scheduleSuggest(event.target.value);
+            }}
+            onBlur={() => {
+              window.setTimeout(() => {
+                clearSuggestions();
+              }, 180);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowDown" && suggestions.length) {
+                event.preventDefault();
+                const next =
+                  activeSuggest < 0
+                    ? 0
+                    : Math.min(activeSuggest + 1, suggestions.length - 1);
+                setActiveSuggest(next);
+                document.getElementById(`suggest-${next}`)?.scrollIntoView({
+                  block: "nearest",
+                });
+              } else if (event.key === "ArrowUp" && suggestions.length) {
+                event.preventDefault();
+                const next = activeSuggest <= 0 ? 0 : activeSuggest - 1;
+                setActiveSuggest(next);
+                document.getElementById(`suggest-${next}`)?.scrollIntoView({
+                  block: "nearest",
+                });
+              } else if (event.key === "Enter") {
+                event.preventDefault();
+                if (activeSuggest >= 0 && suggestions[activeSuggest]) {
+                  void chooseSuggestion(suggestions[activeSuggest]);
+                } else {
+                  void runSearch();
+                }
+              } else if (event.key === "Escape" && (suggestions.length || suggestNote)) {
+                event.preventDefault();
+                event.stopPropagation();
+                clearSuggestions();
+              }
+            }}
           />
+          {query ? (
+            <button
+              type="button"
+              className="hud-search-clear"
+              aria-label="Clear search"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={clearQuery}
+            >
+              ×
+            </button>
+          ) : null}
           <button
             type="button"
             className="hud-search-go"
@@ -1568,22 +1780,31 @@ export default function ScotlandMap() {
           >
             {loading ? "…" : "Search"}
           </button>
-          {placeMatches && placeMatches.length > 1 && (
-            <ul className="door-matches">
-              {placeMatches.map((match) => (
-                <li key={`${match.lat},${match.lng},${match.label}`}>
-                  <button type="button" onClick={() => pickPlace(match)}>
-                    {match.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
         </div>
-        <nav className="hud-nav">
-          <a href="/methodology">About</a>
-        </nav>
-      </header>
+        {(suggestions.length > 0 || suggestNote || suggesting) && (
+          <ul className="search-suggest" id="place-suggestions" role="listbox">
+            {suggesting && suggestions.length === 0 && !suggestNote ? (
+              <li className="search-suggest-note">Looking…</li>
+            ) : null}
+            {suggestNote ? <li className="search-suggest-note">{suggestNote}</li> : null}
+            {suggestions.map((item, index) => (
+              <li key={item.id} role="presentation">
+                <button
+                  type="button"
+                  id={`suggest-${index}`}
+                  role="option"
+                  aria-selected={index === activeSuggest}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onMouseEnter={() => setActiveSuggest(index)}
+                  onClick={() => void chooseSuggestion(item)}
+                >
+                  {item.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <aside
         className={legendOpen ? "hud-scotland legend-open" : "hud-scotland"}

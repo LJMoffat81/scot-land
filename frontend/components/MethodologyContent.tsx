@@ -10,14 +10,26 @@ export default function MethodologyContent() {
       </p>
       <h1>About</h1>
       <p>
-        Scot-LAND values one piece of land. The figure is its yearly rental
-        value. The building is left out. It is a research estimate, not a rates
-        bill and not an official assessment.
+        Scot-LAND estimates an Annual Ground Rent for land across Scotland: what
+        the land alone would be worth to use each year, leaving out any
+        buildings on it.
       </p>
       <p>
-        Two pieces of the same size in the same council get the same rent. The
-        rate is that council&apos;s, so it does not change from one street to
-        the next.
+        It&apos;s a research estimate, not a bill. Nobody owes this amount, and
+        it isn&apos;t a proposal for what anyone should pay.
+      </p>
+      <p>
+        We value surface land only. We don&apos;t yet value seabed, minerals,
+        water or other natural resources on the map, and woodland shows
+        &quot;Not yet estimated&quot;.
+      </p>
+      <p>
+        Figures come from public data, and the method is published in full.
+        They&apos;re in development and may change as the work improves, and
+        each result shows the version it came from.
+      </p>
+      <p>
+        We never show who owns land, what it sold for, or title plans.
       </p>
       <p>
         <a href="#calculation">How a place is valued</a>

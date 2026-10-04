@@ -50,10 +50,41 @@ input {
 }
 
 .app-shell {
+  display: flex;
+  flex-direction: column;
   position: relative;
   width: 100%;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
+}
+
+.map-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.map-footer {
+  flex-shrink: 0;
+  background: #fff;
+  color: var(--slrg-muted);
+  text-align: center;
+  padding: 0.28rem 0.75rem 0.32rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.map-footer p {
+  margin: 0;
+}
+
+.map-footer .engine-stamp {
+  margin: 0.06rem 0 0;
+  font-size: 0.66rem;
+  line-height: 1.3;
 }
 
 .hud-top {
@@ -207,7 +238,7 @@ input {
   right: 1.1rem;
   top: 5.25rem;
   width: min(360px, calc(100vw - 2rem));
-  max-height: calc(100vh - 6.5rem);
+  max-height: calc(100% - 6.5rem);
   padding: 2.1rem 1.15rem 1.2rem;
 }
 
@@ -296,7 +327,7 @@ input {
   right: 1.1rem;
   top: 5.25rem;
   width: min(360px, calc(100vw - 2rem));
-  max-height: calc(100vh - 6.5rem);
+  max-height: calc(100% - 6.5rem);
   padding: 2.1rem 1.15rem 1.2rem;
 }
 
@@ -800,6 +831,17 @@ button.primary:disabled {
   font-size: 0.82rem;
   color: var(--slrg-muted);
   line-height: 1.35;
+}
+
+.dev-notice {
+  margin: 0;
+}
+
+.engine-stamp {
+  margin: 0.65rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--slrg-muted);
 }
 
 .scenario-pills {

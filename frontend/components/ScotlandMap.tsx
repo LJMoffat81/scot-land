@@ -10,6 +10,7 @@ import maplibregl, {
 import "maplibre-gl/dist/maplibre-gl.css";
 import AgrBreakdown, {
   AgrResult,
+  MapStampFooter,
   PlaceFiscal,
   ScenarioId,
 } from "./AgrBreakdown";
@@ -668,10 +669,11 @@ export default function ScotlandMap() {
   };
 
   useEffect(() => {
-    if (!mapContainer.current || mapRef.current) return;
+    const container = mapContainer.current;
+    if (!container || mapRef.current) return;
 
     const map = new maplibregl.Map({
-      container: mapContainer.current,
+      container,
       // CARTO's raster tiles now stamp "API key required" unless a key is set.
       style: "https://tiles.openfreemap.org/styles/positron",
       center: [-4.2, 56.8],
@@ -683,6 +685,18 @@ export default function ScotlandMap() {
       "bottom-right",
     );
     map.getCanvas().style.cursor = "pointer";
+
+    let seenWidth = -1;
+    let seenHeight = -1;
+    const resizeObserver = new ResizeObserver(() => {
+      const nextWidth = container.clientWidth;
+      const nextHeight = container.clientHeight;
+      if (nextWidth === seenWidth && nextHeight === seenHeight) return;
+      seenWidth = nextWidth;
+      seenHeight = nextHeight;
+      map.resize();
+    });
+    resizeObserver.observe(container);
 
     map.on("load", () => {
       map.addSource("council-metrics", { type: "geojson", data: emptyCollection });
@@ -963,6 +977,7 @@ export default function ScotlandMap() {
 
     mapRef.current = map;
     return () => {
+      resizeObserver.disconnect();
       markerRef.current?.remove();
       markerRef.current = null;
       parcelLabelRef.current?.remove();
@@ -1405,6 +1420,7 @@ export default function ScotlandMap() {
 
   return (
     <div className={toolsOpen ? "app-shell tools-open" : "app-shell"}>
+      <div className="map-stage">
       <div className="map-wrap">
         <div id="map" ref={mapContainer} />
         {!result && apiOk !== false && (
@@ -1753,6 +1769,8 @@ export default function ScotlandMap() {
             )}
           </aside>
           )}
+      </div>
+      <MapStampFooter />
     </div>
   );
 }

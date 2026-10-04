@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      args:
+        RAILWAY_GIT_COMMIT_SHA: ${GIT_COMMIT:-unknown}
     restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"

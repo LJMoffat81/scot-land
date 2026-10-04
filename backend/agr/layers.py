@@ -138,15 +138,10 @@ def _env_commit(name: str) -> str | None:
     value = os.environ.get(name, "").strip()
     if not value or value.lower() == "unknown":
         return None
-    return value[:7]
+    return value
 
 
-@lru_cache(maxsize=1)
-def _commit_id() -> str:
-    for name in ("GIT_COMMIT", "RAILWAY_GIT_COMMIT_SHA"):
-        found = _env_commit(name)
-        if found:
-            return found
+def _git_head() -> str | None:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -158,11 +153,26 @@ def _commit_id() -> str:
         )
         sha = (result.stdout or "").strip()
         if result.returncode == 0 and sha and sha.lower() != "unknown":
-            return sha[:7]
+            return sha
     except (OSError, subprocess.TimeoutExpired):
-        pass
-    logger.warning("Engine stamp has no git commit; using dev-unknown.")
-    return "dev-unknown"
+        return None
+    return None
+
+
+@lru_cache(maxsize=1)
+def _commit_ids() -> tuple[str, str]:
+    """Short stamp and full sha. Both are dev-unknown when no commit is available."""
+    full = None
+    for name in ("GIT_COMMIT", "RAILWAY_GIT_COMMIT_SHA"):
+        full = _env_commit(name)
+        if full:
+            break
+    if full is None:
+        full = _git_head()
+    if not full:
+        logger.warning("Engine stamp has no git commit; using dev-unknown.")
+        return "dev-unknown", "dev-unknown"
+    return full[:7], full
 
 
 def engine_stamp(config: dict) -> dict:
@@ -189,6 +199,7 @@ def engine_stamp(config: dict) -> dict:
             "councils_generated_at": councils.get("generated_at") or "",
             "hpi_period": councils.get("hpi_period") or "",
         },
-        "commit": _commit_id(),
+        "commit": _commit_ids()[0],
+        "commit_full": _commit_ids()[1],
         "sensitivity_overrides": dict(overrides),
     }

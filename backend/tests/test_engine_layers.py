@@ -331,3 +331,39 @@ def test_square_postcode_health_and_layer_carry_a_stamp(monkeypatch):
     body = postcode.json()
     _assert_stamp(body["agr"]["stamp"])
     assert body["postcode"]["postcode"] == "G1 1BL"
+
+
+def test_stamp_commit_uses_the_full_sha_when_git_commit_is_set(monkeypatch):
+    from agr.layers import _commit_ids
+
+    sha = "a" * 40
+    monkeypatch.setenv("GIT_COMMIT", sha)
+    monkeypatch.delenv("RAILWAY_GIT_COMMIT_SHA", raising=False)
+    _commit_ids.cache_clear()
+    stamp = engine_stamp(load_config())
+    assert stamp["commit"] == sha[:7]
+    assert stamp["commit_full"] == sha
+    health = TestClient(app).get("/health")
+    assert health.status_code == 200
+    assert health.json()["stamp"]["commit"] == sha[:7]
+    assert health.json()["stamp"]["commit_full"] == sha
+    _commit_ids.cache_clear()
+
+
+def test_stamp_commit_is_dev_unknown_without_a_sha_or_git(monkeypatch):
+    import subprocess
+
+    from agr.layers import _commit_ids
+
+    monkeypatch.delenv("GIT_COMMIT", raising=False)
+    monkeypatch.setenv("RAILWAY_GIT_COMMIT_SHA", "unknown")
+
+    def _no_git(*args, **kwargs):
+        return subprocess.CompletedProcess(args, 1, "", "no git")
+
+    monkeypatch.setattr("agr.layers.subprocess.run", _no_git)
+    _commit_ids.cache_clear()
+    stamp = engine_stamp(load_config())
+    assert stamp["commit"] == "dev-unknown"
+    assert stamp["commit_full"] == "dev-unknown"
+    _commit_ids.cache_clear()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -33,7 +34,11 @@ from layers.council_metrics import build_council_metrics_geojson
 from layers.grid_layer import build_w3w_agr_grid
 from layers.platform import platform_catalog
 from spatial.address import search_door
-from spatial.context_tiles import fetch_context_geojson, fetch_context_tile
+from spatial.context_tiles import (
+    fetch_context_geojson,
+    fetch_context_tile,
+    fetch_urban_rural_class_async,
+)
 from spatial.parcels import TRANSPARENT_PNG, fetch_parcel_tile_png, lookup_parcel_geojson
 from validation.glasgow_ward_18 import run_validation
 from validation.ratio_study import ratio_study_points
@@ -315,11 +320,29 @@ def layer_parcel_tiles(z: int, x: int, y: int) -> Response:
     return _parcel_tile_response(z, x, y)
 
 
-@app.get("/layers/context/{layer_id}/tiles/{z}/{x}/{y}")
-def layer_context_tiles(layer_id: str, z: int, x: int, y: int) -> Response:
-    """Allowlisted government context layer as an XYZ PNG. Never a 500."""
+@app.get("/layers/context/urban-rural/class")
+async def layer_urban_rural_class(
+    lat: float = Query(...),
+    lng: float = Query(...),
+) -> JSONResponse:
+    """Eight-class urban-rural name. A label, never a rent and never a 500."""
     try:
-        png = fetch_context_tile(layer_id, z, x, y)
+        body = await fetch_urban_rural_class_async(lat, lng)
+    except Exception:
+        body = {"name": ""}
+    cache = "public, max-age=86400" if body.get("name") else "no-store"
+    return JSONResponse(body, headers={"Cache-Control": cache})
+
+
+@app.get("/layers/context/{layer_id}/tiles/{z}/{x}/{y}")
+async def layer_context_tiles(layer_id: str, z: int, x: int, y: int) -> Response:
+    """Allowlisted government context layer as an XYZ PNG. Never a 500.
+
+    The fetch runs off the parcel-tile pool. A street search otherwise queues
+    this export until the browser has already given up.
+    """
+    try:
+        png = await asyncio.to_thread(fetch_context_tile, layer_id, z, x, y)
     except Exception:
         png = TRANSPARENT_PNG
     return Response(

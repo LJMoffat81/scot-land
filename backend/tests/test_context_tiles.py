@@ -1,5 +1,7 @@
 import ssl
 
+from urllib.parse import parse_qs, urlparse
+
 from spatial.context_tiles import (
     FEATURES,
     RASTER,
@@ -8,6 +10,7 @@ from spatial.context_tiles import (
     fetch_context_tile,
     raster_request_url,
     tile_intersects_context,
+    urban_rural_query_url,
 )
 from spatial.parcels import TRANSPARENT_PNG
 
@@ -62,6 +65,30 @@ def test_sea_tile_url_stays_on_the_marine_plan():
 
 def test_far_tile_is_not_requested():
     assert raster_request_url("scottish-zone", 5, 0, 0) is None
+
+
+def test_urban_rural_tile_asks_only_for_layer_one():
+    url = raster_request_url("urban-rural", 8, 124, 79)
+    assert url is not None
+    parsed = urlparse(url)
+    assert parsed.netloc == "maps.gov.scot"
+    assert parsed.path.endswith("/PeopleSociety/MapServer/export")
+    assert parse_qs(parsed.query)["layers"] == ["show:1"]
+    assert "SIMD" not in url
+    assert "FloodDisadvantage" not in url
+
+
+def test_urban_rural_class_asks_only_for_the_eight_class_name():
+    url = urban_rural_query_url(58.445374, -3.094138)
+    assert url is not None
+    parsed = urlparse(url)
+    assert parsed.netloc == "maps.gov.scot"
+    assert parsed.path.endswith("/MapServer/1/query")
+    fields = parse_qs(parsed.query)
+    assert fields["outFields"] == ["ur8name"]
+    assert "ur2name" not in url
+    assert "ur6name" not in url
+    assert urban_rural_query_url(0, 0) is None
 
 
 def test_repd_keeps_scottish_operating_solar_only():

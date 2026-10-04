@@ -21,7 +21,7 @@ function transparent(): Response {
     status: 200,
     headers: {
       "Content-Type": "image/png",
-      "Cache-Control": "public, max-age=60",
+      "Cache-Control": "no-store",
       "X-Context-Tile": "fallback",
     },
   });
@@ -47,7 +47,7 @@ export async function GET(_request: Request, context: Ctx) {
 
     const url = `${apiOrigin()}/layers/context/${layer}/tiles/${zi}/${xi}/${yi}`;
     const upstream = await fetch(url, {
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(50_000),
       cache: "no-store",
     });
     if (!upstream.ok) {

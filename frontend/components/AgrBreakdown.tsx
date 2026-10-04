@@ -154,6 +154,7 @@ type Props = {
   parcelAreaSqm?: number | null;
   fiscal?: PlaceFiscal | null;
   platform?: PlatformContext | null;
+  locationClass?: string | null;
 };
 
 function formatGbp(value: number, digits = 2) {
@@ -175,6 +176,7 @@ export default function AgrBreakdown({
   parcelAreaSqm,
   fiscal,
   platform,
+  locationClass,
 }: Props) {
   const active = agr.scenarios.full_agr;
   const plotFull = agr.roll_annual_rent_notional_plot_gbp;
@@ -209,6 +211,7 @@ export default function AgrBreakdown({
       <p className="location-line">
         {place || `${lat.toFixed(5)}, ${lng.toFixed(5)}`}
       </p>
+      {locationClass ? <p className="meta">Location: {locationClass}</p> : null}
 
       <div className="agr-value" aria-live="polite">
         {formatGbp(headline, headline >= 100 ? 0 : 2)}

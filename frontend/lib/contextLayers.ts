@@ -168,6 +168,20 @@ export const CONTEXT_LAYERS: ContextLayer[] = [
     opacity: 0.65,
   },
   {
+    id: "urban-rural",
+    label: "Urban and rural",
+    group: "Place",
+    kind: "raster",
+    attribution:
+      "Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right.",
+    title:
+      "Scottish Government urban and rural classes, including remote small towns. A location label, not a rent. Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right.",
+    minzoom: 5,
+    maxzoom: 9,
+    color: "#0b1e3a",
+    opacity: 0.45,
+  },
+  {
     id: "flood",
     label: "Flood extent",
     group: "Place",

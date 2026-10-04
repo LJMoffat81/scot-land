@@ -325,6 +325,7 @@ export default function ScotlandMap() {
   const [showPublicLand, setShowPublicLand] = useState(false);
   const [showMethod, setShowMethod] = useState(false);
   const [contextOn, setContextOn] = useState<Record<string, boolean>>({});
+  const [urbanRuralName, setUrbanRuralName] = useState<string | null>(null);
   const [contextNote, setContextNote] = useState<string | null>(null);
   const contextLoaded = useRef<Set<string>>(new Set());
   const contextFlight = useRef<Set<string>>(new Set());
@@ -1392,6 +1393,41 @@ export default function ScotlandMap() {
   }, [mapReady, contextOn]);
 
   useEffect(() => {
+    if (!contextOn["urban-rural"] || !result) {
+      setUrbanRuralName(null);
+      return;
+    }
+    let cancelled = false;
+    const lat = result.square.lat;
+    const lng = result.square.lng;
+    setUrbanRuralName(null);
+    const load = (left: number) => {
+      if (cancelled) return;
+      void apiJson<{ name?: string }>(
+        `/layers/context/urban-rural/class?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+        { cache: "no-store" },
+      )
+        .then((data) => {
+          if (cancelled) return;
+          const name = data.name?.trim() ?? "";
+          if (name) {
+            setUrbanRuralName(name);
+            return;
+          }
+          if (left > 0) window.setTimeout(() => load(left - 1), 1200);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          if (left > 0) window.setTimeout(() => load(left - 1), 1200);
+        });
+    };
+    load(5);
+    return () => {
+      cancelled = true;
+    };
+  }, [contextOn, result]);
+
+  useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map?.getLayer("council-method")) return;
@@ -1764,6 +1800,7 @@ export default function ScotlandMap() {
                 }
                 fiscal={result.fiscal}
                 platform={result.platform}
+                locationClass={urbanRuralName}
               />
             )}
           </aside>

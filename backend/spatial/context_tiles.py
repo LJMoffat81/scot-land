@@ -196,6 +196,15 @@ RASTER: dict[str, RasterSpec] = {
         6,
         18,
     ),
+    # Layer 1 only. The same service also holds SIMD and flood disadvantage.
+    "urban-rural": RasterSpec(
+        "urban-rural",
+        "export",
+        "https://maps.gov.scot/server/rest/services/ScotGov/PeopleSociety/MapServer/export",
+        "1",
+        5,
+        9,
+    ),
     "flood": RasterSpec(
         "flood",
         "export",
@@ -232,6 +241,11 @@ def _ssl_context() -> ssl.SSLContext:
     if _EXTRA_CA.is_file():
         ctx.load_verify_locations(cafile=str(_EXTRA_CA))
     return ctx
+
+
+# A fly-in asks for many tiles at once. A few at a time keeps the government
+# export fast enough for the browser to keep the picture.
+_raster_slots = threading.Semaphore(3)
 
 
 def _http() -> httpx.Client:
@@ -298,7 +312,6 @@ def fetch_context_tile(layer_id: str, z: int, x: int, y: int) -> bytes:
                 "FORMAT": "image/png",
                 "TRANSPARENT": "true",
             }
-            response = _http().get(spec.url, params=params)
         else:
             params = {
                 "bbox": f"{minx},{miny},{maxx},{maxy}",
@@ -310,6 +323,7 @@ def fetch_context_tile(layer_id: str, z: int, x: int, y: int) -> bytes:
                 "layers": f"show:{spec.layers}",
                 "f": "image",
             }
+        with _raster_slots:
             response = _http().get(spec.url, params=params)
         if response.status_code != 200:
             return TRANSPARENT_PNG
@@ -511,6 +525,80 @@ def fetch_context_geojson(layer_id: str) -> dict:
     with _cache_lock:
         _cache[layer_id] = geo
     return geo
+
+
+_URBAN_RURAL_QUERY = (
+    "https://maps.gov.scot/server/rest/services/ScotGov/PeopleSociety/"
+    "MapServer/1/query"
+)
+
+
+def _point_in_context(lat: float, lng: float) -> bool:
+    south, west, north, east = _CONTEXT
+    return south <= lat <= north and west <= lng <= east
+
+
+def urban_rural_query_url(lat: float, lng: float) -> str | None:
+    """Point query for the eight-class name only. None outside the context box."""
+    if not _point_in_context(lat, lng) or not _host_allowed(_URBAN_RURAL_QUERY):
+        return None
+    params = {
+        "geometry": f"{lng},{lat}",
+        "geometryType": "esriGeometryPoint",
+        "inSR": "4326",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": "ur8name",
+        "returnGeometry": "false",
+        "f": "json",
+    }
+    return f"{_URBAN_RURAL_QUERY}?{urlencode(params)}"
+
+
+def _urban_rural_name(payload: dict) -> str:
+    features = payload.get("features") or []
+    if not features:
+        return ""
+    raw = features[0].get("attributes", {}).get("ur8name") or ""
+    if not isinstance(raw, str):
+        return ""
+    name = " ".join(raw.split())
+    if not name or len(name) > 80:
+        return ""
+    return name
+
+
+def fetch_urban_rural_class(lat: float, lng: float) -> dict:
+    """Eight-class name at one point. Empty when the service misses. Never a rent."""
+    url = urban_rural_query_url(lat, lng)
+    if url is None:
+        return {"name": ""}
+    try:
+        response = _http().get(url, timeout=httpx.Timeout(12.0, connect=5.0))
+        if response.status_code != 200:
+            return {"name": ""}
+        return {"name": _urban_rural_name(response.json())}
+    except Exception:
+        return {"name": ""}
+
+
+async def fetch_urban_rural_class_async(lat: float, lng: float) -> dict:
+    """Same lookup on the event loop, so parcel tiles cannot queue it."""
+    url = urban_rural_query_url(lat, lng)
+    if url is None:
+        return {"name": ""}
+    try:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(12.0, connect=5.0),
+            follow_redirects=True,
+            verify=_ssl_context(),
+            headers={"User-Agent": "scot-land/0.9 (https://scot-land.scot; context layers)"},
+        ) as client:
+            response = await client.get(url)
+        if response.status_code != 200:
+            return {"name": ""}
+        return {"name": _urban_rural_name(response.json())}
+    except Exception:
+        return {"name": ""}
 
 
 def raster_request_url(layer_id: str, z: int, x: int, y: int) -> str | None:

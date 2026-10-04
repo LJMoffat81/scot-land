@@ -872,19 +872,16 @@ export default function ScotlandMap() {
     const frameScotland = () => {
       if (userMoved) return;
       if (container.clientWidth < 40 || container.clientHeight < 40) return;
-      const width = window.innerWidth;
+      const narrow = window.innerWidth <= 900;
       map.fitBounds(
         [
           [-8.05, 54.48],
           [-0.55, 60.88],
         ],
         {
-          padding:
-            width <= 900
-              ? { top: 132, bottom: 72, left: 12, right: 16 }
-              : width <= 1180
-                ? { top: 188, bottom: 36, left: 24, right: 28 }
-                : { top: 96, bottom: 36, left: 24, right: 28 },
+          padding: narrow
+            ? { top: 132, bottom: 72, left: 12, right: 16 }
+            : { top: 96, bottom: 36, left: 24, right: 28 },
           animate: false,
           maxZoom: 7.4,
         },
@@ -1694,18 +1691,13 @@ export default function ScotlandMap() {
         >
           Locate
         </button>
-        <nav className="hud-nav">
-          <a href="/methodology">About</a>
-        </nav>
-      </header>
-
-      <div
-        className={
-          suggestions.length || suggestNote || suggesting
-            ? "hud-search-dock open"
-            : "hud-search-dock"
-        }
-      >
+        <div
+          className={
+            suggestions.length || suggestNote || suggesting
+              ? "hud-search-dock open"
+              : "hud-search-dock"
+          }
+        >
         <div className={loading || suggesting ? "hud-search loading" : "hud-search"}>
           <label className="sr-only" htmlFor="place-query">
             Type part of an address or a postcode
@@ -1807,7 +1799,11 @@ export default function ScotlandMap() {
             ))}
           </ul>
         )}
-      </div>
+        </div>
+        <nav className="hud-nav">
+          <a href="/methodology">About</a>
+        </nav>
+      </header>
 
       <aside
         className={legendOpen ? "hud-scotland legend-open" : "hud-scotland"}

@@ -174,12 +174,12 @@ input {
 }
 
 .hud-search-dock {
-  position: absolute;
-  z-index: 6;
-  left: 50%;
-  top: 1rem;
-  transform: translateX(-50%);
-  width: min(34rem, calc(100vw - 52rem));
+  position: relative;
+  z-index: 2;
+  flex: 1 1 16rem;
+  width: auto;
+  min-width: 0;
+  max-width: 36rem;
   pointer-events: none;
 }
 
@@ -1146,22 +1146,6 @@ button.linkish:disabled {
   font-size: 1rem;
 }
 
-@media (max-width: 1180px) {
-  .hud-search-dock {
-    top: calc(var(--hud-height, 7.5rem) + 0.45rem);
-    width: min(36rem, calc(100vw - 2.4rem));
-  }
-
-  .app-shell.place-open .hud-place {
-    top: calc(var(--hud-height, 7.5rem) + 4.8rem);
-  }
-
-  .hud-tools {
-    top: calc(var(--hud-height, 7.5rem) + 4.8rem);
-    max-height: calc(100dvh - var(--hud-height, 7.5rem) - 9rem);
-  }
-}
-
 @media (max-width: 900px) {
   .hud-top {
     flex-wrap: wrap;
@@ -1190,14 +1174,10 @@ button.linkish:disabled {
     margin-left: auto;
   }
 
-  .hud-search-dock,
-  .app-shell.place-open .hud-search-dock {
-    top: calc(var(--hud-height, 4.5rem) + 0.4rem);
-    width: min(36rem, calc(100vw - 1.2rem));
-  }
-
-  .app-shell.place-open .hud-place {
-    top: calc(var(--hud-height, 4.5rem) + 4.5rem);
+  .hud-search-dock {
+    order: 2;
+    flex: 1 1 100%;
+    max-width: none;
   }
 
   .hud-tools {

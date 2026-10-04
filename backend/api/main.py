@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
+import threading
+import time
 from pathlib import Path
 
 import httpx
 import yaml
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 
@@ -21,7 +24,7 @@ from agr.batch import assess_points, batch_meta
 from agr.report import API_VERSION, build_assessment_report
 from agr.scenarios import resolve_active_scenario
 from agr.service import ValuationService
-from spatial.grid import snap_to_w3w_grid
+from spatial.grid import METERS_PER_DEGREE_LAT, snap_to_w3w_grid
 from spatial.w3w import (
     W3WNotConfiguredError,
     is_configured as w3w_is_configured,
@@ -270,16 +273,68 @@ def layer_councils_metrics(
     return JSONResponse(geo)
 
 
+# About 60 a minute, with a short burst so a zoom still draws. 8,000 km² is
+# above a wide desktop at zoom 12. The map asks for 200 cells.
+_W3W_PER_MINUTE = 60
+_W3W_BURST = 20
+_W3W_MAX_CELLS = 400
+_W3W_MAX_AREA_KM2 = 8_000.0
+_w3w_lock = threading.Lock()
+_w3w_buckets: dict[str, tuple[float, float]] = {}
+
+
+def _w3w_now() -> float:
+    return time.monotonic()
+
+
+def reset_w3w_rate_limit() -> None:
+    with _w3w_lock:
+        _w3w_buckets.clear()
+
+
+def _bbox_area_km2(south: float, west: float, north: float, east: float) -> float:
+    mid = (south + north) / 2
+    height_m = (north - south) * METERS_PER_DEGREE_LAT
+    width_m = (east - west) * METERS_PER_DEGREE_LAT * max(math.cos(math.radians(mid)), 0.2)
+    return (height_m * width_m) / 1_000_000
+
+
+def _w3w_allowed(host: str) -> bool:
+    now = _w3w_now()
+    rate = _W3W_PER_MINUTE / 60
+    with _w3w_lock:
+        tokens, updated = _w3w_buckets.get(host, (float(_W3W_BURST), now))
+        tokens = min(float(_W3W_BURST), tokens + (now - updated) * rate)
+        if tokens < 1:
+            _w3w_buckets[host] = (tokens, now)
+            return False
+        _w3w_buckets[host] = (tokens - 1, now)
+        return True
+
+
 @app.get("/layers/w3w-grid")
 def layer_w3w_grid(
+    request: Request,
     south: float = Query(..., description="BBox south latitude"),
     west: float = Query(..., description="BBox west longitude"),
     north: float = Query(..., description="BBox north latitude"),
     east: float = Query(..., description="BBox east longitude"),
     scenario: str = Query(default="full_agr"),
-    max_cells: int = Query(default=400, ge=10, le=1200),
+    max_cells: int = Query(default=400, ge=10),
 ) -> JSONResponse:
     """W3W cells with AGR for the map viewport (capped; zoom in for denser grid)."""
+    if south >= north or west >= east:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid bbox: require south < north and west < east",
+        )
+    if max_cells > _W3W_MAX_CELLS:
+        raise HTTPException(status_code=400, detail="Ask for fewer cells.")
+    if _bbox_area_km2(south, west, north, east) > _W3W_MAX_AREA_KM2:
+        raise HTTPException(status_code=400, detail="Ask for a smaller area.")
+    host = request.client.host if request.client else "unknown"
+    if not _w3w_allowed(host):
+        raise HTTPException(status_code=429, detail="The grid is busy. Wait a moment.")
     try:
         geo = build_w3w_agr_grid(
             south, west, north, east, scenario=scenario, max_cells=max_cells

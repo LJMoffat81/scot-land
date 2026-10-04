@@ -174,12 +174,12 @@ input {
 }
 
 .hud-search-dock {
-  position: relative;
-  z-index: 2;
-  flex: 1 1 16rem;
-  width: auto;
-  min-width: 0;
-  max-width: 36rem;
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 1rem;
+  transform: translateX(-50%);
+  width: min(34rem, calc(100vw - 52rem));
   pointer-events: none;
 }
 
@@ -1170,8 +1170,13 @@ button.linkish:disabled {
   }
 
   .hud-search-dock {
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
     order: 2;
     flex: 1 1 100%;
+    width: auto;
     max-width: none;
   }
 

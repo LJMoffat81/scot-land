@@ -34,9 +34,11 @@ def test_urban_uses_residual_drc():
     assert 0.15 <= (assessment.site_share_implied or 0) <= 0.85
     # Economic < market after Pickard urban factor
     assert assessment.site_capital_economic_per_sqm_gbp < assessment.site_capital_market_per_sqm_gbp
-    assert assessment.annual_rent_economic_per_sqm_gbp == (
-        assessment.site_capital_economic_per_sqm_gbp * assessment.yield_rate
-    )
+    # Rent is stored to 6 decimals and capital per m² to 4, so the product can differ by 0.0001.
+    assert abs(
+        assessment.annual_rent_economic_per_sqm_gbp
+        - assessment.site_capital_economic_per_sqm_gbp * assessment.yield_rate
+    ) <= 0.0001
 
 
 def test_rural_uses_productive_path():

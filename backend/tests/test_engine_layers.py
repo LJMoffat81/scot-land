@@ -34,7 +34,7 @@ LAYERS_PATH = ROOT / "data" / "config" / "layers.yaml"
 FROZEN_SHA256 = {
     "data/config/agr.yaml": "139c3e510dc37587a9c1956a100bd5864e4119f67c39255213751cdca98bd31f",
     "data/config/sources.yaml": "0ba74307691bd20ca16c62f2386e446c78c57b1bf6efd9c9c0821cc0f330a84a",
-    "data/processed/councils.json": "62a09c8ac892d75a5634ad6ad95d4f2b08c177663241af0ed2dfd3713b6aeb07",
+    "data/processed/councils.json": "c7c0ec041696981dc238e136d2fcc2600dda449c0a8a46a5dd5cb756aab4ba16",
     "backend/agr/valuation.py": "6da672ffece81960fd10be81c130ee965febae036fefc51ff2df18682bd8144a",
     "backend/agr/engine.py": "238a2d855d39eeb7a281b1b454748b8e0f6f083c8a2b0204774e4ddd4f2827a3",
     "backend/agr/scenarios.py": "0f125e9c550cb30941c3370aff18fec243c0ba47dc46e7b19203da67a9d1ebff",

@@ -225,6 +225,26 @@ def _as_of(config: dict, path: str) -> str:
     return as_of
 
 
+# Pinned sha256 of data/processed/dz2011_prices.csv (job 034). The stamp quotes the full digest.
+DZ_PRICES_SHA256 = "a9f819173a438db50b10ae2bf81e1ff0b72da767714e6537822b073a438b8f62"
+DZ_PRICES_PATH = Path(__file__).resolve().parents[2] / "data" / "processed" / "dz2011_prices.csv"
+
+
+def _price_data() -> dict:
+    """Where the town market value came from. Not a figure, and not shown on the card."""
+    if not DZ_PRICES_PATH.is_file():
+        raise LayerConfigError(f"Missing {DZ_PRICES_PATH.name}")
+    digest = hashlib.sha256(DZ_PRICES_PATH.read_bytes()).hexdigest()
+    if digest != DZ_PRICES_SHA256:
+        raise LayerConfigError("dz2011_prices.csv sha256 does not match the pin")
+    return {
+        "source": "RoS Residential Properties Sales and Price (statistics.gov.scot, OGL)",
+        "file_sha256": digest,
+        "year": 2023,
+        "index": "UK HPI July 2026, annual mean of sale year to 2025-04-01",
+    }
+
+
 def _valuation_date_fields(config: dict) -> dict:
     """Stamp fields only. rebased stays false until a later job re-indexes inputs."""
     valuation = config.get("valuation") if isinstance(config.get("valuation"), dict) else {}
@@ -238,6 +258,7 @@ def _valuation_date_fields(config: dict) -> dict:
         "valuation_date": date,
         "rebased_to_valuation_date": False,
         "inputs_as_of": {path: _as_of(config, path) for path in _money_input_keys(config)},
+        "price_data": _price_data(),
     }
 
 

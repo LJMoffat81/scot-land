@@ -112,6 +112,11 @@ def main() -> None:
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"Wrote {len(payload['councils'])} councils to {OUTPUT_PATH}")
+    # Town market value is the indexed 2023 median, not this HPI average.
+    # Rural flags set just above are left as they are.
+    from scripts.build_council_prices import main as apply_council_prices
+
+    apply_council_prices()
 
 
 if __name__ == "__main__":

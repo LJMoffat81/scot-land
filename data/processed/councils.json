@@ -14,9 +14,11 @@
         "lat": 57.2,
         "lng": -2.5
       },
-      "average_price_gbp": 196787,
+      "average_price_gbp": 200828,
       "annual_change_pct": 1.0,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000041",
@@ -25,9 +27,11 @@
         "lat": 56.7,
         "lng": -2.9
       },
-      "average_price_gbp": 160112,
+      "average_price_gbp": 175378,
       "annual_change_pct": -1.8,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000035",
@@ -36,9 +40,11 @@
         "lat": 56.2,
         "lng": -5.1
       },
-      "average_price_gbp": 179601,
+      "average_price_gbp": 184096,
       "annual_change_pct": 4.7,
-      "rural": true
+      "rural": true,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000033",
@@ -47,9 +53,11 @@
         "lat": 57.1497,
         "lng": -2.0943
       },
-      "average_price_gbp": 133906,
+      "average_price_gbp": 134923,
       "annual_change_pct": -1.6,
-      "rural": true
+      "rural": true,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000042",
@@ -58,9 +66,11 @@
         "lat": 56.462,
         "lng": -2.9707
       },
-      "average_price_gbp": 134392,
+      "average_price_gbp": 136453,
       "annual_change_pct": 0.6,
-      "rural": true
+      "rural": true,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000036",
@@ -69,9 +79,11 @@
         "lat": 55.9533,
         "lng": -3.1883
       },
-      "average_price_gbp": 289857,
+      "average_price_gbp": 285882,
       "annual_change_pct": -0.2,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000049",
@@ -80,9 +92,11 @@
         "lat": 55.8642,
         "lng": -4.2518
       },
-      "average_price_gbp": 184281,
+      "average_price_gbp": 187858,
       "annual_change_pct": 1.2,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000005",
@@ -91,9 +105,11 @@
         "lat": 56.12,
         "lng": -3.75
       },
-      "average_price_gbp": 161179,
+      "average_price_gbp": 147652,
       "annual_change_pct": 0.5,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000006",
@@ -102,9 +118,11 @@
         "lat": 55.1,
         "lng": -3.6
       },
-      "average_price_gbp": 165597,
+      "average_price_gbp": 159770,
       "annual_change_pct": 3.1,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000008",
@@ -113,9 +131,11 @@
         "lat": 55.6,
         "lng": -4.3
       },
-      "average_price_gbp": 128845,
+      "average_price_gbp": 119544,
       "annual_change_pct": 3.9,
-      "rural": true
+      "rural": true,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000045",
@@ -124,9 +144,11 @@
         "lat": 55.95,
         "lng": -4.2
       },
-      "average_price_gbp": 267207,
+      "average_price_gbp": 262749,
       "annual_change_pct": 5.4,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000010",
@@ -135,9 +157,11 @@
         "lat": 55.95,
         "lng": -2.75
       },
-      "average_price_gbp": 277238,
+      "average_price_gbp": 287271,
       "annual_change_pct": -1.8,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000011",
@@ -146,9 +170,11 @@
         "lat": 55.78,
         "lng": -4.35
       },
-      "average_price_gbp": 288945,
+      "average_price_gbp": 290955,
       "annual_change_pct": 1.9,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000014",
@@ -157,9 +183,11 @@
         "lat": 56.0,
         "lng": -3.75
       },
-      "average_price_gbp": 165754,
+      "average_price_gbp": 163456,
       "annual_change_pct": 1.3,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000047",
@@ -168,9 +196,11 @@
         "lat": 56.2,
         "lng": -3.15
       },
-      "average_price_gbp": 170395,
+      "average_price_gbp": 174390,
       "annual_change_pct": 1.1,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000017",
@@ -179,9 +209,11 @@
         "lat": 57.5,
         "lng": -4.2
       },
-      "average_price_gbp": 211875,
+      "average_price_gbp": 209114,
       "annual_change_pct": 1.1,
-      "rural": true
+      "rural": true,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000018",
@@ -190,9 +222,11 @@
         "lat": 55.9,
         "lng": -4.75
       },
-      "average_price_gbp": 112529,
+      "average_price_gbp": 105607,
       "annual_change_pct": 11.0,
-      "rural": true
+      "rural": true,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000019",
@@ -201,9 +235,11 @@
         "lat": 55.85,
         "lng": -3.1
       },
-      "average_price_gbp": 272754,
+      "average_price_gbp": 262963,
       "annual_change_pct": 0.5,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000020",
@@ -212,9 +248,11 @@
         "lat": 57.6,
         "lng": -3.3
       },
-      "average_price_gbp": 200609,
+      "average_price_gbp": 183257,
       "annual_change_pct": 4.8,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000013",
@@ -223,9 +261,11 @@
         "lat": 58.2,
         "lng": -6.4
       },
-      "average_price_gbp": 135340,
+      "average_price_gbp": 143933,
       "annual_change_pct": -5.5,
-      "rural": true
+      "rural": true,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000021",
@@ -234,9 +274,11 @@
         "lat": 55.65,
         "lng": -4.75
       },
-      "average_price_gbp": 130233,
+      "average_price_gbp": 124922,
       "annual_change_pct": 5.4,
-      "rural": true
+      "rural": true,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000050",
@@ -245,9 +287,11 @@
         "lat": 55.85,
         "lng": -3.95
       },
-      "average_price_gbp": 151455,
+      "average_price_gbp": 144801,
       "annual_change_pct": 3.5,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000023",
@@ -256,9 +300,11 @@
         "lat": 59.0,
         "lng": -3.0
       },
-      "average_price_gbp": 209843,
+      "average_price_gbp": 195791,
       "annual_change_pct": 1.5,
-      "rural": true
+      "rural": true,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000048",
@@ -267,9 +313,11 @@
         "lat": 56.4,
         "lng": -3.4
       },
-      "average_price_gbp": 213647,
+      "average_price_gbp": 228663,
       "annual_change_pct": -0.8,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000038",
@@ -278,9 +326,11 @@
         "lat": 55.85,
         "lng": -4.5
       },
-      "average_price_gbp": 158755,
+      "average_price_gbp": 155299,
       "annual_change_pct": 5.9,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000026",
@@ -289,9 +339,11 @@
         "lat": 55.55,
         "lng": -2.8
       },
-      "average_price_gbp": 180843,
+      "average_price_gbp": 175217,
       "annual_change_pct": 1.4,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000027",
@@ -300,9 +352,11 @@
         "lat": 60.2,
         "lng": -1.2
       },
-      "average_price_gbp": 156982,
+      "average_price_gbp": 225352,
       "annual_change_pct": -27.5,
-      "rural": true
+      "rural": true,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000028",
@@ -311,9 +365,11 @@
         "lat": 55.45,
         "lng": -4.6
       },
-      "average_price_gbp": 164331,
+      "average_price_gbp": 159113,
       "annual_change_pct": 6.2,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000029",
@@ -322,9 +378,11 @@
         "lat": 55.55,
         "lng": -3.85
       },
-      "average_price_gbp": 175529,
+      "average_price_gbp": 175130,
       "annual_change_pct": 3.3,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000030",
@@ -333,9 +391,11 @@
         "lat": 56.12,
         "lng": -4.0
       },
-      "average_price_gbp": 225892,
+      "average_price_gbp": 209918,
       "annual_change_pct": 1.8,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000039",
@@ -344,9 +404,11 @@
         "lat": 55.95,
         "lng": -4.55
       },
-      "average_price_gbp": 127161,
+      "average_price_gbp": 122988,
       "annual_change_pct": 7.9,
-      "rural": true
+      "rural": true,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     },
     {
       "code": "S12000040",
@@ -355,9 +417,11 @@
         "lat": 55.9,
         "lng": -3.55
       },
-      "average_price_gbp": 221136,
+      "average_price_gbp": 220553,
       "annual_change_pct": 2.7,
-      "rural": false
+      "rural": false,
+      "price_basis": "council_median_2023_indexed_2025-04-01",
+      "price_year_basis": 2023
     }
   ]
 }

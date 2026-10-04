@@ -104,6 +104,15 @@ input {
   line-height: 1.3;
 }
 
+.map-footer .map-footer-credit {
+  margin: 0.04rem 0 0;
+}
+
+.map-footer a {
+  color: var(--slrg-navy);
+  text-underline-offset: 0.12em;
+}
+
 .hud-top {
   position: absolute;
   top: 0;

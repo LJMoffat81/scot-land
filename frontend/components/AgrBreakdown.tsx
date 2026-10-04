@@ -191,6 +191,19 @@ export function MapStampFooter() {
     <footer className="map-footer">
       <p>{DEVELOPMENT_NOTICE}</p>
       {versionLine ? <p className="engine-stamp">{versionLine}</p> : null}
+      <p className="map-footer-credit">
+        <a href="/methodology">Sources and method</a>
+      </p>
+      <p className="map-footer-credit">
+        Contains OS data © Crown copyright and database right 2026
+      </p>
+      <p className="map-footer-credit">
+        Contains Royal Mail data © Royal Mail copyright and database right 2026
+      </p>
+      <p className="map-footer-credit">
+        Source: Office for National Statistics licensed under the Open Government Licence v.3.0
+      </p>
+      <p className="map-footer-credit">No data provider endorses this site.</p>
     </footer>
   );
 }

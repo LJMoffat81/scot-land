@@ -10,6 +10,7 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 
+from agr.areas import CouncilArea
 from agr.config import load_config
 from agr.engine import calculate_square_agr
 from agr.layers import (
@@ -24,6 +25,7 @@ from agr.overrides import merge_config_overrides
 from api.main import app
 from spatial.grid import snap_to_w3w_grid
 from spatial.parcels import CadastralParcel
+from spatial.urban_rural import NotLand
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
@@ -32,11 +34,11 @@ POSTCODE_PATH = FIXTURES / "postcode_snapshot_main.json"
 LAYERS_PATH = ROOT / "data" / "config" / "layers.yaml"
 
 FROZEN_SHA256 = {
-    "data/config/agr.yaml": "139c3e510dc37587a9c1956a100bd5864e4119f67c39255213751cdca98bd31f",
-    "data/config/sources.yaml": "0ba74307691bd20ca16c62f2386e446c78c57b1bf6efd9c9c0821cc0f330a84a",
-    "data/processed/councils.json": "c7c0ec041696981dc238e136d2fcc2600dda449c0a8a46a5dd5cb756aab4ba16",
-    "backend/agr/valuation.py": "6da672ffece81960fd10be81c130ee965febae036fefc51ff2df18682bd8144a",
-    "backend/agr/engine.py": "238a2d855d39eeb7a281b1b454748b8e0f6f083c8a2b0204774e4ddd4f2827a3",
+    "data/config/agr.yaml": "050ea48cc7d2c14cf8aab762e5851d152f5b7fa132da0e7f2229409463dd4085",
+    "data/config/sources.yaml": "a1d5ce7209178a3a389747525013547ba0394efad4de9545eaeb85504d8e7aa4",
+    "data/processed/councils.json": "7173d5426c0a65d70630bd005a255a32d78651c9c58835130d46de40afeb1596",
+    "backend/agr/valuation.py": "06e277828afe9ee60080b16bea9de699f08f8d96727034a69d3de1742e40ce5c",
+    "backend/agr/engine.py": "e9ee5c726d3179d0dcc28b316055e78f4fe7d0e2e40d1a59e30cec41c7121f78",
     "backend/agr/scenarios.py": "0bba06175f37776b760f00f2fc502e97ecc2f3301f6667e37cfc8066bd5aeb2a",
 }
 
@@ -139,6 +141,14 @@ def _compare(old, new, path: str, errors: list[str]) -> None:
         errors.append(f"{path}: {old!r} != {new!r}")
 
 
+def _assert_result_stamp(payload: dict, label: str) -> None:
+    agr = payload.get("agr")
+    if agr is None:
+        assert payload.get("reason") == "not_land", label
+        return
+    _assert_stamp(agr["stamp"])
+
+
 def _assert_stamp(stamp: dict) -> None:
     assert stamp["engine_version"] == ENGINE_VERSION
     for side in ("valuation", "policy"):
@@ -201,13 +211,14 @@ def test_snapshot_matches_frozen_figures(monkeypatch):
     errors: list[str] = []
     for point in squares["points"]:
         fresh = _square_again(client, point["response"], holder)
-        _compare(point["response"], fresh, point.get("name") or point.get("code") or "point", errors)
-        _assert_stamp(fresh["agr"]["stamp"])
+        label = point.get("name") or point.get("code") or "point"
+        _compare(point["response"], fresh, label, errors)
+        _assert_result_stamp(fresh, label)
     for postcode, response in postcodes["postcodes"].items():
         fresh = _square_again(client, response, holder)
         without_postcode = {key: value for key, value in response.items() if key != "postcode"}
         _compare(without_postcode, fresh, postcode, errors)
-        _assert_stamp(fresh["agr"]["stamp"])
+        _assert_result_stamp(fresh, postcode)
     assert not errors, "\n".join(errors[:30])
 
 
@@ -227,7 +238,20 @@ def test_every_read_config_key_is_mapped():
     for council in councils["councils"]:
         centroid = council["centroid"]
         square = snap_to_w3w_grid(float(centroid["lat"]), float(centroid["lng"]))
-        calculate_square_agr(square, scenario="full_agr", config=config)
+        try:
+            calculate_square_agr(square, scenario="full_agr", config=config)
+        except NotLand:
+            # A centroid in the sea is not a place. Still read this council's urban keys.
+            forced = CouncilArea(
+                code=council["code"],
+                name=council["name"],
+                average_price_gbp=int(council["average_price_gbp"]),
+                annual_change_pct=council.get("annual_change_pct"),
+                rural=False,
+                distance_km=0.0,
+                lookup_method="council_layer",
+            )
+            calculate_square_agr(square, scenario="full_agr", config=config, council=forced)
     listed = _listed_paths()
     missing = sorted(path for path in reads if _in_section(path) and not _covered(path, listed))
     assert not missing, missing

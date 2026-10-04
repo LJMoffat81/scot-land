@@ -9,7 +9,14 @@ def test_edinburgh_coords_map_to_edinburgh():
     assert council.lookup_method == "boundary"
 
 
-def test_highland_coords_map_to_highland():
-    council = lookup_council(57.5, -4.2)
+def test_inverness_point_is_urban():
+    council = lookup_council(57.4778, -4.2247)
     assert council.code == "S12000017"
+    assert council.name == "Highland"
+    assert council.rural is False
+
+
+def test_cairngorms_point_is_countryside():
+    council = lookup_council(57.08, -3.65)
+    assert council.code == "S12000034"
     assert council.rural is True

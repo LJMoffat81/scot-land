@@ -2,13 +2,15 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 
-from agr.areas import lookup_council
+from agr.areas import CouncilArea, lookup_council
 from agr.config import load_config
 from agr.scenarios import compute_scenarios, resolve_active_scenario, scenario_to_dict
 from agr.valuation import assess_for_agr_roll
+from agr.wide_range import wide_range_for
 from spatial.grid import GridSquare
 from spatial.parcels import lookup_parcel
-from spatial.polygons import lookup_glasgow_ward_18
+from spatial.polygons import lookup_council_boundary, lookup_glasgow_ward_18
+from spatial.urban_rural import NotLand
 
 
 @dataclass
@@ -60,6 +62,9 @@ class AgrBreakdown:
     pickard_label: str
     assessment: dict = field(default_factory=dict)
     sensitivity_overrides: dict = field(default_factory=dict)
+    wide_range: bool = False
+    wide_range_ratio: float | None = None
+    basis: str = "town"
 
 
 def _equal_share_fields(economic_rent: float, config: dict) -> tuple[bool, float | None, float | None, int | None]:
@@ -81,6 +86,7 @@ def calculate_square_agr(
     square: GridSquare,
     scenario: str | None = None,
     config: dict | None = None,
+    council: CouncilArea | None = None,
 ) -> AgrBreakdown:
     config = config if config is not None else load_config()
     per_square = config["per_square"]
@@ -88,7 +94,10 @@ def calculate_square_agr(
     active_scenario = resolve_active_scenario(scenario)
     sensitivity = dict(config.get("_sensitivity_overrides") or {})
 
-    council = lookup_council(square.lat, square.lng)
+    if council is None:
+        if lookup_council_boundary(square.lat, square.lng) is None:
+            raise NotLand(square.lat, square.lng)
+        council = lookup_council(square.lat, square.lng)
     parcel = lookup_parcel(square.lat, square.lng)
     ward = lookup_glasgow_ward_18(square.lat, square.lng)
 
@@ -155,6 +164,8 @@ def calculate_square_agr(
         if assessment.site_share_implied is not None
         else "productive_land_use"
     )
+    wide_range, wide_range_ratio = wide_range_for(council.code)
+    basis = "countryside" if council.rural else "town"
 
     return AgrBreakdown(
         annual_ground_rent_gbp=active_charge,
@@ -203,6 +214,9 @@ def calculate_square_agr(
         pickard_label=assessment.pickard_label,
         assessment=assessment.to_dict(),
         sensitivity_overrides=sensitivity,
+        wide_range=wide_range,
+        wide_range_ratio=wide_range_ratio,
+        basis=basis,
     )
 
 

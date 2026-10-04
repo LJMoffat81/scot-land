@@ -162,7 +162,7 @@ valuer_roll:
   method: residual_drc
   habu_default: existing_use
   exclude_hope_value: true
-  typical_dwelling_sqm: 85
+  typical_dwelling_sqm: 97
   # Notional residential plot for whole-site roll line (Scotland suburban average order)
   typical_plot_sqm: 280
   yield_rate: 0.05  # traditional rentalisation (Pickard: farm rent historically ~5% of capital)
@@ -172,12 +172,11 @@ valuer_roll:
   rebuild:
     # BCIS/ABI-style rebuild costs (Scotland baseline £/m² internal)
     house_gbp_per_m2: 1950
-    flat_gbp_per_m2: 2300
+    flat_gbp_per_m2: 1850
     region_factors:
       default: 1.0
       S12000036: 1.08   # City of Edinburgh
       S12000049: 1.05   # Glasgow City
-      S12000046: 1.04   # Glasgow (legacy code if present)
       S12000042: 1.03   # Dundee
       S12000033: 1.03   # Aberdeen
       S12000017: 0.95   # Highland
@@ -198,19 +197,44 @@ valuation:
   rural_fallback: land_use_category
   yield_rate: 0.05
   habu_rule: existing_authorised_use
-  typical_dwelling_sqm: 85
+  typical_dwelling_sqm: 97
   hpi_base_year: 2009
 
 # Stamp metadata. The calculator does not read this. "unknown" means undated.
 _meta:
   valuation.valuation_date:
     source: "Scottish non-domestic revaluation 2026 tone date"
+  valuer_roll.typical_dwelling_sqm:
+    owner: policy-economics
+    unit: "m²"
+    value: 97
+    low: 69
+    high: 121
+    as_of: "2026-10-04"
+    source: "SHCS 2023 KA4"
   valuer_roll.yield_rate:
     as_of: "unknown"
   valuer_roll.rebuild.house_gbp_per_m2:
-    as_of: "unknown"
+    owner: policy-economics
+    unit: "GBP per m²"
+    value: 1950
+    low: unknown
+    high: unknown
+    label: ASSUMPTION
+    status: "unsourced, temporary"
+    as_of: "2026-10-04"
+    source: "no source, Policy ruling"
+    note: "not checked against BCIS"
   valuer_roll.rebuild.flat_gbp_per_m2:
-    as_of: "unknown"
+    owner: policy-economics
+    unit: "GBP per m²"
+    value: 1850
+    low: 1680
+    high: 2200
+    label: ASSUMPTION
+    status: "unsourced, temporary"
+    as_of: "2026-10-04"
+    note: "not checked against BCIS"
   valuer_roll.depreciation.average_stock_remaining_factor:
     as_of: "unknown"
   despeculation.farmland_market_to_productive:

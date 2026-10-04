@@ -32,6 +32,9 @@ export default function MethodologyContent() {
         We never show who owns land, what it sold for, or title plans.
       </p>
       <p>
+        In towns the figure is for a home plot; in the countryside it is for one hectare of farmland.
+      </p>
+      <p>
         <a href="#calculation">How a place is valued</a>
         {" · "}
         <a href="#why">Why I am building this</a>
@@ -127,6 +130,20 @@ export default function MethodologyContent() {
           <a href="https://github.com/LJMoffat81" target="_blank" rel="noreferrer">
             GitHub: LJMoffat81
           </a>
+        </p>
+      </section>
+
+      <section id="what-is-agr">
+        <h2>What is Annual Ground Rent?</h2>
+        <p>
+          In towns, it is that council&apos;s land rent per square metre times the area of the piece. In the countryside, it uses one farmland rate for the whole of Scotland, for one hectare.
+        </p>
+      </section>
+
+      <section id="how-sure">
+        <h2>How sure are these numbers?</h2>
+        <p>
+          They&apos;re research estimates, and some of what goes into them can&apos;t be pinned down exactly. With different reasonable assumptions, the estimate for a typical home plot in most councils could be anywhere from about half to 1.3 times the figure shown. Where house prices are low compared with what homes cost to rebuild, the range is wider, from about half to about double. This range covers home plots only, not the farmland figures, and doesn&apos;t cover the bigger simplifications, such as using one rate for a whole council. In most councils, our figures are slightly more likely to be too high than too low.
         </p>
       </section>
 

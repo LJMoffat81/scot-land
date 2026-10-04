@@ -15,23 +15,6 @@ ROOT = Path(__file__).resolve().parents[2]
 COUNCILS_PATH = ROOT / "data" / "processed" / "councils.json"
 DZ_PATH = ROOT / "data" / "processed" / "dz2011_prices.csv"
 
-# Councils already on the farmland rate. North Lanarkshire is not one of them,
-# even though its indexed median is under the old £145,000 rural threshold.
-RURAL_CODES = {
-    "S12000035",  # Argyll and Bute
-    "S12000033",  # City of Aberdeen
-    "S12000042",  # City of Dundee
-    "S12000008",  # East Ayrshire
-    "S12000017",  # Highland
-    "S12000018",  # Inverclyde
-    "S12000013",  # Na h-Eileanan Siar
-    "S12000021",  # North Ayrshire
-    "S12000023",  # Orkney Islands
-    "S12000027",  # Shetland Islands
-    "S12000039",  # West Dunbartonshire
-}
-
-
 def _councils() -> list[dict]:
     return json.loads(COUNCILS_PATH.read_text(encoding="utf-8"))["councils"]
 
@@ -53,11 +36,18 @@ def test_indexed_prices_match_the_engine_references():
         assert council["price_year_basis"] == PRICE_YEAR
 
 
-def test_countryside_flags_stay_on_the_farmland_councils():
+def test_no_council_is_flagged_wholly_rural():
     councils = _by_code()
-    rural = {code for code, council in councils.items() if council["rural"]}
-    assert rural == RURAL_CODES
-    # Under the old threshold this council would have flipped. It stays a town.
+    assert all(council["rural"] is False for council in councils.values())
+    context = {code for code, council in councils.items() if council.get("rural_context")}
+    assert context == {
+        "S12000013",
+        "S12000017",
+        "S12000023",
+        "S12000027",
+        "S12000035",
+    }
+    # The £145,000 rule is gone. A low price does not flip the council.
     assert councils["S12000050"]["name"] == "North Lanarkshire"
     assert councils["S12000050"]["average_price_gbp"] < 145_000
     assert councils["S12000050"]["rural"] is False

@@ -25,13 +25,24 @@ postcodes:
   api_url: https://api.postcodes.io/postcodes
 
 councils:
-  rural_price_threshold_gbp: 145000
+  # Context only. Valuation does not flag a whole council as rural.
   rural_codes:
     - S12000013  # Na h-Eileanan Siar
     - S12000017  # Highland
     - S12000023  # Orkney Islands
     - S12000027  # Shetland Islands
     - S12000035  # Argyll and Bute
+
+urban_rural:
+  name: Scottish Government Urban Rural Classification 2022
+  licence: Open Government Licence v3.0
+  credit: "Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right 2022."
+  url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2022.zip
+  sha256: 1b18bce2d4201d5f99dfd3bdacbf9fb5bc7a966294cee94262165e2c398d85a9
+  lookup: data/processed/sg_urban_rural_2022_urban_20m.geojson
+  lookup_sha256: c5225baaa64fdebfa5698fb7857c6914aab683662e1a641c0fc4a52108737573
+  classes_urban: "1-4"
+  simplify_metres: 20
 
 boundaries:
   councils:

@@ -3,11 +3,17 @@
 from __future__ import annotations
 
 
+def _rebuild_rate(rebuild: dict, key: str) -> float:
+    if key not in rebuild:
+        raise KeyError(key)
+    return float(rebuild[key])
+
+
 def blended_rebuild_per_m2(config: dict) -> float:
     rebuild = config.get("valuer_roll", {}).get("rebuild", {})
     mix = config.get("valuer_roll", {}).get("property_mix") or {}
-    house = float(rebuild.get("house_gbp_per_m2", 1950))
-    flat = float(rebuild.get("flat_gbp_per_m2", 2300))
+    house = _rebuild_rate(rebuild, "house_gbp_per_m2")
+    flat = _rebuild_rate(rebuild, "flat_gbp_per_m2")
     house_share = float(mix.get("house_share", 0.75))
     flat_share = float(mix.get("flat_share", 0.25))
     total = house_share + flat_share

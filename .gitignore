@@ -23,6 +23,8 @@ data/processed/*
 !data/processed/scotland_councils.geojson
 !data/processed/glasgow_ward_18.geojson
 !data/processed/context_by_council.json
+!data/processed/sg_urban_rural_2022_urban_20m.geojson
+SG_UrbanRural_2022.zip
 # batch demos
 data/processed/demo_roll.*
 data/processed/roll_*.csv

@@ -12,12 +12,14 @@ from api.main import app
 SOURCE = "Scottish non-domestic revaluation 2026 tone date"
 UNKNOWN_KEYS = (
     "valuer_roll.yield_rate",
-    "valuer_roll.rebuild.house_gbp_per_m2",
-    "valuer_roll.rebuild.flat_gbp_per_m2",
     "valuer_roll.depreciation.average_stock_remaining_factor",
     "despeculation.farmland_market_to_productive",
     "despeculation.urban_speculation_discount",
 )
+DATED_KEYS = {
+    "valuer_roll.rebuild.house_gbp_per_m2": "2026-10-04",
+    "valuer_roll.rebuild.flat_gbp_per_m2": "2026-10-04",
+}
 
 
 def _assert_valuation_date(stamp: dict, config: dict) -> None:
@@ -28,6 +30,7 @@ def _assert_valuation_date(stamp: dict, config: dict) -> None:
     assert isinstance(as_of, dict) and as_of
     land = config["land_use_values_gbp_per_ha_2009"]
     expected = {key: "unknown" for key in UNKNOWN_KEYS}
+    expected.update(DATED_KEYS)
     expected.update({f"land_use_values_gbp_per_ha_2009.{name}": "2009" for name in land})
     assert as_of == expected
     assert config["_meta"]["valuation.valuation_date"]["source"] == SOURCE

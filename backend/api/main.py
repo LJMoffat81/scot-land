@@ -29,6 +29,7 @@ from agr.report import API_VERSION, build_assessment_report, render_report_markd
 from agr.scenarios import resolve_active_scenario
 from agr.service import ValuationService
 from spatial.grid import METERS_PER_DEGREE_LAT, snap_to_w3w_grid
+from spatial.urban_rural import NotLand
 from spatial.w3w import (
     W3WNotConfiguredError,
     is_configured as w3w_is_configured,
@@ -115,7 +116,31 @@ def _square_response(
     _scotland_bounds_check(lat, lng)
     square = snap_to_w3w_grid(lat, lng)
     service = ValuationService(config=config if config is not None else load_config())
-    breakdown = service.assess_square(square, scenario=scenario)
+    try:
+        breakdown = service.assess_square(square, scenario=scenario)
+    except NotLand:
+        what3words = words_hint
+        if what3words is None:
+            what3words = try_coordinates_to_words(square.lat, square.lng)
+        return {
+            "reason": "not_land",
+            "square": {
+                "lat": square.lat,
+                "lng": square.lng,
+                "area_sqm": square.area_sqm,
+                "grid": "what3words_3m",
+                "bounds": {
+                    "south": square.south,
+                    "west": square.west,
+                    "north": square.north,
+                    "east": square.east,
+                },
+                "polygon": square.geojson_polygon,
+            },
+            "what3words": what3words,
+            "w3w_configured": w3w_is_configured(),
+            "agr": None,
+        }
 
     # Prefer caller-supplied words; otherwise reverse-geocode snapped cell if key present
     what3words = words_hint
@@ -583,6 +608,10 @@ def assessment_report(
             config=config,
             include_sales=include_sales_context,
         )
+    except NotLand:
+        if format.lower() in ("md", "markdown", "text"):
+            return PlainTextResponse("No land here\n", media_type="text/markdown; charset=utf-8")
+        return {"reason": "not_land"}
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

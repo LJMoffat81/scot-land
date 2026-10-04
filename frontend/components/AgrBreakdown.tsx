@@ -58,6 +58,9 @@ export type AgrResult = {
   roll_annual_rent_notional_plot_gbp?: number;
   roll_annual_rent_parcel_gbp?: number | null;
   notional_plot_sqm?: number;
+  wide_range?: boolean;
+  wide_range_ratio?: number | null;
+  basis?: "town" | "countryside" | string;
   pickard_factor?: number;
   pickard_label?: string;
   sensitivity_overrides?: Record<string, number>;
@@ -257,6 +260,8 @@ export default function AgrBreakdown({
   const [outlineOpen, setOutlineOpen] = useState(false);
 
   const hasParcel = parcelAreaSqm != null && parcelAreaSqm > 0;
+  const largeParcel = hasParcel && (parcelAreaSqm as number) > 1400;
+  const countryside = agr.basis === "countryside" || agr.method === "productive_land_use";
   const versionLine = engineVersionLine(agr.stamp);
 
   return (
@@ -271,18 +276,36 @@ export default function AgrBreakdown({
         <span className="agr-unit">/year</span>
       </div>
 
+      <p className="result-links">
+        <a href="/methodology#how-sure">How sure is this?</a>
+      </p>
+      {!largeParcel ? (
+        <p className="headline-caption">
+          {countryside
+            ? "Countryside: one hectare of farmland"
+            : "Town: one home plot"}
+        </p>
+      ) : null}
+      {agr.wide_range ? (
+        <p className="headline-caption">
+          Homes here sell for close to what they&apos;d cost to rebuild, so the land figure is less certain than most.
+        </p>
+      ) : null}
+
       <p className="headline-caption">
-        {hasParcel
-          ? `This piece of land, ${Math.round(parcelAreaSqm as number).toLocaleString("en-GB")} m\u00b2.`
-          : agr.method === "productive_land_use"
-            ? "One hectare of farmland in this council."
-            : headlineIsPlot
-              ? `A typical home plot in this council${
-                  agr.notional_plot_sqm
-                    ? ` (about ${Math.round(agr.notional_plot_sqm).toLocaleString("en-GB")} m\u00b2)`
-                    : ""
-                }.`
-              : `This ${areaSqm} m\u00b2 square.`}
+        {largeParcel
+          ? `This parcel, ${Math.round(parcelAreaSqm as number).toLocaleString("en-GB")} m\u00b2, not a home plot.`
+          : hasParcel
+            ? `This piece of land, ${Math.round(parcelAreaSqm as number).toLocaleString("en-GB")} m\u00b2.`
+            : agr.method === "productive_land_use"
+              ? "One hectare of farmland in this council."
+              : headlineIsPlot
+                ? `A typical home plot in this council${
+                    agr.notional_plot_sqm
+                      ? ` (about ${Math.round(agr.notional_plot_sqm).toLocaleString("en-GB")} m\u00b2)`
+                      : ""
+                  }.`
+                : `This ${areaSqm} m\u00b2 square.`}
         {" "}
         Land only, not the building. Research estimate, not a rates bill.
         The rate is this council&apos;s, so two parcels of the same size here have the same rent.

@@ -7,6 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from spatial.polygons import lookup_council_boundary
+from spatial.urban_rural import is_rural_point
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 COUNCILS_PATH = REPO_ROOT / "data" / "processed" / "councils.json"
@@ -61,7 +62,7 @@ def _from_boundary(lat: float, lng: float, boundary_match) -> CouncilArea | None
         name=council["name"],
         average_price_gbp=council["average_price_gbp"],
         annual_change_pct=council.get("annual_change_pct"),
-        rural=council["rural"],
+        rural=is_rural_point(lat, lng),
         distance_km=0.0,
         lookup_method="boundary",
     )
@@ -87,7 +88,7 @@ def _from_centroid(lat: float, lng: float) -> CouncilArea:
         name=best["name"],
         average_price_gbp=best["average_price_gbp"],
         annual_change_pct=best.get("annual_change_pct"),
-        rural=best["rural"],
+        rural=is_rural_point(lat, lng),
         distance_km=round(best_distance, 2),
         lookup_method="centroid_fallback",
     )

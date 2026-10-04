@@ -160,12 +160,12 @@ def build_council_metrics_geojson(scenario: str = "full_agr") -> dict[str, Any]:
         except Exception:
             continue
 
+        code = str(raw_code or "")
         try:
-            breakdown = service.assess_point(clat, clng, scenario=scenario)
+            # Urban home plot for the council, not the class at this centroid.
+            breakdown = service.assess_council_layer(code, clat, clng, scenario)
         except Exception:
             continue
-
-        code = breakdown.council_code or raw_code
         price = breakdown.average_price_gbp or breakdown.market_value_gbp
         plot = breakdown.roll_annual_rent_notional_plot_gbp
         agr_pct = None

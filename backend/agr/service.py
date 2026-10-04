@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from typing import Any
 
+from agr.areas import CouncilArea, _councils_by_code
 from agr.config import load_config
 from agr.engine import AgrBreakdown, calculate_square_agr
 from agr.overrides import merge_config_overrides
@@ -91,6 +92,30 @@ class ValuationService:
         scenario: str | None = "full_agr",
     ) -> AgrBreakdown:
         breakdown = calculate_square_agr(square, scenario=scenario, config=self.config)
+        return _apply_policy_after_valuation(breakdown)
+
+    def assess_council_layer(
+        self,
+        code: str,
+        lat: float,
+        lng: float,
+        scenario: str | None = "full_agr",
+    ) -> AgrBreakdown:
+        """Council choropleth: urban home plot, never the centroid's rural rule."""
+        raw = _councils_by_code()[code]
+        council = CouncilArea(
+            code=raw["code"],
+            name=raw["name"],
+            average_price_gbp=int(raw["average_price_gbp"]),
+            annual_change_pct=raw.get("annual_change_pct"),
+            rural=False,
+            distance_km=0.0,
+            lookup_method="council_layer",
+        )
+        square = snap_to_w3w_grid(lat, lng)
+        breakdown = calculate_square_agr(
+            square, scenario=scenario, config=self.config, council=council
+        )
         return _apply_policy_after_valuation(breakdown)
 
     def sales_context(self, lat: float, lng: float, *, limit: int = 10) -> dict[str, Any]:

@@ -42,7 +42,8 @@ type SquareResponse = {
     polygon: GeoJSON.Polygon;
     grid?: string;
   };
-  agr: AgrResult;
+  reason?: string;
+  agr: AgrResult | null;
   what3words?: string | null;
   w3w_configured?: boolean;
   sales_context?: import("./AgrBreakdown").SalesContext | null;
@@ -367,7 +368,9 @@ export default function ScotlandMap() {
 
   const applyResult = useCallback((payload: SquareResponse) => {
     setResult(payload);
-    setScenario(payload.agr.active_scenario);
+    if (payload.agr?.active_scenario) {
+      setScenario(payload.agr.active_scenario);
+    }
     // One shot per new result. Do not tie this to later renders, or Show legend cannot reopen it.
     if (window.matchMedia("(max-width: 640px)").matches) {
       setLegendOpen(false);
@@ -384,8 +387,8 @@ export default function ScotlandMap() {
       const labelAt = payload.parcel?.geometry
         ? polygonLabelPoint(payload.parcel.geometry)
         : null;
-      const area = payload.agr.parcel_area_sqm;
-      const yearly = parcelYearlyRent(payload);
+      const area = payload.agr?.parcel_area_sqm;
+      const yearly = payload.agr ? parcelYearlyRent(payload) : null;
       if (labelAt && area != null && yearly != null) {
         const el = document.createElement("div");
         el.className = "parcel-map-label";
@@ -1775,7 +1778,10 @@ export default function ScotlandMap() {
               ×
             </button>
             {error && <p className="error-line">{error}</p>}
-            {result && (
+            {result?.reason === "not_land" && (
+              <p className="headline-caption">No land here</p>
+            )}
+            {result?.agr && (
               <AgrBreakdown
                 agr={result.agr}
                 areaSqm={result.square.area_sqm}
@@ -1834,6 +1840,7 @@ function formatLegendStop(value: number, id: MetricId): string {
 }
 
 function parcelYearlyRent(payload: SquareResponse): number | null {
+  if (!payload.agr) return null;
   const area = payload.agr.parcel_area_sqm;
   if (area == null || area <= 0 || !payload.parcel?.geometry) return null;
   const gross = payload.fiscal?.gross_plot_gbp;

@@ -87,13 +87,11 @@ def build_processed_data() -> dict:
         idx_csv, hpi_cfg["scotland_region_code"], period
     )
 
-    rural_codes = set(council_cfg["rural_codes"])
-    threshold = council_cfg["rural_price_threshold_gbp"]
+    rural_codes = set(council_cfg.get("rural_codes") or [])
     for council in councils:
-        council["rural"] = (
-            council["code"] in rural_codes
-            or council["average_price_gbp"] < threshold
-        )
+        # Method is chosen per point. The old list is context only.
+        council["rural_context"] = council["code"] in rural_codes
+        council["rural"] = False
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),

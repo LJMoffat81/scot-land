@@ -802,13 +802,6 @@ button.primary:disabled {
   line-height: 1.35;
 }
 
-.engine-stamp {
-  margin: 0.65rem 0 0;
-  font-size: 0.78rem;
-  line-height: 1.35;
-  color: var(--slrg-muted);
-}
-
 .scenario-pills {
   display: flex;
   flex-wrap: wrap;

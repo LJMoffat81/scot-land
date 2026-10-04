@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { engineVersionLine, type EngineStamp } from "../lib/api";
 
 export type ScenarioId =
   | "full_agr"
@@ -61,7 +60,6 @@ export type AgrResult = {
   pickard_factor?: number;
   pickard_label?: string;
   sensitivity_overrides?: Record<string, number>;
-  stamp?: EngineStamp | null;
 };
 
 export type SalesContext = {
@@ -207,7 +205,6 @@ export default function AgrBreakdown({
   const [shared, setShared] = useState(false);
 
   const hasParcel = parcelAreaSqm != null && parcelAreaSqm > 0;
-  const versionLine = engineVersionLine(agr.stamp);
 
   return (
     <div className="clarity-result">
@@ -237,10 +234,6 @@ export default function AgrBreakdown({
         Land only, not the building. Research estimate, not a rates bill.
         The rate is this council&apos;s, so two parcels of the same size here have the same rent.
       </p>
-      <p className="meta" style={{ margin: 0 }}>
-        Research estimate. Figures are in development and may change as the engine improves.
-      </p>
-      {versionLine ? <p className="engine-stamp">{versionLine}</p> : null}
 
       {w3wParts.length === 3 && (
         <div className="w3w-hero-row">

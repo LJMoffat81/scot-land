@@ -22,7 +22,7 @@ import {
   pingApi,
   visitorFacingError,
 } from "../lib/api";
-import { CONTEXT_GROUPS, CONTEXT_LAYERS } from "../lib/contextLayers";
+import { CONTEXT_LAYERS } from "../lib/contextLayers";
 
 type ParcelFeature = GeoJSON.Feature<
   GeoJSON.Polygon | GeoJSON.MultiPolygon,
@@ -402,7 +402,6 @@ export default function ScotlandMap() {
   const [showCellGrid] = useState(false);
   const [showVdl, setShowVdl] = useState(false);
   const [showPublicLand, setShowPublicLand] = useState(false);
-  const [showMethod, setShowMethod] = useState(false);
   const [contextOn, setContextOn] = useState<Record<string, boolean>>({});
   const [urbanRuralName, setUrbanRuralName] = useState<string | null>(null);
   const [contextNote, setContextNote] = useState<string | null>(null);
@@ -1619,17 +1618,6 @@ export default function ScotlandMap() {
     };
   }, [contextOn, result]);
 
-  useEffect(() => {
-    if (!mapReady) return;
-    const map = mapRef.current;
-    if (!map?.getLayer("council-method")) return;
-    map.setLayoutProperty(
-      "council-method",
-      "visibility",
-      showMethod && choropleth !== "off" && !streetScale ? "visible" : "none",
-    );
-  }, [mapReady, showMethod, choropleth, streetScale]);
-
   const legendMetric =
     choropleth === "off"
       ? null
@@ -1870,24 +1858,7 @@ export default function ScotlandMap() {
       <aside className="hud-card hud-tools">
         <div className="layer-panel">
               <p className="hud-tools-title">Map layers</p>
-              <label className="layer-select-label">Basemap</label>
-              <div className="layer-chips">
-                <button
-                  type="button"
-                  className={mapStyle === "streets" ? "chip active" : "chip"}
-                  onClick={() => setMapStyle("streets")}
-                >
-                  Streets
-                </button>
-                <button
-                  type="button"
-                  className={mapStyle === "satellite" ? "chip active" : "chip"}
-                  onClick={() => setMapStyle("satellite")}
-                >
-                  Satellite
-                </button>
-              </div>
-              <label className="layer-select-label">Colour</label>
+              <label className="layer-select-label">The charge</label>
               <div className="layer-chips story-chips">
                 {STORIES.map((s) => (
                   <button
@@ -1901,8 +1872,9 @@ export default function ScotlandMap() {
                   </button>
                 ))}
               </div>
-
-              <label className="layer-select-label">Filter</label>
+              <p className="layer-meta">
+                Filters the charge colour. Low is under £1,500 a year. High is £4,500 or more.
+              </p>
               <div className="layer-chips">
                 {(["low", "mid", "high"] as RentBand[]).map((id) => (
                   <button
@@ -1910,14 +1882,14 @@ export default function ScotlandMap() {
                     type="button"
                     className={band === id ? "chip active" : "chip"}
                     onClick={() => setBand((cur) => (cur === id ? null : id))}
-                    title="Low is under £1,500 a year. High is £4,500 or more."
+                    title="Filters the charge colour."
                   >
                     {id} rent
                   </button>
                 ))}
               </div>
               {band && (
-                <p className="layer-meta">Showing {band} rent councils.</p>
+                <p className="layer-meta">Showing the {band} band of this charge.</p>
               )}
               {metricNote && choropleth !== "off" && (
                 <p className="layer-meta">
@@ -1925,6 +1897,7 @@ export default function ScotlandMap() {
                 </p>
               )}
 
+              <label className="layer-select-label">The piece of land</label>
               <div className="layer-chips">
                 <button
                   type="button"
@@ -1933,64 +1906,99 @@ export default function ScotlandMap() {
                     boundariesTouched.current = true;
                     setShowBoundaries((v) => !v);
                   }}
-                  title="Outlines of neighbouring pieces of land. Zoom in."
+                  title="Register outlines of neighbouring pieces of land. Zoom in."
                 >
-                  Boundaries
+                  Register outlines
                 </button>
-                <button
-                  type="button"
-                  className={showMethod ? "chip active" : "chip"}
-                  onClick={() => setShowMethod((v) => !v)}
-                  title="Outline councils valued as farmland."
-                >
-                  Farmland councils
-                </button>
+                {CONTEXT_LAYERS.filter((layer) => layer.id === "urban-rural").map((layer) => (
+                  <button
+                    key={layer.id}
+                    type="button"
+                    className={contextOn[layer.id] ? "chip active" : "chip"}
+                    title={layer.title}
+                    onClick={() =>
+                      setContextOn((cur) => ({ ...cur, [layer.id]: !cur[layer.id] }))
+                    }
+                  >
+                    Town or countryside
+                  </button>
+                ))}
               </div>
-              {CONTEXT_GROUPS.map((group) => (
-                <div key={group}>
-                  <label className="layer-select-label">{group}</label>
-                  <div className="layer-chips">
-                    {CONTEXT_LAYERS.filter((layer) => layer.group === group).map(
-                      (layer) => (
-                        <button
-                          key={layer.id}
-                          type="button"
-                          className={contextOn[layer.id] ? "chip active" : "chip"}
-                          title={layer.title}
-                          onClick={() =>
-                            setContextOn((cur) => ({
-                              ...cur,
-                              [layer.id]: !cur[layer.id],
-                            }))
-                          }
-                        >
-                          {layer.label}
-                        </button>
-                      ),
-                    )}
-                    {group === "Use" && (
-                      <>
-                        <button
-                          type="button"
-                          className={showVdl ? "chip active" : "chip"}
-                          title="Surveyed vacant and derelict land. A use, not a rent."
-                          onClick={() => setShowVdl((on) => !on)}
-                        >
-                          Vacant and derelict
-                        </button>
-                        <button
-                          type="button"
-                          className={showPublicLand ? "chip active" : "chip"}
-                          title="Five public and Crown holdings. Not a title and not a unique rent."
-                          onClick={() => setShowPublicLand((on) => !on)}
-                        >
-                          Public and Crown
-                        </button>
-                      </>
-                    )}
-                  </div>
+
+              <details className="layer-fold">
+                <summary>Around the land</summary>
+                <p className="layer-meta">Context, not the charge.</p>
+                <div className="layer-chips">
+                  {["settlements", "woodland"].map((id) => {
+                    const layer = CONTEXT_LAYERS.find((item) => item.id === id);
+                    if (!layer) return null;
+                    return (
+                      <button
+                        key={layer.id}
+                        type="button"
+                        className={contextOn[layer.id] ? "chip active" : "chip"}
+                        title={layer.title}
+                        onClick={() =>
+                          setContextOn((cur) => ({ ...cur, [layer.id]: !cur[layer.id] }))
+                        }
+                      >
+                        {layer.label}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    className={showVdl ? "chip active" : "chip"}
+                    title="Surveyed vacant and derelict land. Context, not the charge."
+                    onClick={() => setShowVdl((on) => !on)}
+                  >
+                    Vacant and derelict
+                  </button>
+                  <button
+                    type="button"
+                    className={showPublicLand ? "chip active" : "chip"}
+                    title="Five public and Crown holdings. Context, not the charge."
+                    onClick={() => setShowPublicLand((on) => !on)}
+                  >
+                    Public and Crown
+                  </button>
+                  {CONTEXT_LAYERS.filter((layer) => layer.id === "flood").map((layer) => (
+                    <button
+                      key={layer.id}
+                      type="button"
+                      className={contextOn[layer.id] ? "chip active" : "chip"}
+                      title={layer.title}
+                      onClick={() =>
+                        setContextOn((cur) => ({ ...cur, [layer.id]: !cur[layer.id] }))
+                      }
+                    >
+                      Flood
+                    </button>
+                  ))}
                 </div>
-              ))}
+              </details>
+
+              <details className="layer-fold">
+                <summary>Sea and energy</summary>
+                <p className="layer-meta">Context, not the charge.</p>
+                <div className="layer-chips">
+                  {CONTEXT_LAYERS.filter(
+                    (layer) => layer.group === "Sea" || layer.group === "Energy",
+                  ).map((layer) => (
+                    <button
+                      key={layer.id}
+                      type="button"
+                      className={contextOn[layer.id] ? "chip active" : "chip"}
+                      title={layer.title}
+                      onClick={() =>
+                        setContextOn((cur) => ({ ...cur, [layer.id]: !cur[layer.id] }))
+                      }
+                    >
+                      {layer.label}
+                    </button>
+                  ))}
+                </div>
+              </details>
               {CONTEXT_LAYERS.filter((layer) => contextOn[layer.id]).map((layer) => (
                 <p key={layer.id} className="layer-meta">
                   {layer.attribution}

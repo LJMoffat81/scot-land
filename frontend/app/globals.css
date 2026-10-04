@@ -739,9 +739,26 @@ input {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--slrg-muted);
-  margin-bottom: 0.3rem;
+  margin: 0.9rem 0 0.3rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+}
+
+.layer-fold {
+  margin-top: 0.9rem;
+}
+
+.layer-fold summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--slrg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.layer-fold .layer-chips {
+  margin-top: 0.35rem;
 }
 
 .layer-select {
@@ -1188,6 +1205,11 @@ button.linkish:disabled {
     width: 100%;
     max-height: 38vh;
     border-radius: 18px 18px 0 0;
+  }
+
+  .hud-tools .layer-select-label,
+  .hud-tools .layer-fold {
+    margin-top: 0.45rem;
   }
 
   .hud-place {

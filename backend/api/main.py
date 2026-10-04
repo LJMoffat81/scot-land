@@ -20,6 +20,7 @@ from fastapi.responses import PlainTextResponse
 
 from agr.engine import breakdown_to_dict
 from agr.config import load_config
+from agr.layers import engine_stamp
 from agr.fiscal import fiscal_summary, place_fiscal
 from agr.overrides import merge_config_overrides
 from agr.batch import assess_points, batch_meta
@@ -174,6 +175,7 @@ def _square_response(
         config=cfg,
     )
     payload["fiscal_summary"] = fiscal_summary(active, cfg)
+    payload["agr"]["stamp"] = engine_stamp(cfg)
 
     return payload
 
@@ -200,6 +202,7 @@ def health() -> dict:
         "sales_pipeline": "comps_crosscheck",
         "data_policy": "no_portal_scraping",
         "assessment_reports": True,
+        "stamp": engine_stamp(config),
     }
 
 
@@ -260,7 +263,10 @@ def layer_councils_agr(
         geo = build_councils_agr_geojson(scenario)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return JSONResponse(geo)
+    # Copy so the cached layer is not given a stamp it did not have.
+    body = dict(geo)
+    body["stamp"] = engine_stamp(load_config())
+    return JSONResponse(body)
 
 
 @app.get("/layers/councils")
@@ -575,6 +581,9 @@ def assessment_report(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    # On the breakdown dict, not in the markdown, and not inside valuation.py.
+    report["assessment"]["stamp"] = engine_stamp(config)
 
     if format.lower() in ("md", "markdown", "text"):
         return PlainTextResponse(

@@ -1,5 +1,9 @@
 FROM python:3.12-slim
 
+# Railway passes the git sha as this build arg. Empty or "unknown" is unset.
+ARG RAILWAY_GIT_COMMIT_SHA=unknown
+ENV GIT_COMMIT=$RAILWAY_GIT_COMMIT_SHA
+
 WORKDIR /app
 
 COPY backend/requirements.txt /app/backend/requirements.txt

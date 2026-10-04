@@ -174,3 +174,4 @@ Append only. Do not rewrite an earlier entry. The public pounds are unchanged. T
 4 October 2026 — Stamp on /fiscal/summary and /layers/w3w-grid. No figure changed.
 4 October 2026 — layers.yaml stamp hash uses LF line endings. No figure changed.
 4 October 2026 — CSV exports cache for five minutes and links carry the live commit. No figure changed.
+4 October 2026 — CSV cache test uses its own app and leaves the core app unchanged. No figure changed.

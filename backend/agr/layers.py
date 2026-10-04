@@ -20,6 +20,7 @@ import yaml
 
 from agr.areas import COUNCILS_PATH
 from agr.config import CONFIG_PATH, load_config
+from agr.scenarios import load_policy
 
 ENGINE_VERSION = "1.0.0"
 LAYERS_PATH = CONFIG_PATH.parent / "layers.yaml"
@@ -262,10 +263,13 @@ def _valuation_date_fields(config: dict) -> dict:
     }
 
 
-def engine_stamp(config: dict) -> dict:
+def engine_stamp(config: dict, policy: dict | None = None) -> dict:
     """Identity of the engine that produced a response. Figures are not in here."""
     spec = load_layers(config)
     valuation_inputs, policy_inputs = split_config(config)
+    policy_inputs = copy.deepcopy(policy_inputs)
+    policy_document = policy if policy is not None else load_policy()
+    policy_inputs["policy_yaml"] = copy.deepcopy(policy_document)
     councils = json.loads(COUNCILS_PATH.read_text(encoding="utf-8"))
     overrides = config.get("_sensitivity_overrides") or {}
     valuation_stamp = {

@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 
-from agr.config import load_config
+import yaml
+
+from agr.config import CONFIG_PATH, load_config
 from agr.fiscal import basket_total_gbp
+
+POLICY_PATH = CONFIG_PATH.parent / "policy.yaml"
 
 VALID_SCENARIOS = (
     "full_agr",
@@ -125,9 +131,89 @@ def scenario_to_dict(charge: ScenarioCharge) -> dict:
     }
 
 
+@lru_cache(maxsize=1)
+def load_policy() -> dict:
+    """Charge settings. Cached; callers must not mutate the returned dict."""
+    if not POLICY_PATH.exists():
+        raise ValueError(f"Missing {POLICY_PATH.name}")
+    with POLICY_PATH.open(encoding="utf-8") as handle:
+        document = yaml.safe_load(handle)
+    if not isinstance(document, dict) or not isinstance(document.get("scenarios"), dict):
+        raise ValueError("policy.yaml is missing scenarios")
+    return document
+
+
+def policy_spec(scenario_id: str) -> dict | None:
+    spec = (load_policy().get("scenarios") or {}).get(scenario_id)
+    if isinstance(spec, dict):
+        return spec
+    return None
+
+
+def is_placeholder(scenario_id: str) -> bool:
+    spec = policy_spec(scenario_id)
+    if spec is None:
+        return False
+    if spec.get("status") == "placeholder":
+        return True
+    return spec.get("tau") is None and spec.get("reliefs") is None and spec.get("phasing") is None
+
+
+def _relief_total(reliefs: list) -> float:
+    if not isinstance(reliefs, list):
+        raise ValueError("scenario not set")
+    total = 0.0
+    for item in reliefs:
+        if isinstance(item, bool) or not isinstance(item, (int, float)):
+            raise ValueError("scenario not set")
+        total += float(item)
+    return total
+
+
+def _phasing_share(phasing: list) -> float:
+    """Share in force for the published charge. That is the year-1 share."""
+    if not isinstance(phasing, list) or not phasing:
+        raise ValueError("scenario not set")
+    earliest = None
+    for phase in phasing:
+        if not isinstance(phase, dict):
+            raise ValueError("scenario not set")
+        year = phase.get("year")
+        share = phase.get("share")
+        if year is None or share is None:
+            raise ValueError("scenario not set")
+        if int(year) == 1:
+            return float(share)
+        if earliest is None or int(year) < earliest[0]:
+            earliest = (int(year), float(share))
+    if earliest is None:
+        raise ValueError("scenario not set")
+    return earliest[1]
+
+
+def charge_after_policy(rent_gbp: float, spec: dict) -> float:
+    """charge = tau x phasing share x (rent - reliefs), after valuation."""
+    if spec.get("status") == "placeholder":
+        raise ValueError("scenario not set")
+    tau = spec.get("tau")
+    reliefs = spec.get("reliefs")
+    phasing = spec.get("phasing")
+    if tau is None or reliefs is None or phasing is None:
+        raise ValueError("scenario not set")
+    tau_value = float(tau)
+    relief_total = _relief_total(reliefs)
+    share = _phasing_share(phasing)
+    # tau 1, no relief and a full first-year share is today's charge, to the penny.
+    if tau_value == 1.0 and share == 1.0 and relief_total == 0.0:
+        return float(rent_gbp)
+    return round(tau_value * share * (float(rent_gbp) - relief_total), 2)
+
+
 def resolve_active_scenario(scenario: str | None) -> str:
     if scenario is None:
         return "full_agr"
+    if is_placeholder(scenario):
+        raise ValueError("scenario not set")
     if scenario not in VALID_SCENARIOS:
         raise ValueError(
             f"Unknown scenario '{scenario}'. Choose: {', '.join(VALID_SCENARIOS)}"

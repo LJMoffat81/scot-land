@@ -12,9 +12,25 @@ from typing import Any
 from agr.config import load_config
 from agr.engine import AgrBreakdown, calculate_square_agr
 from agr.overrides import merge_config_overrides
+from agr.scenarios import charge_after_policy, policy_spec
 from agr.sales_comps import build_sales_comp_report
 from datasources.sales_store import SalesStore
 from spatial.grid import GridSquare, snap_to_w3w_grid
+
+
+def _apply_policy_after_valuation(breakdown: AgrBreakdown) -> AgrBreakdown:
+    """Policy sits on top of the valuation rent. It does not rewrite the valuation."""
+    spec = policy_spec(breakdown.active_scenario)
+    if spec is None:
+        return breakdown
+    charge = charge_after_policy(breakdown.economic_annual_rent_gbp, spec)
+    if charge == breakdown.annual_ground_rent_gbp:
+        return breakdown
+    breakdown.annual_ground_rent_gbp = charge
+    current = breakdown.scenarios.get(breakdown.active_scenario)
+    if isinstance(current, dict):
+        current["annual_charge_gbp"] = charge
+    return breakdown
 
 
 class ValuationService:
@@ -74,7 +90,8 @@ class ValuationService:
         *,
         scenario: str | None = "full_agr",
     ) -> AgrBreakdown:
-        return calculate_square_agr(square, scenario=scenario, config=self.config)
+        breakdown = calculate_square_agr(square, scenario=scenario, config=self.config)
+        return _apply_policy_after_valuation(breakdown)
 
     def sales_context(self, lat: float, lng: float, *, limit: int = 10) -> dict[str, Any]:
         """Nearby sales + extraction residual cross-check."""

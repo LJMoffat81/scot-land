@@ -1,0 +1,24 @@
+# Named charge settings. Laurie chooses the values. full_agr is today's charge.
+schema_version: 1
+scenarios:
+  full_agr:
+    tau: 1.0
+    reliefs: []
+    phasing:
+      - year: 1
+        share: 1.0
+  reliefs:
+    status: placeholder
+    tau: null
+    reliefs: null
+    phasing: null
+  deferral:
+    status: placeholder
+    tau: null
+    reliefs: null
+    phasing: null
+  phasing:
+    status: placeholder
+    tau: null
+    reliefs: null
+    phasing: null

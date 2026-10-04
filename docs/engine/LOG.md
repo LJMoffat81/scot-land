@@ -178,3 +178,4 @@ Append only. Do not rewrite an earlier entry. The public pounds are unchanged. T
 4 October 2026 — Town market value is each council's 2023 median sale price indexed to 1 April 2025. Countryside farmland rents are unchanged.
 4 October 2026 — Markdown, GeoJSON, data and config files are pinned to LF line endings. No figure changed.
 4 October 2026 — Land Register outline status comes from the live parcel lookup. No figure changed.
+4 October 2026 — Policy scenarios record the charge rate, reliefs and phasing. full_agr still charges the whole rent. No figure changed.

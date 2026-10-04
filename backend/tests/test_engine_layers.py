@@ -37,7 +37,7 @@ FROZEN_SHA256 = {
     "data/processed/councils.json": "c7c0ec041696981dc238e136d2fcc2600dda449c0a8a46a5dd5cb756aab4ba16",
     "backend/agr/valuation.py": "6da672ffece81960fd10be81c130ee965febae036fefc51ff2df18682bd8144a",
     "backend/agr/engine.py": "238a2d855d39eeb7a281b1b454748b8e0f6f083c8a2b0204774e4ddd4f2827a3",
-    "backend/agr/scenarios.py": "0f125e9c550cb30941c3370aff18fec243c0ba47dc46e7b19203da67a9d1ebff",
+    "backend/agr/scenarios.py": "0bba06175f37776b760f00f2fc502e97ecc2f3301f6667e37cfc8066bd5aeb2a",
 }
 
 READ_SECTIONS = {

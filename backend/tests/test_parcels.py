@@ -1,5 +1,6 @@
 from spatial.parcels import (
     TRANSPARENT_PNG,
+    _point_for_label,
     fetch_parcel_tile_png,
     tile_bounds_3857,
     tile_intersects_scotland,
@@ -20,6 +21,23 @@ def test_edinburgh_tile_in_scotland():
     assert tile_intersects_scotland(10, 490, 320) or tile_intersects_scotland(8, 120, 75)
     # Far ocean should not
     assert not tile_intersects_scotland(5, 0, 0)
+
+
+def test_a_title_point_is_kept_only_when_the_label_matches():
+    payload = {
+        "features": [
+            {
+                "properties": {
+                    "nationalcadastralreference": "SCT0007431917",
+                    "point_geom": {"type": "Point", "coordinates": [-4.243037, 55.858366]},
+                }
+            }
+        ]
+    }
+    point = _point_for_label(payload, "SCT0007431917")
+    assert point == {"lat": 55.858366, "lng": -4.243037, "label": "SCT0007431917"}
+    assert _point_for_label(payload, "SCT0000000001") is None
+    assert _point_for_label({"features": []}, "SCT0007431917") is None
 
 
 def test_low_zoom_returns_transparent():

@@ -125,6 +125,56 @@ def lookup_parcel(lat: float, lng: float) -> CadastralParcel | None:
     return _parcel_from_feature(packed[0])
 
 
+def _point_for_label(payload: dict, label: str) -> dict | None:
+    """One parcel point, and only when the title label is the one asked for."""
+    features = payload.get("features") or []
+    if len(features) != 1 or not isinstance(features[0], dict):
+        return None
+    feature = features[0]
+    props = feature.get("properties") or {}
+    found = str(props.get("nationalcadastralreference") or props.get("label") or "")
+    if found.upper() != label.upper():
+        return None
+    point = props.get("point_geom") if isinstance(props.get("point_geom"), dict) else {}
+    coords = point.get("coordinates") if isinstance(point, dict) else None
+    geometry = feature.get("geometry") if isinstance(feature.get("geometry"), dict) else {}
+    if not coords and geometry.get("type") == "Point":
+        coords = geometry.get("coordinates")
+    if isinstance(coords, (list, tuple)) and len(coords) >= 2:
+        lng, lat = float(coords[0]), float(coords[1])
+        return {"lat": round(lat, 6), "lng": round(lng, 6), "label": label}
+    if geometry.get("type") in ("Polygon", "MultiPolygon"):
+        centre = shape(geometry).centroid
+        return {"lat": round(float(centre.y), 6), "lng": round(float(centre.x), 6), "label": label}
+    return None
+
+
+def lookup_parcel_by_title(label: str) -> dict | None:
+    """Ask the published parcel service for one title label.
+
+    The view service rejects a feature filter, so this returns nothing rather
+    than scanning Scotland. A matching feature is accepted only when its own
+    title label is the one requested.
+    """
+    cfg = _parcel_cfg()
+    params = {
+        "service": "WFS",
+        "version": "2.0.0",
+        "request": "GetFeature",
+        "typeNames": cfg["wms_layer"],
+        "count": "1",
+        "outputFormat": "application/json",
+        "CQL_FILTER": f"nationalcadastralreference='{label}'",
+    }
+    try:
+        response = _http().get(cfg["wms_url"], params=params)
+        if response.status_code != 200:
+            return None
+        return _point_for_label(response.json(), label)
+    except (httpx.HTTPError, ValueError, TypeError, KeyError):
+        return None
+
+
 def lookup_parcel_geojson(lat: float, lng: float) -> dict | None:
     """Single-parcel GeoJSON Feature for map highlight."""
     parcel = lookup_parcel(lat, lng)

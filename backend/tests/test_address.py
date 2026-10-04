@@ -107,3 +107,90 @@ def test_the_search_uses_the_street_and_not_a_structured_postcode():
 def test_a_word_is_not_a_door_number():
     with pytest.raises(ValueError):
         search_door("G1 1BL", "Glasgow", rows=[])
+
+
+def test_a_postcode_stays_a_postcode_and_a_title_is_padded():
+    from spatial.address import normalise_title, search_place
+
+    assert search_place("g1 1bl") == {"kind": "postcode", "postcode": "G1 1BL"}
+    assert search_place("KW1 4AA")["postcode"] == "KW1 4AA"
+    assert normalise_title("sct 7431917") == "SCT0007431917"
+    assert normalise_title("SCT0007431917") == "SCT0007431917"
+    assert normalise_title("G1 1BL") is None
+
+
+def test_a_title_miss_has_no_point_when_the_service_cannot_filter(monkeypatch):
+    from spatial.address import TITLE_MISS, search_place
+    import spatial.parcels as parcels
+
+    monkeypatch.setattr(parcels, "lookup_parcel_by_title", lambda label: None)
+    result = search_place("SCT7431917")
+
+    assert result["kind"] == "title_miss"
+    assert result["label"] == "SCT0007431917"
+    assert result["note"] == TITLE_MISS
+    assert "lat" not in result
+    assert "rent" not in result
+
+
+def test_one_scottish_place_is_a_point_and_england_is_dropped():
+    from spatial.address import search_place
+
+    rows = [
+        {
+            "lat": "55.9533456",
+            "lon": "-3.1883749",
+            "display_name": "City of Edinburgh, Alba / Scotland, United Kingdom",
+            "address": {"state": "Alba / Scotland", "ISO3166-2-lvl4": "GB-SCT"},
+        },
+        {
+            "lat": "51.5074",
+            "lon": "-0.1278",
+            "display_name": "London, England, United Kingdom",
+            "address": {"state": "England", "ISO3166-2-lvl4": "GB-ENG"},
+        },
+    ]
+    result = search_place("Edinburgh", rows=rows)
+
+    assert result["kind"] == "point"
+    assert result["label"] == "City of Edinburgh, Alba / Scotland"
+    assert result["lat"] == 55.953346
+    assert "rent" not in result
+
+    plain = search_place(
+        "Edinburgh",
+        rows=[
+            {
+                "lat": "55.9533",
+                "lon": "-3.1883",
+                "display_name": "Edinburgh, Scotland, United Kingdom",
+                "address": {"state": "Scotland"},
+            }
+        ],
+    )
+    assert plain["kind"] == "point"
+    assert plain["label"] == "Edinburgh, Scotland"
+
+
+def test_several_places_stay_a_list():
+    from spatial.address import search_place
+
+    rows = [
+        {
+            "lat": "55.8601",
+            "lon": "-4.2502",
+            "display_name": "Buchanan Street, Glasgow, Scotland, United Kingdom",
+            "address": {"state": "Scotland"},
+        },
+        {
+            "lat": "55.8612",
+            "lon": "-4.2431",
+            "display_name": "George Street, Glasgow, Scotland, United Kingdom",
+            "address": {"state": "Scotland"},
+        },
+    ]
+    result = search_place("Glasgow street", rows=rows)
+
+    assert result["kind"] == "places"
+    assert len(result["matches"]) == 2
+    assert result["matches"][0]["label"].startswith("Buchanan Street")

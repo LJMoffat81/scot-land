@@ -146,7 +146,7 @@ type Props = {
   agr: AgrResult;
   areaSqm: number;
   postcode?: string;
-  doorLabel?: string | null;
+  placeLabel?: string | null;
   lat: number;
   lng: number;
   what3words?: string | null;
@@ -168,7 +168,7 @@ export default function AgrBreakdown({
   agr,
   areaSqm,
   postcode,
-  doorLabel,
+  placeLabel,
   lat,
   lng,
   what3words,
@@ -198,7 +198,7 @@ export default function AgrBreakdown({
           : active.annual_charge_gbp;
   const headlineIsPlot = plotFull != null && plotFull > 0;
 
-  const place = [doorLabel, postcode, agr.council_name].filter(Boolean).join(" \u00b7 ");
+  const place = [placeLabel, postcode, agr.council_name].filter(Boolean).join(" \u00b7 ");
   const w3wClean = what3words ? what3words.replace(/^\/+/, "") : null;
   const w3wParts = w3wClean ? w3wClean.split(".") : [];
   const [copied, setCopied] = useState(false);
@@ -233,11 +233,7 @@ export default function AgrBreakdown({
         {" "}
         Land only, not the building. Research estimate, not a rates bill.
         The rate is this council&apos;s, so two parcels of the same size here have the same rent.
-        {doorLabel
-          ? " This door finds the land. The figure is the whole piece, not one flat."
-          : ""}
       </p>
-      {doorLabel && <p className="meta">Door point from OpenStreetMap.</p>}
 
       {w3wParts.length === 3 && (
         <div className="w3w-hero-row">

@@ -33,7 +33,7 @@ from layers.councils_layer import build_councils_agr_geojson
 from layers.council_metrics import build_council_metrics_geojson
 from layers.grid_layer import build_w3w_agr_grid
 from layers.platform import platform_catalog
-from spatial.address import search_door
+from spatial.address import search_door, search_place
 from spatial.context_tiles import (
     fetch_context_geojson,
     fetch_context_tile,
@@ -638,6 +638,17 @@ def get_postcode_square(
         "country": result.get("country"),
     }
     return square_payload
+
+
+@app.get("/place")
+def get_place(q: str = Query(description="Postcode, address, place, or title number")) -> dict:
+    """Find where to open the map. A title miss is not a rent and not a ScotLIS call."""
+    try:
+        return search_place(q)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except (httpx.HTTPError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=502, detail="Place search is unavailable.") from exc
 
 
 @app.get("/address")

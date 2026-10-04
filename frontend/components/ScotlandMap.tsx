@@ -48,20 +48,21 @@ type SquareResponse = {
   platform?: import("./AgrBreakdown").PlatformContext | null;
 };
 
-type AddressMatch = {
+type PlaceMatch = {
   lat: number;
   lng: number;
-  street: string;
-  housenumber: string;
   label: string;
 };
 
-type AddressLookup = {
-  postcode: string;
-  door: string;
-  status: "one" | "many" | "none";
-  matches: AddressMatch[];
-  note: string;
+type PlaceLookup = {
+  kind: "words" | "postcode" | "point" | "places" | "title_miss" | "none";
+  words?: string;
+  postcode?: string;
+  lat?: number;
+  lng?: number;
+  label?: string;
+  matches?: PlaceMatch[];
+  note?: string;
 };
 
 type MetricId =
@@ -300,22 +301,13 @@ function paintForMetric(metric: MetricDef): ExpressionSpecification {
   ] as ExpressionSpecification;
 }
 
-function looksLikePostcode(q: string): boolean {
-  const t = q.trim().replace(/\s+/g, "").toUpperCase();
-  return /^[A-Z]{1,2}\d[A-Z\d]?\d[A-Z]{2}$/i.test(t) || /^[A-Z]{1,2}\d/i.test(t);
-}
-
 export default function ScotlandMap() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
+  const lookupGen = useRef(0);
   const [mapReady, setMapReady] = useState(false);
   const [query, setQuery] = useState("");
-  const [postcodeReady, setPostcodeReady] = useState<string | null>(null);
-  const [postcodeCentre, setPostcodeCentre] = useState<{ lat: number; lng: number } | null>(
-    null,
-  );
-  const [doorQuery, setDoorQuery] = useState("");
-  const [doorMatches, setDoorMatches] = useState<AddressMatch[] | null>(null);
+  const [placeMatches, setPlaceMatches] = useState<PlaceMatch[] | null>(null);
   const [addressLine, setAddressLine] = useState<string | null>(null);
   const [scenario, setScenario] = useState<ScenarioId>("full_agr");
   const [choropleth, setChoropleth] = useState<MetricId | "off">("gross_liability");
@@ -457,13 +449,12 @@ export default function ScotlandMap() {
       nextLat: number,
       nextLng: number,
       nextScenario?: ScenarioId,
-      keepDoor = false,
+      keepLabel = false,
+      generation?: number,
     ) => {
-      if (!keepDoor) {
-        setPostcodeReady(null);
-        setPostcodeCentre(null);
-        setDoorQuery("");
-        setDoorMatches(null);
+      const gen = generation ?? ++lookupGen.current;
+      if (!keepLabel) {
+        setPlaceMatches(null);
         setAddressLine(null);
       }
       setLoading(true);
@@ -473,9 +464,12 @@ export default function ScotlandMap() {
         const response = await apiFetch(
           `/square?lat=${nextLat}&lng=${nextLng}&scenario=${sc}`,
         );
-        applyResult((await response.json()) as SquareResponse);
+        const payload = (await response.json()) as SquareResponse;
+        if (gen !== lookupGen.current) return;
+        applyResult(payload);
         setApiOk(true);
       } catch (err) {
+        if (gen !== lookupGen.current) return;
         const message = err instanceof Error ? err.message : "Unknown error";
         setError(
           message.toLowerCase().includes("outside scotland")
@@ -489,7 +483,7 @@ export default function ScotlandMap() {
           setApiOk(false);
         }
       } finally {
-        setLoading(false);
+        if (gen === lookupGen.current) setLoading(false);
       }
     },
     [applyResult, scenario],
@@ -498,10 +492,7 @@ export default function ScotlandMap() {
   const clearPlace = useCallback(() => {
     setResult(null);
     setError(null);
-    setPostcodeReady(null);
-    setPostcodeCentre(null);
-    setDoorQuery("");
-    setDoorMatches(null);
+    setPlaceMatches(null);
     setAddressLine(null);
     markerRef.current?.remove();
     markerRef.current = null;
@@ -579,103 +570,72 @@ export default function ScotlandMap() {
     );
   }, [mapReady, mapStyle]);
 
+  const openPostcode = async (postcode: string, generation: number) => {
+    const response = await apiFetch(
+      `/postcode/${encodeURIComponent(postcode)}?scenario=${scenario}`,
+    );
+    const payload = (await response.json()) as SquareResponse;
+    if (generation !== lookupGen.current) return;
+    setPlaceMatches(null);
+    setAddressLine(null);
+    applyResult(payload);
+  };
+
+  const openWords = async (words: string, generation: number) => {
+    const response = await apiFetch(
+      `/square?words=${encodeURIComponent(words)}&scenario=${scenario}`,
+    );
+    const payload = (await response.json()) as SquareResponse;
+    if (generation !== lookupGen.current) return;
+    setPlaceMatches(null);
+    setAddressLine(null);
+    applyResult(payload);
+  };
+
   const runSearch = async () => {
     const q = query.trim();
     if (!q) return;
+    const generation = ++lookupGen.current;
     setLoading(true);
     setError(null);
+    setPlaceMatches(null);
     try {
-      const isWords = /^[a-z]+\.[a-z]+\.[a-z]+$/i.test(q.replace(/^\/+/, ""));
-      if (isWords) {
-        const encoded = encodeURIComponent(q.replace(/^\/+/, ""));
-        const response = await apiFetch(
-          `/square?words=${encoded}&scenario=${scenario}`,
-        );
-        applyResult((await response.json()) as SquareResponse);
-        setPostcodeReady(null);
-        setPostcodeCentre(null);
-        setDoorQuery("");
-        setDoorMatches(null);
-        setAddressLine(null);
-      } else if (looksLikePostcode(q) || q.length >= 5) {
-        const encoded = encodeURIComponent(q);
-        const response = await apiFetch(
-          `/postcode/${encoded}?scenario=${scenario}`,
-        );
-        const payload = (await response.json()) as SquareResponse;
-        applyResult(payload);
-        setPostcodeReady(payload.postcode?.postcode ?? null);
-        setPostcodeCentre(
-          payload.postcode?.postcode
-            ? { lat: payload.square.lat, lng: payload.square.lng }
-            : null,
-        );
-        setDoorQuery("");
-        setDoorMatches(null);
-        setAddressLine(null);
+      const response = await apiFetch(`/place?q=${encodeURIComponent(q)}`);
+      const body = (await response.json()) as PlaceLookup;
+      if (generation !== lookupGen.current) return;
+      if (body.kind === "words" && body.words) {
+        await openWords(body.words, generation);
+      } else if (body.kind === "postcode" && body.postcode) {
+        await openPostcode(body.postcode, generation);
+      } else if (body.kind === "point" && body.lat != null && body.lng != null) {
+        setAddressLine(body.label ?? null);
+        await fetchSquare(body.lat, body.lng, undefined, true, generation);
+      } else if (body.kind === "places" && body.matches && body.matches.length > 1) {
+        clearPlace();
+        setPlaceMatches(body.matches);
       } else {
-        setError("Enter a postcode (e.g. EH1 1YZ) or What3Words (word.word.word)");
-        setLoading(false);
-        return;
+        clearPlace();
+        setError(body.note || "No place matched. Try a postcode, or click the map.");
       }
-      setApiOk(true);
+      if (generation === lookupGen.current) setApiOk(true);
     } catch (err) {
+      if (generation !== lookupGen.current) return;
       const message = err instanceof Error ? err.message : "Unknown error";
       setError(message);
       if (err instanceof ApiError && (err.status == null || err.status >= 500)) {
         setApiOk(false);
       }
     } finally {
-      setLoading(false);
+      if (generation === lookupGen.current) setLoading(false);
     }
   };
 
-  const pickDoor = (match: AddressMatch) => {
-    setDoorMatches(null);
+  const pickPlace = (match: PlaceMatch) => {
+    const generation = ++lookupGen.current;
+    setPlaceMatches(null);
     setAddressLine(match.label);
     setError(null);
-    void fetchSquare(match.lat, match.lng, undefined, true);
-  };
-
-  const runDoor = async () => {
-    const door = doorQuery.trim();
-    if (!postcodeReady || !door) return;
-    setLoading(true);
-    setError(null);
-    setDoorMatches(null);
-    try {
-      const centre = postcodeCentre
-        ? `&lat=${postcodeCentre.lat}&lng=${postcodeCentre.lng}`
-        : "";
-      const response = await apiFetch(
-        `/address?postcode=${encodeURIComponent(postcodeReady)}&door=${encodeURIComponent(door)}${centre}`,
-      );
-      const body = (await response.json()) as AddressLookup;
-      if (body.status === "none" || body.matches.length === 0) {
-        setAddressLine(null);
-        setDoorMatches(null);
-        if (postcodeCentre) {
-          await fetchSquare(postcodeCentre.lat, postcodeCentre.lng, undefined, true);
-        } else {
-          setLoading(false);
-        }
-        setError(
-          body.note ||
-            "That door is not in the open address set. The map stays on the postcode centre.",
-        );
-        return;
-      }
-      if (body.status === "many") {
-        setDoorMatches(body.matches);
-        setLoading(false);
-        return;
-      }
-      pickDoor(body.matches[0]);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Address search failed";
-      setError(message);
-      setLoading(false);
-    }
+    void fetchSquare(match.lat, match.lng, undefined, true, generation);
   };
 
   useEffect(() => {
@@ -1492,16 +1452,16 @@ export default function ScotlandMap() {
         <div
           className={
             loading
-              ? postcodeReady
-                ? "hud-search has-door loading"
+              ? placeMatches && placeMatches.length > 1
+                ? "hud-search has-results loading"
                 : "hud-search loading"
-              : postcodeReady
-                ? "hud-search has-door"
+              : placeMatches && placeMatches.length > 1
+                ? "hud-search has-results"
                 : "hud-search"
           }
         >
           <label className="sr-only" htmlFor="place-query">
-            Search a Scottish postcode
+            Postcode, address, or title number
           </label>
           <input
             id="place-query"
@@ -1511,34 +1471,9 @@ export default function ScotlandMap() {
             onKeyDown={(e) => {
               if (e.key === "Enter") void runSearch();
             }}
-            placeholder="Search a Scottish postcode"
+            placeholder="Postcode, address, or title number"
             disabled={loading || apiOk === false}
           />
-          {postcodeReady && (
-            <>
-              <label className="sr-only" htmlFor="door-query">
-                Door number
-              </label>
-              <input
-                id="door-query"
-                value={doorQuery}
-                onChange={(e) => setDoorQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void runDoor();
-                }}
-                placeholder="Door number"
-                disabled={loading || apiOk === false}
-              />
-              <button
-                type="button"
-                className="hud-search-go"
-                disabled={loading || apiOk === false || !doorQuery.trim()}
-                onClick={() => void runDoor()}
-              >
-                {loading ? "…" : "Find"}
-              </button>
-            </>
-          )}
           <button
             type="button"
             className="hud-search-go"
@@ -1547,11 +1482,11 @@ export default function ScotlandMap() {
           >
             {loading ? "…" : "Search"}
           </button>
-          {doorMatches && doorMatches.length > 1 && (
+          {placeMatches && placeMatches.length > 1 && (
             <ul className="door-matches">
-              {doorMatches.map((match) => (
+              {placeMatches.map((match) => (
                 <li key={`${match.lat},${match.lng},${match.label}`}>
-                  <button type="button" onClick={() => pickDoor(match)}>
+                  <button type="button" onClick={() => pickPlace(match)}>
                     {match.label}
                   </button>
                 </li>
@@ -1787,7 +1722,7 @@ export default function ScotlandMap() {
                 agr={result.agr}
                 areaSqm={result.square.area_sqm}
                 postcode={result.postcode?.postcode}
-                doorLabel={addressLine}
+                placeLabel={addressLine}
                 lat={result.square.lat}
                 lng={result.square.lng}
                 what3words={result.what3words}

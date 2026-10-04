@@ -43,6 +43,50 @@ def test_an_oversized_area_is_refused():
     assert response.json()["detail"] == "Ask for a smaller area."
 
 
+def _codes(client: TestClient, headers: dict[str, str], count: int) -> list[int]:
+    return [
+        client.get(
+            "/layers/w3w-grid",
+            params={**_SMALL, "max_cells": 10},
+            headers=headers,
+        ).status_code
+        for _ in range(count)
+    ]
+
+
+def test_two_trusted_visitors_each_get_a_burst(monkeypatch):
+    monkeypatch.setattr(main, "_w3w_now", lambda: 2_000.0)
+    monkeypatch.delenv("SCOT_PROXY_SECRET", raising=False)
+    client = TestClient(main.app, client=("127.0.0.1", 50000))
+    main.reset_w3w_rate_limit()
+    first = {"X-Forwarded-For": "203.0.113.10"}
+    second = {"X-Forwarded-For": "203.0.113.20"}
+    assert _codes(client, first, 20) == [200] * 20
+    assert _codes(client, second, 20) == [200] * 20
+    again = client.get(
+        "/layers/w3w-grid",
+        params={**_SMALL, "max_cells": 10},
+        headers=first,
+    )
+    assert again.status_code == 429
+
+
+def test_a_spoofed_forwarded_header_stays_on_the_connection(monkeypatch):
+    monkeypatch.setattr(main, "_w3w_now", lambda: 3_000.0)
+    monkeypatch.setenv("SCOT_PROXY_SECRET", "test-proxy-secret")
+    client = _client()
+    assert _codes(client, {"X-Forwarded-For": "198.51.100.8"}, 20) == [200] * 20
+    spoofed = client.get(
+        "/layers/w3w-grid",
+        params={**_SMALL, "max_cells": 10},
+        headers={
+            "X-Forwarded-For": "198.51.100.9",
+            "X-Scotland-Proxy": "not-the-secret",
+        },
+    )
+    assert spoofed.status_code == 429
+
+
 def test_too_many_cells_is_refused():
     client = _client()
     response = client.get("/layers/w3w-grid", params={**_SMALL, "max_cells": 1200})

@@ -17,6 +17,16 @@ function apiOrigin(): string {
 
 type Ctx = { params: Promise<{ path: string[] }> };
 
+function visitorAddress(request: Request): string {
+  const cloudflare = request.headers.get("cf-connecting-ip")?.trim();
+  if (cloudflare) return cloudflare;
+  const forwarded = request.headers.get("x-forwarded-for");
+  const first = forwarded?.split(",")[0]?.trim();
+  if (first) return first;
+  const own = (request as Request & { ip?: string }).ip?.trim();
+  return own || "unknown";
+}
+
 async function proxy(request: Request, context: Ctx): Promise<Response> {
   try {
     const { path } = await context.params;
@@ -38,21 +48,24 @@ async function proxy(request: Request, context: Ctx): Promise<Response> {
       joined.includes("assessment/report");
     const timeoutMs = heavy ? 90_000 : 25_000;
 
+    const headers: Record<string, string> = {
+      Accept: request.headers.get("Accept") || "application/json",
+      "X-Forwarded-For": visitorAddress(request),
+    };
+    const proxySecret = process.env.SCOT_PROXY_SECRET;
+    if (proxySecret) headers["X-Scotland-Proxy"] = proxySecret;
+
     const init: RequestInit = {
       method: request.method,
       signal: AbortSignal.timeout(timeoutMs),
       cache: "no-store",
-      headers: {
-        Accept: request.headers.get("Accept") || "application/json",
-      },
+      headers,
     };
 
     if (request.method !== "GET" && request.method !== "HEAD") {
       init.body = await request.arrayBuffer();
       const ct = request.headers.get("Content-Type");
-      if (ct) {
-        (init.headers as Record<string, string>)["Content-Type"] = ct;
-      }
+      if (ct) headers["Content-Type"] = ct;
     }
 
     const upstream = await fetch(target, init);

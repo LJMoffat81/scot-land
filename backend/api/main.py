@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import json
 import math
+import os
 import threading
 import time
 from pathlib import Path
@@ -299,6 +301,40 @@ def _bbox_area_km2(south: float, west: float, north: float, east: float) -> floa
     return (height_m * width_m) / 1_000_000
 
 
+def _loopback_or_private(host: str) -> bool:
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return address.is_loopback or address.is_private
+
+
+def _forwarded_visitor(header: str | None) -> str | None:
+    if not header:
+        return None
+    first = header.split(",")[0].strip()
+    return first or None
+
+
+def _w3w_visitor(request: Request) -> str:
+    """Whose grid allowance this request uses.
+
+    The forwarded address counts only when the Next proxy proves itself with
+    SCOT_PROXY_SECRET, or when no secret is set and the connection is local.
+    """
+    host = request.client.host if request.client else "unknown"
+    visitor = _forwarded_visitor(request.headers.get("x-forwarded-for"))
+    secret = os.getenv("SCOT_PROXY_SECRET", "")
+    if secret:
+        presented = request.headers.get("x-scotland-proxy") or ""
+        if visitor and presented == secret:
+            return visitor
+        return host
+    if visitor and _loopback_or_private(host):
+        return visitor
+    return host
+
+
 def _w3w_allowed(host: str) -> bool:
     now = _w3w_now()
     rate = _W3W_PER_MINUTE / 60
@@ -332,8 +368,7 @@ def layer_w3w_grid(
         raise HTTPException(status_code=400, detail="Ask for fewer cells.")
     if _bbox_area_km2(south, west, north, east) > _W3W_MAX_AREA_KM2:
         raise HTTPException(status_code=400, detail="Ask for a smaller area.")
-    host = request.client.host if request.client else "unknown"
-    if not _w3w_allowed(host):
+    if not _w3w_allowed(_w3w_visitor(request)):
         raise HTTPException(status_code=429, detail="The grid is busy. Wait a moment.")
     try:
         geo = build_w3w_agr_grid(

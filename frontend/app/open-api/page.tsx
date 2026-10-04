@@ -1,4 +1,16 @@
+import type { Metadata } from "next";
 import { withExportVersion } from "../../lib/exportUrl";
+
+export const metadata: Metadata = {
+  title: "Public API | Scot-LAND",
+  description:
+    "Addresses that return the open Annual Ground Rent figures for one place or the area in view. Research estimate, not a bill.",
+  openGraph: {
+    title: "Public API | Scot-LAND",
+    description:
+      "Addresses that return the open Annual Ground Rent figures for one place or the area in view. Research estimate, not a bill.",
+  },
+};
 
 export const dynamic = "force-dynamic";
 

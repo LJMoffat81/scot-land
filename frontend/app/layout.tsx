@@ -11,9 +11,14 @@ const mona = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Scot-LAND",
+  title: "Scot-LAND | Annual Ground Rent map of Scotland",
   description:
-    "Annual Ground Rent at every place in Scotland. https://www.scot-land.scot",
+    "A research estimate of what Scotland's land alone is worth to use each year, by postcode. Not a bill.",
+  openGraph: {
+    title: "Scot-LAND: what is Scotland's land worth each year?",
+    description:
+      "Search any Scottish postcode for a research estimate of its Annual Ground Rent, on land value only.",
+  },
 };
 
 export default function RootLayout({

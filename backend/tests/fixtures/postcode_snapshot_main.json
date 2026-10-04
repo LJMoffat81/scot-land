@@ -1,0 +1,2531 @@
+{
+  "postcodes": {
+    "AB10 1AQ": {
+      "agr": {
+        "active_scenario": "full_agr",
+        "annual_ground_rent_gbp": 0.04,
+        "assessment": {
+          "annual_rent_economic_per_sqm_gbp": 0.004364,
+          "annual_rent_market_per_sqm_gbp": 0.021821,
+          "confidence": "high",
+          "depreciation_remaining_factor": null,
+          "drc_improvements_gbp": null,
+          "dwelling_floor_sqm": null,
+          "habu": "existing_agriculture",
+          "hope_value_excluded": true,
+          "market_value_gbp": null,
+          "method": "productive_land_use",
+          "notes": [
+            "Rural productive assessment (Pickard / land-use category).",
+            "HABU = agriculture (existing rural use); hope value excluded.",
+            "Category capital \u00a34,094/ha (2009) \u00d7 HPI factor 1.07 = \u00a34,364/ha.",
+            "Pickard farmland productive factor 20% (market \u2248 5\u00d7 productive in Pickard 2018).",
+            "Economic site capital \u00a3873/ha; annual rent at 5% yield.",
+            "Council: City of Aberdeen (S12000033).",
+            "ROS INSPIRE cadastral parcel SCT0001191800 (15,924 sqm) on roll."
+          ],
+          "notional_plot_sqm": 10000.0,
+          "parcel_area_sqm": 15924.14,
+          "pickard_factor": 0.2,
+          "pickard_label": "farmland_market_to_productive",
+          "rebuild_cost_new_gbp": null,
+          "roll_annual_rent_grid_square_gbp": 0.0393,
+          "roll_annual_rent_notional_plot_gbp": 43.64,
+          "roll_annual_rent_parcel_gbp": 69.5,
+          "roll_annual_rent_per_sqm_gbp": 0.004364,
+          "site_capital_economic_gbp": 872.84,
+          "site_capital_economic_per_sqm_gbp": 0.0873,
+          "site_capital_market_gbp": 4364.2,
+          "site_capital_market_per_sqm_gbp": 0.4364,
+          "site_share_implied": null,
+          "yield_rate": 0.05
+        },
+        "average_price_gbp": null,
+        "capture_rate": 1.0,
+        "confidence": "high",
+        "council_code": "S12000033",
+        "council_name": "City of Aberdeen",
+        "despeculated_site_capital_per_sqm_gbp": 0.0873,
+        "despeculated_site_value_gbp": 0.79,
+        "disclaimer": "SLRG-aligned valuer residual AGR estimate \u2014 open-data approximation of a roll, not an official rates bill",
+        "drc_improvements_gbp": null,
+        "economic_annual_rent_gbp": 0.04,
+        "equal_share_enabled": true,
+        "equal_share_rent_per_person_gbp": 16423.36,
+        "estimate_kind": "valuer_residual_roll",
+        "estimate_label": "Valuer residual AGR roll (open-data approximation)",
+        "habu": "existing_agriculture",
+        "hope_value_excluded": true,
+        "integrity_caveats": [
+          "Urban path: market value (council HPI) \u2212 DRC of improvements (rebuild \u00d7 stock remaining) = market site capital (Wightman residual).",
+          "Economic rent base applies Pickard factors to residual site capital, then \u00d7 5% yield for annual AGR.",
+          "HABU policy = existing authorised use; hope value excluded from assessment basis. HPI is still average existing-use sales, not a full planning strip.",
+          "Spatial grain is council-level HPI (flat within council) until sales/CAMA microdata is added \u2014 not a finished national roll.",
+          "Rural path uses productive land-use capital (Pickard 5\u00d7 farmland market distortion), not farm-sale residual.",
+          "The Sandilands national rent pool (\u00a390bn) is separate; map roll cells are not calibrated to sum to that pool.",
+          "Non-domestic, vacant, and natural-resource rents (Sandilands classical Land) are not yet on this roll.",
+          "Not a substitute for a VOA/ROS professional valuation or a statutory AGR roll."
+        ],
+        "lookup_method": "boundary",
+        "market_value_gbp": null,
+        "method": "productive_land_use",
+        "national_rent_pool_gbp": 90000000000.0,
+        "notes": [
+          "Rural productive assessment (Pickard / land-use category).",
+          "HABU = agriculture (existing rural use); hope value excluded.",
+          "Category capital \u00a34,094/ha (2009) \u00d7 HPI factor 1.07 = \u00a34,364/ha.",
+          "Pickard farmland productive factor 20% (market \u2248 5\u00d7 productive in Pickard 2018).",
+          "Economic site capital \u00a3873/ha; annual rent at 5% yield.",
+          "Council: City of Aberdeen (S12000033).",
+          "ROS INSPIRE cadastral parcel SCT0001191800 (15,924 sqm) on roll.",
+          "Council resolved via boundary polygon lookup.",
+          "Macro vs map: Sandilands national rent pool is \u00a390bn (equal-share + income-tax scaling). Roll residual is independent and not calibrated so all cells sum to that pool.",
+          "Smith/Wightman: charge is on ground-rent of the site after stripping buildings (DRC).",
+          "Pickard: economic rent base after removing speculative capital premium.",
+          "Ogilvie/Paine/Unitism equal-share (national pool): one Scot \u2248 \u00a316,423/year; this cell\u2019s roll economic rent is 0.0002% of that claim (could fund services or a citizen dividend).",
+          "Martin Adams (Unitism): community collects land rental value; wages and buildings untaxed.",
+          "Lars Doucet / CLE: next roll upgrade path is sales-based mass appraisal (OpenAVMKit), not a change to SLRG residual policy."
+        ],
+        "notional_plot_sqm": 10000.0,
+        "parcel_area_sqm": 15924.14,
+        "parcel_id": "SCT0001191800",
+        "pickard_factor": 0.2,
+        "pickard_label": "farmland_market_to_productive",
+        "rebuild_cost_new_gbp": null,
+        "roll_annual_rent_notional_plot_gbp": 43.64,
+        "roll_annual_rent_parcel_gbp": 69.5,
+        "scenarios": {
+          "full_agr": {
+            "annual_charge_gbp": 0.04,
+            "description": "Full annual economic ground rent for this place (valuer residual). National full collection exceeds today\u2019s tax basket \u2014 surplus for services or citizen dividend. High-rent locations contribute most.",
+            "effective_rate": 1.0,
+            "id": "full_agr",
+            "label": "Full land rent (surplus for services + dividend)"
+          },
+          "replace_full_basket": {
+            "annual_charge_gbp": 0.01,
+            "description": "Scales map economic rent so national collection matches the fiscal basket (\u00a317.1bn: income tax + Council Tax + NDR). Revenue-neutral on listed taxes; high-rent places still pay most.",
+            "effective_rate": 0.19,
+            "id": "replace_full_basket",
+            "label": "Replace all listed taxes (neutral)"
+          },
+          "replace_income_tax": {
+            "annual_charge_gbp": 0.01,
+            "description": "Scales map economic rent so Scotland raises \u00a311.5bn if the national pool is \u00a390bn (Sandilands). Uses the national pool ratio, not a sum of map cells.",
+            "effective_rate": 0.1278,
+            "id": "replace_income_tax",
+            "label": "Replace income tax only"
+          },
+          "revenue_neutral": {
+            "annual_charge_gbp": 0.02,
+            "description": "Charge 3.16% of this place\u2019s economic site capital (Wightman-style CT + NDR replacement on residual capital).",
+            "effective_rate": 0.0316,
+            "id": "revenue_neutral",
+            "label": "Replace Council Tax + NDR"
+          }
+        },
+        "scotland_population": 5480000,
+        "sensitivity_overrides": {},
+        "site_capital_market_per_sqm_gbp": 0.4364,
+        "site_capital_per_sqm_gbp": 0.4364,
+        "site_rental_per_sqm_gbp": 0.0044,
+        "site_share_source": "productive_land_use",
+        "site_share_used": null,
+        "square_as_fraction_of_equal_claim": 2e-06,
+        "ward_name": null,
+        "yield_rate": 0.05
+      },
+      "fiscal": {
+        "comparison_unit": "typical_plot_vs_one_person_dividend",
+        "dividend_gbp": 16423.36,
+        "dividend_mode": "equal_share_of_pool",
+        "gross_plot_gbp": 69.5,
+        "net_gbp": -16353.86,
+        "note": "Gross is map residual plot AGR under the scenario. Dividend and remote credit are policy knobs on the national pool story. High land-rent places fund the state; low-rent / remote can be net receivers.",
+        "remote_credit_gbp": 0.0,
+        "role": "net_receiver"
+      },
+      "fiscal_summary": {
+        "basket": {
+          "lines": [
+            {
+              "annual_gbp": 11500000000,
+              "id": "income_tax",
+              "label": "Scotland income tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "council_tax",
+              "label": "Council Tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "ndr",
+              "label": "Non-domestic rates (NDR)"
+            }
+          ],
+          "note": "Research mid-year placeholders for demo \u2014 not an OBR forecast. Cite / refresh from SG and HMRC stats.",
+          "total_gbp": 17100000000.0
+        },
+        "collection": {
+          "annual_gbp": 90000000000.0,
+          "effective_rate_on_national_pool": 1.0,
+          "method": "Full economic rent of national pool (Sandilands macro)",
+          "national_rent_pool_gbp": 90000000000.0
+        },
+        "dividend": {
+          "enabled": true,
+          "mode": "equal_share_of_pool",
+          "per_person_gbp": 16423.36,
+          "scotland_population": 5480000
+        },
+        "enabled": true,
+        "integrity": [
+          "National surplus uses Sandilands rent pool \u00d7 scenario rate, not the sum of map residual cells.",
+          "Place net = plot gross AGR \u2212 equal dividend (\u2212 remote credit). Household of one for comparison.",
+          "Not a live tax bill; residual is open-data research approximation."
+        ],
+        "purpose": "Show revenue-neutral-or-better tax replacement from land rent; high-rent places pay most; remote/low-rent can be net receivers.",
+        "remote_credit": {
+          "councils": [
+            "S12000013",
+            "S12000023",
+            "S12000027",
+            "S12000017",
+            "S12000035"
+          ],
+          "credit_gbp_per_person_year": 500.0,
+          "enabled": true,
+          "notes": "Optional repopulation / periphery support on top of equal dividend \u2014 research policy knob, not statute."
+        },
+        "revenue_neutral_or_better": true,
+        "scenario": "full_agr",
+        "surplus_gbp": 72900000000.0
+      },
+      "method_family": "valuer_residual_roll",
+      "postcode": {
+        "admin_district": "Aberdeen City",
+        "country": "Scotland",
+        "parish": null,
+        "postcode": "AB10 1AQ"
+      },
+      "square": {
+        "area_sqm": 9.0,
+        "bounds": {
+          "east": -2.0969795099243513,
+          "north": 57.149070247933885,
+          "south": 57.149043298598635,
+          "west": -2.0970291901979845
+        },
+        "grid": "what3words_3m",
+        "lat": 57.14905677326626,
+        "lng": -2.0970043500611677,
+        "polygon": {
+          "coordinates": [
+            [
+              [
+                -2.0970291901979845,
+                57.149043298598635
+              ],
+              [
+                -2.0969795099243513,
+                57.149043298598635
+              ],
+              [
+                -2.0969795099243513,
+                57.149070247933885
+              ],
+              [
+                -2.0970291901979845,
+                57.149070247933885
+              ],
+              [
+                -2.0970291901979845,
+                57.149043298598635
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "w3w_configured": false,
+      "what3words": null
+    },
+    "DG1 2BD": {
+      "agr": {
+        "active_scenario": "full_agr",
+        "annual_ground_rent_gbp": 79.14,
+        "assessment": {
+          "annual_rent_economic_per_sqm_gbp": 8.793,
+          "annual_rent_market_per_sqm_gbp": 12.5614,
+          "confidence": "high",
+          "depreciation_remaining_factor": 0.55,
+          "drc_improvements_gbp": 95253.13,
+          "dwelling_floor_sqm": 85.0,
+          "habu": "existing_residential",
+          "hope_value_excluded": true,
+          "market_value_gbp": 165597.0,
+          "method": "residual_drc",
+          "notes": [
+            "Valuer residual (Wightman): site capital = market value \u2212 DRC of improvements.",
+            "HABU = existing residential use (authorised-consent / existing-use rule); hope value excluded from assessment policy.",
+            "MV (council HPI average dwelling) = \u00a3165,597.",
+            "Rebuild new \u2248 85 m\u00b2 \u00d7 \u00a32,038/m\u00b2 \u00d7 region 1.00 = \u00a3173,188.",
+            "DRC = rebuild \u00d7 stock remaining factor 55% = \u00a395,253.",
+            "Market residual site capital (notional 280 m\u00b2 plot) = \u00a370,344 (42% of MV).",
+            "Pickard urban economic factor 70% applied to residual site capital (speculative premium).",
+            "Annual economic rent = economic site capital \u00d7 yield 5%.",
+            "Parcel roll line: \u00a370,942.33/year on 8,068 m\u00b2 cadastral area."
+          ],
+          "notional_plot_sqm": 280.0,
+          "parcel_area_sqm": 8068.06,
+          "pickard_factor": 0.7,
+          "pickard_label": "urban_speculation_discount",
+          "rebuild_cost_new_gbp": 173187.5,
+          "roll_annual_rent_grid_square_gbp": 79.14,
+          "roll_annual_rent_notional_plot_gbp": 2462.04,
+          "roll_annual_rent_parcel_gbp": 70942.33,
+          "roll_annual_rent_per_sqm_gbp": 8.793,
+          "site_capital_economic_gbp": 49240.71,
+          "site_capital_economic_per_sqm_gbp": 175.86,
+          "site_capital_market_gbp": 70343.87,
+          "site_capital_market_per_sqm_gbp": 251.23,
+          "site_share_implied": 0.4248,
+          "yield_rate": 0.05
+        },
+        "average_price_gbp": 165597,
+        "capture_rate": 1.0,
+        "confidence": "high",
+        "council_code": "S12000006",
+        "council_name": "Dumfries and Galloway",
+        "despeculated_site_capital_per_sqm_gbp": 175.86,
+        "despeculated_site_value_gbp": 1582.74,
+        "disclaimer": "SLRG-aligned valuer residual AGR estimate \u2014 open-data approximation of a roll, not an official rates bill",
+        "drc_improvements_gbp": 95253.13,
+        "economic_annual_rent_gbp": 79.14,
+        "equal_share_enabled": true,
+        "equal_share_rent_per_person_gbp": 16423.36,
+        "estimate_kind": "valuer_residual_roll",
+        "estimate_label": "Valuer residual AGR roll (open-data approximation)",
+        "habu": "existing_residential",
+        "hope_value_excluded": true,
+        "integrity_caveats": [
+          "Urban path: market value (council HPI) \u2212 DRC of improvements (rebuild \u00d7 stock remaining) = market site capital (Wightman residual).",
+          "Economic rent base applies Pickard factors to residual site capital, then \u00d7 5% yield for annual AGR.",
+          "HABU policy = existing authorised use; hope value excluded from assessment basis. HPI is still average existing-use sales, not a full planning strip.",
+          "Spatial grain is council-level HPI (flat within council) until sales/CAMA microdata is added \u2014 not a finished national roll.",
+          "Rural path uses productive land-use capital (Pickard 5\u00d7 farmland market distortion), not farm-sale residual.",
+          "The Sandilands national rent pool (\u00a390bn) is separate; map roll cells are not calibrated to sum to that pool.",
+          "Non-domestic, vacant, and natural-resource rents (Sandilands classical Land) are not yet on this roll.",
+          "Not a substitute for a VOA/ROS professional valuation or a statutory AGR roll."
+        ],
+        "lookup_method": "boundary",
+        "market_value_gbp": 165597.0,
+        "method": "residual_drc",
+        "national_rent_pool_gbp": 90000000000.0,
+        "notes": [
+          "Valuer residual (Wightman): site capital = market value \u2212 DRC of improvements.",
+          "HABU = existing residential use (authorised-consent / existing-use rule); hope value excluded from assessment policy.",
+          "MV (council HPI average dwelling) = \u00a3165,597.",
+          "Rebuild new \u2248 85 m\u00b2 \u00d7 \u00a32,038/m\u00b2 \u00d7 region 1.00 = \u00a3173,188.",
+          "DRC = rebuild \u00d7 stock remaining factor 55% = \u00a395,253.",
+          "Market residual site capital (notional 280 m\u00b2 plot) = \u00a370,344 (42% of MV).",
+          "Pickard urban economic factor 70% applied to residual site capital (speculative premium).",
+          "Annual economic rent = economic site capital \u00d7 yield 5%.",
+          "Parcel roll line: \u00a370,942.33/year on 8,068 m\u00b2 cadastral area.",
+          "Council resolved via boundary polygon lookup.",
+          "Macro vs map: Sandilands national rent pool is \u00a390bn (equal-share + income-tax scaling). Roll residual is independent and not calibrated so all cells sum to that pool.",
+          "Smith/Wightman: charge is on ground-rent of the site after stripping buildings (DRC).",
+          "Pickard: economic rent base after removing speculative capital premium.",
+          "Ogilvie/Paine/Unitism equal-share (national pool): one Scot \u2248 \u00a316,423/year; this cell\u2019s roll economic rent is 0.4819% of that claim (could fund services or a citizen dividend).",
+          "Martin Adams (Unitism): community collects land rental value; wages and buildings untaxed.",
+          "Lars Doucet / CLE: next roll upgrade path is sales-based mass appraisal (OpenAVMKit), not a change to SLRG residual policy."
+        ],
+        "notional_plot_sqm": 280.0,
+        "parcel_area_sqm": 8068.06,
+        "parcel_id": "SCT0000595904",
+        "pickard_factor": 0.7,
+        "pickard_label": "urban_speculation_discount",
+        "rebuild_cost_new_gbp": 173187.5,
+        "roll_annual_rent_notional_plot_gbp": 2462.04,
+        "roll_annual_rent_parcel_gbp": 70942.33,
+        "scenarios": {
+          "full_agr": {
+            "annual_charge_gbp": 79.14,
+            "description": "Full annual economic ground rent for this place (valuer residual). National full collection exceeds today\u2019s tax basket \u2014 surplus for services or citizen dividend. High-rent locations contribute most.",
+            "effective_rate": 1.0,
+            "id": "full_agr",
+            "label": "Full land rent (surplus for services + dividend)"
+          },
+          "replace_full_basket": {
+            "annual_charge_gbp": 15.04,
+            "description": "Scales map economic rent so national collection matches the fiscal basket (\u00a317.1bn: income tax + Council Tax + NDR). Revenue-neutral on listed taxes; high-rent places still pay most.",
+            "effective_rate": 0.19,
+            "id": "replace_full_basket",
+            "label": "Replace all listed taxes (neutral)"
+          },
+          "replace_income_tax": {
+            "annual_charge_gbp": 10.11,
+            "description": "Scales map economic rent so Scotland raises \u00a311.5bn if the national pool is \u00a390bn (Sandilands). Uses the national pool ratio, not a sum of map cells.",
+            "effective_rate": 0.1278,
+            "id": "replace_income_tax",
+            "label": "Replace income tax only"
+          },
+          "revenue_neutral": {
+            "annual_charge_gbp": 50.01,
+            "description": "Charge 3.16% of this place\u2019s economic site capital (Wightman-style CT + NDR replacement on residual capital).",
+            "effective_rate": 0.0316,
+            "id": "revenue_neutral",
+            "label": "Replace Council Tax + NDR"
+          }
+        },
+        "scotland_population": 5480000,
+        "sensitivity_overrides": {},
+        "site_capital_market_per_sqm_gbp": 251.23,
+        "site_capital_per_sqm_gbp": 251.23,
+        "site_rental_per_sqm_gbp": 8.793,
+        "site_share_source": "implied_residual_42%",
+        "site_share_used": 0.4248,
+        "square_as_fraction_of_equal_claim": 0.004819,
+        "ward_name": null,
+        "yield_rate": 0.05
+      },
+      "fiscal": {
+        "comparison_unit": "typical_plot_vs_one_person_dividend",
+        "dividend_gbp": 16423.36,
+        "dividend_mode": "equal_share_of_pool",
+        "gross_plot_gbp": 70942.33,
+        "net_gbp": 54518.97,
+        "note": "Gross is map residual plot AGR under the scenario. Dividend and remote credit are policy knobs on the national pool story. High land-rent places fund the state; low-rent / remote can be net receivers.",
+        "remote_credit_gbp": 0.0,
+        "role": "net_contributor"
+      },
+      "fiscal_summary": {
+        "basket": {
+          "lines": [
+            {
+              "annual_gbp": 11500000000,
+              "id": "income_tax",
+              "label": "Scotland income tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "council_tax",
+              "label": "Council Tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "ndr",
+              "label": "Non-domestic rates (NDR)"
+            }
+          ],
+          "note": "Research mid-year placeholders for demo \u2014 not an OBR forecast. Cite / refresh from SG and HMRC stats.",
+          "total_gbp": 17100000000.0
+        },
+        "collection": {
+          "annual_gbp": 90000000000.0,
+          "effective_rate_on_national_pool": 1.0,
+          "method": "Full economic rent of national pool (Sandilands macro)",
+          "national_rent_pool_gbp": 90000000000.0
+        },
+        "dividend": {
+          "enabled": true,
+          "mode": "equal_share_of_pool",
+          "per_person_gbp": 16423.36,
+          "scotland_population": 5480000
+        },
+        "enabled": true,
+        "integrity": [
+          "National surplus uses Sandilands rent pool \u00d7 scenario rate, not the sum of map residual cells.",
+          "Place net = plot gross AGR \u2212 equal dividend (\u2212 remote credit). Household of one for comparison.",
+          "Not a live tax bill; residual is open-data research approximation."
+        ],
+        "purpose": "Show revenue-neutral-or-better tax replacement from land rent; high-rent places pay most; remote/low-rent can be net receivers.",
+        "remote_credit": {
+          "councils": [
+            "S12000013",
+            "S12000023",
+            "S12000027",
+            "S12000017",
+            "S12000035"
+          ],
+          "credit_gbp_per_person_year": 500.0,
+          "enabled": true,
+          "notes": "Optional repopulation / periphery support on top of equal dividend \u2014 research policy knob, not statute."
+        },
+        "revenue_neutral_or_better": true,
+        "scenario": "full_agr",
+        "surplus_gbp": 72900000000.0
+      },
+      "method_family": "valuer_residual_roll",
+      "postcode": {
+        "admin_district": "Dumfries and Galloway",
+        "country": "Scotland",
+        "parish": null,
+        "postcode": "DG1 2BD"
+      },
+      "square": {
+        "area_sqm": 9.0,
+        "bounds": {
+          "east": -3.6103065797451133,
+          "north": 55.06707240388071,
+          "south": 55.06704545454546,
+          "west": -3.6103536431786236
+        },
+        "grid": "what3words_3m",
+        "lat": 55.06705892921308,
+        "lng": -3.6103301114618684,
+        "polygon": {
+          "coordinates": [
+            [
+              [
+                -3.6103536431786236,
+                55.06704545454546
+              ],
+              [
+                -3.6103065797451133,
+                55.06704545454546
+              ],
+              [
+                -3.6103065797451133,
+                55.06707240388071
+              ],
+              [
+                -3.6103536431786236,
+                55.06707240388071
+              ],
+              [
+                -3.6103536431786236,
+                55.06704545454546
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "w3w_configured": false,
+      "what3words": null
+    },
+    "EH1 1YZ": {
+      "agr": {
+        "active_scenario": "full_agr",
+        "annual_ground_rent_gbp": 210.36,
+        "assessment": {
+          "annual_rent_economic_per_sqm_gbp": 23.373,
+          "annual_rent_market_per_sqm_gbp": 33.3899,
+          "confidence": "high",
+          "depreciation_remaining_factor": 0.55,
+          "drc_improvements_gbp": 102873.38,
+          "dwelling_floor_sqm": 85.0,
+          "habu": "existing_residential",
+          "hope_value_excluded": true,
+          "market_value_gbp": 289857.0,
+          "method": "residual_drc",
+          "notes": [
+            "Valuer residual (Wightman): site capital = market value \u2212 DRC of improvements.",
+            "HABU = existing residential use (authorised-consent / existing-use rule); hope value excluded from assessment policy.",
+            "MV (council HPI average dwelling) = \u00a3289,857.",
+            "Rebuild new \u2248 85 m\u00b2 \u00d7 \u00a32,038/m\u00b2 \u00d7 region 1.08 = \u00a3187,042.",
+            "DRC = rebuild \u00d7 stock remaining factor 55% = \u00a3102,873.",
+            "Market residual site capital (notional 280 m\u00b2 plot) = \u00a3186,984 (65% of MV).",
+            "Pickard urban economic factor 70% applied to residual site capital (speculative premium).",
+            "Annual economic rent = economic site capital \u00d7 yield 5%."
+          ],
+          "notional_plot_sqm": 280.0,
+          "parcel_area_sqm": null,
+          "pickard_factor": 0.7,
+          "pickard_label": "urban_speculation_discount",
+          "rebuild_cost_new_gbp": 187042.5,
+          "roll_annual_rent_grid_square_gbp": 210.36,
+          "roll_annual_rent_notional_plot_gbp": 6544.43,
+          "roll_annual_rent_parcel_gbp": null,
+          "roll_annual_rent_per_sqm_gbp": 23.373,
+          "site_capital_economic_gbp": 130888.54,
+          "site_capital_economic_per_sqm_gbp": 467.46,
+          "site_capital_market_gbp": 186983.62,
+          "site_capital_market_per_sqm_gbp": 667.8,
+          "site_share_implied": 0.6451,
+          "yield_rate": 0.05
+        },
+        "average_price_gbp": 289857,
+        "capture_rate": 1.0,
+        "confidence": "high",
+        "council_code": "S12000036",
+        "council_name": "City of Edinburgh",
+        "despeculated_site_capital_per_sqm_gbp": 467.46,
+        "despeculated_site_value_gbp": 4207.14,
+        "disclaimer": "SLRG-aligned valuer residual AGR estimate \u2014 open-data approximation of a roll, not an official rates bill",
+        "drc_improvements_gbp": 102873.38,
+        "economic_annual_rent_gbp": 210.36,
+        "equal_share_enabled": true,
+        "equal_share_rent_per_person_gbp": 16423.36,
+        "estimate_kind": "valuer_residual_roll",
+        "estimate_label": "Valuer residual AGR roll (open-data approximation)",
+        "habu": "existing_residential",
+        "hope_value_excluded": true,
+        "integrity_caveats": [
+          "Urban path: market value (council HPI) \u2212 DRC of improvements (rebuild \u00d7 stock remaining) = market site capital (Wightman residual).",
+          "Economic rent base applies Pickard factors to residual site capital, then \u00d7 5% yield for annual AGR.",
+          "HABU policy = existing authorised use; hope value excluded from assessment basis. HPI is still average existing-use sales, not a full planning strip.",
+          "Spatial grain is council-level HPI (flat within council) until sales/CAMA microdata is added \u2014 not a finished national roll.",
+          "Rural path uses productive land-use capital (Pickard 5\u00d7 farmland market distortion), not farm-sale residual.",
+          "The Sandilands national rent pool (\u00a390bn) is separate; map roll cells are not calibrated to sum to that pool.",
+          "Non-domestic, vacant, and natural-resource rents (Sandilands classical Land) are not yet on this roll.",
+          "Not a substitute for a VOA/ROS professional valuation or a statutory AGR roll."
+        ],
+        "lookup_method": "boundary",
+        "market_value_gbp": 289857.0,
+        "method": "residual_drc",
+        "national_rent_pool_gbp": 90000000000.0,
+        "notes": [
+          "Valuer residual (Wightman): site capital = market value \u2212 DRC of improvements.",
+          "HABU = existing residential use (authorised-consent / existing-use rule); hope value excluded from assessment policy.",
+          "MV (council HPI average dwelling) = \u00a3289,857.",
+          "Rebuild new \u2248 85 m\u00b2 \u00d7 \u00a32,038/m\u00b2 \u00d7 region 1.08 = \u00a3187,042.",
+          "DRC = rebuild \u00d7 stock remaining factor 55% = \u00a3102,873.",
+          "Market residual site capital (notional 280 m\u00b2 plot) = \u00a3186,984 (65% of MV).",
+          "Pickard urban economic factor 70% applied to residual site capital (speculative premium).",
+          "Annual economic rent = economic site capital \u00d7 yield 5%.",
+          "Council resolved via boundary polygon lookup.",
+          "Macro vs map: Sandilands national rent pool is \u00a390bn (equal-share + income-tax scaling). Roll residual is independent and not calibrated so all cells sum to that pool.",
+          "Smith/Wightman: charge is on ground-rent of the site after stripping buildings (DRC).",
+          "Pickard: economic rent base after removing speculative capital premium.",
+          "Ogilvie/Paine/Unitism equal-share (national pool): one Scot \u2248 \u00a316,423/year; this cell\u2019s roll economic rent is 1.2809% of that claim (could fund services or a citizen dividend).",
+          "Martin Adams (Unitism): community collects land rental value; wages and buildings untaxed.",
+          "Lars Doucet / CLE: next roll upgrade path is sales-based mass appraisal (OpenAVMKit), not a change to SLRG residual policy."
+        ],
+        "notional_plot_sqm": 280.0,
+        "parcel_area_sqm": null,
+        "parcel_id": null,
+        "pickard_factor": 0.7,
+        "pickard_label": "urban_speculation_discount",
+        "rebuild_cost_new_gbp": 187042.5,
+        "roll_annual_rent_notional_plot_gbp": 6544.43,
+        "roll_annual_rent_parcel_gbp": null,
+        "scenarios": {
+          "full_agr": {
+            "annual_charge_gbp": 210.36,
+            "description": "Full annual economic ground rent for this place (valuer residual). National full collection exceeds today\u2019s tax basket \u2014 surplus for services or citizen dividend. High-rent locations contribute most.",
+            "effective_rate": 1.0,
+            "id": "full_agr",
+            "label": "Full land rent (surplus for services + dividend)"
+          },
+          "replace_full_basket": {
+            "annual_charge_gbp": 39.97,
+            "description": "Scales map economic rent so national collection matches the fiscal basket (\u00a317.1bn: income tax + Council Tax + NDR). Revenue-neutral on listed taxes; high-rent places still pay most.",
+            "effective_rate": 0.19,
+            "id": "replace_full_basket",
+            "label": "Replace all listed taxes (neutral)"
+          },
+          "replace_income_tax": {
+            "annual_charge_gbp": 26.88,
+            "description": "Scales map economic rent so Scotland raises \u00a311.5bn if the national pool is \u00a390bn (Sandilands). Uses the national pool ratio, not a sum of map cells.",
+            "effective_rate": 0.1278,
+            "id": "replace_income_tax",
+            "label": "Replace income tax only"
+          },
+          "revenue_neutral": {
+            "annual_charge_gbp": 132.95,
+            "description": "Charge 3.16% of this place\u2019s economic site capital (Wightman-style CT + NDR replacement on residual capital).",
+            "effective_rate": 0.0316,
+            "id": "revenue_neutral",
+            "label": "Replace Council Tax + NDR"
+          }
+        },
+        "scotland_population": 5480000,
+        "sensitivity_overrides": {},
+        "site_capital_market_per_sqm_gbp": 667.8,
+        "site_capital_per_sqm_gbp": 667.8,
+        "site_rental_per_sqm_gbp": 23.373,
+        "site_share_source": "implied_residual_65%",
+        "site_share_used": 0.6451,
+        "square_as_fraction_of_equal_claim": 0.012809,
+        "ward_name": null,
+        "yield_rate": 0.05
+      },
+      "fiscal": {
+        "comparison_unit": "typical_plot_vs_one_person_dividend",
+        "dividend_gbp": 16423.36,
+        "dividend_mode": "equal_share_of_pool",
+        "gross_plot_gbp": 6544.43,
+        "net_gbp": -9878.93,
+        "note": "Gross is map residual plot AGR under the scenario. Dividend and remote credit are policy knobs on the national pool story. High land-rent places fund the state; low-rent / remote can be net receivers.",
+        "remote_credit_gbp": 0.0,
+        "role": "net_receiver"
+      },
+      "fiscal_summary": {
+        "basket": {
+          "lines": [
+            {
+              "annual_gbp": 11500000000,
+              "id": "income_tax",
+              "label": "Scotland income tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "council_tax",
+              "label": "Council Tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "ndr",
+              "label": "Non-domestic rates (NDR)"
+            }
+          ],
+          "note": "Research mid-year placeholders for demo \u2014 not an OBR forecast. Cite / refresh from SG and HMRC stats.",
+          "total_gbp": 17100000000.0
+        },
+        "collection": {
+          "annual_gbp": 90000000000.0,
+          "effective_rate_on_national_pool": 1.0,
+          "method": "Full economic rent of national pool (Sandilands macro)",
+          "national_rent_pool_gbp": 90000000000.0
+        },
+        "dividend": {
+          "enabled": true,
+          "mode": "equal_share_of_pool",
+          "per_person_gbp": 16423.36,
+          "scotland_population": 5480000
+        },
+        "enabled": true,
+        "integrity": [
+          "National surplus uses Sandilands rent pool \u00d7 scenario rate, not the sum of map residual cells.",
+          "Place net = plot gross AGR \u2212 equal dividend (\u2212 remote credit). Household of one for comparison.",
+          "Not a live tax bill; residual is open-data research approximation."
+        ],
+        "purpose": "Show revenue-neutral-or-better tax replacement from land rent; high-rent places pay most; remote/low-rent can be net receivers.",
+        "remote_credit": {
+          "councils": [
+            "S12000013",
+            "S12000023",
+            "S12000027",
+            "S12000017",
+            "S12000035"
+          ],
+          "credit_gbp_per_person_year": 500.0,
+          "enabled": true,
+          "notes": "Optional repopulation / periphery support on top of equal dividend \u2014 research policy knob, not statute."
+        },
+        "revenue_neutral_or_better": true,
+        "scenario": "full_agr",
+        "surplus_gbp": 72900000000.0
+      },
+      "method_family": "valuer_residual_roll",
+      "postcode": {
+        "admin_district": "City of Edinburgh",
+        "country": "Scotland",
+        "parish": null,
+        "postcode": "EH1 1YZ"
+      },
+      "square": {
+        "area_sqm": 9.0,
+        "bounds": {
+          "east": -3.193014760979334,
+          "north": 55.95033686669062,
+          "south": 55.95030991735537,
+          "west": -3.193062892405724
+        },
+        "grid": "what3words_3m",
+        "lat": 55.950323392022995,
+        "lng": -3.193038826692529,
+        "polygon": {
+          "coordinates": [
+            [
+              [
+                -3.193062892405724,
+                55.95030991735537
+              ],
+              [
+                -3.193014760979334,
+                55.95030991735537
+              ],
+              [
+                -3.193014760979334,
+                55.95033686669062
+              ],
+              [
+                -3.193062892405724,
+                55.95033686669062
+              ],
+              [
+                -3.193062892405724,
+                55.95030991735537
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "w3w_configured": false,
+      "what3words": null
+    },
+    "G1 1BL": {
+      "agr": {
+        "active_scenario": "full_agr",
+        "annual_ground_rent_gbp": 94.8,
+        "assessment": {
+          "annual_rent_economic_per_sqm_gbp": 10.5332,
+          "annual_rent_market_per_sqm_gbp": 15.0474,
+          "confidence": "high",
+          "depreciation_remaining_factor": 0.55,
+          "drc_improvements_gbp": 100015.78,
+          "dwelling_floor_sqm": 85.0,
+          "habu": "existing_residential",
+          "hope_value_excluded": true,
+          "market_value_gbp": 184281.0,
+          "method": "residual_drc",
+          "notes": [
+            "Valuer residual (Wightman): site capital = market value \u2212 DRC of improvements.",
+            "HABU = existing residential use (authorised-consent / existing-use rule); hope value excluded from assessment policy.",
+            "MV (council HPI average dwelling) = \u00a3184,281.",
+            "Rebuild new \u2248 85 m\u00b2 \u00d7 \u00a32,038/m\u00b2 \u00d7 region 1.05 = \u00a3181,847.",
+            "DRC = rebuild \u00d7 stock remaining factor 55% = \u00a3100,016.",
+            "Market residual site capital (notional 280 m\u00b2 plot) = \u00a384,265 (46% of MV).",
+            "Pickard urban economic factor 70% applied to residual site capital (speculative premium).",
+            "Annual economic rent = economic site capital \u00d7 yield 5%.",
+            "Parcel roll line: \u00a38,000.67/year on 760 m\u00b2 cadastral area."
+          ],
+          "notional_plot_sqm": 280.0,
+          "parcel_area_sqm": 759.57,
+          "pickard_factor": 0.7,
+          "pickard_label": "urban_speculation_discount",
+          "rebuild_cost_new_gbp": 181846.88,
+          "roll_annual_rent_grid_square_gbp": 94.8,
+          "roll_annual_rent_notional_plot_gbp": 2949.28,
+          "roll_annual_rent_parcel_gbp": 8000.67,
+          "roll_annual_rent_per_sqm_gbp": 10.5332,
+          "site_capital_economic_gbp": 58985.65,
+          "site_capital_economic_per_sqm_gbp": 210.66,
+          "site_capital_market_gbp": 84265.22,
+          "site_capital_market_per_sqm_gbp": 300.95,
+          "site_share_implied": 0.4573,
+          "yield_rate": 0.05
+        },
+        "average_price_gbp": 184281,
+        "capture_rate": 1.0,
+        "confidence": "high",
+        "council_code": "S12000049",
+        "council_name": "City of Glasgow",
+        "despeculated_site_capital_per_sqm_gbp": 210.66,
+        "despeculated_site_value_gbp": 1895.94,
+        "disclaimer": "SLRG-aligned valuer residual AGR estimate \u2014 open-data approximation of a roll, not an official rates bill",
+        "drc_improvements_gbp": 100015.78,
+        "economic_annual_rent_gbp": 94.8,
+        "equal_share_enabled": true,
+        "equal_share_rent_per_person_gbp": 16423.36,
+        "estimate_kind": "valuer_residual_roll",
+        "estimate_label": "Valuer residual AGR roll (open-data approximation)",
+        "habu": "existing_residential",
+        "hope_value_excluded": true,
+        "integrity_caveats": [
+          "Urban path: market value (council HPI) \u2212 DRC of improvements (rebuild \u00d7 stock remaining) = market site capital (Wightman residual).",
+          "Economic rent base applies Pickard factors to residual site capital, then \u00d7 5% yield for annual AGR.",
+          "HABU policy = existing authorised use; hope value excluded from assessment basis. HPI is still average existing-use sales, not a full planning strip.",
+          "Spatial grain is council-level HPI (flat within council) until sales/CAMA microdata is added \u2014 not a finished national roll.",
+          "Rural path uses productive land-use capital (Pickard 5\u00d7 farmland market distortion), not farm-sale residual.",
+          "The Sandilands national rent pool (\u00a390bn) is separate; map roll cells are not calibrated to sum to that pool.",
+          "Non-domestic, vacant, and natural-resource rents (Sandilands classical Land) are not yet on this roll.",
+          "Not a substitute for a VOA/ROS professional valuation or a statutory AGR roll."
+        ],
+        "lookup_method": "boundary",
+        "market_value_gbp": 184281.0,
+        "method": "residual_drc",
+        "national_rent_pool_gbp": 90000000000.0,
+        "notes": [
+          "Valuer residual (Wightman): site capital = market value \u2212 DRC of improvements.",
+          "HABU = existing residential use (authorised-consent / existing-use rule); hope value excluded from assessment policy.",
+          "MV (council HPI average dwelling) = \u00a3184,281.",
+          "Rebuild new \u2248 85 m\u00b2 \u00d7 \u00a32,038/m\u00b2 \u00d7 region 1.05 = \u00a3181,847.",
+          "DRC = rebuild \u00d7 stock remaining factor 55% = \u00a3100,016.",
+          "Market residual site capital (notional 280 m\u00b2 plot) = \u00a384,265 (46% of MV).",
+          "Pickard urban economic factor 70% applied to residual site capital (speculative premium).",
+          "Annual economic rent = economic site capital \u00d7 yield 5%.",
+          "Parcel roll line: \u00a38,000.67/year on 760 m\u00b2 cadastral area.",
+          "Council resolved via boundary polygon lookup.",
+          "Macro vs map: Sandilands national rent pool is \u00a390bn (equal-share + income-tax scaling). Roll residual is independent and not calibrated so all cells sum to that pool.",
+          "Smith/Wightman: charge is on ground-rent of the site after stripping buildings (DRC).",
+          "Pickard: economic rent base after removing speculative capital premium.",
+          "Ogilvie/Paine/Unitism equal-share (national pool): one Scot \u2248 \u00a316,423/year; this cell\u2019s roll economic rent is 0.5772% of that claim (could fund services or a citizen dividend).",
+          "Martin Adams (Unitism): community collects land rental value; wages and buildings untaxed.",
+          "Lars Doucet / CLE: next roll upgrade path is sales-based mass appraisal (OpenAVMKit), not a change to SLRG residual policy."
+        ],
+        "notional_plot_sqm": 280.0,
+        "parcel_area_sqm": 759.57,
+        "parcel_id": "SCT0007431917",
+        "pickard_factor": 0.7,
+        "pickard_label": "urban_speculation_discount",
+        "rebuild_cost_new_gbp": 181846.88,
+        "roll_annual_rent_notional_plot_gbp": 2949.28,
+        "roll_annual_rent_parcel_gbp": 8000.67,
+        "scenarios": {
+          "full_agr": {
+            "annual_charge_gbp": 94.8,
+            "description": "Full annual economic ground rent for this place (valuer residual). National full collection exceeds today\u2019s tax basket \u2014 surplus for services or citizen dividend. High-rent locations contribute most.",
+            "effective_rate": 1.0,
+            "id": "full_agr",
+            "label": "Full land rent (surplus for services + dividend)"
+          },
+          "replace_full_basket": {
+            "annual_charge_gbp": 18.01,
+            "description": "Scales map economic rent so national collection matches the fiscal basket (\u00a317.1bn: income tax + Council Tax + NDR). Revenue-neutral on listed taxes; high-rent places still pay most.",
+            "effective_rate": 0.19,
+            "id": "replace_full_basket",
+            "label": "Replace all listed taxes (neutral)"
+          },
+          "replace_income_tax": {
+            "annual_charge_gbp": 12.11,
+            "description": "Scales map economic rent so Scotland raises \u00a311.5bn if the national pool is \u00a390bn (Sandilands). Uses the national pool ratio, not a sum of map cells.",
+            "effective_rate": 0.1278,
+            "id": "replace_income_tax",
+            "label": "Replace income tax only"
+          },
+          "revenue_neutral": {
+            "annual_charge_gbp": 59.91,
+            "description": "Charge 3.16% of this place\u2019s economic site capital (Wightman-style CT + NDR replacement on residual capital).",
+            "effective_rate": 0.0316,
+            "id": "revenue_neutral",
+            "label": "Replace Council Tax + NDR"
+          }
+        },
+        "scotland_population": 5480000,
+        "sensitivity_overrides": {},
+        "site_capital_market_per_sqm_gbp": 300.95,
+        "site_capital_per_sqm_gbp": 300.95,
+        "site_rental_per_sqm_gbp": 10.5332,
+        "site_share_source": "implied_residual_46%",
+        "site_share_used": 0.4573,
+        "square_as_fraction_of_equal_claim": 0.005772,
+        "ward_name": null,
+        "yield_rate": 0.05
+      },
+      "fiscal": {
+        "comparison_unit": "typical_plot_vs_one_person_dividend",
+        "dividend_gbp": 16423.36,
+        "dividend_mode": "equal_share_of_pool",
+        "gross_plot_gbp": 8000.67,
+        "net_gbp": -8422.69,
+        "note": "Gross is map residual plot AGR under the scenario. Dividend and remote credit are policy knobs on the national pool story. High land-rent places fund the state; low-rent / remote can be net receivers.",
+        "remote_credit_gbp": 0.0,
+        "role": "net_receiver"
+      },
+      "fiscal_summary": {
+        "basket": {
+          "lines": [
+            {
+              "annual_gbp": 11500000000,
+              "id": "income_tax",
+              "label": "Scotland income tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "council_tax",
+              "label": "Council Tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "ndr",
+              "label": "Non-domestic rates (NDR)"
+            }
+          ],
+          "note": "Research mid-year placeholders for demo \u2014 not an OBR forecast. Cite / refresh from SG and HMRC stats.",
+          "total_gbp": 17100000000.0
+        },
+        "collection": {
+          "annual_gbp": 90000000000.0,
+          "effective_rate_on_national_pool": 1.0,
+          "method": "Full economic rent of national pool (Sandilands macro)",
+          "national_rent_pool_gbp": 90000000000.0
+        },
+        "dividend": {
+          "enabled": true,
+          "mode": "equal_share_of_pool",
+          "per_person_gbp": 16423.36,
+          "scotland_population": 5480000
+        },
+        "enabled": true,
+        "integrity": [
+          "National surplus uses Sandilands rent pool \u00d7 scenario rate, not the sum of map residual cells.",
+          "Place net = plot gross AGR \u2212 equal dividend (\u2212 remote credit). Household of one for comparison.",
+          "Not a live tax bill; residual is open-data research approximation."
+        ],
+        "purpose": "Show revenue-neutral-or-better tax replacement from land rent; high-rent places pay most; remote/low-rent can be net receivers.",
+        "remote_credit": {
+          "councils": [
+            "S12000013",
+            "S12000023",
+            "S12000027",
+            "S12000017",
+            "S12000035"
+          ],
+          "credit_gbp_per_person_year": 500.0,
+          "enabled": true,
+          "notes": "Optional repopulation / periphery support on top of equal dividend \u2014 research policy knob, not statute."
+        },
+        "revenue_neutral_or_better": true,
+        "scenario": "full_agr",
+        "surplus_gbp": 72900000000.0
+      },
+      "method_family": "valuer_residual_roll",
+      "postcode": {
+        "admin_district": "Glasgow City",
+        "country": "Scotland",
+        "parish": null,
+        "postcode": "G1 1BL"
+      },
+      "square": {
+        "area_sqm": 9.0,
+        "bounds": {
+          "east": -4.243127727695028,
+          "north": 55.85833183614804,
+          "south": 55.85830488681279,
+          "west": -4.243175745074099
+        },
+        "grid": "what3words_3m",
+        "lat": 55.858318361480414,
+        "lng": -4.243151736384563,
+        "polygon": {
+          "coordinates": [
+            [
+              [
+                -4.243175745074099,
+                55.85830488681279
+              ],
+              [
+                -4.243127727695028,
+                55.85830488681279
+              ],
+              [
+                -4.243127727695028,
+                55.85833183614804
+              ],
+              [
+                -4.243175745074099,
+                55.85833183614804
+              ],
+              [
+                -4.243175745074099,
+                55.85830488681279
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "w3w_configured": false,
+      "what3words": null
+    },
+    "G2 1DY": {
+      "agr": {
+        "active_scenario": "full_agr",
+        "annual_ground_rent_gbp": 94.8,
+        "assessment": {
+          "annual_rent_economic_per_sqm_gbp": 10.5332,
+          "annual_rent_market_per_sqm_gbp": 15.0474,
+          "confidence": "high",
+          "depreciation_remaining_factor": 0.55,
+          "drc_improvements_gbp": 100015.78,
+          "dwelling_floor_sqm": 85.0,
+          "habu": "existing_residential",
+          "hope_value_excluded": true,
+          "market_value_gbp": 184281.0,
+          "method": "residual_drc",
+          "notes": [
+            "Valuer residual (Wightman): site capital = market value \u2212 DRC of improvements.",
+            "HABU = existing residential use (authorised-consent / existing-use rule); hope value excluded from assessment policy.",
+            "MV (council HPI average dwelling) = \u00a3184,281.",
+            "Rebuild new \u2248 85 m\u00b2 \u00d7 \u00a32,038/m\u00b2 \u00d7 region 1.05 = \u00a3181,847.",
+            "DRC = rebuild \u00d7 stock remaining factor 55% = \u00a3100,016.",
+            "Market residual site capital (notional 280 m\u00b2 plot) = \u00a384,265 (46% of MV).",
+            "Pickard urban economic factor 70% applied to residual site capital (speculative premium).",
+            "Annual economic rent = economic site capital \u00d7 yield 5%.",
+            "Parcel roll line: \u00a39,577.69/year on 909 m\u00b2 cadastral area."
+          ],
+          "notional_plot_sqm": 280.0,
+          "parcel_area_sqm": 909.29,
+          "pickard_factor": 0.7,
+          "pickard_label": "urban_speculation_discount",
+          "rebuild_cost_new_gbp": 181846.88,
+          "roll_annual_rent_grid_square_gbp": 94.8,
+          "roll_annual_rent_notional_plot_gbp": 2949.28,
+          "roll_annual_rent_parcel_gbp": 9577.69,
+          "roll_annual_rent_per_sqm_gbp": 10.5332,
+          "site_capital_economic_gbp": 58985.65,
+          "site_capital_economic_per_sqm_gbp": 210.66,
+          "site_capital_market_gbp": 84265.22,
+          "site_capital_market_per_sqm_gbp": 300.95,
+          "site_share_implied": 0.4573,
+          "yield_rate": 0.05
+        },
+        "average_price_gbp": 184281,
+        "capture_rate": 1.0,
+        "confidence": "high",
+        "council_code": "S12000049",
+        "council_name": "City of Glasgow",
+        "despeculated_site_capital_per_sqm_gbp": 210.66,
+        "despeculated_site_value_gbp": 1895.94,
+        "disclaimer": "SLRG-aligned valuer residual AGR estimate \u2014 open-data approximation of a roll, not an official rates bill",
+        "drc_improvements_gbp": 100015.78,
+        "economic_annual_rent_gbp": 94.8,
+        "equal_share_enabled": true,
+        "equal_share_rent_per_person_gbp": 16423.36,
+        "estimate_kind": "valuer_residual_roll",
+        "estimate_label": "Valuer residual AGR roll (open-data approximation)",
+        "habu": "existing_residential",
+        "hope_value_excluded": true,
+        "integrity_caveats": [
+          "Urban path: market value (council HPI) \u2212 DRC of improvements (rebuild \u00d7 stock remaining) = market site capital (Wightman residual).",
+          "Economic rent base applies Pickard factors to residual site capital, then \u00d7 5% yield for annual AGR.",
+          "HABU policy = existing authorised use; hope value excluded from assessment basis. HPI is still average existing-use sales, not a full planning strip.",
+          "Spatial grain is council-level HPI (flat within council) until sales/CAMA microdata is added \u2014 not a finished national roll.",
+          "Rural path uses productive land-use capital (Pickard 5\u00d7 farmland market distortion), not farm-sale residual.",
+          "The Sandilands national rent pool (\u00a390bn) is separate; map roll cells are not calibrated to sum to that pool.",
+          "Non-domestic, vacant, and natural-resource rents (Sandilands classical Land) are not yet on this roll.",
+          "Not a substitute for a VOA/ROS professional valuation or a statutory AGR roll."
+        ],
+        "lookup_method": "boundary",
+        "market_value_gbp": 184281.0,
+        "method": "residual_drc",
+        "national_rent_pool_gbp": 90000000000.0,
+        "notes": [
+          "Valuer residual (Wightman): site capital = market value \u2212 DRC of improvements.",
+          "HABU = existing residential use (authorised-consent / existing-use rule); hope value excluded from assessment policy.",
+          "MV (council HPI average dwelling) = \u00a3184,281.",
+          "Rebuild new \u2248 85 m\u00b2 \u00d7 \u00a32,038/m\u00b2 \u00d7 region 1.05 = \u00a3181,847.",
+          "DRC = rebuild \u00d7 stock remaining factor 55% = \u00a3100,016.",
+          "Market residual site capital (notional 280 m\u00b2 plot) = \u00a384,265 (46% of MV).",
+          "Pickard urban economic factor 70% applied to residual site capital (speculative premium).",
+          "Annual economic rent = economic site capital \u00d7 yield 5%.",
+          "Parcel roll line: \u00a39,577.69/year on 909 m\u00b2 cadastral area.",
+          "Council resolved via boundary polygon lookup.",
+          "Macro vs map: Sandilands national rent pool is \u00a390bn (equal-share + income-tax scaling). Roll residual is independent and not calibrated so all cells sum to that pool.",
+          "Smith/Wightman: charge is on ground-rent of the site after stripping buildings (DRC).",
+          "Pickard: economic rent base after removing speculative capital premium.",
+          "Ogilvie/Paine/Unitism equal-share (national pool): one Scot \u2248 \u00a316,423/year; this cell\u2019s roll economic rent is 0.5772% of that claim (could fund services or a citizen dividend).",
+          "Martin Adams (Unitism): community collects land rental value; wages and buildings untaxed.",
+          "Lars Doucet / CLE: next roll upgrade path is sales-based mass appraisal (OpenAVMKit), not a change to SLRG residual policy."
+        ],
+        "notional_plot_sqm": 280.0,
+        "parcel_area_sqm": 909.29,
+        "parcel_id": "SCT0001238107",
+        "pickard_factor": 0.7,
+        "pickard_label": "urban_speculation_discount",
+        "rebuild_cost_new_gbp": 181846.88,
+        "roll_annual_rent_notional_plot_gbp": 2949.28,
+        "roll_annual_rent_parcel_gbp": 9577.69,
+        "scenarios": {
+          "full_agr": {
+            "annual_charge_gbp": 94.8,
+            "description": "Full annual economic ground rent for this place (valuer residual). National full collection exceeds today\u2019s tax basket \u2014 surplus for services or citizen dividend. High-rent locations contribute most.",
+            "effective_rate": 1.0,
+            "id": "full_agr",
+            "label": "Full land rent (surplus for services + dividend)"
+          },
+          "replace_full_basket": {
+            "annual_charge_gbp": 18.01,
+            "description": "Scales map economic rent so national collection matches the fiscal basket (\u00a317.1bn: income tax + Council Tax + NDR). Revenue-neutral on listed taxes; high-rent places still pay most.",
+            "effective_rate": 0.19,
+            "id": "replace_full_basket",
+            "label": "Replace all listed taxes (neutral)"
+          },
+          "replace_income_tax": {
+            "annual_charge_gbp": 12.11,
+            "description": "Scales map economic rent so Scotland raises \u00a311.5bn if the national pool is \u00a390bn (Sandilands). Uses the national pool ratio, not a sum of map cells.",
+            "effective_rate": 0.1278,
+            "id": "replace_income_tax",
+            "label": "Replace income tax only"
+          },
+          "revenue_neutral": {
+            "annual_charge_gbp": 59.91,
+            "description": "Charge 3.16% of this place\u2019s economic site capital (Wightman-style CT + NDR replacement on residual capital).",
+            "effective_rate": 0.0316,
+            "id": "revenue_neutral",
+            "label": "Replace Council Tax + NDR"
+          }
+        },
+        "scotland_population": 5480000,
+        "sensitivity_overrides": {},
+        "site_capital_market_per_sqm_gbp": 300.95,
+        "site_capital_per_sqm_gbp": 300.95,
+        "site_rental_per_sqm_gbp": 10.5332,
+        "site_share_source": "implied_residual_46%",
+        "site_share_used": 0.4573,
+        "square_as_fraction_of_equal_claim": 0.005772,
+        "ward_name": null,
+        "yield_rate": 0.05
+      },
+      "fiscal": {
+        "comparison_unit": "typical_plot_vs_one_person_dividend",
+        "dividend_gbp": 16423.36,
+        "dividend_mode": "equal_share_of_pool",
+        "gross_plot_gbp": 9577.69,
+        "net_gbp": -6845.67,
+        "note": "Gross is map residual plot AGR under the scenario. Dividend and remote credit are policy knobs on the national pool story. High land-rent places fund the state; low-rent / remote can be net receivers.",
+        "remote_credit_gbp": 0.0,
+        "role": "net_receiver"
+      },
+      "fiscal_summary": {
+        "basket": {
+          "lines": [
+            {
+              "annual_gbp": 11500000000,
+              "id": "income_tax",
+              "label": "Scotland income tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "council_tax",
+              "label": "Council Tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "ndr",
+              "label": "Non-domestic rates (NDR)"
+            }
+          ],
+          "note": "Research mid-year placeholders for demo \u2014 not an OBR forecast. Cite / refresh from SG and HMRC stats.",
+          "total_gbp": 17100000000.0
+        },
+        "collection": {
+          "annual_gbp": 90000000000.0,
+          "effective_rate_on_national_pool": 1.0,
+          "method": "Full economic rent of national pool (Sandilands macro)",
+          "national_rent_pool_gbp": 90000000000.0
+        },
+        "dividend": {
+          "enabled": true,
+          "mode": "equal_share_of_pool",
+          "per_person_gbp": 16423.36,
+          "scotland_population": 5480000
+        },
+        "enabled": true,
+        "integrity": [
+          "National surplus uses Sandilands rent pool \u00d7 scenario rate, not the sum of map residual cells.",
+          "Place net = plot gross AGR \u2212 equal dividend (\u2212 remote credit). Household of one for comparison.",
+          "Not a live tax bill; residual is open-data research approximation."
+        ],
+        "purpose": "Show revenue-neutral-or-better tax replacement from land rent; high-rent places pay most; remote/low-rent can be net receivers.",
+        "remote_credit": {
+          "councils": [
+            "S12000013",
+            "S12000023",
+            "S12000027",
+            "S12000017",
+            "S12000035"
+          ],
+          "credit_gbp_per_person_year": 500.0,
+          "enabled": true,
+          "notes": "Optional repopulation / periphery support on top of equal dividend \u2014 research policy knob, not statute."
+        },
+        "revenue_neutral_or_better": true,
+        "scenario": "full_agr",
+        "surplus_gbp": 72900000000.0
+      },
+      "method_family": "valuer_residual_roll",
+      "postcode": {
+        "admin_district": "Glasgow City",
+        "country": "Scotland",
+        "parish": null,
+        "postcode": "G2 1DY"
+      },
+      "square": {
+        "area_sqm": 9.0,
+        "bounds": {
+          "east": -4.25072274010139,
+          "north": 55.86059558030902,
+          "south": 55.860568630973766,
+          "west": -4.250770760286096
+        },
+        "grid": "what3words_3m",
+        "lat": 55.86058210564139,
+        "lng": -4.250746750193743,
+        "polygon": {
+          "coordinates": [
+            [
+              [
+                -4.250770760286096,
+                55.860568630973766
+              ],
+              [
+                -4.25072274010139,
+                55.860568630973766
+              ],
+              [
+                -4.25072274010139,
+                55.86059558030902
+              ],
+              [
+                -4.250770760286096,
+                55.86059558030902
+              ],
+              [
+                -4.250770760286096,
+                55.860568630973766
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "w3w_configured": false,
+      "what3words": null
+    },
+    "HS1 2BG": {
+      "agr": {
+        "active_scenario": "full_agr",
+        "annual_ground_rent_gbp": 0.04,
+        "assessment": {
+          "annual_rent_economic_per_sqm_gbp": 0.004364,
+          "annual_rent_market_per_sqm_gbp": 0.021821,
+          "confidence": "medium",
+          "depreciation_remaining_factor": null,
+          "drc_improvements_gbp": null,
+          "dwelling_floor_sqm": null,
+          "habu": "existing_agriculture",
+          "hope_value_excluded": true,
+          "market_value_gbp": null,
+          "method": "productive_land_use",
+          "notes": [
+            "Rural productive assessment (Pickard / land-use category).",
+            "HABU = agriculture (existing rural use); hope value excluded.",
+            "Category capital \u00a34,094/ha (2009) \u00d7 HPI factor 1.07 = \u00a34,364/ha.",
+            "Pickard farmland productive factor 20% (market \u2248 5\u00d7 productive in Pickard 2018).",
+            "Economic site capital \u00a3873/ha; annual rent at 5% yield.",
+            "Council: Na h-Eileanan Siar (S12000013)."
+          ],
+          "notional_plot_sqm": 10000.0,
+          "parcel_area_sqm": null,
+          "pickard_factor": 0.2,
+          "pickard_label": "farmland_market_to_productive",
+          "rebuild_cost_new_gbp": null,
+          "roll_annual_rent_grid_square_gbp": 0.0393,
+          "roll_annual_rent_notional_plot_gbp": 43.64,
+          "roll_annual_rent_parcel_gbp": null,
+          "roll_annual_rent_per_sqm_gbp": 0.004364,
+          "site_capital_economic_gbp": 872.84,
+          "site_capital_economic_per_sqm_gbp": 0.0873,
+          "site_capital_market_gbp": 4364.2,
+          "site_capital_market_per_sqm_gbp": 0.4364,
+          "site_share_implied": null,
+          "yield_rate": 0.05
+        },
+        "average_price_gbp": null,
+        "capture_rate": 1.0,
+        "confidence": "medium",
+        "council_code": "S12000013",
+        "council_name": "Na h-Eileanan Siar",
+        "despeculated_site_capital_per_sqm_gbp": 0.0873,
+        "despeculated_site_value_gbp": 0.79,
+        "disclaimer": "SLRG-aligned valuer residual AGR estimate \u2014 open-data approximation of a roll, not an official rates bill",
+        "drc_improvements_gbp": null,
+        "economic_annual_rent_gbp": 0.04,
+        "equal_share_enabled": true,
+        "equal_share_rent_per_person_gbp": 16423.36,
+        "estimate_kind": "valuer_residual_roll",
+        "estimate_label": "Valuer residual AGR roll (open-data approximation)",
+        "habu": "existing_agriculture",
+        "hope_value_excluded": true,
+        "integrity_caveats": [
+          "Urban path: market value (council HPI) \u2212 DRC of improvements (rebuild \u00d7 stock remaining) = market site capital (Wightman residual).",
+          "Economic rent base applies Pickard factors to residual site capital, then \u00d7 5% yield for annual AGR.",
+          "HABU policy = existing authorised use; hope value excluded from assessment basis. HPI is still average existing-use sales, not a full planning strip.",
+          "Spatial grain is council-level HPI (flat within council) until sales/CAMA microdata is added \u2014 not a finished national roll.",
+          "Rural path uses productive land-use capital (Pickard 5\u00d7 farmland market distortion), not farm-sale residual.",
+          "The Sandilands national rent pool (\u00a390bn) is separate; map roll cells are not calibrated to sum to that pool.",
+          "Non-domestic, vacant, and natural-resource rents (Sandilands classical Land) are not yet on this roll.",
+          "Not a substitute for a VOA/ROS professional valuation or a statutory AGR roll."
+        ],
+        "lookup_method": "boundary",
+        "market_value_gbp": null,
+        "method": "productive_land_use",
+        "national_rent_pool_gbp": 90000000000.0,
+        "notes": [
+          "Rural productive assessment (Pickard / land-use category).",
+          "HABU = agriculture (existing rural use); hope value excluded.",
+          "Category capital \u00a34,094/ha (2009) \u00d7 HPI factor 1.07 = \u00a34,364/ha.",
+          "Pickard farmland productive factor 20% (market \u2248 5\u00d7 productive in Pickard 2018).",
+          "Economic site capital \u00a3873/ha; annual rent at 5% yield.",
+          "Council: Na h-Eileanan Siar (S12000013).",
+          "Council resolved via boundary polygon lookup.",
+          "Macro vs map: Sandilands national rent pool is \u00a390bn (equal-share + income-tax scaling). Roll residual is independent and not calibrated so all cells sum to that pool.",
+          "Smith/Wightman: charge is on ground-rent of the site after stripping buildings (DRC).",
+          "Pickard: economic rent base after removing speculative capital premium.",
+          "Ogilvie/Paine/Unitism equal-share (national pool): one Scot \u2248 \u00a316,423/year; this cell\u2019s roll economic rent is 0.0002% of that claim (could fund services or a citizen dividend).",
+          "Martin Adams (Unitism): community collects land rental value; wages and buildings untaxed.",
+          "Lars Doucet / CLE: next roll upgrade path is sales-based mass appraisal (OpenAVMKit), not a change to SLRG residual policy."
+        ],
+        "notional_plot_sqm": 10000.0,
+        "parcel_area_sqm": null,
+        "parcel_id": null,
+        "pickard_factor": 0.2,
+        "pickard_label": "farmland_market_to_productive",
+        "rebuild_cost_new_gbp": null,
+        "roll_annual_rent_notional_plot_gbp": 43.64,
+        "roll_annual_rent_parcel_gbp": null,
+        "scenarios": {
+          "full_agr": {
+            "annual_charge_gbp": 0.04,
+            "description": "Full annual economic ground rent for this place (valuer residual). National full collection exceeds today\u2019s tax basket \u2014 surplus for services or citizen dividend. High-rent locations contribute most.",
+            "effective_rate": 1.0,
+            "id": "full_agr",
+            "label": "Full land rent (surplus for services + dividend)"
+          },
+          "replace_full_basket": {
+            "annual_charge_gbp": 0.01,
+            "description": "Scales map economic rent so national collection matches the fiscal basket (\u00a317.1bn: income tax + Council Tax + NDR). Revenue-neutral on listed taxes; high-rent places still pay most.",
+            "effective_rate": 0.19,
+            "id": "replace_full_basket",
+            "label": "Replace all listed taxes (neutral)"
+          },
+          "replace_income_tax": {
+            "annual_charge_gbp": 0.01,
+            "description": "Scales map economic rent so Scotland raises \u00a311.5bn if the national pool is \u00a390bn (Sandilands). Uses the national pool ratio, not a sum of map cells.",
+            "effective_rate": 0.1278,
+            "id": "replace_income_tax",
+            "label": "Replace income tax only"
+          },
+          "revenue_neutral": {
+            "annual_charge_gbp": 0.02,
+            "description": "Charge 3.16% of this place\u2019s economic site capital (Wightman-style CT + NDR replacement on residual capital).",
+            "effective_rate": 0.0316,
+            "id": "revenue_neutral",
+            "label": "Replace Council Tax + NDR"
+          }
+        },
+        "scotland_population": 5480000,
+        "sensitivity_overrides": {},
+        "site_capital_market_per_sqm_gbp": 0.4364,
+        "site_capital_per_sqm_gbp": 0.4364,
+        "site_rental_per_sqm_gbp": 0.0044,
+        "site_share_source": "productive_land_use",
+        "site_share_used": null,
+        "square_as_fraction_of_equal_claim": 2e-06,
+        "ward_name": null,
+        "yield_rate": 0.05
+      },
+      "fiscal": {
+        "comparison_unit": "typical_plot_vs_one_person_dividend",
+        "dividend_gbp": 16423.36,
+        "dividend_mode": "equal_share_of_pool",
+        "gross_plot_gbp": 43.64,
+        "net_gbp": -16879.72,
+        "note": "Gross is map residual plot AGR under the scenario. Dividend and remote credit are policy knobs on the national pool story. High land-rent places fund the state; low-rent / remote can be net receivers.",
+        "remote_credit_gbp": 500.0,
+        "role": "net_receiver"
+      },
+      "fiscal_summary": {
+        "basket": {
+          "lines": [
+            {
+              "annual_gbp": 11500000000,
+              "id": "income_tax",
+              "label": "Scotland income tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "council_tax",
+              "label": "Council Tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "ndr",
+              "label": "Non-domestic rates (NDR)"
+            }
+          ],
+          "note": "Research mid-year placeholders for demo \u2014 not an OBR forecast. Cite / refresh from SG and HMRC stats.",
+          "total_gbp": 17100000000.0
+        },
+        "collection": {
+          "annual_gbp": 90000000000.0,
+          "effective_rate_on_national_pool": 1.0,
+          "method": "Full economic rent of national pool (Sandilands macro)",
+          "national_rent_pool_gbp": 90000000000.0
+        },
+        "dividend": {
+          "enabled": true,
+          "mode": "equal_share_of_pool",
+          "per_person_gbp": 16423.36,
+          "scotland_population": 5480000
+        },
+        "enabled": true,
+        "integrity": [
+          "National surplus uses Sandilands rent pool \u00d7 scenario rate, not the sum of map residual cells.",
+          "Place net = plot gross AGR \u2212 equal dividend (\u2212 remote credit). Household of one for comparison.",
+          "Not a live tax bill; residual is open-data research approximation."
+        ],
+        "purpose": "Show revenue-neutral-or-better tax replacement from land rent; high-rent places pay most; remote/low-rent can be net receivers.",
+        "remote_credit": {
+          "councils": [
+            "S12000013",
+            "S12000023",
+            "S12000027",
+            "S12000017",
+            "S12000035"
+          ],
+          "credit_gbp_per_person_year": 500.0,
+          "enabled": true,
+          "notes": "Optional repopulation / periphery support on top of equal dividend \u2014 research policy knob, not statute."
+        },
+        "revenue_neutral_or_better": true,
+        "scenario": "full_agr",
+        "surplus_gbp": 72900000000.0
+      },
+      "method_family": "valuer_residual_roll",
+      "postcode": {
+        "admin_district": "Na h-Eileanan Siar",
+        "country": "Scotland",
+        "parish": null,
+        "postcode": "HS1 2BG"
+      },
+      "square": {
+        "area_sqm": 9.0,
+        "bounds": {
+          "east": -6.389310887067313,
+          "north": 58.2080713259073,
+          "south": 58.20804437657205,
+          "west": -6.389362040226198
+        },
+        "grid": "what3words_3m",
+        "lat": 58.20805785123967,
+        "lng": -6.389336463646755,
+        "polygon": {
+          "coordinates": [
+            [
+              [
+                -6.389362040226198,
+                58.20804437657205
+              ],
+              [
+                -6.389310887067313,
+                58.20804437657205
+              ],
+              [
+                -6.389310887067313,
+                58.2080713259073
+              ],
+              [
+                -6.389362040226198,
+                58.2080713259073
+              ],
+              [
+                -6.389362040226198,
+                58.20804437657205
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "w3w_configured": false,
+      "what3words": null
+    },
+    "IV1 1JJ": {
+      "agr": {
+        "active_scenario": "full_agr",
+        "annual_ground_rent_gbp": 0.04,
+        "assessment": {
+          "annual_rent_economic_per_sqm_gbp": 0.004364,
+          "annual_rent_market_per_sqm_gbp": 0.021821,
+          "confidence": "high",
+          "depreciation_remaining_factor": null,
+          "drc_improvements_gbp": null,
+          "dwelling_floor_sqm": null,
+          "habu": "existing_agriculture",
+          "hope_value_excluded": true,
+          "market_value_gbp": null,
+          "method": "productive_land_use",
+          "notes": [
+            "Rural productive assessment (Pickard / land-use category).",
+            "HABU = agriculture (existing rural use); hope value excluded.",
+            "Category capital \u00a34,094/ha (2009) \u00d7 HPI factor 1.07 = \u00a34,364/ha.",
+            "Pickard farmland productive factor 20% (market \u2248 5\u00d7 productive in Pickard 2018).",
+            "Economic site capital \u00a3873/ha; annual rent at 5% yield.",
+            "Council: Highland (S12000017).",
+            "ROS INSPIRE cadastral parcel SCT0003537308 (2,462 sqm) on roll."
+          ],
+          "notional_plot_sqm": 10000.0,
+          "parcel_area_sqm": 2461.62,
+          "pickard_factor": 0.2,
+          "pickard_label": "farmland_market_to_productive",
+          "rebuild_cost_new_gbp": null,
+          "roll_annual_rent_grid_square_gbp": 0.0393,
+          "roll_annual_rent_notional_plot_gbp": 43.64,
+          "roll_annual_rent_parcel_gbp": 10.74,
+          "roll_annual_rent_per_sqm_gbp": 0.004364,
+          "site_capital_economic_gbp": 872.84,
+          "site_capital_economic_per_sqm_gbp": 0.0873,
+          "site_capital_market_gbp": 4364.2,
+          "site_capital_market_per_sqm_gbp": 0.4364,
+          "site_share_implied": null,
+          "yield_rate": 0.05
+        },
+        "average_price_gbp": null,
+        "capture_rate": 1.0,
+        "confidence": "high",
+        "council_code": "S12000017",
+        "council_name": "Highland",
+        "despeculated_site_capital_per_sqm_gbp": 0.0873,
+        "despeculated_site_value_gbp": 0.79,
+        "disclaimer": "SLRG-aligned valuer residual AGR estimate \u2014 open-data approximation of a roll, not an official rates bill",
+        "drc_improvements_gbp": null,
+        "economic_annual_rent_gbp": 0.04,
+        "equal_share_enabled": true,
+        "equal_share_rent_per_person_gbp": 16423.36,
+        "estimate_kind": "valuer_residual_roll",
+        "estimate_label": "Valuer residual AGR roll (open-data approximation)",
+        "habu": "existing_agriculture",
+        "hope_value_excluded": true,
+        "integrity_caveats": [
+          "Urban path: market value (council HPI) \u2212 DRC of improvements (rebuild \u00d7 stock remaining) = market site capital (Wightman residual).",
+          "Economic rent base applies Pickard factors to residual site capital, then \u00d7 5% yield for annual AGR.",
+          "HABU policy = existing authorised use; hope value excluded from assessment basis. HPI is still average existing-use sales, not a full planning strip.",
+          "Spatial grain is council-level HPI (flat within council) until sales/CAMA microdata is added \u2014 not a finished national roll.",
+          "Rural path uses productive land-use capital (Pickard 5\u00d7 farmland market distortion), not farm-sale residual.",
+          "The Sandilands national rent pool (\u00a390bn) is separate; map roll cells are not calibrated to sum to that pool.",
+          "Non-domestic, vacant, and natural-resource rents (Sandilands classical Land) are not yet on this roll.",
+          "Not a substitute for a VOA/ROS professional valuation or a statutory AGR roll."
+        ],
+        "lookup_method": "boundary",
+        "market_value_gbp": null,
+        "method": "productive_land_use",
+        "national_rent_pool_gbp": 90000000000.0,
+        "notes": [
+          "Rural productive assessment (Pickard / land-use category).",
+          "HABU = agriculture (existing rural use); hope value excluded.",
+          "Category capital \u00a34,094/ha (2009) \u00d7 HPI factor 1.07 = \u00a34,364/ha.",
+          "Pickard farmland productive factor 20% (market \u2248 5\u00d7 productive in Pickard 2018).",
+          "Economic site capital \u00a3873/ha; annual rent at 5% yield.",
+          "Council: Highland (S12000017).",
+          "ROS INSPIRE cadastral parcel SCT0003537308 (2,462 sqm) on roll.",
+          "Council resolved via boundary polygon lookup.",
+          "Macro vs map: Sandilands national rent pool is \u00a390bn (equal-share + income-tax scaling). Roll residual is independent and not calibrated so all cells sum to that pool.",
+          "Smith/Wightman: charge is on ground-rent of the site after stripping buildings (DRC).",
+          "Pickard: economic rent base after removing speculative capital premium.",
+          "Ogilvie/Paine/Unitism equal-share (national pool): one Scot \u2248 \u00a316,423/year; this cell\u2019s roll economic rent is 0.0002% of that claim (could fund services or a citizen dividend).",
+          "Martin Adams (Unitism): community collects land rental value; wages and buildings untaxed.",
+          "Lars Doucet / CLE: next roll upgrade path is sales-based mass appraisal (OpenAVMKit), not a change to SLRG residual policy."
+        ],
+        "notional_plot_sqm": 10000.0,
+        "parcel_area_sqm": 2461.62,
+        "parcel_id": "SCT0003537308",
+        "pickard_factor": 0.2,
+        "pickard_label": "farmland_market_to_productive",
+        "rebuild_cost_new_gbp": null,
+        "roll_annual_rent_notional_plot_gbp": 43.64,
+        "roll_annual_rent_parcel_gbp": 10.74,
+        "scenarios": {
+          "full_agr": {
+            "annual_charge_gbp": 0.04,
+            "description": "Full annual economic ground rent for this place (valuer residual). National full collection exceeds today\u2019s tax basket \u2014 surplus for services or citizen dividend. High-rent locations contribute most.",
+            "effective_rate": 1.0,
+            "id": "full_agr",
+            "label": "Full land rent (surplus for services + dividend)"
+          },
+          "replace_full_basket": {
+            "annual_charge_gbp": 0.01,
+            "description": "Scales map economic rent so national collection matches the fiscal basket (\u00a317.1bn: income tax + Council Tax + NDR). Revenue-neutral on listed taxes; high-rent places still pay most.",
+            "effective_rate": 0.19,
+            "id": "replace_full_basket",
+            "label": "Replace all listed taxes (neutral)"
+          },
+          "replace_income_tax": {
+            "annual_charge_gbp": 0.01,
+            "description": "Scales map economic rent so Scotland raises \u00a311.5bn if the national pool is \u00a390bn (Sandilands). Uses the national pool ratio, not a sum of map cells.",
+            "effective_rate": 0.1278,
+            "id": "replace_income_tax",
+            "label": "Replace income tax only"
+          },
+          "revenue_neutral": {
+            "annual_charge_gbp": 0.02,
+            "description": "Charge 3.16% of this place\u2019s economic site capital (Wightman-style CT + NDR replacement on residual capital).",
+            "effective_rate": 0.0316,
+            "id": "revenue_neutral",
+            "label": "Replace Council Tax + NDR"
+          }
+        },
+        "scotland_population": 5480000,
+        "sensitivity_overrides": {},
+        "site_capital_market_per_sqm_gbp": 0.4364,
+        "site_capital_per_sqm_gbp": 0.4364,
+        "site_rental_per_sqm_gbp": 0.0044,
+        "site_share_source": "productive_land_use",
+        "site_share_used": null,
+        "square_as_fraction_of_equal_claim": 2e-06,
+        "ward_name": null,
+        "yield_rate": 0.05
+      },
+      "fiscal": {
+        "comparison_unit": "typical_plot_vs_one_person_dividend",
+        "dividend_gbp": 16423.36,
+        "dividend_mode": "equal_share_of_pool",
+        "gross_plot_gbp": 10.74,
+        "net_gbp": -16912.62,
+        "note": "Gross is map residual plot AGR under the scenario. Dividend and remote credit are policy knobs on the national pool story. High land-rent places fund the state; low-rent / remote can be net receivers.",
+        "remote_credit_gbp": 500.0,
+        "role": "net_receiver"
+      },
+      "fiscal_summary": {
+        "basket": {
+          "lines": [
+            {
+              "annual_gbp": 11500000000,
+              "id": "income_tax",
+              "label": "Scotland income tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "council_tax",
+              "label": "Council Tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "ndr",
+              "label": "Non-domestic rates (NDR)"
+            }
+          ],
+          "note": "Research mid-year placeholders for demo \u2014 not an OBR forecast. Cite / refresh from SG and HMRC stats.",
+          "total_gbp": 17100000000.0
+        },
+        "collection": {
+          "annual_gbp": 90000000000.0,
+          "effective_rate_on_national_pool": 1.0,
+          "method": "Full economic rent of national pool (Sandilands macro)",
+          "national_rent_pool_gbp": 90000000000.0
+        },
+        "dividend": {
+          "enabled": true,
+          "mode": "equal_share_of_pool",
+          "per_person_gbp": 16423.36,
+          "scotland_population": 5480000
+        },
+        "enabled": true,
+        "integrity": [
+          "National surplus uses Sandilands rent pool \u00d7 scenario rate, not the sum of map residual cells.",
+          "Place net = plot gross AGR \u2212 equal dividend (\u2212 remote credit). Household of one for comparison.",
+          "Not a live tax bill; residual is open-data research approximation."
+        ],
+        "purpose": "Show revenue-neutral-or-better tax replacement from land rent; high-rent places pay most; remote/low-rent can be net receivers.",
+        "remote_credit": {
+          "councils": [
+            "S12000013",
+            "S12000023",
+            "S12000027",
+            "S12000017",
+            "S12000035"
+          ],
+          "credit_gbp_per_person_year": 500.0,
+          "enabled": true,
+          "notes": "Optional repopulation / periphery support on top of equal dividend \u2014 research policy knob, not statute."
+        },
+        "revenue_neutral_or_better": true,
+        "scenario": "full_agr",
+        "surplus_gbp": 72900000000.0
+      },
+      "method_family": "valuer_residual_roll",
+      "postcode": {
+        "admin_district": "Highland",
+        "country": "Scotland",
+        "parish": null,
+        "postcode": "IV1 1JJ"
+      },
+      "square": {
+        "area_sqm": 9.0,
+        "bounds": {
+          "east": -4.224975472851722,
+          "north": 57.4772592526051,
+          "south": 57.47723230326985,
+          "west": -4.225025598617379
+        },
+        "grid": "what3words_3m",
+        "lat": 57.477245777937476,
+        "lng": -4.225000535734551,
+        "polygon": {
+          "coordinates": [
+            [
+              [
+                -4.225025598617379,
+                57.47723230326985
+              ],
+              [
+                -4.224975472851722,
+                57.47723230326985
+              ],
+              [
+                -4.224975472851722,
+                57.4772592526051
+              ],
+              [
+                -4.225025598617379,
+                57.4772592526051
+              ],
+              [
+                -4.225025598617379,
+                57.47723230326985
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "w3w_configured": false,
+      "what3words": null
+    },
+    "KW1 4AA": {
+      "agr": {
+        "active_scenario": "full_agr",
+        "annual_ground_rent_gbp": 0.04,
+        "assessment": {
+          "annual_rent_economic_per_sqm_gbp": 0.004364,
+          "annual_rent_market_per_sqm_gbp": 0.021821,
+          "confidence": "high",
+          "depreciation_remaining_factor": null,
+          "drc_improvements_gbp": null,
+          "dwelling_floor_sqm": null,
+          "habu": "existing_agriculture",
+          "hope_value_excluded": true,
+          "market_value_gbp": null,
+          "method": "productive_land_use",
+          "notes": [
+            "Rural productive assessment (Pickard / land-use category).",
+            "HABU = agriculture (existing rural use); hope value excluded.",
+            "Category capital \u00a34,094/ha (2009) \u00d7 HPI factor 1.07 = \u00a34,364/ha.",
+            "Pickard farmland productive factor 20% (market \u2248 5\u00d7 productive in Pickard 2018).",
+            "Economic site capital \u00a3873/ha; annual rent at 5% yield.",
+            "Council: Highland (S12000017).",
+            "ROS INSPIRE cadastral parcel SCT0003389903 (1,897 sqm) on roll."
+          ],
+          "notional_plot_sqm": 10000.0,
+          "parcel_area_sqm": 1897.42,
+          "pickard_factor": 0.2,
+          "pickard_label": "farmland_market_to_productive",
+          "rebuild_cost_new_gbp": null,
+          "roll_annual_rent_grid_square_gbp": 0.0393,
+          "roll_annual_rent_notional_plot_gbp": 43.64,
+          "roll_annual_rent_parcel_gbp": 8.28,
+          "roll_annual_rent_per_sqm_gbp": 0.004364,
+          "site_capital_economic_gbp": 872.84,
+          "site_capital_economic_per_sqm_gbp": 0.0873,
+          "site_capital_market_gbp": 4364.2,
+          "site_capital_market_per_sqm_gbp": 0.4364,
+          "site_share_implied": null,
+          "yield_rate": 0.05
+        },
+        "average_price_gbp": null,
+        "capture_rate": 1.0,
+        "confidence": "high",
+        "council_code": "S12000017",
+        "council_name": "Highland",
+        "despeculated_site_capital_per_sqm_gbp": 0.0873,
+        "despeculated_site_value_gbp": 0.79,
+        "disclaimer": "SLRG-aligned valuer residual AGR estimate \u2014 open-data approximation of a roll, not an official rates bill",
+        "drc_improvements_gbp": null,
+        "economic_annual_rent_gbp": 0.04,
+        "equal_share_enabled": true,
+        "equal_share_rent_per_person_gbp": 16423.36,
+        "estimate_kind": "valuer_residual_roll",
+        "estimate_label": "Valuer residual AGR roll (open-data approximation)",
+        "habu": "existing_agriculture",
+        "hope_value_excluded": true,
+        "integrity_caveats": [
+          "Urban path: market value (council HPI) \u2212 DRC of improvements (rebuild \u00d7 stock remaining) = market site capital (Wightman residual).",
+          "Economic rent base applies Pickard factors to residual site capital, then \u00d7 5% yield for annual AGR.",
+          "HABU policy = existing authorised use; hope value excluded from assessment basis. HPI is still average existing-use sales, not a full planning strip.",
+          "Spatial grain is council-level HPI (flat within council) until sales/CAMA microdata is added \u2014 not a finished national roll.",
+          "Rural path uses productive land-use capital (Pickard 5\u00d7 farmland market distortion), not farm-sale residual.",
+          "The Sandilands national rent pool (\u00a390bn) is separate; map roll cells are not calibrated to sum to that pool.",
+          "Non-domestic, vacant, and natural-resource rents (Sandilands classical Land) are not yet on this roll.",
+          "Not a substitute for a VOA/ROS professional valuation or a statutory AGR roll."
+        ],
+        "lookup_method": "boundary",
+        "market_value_gbp": null,
+        "method": "productive_land_use",
+        "national_rent_pool_gbp": 90000000000.0,
+        "notes": [
+          "Rural productive assessment (Pickard / land-use category).",
+          "HABU = agriculture (existing rural use); hope value excluded.",
+          "Category capital \u00a34,094/ha (2009) \u00d7 HPI factor 1.07 = \u00a34,364/ha.",
+          "Pickard farmland productive factor 20% (market \u2248 5\u00d7 productive in Pickard 2018).",
+          "Economic site capital \u00a3873/ha; annual rent at 5% yield.",
+          "Council: Highland (S12000017).",
+          "ROS INSPIRE cadastral parcel SCT0003389903 (1,897 sqm) on roll.",
+          "Council resolved via boundary polygon lookup.",
+          "Macro vs map: Sandilands national rent pool is \u00a390bn (equal-share + income-tax scaling). Roll residual is independent and not calibrated so all cells sum to that pool.",
+          "Smith/Wightman: charge is on ground-rent of the site after stripping buildings (DRC).",
+          "Pickard: economic rent base after removing speculative capital premium.",
+          "Ogilvie/Paine/Unitism equal-share (national pool): one Scot \u2248 \u00a316,423/year; this cell\u2019s roll economic rent is 0.0002% of that claim (could fund services or a citizen dividend).",
+          "Martin Adams (Unitism): community collects land rental value; wages and buildings untaxed.",
+          "Lars Doucet / CLE: next roll upgrade path is sales-based mass appraisal (OpenAVMKit), not a change to SLRG residual policy."
+        ],
+        "notional_plot_sqm": 10000.0,
+        "parcel_area_sqm": 1897.42,
+        "parcel_id": "SCT0003389903",
+        "pickard_factor": 0.2,
+        "pickard_label": "farmland_market_to_productive",
+        "rebuild_cost_new_gbp": null,
+        "roll_annual_rent_notional_plot_gbp": 43.64,
+        "roll_annual_rent_parcel_gbp": 8.28,
+        "scenarios": {
+          "full_agr": {
+            "annual_charge_gbp": 0.04,
+            "description": "Full annual economic ground rent for this place (valuer residual). National full collection exceeds today\u2019s tax basket \u2014 surplus for services or citizen dividend. High-rent locations contribute most.",
+            "effective_rate": 1.0,
+            "id": "full_agr",
+            "label": "Full land rent (surplus for services + dividend)"
+          },
+          "replace_full_basket": {
+            "annual_charge_gbp": 0.01,
+            "description": "Scales map economic rent so national collection matches the fiscal basket (\u00a317.1bn: income tax + Council Tax + NDR). Revenue-neutral on listed taxes; high-rent places still pay most.",
+            "effective_rate": 0.19,
+            "id": "replace_full_basket",
+            "label": "Replace all listed taxes (neutral)"
+          },
+          "replace_income_tax": {
+            "annual_charge_gbp": 0.01,
+            "description": "Scales map economic rent so Scotland raises \u00a311.5bn if the national pool is \u00a390bn (Sandilands). Uses the national pool ratio, not a sum of map cells.",
+            "effective_rate": 0.1278,
+            "id": "replace_income_tax",
+            "label": "Replace income tax only"
+          },
+          "revenue_neutral": {
+            "annual_charge_gbp": 0.02,
+            "description": "Charge 3.16% of this place\u2019s economic site capital (Wightman-style CT + NDR replacement on residual capital).",
+            "effective_rate": 0.0316,
+            "id": "revenue_neutral",
+            "label": "Replace Council Tax + NDR"
+          }
+        },
+        "scotland_population": 5480000,
+        "sensitivity_overrides": {},
+        "site_capital_market_per_sqm_gbp": 0.4364,
+        "site_capital_per_sqm_gbp": 0.4364,
+        "site_rental_per_sqm_gbp": 0.0044,
+        "site_share_source": "productive_land_use",
+        "site_share_used": null,
+        "square_as_fraction_of_equal_claim": 2e-06,
+        "ward_name": null,
+        "yield_rate": 0.05
+      },
+      "fiscal": {
+        "comparison_unit": "typical_plot_vs_one_person_dividend",
+        "dividend_gbp": 16423.36,
+        "dividend_mode": "equal_share_of_pool",
+        "gross_plot_gbp": 8.28,
+        "net_gbp": -16915.08,
+        "note": "Gross is map residual plot AGR under the scenario. Dividend and remote credit are policy knobs on the national pool story. High land-rent places fund the state; low-rent / remote can be net receivers.",
+        "remote_credit_gbp": 500.0,
+        "role": "net_receiver"
+      },
+      "fiscal_summary": {
+        "basket": {
+          "lines": [
+            {
+              "annual_gbp": 11500000000,
+              "id": "income_tax",
+              "label": "Scotland income tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "council_tax",
+              "label": "Council Tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "ndr",
+              "label": "Non-domestic rates (NDR)"
+            }
+          ],
+          "note": "Research mid-year placeholders for demo \u2014 not an OBR forecast. Cite / refresh from SG and HMRC stats.",
+          "total_gbp": 17100000000.0
+        },
+        "collection": {
+          "annual_gbp": 90000000000.0,
+          "effective_rate_on_national_pool": 1.0,
+          "method": "Full economic rent of national pool (Sandilands macro)",
+          "national_rent_pool_gbp": 90000000000.0
+        },
+        "dividend": {
+          "enabled": true,
+          "mode": "equal_share_of_pool",
+          "per_person_gbp": 16423.36,
+          "scotland_population": 5480000
+        },
+        "enabled": true,
+        "integrity": [
+          "National surplus uses Sandilands rent pool \u00d7 scenario rate, not the sum of map residual cells.",
+          "Place net = plot gross AGR \u2212 equal dividend (\u2212 remote credit). Household of one for comparison.",
+          "Not a live tax bill; residual is open-data research approximation."
+        ],
+        "purpose": "Show revenue-neutral-or-better tax replacement from land rent; high-rent places pay most; remote/low-rent can be net receivers.",
+        "remote_credit": {
+          "councils": [
+            "S12000013",
+            "S12000023",
+            "S12000027",
+            "S12000017",
+            "S12000035"
+          ],
+          "credit_gbp_per_person_year": 500.0,
+          "enabled": true,
+          "notes": "Optional repopulation / periphery support on top of equal dividend \u2014 research policy knob, not statute."
+        },
+        "revenue_neutral_or_better": true,
+        "scenario": "full_agr",
+        "surplus_gbp": 72900000000.0
+      },
+      "method_family": "valuer_residual_roll",
+      "postcode": {
+        "admin_district": "Highland",
+        "country": "Scotland",
+        "parish": null,
+        "postcode": "KW1 4AA"
+      },
+      "square": {
+        "area_sqm": 9.0,
+        "bounds": {
+          "east": -3.0941118129798,
+          "north": 58.44538717211642,
+          "south": 58.44536022278117,
+          "west": -3.0941633107006505
+        },
+        "grid": "what3words_3m",
+        "lat": 58.445373697448794,
+        "lng": -3.0941375618402254,
+        "polygon": {
+          "coordinates": [
+            [
+              [
+                -3.0941633107006505,
+                58.44536022278117
+              ],
+              [
+                -3.0941118129798,
+                58.44536022278117
+              ],
+              [
+                -3.0941118129798,
+                58.44538717211642
+              ],
+              [
+                -3.0941633107006505,
+                58.44538717211642
+              ],
+              [
+                -3.0941633107006505,
+                58.44536022278117
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "w3w_configured": false,
+      "what3words": null
+    },
+    "TD14 5AA": {
+      "agr": {
+        "active_scenario": "full_agr",
+        "annual_ground_rent_gbp": 96.29,
+        "assessment": {
+          "annual_rent_economic_per_sqm_gbp": 10.6987,
+          "annual_rent_market_per_sqm_gbp": 15.2839,
+          "confidence": "high",
+          "depreciation_remaining_factor": 0.55,
+          "drc_improvements_gbp": 95253.13,
+          "dwelling_floor_sqm": 85.0,
+          "habu": "existing_residential",
+          "hope_value_excluded": true,
+          "market_value_gbp": 180843.0,
+          "method": "residual_drc",
+          "notes": [
+            "Valuer residual (Wightman): site capital = market value \u2212 DRC of improvements.",
+            "HABU = existing residential use (authorised-consent / existing-use rule); hope value excluded from assessment policy.",
+            "MV (council HPI average dwelling) = \u00a3180,843.",
+            "Rebuild new \u2248 85 m\u00b2 \u00d7 \u00a32,038/m\u00b2 \u00d7 region 1.00 = \u00a3173,188.",
+            "DRC = rebuild \u00d7 stock remaining factor 55% = \u00a395,253.",
+            "Market residual site capital (notional 280 m\u00b2 plot) = \u00a385,590 (47% of MV).",
+            "Pickard urban economic factor 70% applied to residual site capital (speculative premium).",
+            "Annual economic rent = economic site capital \u00d7 yield 5%.",
+            "Parcel roll line: \u00a32,769.26/year on 259 m\u00b2 cadastral area."
+          ],
+          "notional_plot_sqm": 280.0,
+          "parcel_area_sqm": 258.84,
+          "pickard_factor": 0.7,
+          "pickard_label": "urban_speculation_discount",
+          "rebuild_cost_new_gbp": 173187.5,
+          "roll_annual_rent_grid_square_gbp": 96.29,
+          "roll_annual_rent_notional_plot_gbp": 2995.65,
+          "roll_annual_rent_parcel_gbp": 2769.26,
+          "roll_annual_rent_per_sqm_gbp": 10.6987,
+          "site_capital_economic_gbp": 59912.91,
+          "site_capital_economic_per_sqm_gbp": 213.97,
+          "site_capital_market_gbp": 85589.87,
+          "site_capital_market_per_sqm_gbp": 305.68,
+          "site_share_implied": 0.4733,
+          "yield_rate": 0.05
+        },
+        "average_price_gbp": 180843,
+        "capture_rate": 1.0,
+        "confidence": "high",
+        "council_code": "S12000026",
+        "council_name": "Scottish Borders",
+        "despeculated_site_capital_per_sqm_gbp": 213.97,
+        "despeculated_site_value_gbp": 1925.73,
+        "disclaimer": "SLRG-aligned valuer residual AGR estimate \u2014 open-data approximation of a roll, not an official rates bill",
+        "drc_improvements_gbp": 95253.13,
+        "economic_annual_rent_gbp": 96.29,
+        "equal_share_enabled": true,
+        "equal_share_rent_per_person_gbp": 16423.36,
+        "estimate_kind": "valuer_residual_roll",
+        "estimate_label": "Valuer residual AGR roll (open-data approximation)",
+        "habu": "existing_residential",
+        "hope_value_excluded": true,
+        "integrity_caveats": [
+          "Urban path: market value (council HPI) \u2212 DRC of improvements (rebuild \u00d7 stock remaining) = market site capital (Wightman residual).",
+          "Economic rent base applies Pickard factors to residual site capital, then \u00d7 5% yield for annual AGR.",
+          "HABU policy = existing authorised use; hope value excluded from assessment basis. HPI is still average existing-use sales, not a full planning strip.",
+          "Spatial grain is council-level HPI (flat within council) until sales/CAMA microdata is added \u2014 not a finished national roll.",
+          "Rural path uses productive land-use capital (Pickard 5\u00d7 farmland market distortion), not farm-sale residual.",
+          "The Sandilands national rent pool (\u00a390bn) is separate; map roll cells are not calibrated to sum to that pool.",
+          "Non-domestic, vacant, and natural-resource rents (Sandilands classical Land) are not yet on this roll.",
+          "Not a substitute for a VOA/ROS professional valuation or a statutory AGR roll."
+        ],
+        "lookup_method": "boundary",
+        "market_value_gbp": 180843.0,
+        "method": "residual_drc",
+        "national_rent_pool_gbp": 90000000000.0,
+        "notes": [
+          "Valuer residual (Wightman): site capital = market value \u2212 DRC of improvements.",
+          "HABU = existing residential use (authorised-consent / existing-use rule); hope value excluded from assessment policy.",
+          "MV (council HPI average dwelling) = \u00a3180,843.",
+          "Rebuild new \u2248 85 m\u00b2 \u00d7 \u00a32,038/m\u00b2 \u00d7 region 1.00 = \u00a3173,188.",
+          "DRC = rebuild \u00d7 stock remaining factor 55% = \u00a395,253.",
+          "Market residual site capital (notional 280 m\u00b2 plot) = \u00a385,590 (47% of MV).",
+          "Pickard urban economic factor 70% applied to residual site capital (speculative premium).",
+          "Annual economic rent = economic site capital \u00d7 yield 5%.",
+          "Parcel roll line: \u00a32,769.26/year on 259 m\u00b2 cadastral area.",
+          "Council resolved via boundary polygon lookup.",
+          "Macro vs map: Sandilands national rent pool is \u00a390bn (equal-share + income-tax scaling). Roll residual is independent and not calibrated so all cells sum to that pool.",
+          "Smith/Wightman: charge is on ground-rent of the site after stripping buildings (DRC).",
+          "Pickard: economic rent base after removing speculative capital premium.",
+          "Ogilvie/Paine/Unitism equal-share (national pool): one Scot \u2248 \u00a316,423/year; this cell\u2019s roll economic rent is 0.5863% of that claim (could fund services or a citizen dividend).",
+          "Martin Adams (Unitism): community collects land rental value; wages and buildings untaxed.",
+          "Lars Doucet / CLE: next roll upgrade path is sales-based mass appraisal (OpenAVMKit), not a change to SLRG residual policy."
+        ],
+        "notional_plot_sqm": 280.0,
+        "parcel_area_sqm": 258.84,
+        "parcel_id": "SCT0003250503",
+        "pickard_factor": 0.7,
+        "pickard_label": "urban_speculation_discount",
+        "rebuild_cost_new_gbp": 173187.5,
+        "roll_annual_rent_notional_plot_gbp": 2995.65,
+        "roll_annual_rent_parcel_gbp": 2769.26,
+        "scenarios": {
+          "full_agr": {
+            "annual_charge_gbp": 96.29,
+            "description": "Full annual economic ground rent for this place (valuer residual). National full collection exceeds today\u2019s tax basket \u2014 surplus for services or citizen dividend. High-rent locations contribute most.",
+            "effective_rate": 1.0,
+            "id": "full_agr",
+            "label": "Full land rent (surplus for services + dividend)"
+          },
+          "replace_full_basket": {
+            "annual_charge_gbp": 18.29,
+            "description": "Scales map economic rent so national collection matches the fiscal basket (\u00a317.1bn: income tax + Council Tax + NDR). Revenue-neutral on listed taxes; high-rent places still pay most.",
+            "effective_rate": 0.19,
+            "id": "replace_full_basket",
+            "label": "Replace all listed taxes (neutral)"
+          },
+          "replace_income_tax": {
+            "annual_charge_gbp": 12.3,
+            "description": "Scales map economic rent so Scotland raises \u00a311.5bn if the national pool is \u00a390bn (Sandilands). Uses the national pool ratio, not a sum of map cells.",
+            "effective_rate": 0.1278,
+            "id": "replace_income_tax",
+            "label": "Replace income tax only"
+          },
+          "revenue_neutral": {
+            "annual_charge_gbp": 60.85,
+            "description": "Charge 3.16% of this place\u2019s economic site capital (Wightman-style CT + NDR replacement on residual capital).",
+            "effective_rate": 0.0316,
+            "id": "revenue_neutral",
+            "label": "Replace Council Tax + NDR"
+          }
+        },
+        "scotland_population": 5480000,
+        "sensitivity_overrides": {},
+        "site_capital_market_per_sqm_gbp": 305.68,
+        "site_capital_per_sqm_gbp": 305.68,
+        "site_rental_per_sqm_gbp": 10.6987,
+        "site_share_source": "implied_residual_47%",
+        "site_share_used": 0.4733,
+        "square_as_fraction_of_equal_claim": 0.005863,
+        "ward_name": null,
+        "yield_rate": 0.05
+      },
+      "fiscal": {
+        "comparison_unit": "typical_plot_vs_one_person_dividend",
+        "dividend_gbp": 16423.36,
+        "dividend_mode": "equal_share_of_pool",
+        "gross_plot_gbp": 2769.26,
+        "net_gbp": -13654.1,
+        "note": "Gross is map residual plot AGR under the scenario. Dividend and remote credit are policy knobs on the national pool story. High land-rent places fund the state; low-rent / remote can be net receivers.",
+        "remote_credit_gbp": 0.0,
+        "role": "net_receiver"
+      },
+      "fiscal_summary": {
+        "basket": {
+          "lines": [
+            {
+              "annual_gbp": 11500000000,
+              "id": "income_tax",
+              "label": "Scotland income tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "council_tax",
+              "label": "Council Tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "ndr",
+              "label": "Non-domestic rates (NDR)"
+            }
+          ],
+          "note": "Research mid-year placeholders for demo \u2014 not an OBR forecast. Cite / refresh from SG and HMRC stats.",
+          "total_gbp": 17100000000.0
+        },
+        "collection": {
+          "annual_gbp": 90000000000.0,
+          "effective_rate_on_national_pool": 1.0,
+          "method": "Full economic rent of national pool (Sandilands macro)",
+          "national_rent_pool_gbp": 90000000000.0
+        },
+        "dividend": {
+          "enabled": true,
+          "mode": "equal_share_of_pool",
+          "per_person_gbp": 16423.36,
+          "scotland_population": 5480000
+        },
+        "enabled": true,
+        "integrity": [
+          "National surplus uses Sandilands rent pool \u00d7 scenario rate, not the sum of map residual cells.",
+          "Place net = plot gross AGR \u2212 equal dividend (\u2212 remote credit). Household of one for comparison.",
+          "Not a live tax bill; residual is open-data research approximation."
+        ],
+        "purpose": "Show revenue-neutral-or-better tax replacement from land rent; high-rent places pay most; remote/low-rent can be net receivers.",
+        "remote_credit": {
+          "councils": [
+            "S12000013",
+            "S12000023",
+            "S12000027",
+            "S12000017",
+            "S12000035"
+          ],
+          "credit_gbp_per_person_year": 500.0,
+          "enabled": true,
+          "notes": "Optional repopulation / periphery support on top of equal dividend \u2014 research policy knob, not statute."
+        },
+        "revenue_neutral_or_better": true,
+        "scenario": "full_agr",
+        "surplus_gbp": 72900000000.0
+      },
+      "method_family": "valuer_residual_roll",
+      "postcode": {
+        "admin_district": "Scottish Borders",
+        "country": "Scotland",
+        "parish": null,
+        "postcode": "TD14 5AA"
+      },
+      "square": {
+        "area_sqm": 9.0,
+        "bounds": {
+          "east": -2.0922922753736057,
+          "north": 55.87183345310816,
+          "south": 55.87180650377291,
+          "west": -2.092340309449053
+        },
+        "grid": "what3words_3m",
+        "lat": 55.871819978440534,
+        "lng": -2.092316292411329,
+        "polygon": {
+          "coordinates": [
+            [
+              [
+                -2.092340309449053,
+                55.87180650377291
+              ],
+              [
+                -2.0922922753736057,
+                55.87180650377291
+              ],
+              [
+                -2.0922922753736057,
+                55.87183345310816
+              ],
+              [
+                -2.092340309449053,
+                55.87183345310816
+              ],
+              [
+                -2.092340309449053,
+                55.87180650377291
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "w3w_configured": false,
+      "what3words": null
+    },
+    "ZE1 0LL": {
+      "agr": {
+        "active_scenario": "full_agr",
+        "annual_ground_rent_gbp": 0.04,
+        "assessment": {
+          "annual_rent_economic_per_sqm_gbp": 0.004364,
+          "annual_rent_market_per_sqm_gbp": 0.021821,
+          "confidence": "high",
+          "depreciation_remaining_factor": null,
+          "drc_improvements_gbp": null,
+          "dwelling_floor_sqm": null,
+          "habu": "existing_agriculture",
+          "hope_value_excluded": true,
+          "market_value_gbp": null,
+          "method": "productive_land_use",
+          "notes": [
+            "Rural productive assessment (Pickard / land-use category).",
+            "HABU = agriculture (existing rural use); hope value excluded.",
+            "Category capital \u00a34,094/ha (2009) \u00d7 HPI factor 1.07 = \u00a34,364/ha.",
+            "Pickard farmland productive factor 20% (market \u2248 5\u00d7 productive in Pickard 2018).",
+            "Economic site capital \u00a3873/ha; annual rent at 5% yield.",
+            "Council: Shetland Islands (S12000027).",
+            "ROS INSPIRE cadastral parcel SCT0003653413 (23,721 sqm) on roll."
+          ],
+          "notional_plot_sqm": 10000.0,
+          "parcel_area_sqm": 23720.65,
+          "pickard_factor": 0.2,
+          "pickard_label": "farmland_market_to_productive",
+          "rebuild_cost_new_gbp": null,
+          "roll_annual_rent_grid_square_gbp": 0.0393,
+          "roll_annual_rent_notional_plot_gbp": 43.64,
+          "roll_annual_rent_parcel_gbp": 103.52,
+          "roll_annual_rent_per_sqm_gbp": 0.004364,
+          "site_capital_economic_gbp": 872.84,
+          "site_capital_economic_per_sqm_gbp": 0.0873,
+          "site_capital_market_gbp": 4364.2,
+          "site_capital_market_per_sqm_gbp": 0.4364,
+          "site_share_implied": null,
+          "yield_rate": 0.05
+        },
+        "average_price_gbp": null,
+        "capture_rate": 1.0,
+        "confidence": "high",
+        "council_code": "S12000027",
+        "council_name": "Shetland Islands",
+        "despeculated_site_capital_per_sqm_gbp": 0.0873,
+        "despeculated_site_value_gbp": 0.79,
+        "disclaimer": "SLRG-aligned valuer residual AGR estimate \u2014 open-data approximation of a roll, not an official rates bill",
+        "drc_improvements_gbp": null,
+        "economic_annual_rent_gbp": 0.04,
+        "equal_share_enabled": true,
+        "equal_share_rent_per_person_gbp": 16423.36,
+        "estimate_kind": "valuer_residual_roll",
+        "estimate_label": "Valuer residual AGR roll (open-data approximation)",
+        "habu": "existing_agriculture",
+        "hope_value_excluded": true,
+        "integrity_caveats": [
+          "Urban path: market value (council HPI) \u2212 DRC of improvements (rebuild \u00d7 stock remaining) = market site capital (Wightman residual).",
+          "Economic rent base applies Pickard factors to residual site capital, then \u00d7 5% yield for annual AGR.",
+          "HABU policy = existing authorised use; hope value excluded from assessment basis. HPI is still average existing-use sales, not a full planning strip.",
+          "Spatial grain is council-level HPI (flat within council) until sales/CAMA microdata is added \u2014 not a finished national roll.",
+          "Rural path uses productive land-use capital (Pickard 5\u00d7 farmland market distortion), not farm-sale residual.",
+          "The Sandilands national rent pool (\u00a390bn) is separate; map roll cells are not calibrated to sum to that pool.",
+          "Non-domestic, vacant, and natural-resource rents (Sandilands classical Land) are not yet on this roll.",
+          "Not a substitute for a VOA/ROS professional valuation or a statutory AGR roll."
+        ],
+        "lookup_method": "boundary",
+        "market_value_gbp": null,
+        "method": "productive_land_use",
+        "national_rent_pool_gbp": 90000000000.0,
+        "notes": [
+          "Rural productive assessment (Pickard / land-use category).",
+          "HABU = agriculture (existing rural use); hope value excluded.",
+          "Category capital \u00a34,094/ha (2009) \u00d7 HPI factor 1.07 = \u00a34,364/ha.",
+          "Pickard farmland productive factor 20% (market \u2248 5\u00d7 productive in Pickard 2018).",
+          "Economic site capital \u00a3873/ha; annual rent at 5% yield.",
+          "Council: Shetland Islands (S12000027).",
+          "ROS INSPIRE cadastral parcel SCT0003653413 (23,721 sqm) on roll.",
+          "Council resolved via boundary polygon lookup.",
+          "Macro vs map: Sandilands national rent pool is \u00a390bn (equal-share + income-tax scaling). Roll residual is independent and not calibrated so all cells sum to that pool.",
+          "Smith/Wightman: charge is on ground-rent of the site after stripping buildings (DRC).",
+          "Pickard: economic rent base after removing speculative capital premium.",
+          "Ogilvie/Paine/Unitism equal-share (national pool): one Scot \u2248 \u00a316,423/year; this cell\u2019s roll economic rent is 0.0002% of that claim (could fund services or a citizen dividend).",
+          "Martin Adams (Unitism): community collects land rental value; wages and buildings untaxed.",
+          "Lars Doucet / CLE: next roll upgrade path is sales-based mass appraisal (OpenAVMKit), not a change to SLRG residual policy."
+        ],
+        "notional_plot_sqm": 10000.0,
+        "parcel_area_sqm": 23720.65,
+        "parcel_id": "SCT0003653413",
+        "pickard_factor": 0.2,
+        "pickard_label": "farmland_market_to_productive",
+        "rebuild_cost_new_gbp": null,
+        "roll_annual_rent_notional_plot_gbp": 43.64,
+        "roll_annual_rent_parcel_gbp": 103.52,
+        "scenarios": {
+          "full_agr": {
+            "annual_charge_gbp": 0.04,
+            "description": "Full annual economic ground rent for this place (valuer residual). National full collection exceeds today\u2019s tax basket \u2014 surplus for services or citizen dividend. High-rent locations contribute most.",
+            "effective_rate": 1.0,
+            "id": "full_agr",
+            "label": "Full land rent (surplus for services + dividend)"
+          },
+          "replace_full_basket": {
+            "annual_charge_gbp": 0.01,
+            "description": "Scales map economic rent so national collection matches the fiscal basket (\u00a317.1bn: income tax + Council Tax + NDR). Revenue-neutral on listed taxes; high-rent places still pay most.",
+            "effective_rate": 0.19,
+            "id": "replace_full_basket",
+            "label": "Replace all listed taxes (neutral)"
+          },
+          "replace_income_tax": {
+            "annual_charge_gbp": 0.01,
+            "description": "Scales map economic rent so Scotland raises \u00a311.5bn if the national pool is \u00a390bn (Sandilands). Uses the national pool ratio, not a sum of map cells.",
+            "effective_rate": 0.1278,
+            "id": "replace_income_tax",
+            "label": "Replace income tax only"
+          },
+          "revenue_neutral": {
+            "annual_charge_gbp": 0.02,
+            "description": "Charge 3.16% of this place\u2019s economic site capital (Wightman-style CT + NDR replacement on residual capital).",
+            "effective_rate": 0.0316,
+            "id": "revenue_neutral",
+            "label": "Replace Council Tax + NDR"
+          }
+        },
+        "scotland_population": 5480000,
+        "sensitivity_overrides": {},
+        "site_capital_market_per_sqm_gbp": 0.4364,
+        "site_capital_per_sqm_gbp": 0.4364,
+        "site_rental_per_sqm_gbp": 0.0044,
+        "site_share_source": "productive_land_use",
+        "site_share_used": null,
+        "square_as_fraction_of_equal_claim": 2e-06,
+        "ward_name": null,
+        "yield_rate": 0.05
+      },
+      "fiscal": {
+        "comparison_unit": "typical_plot_vs_one_person_dividend",
+        "dividend_gbp": 16423.36,
+        "dividend_mode": "equal_share_of_pool",
+        "gross_plot_gbp": 103.52,
+        "net_gbp": -16819.84,
+        "note": "Gross is map residual plot AGR under the scenario. Dividend and remote credit are policy knobs on the national pool story. High land-rent places fund the state; low-rent / remote can be net receivers.",
+        "remote_credit_gbp": 500.0,
+        "role": "net_receiver"
+      },
+      "fiscal_summary": {
+        "basket": {
+          "lines": [
+            {
+              "annual_gbp": 11500000000,
+              "id": "income_tax",
+              "label": "Scotland income tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "council_tax",
+              "label": "Council Tax"
+            },
+            {
+              "annual_gbp": 2800000000,
+              "id": "ndr",
+              "label": "Non-domestic rates (NDR)"
+            }
+          ],
+          "note": "Research mid-year placeholders for demo \u2014 not an OBR forecast. Cite / refresh from SG and HMRC stats.",
+          "total_gbp": 17100000000.0
+        },
+        "collection": {
+          "annual_gbp": 90000000000.0,
+          "effective_rate_on_national_pool": 1.0,
+          "method": "Full economic rent of national pool (Sandilands macro)",
+          "national_rent_pool_gbp": 90000000000.0
+        },
+        "dividend": {
+          "enabled": true,
+          "mode": "equal_share_of_pool",
+          "per_person_gbp": 16423.36,
+          "scotland_population": 5480000
+        },
+        "enabled": true,
+        "integrity": [
+          "National surplus uses Sandilands rent pool \u00d7 scenario rate, not the sum of map residual cells.",
+          "Place net = plot gross AGR \u2212 equal dividend (\u2212 remote credit). Household of one for comparison.",
+          "Not a live tax bill; residual is open-data research approximation."
+        ],
+        "purpose": "Show revenue-neutral-or-better tax replacement from land rent; high-rent places pay most; remote/low-rent can be net receivers.",
+        "remote_credit": {
+          "councils": [
+            "S12000013",
+            "S12000023",
+            "S12000027",
+            "S12000017",
+            "S12000035"
+          ],
+          "credit_gbp_per_person_year": 500.0,
+          "enabled": true,
+          "notes": "Optional repopulation / periphery support on top of equal dividend \u2014 research policy knob, not statute."
+        },
+        "revenue_neutral_or_better": true,
+        "scenario": "full_agr",
+        "surplus_gbp": 72900000000.0
+      },
+      "method_family": "valuer_residual_roll",
+      "postcode": {
+        "admin_district": "Shetland Islands",
+        "country": "Scotland",
+        "parish": null,
+        "postcode": "ZE1 0LL"
+      },
+      "square": {
+        "area_sqm": 9.0,
+        "bounds": {
+          "east": -1.143354958661944,
+          "north": 60.155133848365075,
+          "south": 60.155106899029825,
+          "west": -1.1434091114532228
+        },
+        "grid": "what3words_3m",
+        "lat": 60.15512037369745,
+        "lng": -1.1433820350575834,
+        "polygon": {
+          "coordinates": [
+            [
+              [
+                -1.1434091114532228,
+                60.155106899029825
+              ],
+              [
+                -1.143354958661944,
+                60.155106899029825
+              ],
+              [
+                -1.143354958661944,
+                60.155133848365075
+              ],
+              [
+                -1.1434091114532228,
+                60.155133848365075
+              ],
+              [
+                -1.1434091114532228,
+                60.155106899029825
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        }
+      },
+      "w3w_configured": false,
+      "what3words": null
+    }
+  },
+  "scenario": "full_agr"
+}

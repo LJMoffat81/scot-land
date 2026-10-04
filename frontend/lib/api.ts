@@ -125,3 +125,93 @@ export async function pingApi(): Promise<{ ok: boolean; message: string }> {
     };
   }
 }
+
+export type EngineStamp = {
+  engine_version?: string | null;
+  valuation?: {
+    version?: string | null;
+    inputs_hash?: string | null;
+  } | null;
+  policy?: {
+    version?: string | null;
+    inputs_hash?: string | null;
+  } | null;
+  config?: {
+    agr_yaml_sha256?: string | null;
+    layers_yaml_sha256?: string | null;
+  } | null;
+  data?: Record<string, unknown> | null;
+  commit?: string | null;
+  commit_full?: string | null;
+};
+
+function stampText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const text = value.trim();
+  if (!text) return null;
+  const lowered = text.toLowerCase();
+  if (lowered === "unknown" || lowered === "dev-unknown") return null;
+  return text;
+}
+
+function parsedDataDate(value: unknown): { at: number; label: string } | null {
+  const text = stampText(value);
+  if (!text) return null;
+  const dayMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(text);
+  if (dayMatch) {
+    const year = Number(dayMatch[1]);
+    const month = Number(dayMatch[2]);
+    const day = Number(dayMatch[3]);
+    if (month < 1 || month > 12) return null;
+    const probe = new Date(Date.UTC(year, month - 1, day));
+    if (
+      probe.getUTCFullYear() !== year ||
+      probe.getUTCMonth() !== month - 1 ||
+      probe.getUTCDate() !== day
+    ) {
+      return null;
+    }
+    return {
+      at: year * 10000 + month * 100 + day,
+      label: `${dayMatch[1]}-${dayMatch[2]}-${dayMatch[3]}`,
+    };
+  }
+  const monthMatch = /^(\d{4})-(\d{2})$/.exec(text);
+  if (!monthMatch) return null;
+  const year = Number(monthMatch[1]);
+  const month = Number(monthMatch[2]);
+  if (month < 1 || month > 12) return null;
+  return {
+    at: year * 10000 + month * 100,
+    label: `${monthMatch[1]}-${monthMatch[2]}`,
+  };
+}
+
+function latestDataDate(data: EngineStamp["data"]): string | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  let bestAt = -1;
+  let bestLabel: string | null = null;
+  for (const value of Object.values(data)) {
+    const parsed = parsedDataDate(value);
+    if (!parsed || parsed.at <= bestAt) continue;
+    bestAt = parsed.at;
+    bestLabel = parsed.label;
+  }
+  return bestLabel;
+}
+
+export function engineVersionLine(
+  stamp: EngineStamp | null | undefined,
+): string {
+  if (!stamp || typeof stamp !== "object") return "";
+  const parts: string[] = [];
+  const engine = stampText(stamp.engine_version);
+  if (engine) parts.push(`Engine ${engine}`);
+  const method = stampText(stamp.valuation?.version);
+  if (method) parts.push(`method ${method}`);
+  const dataAsOf = latestDataDate(stamp.data);
+  if (dataAsOf) parts.push(`data as of ${dataAsOf}`);
+  const build = stampText(stamp.commit);
+  if (build) parts.push(`build ${build}`);
+  return parts.join(" \u00b7 ");
+}

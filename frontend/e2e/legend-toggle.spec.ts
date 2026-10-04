@@ -1,6 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-const START = { lng: -4.2, lat: 56.8, zoom: 6.2 };
 const GLASGOW = { lng: -4.2514, lat: 55.8609 };
 
 test.describe("390x844", () => {
@@ -148,7 +147,10 @@ async function revealLongCredit(page: Page) {
   });
   await panToGlasgow(page);
   const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
-  for (let step = 0; step < 9; step += 1) {
+  const attrib = page.locator(".maplibregl-ctrl-attrib");
+  for (let step = 0; step < 12; step += 1) {
+    const ready = await attrib.textContent();
+    if (ready?.includes("Registers of Scotland")) break;
     await zoomIn.click({ timeout: 10_000 });
     await page.waitForTimeout(600);
   }
@@ -167,8 +169,14 @@ function mercator(lng: number, lat: number, zoom: number) {
 }
 
 async function panToGlasgow(page: Page) {
-  const from = mercator(START.lng, START.lat, START.zoom);
-  const to = mercator(GLASGOW.lng, GLASGOW.lat, START.zoom);
+  await page.locator("#map[data-framed='1']").waitFor({ timeout: 20_000 });
+  const cam = await page.locator("#map").evaluate((el) => ({
+    lng: Number((el as HTMLElement).dataset.lng),
+    lat: Number((el as HTMLElement).dataset.lat),
+    zoom: Number((el as HTMLElement).dataset.zoom),
+  }));
+  const from = mercator(cam.lng, cam.lat, cam.zoom);
+  const to = mercator(GLASGOW.lng, GLASGOW.lat, cam.zoom);
   const dx = from.x - to.x;
   const dy = from.y - to.y;
   const start = await page.evaluate(() => {

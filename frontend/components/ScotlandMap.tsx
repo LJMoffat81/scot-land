@@ -695,8 +695,8 @@ export default function ScotlandMap() {
       container,
       // CARTO's raster tiles now stamp "API key required" unless a key is set.
       style: "https://tiles.openfreemap.org/styles/positron",
-      center: [-4.2, 56.8],
-      zoom: 6.2,
+      center: [-4.2, 57.5],
+      zoom: 5.7,
     });
 
     map.addControl(
@@ -704,6 +704,36 @@ export default function ScotlandMap() {
       "bottom-right",
     );
     map.getCanvas().style.cursor = "pointer";
+
+    let userMoved = false;
+    const noteUserMove = (event: { originalEvent?: Event }) => {
+      if (event.originalEvent) userMoved = true;
+    };
+    map.on("dragstart", noteUserMove);
+    map.on("zoomstart", noteUserMove);
+    const frameScotland = () => {
+      if (userMoved) return;
+      if (container.clientWidth < 40 || container.clientHeight < 40) return;
+      const narrow = window.innerWidth <= 900;
+      map.fitBounds(
+        [
+          [-8.05, 54.48],
+          [-0.55, 60.88],
+        ],
+        {
+          padding: narrow
+            ? { top: 132, bottom: 72, left: 12, right: 16 }
+            : { top: 96, bottom: 36, left: 24, right: 28 },
+          animate: false,
+          maxZoom: 7.4,
+        },
+      );
+      const center = map.getCenter();
+      container.dataset.lng = center.lng.toFixed(5);
+      container.dataset.lat = center.lat.toFixed(5);
+      container.dataset.zoom = map.getZoom().toFixed(3);
+      container.dataset.framed = "1";
+    };
 
     let seenWidth = -1;
     let seenHeight = -1;
@@ -714,10 +744,12 @@ export default function ScotlandMap() {
       seenWidth = nextWidth;
       seenHeight = nextHeight;
       map.resize();
+      if (map.loaded()) frameScotland();
     });
     resizeObserver.observe(container);
 
     map.on("load", () => {
+      frameScotland();
       map.addSource("council-metrics", { type: "geojson", data: emptyCollection });
       map.addLayer({
         id: "council-fill",
@@ -1446,7 +1478,17 @@ export default function ScotlandMap() {
       : (METRICS.find((m) => m.id === choropleth) ?? null);
 
   return (
-    <div className={toolsOpen ? "app-shell tools-open" : "app-shell"}>
+    <div
+      className={
+        toolsOpen
+          ? result || error
+            ? "app-shell tools-open place-open"
+            : "app-shell tools-open"
+          : result || error
+            ? "app-shell place-open"
+            : "app-shell"
+      }
+    >
       <div className="map-stage">
       <div className="map-wrap">
         <div id="map" ref={mapContainer} />
@@ -1506,7 +1548,7 @@ export default function ScotlandMap() {
           }
         >
           <label className="sr-only" htmlFor="place-query">
-            Postcode, address, or title number
+            Postcode or address
           </label>
           <input
             id="place-query"
@@ -1515,7 +1557,8 @@ export default function ScotlandMap() {
             onKeyDown={(e) => {
               if (e.key === "Enter") void runSearch();
             }}
-            placeholder="Postcode, address, or title number"
+            placeholder="Postcode or address"
+            title="A title number is looked up only if it is in the open set"
           />
           <button
             type="button"
@@ -1581,14 +1624,6 @@ export default function ScotlandMap() {
                   </span>
                 </div>
                 <p className="hud-scotland-note">{legendCaption(legendMetric.id)}</p>
-                {(choropleth === "gross_liability" ||
-                  choropleth === "agr_plot" ||
-                  choropleth === "rent_per_sqm") && (
-                  <p className="hud-scotland-note">
-                    The colour is one rate for the whole council, the same from street
-                    to street.
-                  </p>
-                )}
               </div>
             )}
             <p className="hud-scotland-foot">
@@ -1882,7 +1917,7 @@ function legendCaption(id: MetricId): string {
   switch (id) {
     case "gross_liability":
     case "agr_plot":
-      return "Town: a home plot. Rural: one hectare.";
+      return "The colour is each council's town home plot. A click uses town or countryside at that point.";
     case "rent_per_sqm":
       return "Annual Ground Rent per square metre of land.";
     case "net_contribution":

@@ -32,7 +32,7 @@ export default function MethodologyContent() {
         We never show who owns land, what it sold for, or title plans.
       </p>
       <p>
-        In towns the figure is for a home plot; in the countryside it is for one hectare of farmland.
+        Where a register outline exists, the figure is that piece of land. Where it does not, a town click is one home plot and a countryside click is one hectare of farmland.
       </p>
       <p>
         <a href="#calculation">How a place is valued</a>
@@ -43,12 +43,14 @@ export default function MethodologyContent() {
       <section id="calculation">
         <h2>How a place is valued</h2>
         <p>
-          In a town council, the rent is that council&apos;s land rent for each
-          square metre, times the area of this piece. The land rent is what
-          remains after the building and the speculative part are taken off,
-          and a 5% yield is applied. In a rural council the rate is the
-          farmland rate, and the map colour is one hectare of that farmland.
-          A click shows the piece of land itself.
+          Each point on land is classed as town or countryside. In a town, the
+          rent is that council&apos;s land rent for each square metre, times the
+          area of this piece. The land rent is what remains after the building
+          and the speculative part are taken off, and a 5% yield is applied.
+          In the countryside the rate is one farmland rate for Scotland, times
+          the area. The map colour is one town home-plot rate for each council.
+          A click can differ from that colour when the point is countryside, or
+          when the outline is not a home plot.
         </p>
       </section>
 
@@ -136,14 +138,14 @@ export default function MethodologyContent() {
       <section id="what-is-agr">
         <h2>What is Annual Ground Rent?</h2>
         <p>
-          In towns, it is that council&apos;s land rent per square metre times the area of the piece. In the countryside, it uses one farmland rate for the whole of Scotland, for one hectare.
+          Where the land register shows an outline, it is that piece of land. In a town with no outline, it is that council&apos;s land rent per square metre times a home plot. In the countryside with no outline, it is one farmland rate for one hectare. The building is not included.
         </p>
       </section>
 
       <section id="how-sure">
         <h2>How sure are these numbers?</h2>
         <p>
-          They&apos;re research estimates, and some of what goes into them can&apos;t be pinned down exactly. With different reasonable assumptions, the estimate for a typical home plot in most councils could be anywhere from about half to 1.3 times the figure shown. Where house prices are low compared with what homes cost to rebuild, the range is wider, from about half to about double. This range covers home plots only, not the farmland figures, and doesn&apos;t cover the bigger simplifications, such as using one rate for a whole council. In most councils, our figures are slightly more likely to be too high than too low.
+          They&apos;re research estimates, and some of what goes into them can&apos;t be pinned down exactly. With different reasonable assumptions, the estimate for a typical home plot in most councils could be anywhere from about half to 1.3 times the figure shown. Where house prices are low compared with what homes cost to rebuild, the range is wider, from about half to about double. This range covers home plots only, not the farmland figures. It does not cover the bigger simplifications. The map colour is still one town rate for a whole council. A click follows town or countryside at that point, and where an outline exists the number is that piece of land, not the home plot. Open data does not yet give a different rate from one neighbourhood to the next. In most councils, the home-plot figures are slightly more likely to be too high than too low.
         </p>
       </section>
 

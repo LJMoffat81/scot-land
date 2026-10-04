@@ -196,17 +196,15 @@ export function MapStampFooter() {
       {versionLine ? <p className="engine-stamp">{versionLine}</p> : null}
       <p className="map-footer-credit">
         <a href="/methodology">Sources and method</a>
-      </p>
-      <p className="map-footer-credit">
+        {" · "}
         Contains OS data © Crown copyright and database right 2026
-      </p>
-      <p className="map-footer-credit">
+        {" · "}
         Contains Royal Mail data © Royal Mail copyright and database right 2026
-      </p>
-      <p className="map-footer-credit">
+        {" · "}
         Source: Office for National Statistics licensed under the Open Government Licence v.3.0
+        {" · "}
+        No data provider endorses this site.
       </p>
-      <p className="map-footer-credit">No data provider endorses this site.</p>
     </footer>
   );
 }
@@ -250,7 +248,6 @@ export default function AgrBreakdown({
         : plotFull != null && plotFull > 0
           ? plotFull * scale
           : active.annual_charge_gbp;
-  const headlineIsPlot = plotFull != null && plotFull > 0;
 
   const place = [placeLabel, postcode, agr.council_name].filter(Boolean).join(" \u00b7 ");
   const w3wClean = what3words ? what3words.replace(/^\/+/, "") : null;
@@ -260,9 +257,26 @@ export default function AgrBreakdown({
   const [outlineOpen, setOutlineOpen] = useState(false);
 
   const hasParcel = parcelAreaSqm != null && parcelAreaSqm > 0;
-  const largeParcel = hasParcel && (parcelAreaSqm as number) > 1400;
   const countryside = agr.basis === "countryside" || agr.method === "productive_land_use";
   const versionLine = engineVersionLine(agr.stamp);
+  const pieceSqm = hasParcel ? Math.round(parcelAreaSqm as number) : null;
+  const plotSqm = agr.notional_plot_sqm ? Math.round(agr.notional_plot_sqm) : null;
+  const figureLine = hasParcel
+    ? countryside
+      ? `This piece of countryside, ${pieceSqm!.toLocaleString("en-GB")} m\u00b2.`
+      : `This piece of town land, ${pieceSqm!.toLocaleString("en-GB")} m\u00b2.`
+    : countryside
+      ? "Countryside: one hectare of farmland."
+      : `Town: one home plot${
+          plotSqm ? `, about ${plotSqm.toLocaleString("en-GB")} m\u00b2` : ""
+        }.`;
+  const rateLine = hasParcel
+    ? countryside
+      ? "Two pieces of the same size on this countryside rate match. A town parcel in this council uses the town rate."
+      : "Two pieces of the same size on this town rate match. Countryside in this council uses a different rate."
+    : countryside
+      ? "No register outline here, so this is one hectare at the countryside rate. The map colour is the town home plot, not this number."
+      : "No register outline here, so this is one home plot at the town rate. Countryside in this council uses a different rate.";
 
   return (
     <div className="clarity-result">
@@ -276,16 +290,7 @@ export default function AgrBreakdown({
         <span className="agr-unit">/year</span>
       </div>
 
-      <p className="result-links">
-        <a href="/methodology#how-sure">How sure is this?</a>
-      </p>
-      {!largeParcel ? (
-        <p className="headline-caption">
-          {countryside
-            ? "Countryside: one hectare of farmland"
-            : "Town: one home plot"}
-        </p>
-      ) : null}
+      <p className="headline-caption figure-line">{figureLine}</p>
       {agr.wide_range ? (
         <p className="headline-caption">
           Homes here sell for close to what they&apos;d cost to rebuild, so the land figure is less certain than most.
@@ -293,22 +298,10 @@ export default function AgrBreakdown({
       ) : null}
 
       <p className="headline-caption">
-        {largeParcel
-          ? `This parcel, ${Math.round(parcelAreaSqm as number).toLocaleString("en-GB")} m\u00b2, not a home plot.`
-          : hasParcel
-            ? `This piece of land, ${Math.round(parcelAreaSqm as number).toLocaleString("en-GB")} m\u00b2.`
-            : agr.method === "productive_land_use"
-              ? "One hectare of farmland in this council."
-              : headlineIsPlot
-                ? `A typical home plot in this council${
-                    agr.notional_plot_sqm
-                      ? ` (about ${Math.round(agr.notional_plot_sqm).toLocaleString("en-GB")} m\u00b2)`
-                      : ""
-                  }.`
-                : `This ${areaSqm} m\u00b2 square.`}
-        {" "}
-        Land only, not the building. Research estimate, not a rates bill.
-        The rate is this council&apos;s, so two parcels of the same size here have the same rent.
+        Land only, not the building. Research estimate, not a rates bill. {rateLine}
+      </p>
+      <p className="result-links">
+        <a href="/methodology#how-sure">How sure is this?</a>
       </p>
       <p className="meta dev-notice">{CARD_DEVELOPMENT_NOTICE}</p>
       {versionLine ? <p className="engine-stamp">{versionLine}</p> : null}

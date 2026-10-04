@@ -82,8 +82,10 @@ export default function DownloadsPage() {
       <h1>Downloads</h1>
       <p>
         These are the open figures behind the map. They are a research
-        estimate, not a rates bill. The files are tables and links. They are
-        not a download of every land boundary.
+        estimate, not a rates bill. The council files colour the map with each
+        council&apos;s town home plot. A click can be a register parcel, or one
+        countryside hectare. The files are tables and links. They are not a
+        download of every land boundary.
       </p>
       {data?.note && <p className="downloads-note">{data.note}</p>}
 

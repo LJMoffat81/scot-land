@@ -41,16 +41,41 @@ export class ApiError extends Error {
   }
 }
 
-function isNetworkError(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  const msg = err.message.toLowerCase();
+export const SERVICE_BUSY = "Service busy, please try again";
+
+function isDevFacing(detail: string): boolean {
+  const lower = detail.toLowerCase();
   return (
-    err.name === "TypeError" ||
-    msg.includes("failed to fetch") ||
-    msg.includes("networkerror") ||
-    msg.includes("load failed") ||
-    msg.includes("network request failed")
+    lower.includes("port 8000") ||
+    lower.includes("api offline") ||
+    lower.includes("timed out") ||
+    lower.includes("timeout") ||
+    lower.includes("api unreachable") ||
+    lower.includes("failed to fetch") ||
+    lower.includes("networkerror") ||
+    lower.includes("network request failed") ||
+    lower.includes("load failed") ||
+    lower.includes("traceback") ||
+    lower.includes("exception") ||
+    lower.includes("typeerror") ||
+    lower.includes("valueerror") ||
+    lower.includes("econnrefused") ||
+    lower.includes("socket hang")
   );
+}
+
+export function isServiceFailure(err: unknown): boolean {
+  return err instanceof ApiError && (err.status == null || err.status >= 500);
+}
+
+/** Copy safe to show a visitor. Service failures never include dev or exception text. */
+export function visitorFacingError(err: unknown): string {
+  const message = err instanceof Error ? err.message.trim() : "";
+  if (message.toLowerCase().includes("outside scotland")) {
+    return "That point is outside Scotland. Search a Scottish postcode or click the map.";
+  }
+  if (!message || isDevFacing(message) || isServiceFailure(err)) return SERVICE_BUSY;
+  return message;
 }
 
 export async function apiFetch(
@@ -73,32 +98,20 @@ export async function apiFetch(
         ...(init?.headers ?? {}),
       },
     });
-  } catch (err) {
-    const hint =
-      base === "/backend"
-        ? "Start the FastAPI backend on port 8000, then click Retry."
-        : `Cannot reach the AGR API at ${base}. Start the backend (port 8000) and refresh.`;
-    throw new ApiError(
-      isNetworkError(err)
-        ? `API unreachable. ${hint}`
-        : err instanceof Error
-          ? err.message
-          : "API request failed",
-      url,
-    );
+  } catch {
+    throw new ApiError(SERVICE_BUSY, url);
   }
 
   if (!response.ok) {
-    let detail = `API error ${response.status}`;
+    let detail = "";
     try {
-      const body = (await response.json()) as { detail?: string; ok?: boolean };
-      if (body?.detail) detail = String(body.detail);
+      const body = (await response.json()) as { detail?: unknown };
+      if (typeof body?.detail === "string") detail = body.detail;
     } catch {
       /* ignore non-JSON error bodies */
     }
-    // 503 from our proxy = soft API issue, clearer message
-    if (response.status === 503 && !detail.startsWith("API")) {
-      detail = `API unreachable. ${detail}`;
+    if (response.status >= 500 || !detail.trim() || isDevFacing(detail)) {
+      detail = SERVICE_BUSY;
     }
     throw new ApiError(detail, url, response.status);
   }
@@ -121,7 +134,7 @@ export async function pingApi(): Promise<{ ok: boolean; message: string }> {
   } catch (err) {
     return {
       ok: false,
-      message: err instanceof Error ? err.message : "API unreachable",
+      message: visitorFacingError(err),
     };
   }
 }

@@ -1,3 +1,5 @@
+import { SERVICE_BUSY } from "../../../lib/api";
+
 /**
  * Resilient same-origin API proxy.
  * Replaces Next rewrites so upstream socket hang-ups become JSON 503
@@ -46,7 +48,8 @@ async function proxy(request: Request, context: Ctx): Promise<Response> {
       joined.includes("layers/open") ||
       joined.includes("layers/context") ||
       joined.includes("assessment/report");
-    const timeoutMs = heavy ? 90_000 : 25_000;
+    // Ordinary client wait was 25s. Heavy routes stay at 90s.
+    const timeoutMs = heavy ? 90_000 : 60_000;
 
     const headers: Record<string, string> = {
       Accept: request.headers.get("Accept") || "application/json",
@@ -77,12 +80,8 @@ async function proxy(request: Request, context: Ctx): Promise<Response> {
     if (cache) responseHeaders.set("Cache-Control", cache);
 
     return new Response(buf, { status: upstream.status, headers: responseHeaders });
-  } catch (err) {
-    const message =
-      err instanceof Error && err.name === "TimeoutError"
-        ? "API request timed out. Try again or zoom in (smaller area)."
-        : "API unreachable. Start the backend on port 8000, then retry.";
-    return Response.json({ detail: message, ok: false }, { status: 503 });
+  } catch {
+    return Response.json({ detail: SERVICE_BUSY, ok: false }, { status: 503 });
   }
 }
 

@@ -14,7 +14,14 @@ import AgrBreakdown, {
   PlaceFiscal,
   ScenarioId,
 } from "./AgrBreakdown";
-import { ApiError, apiFetch, apiJson, pingApi } from "../lib/api";
+import {
+  SERVICE_BUSY,
+  apiFetch,
+  apiJson,
+  isServiceFailure,
+  pingApi,
+  visitorFacingError,
+} from "../lib/api";
 import { CONTEXT_GROUPS, CONTEXT_LAYERS } from "../lib/contextLayers";
 
 type ParcelFeature = GeoJSON.Feature<
@@ -471,17 +478,11 @@ export default function ScotlandMap() {
         setApiOk(true);
       } catch (err) {
         if (gen !== lookupGen.current) return;
-        const message = err instanceof Error ? err.message : "Unknown error";
-        setError(
-          message.toLowerCase().includes("outside scotland")
-            ? "That point is outside Scotland. Search a Scottish postcode or click the map."
-            : message,
-        );
-        if (
-          err instanceof ApiError &&
-          (err.status == null || err.status >= 500)
-        ) {
-          setApiOk(false);
+        setError(visitorFacingError(err));
+        if (isServiceFailure(err)) {
+          void pingApi().then((s) => {
+            if (gen === lookupGen.current) setApiOk(s.ok);
+          });
         }
       } finally {
         if (gen === lookupGen.current) setLoading(false);
@@ -621,10 +622,11 @@ export default function ScotlandMap() {
       if (generation === lookupGen.current) setApiOk(true);
     } catch (err) {
       if (generation !== lookupGen.current) return;
-      const message = err instanceof Error ? err.message : "Unknown error";
-      setError(message);
-      if (err instanceof ApiError && (err.status == null || err.status >= 500)) {
-        setApiOk(false);
+      setError(visitorFacingError(err));
+      if (isServiceFailure(err)) {
+        void pingApi().then((s) => {
+          if (generation === lookupGen.current) setApiOk(s.ok);
+        });
       }
     } finally {
       if (generation === lookupGen.current) setLoading(false);
@@ -641,16 +643,25 @@ export default function ScotlandMap() {
 
   useEffect(() => {
     let cancelled = false;
-    const tick = () => {
-      void pingApi().then((s) => {
-        if (!cancelled) setApiOk(s.ok);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const check = (retryImmediately: boolean) => {
+      void pingApi().then((status) => {
+        if (cancelled) return;
+        // One miss must not wait out the 20s poll before the first retry.
+        if (!status.ok && retryImmediately) {
+          check(false);
+          return;
+        }
+        setApiOk(status.ok);
+        timer = setTimeout(() => check(true), status.ok ? 20_000 : 5_000);
       });
     };
-    tick();
-    const id = setInterval(tick, 20000);
+
+    check(true);
     return () => {
       cancelled = true;
-      clearInterval(id);
+      if (timer !== undefined) clearTimeout(timer);
     };
   }, []);
 
@@ -956,7 +967,10 @@ export default function ScotlandMap() {
             applyResult((await response.json()) as SquareResponse);
             setApiOk(true);
           } catch (err) {
-            setError(err instanceof Error ? err.message : "Lookup failed");
+            setError(visitorFacingError(err));
+            if (isServiceFailure(err)) {
+              void pingApi().then((s) => setApiOk(s.ok));
+            }
           }
         })();
       } else if (qLat && qLng) {
@@ -1021,8 +1035,13 @@ export default function ScotlandMap() {
         // Trigger paint via choropleth effect
         setMetricNote((prev) => prev ?? "Councils loaded");
       })
-      .catch((err: Error) => {
-        setError(err.message);
+      .catch((err: unknown) => {
+        setError(visitorFacingError(err));
+        if (isServiceFailure(err)) {
+          void pingApi().then((s) => {
+            if (!cancelled) setApiOk(s.ok);
+          });
+        }
       })
       .finally(() => {
         if (!cancelled) setLayerBusy(false);
@@ -1488,12 +1507,11 @@ export default function ScotlandMap() {
               if (e.key === "Enter") void runSearch();
             }}
             placeholder="Postcode, address, or title number"
-            disabled={loading || apiOk === false}
           />
           <button
             type="button"
             className="hud-search-go"
-            disabled={loading || apiOk === false || !query.trim()}
+            disabled={!query.trim()}
             onClick={() => void runSearch()}
           >
             {loading ? "…" : "Search"}
@@ -1568,7 +1586,7 @@ export default function ScotlandMap() {
 
       {apiOk === false && (
         <div className="hud-banner">
-          <span>API offline — start backend on port 8000</span>
+          <span>{SERVICE_BUSY}</span>
           <button
             type="button"
             className="api-retry"

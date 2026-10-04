@@ -171,3 +171,4 @@ Append only. Do not rewrite an earlier entry. The public pounds are unchanged. T
 **Would fail if:** The site showed £28,789.68 for Wick, or showed any other new Wick pound, or the published £8.28 were described as the rent of that town land.
 
 4 October 2026 — Valuation date on the stamp: 2025-04-01, not rebased, with each money input's as_of. No figure changed.
+4 October 2026 — Stamp on /fiscal/summary and /layers/w3w-grid. No figure changed.

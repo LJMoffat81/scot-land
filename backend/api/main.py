@@ -248,10 +248,12 @@ def get_fiscal_summary(
         active = resolve_active_scenario(scenario)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return fiscal_summary(
-        active,
-        dividend_enabled=dividend,
-        remote_credit_enabled=remote_credit,
+    return with_stamp(
+        fiscal_summary(
+            active,
+            dividend_enabled=dividend,
+            remote_credit_enabled=remote_credit,
+        )
     )
 
 
@@ -384,7 +386,7 @@ def layer_w3w_grid(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return JSONResponse(geo)
+    return JSONResponse(with_stamp(geo))
 
 
 def _parcel_tile_response(z: int, x: int, y: int) -> Response:

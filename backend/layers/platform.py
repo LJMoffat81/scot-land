@@ -8,11 +8,23 @@ from __future__ import annotations
 
 from typing import Any
 
+import httpx
+
 from layers.council_metrics import METRIC_DEFS
 from layers.public_land import query_point as public_land_at_point
 from layers.registers import registers_for_council
 from layers.vdl import query_point as vdl_at_point
-from spatial.parcels import lookup_parcel_geojson
+from spatial.parcels import lookup_parcel, lookup_parcel_geojson
+from spatial.polygons import lookup_council_boundary
+
+# The live function, so a test double can be told apart from it.
+_LIVE_PARCEL_LOOKUP = lookup_parcel
+
+_NO_OUTLINE_NOTE = (
+    "We found no Land Register boundary at this point. Its title may still be in "
+    "the older Sasine register, or the land may not be registered at all. We estimate "
+    "it by area and land type, and show no boundaries, titles or owners."
+)
 
 SCOTLIS_PUBLIC = "https://scotlis.ros.gov.uk/"
 SCOTLIS_ABOUT = "https://www.ros.gov.uk/scotlis"
@@ -177,6 +189,83 @@ def platform_catalog() -> dict[str, Any]:
     }
 
 
+def _outline_field(status: str) -> dict[str, str]:
+    """Status, plus the approved note only when the map answered empty."""
+    if status == "no_outline":
+        return {"status": status, "note": _NO_OUTLINE_NOTE}
+    return {"status": status}
+
+
+def _probe_outline(lat: float, lng: float) -> str:
+    """Repeat GetFeatureInfo. 'inside', 'empty', or 'error'.
+
+    lookup_parcel returns None for an empty answer and for a failed call, and
+    caches that None. A failure must not be reported as no_outline.
+    """
+    from spatial.parcels import _http, _parcel_cfg
+
+    try:
+        cfg = _parcel_cfg()
+        delta = float(cfg["query_delta_degrees"])
+        lat_key = round(float(lat), 6)
+        lng_key = round(float(lng), 6)
+        bbox = f"{lat_key - delta},{lng_key - delta},{lat_key + delta},{lng_key + delta}"
+        params = {
+            "SERVICE": "WMS",
+            "VERSION": "1.3.0",
+            "REQUEST": "GetFeatureInfo",
+            "QUERY_LAYERS": cfg["wms_layer"],
+            "LAYERS": cfg["wms_layer"],
+            "INFO_FORMAT": "application/json",
+            "I": "50",
+            "J": "50",
+            "WIDTH": "101",
+            "HEIGHT": "101",
+            "CRS": "EPSG:4326",
+            "BBOX": bbox,
+        }
+        response = _http().get(cfg["wms_url"], params=params)
+        response.raise_for_status()
+        payload = response.json()
+    except (httpx.HTTPError, TimeoutError, ValueError, TypeError, KeyError):
+        return "error"
+    if not isinstance(payload, dict):
+        return "error"
+    features = payload.get("features") or []
+    if not isinstance(features, list):
+        return "error"
+    for feature in features:
+        if isinstance(feature, dict) and feature.get("geometry"):
+            return "inside"
+    return "empty"
+
+
+def _land_register_outline(lat: float, lng: float) -> dict[str, str] | None:
+    """Point-in-outline status. Absent over sea and outside Scotland.
+
+    Only status, and a note when the lookup answered empty. No id, title,
+    owner, price, or geometry.
+    """
+    if lookup_council_boundary(lat, lng) is None:
+        return None
+    try:
+        found = lookup_parcel(lat, lng)
+    except (httpx.HTTPError, TimeoutError):
+        return _outline_field("unknown")
+    if found is not None:
+        return _outline_field("inside_outline")
+    # A stand-in that returns None is an empty answer. The live lookup also
+    # returns None when the call failed, so that case is checked again.
+    if lookup_parcel is not _LIVE_PARCEL_LOOKUP:
+        return _outline_field("no_outline")
+    probed = _probe_outline(lat, lng)
+    if probed == "error":
+        return _outline_field("unknown")
+    if probed == "inside":
+        return _outline_field("inside_outline")
+    return _outline_field("no_outline")
+
+
 def place_context(
     lat: float,
     lng: float,
@@ -205,7 +294,7 @@ def place_context(
     else:
         ownership_flags.append("no_inspire_parcel")
 
-    return {
+    card: dict[str, Any] = {
         "lat": lat,
         "lng": lng,
         "vacant_or_derelict": vacant,
@@ -255,3 +344,7 @@ def place_context(
             "value_band": None,
         },
     }
+    outline = _land_register_outline(lat, lng)
+    if outline is not None:
+        card["land_register_outline"] = outline
+    return card

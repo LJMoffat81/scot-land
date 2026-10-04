@@ -177,3 +177,4 @@ Append only. Do not rewrite an earlier entry. The public pounds are unchanged. T
 4 October 2026 — CSV cache test uses its own app and leaves the core app unchanged. No figure changed.
 4 October 2026 — Town market value is each council's 2023 median sale price indexed to 1 April 2025. Countryside farmland rents are unchanged.
 4 October 2026 — Markdown, GeoJSON, data and config files are pinned to LF line endings. No figure changed.
+4 October 2026 — Land Register outline status comes from the live parcel lookup. No figure changed.

@@ -124,6 +124,7 @@ export type PlatformContext = {
   };
   local_authority_holding?: { status?: string; reason?: string };
   common_good?: { status?: string; reason?: string };
+  land_register_outline?: { status?: string; note?: string };
   private_or_sasine?: { status?: string; note?: string };
   registers?: {
     name?: string | null;
@@ -161,6 +162,10 @@ type Props = {
 
 const DEVELOPMENT_NOTICE =
   "Research estimate. Figures are in development and may change as the engine improves.";
+
+const NOT_ON_LAND_REGISTER_LABEL = "Not yet on the Land Register";
+const NOT_ON_LAND_REGISTER_NOTE =
+  "We found no Land Register boundary at this point. Its title may still be in the older Sasine register, or the land may not be registered at all. We estimate it by area and land type, and show no boundaries, titles or owners.";
 
 export function MapStampFooter() {
   const [stamp, setStamp] = useState<EngineStamp | null>(null);
@@ -234,6 +239,7 @@ export default function AgrBreakdown({
   const w3wParts = w3wClean ? w3wClean.split(".") : [];
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
+  const [outlineOpen, setOutlineOpen] = useState(false);
 
   const hasParcel = parcelAreaSqm != null && parcelAreaSqm > 0;
   const versionLine = engineVersionLine(agr.stamp);
@@ -314,6 +320,29 @@ export default function AgrBreakdown({
       )}
 
       {parcelLabel ? <p className="meta">Register parcel {parcelLabel}</p> : null}
+
+      {platform?.land_register_outline?.status === "no_outline" ? (
+        <>
+          <p
+            className="meta"
+            style={{ cursor: "help" }}
+            title={NOT_ON_LAND_REGISTER_NOTE}
+            role="button"
+            tabIndex={0}
+            aria-expanded={outlineOpen}
+            onClick={() => setOutlineOpen((open) => !open)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setOutlineOpen((open) => !open);
+              }
+            }}
+          >
+            {NOT_ON_LAND_REGISTER_LABEL}
+          </p>
+          {outlineOpen ? <p className="meta">{NOT_ON_LAND_REGISTER_NOTE}</p> : null}
+        </>
+      ) : null}
 
       <p className="result-links">
         <a href="/methodology">How this is calculated</a>

@@ -872,16 +872,19 @@ export default function ScotlandMap() {
     const frameScotland = () => {
       if (userMoved) return;
       if (container.clientWidth < 40 || container.clientHeight < 40) return;
-      const narrow = window.innerWidth <= 900;
+      const width = window.innerWidth;
       map.fitBounds(
         [
           [-8.05, 54.48],
           [-0.55, 60.88],
         ],
         {
-          padding: narrow
-            ? { top: 156, bottom: 72, left: 12, right: 16 }
-            : { top: 196, bottom: 36, left: 24, right: 28 },
+          padding:
+            width <= 900
+              ? { top: 132, bottom: 72, left: 12, right: 16 }
+              : width <= 1180
+                ? { top: 188, bottom: 36, left: 24, right: 28 }
+                : { top: 96, bottom: 36, left: 24, right: 28 },
           animate: false,
           maxZoom: 7.4,
         },

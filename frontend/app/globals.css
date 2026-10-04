@@ -177,18 +177,14 @@ input {
   position: absolute;
   z-index: 6;
   left: 50%;
-  top: calc(var(--hud-height, 7.5rem) + 0.55rem);
+  top: 1rem;
   transform: translateX(-50%);
-  width: min(36rem, calc(100vw - 2.4rem));
+  width: min(34rem, calc(100vw - 52rem));
   pointer-events: none;
 }
 
 .hud-search-dock > * {
   pointer-events: auto;
-}
-
-.app-shell.place-open .hud-place {
-  top: calc(var(--hud-height, 7.5rem) + 4.8rem);
 }
 
 .hud-search {
@@ -241,7 +237,7 @@ input {
   min-width: 0;
   border: 0;
   background: transparent;
-  padding: 0.85rem 1.1rem;
+  padding: 0.48rem 1rem;
   font-size: 0.95rem;
 }
 
@@ -309,8 +305,8 @@ input {
   background: var(--rugby-navy);
   color: #fff;
   font-weight: 700;
-  padding: 0.7rem 1.15rem;
-  margin: 0.3rem 0.3rem 0.3rem 0;
+  padding: 0.48rem 1rem;
+  margin: 0.22rem 0.22rem 0.22rem 0;
   border-radius: 999px;
   cursor: pointer;
 }
@@ -418,10 +414,10 @@ input {
 }
 
 .hud-tools {
-  top: calc(var(--hud-height, 7.5rem) + 4.8rem);
+  top: 7.4rem;
   left: 1.1rem;
   width: min(332px, calc(100vw - 2rem));
-  max-height: calc(100dvh - var(--hud-height, 7.5rem) - 9rem);
+  max-height: calc(100vh - 13rem);
   padding: 0.9rem 1rem 1rem;
 }
 
@@ -1148,6 +1144,22 @@ button.linkish:disabled {
 .panel h2 {
   margin: 0 0 0.75rem;
   font-size: 1rem;
+}
+
+@media (max-width: 1180px) {
+  .hud-search-dock {
+    top: calc(var(--hud-height, 7.5rem) + 0.45rem);
+    width: min(36rem, calc(100vw - 2.4rem));
+  }
+
+  .app-shell.place-open .hud-place {
+    top: calc(var(--hud-height, 7.5rem) + 4.8rem);
+  }
+
+  .hud-tools {
+    top: calc(var(--hud-height, 7.5rem) + 4.8rem);
+    max-height: calc(100dvh - var(--hud-height, 7.5rem) - 9rem);
+  }
 }
 
 @media (max-width: 900px) {

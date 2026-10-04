@@ -340,6 +340,7 @@ export default function ScotlandMap() {
   const [streetScale, setStreetScale] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
+  const [legendOpen, setLegendOpen] = useState(false);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const parcelLabelRef = useRef<maplibregl.Marker | null>(null);
   const boundariesTouched = useRef(false);
@@ -1533,18 +1534,23 @@ export default function ScotlandMap() {
         </nav>
       </header>
 
-      <aside className="hud-scotland" aria-label="Land rent" ref={scotlandRef}>
-        <input
-          id="legend-fold"
-          type="checkbox"
-          className="hud-scotland-fold-input"
-        />
+      <aside
+        className={legendOpen ? "hud-scotland legend-open" : "hud-scotland"}
+        aria-label="Land rent"
+        ref={scotlandRef}
+      >
         <div className="hud-scotland-stack">
-          <label className="hud-scotland-fold" htmlFor="legend-fold">
+          <button
+            type="button"
+            className="hud-scotland-fold"
+            aria-expanded={legendOpen}
+            aria-controls="hud-scotland-body"
+            onClick={() => setLegendOpen((open) => !open)}
+          >
             <span className="hud-scotland-fold-show">Show legend</span>
             <span className="hud-scotland-fold-hide">Hide legend</span>
-          </label>
-          <div className="hud-scotland-body">
+          </button>
+          <div className="hud-scotland-body" id="hud-scotland-body">
             <p className="hud-scotland-job">Annual Ground Rent</p>
             <p className="hud-scotland-lead">A charge on the land alone.</p>
             {legendMetric && (

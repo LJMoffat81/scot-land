@@ -1140,7 +1140,6 @@ button.linkish:disabled {
   }
 }
 
-.hud-scotland-fold-input,
 .hud-scotland-fold {
   display: none;
 }
@@ -1188,6 +1187,11 @@ button.linkish:disabled {
     cursor: pointer;
   }
 
+  .hud-scotland-fold:focus-visible {
+    outline: 3px solid #0076d3;
+    outline-offset: 2px;
+  }
+
   .hud-scotland-body {
     pointer-events: auto;
     background: rgba(255, 255, 255, 0.96);
@@ -1198,9 +1202,9 @@ button.linkish:disabled {
     width: 100%;
   }
 
-  .hud-scotland:has(.hud-scotland-fold-input:not(:checked)) .hud-scotland-body,
-  .hud-scotland:has(.hud-scotland-fold-input:not(:checked)) .hud-scotland-fold-hide,
-  .hud-scotland:has(.hud-scotland-fold-input:checked) .hud-scotland-fold-show {
+  .hud-scotland:not(.legend-open) .hud-scotland-body,
+  .hud-scotland:not(.legend-open) .hud-scotland-fold-hide,
+  .hud-scotland.legend-open .hud-scotland-fold-show {
     display: none;
   }
 }

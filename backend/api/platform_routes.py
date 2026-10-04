@@ -112,14 +112,19 @@ def api_roll_csv(scenario: str = Query(default="full_agr")) -> PlainTextResponse
     payload = roll_json(scenario)
     rows = payload.get("councils") or []
     comment = stamp_comment(current_stamp())
+    cache = {"Cache-Control": "public, max-age=300"}
     if not rows:
-        return PlainTextResponse(comment + "\n", media_type="text/csv")
+        return PlainTextResponse(
+            comment + "\n", media_type="text/csv", headers=cache
+        )
     fields = list(rows[0].keys())
     buf = io.StringIO()
     writer = csv.DictWriter(buf, fieldnames=fields, extrasaction="ignore")
     writer.writeheader()
     writer.writerows(rows)
-    return PlainTextResponse(comment + "\n" + buf.getvalue(), media_type="text/csv")
+    return PlainTextResponse(
+        comment + "\n" + buf.getvalue(), media_type="text/csv", headers=cache
+    )
 
 
 @router.get("/api/place.json")

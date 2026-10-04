@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiJson, getApiBaseUrl } from "../../lib/api";
+import { withExportVersion } from "../../lib/exportUrl";
 
 type DownloadItem = {
   id: string;
@@ -58,11 +59,15 @@ const SOURCE_NAME: Record<string, string> = {
 
 export default function DownloadsPage() {
   const [data, setData] = useState<Downloads | null>(null);
+  const [commit, setCommit] = useState<string | null>(null);
 
   useEffect(() => {
     void apiJson<Downloads>("/downloads")
       .then(setData)
       .catch(() => setData({ items: [] }));
+    void apiJson<{ stamp?: { commit?: string } }>("/health")
+      .then((body) => setCommit(body.stamp?.commit || null))
+      .catch(() => setCommit(null));
   }, []);
 
   return (
@@ -84,12 +89,15 @@ export default function DownloadsPage() {
 
       <h2>Figures from this site</h2>
       <ul>
-        {OPEN_JSON.map((item) => (
-          <li key={item.href}>
-            <a href={item.href}>{item.name}</a>
-            <span className="download-path">{item.href}</span>
-          </li>
-        ))}
+        {OPEN_JSON.map((item) => {
+          const href = withExportVersion(item.href, commit);
+          return (
+            <li key={item.href}>
+              <a href={href}>{item.name}</a>
+              <span className="download-path">{href}</span>
+            </li>
+          );
+        })}
         <li>
           <a href={`${getApiBaseUrl()}/layers/councils?scenario=full_agr`}>
             Annual Ground Rent for each council, as a map file

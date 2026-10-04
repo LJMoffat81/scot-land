@@ -43,6 +43,8 @@ export async function GET(request: Request, context: Ctx) {
     const headers = new Headers();
     const ct = upstream.headers.get("Content-Type");
     if (ct) headers.set("Content-Type", ct);
+    const cache = upstream.headers.get("Cache-Control");
+    if (cache) headers.set("Cache-Control", cache);
     return new Response(buf, { status: upstream.status, headers });
   } catch {
     return Response.json(

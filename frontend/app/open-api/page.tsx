@@ -1,4 +1,25 @@
-export default function OpenApiPage() {
+import { withExportVersion } from "../../lib/exportUrl";
+
+export const dynamic = "force-dynamic";
+
+async function liveCommit(): Promise<string | null> {
+  const base = (
+    process.env.API_PROXY_TARGET ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://127.0.0.1:8000"
+  ).replace(/\/$/, "");
+  try {
+    const response = await fetch(`${base}/health`, { cache: "no-store" });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { stamp?: { commit?: string } };
+    return body.stamp?.commit || null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function OpenApiPage() {
+  const rollCsv = withExportVersion("/api/roll.csv", await liveCommit());
   return (
     <main className="downloads-page">
       <p className="downloads-nav">
@@ -69,8 +90,8 @@ export default function OpenApiPage() {
           <span className="download-path">/api/roll.json</span>
         </li>
         <li>
-          <a href="/api/roll.csv">The same figures as a spreadsheet</a>
-          <span className="download-path">/api/roll.csv</span>
+          <a href={rollCsv}>The same figures as a spreadsheet</a>
+          <span className="download-path">{rollCsv}</span>
         </li>
         <li>
           <a href="/api/public-land.json">

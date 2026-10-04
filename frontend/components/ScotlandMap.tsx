@@ -1500,41 +1500,54 @@ export default function ScotlandMap() {
       </header>
 
       <aside className="hud-scotland" aria-label="Land rent" ref={scotlandRef}>
-        <p className="hud-scotland-job">Annual Ground Rent</p>
-        <p className="hud-scotland-lead">A charge on the land alone.</p>
-        {legendMetric && (
-          <div className="map-legend">
-            {legendMetric.id !== "gross_liability" && (
-              <p className="map-legend-title">{legendMetric.label}</p>
-            )}
-            <div
-              className="map-legend-bar"
-              style={{ background: legendGradient(legendMetric.stops) }}
-              aria-hidden="true"
-            />
-            <div className="map-legend-stops">
-              <span>{formatLegendStop(legendMetric.stops[0][0], legendMetric.id)}</span>
-              <span>
-                {formatLegendStop(
-                  legendMetric.stops[legendMetric.stops.length - 1][0],
-                  legendMetric.id,
+        <input
+          id="legend-fold"
+          type="checkbox"
+          className="hud-scotland-fold-input"
+        />
+        <div className="hud-scotland-stack">
+          <label className="hud-scotland-fold" htmlFor="legend-fold">
+            <span className="hud-scotland-fold-show">Show legend</span>
+            <span className="hud-scotland-fold-hide">Hide legend</span>
+          </label>
+          <div className="hud-scotland-body">
+            <p className="hud-scotland-job">Annual Ground Rent</p>
+            <p className="hud-scotland-lead">A charge on the land alone.</p>
+            {legendMetric && (
+              <div className="map-legend">
+                {legendMetric.id !== "gross_liability" && (
+                  <p className="map-legend-title">{legendMetric.label}</p>
                 )}
-              </span>
-            </div>
-            <p className="hud-scotland-note">{legendCaption(legendMetric.id)}</p>
-            {(choropleth === "gross_liability" ||
-              choropleth === "agr_plot" ||
-              choropleth === "rent_per_sqm") && (
-              <p className="hud-scotland-note">
-                The colour is one rate for the whole council, the same from street
-                to street.
-              </p>
+                <div
+                  className="map-legend-bar"
+                  style={{ background: legendGradient(legendMetric.stops) }}
+                  aria-hidden="true"
+                />
+                <div className="map-legend-stops">
+                  <span>{formatLegendStop(legendMetric.stops[0][0], legendMetric.id)}</span>
+                  <span>
+                    {formatLegendStop(
+                      legendMetric.stops[legendMetric.stops.length - 1][0],
+                      legendMetric.id,
+                    )}
+                  </span>
+                </div>
+                <p className="hud-scotland-note">{legendCaption(legendMetric.id)}</p>
+                {(choropleth === "gross_liability" ||
+                  choropleth === "agr_plot" ||
+                  choropleth === "rent_per_sqm") && (
+                  <p className="hud-scotland-note">
+                    The colour is one rate for the whole council, the same from street
+                    to street.
+                  </p>
+                )}
+              </div>
             )}
+            <p className="hud-scotland-foot">
+              Research estimate, not a rates bill. <a href="/methodology">About</a>
+            </p>
           </div>
-        )}
-        <p className="hud-scotland-foot">
-          Research estimate, not a rates bill. <a href="/methodology">About</a>
-        </p>
+        </div>
       </aside>
 
       {apiOk === false && (

@@ -134,6 +134,16 @@ def _file_sha12(path: str) -> str:
     return digest[:12]
 
 
+def _file_sha12_lf(path: str) -> str:
+    """Hash file content with line endings normalised to LF.
+
+    A Windows checkout and a Unix checkout of the same commit must stamp
+    the same layers.yaml identity.
+    """
+    raw = Path(path).read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return hashlib.sha256(raw).hexdigest()[:12]
+
+
 def _env_commit(name: str) -> str | None:
     value = os.environ.get(name, "").strip()
     if not value or value.lower() == "unknown":
@@ -251,7 +261,7 @@ def engine_stamp(config: dict) -> dict:
         },
         "config": {
             "agr_yaml_sha256": _file_sha12(str(CONFIG_PATH)),
-            "layers_yaml_sha256": _file_sha12(str(LAYERS_PATH)),
+            "layers_yaml_sha256": _file_sha12_lf(str(LAYERS_PATH)),
         },
         "data": {
             "councils_generated_at": councils.get("generated_at") or "",

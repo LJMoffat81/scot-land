@@ -20,7 +20,7 @@ const sg =
 const ukho =
   "Contains information from the United Kingdom Hydrographic Office and the Scottish Government (Marine Scotland), licensed under the Open Government Licence v3.0.";
 const ces =
-  "Contains information from Crown Estate Scotland licensed under the Open Government Licence v3.0.";
+  "Contains public sector information, licensed under the Open Government Licence v3.0, from Crown Estate Scotland.";
 
 export const CONTEXT_LAYERS: ContextLayer[] = [
   {
@@ -201,9 +201,9 @@ export const CONTEXT_LAYERS: ContextLayer[] = [
     group: "Use",
     kind: "raster",
     attribution:
-      "Contains Forestry Commission information licensed under the Open Government Licence v3.0.",
+      "© Forestry Commission copyright. Contains Ordnance Survey data © Crown copyright and database right 2025. Licensed under the Open Government Licence v3.0.",
     title:
-      "National Forest Inventory woodland, at least 0.5 hectare. A use, not a rent. Contains Forestry Commission information licensed under the Open Government Licence v3.0.",
+      "National Forest Inventory woodland, at least 0.5 hectare. A use, not a rent. © Forestry Commission copyright. Contains Ordnance Survey data © Crown copyright and database right 2025. Licensed under the Open Government Licence v3.0.",
     minzoom: 7,
     maxzoom: 18,
     color: "#1f6b3a",

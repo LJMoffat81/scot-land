@@ -66,6 +66,23 @@ input {
   overflow: hidden;
 }
 
+/* The RoS credit is a long legal line. On a wide screen keep it to the
+   right of the legend so the legend does not cover it. */
+@media (min-width: 901px) {
+  .map-stage .maplibregl-ctrl-bottom-right {
+    max-width: calc(100% - 26rem);
+  }
+
+  .map-stage .maplibregl-ctrl-attrib {
+    max-width: 100%;
+  }
+
+  .map-stage .maplibregl-ctrl-attrib-inner {
+    line-height: 1.35;
+    white-space: normal;
+  }
+}
+
 .map-footer {
   flex-shrink: 0;
   background: #fff;

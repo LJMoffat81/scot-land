@@ -889,7 +889,7 @@ export default function ScotlandMap() {
         minzoom: 14,
         maxzoom: 19,
         scheme: "xyz",
-        attribution: "© Registers of Scotland (INSPIRE cadastral parcels)",
+        attribution: "© Crown copyright. Reproduced with the permission of Registers of Scotland. Contains OS data. © Crown copyright and database right 2026.",
       });
       map.addLayer({
         id: "parcels-wms",
@@ -934,7 +934,7 @@ export default function ScotlandMap() {
           "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         ],
         tileSize: 256,
-        attribution: "Tiles © Esri",
+        attribution: "Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community",
       });
       map.addLayer(
         {

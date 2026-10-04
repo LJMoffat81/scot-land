@@ -160,8 +160,10 @@ type Props = {
   locationClass?: string | null;
 };
 
-const DEVELOPMENT_NOTICE =
-  "Research estimate. Figures are in development and may change as the engine improves.";
+const CARD_DEVELOPMENT_NOTICE =
+  "Figures are in development and may change as the engine improves.";
+
+const DEVELOPMENT_NOTICE = `Research estimate. ${CARD_DEVELOPMENT_NOTICE}`;
 
 const NOT_ON_LAND_REGISTER_LABEL = "Not yet on the Land Register";
 const NOT_ON_LAND_REGISTER_NOTE =
@@ -272,7 +274,7 @@ export default function AgrBreakdown({
         Land only, not the building. Research estimate, not a rates bill.
         The rate is this council&apos;s, so two parcels of the same size here have the same rent.
       </p>
-      <p className="meta dev-notice">{DEVELOPMENT_NOTICE}</p>
+      <p className="meta dev-notice">{CARD_DEVELOPMENT_NOTICE}</p>
       {versionLine ? <p className="engine-stamp">{versionLine}</p> : null}
 
       {w3wParts.length === 3 && (

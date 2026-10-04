@@ -15,7 +15,7 @@ export default function MethodologyContent() {
         buildings on it.
       </p>
       <p>
-        It&apos;s a research estimate, not a bill. Nobody owes this amount, and
+        It&apos;s a research estimate, not a rates bill. Nobody owes this amount, and
         it isn&apos;t a proposal for what anyone should pay.
       </p>
       <p>

@@ -1,0 +1,36 @@
+# Which agr.yaml keys belong to valuation, and which belong to policy.
+# Values stay in agr.yaml. This file only names them.
+schema_version: 1
+valuation:            # what the land is worth
+  version: "valuation-1"
+  keys:
+    - valuer_roll.method
+    - valuer_roll.typical_dwelling_sqm      # the copy the code reads
+    - valuer_roll.typical_plot_sqm
+    - valuer_roll.yield_rate                # the copy the code reads
+    - valuer_roll.property_mix
+    - valuer_roll.rebuild
+    - valuer_roll.depreciation
+    - valuer_roll.residual                  # 15%/85% land-share floor and cap
+    - valuation.primary_method
+    - valuation.fallback_method
+    - valuation.rural_fallback
+    - valuation.hpi_base_year
+    - site_share
+    - per_square.area_sqm
+    - land_use_values_gbp_per_ha_2009
+policy:               # what a charge would take
+  version: "policy-1"
+  keys:
+    - despeculation.urban_speculation_discount   # 0.70
+    - despeculation.farmland_market_to_productive # 0.20
+    - despeculation.marginal_land_rent
+    - per_square.agr_capture_rate
+    - scenarios
+  applied_by_valuation:   # policy-set, applied by valuation
+    - valuer_roll.habu_default
+    - valuation.habu_rule
+    - valuer_roll.exclude_hope_value
+mirrors:              # legacy duplicates; must equal the mapped copy
+  valuation.yield_rate: valuer_roll.yield_rate
+  valuation.typical_dwelling_sqm: valuer_roll.typical_dwelling_sqm

@@ -70,13 +70,13 @@ async function proxy(request: Request, context: Ctx): Promise<Response> {
 
     const upstream = await fetch(target, init);
     const buf = await upstream.arrayBuffer();
-    const headers = new Headers();
+    const responseHeaders = new Headers();
     const ct = upstream.headers.get("Content-Type");
-    if (ct) headers.set("Content-Type", ct);
+    if (ct) responseHeaders.set("Content-Type", ct);
     const cache = upstream.headers.get("Cache-Control");
-    if (cache) headers.set("Cache-Control", cache);
+    if (cache) responseHeaders.set("Cache-Control", cache);
 
-    return new Response(buf, { status: upstream.status, headers });
+    return new Response(buf, { status: upstream.status, headers: responseHeaders });
   } catch (err) {
     const message =
       err instanceof Error && err.name === "TimeoutError"

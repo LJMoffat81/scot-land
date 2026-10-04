@@ -169,3 +169,5 @@ Append only. Do not rewrite an earlier entry. The public pounds are unchanged. T
 **Rejected:** Publishing £28,789.68. Using the settlement outline to select the town residual. A figure between £8.28 and £28,789.68. A new yield or a new urban factor. A pound for the vacant-land test. Editing `data/config/agr.yaml`, the calculator, or the screen. Reopening the full Annual Ground Rent. Claiming that any named person or the Scottish Land Revenue Group endorses the site.
 
 **Would fail if:** The site showed £28,789.68 for Wick, or showed any other new Wick pound, or the published £8.28 were described as the rent of that town land.
+
+4 October 2026 — Valuation date on the stamp: 2025-04-01, not rebased, with each money input's as_of. No figure changed.

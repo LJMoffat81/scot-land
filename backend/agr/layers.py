@@ -175,18 +175,76 @@ def _commit_ids() -> tuple[str, str]:
     return full[:7], full
 
 
+# Money inputs on the live residual path. Dates live in agr.yaml `_meta`, not in the maths.
+_SCALAR_MONEY_KEYS = (
+    "valuer_roll.yield_rate",
+    "valuer_roll.rebuild.house_gbp_per_m2",
+    "valuer_roll.rebuild.flat_gbp_per_m2",
+    "valuer_roll.depreciation.average_stock_remaining_factor",
+    "despeculation.farmland_market_to_productive",
+    "despeculation.urban_speculation_discount",
+)
+
+
+def _money_input_keys(config: dict) -> list[str]:
+    land = config.get("land_use_values_gbp_per_ha_2009")
+    if not isinstance(land, dict) or not land:
+        raise LayerConfigError("land_use_values_gbp_per_ha_2009 is missing")
+    keys = list(_SCALAR_MONEY_KEYS)
+    for name in land:
+        if str(name).startswith("_"):
+            continue
+        keys.append(f"land_use_values_gbp_per_ha_2009.{name}")
+    return keys
+
+
+def _meta_entry(config: dict, path: str) -> dict:
+    meta = config.get("_meta")
+    if not isinstance(meta, dict):
+        raise LayerConfigError("agr config is missing _meta")
+    entry = meta.get(path)
+    if not isinstance(entry, dict):
+        raise LayerConfigError(f"{path} has no _meta entry")
+    return entry
+
+
+def _as_of(config: dict, path: str) -> str:
+    as_of = _meta_entry(config, path).get("as_of")
+    if not isinstance(as_of, str) or not as_of.strip():
+        raise LayerConfigError(f"{path} has no _meta.as_of")
+    return as_of
+
+
+def _valuation_date_fields(config: dict) -> dict:
+    """Stamp fields only. rebased stays false until a later job re-indexes inputs."""
+    valuation = config.get("valuation") if isinstance(config.get("valuation"), dict) else {}
+    date = valuation.get("valuation_date")
+    if not isinstance(date, str) or not date.strip():
+        raise LayerConfigError("valuation.valuation_date is missing")
+    source = _meta_entry(config, "valuation.valuation_date").get("source")
+    if not isinstance(source, str) or not source.strip():
+        raise LayerConfigError("valuation.valuation_date has no _meta source")
+    return {
+        "valuation_date": date,
+        "rebased_to_valuation_date": False,
+        "inputs_as_of": {path: _as_of(config, path) for path in _money_input_keys(config)},
+    }
+
+
 def engine_stamp(config: dict) -> dict:
     """Identity of the engine that produced a response. Figures are not in here."""
     spec = load_layers(config)
     valuation_inputs, policy_inputs = split_config(config)
     councils = json.loads(COUNCILS_PATH.read_text(encoding="utf-8"))
     overrides = config.get("_sensitivity_overrides") or {}
+    valuation_stamp = {
+        "version": spec["valuation"]["version"],
+        "inputs_hash": layer_hash(valuation_inputs),
+    }
+    valuation_stamp.update(_valuation_date_fields(config))
     return {
         "engine_version": ENGINE_VERSION,
-        "valuation": {
-            "version": spec["valuation"]["version"],
-            "inputs_hash": layer_hash(valuation_inputs),
-        },
+        "valuation": valuation_stamp,
         "policy": {
             "version": spec["policy"]["version"],
             "inputs_hash": layer_hash(policy_inputs),

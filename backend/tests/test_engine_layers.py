@@ -32,7 +32,7 @@ POSTCODE_PATH = FIXTURES / "postcode_snapshot_main.json"
 LAYERS_PATH = ROOT / "data" / "config" / "layers.yaml"
 
 FROZEN_SHA256 = {
-    "data/config/agr.yaml": "fae9c0e50c854bc186e2f2ba17473c12c1957dcde73165c9d440848b0615eb81",
+    "data/config/agr.yaml": "139c3e510dc37587a9c1956a100bd5864e4119f67c39255213751cdca98bd31f",
     "data/config/sources.yaml": "0ba74307691bd20ca16c62f2386e446c78c57b1bf6efd9c9c0821cc0f330a84a",
     "data/processed/councils.json": "62a09c8ac892d75a5634ad6ad95d4f2b08c177663241af0ed2dfd3713b6aeb07",
     "backend/agr/valuation.py": "6da672ffece81960fd10be81c130ee965febae036fefc51ff2df18682bd8144a",

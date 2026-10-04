@@ -191,6 +191,8 @@ valuer_roll:
 
 # Legacy keys retained for config consumers / methodology display
 valuation:
+  # Tone date only. Inputs are not re-indexed to this date.
+  valuation_date: "2025-04-01"
   primary_method: residual_drc
   fallback_method: productive_land_use
   rural_fallback: land_use_category
@@ -198,6 +200,41 @@ valuation:
   habu_rule: existing_authorised_use
   typical_dwelling_sqm: 85
   hpi_base_year: 2009
+
+# Stamp metadata. The calculator does not read this. "unknown" means undated.
+_meta:
+  valuation.valuation_date:
+    source: "Scottish non-domestic revaluation 2026 tone date"
+  valuer_roll.yield_rate:
+    as_of: "unknown"
+  valuer_roll.rebuild.house_gbp_per_m2:
+    as_of: "unknown"
+  valuer_roll.rebuild.flat_gbp_per_m2:
+    as_of: "unknown"
+  valuer_roll.depreciation.average_stock_remaining_factor:
+    as_of: "unknown"
+  despeculation.farmland_market_to_productive:
+    as_of: "unknown"
+  despeculation.urban_speculation_discount:
+    as_of: "unknown"
+  land_use_values_gbp_per_ha_2009.residential:
+    as_of: "2009"
+  land_use_values_gbp_per_ha_2009.business_retail:
+    as_of: "2009"
+  land_use_values_gbp_per_ha_2009.urban_vacant:
+    as_of: "2009"
+  land_use_values_gbp_per_ha_2009.industrial:
+    as_of: "2009"
+  land_use_values_gbp_per_ha_2009.forestry:
+    as_of: "2009"
+  land_use_values_gbp_per_ha_2009.agriculture:
+    as_of: "2009"
+  land_use_values_gbp_per_ha_2009.sporting_estates:
+    as_of: "2009"
+  land_use_values_gbp_per_ha_2009.infrastructure:
+    as_of: "2009"
+  land_use_values_gbp_per_ha_2009.open_space:
+    as_of: "2009"
 
 site_share:
   # Implied by residual; retained for reference / sensitivity only

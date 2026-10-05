@@ -31,7 +31,7 @@ export function useWealthApi() {
     setError(null);
     try {
       // Using the API proxy to reach the FastAPI backend
-      const response = await fetch(`/api/backend/georgist/wealth?lat=${lat}&lng=${lng}&zone_id=${zoneId}`);
+      const response = await fetch(`/backend/georgist/wealth?lat=${lat}&lng=${lng}&zone_id=${zoneId}`);
       if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
       return await response.json();
     } catch (err: any) {
@@ -46,7 +46,7 @@ export function useWealthApi() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/backend/layers/georgist/surface-rent');
+      const response = await fetch('/backend/layers/georgist/surface-rent');
       if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
       const json = await response.json();
       return json.data;
@@ -62,7 +62,7 @@ export function useWealthApi() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/backend/layers/georgist/resource-rent');
+      const response = await fetch('/backend/layers/georgist/resource-rent');
       if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
       return await response.json();
     } catch (err: any) {
@@ -77,7 +77,7 @@ export function useWealthApi() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/backend/layers/georgist/eco-rent');
+      const response = await fetch('/backend/layers/georgist/eco-rent');
       if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
       return await response.json();
     } catch (err: any) {

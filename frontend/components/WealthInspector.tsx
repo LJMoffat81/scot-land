@@ -17,7 +17,7 @@ export function WealthInspector({ isOpen, onClose, data, isLoading }: WealthInsp
   if (!isOpen) return null;
 
   return (
-    <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-xl z-50 border-l border-slate-200 p-6 overflow-y-auto animate-in slide-in-from-right">
+    <div className="hud-card hud-wealth animate-in slide-in-from-right">
       <button
         onClick={onClose}
         className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full transition-colors"

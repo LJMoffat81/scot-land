@@ -408,20 +408,20 @@ input {
   overflow: auto;
 }
 
+.hud-wealth {
+  right: 1.1rem;
+  top: 5.25rem;
+  width: min(360px, calc(100vw - 2rem));
+  max-height: calc(100% - 6.5rem);
+  padding: 2.1rem 1.15rem 1.2rem;
+}
+
 .hud-tools {
   top: 7.4rem;
   left: 1.1rem;
   width: min(332px, calc(100vw - 2rem));
   max-height: calc(100vh - 13rem);
   padding: 0.9rem 1rem 1rem;
-}
-
-.hud-place {
-  right: 1.1rem;
-  top: 5.25rem;
-  width: min(360px, calc(100vw - 2rem));
-  max-height: calc(100% - 6.5rem);
-  padding: 2.1rem 1.15rem 1.2rem;
 }
 
 .hud-scotland {

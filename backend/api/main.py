@@ -292,9 +292,23 @@ def trigger_ros_sync():
 
 @app.get("/layers/georgist/surface-rent")
 def layer_georgist_surface_rent() -> JSONResponse:
+    """The Georgist Surface Rent layer based on Data Zone economic la-calc.
+    Returns a JSON map of zone_id -> calculated_rent.
+    """
+    try:
+        if not OUTPUT_FILE.exists():
+            from georgist.surface_harvester import harvest_surface_wealth
+            harvest_surface_wealth()
 
-
-@app.get("/georgist/wealth")
+        data = json.loads(OUTPUT_FILE.read_text(encoding="utf-8"))
+        return JSONResponse({
+            "ok": True,
+            "source": "Georgist Surface Rent Engine",
+            "data": data,
+            "note": "Calculated based on SIMD and Population Density proxies."
+        })
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Wealth engine error: {str(exc)}")
 def get_georgist_wealth(
     lat: float = Query(..., ge=-90, le=90),
     lng: float = Query(..., ge=-180, le=180),
@@ -316,9 +330,12 @@ def get_georgist_wealth(
 
 
 def _load_geojson(path: Path) -> JSONResponse:
-
-
-@app.get("/health")
+    if not path.exists():
+        raise HTTPException(
+            status_code=503,
+            detail=f"Missing {path.name}. Run the Phase 3 ETL scripts in backend/etl/.",
+        )
+    return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
 def health() -> dict:
     config = load_config()
     signoff = config.get("economist_signoff", {})

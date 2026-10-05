@@ -1756,6 +1756,13 @@ export default function ScotlandMap() {
         <div id="map" ref={mapContainer} />
       </div>
 
+      <WealthInspector
+        isOpen={showWealthPanel}
+        onClose={() => setShowWealthPanel(false)}
+        data={wealthData}
+        isLoading={wealthLoading}
+      />
+
       <header className="hud-top" ref={headerRef}>
         <div className="hud-brand">
           <a className="hud-wordmark" href="/" aria-label="Scot-LAND">

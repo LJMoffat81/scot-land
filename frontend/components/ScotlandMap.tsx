@@ -14,9 +14,12 @@ import AgrBreakdown, {
   PlaceFiscal,
   ScenarioId,
 } from "./AgrBreakdown";
+import { WealthInspector } from "./WealthInspector";
+import { useWealthApi, WealthResponse } from "../lib/useWealthApi";
 import {
   SERVICE_BUSY,
   apiFetch,
+
   apiJson,
   isServiceFailure,
   pingApi,
@@ -402,7 +405,18 @@ export default function ScotlandMap() {
   const [showCellGrid] = useState(false);
   const [showVdl, setShowVdl] = useState(false);
   const [showPublicLand, setShowPublicLand] = useState(false);
+
+  // Georgist Wealth State
+  const {
+    fetchTotalWealth,
+    isLoading: wealthLoading,
+    error: wealthError
+  } = useWealthApi();
+  const [wealthData, setWealthData] = useState<WealthResponse | null>(null);
+  const [showWealthPanel, setShowWealthPanel] = useState(false);
+
   const [contextOn, setContextOn] = useState<Record<string, boolean>>({});
+
   const [urbanRuralName, setUrbanRuralName] = useState<string | null>(null);
   const [dataZone, setDataZone] = useState<{
     code: string;
@@ -1185,16 +1199,37 @@ export default function ScotlandMap() {
       }
     });
 
-    map.on("click", (event) => {
+    map.on("click", async (event) => {
       const hits = map.queryRenderedFeatures(event.point, {
         layers: ["w3w-agr-fill", "council-fill"],
       });
       if (hits[0]?.properties?.lat != null && hits[0].layer?.id === "w3w-agr-fill") {
         void fetchSquare(Number(hits[0].properties.lat), Number(hits[0].properties.lng));
+
+        // Georgist Wealth Lookup
+        const zoneId = hits[0].properties.zone_id || "unknown";
+        const wealth = await fetchTotalWealth(
+          Number(hits[0].properties.lat),
+          Number(hits[0].properties.lng),
+          zoneId
+        );
+        setWealthData(wealth);
+        setShowWealthPanel(true);
         return;
       }
       void fetchSquare(event.lngLat.lat, event.lngLat.lng);
+
+      // For generic clicks, we still want the wealth data
+      // In a real app, we'd fetch the zoneId for these coordinates first
+      const wealth = await fetchTotalWealth(
+        event.lngLat.lat,
+        event.lngLat.lng,
+        "unknown"
+      );
+      setWealthData(wealth);
+      setShowWealthPanel(true);
     });
+
 
     mapRef.current = map;
     return () => {

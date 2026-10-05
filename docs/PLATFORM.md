@@ -33,6 +33,12 @@ The platform is permanently free for everyone to view, explore and download (whe
 - Policy scenarios (full AGR, tax-replacement, revenue-neutral options, equal-share illustrations)
 - Full public methodology and integrity caveats
 
+**National Wealth Engine (current core)**
+- Aggregated land wealth stacks: Surface, Resource, and Ecological rents
+- Wealth Inspector: Point-scale breakdown of total economic rent
+- `la-calc` surface rent aggregation based on socio-economic proxies
+- PostGIS-powered spatial intersection of resource and eco-wealth polygons
+
 **Spatial & ownership layers (expanding)**
 - ROS INSPIRE cadastral parcels (registered extents)
 - Indicative local-authority land ownership and asset registers

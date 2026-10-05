@@ -32,6 +32,7 @@ from urllib.parse import urlencode, urlparse
 import httpx
 from pyproj import Transformer
 
+from agr.settlement import zone_class_for
 from spatial.parcels import TRANSPARENT_PNG, tile_bounds_3857
 
 # Wider than the land envelope so the North Sea and the Scottish zone draw.
@@ -682,8 +683,17 @@ def house_sale_median_2023(code: str, path: Path | None = None) -> int | None:
     return found.get(code)
 
 
-def data_zone_record(payload: dict, *, path: Path | None = None) -> dict:
-    """Zone identity from one query payload, plus the house-sale median when the cell is filled."""
+def data_zone_record(
+    payload: dict,
+    *,
+    path: Path | None = None,
+    class_path: Path | None = None,
+) -> dict:
+    """Zone identity, its 2020 class, and the house-sale median when the cell is filled.
+
+    The class names the town or countryside route for the zone. It is not a rent,
+    and it is not passed through the charge.
+    """
     features = payload.get("features") or []
     if not features:
         return {"code": "", "name": ""}
@@ -704,6 +714,12 @@ def data_zone_record(payload: dict, *, path: Path | None = None) -> dict:
             "Median price of houses sold in this data zone in 2023. "
             "The building is included. Not a land rent."
         )
+    zone = zone_class_for(code, class_path)
+    if zone is not None:
+        record["urban_rural_fold"] = zone["fold"]
+        record["urban_rural_name"] = zone["name"]
+        record["urban_rural_year"] = zone["year"]
+        record["urban_rural_route"] = zone["route"]
     return record
 
 

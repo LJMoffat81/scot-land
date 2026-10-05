@@ -128,25 +128,34 @@ def test_data_zone_record_keeps_the_house_price_out_of_the_rent(tmp_path):
         "dz2011,dz_med2023\nS01006646,150000\nS01006647,\n",
         encoding="utf-8",
     )
+    classes = tmp_path / "ur.csv"
+    classes.write_text("dz2011,ur8\nS01006646,1\n", encoding="utf-8")
     filled = data_zone_record(
         {"features": [{"attributes": {"datazone": "S01006646", "name": "George Street - 02"}}]},
         path=prices,
+        class_path=classes,
     )
     assert filled["code"] == "S01006646"
     assert filled["name"] == "George Street - 02"
     assert filled["house_sale_median_gbp"] == 150000
     assert filled["house_sale_year"] == 2023
     assert "Not a land rent" in filled["note"]
+    assert filled["urban_rural_fold"] == 1
+    assert filled["urban_rural_name"] == "Large Urban Areas"
+    assert filled["urban_rural_year"] == 2020
+    assert filled["urban_rural_route"] == "town"
     assert "annual" not in filled
     blank = data_zone_record(
         {"features": [{"attributes": {"datazone": "S01006647", "name": "Harbour"}}]},
         path=prices,
+        class_path=classes,
     )
     assert blank == {"code": "S01006647", "name": "Harbour"}
     assert house_sale_median_2023("S01006647", prices) is None
     refused = data_zone_record(
         {"features": [{"attributes": {"datazone": "nope", "name": "x"}}]},
         path=prices,
+        class_path=classes,
     )
     assert refused == {"code": "", "name": ""}
 

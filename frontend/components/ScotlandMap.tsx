@@ -409,6 +409,9 @@ export default function ScotlandMap() {
     name?: string;
     house_sale_median_gbp?: number | null;
     house_sale_year?: number | null;
+    urban_rural_name?: string;
+    urban_rural_year?: number | null;
+    urban_rural_route?: string;
   } | null>(null);
   const [contextNote, setContextNote] = useState<string | null>(null);
   const contextLoaded = useRef<Set<string>>(new Set());
@@ -1638,6 +1641,9 @@ export default function ScotlandMap() {
       name?: string;
       house_sale_median_gbp?: number | null;
       house_sale_year?: number | null;
+      urban_rural_name?: string;
+      urban_rural_year?: number | null;
+      urban_rural_route?: string;
     }>(
       `/layers/context/data-zones/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
       { cache: "no-store" },
@@ -1651,6 +1657,9 @@ export default function ScotlandMap() {
           name: data.name?.trim() || undefined,
           house_sale_median_gbp: data.house_sale_median_gbp,
           house_sale_year: data.house_sale_year,
+          urban_rural_name: data.urban_rural_name?.trim() || undefined,
+          urban_rural_year: data.urban_rural_year,
+          urban_rural_route: data.urban_rural_route,
         });
       })
       .catch(() => {

@@ -19,6 +19,7 @@ data/cache/
 data/processed/*
 !data/processed/councils.json
 !data/processed/dz2011_prices.csv
+!data/processed/dz2011_urban_rural_2020.csv
 !data/processed/council_hpi.csv
 !data/processed/scotland_councils.geojson
 !data/processed/glasgow_ward_18.geojson

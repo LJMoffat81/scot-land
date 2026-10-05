@@ -166,8 +166,27 @@ type Props = {
     name?: string;
     house_sale_median_gbp?: number | null;
     house_sale_year?: number | null;
+    urban_rural_name?: string;
+    urban_rural_year?: number | null;
+    urban_rural_route?: string;
   } | null;
 };
+
+function zoneClassLine(
+  zone: Props["dataZone"],
+  countryside: boolean,
+): string | null {
+  if (!zone) return null;
+  const name = zone.urban_rural_name?.trim();
+  if (!name) return null;
+  const year = zone.urban_rural_year ?? 2020;
+  const point = countryside ? "countryside" : "town";
+  const route = zone.urban_rural_route;
+  if ((route === "town" || route === "countryside") && route !== point) {
+    return `Classed ${name} in ${year}. This point is ${point}, so the figure stays on the ${point} rate.`;
+  }
+  return `Classed ${name} in ${year}. The yearly figure follows this point.`;
+}
 
 const CARD_DEVELOPMENT_NOTICE =
   "Figures are in development and may change as the engine improves.";
@@ -284,6 +303,7 @@ export default function AgrBreakdown({
     : countryside
       ? "No register outline here, so this is one hectare at the countryside rate. The map colour is the town home plot, not this number."
       : "No register outline here, so this is one home plot at the town rate. Countryside in this council uses a different rate.";
+  const classLine = zoneClassLine(dataZone, countryside);
 
   return (
     <div className="clarity-result">
@@ -297,6 +317,7 @@ export default function AgrBreakdown({
           {dataZone.name ? `, ${dataZone.name}` : ""}
         </p>
       ) : null}
+      {classLine ? <p className="meta">{classLine}</p> : null}
 
       <div className="agr-value" aria-live="polite">
         {formatGbp(headline, headline >= 100 ? 0 : 2)}

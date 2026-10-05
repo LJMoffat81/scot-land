@@ -413,6 +413,7 @@ export default function ScotlandMap() {
     urban_rural_year?: number | null;
     urban_rural_route?: string;
   } | null>(null);
+  const [seabed, setSeabed] = useState<{ notes: string[]; failed: boolean } | null>(null);
   const [contextNote, setContextNote] = useState<string | null>(null);
   const contextLoaded = useRef<Set<string>>(new Set());
   const contextFlight = useRef<Set<string>>(new Set());
@@ -1670,6 +1671,34 @@ export default function ScotlandMap() {
     };
   }, [result]);
 
+  useEffect(() => {
+    if (!result) {
+      setSeabed(null);
+      return;
+    }
+    let cancelled = false;
+    const lat = result.square.lat;
+    const lng = result.square.lng;
+    setSeabed(null);
+    void apiJson<{ leases?: { note?: string }[] }>(
+      `/layers/context/seabed/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+      { cache: "no-store" },
+    )
+      .then((data) => {
+        if (cancelled) return;
+        const notes = (data.leases ?? [])
+          .map((row) => row.note?.trim() ?? "")
+          .filter((note) => note.length > 0);
+        setSeabed({ notes, failed: false });
+      })
+      .catch(() => {
+        if (!cancelled) setSeabed({ notes: [], failed: true });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [result]);
+
   const legendMetric =
     choropleth === "off"
       ? null
@@ -2098,7 +2127,27 @@ export default function ScotlandMap() {
             </button>
             {error && <p className="error-line">{error}</p>}
             {result?.reason === "not_land" && (
-              <p className="headline-caption">No land here</p>
+              <>
+                <p className="location-line">
+                  {result.square.lat.toFixed(5)}, {result.square.lng.toFixed(5)}
+                </p>
+                <p className="headline-caption">The seabed is land.</p>
+                {seabed === null ? (
+                  <p className="meta">Looking up the published lease.</p>
+                ) : seabed.failed ? (
+                  <p className="headline-caption">The lease service did not answer.</p>
+                ) : seabed.notes.length === 0 ? (
+                  <p className="headline-caption">
+                    No published lease rent falls on this point.
+                  </p>
+                ) : (
+                  seabed.notes.map((note, index) => (
+                    <p key={`${index}-${note.slice(0, 24)}`} className="meta">
+                      {note}
+                    </p>
+                  ))
+                )}
+              </>
             )}
             {result?.agr && (
               <AgrBreakdown
@@ -2120,6 +2169,7 @@ export default function ScotlandMap() {
                 platform={result.platform}
                 locationClass={urbanRuralName}
                 dataZone={dataZone}
+                seabedNotes={seabed?.notes}
               />
             )}
           </aside>

@@ -170,6 +170,7 @@ type Props = {
     urban_rural_year?: number | null;
     urban_rural_route?: string;
   } | null;
+  seabedNotes?: string[] | null;
 };
 
 function zoneClassLine(
@@ -255,6 +256,7 @@ export default function AgrBreakdown({
   platform,
   locationClass,
   dataZone,
+  seabedNotes,
 }: Props) {
   const active = agr.scenarios.full_agr;
   const plotFull = agr.roll_annual_rent_notional_plot_gbp;
@@ -334,6 +336,18 @@ export default function AgrBreakdown({
       <p className="headline-caption">
         Land only, not the building. Research estimate, not a rates bill. {rateLine}
       </p>
+      {seabedNotes && seabedNotes.length > 0 ? (
+        <>
+          <p className="headline-caption">
+            The seabed here is leased. This note is separate from the figure above.
+          </p>
+          {seabedNotes.map((note, index) => (
+            <p key={`${index}-${note.slice(0, 24)}`} className="meta">
+              {note}
+            </p>
+          ))}
+        </>
+      ) : null}
       {dataZone?.house_sale_median_gbp != null && dataZone.house_sale_median_gbp > 0 ? (
         <p className="meta">
           House sales in this data zone, median{" "}

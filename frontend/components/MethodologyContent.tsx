@@ -19,9 +19,11 @@ export default function MethodologyContent() {
         it isn&apos;t a proposal for what anyone should pay.
       </p>
       <p>
-        We value surface land only. We don&apos;t yet value seabed, minerals,
-        water or other natural resources on the map, and woodland shows
-        &quot;Not yet estimated&quot;.
+        A click on land estimates the surface rent. A click at sea says the
+        seabed is land, and names a Crown Estate Scotland lease when one covers
+        that point. The note is the published rent rule. Where the open file
+        has no yearly total, the map does not invent one. Minerals and water
+        are not on the map yet, and woodland shows &quot;Not yet estimated&quot;.
       </p>
       <p>
         Figures come from public data, and the method is published in full.

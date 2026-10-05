@@ -46,6 +46,7 @@ from spatial.context_tiles import (
     fetch_context_geojson,
     fetch_context_tile,
     fetch_data_zone_async,
+    fetch_seabed_async,
     fetch_urban_rural_class_async,
 )
 from spatial.parcels import TRANSPARENT_PNG, fetch_parcel_tile_png, lookup_parcel_geojson
@@ -475,6 +476,24 @@ async def layer_data_zone_at(
     except Exception:
         body = {"code": "", "name": ""}
     cache = "public, max-age=86400" if body.get("code") else "no-store"
+    return JSONResponse(body, headers={"Cache-Control": cache})
+
+
+@app.get("/layers/context/seabed/at")
+async def layer_seabed_at(
+    lat: float = Query(...),
+    lng: float = Query(...),
+) -> JSONResponse:
+    """Published Crown Estate Scotland lease at a point.
+
+    The note is a rent rule, or a statement that the yearly rent is not in
+    the open file. It is not added to the land charge.
+    """
+    try:
+        body = await fetch_seabed_async(lat, lng)
+    except Exception:
+        body = {"leases": []}
+    cache = "public, max-age=86400" if body.get("leases") else "no-store"
     return JSONResponse(body, headers={"Cache-Control": cache})
 
 

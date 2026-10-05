@@ -74,6 +74,19 @@ export const CONTEXT_LAYERS: ContextLayer[] = [
     opacity: 0.9,
   },
   {
+    id: "seabed-leases",
+    label: "Seabed leases",
+    group: "Sea",
+    kind: "fill",
+    attribution: ces,
+    title:
+      "Crown Estate Scotland aquaculture leases. A click states the published rent rule for that outline. The open file has no equipment length or harvest, so the map does not state a yearly total. " +
+      ces,
+    minzoom: 0,
+    maxzoom: 18,
+    color: "#0a4f6e",
+  },
+  {
     id: "oil-fields",
     label: "Oil and gas fields",
     group: "Energy",
@@ -112,7 +125,9 @@ export const CONTEXT_LAYERS: ContextLayer[] = [
     group: "Energy",
     kind: "fill",
     attribution: ces,
-    title: "Signed offshore wind leases. Not a plan option. " + ces,
+    title:
+      "Signed offshore wind leases. Not a plan option. The yearly rent is not in the open file. " +
+      ces,
     minzoom: 0,
     maxzoom: 18,
     color: "#0076d3",
@@ -135,7 +150,8 @@ export const CONTEXT_LAYERS: ContextLayer[] = [
     group: "Energy",
     kind: "fill",
     attribution: ces,
-    title: "Signed wave and tidal leases. " + ces,
+    title:
+      "Signed wave and tidal leases. The yearly rent is not in the open file. " + ces,
     minzoom: 0,
     maxzoom: 18,
     color: "#0b6e62",

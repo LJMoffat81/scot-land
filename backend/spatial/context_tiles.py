@@ -19,6 +19,7 @@ Left out on purpose:
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
 import math
@@ -32,6 +33,7 @@ from urllib.parse import urlencode, urlparse
 import httpx
 from pyproj import Transformer
 
+from agr.seabed import seabed_record
 from agr.settlement import zone_class_for
 from spatial.parcels import TRANSPARENT_PNG, tile_bounds_3857
 
@@ -101,6 +103,8 @@ _KEEP = frozenset(
         "tenant",
         "agreementtype",
         "projectphase",
+        "propertyclassification",
+        "leasedescription",
         "sitename",
         "technologytype",
         "developmentstatusshort",
@@ -249,6 +253,15 @@ FEATURES: dict[str, FeatureSpec] = {
         "wind-leases",
         "arcgis",
         f"{_CES_ROOT}/Offshore_Wind_Crown_Estate_Scotland/FeatureServer/0/query",
+        "1=1",
+        _CES,
+    ),
+    # Aquaculture lease outlines. The click states the published rent rule.
+    # Drawing them does not colour the land charge.
+    "seabed-leases": FeatureSpec(
+        "seabed-leases",
+        "arcgis",
+        f"{_CES_ROOT}/Aquaculture_Crown_Estate_Scotland/FeatureServer/0/query",
         "1=1",
         _CES,
     ),
@@ -759,6 +772,104 @@ async def fetch_data_zone_async(lat: float, lng: float) -> dict:
         return data_zone_record(response.json())
     except Exception:
         return {"code": "", "name": ""}
+
+
+# Point queries for the lease the click falls in. Occupier names stay off.
+_SEABED_QUERIES = {
+    "aquaculture": (
+        f"{_CES_ROOT}/Aquaculture_Crown_Estate_Scotland/FeatureServer/0/query",
+        "Lease_Description,Property_Classification",
+    ),
+    "wind": (
+        f"{_CES_ROOT}/Offshore_Wind_Crown_Estate_Scotland/FeatureServer/0/query",
+        "Property_Description,Lease_Type_Description,Property_Classification,Project_Phase",
+    ),
+    "wave": (
+        f"{_CES_ROOT}/Wave_Crown_Estate_Scotland/FeatureServer/0/query",
+        "Lease_Description,Lease_Type_Description,Project_Phase",
+    ),
+    "tidal": (
+        f"{_CES_ROOT}/Tidal_Crown_Estate_Scotland/FeatureServer/0/query",
+        "Property_Description,Lease_Type_Description,Project_Phase",
+    ),
+}
+
+
+def seabed_query_url(kind: str, lat: float, lng: float) -> str | None:
+    """Point query for one Crown Estate Scotland lease layer. None outside the box."""
+    spec = _SEABED_QUERIES.get(kind)
+    if spec is None or not _point_in_context(lat, lng) or not _host_allowed(spec[0]):
+        return None
+    params = {
+        "geometry": f"{lng},{lat}",
+        "geometryType": "esriGeometryPoint",
+        "inSR": "4326",
+        "spatialRel": "esriSpatialRelIntersects",
+        "outFields": spec[1],
+        "returnGeometry": "false",
+        "resultRecordCount": "4",
+        "f": "json",
+    }
+    return f"{spec[0]}?{urlencode(params)}"
+
+
+def _fetch_seabed_payload(url: str) -> dict:
+    response = _http().get(url, timeout=httpx.Timeout(12.0, connect=5.0))
+    if response.status_code != 200:
+        return {}
+    body = response.json()
+    return body if isinstance(body, dict) else {}
+
+
+def fetch_seabed(lat: float, lng: float) -> dict:
+    """Published lease notes at one point. Empty when no outline covers it."""
+    urls = {kind: seabed_query_url(kind, lat, lng) for kind in _SEABED_QUERIES}
+    if all(url is None for url in urls.values()):
+        return {"leases": []}
+    payloads: dict[str, dict] = {}
+    for kind, url in urls.items():
+        if url is None:
+            continue
+        try:
+            payloads[kind] = _fetch_seabed_payload(url)
+        except Exception:
+            continue
+    return seabed_record(payloads)
+
+
+async def fetch_seabed_async(lat: float, lng: float) -> dict:
+    """Same lookup on the event loop, so parcel tiles cannot queue it."""
+    urls = {kind: seabed_query_url(kind, lat, lng) for kind in _SEABED_QUERIES}
+    if all(url is None for url in urls.values()):
+        return {"leases": []}
+
+    async def one(client: httpx.AsyncClient, kind: str, url: str) -> tuple[str, dict]:
+        try:
+            response = await client.get(url)
+            if response.status_code != 200:
+                return kind, {}
+            body = response.json()
+            return kind, body if isinstance(body, dict) else {}
+        except Exception:
+            return kind, {}
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(12.0, connect=5.0),
+            follow_redirects=True,
+            verify=_ssl_context(),
+            headers={"User-Agent": "scot-land/0.9 (https://scot-land.scot; context layers)"},
+        ) as client:
+            pairs = await asyncio.gather(
+                *(
+                    one(client, kind, url)
+                    for kind, url in urls.items()
+                    if url is not None
+                )
+            )
+    except Exception:
+        return {"leases": []}
+    return seabed_record(dict(pairs))
 
 
 def raster_request_url(layer_id: str, z: int, x: int, y: int) -> str | None:

@@ -1,0 +1,26 @@
+{
+  "S0000123": {
+    "rent_per_ha": 384.24,
+    "stats": {
+      "pop_density": 6000,
+      "simd_income_rank": 6000,
+      "simd_access_rank": 5000
+    }
+  },
+  "S0000456": {
+    "rent_per_ha": 40.58,
+    "stats": {
+      "pop_density": 200,
+      "simd_income_rank": 100,
+      "simd_access_rank": 200
+    }
+  },
+  "S0000789": {
+    "rent_per_ha": 133.65,
+    "stats": {
+      "pop_density": 1200,
+      "simd_income_rank": 3000,
+      "simd_access_rank": 3000
+    }
+  }
+}

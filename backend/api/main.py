@@ -42,6 +42,13 @@ from layers.council_metrics import build_council_metrics_geojson
 from layers.grid_layer import build_w3w_agr_grid
 from layers.platform import platform_catalog
 from spatial.address import search_door, search_place
+from georgist.surface_rent import calculator
+from georgist.surface_harvester import OUTPUT_FILE
+from georgist.aggregator import aggregator
+from georgist.ros_sync import ros_sync_service
+
+
+
 from spatial.context_tiles import (
     fetch_context_geojson,
     fetch_context_tile,
@@ -215,6 +222,100 @@ def _load_geojson(path: Path) -> JSONResponse:
             detail=f"Missing {path.name}. Run the Phase 3 ETL scripts in backend/etl/.",
         )
     return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
+
+
+@app.get("/layers/georgist/surface-rent")
+def layer_georgist_surface_rent() -> JSONResponse:
+    """The Georgist Surface Rent layer based on Data Zone economic la-calc.
+    Returns a JSON map of zone_id -> calculated_rent.
+    """
+    try:
+        if not OUTPUT_FILE.exists():
+            # Trigger a quick harvest if missing
+            from georgist.surface_harvester import harvest_surface_wealth
+            harvest_surface_wealth()
+
+        data = json.loads(OUTPUT_FILE.read_text(encoding="utf-8"))
+        return JSONResponse({
+            "ok": True,
+            "source": "Georgist Surface Rent Engine",
+            "data": data,
+            "note": "Calculated based on SIMD and Population Density proxies."
+        })
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Wealth engine error: {str(exc)}")
+
+
+@app.get("/layers/georgist/resource-rent")
+def layer_georgist_resource_rent() -> JSONResponse:
+    """The Georgist Resource Rent layer (Oil, Wind, Marine).
+    Returns a GeoJSON FeatureCollection of resource polygons with rent values.
+    """
+    from georgist.resource_harvester import OUTPUT_FILE as RES_OUTPUT_FILE
+    try:
+        if not RES_OUTPUT_FILE.exists():
+            from georgist.resource_harvester import harvest_resource_wealth
+            harvest_resource_wealth()
+
+        data = json.loads(RES_OUTPUT_FILE.read_text(encoding="utf-8"))
+        return JSONResponse(data)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Resource engine error: {str(exc)}")
+
+
+@app.get("/layers/georgist/eco-rent")
+def layer_georgist_eco_rent() -> JSONResponse:
+    """The Georgist Ecological Rent layer (Carbon, Peat, Woodland).
+    Returns a GeoJSON FeatureCollection of eco polygons with rent values.
+    """
+    from georgist.eco_harvester import OUTPUT_FILE as ECO_OUTPUT_FILE
+    try:
+        if not ECO_OUTPUT_FILE.exists():
+            from georgist.eco_harvester import harvest_eco_wealth
+            harvest_eco_wealth()
+
+        data = json.loads(ECO_OUTPUT_FILE.read_text(encoding="utf-8"))
+        return JSONResponse(data)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Eco engine error: {str(exc)}")
+
+
+@app.post("/sync/ros")
+def trigger_ros_sync():
+    """Manually trigger a synchronization with the RoS open data portal."""
+    success = ros_sync_service.sync_data()
+    if success:
+        return {"status": "ok", "message": "RoS data synchronized successfully."}
+    else:
+        raise HTTPException(status_code=500, detail="Sync failed. Check backend logs.")
+
+
+@app.get("/layers/georgist/surface-rent")
+def layer_georgist_surface_rent() -> JSONResponse:
+
+
+@app.get("/georgist/wealth")
+def get_georgist_wealth(
+    lat: float = Query(..., ge=-90, le=90),
+    lng: float = Query(..., ge=-180, le=180),
+    zone_id: str = Query(..., description="The Data Zone ID for surface rent calculation")
+) -> dict:
+    """
+    The 'Total Wealth' endpoint. Sums Surface, Resource, and Eco rents for a location.
+    """
+    try:
+        result = aggregator.get_total_wealth(zone_id, lat, lng)
+        return {
+            "lat": lat,
+            "lng": lng,
+            "zone_id": zone_id,
+            "wealth": result
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Aggregator error: {str(exc)}")
+
+
+def _load_geojson(path: Path) -> JSONResponse:
 
 
 @app.get("/health")

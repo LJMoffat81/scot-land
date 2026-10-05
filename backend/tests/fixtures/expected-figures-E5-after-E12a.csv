@@ -23,21 +23,21 @@ fixed:glasgow,City of Glasgow,method,residual_drc,residual_drc,no
 fixed:wick,Highland,annual_ground_rent_gbp,0.04,125.49,yes
 fixed:wick,Highland,roll_annual_rent_notional_plot_gbp,43.64,3904.26,yes
 fixed:wick,Highland,roll_annual_rent_per_sqm_gbp,0.004364,13.9438,yes
-fixed:wick,Highland,roll_annual_rent_parcel_gbp,0.96,3058.15,yes
+fixed:wick,Highland,roll_annual_rent_parcel_gbp,0.96,3584.35,yes
 fixed:wick,Highland,market_value_gbp,,209114.0,yes
 fixed:wick,Highland,parcel_area_sqm,219.32,219.32,no
 fixed:wick,Highland,method,productive_land_use,residual_drc,yes
 pc:AB10 1AQ,City of Aberdeen,annual_ground_rent_gbp,0.04,32.79,yes
-pc:AB10 1AQ,City of Aberdeen,roll_annual_rent_notional_plot_gbp,43.64,1020.02,yes
+pc:AB10 1AQ,City of Aberdeen,roll_annual_rent_notional_plot_gbp,43.64,1020.01,yes
 pc:AB10 1AQ,City of Aberdeen,roll_annual_rent_per_sqm_gbp,0.004364,3.6429,yes
-pc:AB10 1AQ,City of Aberdeen,roll_annual_rent_parcel_gbp,69.5,58010.22,yes
+pc:AB10 1AQ,City of Aberdeen,roll_annual_rent_parcel_gbp,69.5,1657.01,yes
 pc:AB10 1AQ,City of Aberdeen,market_value_gbp,,134923.0,yes
 pc:AB10 1AQ,City of Aberdeen,parcel_area_sqm,15924.14,15924.14,no
 pc:AB10 1AQ,City of Aberdeen,method,productive_land_use,residual_drc,yes
 pc:DG1 2BD,Dumfries and Galloway,annual_ground_rent_gbp,72.58,64.21,yes
 pc:DG1 2BD,Dumfries and Galloway,roll_annual_rent_notional_plot_gbp,2258.09,1997.49,yes
 pc:DG1 2BD,Dumfries and Galloway,roll_annual_rent_per_sqm_gbp,8.0646,7.1339,yes
-pc:DG1 2BD,Dumfries and Galloway,roll_annual_rent_parcel_gbp,65065.75,57556.78,yes
+pc:DG1 2BD,Dumfries and Galloway,roll_annual_rent_parcel_gbp,65065.75,3244.93,yes
 pc:DG1 2BD,Dumfries and Galloway,market_value_gbp,159770.0,159770.0,no
 pc:DG1 2BD,Dumfries and Galloway,parcel_area_sqm,8068.06,8068.06,no
 pc:DG1 2BD,Dumfries and Galloway,method,residual_drc,residual_drc,no
@@ -51,14 +51,14 @@ pc:EH1 1YZ,City of Edinburgh,method,residual_drc,residual_drc,no
 pc:G1 1BL,City of Glasgow,annual_ground_rent_gbp,98.82,90.03,yes
 pc:G1 1BL,City of Glasgow,roll_annual_rent_notional_plot_gbp,3074.48,2800.85,yes
 pc:G1 1BL,City of Glasgow,roll_annual_rent_per_sqm_gbp,10.9803,10.003,yes
-pc:G1 1BL,City of Glasgow,roll_annual_rent_parcel_gbp,8340.29,7598.01,yes
+pc:G1 1BL,City of Glasgow,roll_annual_rent_parcel_gbp,8340.29,3971.76,yes
 pc:G1 1BL,City of Glasgow,market_value_gbp,187858.0,187858.0,no
 pc:G1 1BL,City of Glasgow,parcel_area_sqm,759.57,759.57,no
 pc:G1 1BL,City of Glasgow,method,residual_drc,residual_drc,no
 pc:G2 1DY,City of Glasgow,annual_ground_rent_gbp,98.82,90.03,yes
 pc:G2 1DY,City of Glasgow,roll_annual_rent_notional_plot_gbp,3074.48,2800.85,yes
 pc:G2 1DY,City of Glasgow,roll_annual_rent_per_sqm_gbp,10.9803,10.003,yes
-pc:G2 1DY,City of Glasgow,roll_annual_rent_parcel_gbp,9984.26,9095.66,yes
+pc:G2 1DY,City of Glasgow,roll_annual_rent_parcel_gbp,9984.26,4229.90,yes
 pc:G2 1DY,City of Glasgow,market_value_gbp,187858.0,187858.0,no
 pc:G2 1DY,City of Glasgow,parcel_area_sqm,909.29,909.29,no
 pc:G2 1DY,City of Glasgow,method,residual_drc,residual_drc,no
@@ -72,28 +72,28 @@ pc:HS1 2BG,Na h-Eileanan Siar,method,productive_land_use,residual_drc,yes
 pc:IV1 1JJ,Highland,annual_ground_rent_gbp,0.04,125.49,yes
 pc:IV1 1JJ,Highland,roll_annual_rent_notional_plot_gbp,43.64,3904.26,yes
 pc:IV1 1JJ,Highland,roll_annual_rent_per_sqm_gbp,0.004364,13.9438,yes
-pc:IV1 1JJ,Highland,roll_annual_rent_parcel_gbp,10.74,34324.27,yes
+pc:IV1 1JJ,Highland,roll_annual_rent_parcel_gbp,10.74,6342.49,yes
 pc:IV1 1JJ,Highland,market_value_gbp,,209114.0,yes
 pc:IV1 1JJ,Highland,parcel_area_sqm,2461.62,2461.62,no
 pc:IV1 1JJ,Highland,method,productive_land_use,residual_drc,yes
 pc:KW1 4AA,Highland,annual_ground_rent_gbp,0.04,125.49,yes
 pc:KW1 4AA,Highland,roll_annual_rent_notional_plot_gbp,43.64,3904.26,yes
 pc:KW1 4AA,Highland,roll_annual_rent_per_sqm_gbp,0.004364,13.9438,yes
-pc:KW1 4AA,Highland,roll_annual_rent_parcel_gbp,8.28,26457.19,yes
+pc:KW1 4AA,Highland,roll_annual_rent_parcel_gbp,8.28,6342.49,yes
 pc:KW1 4AA,Highland,market_value_gbp,,209114.0,yes
 pc:KW1 4AA,Highland,parcel_area_sqm,1897.42,1897.42,no
 pc:KW1 4AA,Highland,method,productive_land_use,residual_drc,yes
 pc:TD14 5AA,Scottish Borders,annual_ground_rent_gbp,89.96,81.58,yes
 pc:TD14 5AA,Scottish Borders,roll_annual_rent_notional_plot_gbp,2798.74,2538.14,yes
 pc:TD14 5AA,Scottish Borders,roll_annual_rent_per_sqm_gbp,9.9955,9.0648,yes
-pc:TD14 5AA,Scottish Borders,roll_annual_rent_parcel_gbp,2587.23,2346.33,yes
+pc:TD14 5AA,Scottish Borders,roll_annual_rent_parcel_gbp,2587.23,2469.29,yes
 pc:TD14 5AA,Scottish Borders,market_value_gbp,175217.0,175217.0,no
 pc:TD14 5AA,Scottish Borders,parcel_area_sqm,258.84,258.84,no
 pc:TD14 5AA,Scottish Borders,method,residual_drc,residual_drc,no
-pc:ZE1 0LL,Shetland Islands,annual_ground_rent_gbp,0.04,137.99,yes
+pc:ZE1 0LL,Shetland Islands,annual_ground_rent_gbp,0.04,137.98,yes
 pc:ZE1 0LL,Shetland Islands,roll_annual_rent_notional_plot_gbp,43.64,4292.86,yes
-pc:ZE1 0LL,Shetland Islands,roll_annual_rent_per_sqm_gbp,0.004364,15.3317,yes
-pc:ZE1 0LL,Shetland Islands,roll_annual_rent_parcel_gbp,103.52,363676.85,yes
+pc:ZE1 0LL,Shetland Islands,roll_annual_rent_per_sqm_gbp,0.004364,15.3316,yes
+pc:ZE1 0LL,Shetland Islands,roll_annual_rent_parcel_gbp,103.52,6973.77,yes
 pc:ZE1 0LL,Shetland Islands,market_value_gbp,,225352.0,yes
 pc:ZE1 0LL,Shetland Islands,parcel_area_sqm,23720.65,23720.65,no
 pc:ZE1 0LL,Shetland Islands,method,productive_land_use,residual_drc,yes
@@ -113,4 +113,4 @@ scotland,Scotland,fiscal_summary:replace_full_basket:national_rent_pool_gbp,9000
 scotland,Scotland,fiscal_summary:replace_full_basket:collection_annual_gbp,17100000000.0,17100000000.0,no
 scotland,Scotland,fiscal_summary:replace_full_basket:surplus_gbp,0.0,0.0,no
 scotland,Scotland,fiscal_summary:replace_full_basket:dividend_per_person_gbp,16423.36,16423.36,no
-scotland,Scotland,council_layer:sum_of_32_home_plots_gbp (full_agr),78824.24,93169.03,yes
+scotland,Scotland,council_layer:sum_of_32_home_plots_gbp (full_agr),78824.24,92678.34,yes

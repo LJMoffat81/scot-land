@@ -263,11 +263,9 @@ export default function AgrBreakdown({
   const cellFull = agr.economic_annual_rent_gbp;
   const scale = cellFull > 0 ? active.annual_charge_gbp / cellFull : 1;
   const parcelFull =
-    parcelAreaSqm != null && parcelAreaSqm > 0
-      ? agr.site_rental_per_sqm_gbp * parcelAreaSqm * scale
-      : agr.roll_annual_rent_parcel_gbp != null
-        ? agr.roll_annual_rent_parcel_gbp * scale
-        : null;
+    agr.roll_annual_rent_parcel_gbp != null
+      ? agr.roll_annual_rent_parcel_gbp * scale
+      : null;
   const headline =
     fiscal?.gross_plot_gbp != null && fiscal.gross_plot_gbp > 0
       ? fiscal.gross_plot_gbp
@@ -336,6 +334,14 @@ export default function AgrBreakdown({
       <p className="headline-caption">
         Land only, not the building. Research estimate, not a rates bill. {rateLine}
       </p>
+      {!countryside ? (
+        <p className="headline-caption">
+          The town price is the data zone median house sale, building included. A larger piece of land follows a diminishing area rule.
+        </p>
+      ) : null}
+      {!countryside && plotFull === 0 ? (
+        <p className="headline-caption">The residual is at or below the margin.</p>
+      ) : null}
       {seabedNotes && seabedNotes.length > 0 ? (
         <>
           <p className="headline-caption">

@@ -34,11 +34,11 @@ POSTCODE_PATH = FIXTURES / "postcode_snapshot_main.json"
 LAYERS_PATH = ROOT / "data" / "config" / "layers.yaml"
 
 FROZEN_SHA256 = {
-    "data/config/agr.yaml": "050ea48cc7d2c14cf8aab762e5851d152f5b7fa132da0e7f2229409463dd4085",
+    "data/config/agr.yaml": "9d4aedfe9f24ade0587748ea13f8674d82047343f6ed28cfdad4888f2624f202",
     "data/config/sources.yaml": "a1d5ce7209178a3a389747525013547ba0394efad4de9545eaeb85504d8e7aa4",
     "data/processed/councils.json": "7173d5426c0a65d70630bd005a255a32d78651c9c58835130d46de40afeb1596",
-    "backend/agr/valuation.py": "06e277828afe9ee60080b16bea9de699f08f8d96727034a69d3de1742e40ce5c",
-    "backend/agr/engine.py": "e9ee5c726d3179d0dcc28b316055e78f4fe7d0e2e40d1a59e30cec41c7121f78",
+    "backend/agr/valuation.py": "78fafa5ddc2202fa2d12da0c2eb962d5ebfd89c62f8cb2a902a3934d1364e417",
+    "backend/agr/engine.py": "7ede70f81ace5dbf3247ef3b2ddaf17b6feb1919ba4c43b78093056e09737d16",
     "backend/agr/scenarios.py": "0bba06175f37776b760f00f2fc502e97ecc2f3301f6667e37cfc8066bd5aeb2a",
 }
 
@@ -200,6 +200,30 @@ def _square_again(client: TestClient, response: dict, holder: dict) -> dict:
     return fresh.json()
 
 
+ZONE_PATH = FIXTURES / "zone_codes_main.json"
+
+
+def _zone_key(lat: float, lng: float) -> tuple[float, float]:
+    return (round(float(lat), 6), round(float(lng), 6))
+
+
+def _zone_table() -> dict[tuple[float, float], str | None]:
+    if not ZONE_PATH.is_file():
+        return {}
+    payload = json.loads(ZONE_PATH.read_text(encoding="utf-8"))
+    table: dict[tuple[float, float], str | None] = {}
+    for item in payload.get("points") or []:
+        table[_zone_key(item["lat"], item["lng"])] = item.get("zone_code")
+    return table
+
+
+def _install_zones(monkeypatch, table: dict[tuple[float, float], str | None]) -> None:
+    def zone_code_at(lat: float, lng: float) -> str | None:
+        return table.get(_zone_key(lat, lng))
+
+    monkeypatch.setattr("agr.engine.zone_code_at", zone_code_at)
+
+
 def test_snapshot_matches_frozen_figures(monkeypatch):
     monkeypatch.delenv("W3W_API_KEY", raising=False)
     squares = json.loads(SQUARE_PATH.read_text(encoding="utf-8"))
@@ -207,6 +231,7 @@ def test_snapshot_matches_frozen_figures(monkeypatch):
     assert len(squares["points"]) == 36
     holder: dict = {"parcel": None, "feature": None}
     _install_parcel(monkeypatch, holder)
+    _install_zones(monkeypatch, _zone_table())
     client = TestClient(app)
     errors: list[str] = []
     for point in squares["points"]:

@@ -185,8 +185,15 @@ valuer_roll:
     # DRC = rebuild_new × remaining factor (average stock, not new-build)
     average_stock_remaining_factor: 0.55
   residual:
+    # Sensitivity only. The published residual is max(0, MV − DRC), then the ceiling.
     min_site_share: 0.15
+    # Ceiling on the published residual. A bound, not an estimate of land share.
     max_site_share: 0.85
+  # ASSUMPTION. Shrinks a thin data-zone median toward its parent. Not a land share.
+  shrinkage_k: 8
+  # ASSUMPTION. Parcel rent = dwelling rent × min(area / plot, max_area_ratio) ^ elasticity.
+  area_elasticity: 0.35
+  max_area_ratio: 4.0
 
 # Legacy keys retained for config consumers / methodology display
 valuation:
@@ -237,6 +244,21 @@ _meta:
     note: "not checked against BCIS"
   valuer_roll.depreciation.average_stock_remaining_factor:
     as_of: "unknown"
+  valuer_roll.shrinkage_k:
+    label: ASSUMPTION
+    value: 8
+    as_of: "2026-10-05"
+    note: "Shrinks a thin data-zone median toward its parent. Does not estimate land share, yield, or area elasticity."
+  valuer_roll.area_elasticity:
+    label: ASSUMPTION
+    value: 0.35
+    as_of: "2026-10-05"
+    note: "Parcel rent scales with the capped area ratio to this power. Not fitted to sales."
+  valuer_roll.max_area_ratio:
+    label: ASSUMPTION
+    value: 4.0
+    as_of: "2026-10-05"
+    note: "Caps how many reference plots a parcel can count as before the elasticity is applied."
   despeculation.farmland_market_to_productive:
     as_of: "unknown"
   despeculation.urban_speculation_discount:
@@ -310,10 +332,10 @@ integrity:
   estimate_label: "Valuer residual AGR roll (open-data approximation)"
   macro_pool_label: "National rent pool (Sandilands)"
   caveats:
-    - "Urban path: market value (council HPI) − DRC of improvements (rebuild × stock remaining) = market site capital (Wightman residual)."
-    - "Economic rent base applies Pickard factors to residual site capital, then × 5% yield for annual AGR."
-    - "HABU policy = existing authorised use; hope value excluded from assessment basis. HPI is still average existing-use sales, not a full planning strip."
-    - "Spatial grain is council-level HPI (flat within council) until sales/CAMA microdata is added — not a finished national roll."
+    - "Urban path: market value is the data-zone median house price (an improved dwelling), shrunk when the sales count is thin. A suppressed cell is missing, not zero. The council median is the comparison and the fallback. Site capital = max(0, MV − DRC). The 85% ceiling is a bound, not an estimate. The 15% floor is a sensitivity only."
+    - "Economic rent base applies Pickard factors to residual site capital, then × 5% yield for annual AGR. Effective rate = Pickard factor × yield. Neither factor is calibrated to the Sandilands pool."
+    - "HABU policy = existing authorised use; hope value excluded from assessment basis. The house price is still an improved-dwelling sale, not a full planning strip."
+    - "Spatial grain for urban market value is the 2011 data zone, then the intermediate zone, then the council. It is not a finished national roll and not a fitted model. Rural rent is one category rate for the whole of Scotland."
     - "Rural path uses productive land-use capital (Pickard 5× farmland market distortion), not farm-sale residual."
     - "The Sandilands national rent pool (£90bn) is separate; map roll cells are not calibrated to sum to that pool."
     - "Non-domestic, vacant, and natural-resource rents (Sandilands classical Land) are not yet on this roll."

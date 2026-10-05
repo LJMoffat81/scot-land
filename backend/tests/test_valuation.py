@@ -35,7 +35,12 @@ def test_urban_uses_residual_drc():
     assert assessment.rebuild_cost_new_gbp is not None
     # Residual: MV − DRC ≈ site (before clamp)
     assert assessment.site_capital_market_gbp > 0
-    assert 0.15 <= (assessment.site_share_implied or 0) <= 0.85
+    # The 15% floor is not a published rule. Edinburgh's price sits inside the ceiling.
+    assert assessment.site_capital_market_gbp == pytest.approx(
+        (assessment.market_value_gbp or 0) - (assessment.drc_improvements_gbp or 0),
+        abs=0.05,
+    )
+    assert (assessment.site_share_implied or 0) <= 0.85
     # Economic < market after Pickard urban factor
     assert assessment.site_capital_economic_per_sqm_gbp < assessment.site_capital_market_per_sqm_gbp
     # Rent is stored to 4 or 6 decimals and capital per m² is rounded, so allow 0.0001.

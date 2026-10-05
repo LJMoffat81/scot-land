@@ -7,6 +7,7 @@ from agr.config import load_config
 from agr.scenarios import compute_scenarios, resolve_active_scenario, scenario_to_dict
 from agr.valuation import assess_for_agr_roll
 from agr.wide_range import wide_range_for
+from agr.zone_prices import resolve_zone_market_value
 from spatial.grid import GridSquare
 from spatial.parcels import lookup_parcel
 from spatial.polygons import lookup_council_boundary, lookup_glasgow_ward_18
@@ -82,11 +83,29 @@ def _equal_share_fields(economic_rent: float, config: dict) -> tuple[bool, float
     return True, round(per_person, 2), (round(fraction, 6) if fraction is not None else None), population
 
 
+def zone_code_at(lat: float, lng: float) -> str | None:
+    """2011 data zone at a point. None on a miss or a failed query. Never invents an id."""
+    try:
+        from spatial.context_tiles import fetch_data_zone
+
+        record = fetch_data_zone(lat, lng)
+    except Exception:
+        return None
+    code = ""
+    if isinstance(record, dict):
+        code = str(record.get("code") or "").strip()
+    if len(code) < 4 or not code.startswith("S"):
+        return None
+    return code
+
+
 def calculate_square_agr(
     square: GridSquare,
     scenario: str | None = None,
     config: dict | None = None,
     council: CouncilArea | None = None,
+    *,
+    use_zone_price: bool = True,
 ) -> AgrBreakdown:
     config = config if config is not None else load_config()
     per_square = config["per_square"]
@@ -102,7 +121,29 @@ def calculate_square_agr(
     ward = lookup_glasgow_ward_18(square.lat, square.lng)
 
     parcel_area = parcel.area_sqm if parcel else None
-    assessment = assess_for_agr_roll(council, config, parcel_area_sqm=parcel_area)
+    market_value = None
+    mv_council = None
+    price_notes = None
+    if use_zone_price and not council.rural:
+        valuer = config.get("valuer_roll") or {}
+        shrinkage_k = float(valuer.get("shrinkage_k", 8))
+        zone_code = zone_code_at(square.lat, square.lng)
+        evidence = resolve_zone_market_value(
+            zone_code,
+            council_median_gbp=float(council.average_price_gbp),
+            shrinkage_k=shrinkage_k,
+        )
+        market_value = evidence.market_value_gbp
+        mv_council = evidence.mv_council_gbp
+        price_notes = evidence.notes
+    assessment = assess_for_agr_roll(
+        council,
+        config,
+        parcel_area_sqm=parcel_area,
+        market_value_gbp=market_value,
+        mv_council_gbp=mv_council,
+        price_notes=price_notes,
+    )
 
     if parcel is not None and assessment.confidence == "medium":
         assessment.confidence = "high"

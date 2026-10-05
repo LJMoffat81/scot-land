@@ -55,16 +55,21 @@ The map now computes charges as an **open-data approximation of a valuer residua
 
 ```
 1. HABU = existing authorised residential use (hope value excluded from basis)
-2. MV   = council HPI average dwelling price (existing-use sales evidence)
+2. MV   = data-zone median house price (an improved dwelling, latest open year).
+         A thin sales count is shrunk toward the intermediate zone, then the council.
+         A suppressed cell is missing, never zero. The council median is the fallback
+         and is kept beside the published MV. It does not estimate land share or yield.
 3. Rebuild_new = floor_m² × blended rebuild £/m² × regional factor
 4. DRC  = Rebuild_new × average stock remaining factor (default 55%)
-5. Site_capital_market = clamp(MV − DRC) within min/max land-share bounds
+5. Site_capital_market = max(0, MV − DRC). An 85% ceiling is a bound, not an estimate.
+         The old 15% floor is a sensitivity only.
 6. Site_capital_economic = Site_capital_market × Pickard urban factor (default 70%)
 7. Annual_rent_economic = Site_capital_economic × yield (default 5%)
-8. Grid charge = Annual_rent_economic_per_m² × 9 m² × scenario
+         That dwelling rent is the headline. Effective rate = 0.70 × 0.05, not calibrated.
+8. The 9 m² cell = diagnostic £/m² × 9 m² × scenario. It is not the parcel charge.
 ```
 
-Also reported: **notional plot** roll line (default 280 m²) and **parcel** roll line when ROS INSPIRE area is available.
+The notional plot is that one dwelling (default 280 m²). A known parcel is the dwelling rent times a capped area ratio raised to an elasticity (default 0.35, cap 4 times the reference plot), not a rate per square metre times the parcel area. The cap is noted when it binds. Rural parcels stay the uniform category rate times area.
 
 ### Rural / agriculture HABU
 
@@ -119,9 +124,9 @@ This is **research**, not a live bill. National totals use the macro pool; place
 ## Integrity and limitations
 
 1. **Research estimate** — not VOA, ROS, or a rates bill.
-2. **Residual is a proxy** — urban path is largely `HPI average × site share ÷ dwelling m²`, not full `price − DRC` on every plot.
-3. **Site share** — the parcel rent is the residual, not a fixed share. The Group’s homepage illustration of a 60% site share, and the claim that prices fall by half, are not the display engine (`use_slrg_for_display` is false). The Wightman research share of 49% remains in config.
-4. **Spatial coarseness** — capital/m² is **council-level** (flat within council) except rural land-use fallbacks; Ricardo differential is national-to-local, not street-level.
+2. **Residual is a proxy** — one average dwelling at the data-zone house price, minus a depreciated rebuild. It is not a fitted model and not a professional valuation of that title.
+3. **Site share** — the parcel rent is the residual, not a fixed share. The Group’s homepage illustration of a 60% site share, and the claim that prices fall by half, are not the display engine (`use_slrg_for_display` is false). The Wightman research share of 49% remains in config. The 15% floor is a sensitivity only. The 85% ceiling is a bound, not an estimate.
+4. **Spatial grain** — a town click uses the 2011 data zone, then the intermediate zone, then the council median. The council colour is still one town rate. Rural rent is one category rate for the whole of Scotland. It is not a street-level valuation.
 5. **HABU aspirational** — HPI embeds credit conditions and some hope value; Pickard discounts are **static** policy knobs (Harrison cycle not modelled year-by-year).
 6. **Residential-heavy** — non-domestic urban land is thin; NDR in the revenue-neutral *label* does not mean full commercial cadastral coverage.
 7. **Lineage is pedagogical** — Smith through Macfarlane explain *why*; they do not each supply a separate square formula.
@@ -143,9 +148,9 @@ This frames each cell relative to one Scot’s equal annual claim on the **natio
 
 ```
 1. Snap lat/lng to 3m W3W grid cell (9 m²)
-2. Run valuer residual / productive assessment at council HABU
-3. Economic rent £/m² × 9 × scenario capture
-4. Also emit notional-plot and parcel roll lines
+2. Run the valuer residual at the data zone (council median if that price is missing) or the rural category rate
+3. The 9 m² cell is diagnostic: economic rent £/m² × 9 × scenario capture
+4. The urban headline is one dwelling. A parcel is that dwelling rent times a capped area ratio to an elasticity. A rural parcel stays the category rate times area.
 5. Equal-share stats from national rent pool [Ogilvie/Paine framing]
 ```
 

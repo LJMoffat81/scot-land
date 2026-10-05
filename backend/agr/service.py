@@ -114,7 +114,11 @@ class ValuationService:
         )
         square = snap_to_w3w_grid(lat, lng)
         breakdown = calculate_square_agr(
-            square, scenario=scenario, config=self.config, council=council
+            square,
+            scenario=scenario,
+            config=self.config,
+            council=council,
+            use_zone_price=False,
         )
         return _apply_policy_after_valuation(breakdown)
 

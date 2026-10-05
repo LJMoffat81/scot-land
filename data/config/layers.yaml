@@ -11,7 +11,10 @@ valuation:            # what the land is worth
     - valuer_roll.property_mix
     - valuer_roll.rebuild
     - valuer_roll.depreciation
-    - valuer_roll.residual                  # 15%/85% land-share floor and cap
+    - valuer_roll.residual                  # 85% ceiling on the published residual; 15% is sensitivity only
+    - valuer_roll.shrinkage_k               # ASSUMPTION. Thin data-zone median toward its parent
+    - valuer_roll.area_elasticity           # ASSUMPTION. Parcel rent scales with capped area ratio
+    - valuer_roll.max_area_ratio
     - valuation.primary_method
     - valuation.fallback_method
     - valuation.rural_fallback

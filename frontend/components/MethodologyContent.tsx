@@ -140,14 +140,14 @@ export default function MethodologyContent() {
       <section id="what-is-agr">
         <h2>What is Annual Ground Rent?</h2>
         <p>
-          Where the land register shows an outline, it is that piece of land. In a town with no outline, it is that council&apos;s land rent per square metre times a home plot. In the countryside with no outline, it is one farmland rate for one hectare. The building is not included.
+          Where the land register shows an outline, it is that piece of land. In a town with no outline, it is one home&apos;s land rent from that neighbourhood&apos;s house price. In the countryside with no outline, it is one farmland rate for one hectare. The building is not included.
         </p>
       </section>
 
       <section id="how-sure">
         <h2>How sure are these numbers?</h2>
         <p>
-          They&apos;re research estimates, and some of what goes into them can&apos;t be pinned down exactly. With different reasonable assumptions, the estimate for a typical home plot in most councils could be anywhere from about half to 1.3 times the figure shown. Where house prices are low compared with what homes cost to rebuild, the range is wider, from about half to about double. This range covers home plots only, not the farmland figures. It does not cover the bigger simplifications. The map colour is still one town rate for a whole council. A click follows town or countryside at that point, and where an outline exists the number is that piece of land, not the home plot. Open data does not yet give a different rate from one neighbourhood to the next. In most councils, the home-plot figures are slightly more likely to be too high than too low.
+          They&apos;re research estimates, and some of what goes into them can&apos;t be pinned down exactly. With different reasonable assumptions, the estimate for a typical home plot in most councils could be anywhere from about half to 1.3 times the figure shown. Where house prices are low compared with what homes cost to rebuild, the range is wider, from about half to about double. This range covers home plots only, not the farmland figures. It does not cover the bigger simplifications. The map colour is still one town rate for a whole council. A click follows town or countryside at that point, and where an outline exists the number is that piece of land, not the home plot. A town click uses that data zone&apos;s median house price, which is still the price of an improved dwelling. A larger piece of land follows a diminishing area rule. The council median stays the comparison and the fallback. In most councils, the home-plot figures are slightly more likely to be too high than too low.
         </p>
       </section>
 

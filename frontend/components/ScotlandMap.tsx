@@ -25,7 +25,9 @@ import {
   isServiceFailure,
   pingApi,
   fetchCapabilities,
-  AGR_UNAVAILABLE,
+  ApiError,
+  POSTCODES_ONLY,
+  looksLikeFullPostcode,
   visitorFacingError,
 } from "../lib/api";
 import { CONTEXT_LAYERS } from "../lib/contextLayers";
@@ -682,6 +684,36 @@ export default function ScotlandMap() {
     }
   }, []);
 
+  // One path for a point (map click, Locate, postcode search, ?lat=&lng=): marker, optional fly,
+  // shareable URL, then the data-zone lookup and the wealth panel. Needs no AGR router.
+  const inspectPoint = useCallback(
+    async (lat: number, lng: number, opts: { fly?: boolean } = {}) => {
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const map = mapRef.current;
+      if (map && opts.fly) {
+        markerRef.current?.remove();
+        markerRef.current = new maplibregl.Marker({ color: "#0076d3" })
+          .setLngLat([lng, lat])
+          .addTo(map);
+        map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), essential: true });
+      }
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("lat", lat.toFixed(6));
+        url.searchParams.set("lng", lng.toFixed(6));
+        url.searchParams.delete("words");
+        window.history.replaceState({}, "", url.toString());
+      }
+      setWealthData(null);
+      setShowWealthPanel(true);
+      const res = await lookupWealthAt(lat, lng);
+      setWealthData(res.ok ? res.data : null);
+    },
+    [lookupWealthAt],
+  );
+  const inspectRef = useRef(inspectPoint);
+  inspectRef.current = inspectPoint;
+
   const locateMe = useCallback(() => {
     if (!navigator.geolocation) {
       setError("This browser cannot share a location.");
@@ -690,7 +722,16 @@ export default function ScotlandMap() {
     setLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        void fetchSquare(pos.coords.latitude, pos.coords.longitude);
+        const { latitude, longitude } = pos.coords;
+        void fetchCapabilities().then((caps) => {
+          if (caps.agr) {
+            void fetchSquare(latitude, longitude);
+            return;
+          }
+          setLoading(false);
+          setError(null);
+          void inspectRef.current(latitude, longitude, { fly: true });
+        });
       },
       () => {
         setLoading(false);
@@ -760,11 +801,42 @@ export default function ScotlandMap() {
     setActiveSuggest(-1);
   };
 
+  // Postcode-only search (postcodes.io via /geocode/postcode) when the AGR place search is absent.
+  const searchPostcode = async (q: string) => {
+    const generation = ++lookupGen.current;
+    suggestGen.current += 1;
+    if (suggestTimer.current) clearTimeout(suggestTimer.current);
+    clearSuggestions();
+    setError(null);
+    if (!looksLikeFullPostcode(q)) {
+      setError(POSTCODES_ONLY);
+      return;
+    }
+    setLoading(true);
+    try {
+      const body = await apiJson<{ postcode: string; lat: number; lng: number }>(
+        `/geocode/postcode?q=${encodeURIComponent(q)}`,
+      );
+      if (generation !== lookupGen.current) return;
+      setQuery(body.postcode);
+      void inspectRef.current(body.lat, body.lng, { fly: true });
+    } catch (err) {
+      if (generation !== lookupGen.current) return;
+      setError(
+        err instanceof ApiError && err.status === 503
+          ? "Postcode search is unavailable right now. Click the map instead."
+          : visitorFacingError(err),
+      );
+    } finally {
+      if (generation === lookupGen.current) setLoading(false);
+    }
+  };
+
   const runSearch = async () => {
     const q = query.trim();
     if (!q) return;
     if (!(await fetchCapabilities()).agr) {
-      setError(AGR_UNAVAILABLE);
+      await searchPostcode(q);
       return;
     }
     const generation = ++lookupGen.current;
@@ -842,7 +914,9 @@ export default function ScotlandMap() {
     const generation = ++suggestGen.current;
     if (!(await fetchCapabilities()).agr) {
       setSuggestions([]);
-      setSuggestNote(AGR_UNAVAILABLE);
+      setSuggestNote(
+        looksLikeFullPostcode(text) ? "Press Enter to find this postcode." : POSTCODES_ONLY,
+      );
       return;
     }
     setSuggesting(true);
@@ -1270,7 +1344,10 @@ export default function ScotlandMap() {
           }
         })();
       } else if (qLat && qLng) {
-        void fetchSquare(Number(qLat), Number(qLng));
+        void fetchCapabilities().then((caps) => {
+          if (caps.agr) void fetchSquare(Number(qLat), Number(qLng));
+          else void inspectRef.current(Number(qLat), Number(qLng), { fly: true });
+        });
       }
     });
 
@@ -1365,10 +1442,7 @@ export default function ScotlandMap() {
 
       // Georgist wealth: point -> /layers/context/data-zones/at -> /georgist/wealth with the
       // real DZ2011 code (DZ2022 if only that is loaded). Never sends 'unknown'.
-      setWealthData(null);
-      setShowWealthPanel(true);
-      const res = await lookupWealthAt(point.lat, point.lng);
-      setWealthData(res.ok ? res.data : null);
+      await inspectRef.current(point.lat, point.lng);
     });
 
 
@@ -1998,7 +2072,7 @@ export default function ScotlandMap() {
             }
             value={query}
             autoComplete="off"
-            placeholder="Address or postcode"
+            placeholder={agrAvailable === false ? "Postcode, e.g. G2 1DU" : "Address or postcode"}
             title="A title number is looked up only if it is in the open set"
             onChange={(event) => {
               setQuery(event.target.value);
@@ -2107,9 +2181,24 @@ export default function ScotlandMap() {
             <span className="hud-scotland-fold-hide">Hide legend</span>
           </button>
           <div className="hud-scotland-body" id="hud-scotland-body">
-            <p className="hud-scotland-job">Annual Ground Rent</p>
-            <p className="hud-scotland-lead">A charge on the land alone.</p>
-            {legendMetric && (
+            {agrAvailable !== true ? (
+              <>
+                <p className="hud-scotland-job">Data zones</p>
+                <p className="hud-scotland-lead">
+                  Click the map, search a postcode or use Locate to see the data zone at that point.
+                </p>
+                <p className="hud-scotland-note">
+                  Surface land rent isn&apos;t published yet. When it is, it will be a research
+                  estimate for each data zone.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="hud-scotland-job">Annual Ground Rent</p>
+                <p className="hud-scotland-lead">A charge on the land alone.</p>
+              </>
+            )}
+            {agrAvailable === true && legendMetric && (
               <div className="map-legend">
                 {legendMetric.id !== "gross_liability" && (
                   <p className="map-legend-title">{legendMetric.label}</p>
@@ -2132,7 +2221,10 @@ export default function ScotlandMap() {
               </div>
             )}
             <p className="hud-scotland-foot">
-              Research estimate, not a rates bill. <a href="/methodology">About</a>
+              {agrAvailable === true
+                ? "Research estimate, not a rates bill. "
+                : "Data zone boundaries: Scottish Government, OGL v3. "}
+              <a href="/methodology">About</a>
             </p>
           </div>
         </div>

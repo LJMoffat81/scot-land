@@ -103,7 +103,7 @@ def upsert_surface_rent(conn, rows: Iterable[Mapping]) -> int:
             if tuple(row) != cols:
                 raise ValueError("row does not match SURFACE_DB_COLUMNS; build it with to_db_row")
             values = [
-                json.dumps(v) if c in ("brma_mix", "source_sha256") and v is not None else v
+                json.dumps(v) if c in ("brma_mix", "source_sha256", "drc_swing_gbp") and v is not None else v
                 for c, v in row.items()
             ]
             cur.execute(sql, values)

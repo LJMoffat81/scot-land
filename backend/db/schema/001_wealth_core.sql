@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS surface_rent_dz (
   drc_gbp                     NUMERIC,
   drc_low_gbp                 NUMERIC,
   drc_high_gbp                NUMERIC,
+  drc_swing_gbp               JSONB,             -- one-at-a-time DRC swing (rules 6.2 v0.7), internal
   raw_residual                NUMERIC,           -- per dwelling, GBP; MAY BE NEGATIVE (rules 6.3)
   negative_residual           BOOLEAN NOT NULL DEFAULT false,
   land_value                  NUMERIC CHECK (land_value >= 0),  -- published, floored
@@ -71,6 +72,7 @@ CREATE TABLE IF NOT EXISTS surface_rent_dz (
   yield_source                TEXT,
   brma_mix                    JSONB,
   measured_rent_per_dwelling  NUMERIC,           -- = measured_rent / dwellings (same vintage)
+  measured_rent_per_resident  NUMERIC,           -- Valuation's; NULL on pop_dwellings_mismatch; internal (API derives its own view)
   measured_rent               NUMERIC,           -- GBP/yr, zone total, in price_year GBP. The only summable column.
   residential_land_ha         NUMERIC CHECK (residential_land_ha > 0),       -- never whole-zone area (rules v0.5)
   rent_per_res_ha             NUMERIC,           -- default map view (rules v0.5)
@@ -83,7 +85,7 @@ CREATE TABLE IF NOT EXISTS surface_rent_dz (
   policy_rent                 NUMERIC,
   value_tier                  TEXT NOT NULL CHECK (value_tier IN ('market', 'proxy', 'shadow')),
   quality                     TEXT NOT NULL CHECK (quality IN ('live', 'derived', 'modelled', 'placeholder')),
-  fill_method                 TEXT CHECK (fill_method IN ('observed_pooled', 'shrunk_to_model', 'model_filled', 'no_residential')),
+  fill_method                 TEXT CHECK (fill_method IN ('observed_pooled', 'shrunk_to_model', 'model_filled', 'no_residential', 'not_applicable')),
   publish_level               TEXT NOT NULL CHECK (publish_level IN ('public_site', 'public_zone', 'internal')),
   publication_status          TEXT NOT NULL DEFAULT 'ok' CHECK (publication_status IN ('ok', 'blocked')),
   commons_class               TEXT NOT NULL,

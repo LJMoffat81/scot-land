@@ -27,7 +27,7 @@ from georgist.dz_lookup import require_vintage, vintage_for_code
 
 ValueTier = Literal["market", "proxy", "shadow"]
 Quality = Literal["live", "derived", "modelled", "placeholder"]
-FillMethod = Literal["observed_pooled", "shrunk_to_model", "model_filled", "no_residential"]
+FillMethod = Literal["observed_pooled", "shrunk_to_model", "model_filled", "no_residential", "not_applicable"]
 UseBasis = Literal["existing_authorised_use", "existing_use", "best_permitted_use", "permitted_use"]
 CrosswalkMethod = Literal["none", "pop_hhres_2022", "address_uprn", "value_weighted", "footprint_area"]
 PublishLevel = Literal["public_site", "public_zone", "internal"]  # rules v0.4 section 2

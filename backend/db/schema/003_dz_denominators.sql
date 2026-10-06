@@ -26,6 +26,14 @@ CREATE TABLE IF NOT EXISTS dz_denominators (
   )
 );
 
+-- Confidence inputs for the per-residential-hectare view (GIS dz_residential_land.csv; filled by
+-- etl.load_processed). Display only: residential area never touches surface money totals.
+ALTER TABLE dz_denominators ADD COLUMN IF NOT EXISTS share_res_uprn_in_parcels NUMERIC
+  CHECK (share_res_uprn_in_parcels BETWEEN 0 AND 1);
+ALTER TABLE dz_denominators ADD COLUMN IF NOT EXISTS mask_too_big_parcel BOOLEAN;
+ALTER TABLE dz_denominators ADD COLUMN IF NOT EXISTS res_uprn_exceeds_dwellings BOOLEAN;
+ALTER TABLE dz_denominators ADD COLUMN IF NOT EXISTS residential_flags TEXT;
+
 -- Counts are Scot-LAND Data Zones' tables (schema 004), never copies:
 --   dwellings  datazones.dwellings_by_year.dwellings_total  (NRS council tax, Sept; NOT assessor_dwellings_dec)
 --   population datazones.zone_spine.population at pop_year  (mid-2022 on 2011 zones, mid-2024 on 2022 zones)

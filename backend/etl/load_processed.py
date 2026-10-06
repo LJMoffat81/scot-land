@@ -85,10 +85,12 @@ FORCE_NOT_NULL_COLUMNS = ("flags",)
 # Within a typed dataset, parent tables load first (foreign keys reference them).
 TYPED_LOAD_FIRST = {"datazones": ("zone_spine",)}
 # Manifest-listed files deliberately NOT loaded yet (owner correcting them). Skipped with a
-# warning, never validated or loaded; the file need not be present. Remove the entry to load.
-HELD_FILES: dict[tuple[str, str], str] = {
-    ("gis", "dz_residential_land.csv"): "GIS is correcting it; a new checksum will follow (2026-10-06)",
-}
+# warning, never validated or loaded; the file need not be present. Add an entry to hold one.
+HELD_FILES: dict[tuple[str, str], str] = {}
+# publish_level=internal files (e.g. GIS's dz_detached_plot_bands.csv) are never in the public
+# repo. They are skipped unless --include-internal, and then load into INTERNAL_SCHEMA, which
+# no public endpoint reads.
+INTERNAL_SCHEMA = "processed_internal"
 _MANIFEST_VINTAGE = {"2011": 2011, "2022": 2022, "DZ2011": 2011, "DZ2022": 2022}
 IDENT_RE = re.compile(r"^[a-z_][a-z0-9_]{0,62}$")
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -140,10 +142,16 @@ class Entry:
         return stem if self.typed_schema else f"{self.dataset}_{stem}"
 
     @property
-    def qualified_table(self) -> str:
+    def schema(self) -> str:
         if self.table == "dz_boundaries":
-            return "public.dz_boundaries"
-        return f"{self.typed_schema or 'processed'}.{self.table}"
+            return "public"
+        if self.publish_level == "internal":
+            return INTERNAL_SCHEMA
+        return self.typed_schema or "processed"
+
+    @property
+    def qualified_table(self) -> str:
+        return f"{self.schema}.{self.table}"
 
 
 def sha256_file(path: Path) -> str:
@@ -165,7 +173,7 @@ def parse_key(raw: str) -> tuple[str, ...]:
 # --------------------------------------------------------------------------- manifest
 
 
-def read_manifest(manifest: Path) -> list[Entry]:
+def read_manifest(manifest: Path, include_internal: bool = False) -> list[Entry]:
     dataset = manifest.parent.name
     problems: list[str] = []
     text = manifest.read_text(encoding="utf-8-sig")
@@ -190,6 +198,11 @@ def read_manifest(manifest: Path) -> list[Entry]:
         seen.add(f)
         if (dataset, f) in HELD_FILES:
             logger.warning("%s/%s: HELD, not validated or loaded: %s", dataset, f, HELD_FILES[(dataset, f)])
+            continue
+        if row["publish_level"] == "internal" and not include_internal:
+            logger.info("%s/%s: internal, not validated or loaded (use --include-internal for the internal "
+                        "schema %s)", dataset, f, INTERNAL_SCHEMA)
+            SKIPPED_INTERNAL.add((dataset, f))
             continue
         try:
             n_rows = int(row["rows"])
@@ -382,7 +395,10 @@ def check_entry(e: Entry) -> Entry:
     return e
 
 
-def validate(root: Path = PROCESSED_DIR, dataset: str | None = None) -> list[Entry]:
+SKIPPED_INTERNAL: set[tuple[str, str]] = set()
+
+
+def validate(root: Path = PROCESSED_DIR, dataset: str | None = None, include_internal: bool = False) -> list[Entry]:
     """Every manifest-listed file, validated. Raises ManifestError listing ALL problems."""
     manifests = discover(root, dataset)
     if not manifests:
@@ -391,7 +407,7 @@ def validate(root: Path = PROCESSED_DIR, dataset: str | None = None) -> list[Ent
     problems: list[str] = []
     for m in manifests:
         try:
-            entries += read_manifest(m)
+            entries += read_manifest(m, include_internal)
         except ManifestError as exc:
             problems += exc.problems
     for e in entries:
@@ -405,7 +421,8 @@ def validate(root: Path = PROCESSED_DIR, dataset: str | None = None) -> list[Ent
         raise ManifestError(problems)
     for m in manifests:  # not an error, but say so: unlisted files are never loaded
         listed = ({e.file for e in entries if e.root == m.parent} | {"manifest.csv"}
-                  | {f for d, f in HELD_FILES if d == m.parent.name})
+                  | {f for d, f in HELD_FILES if d == m.parent.name}
+                  | {f for d, f in SKIPPED_INTERNAL if d == m.parent.name})
         unlisted = sorted(str(p.relative_to(m.parent)) for p in m.parent.rglob("*")
                           if p.is_file() and p.suffix.lower() in SUPPORTED and str(p.relative_to(m.parent)) not in listed)
         if unlisted:
@@ -456,7 +473,8 @@ def _load_csv(cur, e: Entry) -> None:
     from psycopg2 import sql
 
     df = e.frame
-    tbl = sql.Identifier("processed", e.table)
+    cur.execute(sql.SQL("CREATE SCHEMA IF NOT EXISTS {}").format(sql.Identifier(e.schema)))
+    tbl = sql.Identifier(e.schema, e.table)
     cols = [sql.SQL("{} {}{}").format(sql.Identifier(c), sql.SQL(_pg_type(df[c].dtype, c)),
                                       sql.SQL(" NOT NULL") if c in e.key else sql.SQL(""))
             for c in df.columns]
@@ -529,6 +547,38 @@ def _load_boundaries(cur, e: Entry) -> None:
         )
 
 
+def _derive_dz_denominators(cur, e: Entry) -> None:
+    """GIS dz_residential_land -> dz_denominators (display areas + confidence inputs). Display only:
+    residential area never enters surface money totals. 0 / blank areas become NULL (pending)."""
+    from psycopg2 import sql
+
+    src = sql.Identifier(e.schema, e.table)
+    cur.execute(sql.SQL("""
+        INSERT INTO dz_denominators (code, vintage, residential_land_ha, residential_land_source,
+            settlement_area_ha, settlement_source, share_res_uprn_in_parcels, mask_too_big_parcel,
+            res_uprn_exceeds_dwellings, residential_flags, source_id, licence, updated_at)
+        SELECT code, vintage::smallint, NULLIF(residential_parcel_ha::numeric, 0), %s,
+            NULLIF(settlement_ha::numeric, 0), %s, share_res_uprn_in_parcels::numeric,
+            lower(NULLIF(mask_too_big_parcel::text, '')) = 'true',
+            lower(NULLIF(res_uprn_exceeds_dwellings::text, '')) = 'true',
+            method_flags::text, %s, %s, now()
+        FROM {}
+        ON CONFLICT (code, vintage) DO UPDATE SET
+            residential_land_ha = EXCLUDED.residential_land_ha,
+            residential_land_source = EXCLUDED.residential_land_source,
+            settlement_area_ha = EXCLUDED.settlement_area_ha, settlement_source = EXCLUDED.settlement_source,
+            share_res_uprn_in_parcels = EXCLUDED.share_res_uprn_in_parcels,
+            mask_too_big_parcel = EXCLUDED.mask_too_big_parcel,
+            res_uprn_exceeds_dwellings = EXCLUDED.res_uprn_exceeds_dwellings,
+            residential_flags = EXCLUDED.residential_flags, source_id = EXCLUDED.source_id,
+            licence = EXCLUDED.licence, updated_at = now()
+    """).format(src), (f"{e.label}:residential_parcel_ha", f"{e.label}:settlement_ha", e.label, e.licence))
+
+
+# Post-load steps: (dataset, file) -> function(cur, entry), run in the same transaction.
+DERIVED = {("gis", "dz_residential_land.csv"): _derive_dz_denominators}
+
+
 def load(conn, entries: list[Entry]) -> dict[str, int]:
     """All entries in ONE transaction: either everything loads or nothing does."""
     loaded: dict[str, int] = {}
@@ -548,6 +598,9 @@ def load(conn, entries: list[Entry]) -> dict[str, int]:
                     _load_typed(cur, e)
                 else:
                     _load_csv(cur, e)
+                derive = DERIVED.get((e.dataset, e.file))
+                if derive:
+                    derive(cur, e)
                 cur.execute(
                     "INSERT INTO processed.manifest_loads (dataset, file, table_name, owner, source, licence, "
                     "attribution, publish_level, zone_vintage, key_type, key_columns, rows, sha256) "
@@ -576,10 +629,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--root", type=Path, default=PROCESSED_DIR)
     ap.add_argument("--dataset", help="only data/processed/<dataset>/manifest.csv")
     ap.add_argument("--check", action="store_true", help="validate only; no database")
+    ap.add_argument("--include-internal", action="store_true",
+                    help=f"also validate/load publish_level=internal files (into schema {INTERNAL_SCHEMA}; "
+                    "point --root at the owner's folder, internal files are never in the repo)")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     try:
-        entries = validate(args.root, args.dataset)
+        entries = validate(args.root, args.dataset, args.include_internal)
     except ManifestError as exc:
         logger.error("REJECTED, nothing loaded. %s", exc)
         return 1

@@ -202,7 +202,7 @@ def test_missing_key_column_and_empty_key_rejected(tmp_path):
 
 def test_missing_listed_file_and_path_traversal_rejected(tmp_path):
     root = _dataset(tmp_path, {"z.csv": ZONES}, extra_rows=[
-        {**{c: "x" for c in HEADER}, "file": "gone.csv", "licence": "l", "publish_level": "internal",
+        {**{c: "x" for c in HEADER}, "file": "gone.csv", "licence": "l", "publish_level": "public_zone",
          "zone_vintage": "2011", "key": "(code, vintage)", "rows": "1", "sha256": "a" * 64},
     ])
     assert "missing" in _problems(root)
@@ -247,11 +247,16 @@ def test_cli_exit_codes(tmp_path):
 
 def test_repo_gis_manifest_validates(caplog):
     """The committed data/processed/gis files match their manifest (checksums, rows, keys,
-    integer vintages, attribution). dz_residential_land.csv is HELD (not copied, not loaded)."""
+    integer vintages, attribution). dz_detached_plot_bands.csv is internal: skipped, never in the repo."""
     if not (PROCESSED_DIR / "gis" / "manifest.csv").is_file():
         pytest.skip("data/processed/gis not present")
     entries = lp.validate(PROCESSED_DIR, "gis")
-    assert "dz_residential_land.csv" not in {e.file for e in entries} and "HELD" in caplog.text
+    files = {e.file for e in entries}
+    assert "dz_residential_land.csv" in files and "dz_detached_plot_bands.csv" not in files
+    assert not (PROCESSED_DIR / "gis" / "dz_detached_plot_bands.csv").exists()
+    rl = next(e for e in entries if e.file == "dz_residential_land.csv")
+    assert rl.publish_level == "public_zone" and rl.key == ("code", "vintage") and len(rl.frame) == 14_368
+    assert "Registers of Scotland" in rl.attribution
     assert all(e.attribution for e in entries)
     epc = next(e for e in entries if e.file == "epc_dz_rollup.csv")
     assert "dwellings_total_2025" in epc.frame.columns and "dwellings_nrs_2025" not in epc.frame.columns
@@ -360,7 +365,7 @@ def test_repo_gis_dataset_loads_into_postgis(pgconn):
     if not (PROCESSED_DIR / "gis" / "manifest.csv").is_file():
         pytest.skip("data/processed/gis not present")
     loaded = lp.load(pgconn, lp.validate(PROCESSED_DIR, "gis"))
-    assert "gis/dz_residential_land.csv" not in loaded  # HELD
+    assert loaded["gis/dz_residential_land.csv"] == 14_368 and "gis/dz_detached_plot_bands.csv" not in loaded
     with pgconn.cursor() as cur:
         for name in GIS_SITE_ROLLUPS:
             table = "processed.gis_" + name.removesuffix(".csv")
@@ -370,6 +375,15 @@ def test_repo_gis_dataset_loads_into_postgis(pgconn):
             cur.execute("SELECT key_type, key_columns, publish_level, attribution IS NOT NULL "
                         "FROM processed.manifest_loads WHERE dataset = 'gis' AND file = %s", (name,))
             assert cur.fetchone() == ("zone", ["code", "vintage"], "public_zone", True)
+        # Derived display denominators (dz_denominators) with the confidence inputs.
+        cur.execute("SELECT count(*), count(residential_land_ha), count(share_res_uprn_in_parcels),"
+                    " count(*) FILTER (WHERE mask_too_big_parcel) FROM dz_denominators")
+        n, with_ha, with_share, too_big = cur.fetchone()
+        assert n == 14_368 and 0 < with_ha < n and with_share > 0 and too_big > 0
+        cur.execute("SELECT residential_land_ha FROM dz_denominators WHERE code = 'S01010227' AND vintage = 2011")
+        assert cur.fetchone()[0] is None  # zero-dwelling zone: area blank, never 0
+        cur.execute("SELECT to_regclass('processed_internal.gis_dz_detached_plot_bands')")
+        assert cur.fetchone()[0] is None
 
 
 # --------------------------------------------------------------------------- Data Zones (real, committed)
@@ -442,7 +456,7 @@ def test_public_files_need_attribution(tmp_path):
     assert "attribution is required for public_zone files" in _problems(root)
     internal = _dataset(tmp_path / "b", {"z.csv": ZONES},
                         overrides={"z.csv": {"attribution": "", "publish_level": "internal"}})
-    assert lp.validate(internal)[0].attribution == ""
+    assert lp.validate(internal, include_internal=True)[0].attribution == ""
 
 
 def test_held_file_is_skipped_even_if_absent(tmp_path, monkeypatch, caplog):
@@ -460,7 +474,7 @@ def test_valuation_manifest_loads_through_etl(tmp_path, make_valuation_row):
     out = tmp_path / "valuation"
     sm.write_outputs(rows, out, source="SYNTHETIC", licence="synthetic-test-only",
                      attribution="SYNTHETIC attribution")
-    entries = {e.file: e for e in lp.validate(tmp_path, "valuation")}
+    entries = {e.file: e for e in lp.validate(tmp_path, "valuation", include_internal=True)}
     assert set(entries) == {"surface_rent_dz_internal.csv", "surface_rent_dz_public.csv"}
     pub = entries["surface_rent_dz_public.csv"]
     assert pub.key_type == "zone" and pub.attribution == "SYNTHETIC attribution"
@@ -468,3 +482,25 @@ def test_valuation_manifest_loads_through_etl(tmp_path, make_valuation_row):
     # Without an attribution, Valuation's public file is refused (required for public_*).
     sm.write_outputs(rows, tmp_path / "v2" / "valuation", source="SYNTHETIC", licence="synthetic-test-only")
     assert "attribution is required" in _problems(tmp_path / "v2")
+
+
+def test_internal_files_skipped_by_default_and_loaded_only_into_internal_schema(tmp_path, caplog):
+    """publish_level=internal rows: skipped (file need not exist) unless include_internal."""
+    import logging
+
+    caplog.set_level(logging.INFO)
+    secret = {"file": "secret.csv", "owner": "test", "source": "SYNTHETIC", "licence": "synthetic-test-only",
+              "publish_level": "internal", "zone_vintage": "2011", "key": "(code, vintage)", "rows": "1",
+              "sha256": "0" * 64, "attribution": ""}
+    root = _dataset(tmp_path, {"z.csv": ZONES}, extra_rows=[secret])
+    entries = lp.validate(root)
+    assert [e.file for e in entries] == ["z.csv"] and "internal, not validated" in caplog.text
+    with pytest.raises(lp.ManifestError, match="secret.csv"):
+        lp.validate(root, include_internal=True)  # asked for, so it must be present and valid
+
+
+def test_internal_entry_targets_internal_schema(tmp_path):
+    root = _dataset(tmp_path, {"z.csv": ZONES}, overrides={"z.csv": {"publish_level": "internal"}})
+    (e,) = lp.validate(root, include_internal=True)
+    assert e.qualified_table == f"{lp.INTERNAL_SCHEMA}.syn_z"
+    assert lp.validate(root) == []

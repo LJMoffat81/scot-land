@@ -74,15 +74,25 @@ out/
 **/*spatialhub*
 **/*spatial_hub*
 **/*SpatialHub*
-# RoS-parcel-derived internal files (INSPIRE/cadastral: site outlines,
-# residential land, plot sizes). dz_residential_land is held pending GIS.
+# RoS-parcel-derived internal files (INSPIRE/cadastral): site and parcel outlines, parcel
+# tiles, plot-size files (e.g. GIS's internal dz_detached_plot_bands.csv) and residential-land
+# geometry. The zone-total gis/dz_residential_land.csv is public_zone and IS tracked.
 data/**/*site_outline*
 data/**/*parcel*
 data/**/*plot*.csv
 data/**/*plot*.gpkg
 data/**/*plot*.geojson
 data/**/*plot*.parquet
-data/**/dz_residential_land*.csv
+data/**/*plot_band*
+**/*plot_band*.csv
+**/*parcel*.geojson
+**/*parcel*.gpkg
+**/*parcel*.fgb
+**/*parcel*.shp
+**/*parcel*.pmtiles
+**/*parcel*.mbtiles
+**/*.pmtiles
+**/*.mbtiles
 data/**/*residential_land*.gpkg
 data/**/*residential_land*.geojson
 data/**/*residential_land*.parquet

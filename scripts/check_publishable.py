@@ -4,7 +4,8 @@
 Fails (exit 1) if anything tracked by git (the index, so staged files count) is:
   1. listed in a data/processed/*/manifest.csv with publish_level=internal;
   2. inside a raw/ or internal/ folder, a Spatial Hub download, a GeoPackage under data/
-     (site layers such as svdls_sites.gpkg / hls_sites.gpkg are internal) or an INSPIRE-derived file;
+     (site layers such as svdls_sites.gpkg / hls_sites.gpkg are internal), an INSPIRE-derived
+     file, or a parcel outline / parcel tile / plot-band product (e.g. dz_detached_plot_bands.csv);
   3. a CSV/TSV whose header carries address, postcode, UPRN or similar columns.
 
 Run from anywhere inside the repo:  python3 scripts/check_publishable.py
@@ -21,6 +22,10 @@ import subprocess
 import sys
 from pathlib import PurePosixPath
 
+# Aggregate columns that merely count or share such things (e.g. GIS's n_res_uprn,
+# share_res_uprn_in_parcels, res_uprn_exceeds_dwellings) are not identifiers.
+AGGREGATE_TOKENS = {"n", "num", "count", "counts", "share", "pct", "exceeds", "in", "per", "median", "mean",
+                    "total", "ha", "has", "coverage"}
 PERSONAL_COLUMN = re.compile(
     r"(^|[_\s])(address(es)?|addr|address_line\d*|postcode|post_code|postcodes|pcode|pc_sector"
     r"|uprn|udprn|usrn|street|street_name|thoroughfare|house_number|house_no|building_name"
@@ -28,6 +33,11 @@ PERSONAL_COLUMN = re.compile(
     re.IGNORECASE,
 )
 SPATIAL_HUB = re.compile(r"spatial[_-]?hub", re.IGNORECASE)
+# Internal geometry/tile products: parcel outlines and tiles, plot-band files, tile archives.
+INTERNAL_PATH = re.compile(r"plot[_-]?bands?|parcel[^/]*\.(geojson|gpkg|fgb|shp|pmtiles|mbtiles|parquet|csv)$"
+                           r"|\.(pmtiles|mbtiles)$|site[_-]?outline", re.IGNORECASE)
+# Code that may name these things (scripts, routes) is not data.
+CODE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".md", ".sql", ".yml", ".yaml", ".json", ".txt", ".sh"}
 TABULAR = {".csv": ",", ".tsv": "\t"}
 
 
@@ -74,6 +84,8 @@ def check(files: list[str]) -> list[str]:
             problems.append(f"{f}: GeoPackage under data/ (site layers are internal)")
         if f.startswith("data/") and "inspire" in f.lower():
             problems.append(f"{f}: INSPIRE-derived file (internal until the RoS terms are cleared)")
+        if INTERNAL_PATH.search(f) and PurePosixPath(f).suffix.lower() not in CODE_SUFFIXES:
+            problems.append(f"{f}: internal parcel/plot-band/tile product (RoS-derived; internal only)")
         if SPATIAL_HUB.search(f):
             problems.append(f"{f}: looks like a Spatial Hub download")
         # 3. address / postcode / UPRN-like columns
@@ -81,7 +93,8 @@ def check(files: list[str]) -> list[str]:
         if sep:
             first = index_head(f).splitlines()[:1]
             header = next(csv.reader(first, delimiter=sep), []) if first else []
-            bad = [c for c in header if PERSONAL_COLUMN.search(c.strip())]
+            bad = [c for c in header if PERSONAL_COLUMN.search(c.strip())
+                   and not AGGREGATE_TOKENS & set(c.strip().lower().split("_"))]
             if bad:
                 problems.append(f"{f}: address/postcode/UPRN-like column(s) {bad}")
     return problems

@@ -58,9 +58,8 @@ def test_clean_repo_passes(tmp_path):
     ({"data/processed/gis/hls_sites.gpkg": "x"}, "GeoPackage"),
     ({"data/processed/gis/internal/dz_svdls_rollup_with_inspire.csv": "code\n"}, "internal/ folder"),
     ({"data/processed/gis/dz_svdls_rollup_with_inspire.csv": "code\n"}, "INSPIRE"),
-    ({"data/processed/gis/manifest.csv": "file,publish_level\ndz_detached_plot_bands.csv,internal\n",
-      "data/processed/gis/dz_detached_plot_bands.csv": "code,vintage\n"}, "publish_level=internal"),
-    ({"data/processed/gis/dz_detached_plot_bands.csv": "code,vintage\n"}, "plot-band"),  # even unlisted
+    ({"data/processed/gis/manifest.csv": "file,publish_level\nany_name.csv,internal\n",
+      "data/processed/gis/any_name.csv": "code,vintage\n"}, "publish_level=internal"),
     ({"frontend/public/tiles/parcels.pmtiles": "x"}, "tile"),
     ({"data/processed/gis/parcel_outlines.geojson": "{}"}, "parcel"),
     ({"data/processed/x/a.csv": "code,res_uprn\n"}, "res_uprn"),
@@ -68,6 +67,15 @@ def test_clean_repo_passes(tmp_path):
 def test_guard_fails(tmp_path, files, needle):
     problems = _problems(tmp_path) if _repo(tmp_path, files) is None else None
     assert any(needle in p for p in problems), problems
+
+
+def test_publish_level_decides_not_the_file_name(tmp_path):
+    """dz_detached_plot_bands.csv is public_zone (Laurie's ruling: RoS INSPIRE is OGL v3): it passes."""
+    _repo(tmp_path, {
+        "data/processed/gis/manifest.csv": "file,publish_level\ndz_detached_plot_bands.csv,public_zone\n",
+        "data/processed/gis/dz_detached_plot_bands.csv": "code,vintage,all_ages_share_lt005\nS01006506,2011,0.1\n",
+    })
+    assert _problems(tmp_path) == []
 
 
 def test_this_repo_passes():

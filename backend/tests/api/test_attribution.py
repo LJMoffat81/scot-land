@@ -33,11 +33,13 @@ def test_missing_manifest_attribution_refused(tmp_path):
 def test_count_datasets_credited_only_when_their_view_is_shown(monkeypatch):
     fake = {ds: {"dataset": "/".join(ds), "licence": "L", "attribution": "A", "publish_level": "public_zone",
                  "source": "manifest"} for ds in (at.EPC_ROLLUP, at.DZ_DWELLINGS, at.DZ_SPINE,
-                                                                     at.GIS_RESIDENTIAL_LAND)}
+                                                                     at.GIS_RESIDENTIAL_LAND, at.GIS_PLOT_BANDS)}
     monkeypatch.setattr(at, "dataset_attribution", lambda d, f, root=None: fake[(d, f)])
-    assert [a["dataset"] for a in at.attributions_for("surface_rent")] == ["gis/epc_dz_rollup.csv"]
+    assert [a["dataset"] for a in at.attributions_for("surface_rent")] == ["gis/epc_dz_rollup.csv",
+                                                                          "gis/dz_detached_plot_bands.csv"]
     shown = at.attributions_for("surface_rent", ["per_residential_hectare", "per_dwelling", "per_resident"])
-    assert [a["dataset"] for a in shown] == ["gis/epc_dz_rollup.csv", "gis/dz_residential_land.csv",
+    assert [a["dataset"] for a in shown] == ["gis/epc_dz_rollup.csv", "gis/dz_detached_plot_bands.csv",
+                                             "gis/dz_residential_land.csv",
                                              "datazones/dwellings_by_year.csv", "datazones/zone_spine.csv"]
 
 
@@ -53,17 +55,19 @@ def test_wealth_payload_carries_epc_attribution_with_surface():
                "value_tier": "proxy", "quality": "derived", "publish_level": "public_zone",
                "publication_status": "ok"}
     p = build_payload(surface, [], [])
-    assert [a["dataset"] for a in p["attributions"]] == ["gis/epc_dz_rollup.csv"]
+    assert [a["dataset"] for a in p["attributions"]] == ["gis/epc_dz_rollup.csv", "gis/dz_detached_plot_bands.csv"]
     assert "Royal Mail" in p["attributions"][0]["attribution"]
     assert "non-commercial" in p["attributions"][0]["licence"]
     assert build_payload(None, [], [])["attributions"] == []  # no EPC-derived figure, no credit needed
 
 
-def test_residential_land_attribution_is_the_real_ros_wording():
-    """The committed GIS manifest's RoS/OS wording passes through to API metadata unchanged."""
-    a = at.dataset_attribution(*at.GIS_RESIDENTIAL_LAND)
+@pytest.mark.parametrize("ds", [at.GIS_RESIDENTIAL_LAND, at.GIS_PLOT_BANDS])
+def test_parcel_based_files_carry_ros_credit_under_ogl(ds):
+    """Both parcel-based GIS files: RoS credit wording and OGL v3 pass through unchanged."""
+    a = at.dataset_attribution(*ds)
     assert a["source"] == "manifest" and a["publish_level"] == "public_zone"
     assert "Registers of Scotland" in a["attribution"] and "OS data" in a["attribution"]
+    assert a["licence"].startswith("OGL v3")
 
 
 def test_wealth_payload_credits_residential_land_when_that_view_is_shown():

@@ -74,17 +74,14 @@ out/
 **/*spatialhub*
 **/*spatial_hub*
 **/*SpatialHub*
-# RoS-parcel-derived internal files (INSPIRE/cadastral): site and parcel outlines, parcel
-# tiles, plot-size files (e.g. GIS's internal dz_detached_plot_bands.csv) and residential-land
-# geometry. The zone-total gis/dz_residential_land.csv is public_zone and IS tracked.
+# Parcel-level geometry (RoS INSPIRE, OGL v3) is kept out of the repo for size: site and
+# parcel outlines, parcel tiles, plot geometry. Zone-level tables built from parcels (e.g.
+# gis/dz_residential_land.csv, gis/dz_detached_plot_bands.csv) are public_zone and tracked.
+# Whether a tracked file may be published is decided by its manifest publish_level.
 data/**/*site_outline*
-data/**/*parcel*
-data/**/*plot*.csv
 data/**/*plot*.gpkg
 data/**/*plot*.geojson
 data/**/*plot*.parquet
-data/**/*plot_band*
-**/*plot_band*.csv
 **/*parcel*.geojson
 **/*parcel*.gpkg
 **/*parcel*.fgb

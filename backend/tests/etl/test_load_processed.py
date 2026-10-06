@@ -247,16 +247,16 @@ def test_cli_exit_codes(tmp_path):
 
 def test_repo_gis_manifest_validates(caplog):
     """The committed data/processed/gis files match their manifest (checksums, rows, keys,
-    integer vintages, attribution). dz_detached_plot_bands.csv is internal: skipped, never in the repo."""
+    integer vintages, attribution). Both parcel-based files are public_zone (RoS INSPIRE is OGL v3)."""
     if not (PROCESSED_DIR / "gis" / "manifest.csv").is_file():
         pytest.skip("data/processed/gis not present")
     entries = lp.validate(PROCESSED_DIR, "gis")
     files = {e.file for e in entries}
-    assert "dz_residential_land.csv" in files and "dz_detached_plot_bands.csv" not in files
-    assert not (PROCESSED_DIR / "gis" / "dz_detached_plot_bands.csv").exists()
-    rl = next(e for e in entries if e.file == "dz_residential_land.csv")
-    assert rl.publish_level == "public_zone" and rl.key == ("code", "vintage") and len(rl.frame) == 14_368
-    assert "Registers of Scotland" in rl.attribution
+    assert {"dz_residential_land.csv", "dz_detached_plot_bands.csv"} <= files
+    for name in ("dz_residential_land.csv", "dz_detached_plot_bands.csv"):
+        rl = next(e for e in entries if e.file == name)
+        assert rl.publish_level == "public_zone" and rl.key == ("code", "vintage") and len(rl.frame) == 14_368
+        assert "Registers of Scotland" in rl.attribution and rl.licence.startswith("OGL v3")
     assert all(e.attribution for e in entries)
     epc = next(e for e in entries if e.file == "epc_dz_rollup.csv")
     assert "dwellings_total_2025" in epc.frame.columns and "dwellings_nrs_2025" not in epc.frame.columns
@@ -365,7 +365,7 @@ def test_repo_gis_dataset_loads_into_postgis(pgconn):
     if not (PROCESSED_DIR / "gis" / "manifest.csv").is_file():
         pytest.skip("data/processed/gis not present")
     loaded = lp.load(pgconn, lp.validate(PROCESSED_DIR, "gis"))
-    assert loaded["gis/dz_residential_land.csv"] == 14_368 and "gis/dz_detached_plot_bands.csv" not in loaded
+    assert loaded["gis/dz_residential_land.csv"] == 14_368 and loaded["gis/dz_detached_plot_bands.csv"] == 14_368
     with pgconn.cursor() as cur:
         for name in GIS_SITE_ROLLUPS:
             table = "processed.gis_" + name.removesuffix(".csv")
@@ -382,8 +382,8 @@ def test_repo_gis_dataset_loads_into_postgis(pgconn):
         assert n == 14_368 and 0 < with_ha < n and with_share > 0 and too_big > 0
         cur.execute("SELECT residential_land_ha FROM dz_denominators WHERE code = 'S01010227' AND vintage = 2011")
         assert cur.fetchone()[0] is None  # zero-dwelling zone: area blank, never 0
-        cur.execute("SELECT to_regclass('processed_internal.gis_dz_detached_plot_bands')")
-        assert cur.fetchone()[0] is None
+        cur.execute("SELECT to_regclass('processed.gis_dz_detached_plot_bands') IS NOT NULL")
+        assert cur.fetchone()[0] is True
 
 
 # --------------------------------------------------------------------------- Data Zones (real, committed)
@@ -504,3 +504,4 @@ def test_internal_entry_targets_internal_schema(tmp_path):
     (e,) = lp.validate(root, include_internal=True)
     assert e.qualified_table == f"{lp.INTERNAL_SCHEMA}.syn_z"
     assert lp.validate(root) == []
+

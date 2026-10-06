@@ -6,7 +6,8 @@ public_* file. There is no README scraping and no pinned copy: if the manifest r
 attribution is missing, AttributionMissing is raised and the public endpoint answers 503
 `attribution_missing` instead of serving figures without their credit.
 
-  surface_rent  always: gis/epc_dz_rollup.csv (Valuation's rebuild mix and floor area).
+  surface_rent  always: gis/epc_dz_rollup.csv (Valuation's rebuild mix and floor area) and
+                gis/dz_detached_plot_bands.csv (estate/one-off rebuild split; RoS credit, OGL v3).
                 when used: gis/dz_residential_land.csv (per residential hectare),
                 datazones/dwellings_by_year.csv (per dwelling) and
                 datazones/zone_spine.csv (per resident).
@@ -25,9 +26,10 @@ EPC_ROLLUP = ("gis", "epc_dz_rollup.csv")
 DZ_DWELLINGS = ("datazones", "dwellings_by_year.csv")
 DZ_SPINE = ("datazones", "zone_spine.csv")
 GIS_RESIDENTIAL_LAND = ("gis", "dz_residential_land.csv")
+GIS_PLOT_BANDS = ("gis", "dz_detached_plot_bands.csv")  # Valuation's estate/one-off split (RoS parcels, OGL v3)
 
 # Datasets every figure of a public layer is built from.
-LAYER_DATASETS: dict[str, tuple[tuple[str, str], ...]] = {"surface_rent": (EPC_ROLLUP,)}
+LAYER_DATASETS: dict[str, tuple[tuple[str, str], ...]] = {"surface_rent": (EPC_ROLLUP, GIS_PLOT_BANDS)}
 # Display views -> dataset whose count they divide by (credited only when the view is shown).
 VIEW_DATASETS: dict[str, tuple[str, str]] = {
     "per_residential_hectare": GIS_RESIDENTIAL_LAND,  # RoS parcel-based area (RoS/OS attribution)

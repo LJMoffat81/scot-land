@@ -5,7 +5,7 @@ Fails (exit 1) if anything tracked by git (the index, so staged files count) is:
   1. listed in a data/processed/*/manifest.csv with publish_level=internal;
   2. inside a raw/ or internal/ folder, a Spatial Hub download, a GeoPackage under data/
      (site layers such as svdls_sites.gpkg / hls_sites.gpkg are internal), an INSPIRE-derived
-     file, or a parcel outline / parcel tile / plot-band product (e.g. dz_detached_plot_bands.csv);
+     file, or parcel geometry / a tile archive (size);
   3. a CSV/TSV whose header carries address, postcode, UPRN or similar columns.
 
 Run from anywhere inside the repo:  python3 scripts/check_publishable.py
@@ -33,9 +33,11 @@ PERSONAL_COLUMN = re.compile(
     re.IGNORECASE,
 )
 SPATIAL_HUB = re.compile(r"spatial[_-]?hub", re.IGNORECASE)
-# Internal geometry/tile products: parcel outlines and tiles, plot-band files, tile archives.
-INTERNAL_PATH = re.compile(r"plot[_-]?bands?|parcel[^/]*\.(geojson|gpkg|fgb|shp|pmtiles|mbtiles|parquet|csv)$"
-                           r"|\.(pmtiles|mbtiles)$|site[_-]?outline", re.IGNORECASE)
+# Parcel-level geometry and tile archives stay out of the repo (size; RoS INSPIRE is OGL v3).
+# This is a geometry rule, not a licence list: whether a DATA TABLE may be published is decided
+# only by its manifest publish_level (check 1), never by hard-coded file names.
+GEOMETRY_PRODUCT = re.compile(r"parcel[^/]*\.(geojson|gpkg|fgb|shp|pmtiles|mbtiles|parquet)$"
+                              r"|\.(pmtiles|mbtiles)$|site[_-]?outline", re.IGNORECASE)
 # Code that may name these things (scripts, routes) is not data.
 CODE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".md", ".sql", ".yml", ".yaml", ".json", ".txt", ".sh"}
 TABULAR = {".csv": ",", ".tsv": "\t"}
@@ -84,8 +86,8 @@ def check(files: list[str]) -> list[str]:
             problems.append(f"{f}: GeoPackage under data/ (site layers are internal)")
         if f.startswith("data/") and "inspire" in f.lower():
             problems.append(f"{f}: INSPIRE-derived file (internal until the RoS terms are cleared)")
-        if INTERNAL_PATH.search(f) and PurePosixPath(f).suffix.lower() not in CODE_SUFFIXES:
-            problems.append(f"{f}: internal parcel/plot-band/tile product (RoS-derived; internal only)")
+        if GEOMETRY_PRODUCT.search(f) and PurePosixPath(f).suffix.lower() not in CODE_SUFFIXES:
+            problems.append(f"{f}: parcel geometry / tile archive (kept out of the repo for size)")
         if SPATIAL_HUB.search(f):
             problems.append(f"{f}: looks like a Spatial Hub download")
         # 3. address / postcode / UPRN-like columns

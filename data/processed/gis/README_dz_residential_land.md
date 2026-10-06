@@ -81,7 +81,7 @@ The official figure comes from the NRS *Dwelling estimates by 2011/2022 Data Zon
 - **Demolition evidence:** no open demolition flag exists. The EPC register does not retire certificates, and OS Open UPRN keeps the points. Every EPC UPRN is required to be present in the current OS Open UPRN release (Sept 2026; 99.95% are), but that does not filter out demolished stock. A proper filter needs AddressBase status or an OSG/LLPG logical status, both licensed under the PSGA.
 
 ## Licences
-- **RoS INSPIRE Cadastral Parcels:** OGL v3, plus the OS INSPIRE end-user licence (© Crown copyright and database right 2026; © Registers of Scotland). Parcel geometry is used internally only. It is not redistributed: only zone-level area totals are published here. Please confirm the public_zone use of derived totals with the licence owner before any push.
+- **RoS INSPIRE Cadastral Parcels:** OGL v3 under RoS's download terms (the 2017 OS INSPIRE end-user licence linked from RoS's dataset guide is an RoS error, project owner's ruling Oct 2026). Attribution: © Crown copyright. Reproduced with the permission of Registers of Scotland. Contains OS data © Crown copyright and database right 2026; OS Open UPRN under the OS OpenData licence.
 - **OS Open UPRN:** OS OpenData licence (OGL-compatible). "Contains OS data © Crown copyright and database right 2026."
 - **Domestic EPC:** OGL v3 (Scottish Government). OSG UPRN used for the join only; no address data is published.
 - **NRS Census 2022 Settlements** (maps.gov.scot WFS `CEN2022:Settlement2022`): OGL. "Copyright NRS, contains OS data © Crown copyright and database right 2026."

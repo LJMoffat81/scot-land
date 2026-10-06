@@ -14,8 +14,8 @@ import AgrBreakdown, {
   PlaceFiscal,
   ScenarioId,
 } from "./AgrBreakdown";
-import { WealthInspector } from "./WealthInspector";
-import { useWealthApi, WealthResponse } from "../lib/useWealthApi";
+import { WealthInspector, type WealthInspectorData } from "./WealthInspector";
+import { useWealthApi } from "../lib/useWealthApi";
 import {
   ApiError,
   SERVICE_BUSY,
@@ -461,12 +461,8 @@ export default function ScotlandMap() {
   const layerPopupRef = useRef<maplibregl.Popup | null>(null);
 
   // Georgist Wealth State
-  const {
-    fetchTotalWealth,
-    isLoading: wealthLoading,
-    error: wealthError
-  } = useWealthApi();
-  const [wealthData, setWealthData] = useState<WealthResponse | null>(null);
+  const { lookupWealthAt, isLoading: wealthLoading, failure: wealthFailure } = useWealthApi();
+  const [wealthData, setWealthData] = useState<WealthInspectorData | null>(null);
   const [showWealthPanel, setShowWealthPanel] = useState(false);
 
   const [contextOn, setContextOn] = useState<Record<string, boolean>>({});
@@ -1346,27 +1342,18 @@ export default function ScotlandMap() {
       const hits = map.queryRenderedFeatures(event.point, {
         layers: ["w3w-agr-fill", "council-fill"],
       });
-      if (hits[0]?.properties?.lat != null && hits[0].layer?.id === "w3w-agr-fill") {
-        void fetchSquare(Number(hits[0].properties.lat), Number(hits[0].properties.lng));
+      const point =
+        hits[0]?.properties?.lat != null && hits[0].layer?.id === "w3w-agr-fill"
+          ? { lat: Number(hits[0].properties.lat), lng: Number(hits[0].properties.lng) }
+          : { lat: event.lngLat.lat, lng: event.lngLat.lng };
+      void fetchSquare(point.lat, point.lng);
 
-        // Georgist Wealth Lookup
-        const zoneId = hits[0].properties.zone_id || "unknown";
-        const wealth = await fetchTotalWealth(
-          Number(hits[0].properties.lat),
-          Number(hits[0].properties.lng),
-          zoneId
-        );
-        setWealthData(wealth);
-        setShowWealthPanel(true);
-        return;
-      }
-      void fetchSquare(lat, lng);
-
-      // For generic clicks, we still want the wealth data
-      // In a real app, we'd fetch the zoneId for these coordinates first
-      const wealth = await fetchTotalWealth(lat, lng, "unknown");
-      setWealthData(wealth);
+      // Georgist wealth: point -> /layers/context/data-zones/at -> /georgist/wealth with the
+      // real DZ2011 code (DZ2022 if only that is loaded). Never sends 'unknown'.
+      setWealthData(null);
       setShowWealthPanel(true);
+      const res = await lookupWealthAt(point.lat, point.lng);
+      setWealthData(res.ok ? res.data : null);
     });
 
 
@@ -1914,6 +1901,7 @@ export default function ScotlandMap() {
         isOpen={showWealthPanel}
         onClose={() => setShowWealthPanel(false)}
         data={wealthData}
+        failure={wealthFailure}
         isLoading={wealthLoading}
       />
 

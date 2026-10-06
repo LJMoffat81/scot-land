@@ -229,6 +229,12 @@ def gradient_v07(zones: Sequence[Mapping], cfg: Mapping, *, land_rows: list | No
         return sh.job_access_gradient_check([], residential_land_rows=land_rows, access_rows=None, gcfg=g,
                                             expected_order=cfg["land_share_checks"]["ur6_expected_order"], access_metadata=None)
     sha = hv.sha256_file(Path(access_path))
+    frozen = str(g["input"].get("frozen_sha256_prefix") or "")
+    if frozen and not sha.startswith(frozen):
+        raise ValueError(f"dz_access sha256 {sha[:8]} is not the frozen input {frozen}")
+    meta = sh.check_access_metadata(access_metadata, g["expected_metadata"])   # before the run is logged
+    if meta["status"] != "verified":
+        raise sh.AccessMetadataMismatch(f"dz_access metadata incomplete {meta['missing']}; scored run not started")
     guard = sh.RunGuard(sp.expand(g["run_guard"]["log"]))
     entry = guard.register(access_sha256=sha, cfg_hash=sh.config_hash(g), override=override, reason=reason)
     acc = hv.load_gis_output(access_path).to_dict("records")

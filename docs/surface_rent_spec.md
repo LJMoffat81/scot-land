@@ -610,3 +610,23 @@ DRAFT, not approved by Laurie.
 - **Expected direction:** rebuild cost for the non-estate share goes up, so land value on those zones goes down. This removes the downward bias in one-off rebuild cost (and the upward bias in land value on big plots) that the generic blend would have caused.
 - **Data note:** GIS's manifest now marks `dz_detached_plot_bands.csv` as `public_zone`, following a project-owner licence ruling. The data sha is unchanged. The loader accepts `internal` or `public_zone` (`estate.accepted_publish_levels`), but outputs that use this input stay **internal** until Scot-LAND or Laurie lift `publish_level_inherited`.
 - Figures are kept only in the internal output folder, never in this repo.
+
+### 12.7a Column-name mapping and documented metadata corrections (2026-10-06, rules sha256 prefix 21517e3b)
+
+DRAFT, not approved by Laurie. This was committed after reading only the dz_access header line, before the single scored run. It contains no results.
+
+- **Mapping (pure renames; the measures are unchanged):**
+  - `job_access` is the primary driver (Spearman, pass at ≥ +0.10 in every UR6 class);
+  - `road_km_nearest_luc` is the secondary measure (reported only);
+  - `flags` holds semicolon-separated tokens: `luc_distance_euclid_x1.3`, `job_access_partly_euclid_x1.3`, `off_mainland_network`, `nearest_emp_point_gt_5km`;
+  - the pre-registered island flag is the token `luc_distance_euclid_x1.3`.
+- **Sample rules unchanged:** no zone is excluded on any dz_access flag (GIS asked the same). Flag counts in the used sample are reported only.
+- **Documented corrections to `expected_metadata`, accepted by the Georgist in the room:**
+  - employment year = BRES **2023** (= evidence_year; GIS manifest `source_year` 2023);
+  - city centres are **documented landmark points** (George Square, Waverley Bridge / Princes St, Castlegate, City Square), not official town-centre boundaries, because the official Spatial Hub polygons need a sign-in.
+- **Metadata assertion:** values come from GIS's manifest row, its pre-registered `scripts/access_config.json` and the header line (`access_metadata_from_gis`).
+- **Before the run guard logs anything:**
+  - the metadata must be verified;
+  - the file must match the frozen checksum prefix (`input.frozen_sha256_prefix`).
+
+  A mismatch therefore stops the run without using up the single scored run.

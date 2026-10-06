@@ -16,7 +16,13 @@ def cfg():
 def test_pre_registration_fixed_in_config(cfg):
     g = cfg["gradient_v07"]
     assert g["status"] == "pre_registered" and g["rules_sha256_prefix"] == "23df6297"
-    assert g["primary"] == {"driver": "job_accessibility", "rho_min": 0.10}
+    assert g["primary"] == {"driver": "job_access", "rho_min": 0.10}
+    assert g["secondary"]["driver"] == "road_km_nearest_luc"
+    assert g["input"]["columns"] == {"job_access": "job_access", "centre_km": "road_km_nearest_luc", "flags": "flags"}
+    assert g["input"]["island_flag_token"] == "luc_distance_euclid_x1.3"
+    assert g["input"]["flag_tokens"] == ["luc_distance_euclid_x1.3", "job_access_partly_euclid_x1.3",
+                                         "off_mainland_network", "nearest_emp_point_gt_5km"]
+    assert g["sample"]["exclude_on_access_flags"] is False
     assert g["secondary"]["rho_max"] == -0.10
     m = g["expected_metadata"]
     assert (m["employment_source"], m["employment_geography"], m["decay"], m["decay_scale_km"], m["cutoff_km"]) == \
@@ -24,6 +30,10 @@ def test_pre_registration_fixed_in_config(cfg):
     assert m["own_zone_jobs_included"] is True and m["network"] == "OS Open Roads"
     assert sorted(m["large_urban_centres"]) == ["Aberdeen", "Dundee", "Edinburgh", "Glasgow"]
     assert m["island_rule"] == "straight_line_x1.3" and m["island_flagged"] is True
+    assert m["employment_year"] == 2023 and m["centre_point_basis"] == "documented_landmarks"
+    assert m["centre_landmarks"]["Glasgow"] == "George Square" and m["centre_landmarks"]["Dundee"].startswith("City Square")
+    assert {c["field"].split(" ")[0] for c in g["metadata_corrections"]} == {"employment_year", "centre_point_basis"}
+    assert all(c["accepted_by"].startswith("Georgist") for c in g["metadata_corrections"])
     assert set(g["sample"]["exclude"]) == {"weak_match", "mask_too_big_parcel", "res_uprn_exceeds_dwellings", "zero_dwellings"}
     assert g["sample"]["min_sales"] == 5
     assert g["on_class_fail"]["multiplier_status"] == "PLACEHOLDER_GEORGIST_SIGNOFF"
@@ -64,7 +74,8 @@ def _data(cfg, n=60, flip_class=2):
                           "observed_land_value": lv, "dwellings": 300})
             land.append({"code": code, "vintage": 2011, "residential_land_ha": 10.0, "method": "parcel_based",
                          "gradient_exclude": (), "low_confidence": ()})
-            acc.append({"code": code, "vintage": 2011, cols["job_access"]: job, cols["centre_km"]: km, cols["island_flag"]: "False"})
+            fl = "luc_distance_euclid_x1.3;off_mainland_network" if i % 10 == 0 else ("nearest_emp_point_gt_5km" if i % 7 == 0 else "")
+            acc.append({"code": code, "vintage": 2011, cols["job_access"]: job, cols["centre_km"]: km, cols["flags"]: fl})
     return zones, land, acc
 
 
@@ -135,3 +146,46 @@ def test_run_guard_once_per_input(tmp_path, cfg):
     assert e2["n_prior"] == 1 and len(g.entries()) == 2
     assert g.register(access_sha256="b" * 64, cfg_hash=h)["n_prior"] == 0
     assert ho.config_hash(cfg["gradient_v07"]) == h    # stable hash of the pre-registered section
+
+
+def test_flags_reported_never_excluded(cfg):
+    zones, land, acc = _data(cfg, flip_class=None)
+    r = _run(cfg, zones, land, acc)
+    assert r["n_used"] == 180                                   # flagged zones stay in the sample
+    assert r["n_islands_used"] == 18 and r["access_flag_counts_used_reported_only"]["off_mainland_network"] == 18
+    assert r["access_flag_counts_used_reported_only"]["luc_distance_euclid_x1.3"] == 18
+    rows = ho.job_access_rows(acc, cfg["gradient_v07"]["input"]["columns"], island_flag_token="luc_distance_euclid_x1.3")
+    assert rows[acc[0]["code"]]["island"] is True and rows[acc[1]["code"]]["island"] is False
+    assert ho.access_flags(float("nan")) == () and ho.access_flags("a; b") == ("a", "b")
+
+
+SYNTH_ACCESS_CONFIG = {   # SYNTHETIC mirror of the structure of GIS scripts/access_config.json
+    "origins": {"origin_method": "sg_popweighted_centroid"},
+    "employment": {"source": "ONS Business Register and Employment Survey (BRES) open access", "bres_year": 2023,
+                   "geography": "2011 scottish datazones within Scotland"},
+    "network": {"source": "OS Open Roads, GeoPackage, version X", "euclid_factor": 1.3,
+                "pair_distance": "network km ...; otherwise Euclidean km between the original points x 1.3"},
+    "job_access": {"falloff": "negative_exponential", "scale_km": 10, "cutoff_km": 60, "own_zone": "included (d_ii = 0)"},
+    "large_urban_centres": {"point_source": "documented landmark grid references", "centres": {
+        "Glasgow": {"landmark": "George Square"}, "Edinburgh": {"landmark": "Waverley Bridge / Princes St"},
+        "Aberdeen": {"landmark": "Castlegate (Mercat Cross), Union St east end"}, "Dundee": {"landmark": "City Square (Caird Hall)"}}},
+}
+SYNTH_MANIFEST = {"file": "dz_access.csv", "source": "... ONS BRES open access 2023 ...", "source_year": "2023"}
+SYNTH_HEADER = ["code", "vintage", "job_access", "road_km_nearest_luc", "distance_method", "flags"]
+
+
+def test_metadata_from_gis_manifest_and_config(cfg):
+    import copy
+    exp = cfg["gradient_v07"]["expected_metadata"]
+    meta = ho.access_metadata_from_gis(SYNTH_MANIFEST, SYNTH_ACCESS_CONFIG, SYNTH_HEADER)
+    assert ho.check_access_metadata(meta, exp)["status"] == "verified"
+    bad = copy.deepcopy(SYNTH_ACCESS_CONFIG)
+    bad["job_access"]["scale_km"] = 8
+    with pytest.raises(ho.AccessMetadataMismatch):
+        ho.check_access_metadata(ho.access_metadata_from_gis(SYNTH_MANIFEST, bad, SYNTH_HEADER), exp)
+    with pytest.raises(ho.AccessMetadataMismatch):        # employment year disagreement between config and manifest
+        ho.check_access_metadata(ho.access_metadata_from_gis({**SYNTH_MANIFEST, "source_year": "2024"}, SYNTH_ACCESS_CONFIG, SYNTH_HEADER), exp)
+    bad = copy.deepcopy(SYNTH_ACCESS_CONFIG)
+    bad["large_urban_centres"]["centres"]["Glasgow"]["landmark"] = "Glasgow Central"
+    with pytest.raises(ho.AccessMetadataMismatch):
+        ho.check_access_metadata(ho.access_metadata_from_gis(SYNTH_MANIFEST, bad, SYNTH_HEADER), exp)

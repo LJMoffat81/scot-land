@@ -761,6 +761,8 @@ class RepeatScoredRunError(RuntimeError):
 def _norm(v):
     if isinstance(v, bool):
         return v
+    if isinstance(v, Mapping):
+        return sorted((str(k).strip().lower(), _norm(x)) for k, x in v.items())
     if isinstance(v, (int, float)):
         return float(v)
     if isinstance(v, (list, tuple, set)):
@@ -821,8 +823,19 @@ class RunGuard:
         return e
 
 
-def job_access_rows(rows: Iterable[Mapping], columns: Mapping[str, str], *, vintage=2011) -> dict[str, dict]:
-    """dz_access rows -> {code: {job_access, centre_km, island}} for one vintage (rank/score columns refused)."""
+def access_flags(value, sep: str = ";") -> tuple[str, ...]:
+    """Tokens of a GIS semicolon-separated flags cell ('' / NaN -> ())."""
+    if value is None or value != value:
+        return ()
+    return tuple(t.strip() for t in str(value).split(sep) if t.strip())
+
+
+def job_access_rows(rows: Iterable[Mapping], columns: Mapping[str, str], *, vintage=2011, island_flag_token: str | None = None,
+                    flags_separator: str = ";") -> dict[str, dict]:
+    """dz_access rows -> {code: {job_access, centre_km, island, flags}} for one vintage (rank/score columns refused).
+
+    With a `flags` column, `island` = `island_flag_token` present in the row's flags (GIS: luc_distance_euclid_x1.3).
+    Flags never exclude a zone here (rules 12.2 v0.7 sample is unchanged)."""
     for c in (columns["job_access"], columns["centre_km"]):
         if any(t in c.lower() for t in ACCESS_FORBIDDEN_TOKENS):
             raise ValueError(f"{c}: ranks/scores are not access measures")
@@ -836,8 +849,10 @@ def job_access_rows(rows: Iterable[Mapping], columns: Mapping[str, str], *, vint
             continue
         if ja != ja or km != km:
             continue
+        fl = access_flags(r.get(columns["flags"]), flags_separator) if columns.get("flags") else ()
         isl = columns.get("island_flag")
-        out[str(r["code"])] = {"job_access": ja, "centre_km": km, "island": _truthy(r.get(isl)) if isl else False}
+        island = (island_flag_token in fl) if island_flag_token else (_truthy(r.get(isl)) if isl else False)
+        out[str(r["code"])] = {"job_access": ja, "centre_km": km, "island": island, "flags": fl}
     return out
 
 
@@ -873,7 +888,9 @@ def job_access_gradient_check(
     if meta["status"] != "verified":
         return {**base, "reason": f"dz_access metadata unverified: missing {meta['missing']}"}
     land = residential_land(residential_land_rows, vintage=vintage)
-    acc = job_access_rows(access_rows, gcfg["input"]["columns"], vintage=vintage)
+    acc = job_access_rows(access_rows, gcfg["input"]["columns"], vintage=vintage,
+                          island_flag_token=gcfg["input"].get("island_flag_token"),
+                          flags_separator=gcfg["input"].get("flags_separator", ";"))
     zs = _sr.sample_for("holdout", list(zones), exclude)
     base["n_excluded_zero_dwellings"] = len(zones) - len(zs)
     used, excl_by, n_filled, missing = [], {}, 0, 0
@@ -891,9 +908,14 @@ def job_access_gradient_check(
             missing += 1
             continue
         v = float(z["observed_land_value"]) * float(z["dwellings"]) / lz["ha"]
-        used.append((int(z["ur6_class"]), v, az["job_access"], az["centre_km"], az["island"]))
+        used.append((int(z["ur6_class"]), v, az["job_access"], az["centre_km"], az["island"], az.get("flags", ())))
+    flag_counts: dict[str, int] = {}
+    for u in used:
+        for t in u[5]:
+            flag_counts[t] = flag_counts.get(t, 0) + 1
     base.update(n_excluded_not_observed=n_filled, excluded_res_land_by_reason=excl_by, n_missing_land_or_access=missing,
-                n_used=len(used), n_islands_used=sum(1 for u in used if u[4]))
+                n_used=len(used), n_islands_used=sum(1 for u in used if u[4]),
+                access_flag_counts_used_reported_only=flag_counts)
     rmin, rmax, nmin = float(gcfg["primary"]["rho_min"]), float(gcfg["secondary"]["rho_max"]), int(s["min_zones_per_class"])
     classes, med, failed = {}, {}, []
     for c in sorted({u[0] for u in used}):
@@ -930,3 +952,34 @@ def widen_failed_class_band(land_value: float | None, low: float | None, high: f
     if multiplier_status != "SIGNED_OFF":
         tags += ("band_multiplier_placeholder",)
     return max(0.0, land_value - (land_value - low) * m), land_value + (high - land_value) * m, tags
+
+
+def access_metadata_from_gis(manifest_row: Mapping, access_config: Mapping, header: Sequence[str]) -> dict:
+    """Map GIS's dz_access manifest row, its pre-registered access_config.json and the CSV header line to the
+    keys of `gradient_v07.expected_metadata`. Reads no data rows. A phrase that is not recognised is passed
+    through raw, so `check_access_metadata` raises on it rather than guessing."""
+    emp, net, ja, luc = (access_config.get(k) or {} for k in ("employment", "network", "job_access", "large_urban_centres"))
+    src = str(manifest_row.get("source", ""))
+    geo = str(emp.get("geography", ""))
+    year_cfg, year_man = emp.get("bres_year"), manifest_row.get("source_year")
+    falloff = str(ja.get("falloff", ""))
+    pair = str(net.get("pair_distance", ""))
+    centres = luc.get("centres") or {}
+    origin = str((access_config.get("origins") or {}).get("origin_method", ""))
+    return {
+        "employment_source": "BRES" if "BRES" in str(emp.get("source", "")) and "BRES" in src else emp.get("source"),
+        "employment_geography": "DZ2011" if "2011" in geo and "datazone" in geo.lower().replace(" ", "") else geo,
+        "employment_year": (int(year_cfg) if year_man is not None and str(year_man).strip() == str(year_cfg) else
+                            f"config {year_cfg} / manifest {year_man}"),
+        "decay": "exponential" if "exponential" in falloff else falloff,
+        "decay_scale_km": ja.get("scale_km"),
+        "cutoff_km": ja.get("cutoff_km"),
+        "own_zone_jobs_included": str(ja.get("own_zone", "")).lower().startswith("included") or ja.get("own_zone"),
+        "network": "OS Open Roads" if str(net.get("source", "")).startswith("OS Open Roads") else net.get("source"),
+        "origins": "SG population-weighted centroids" if origin == "sg_popweighted_centroid" else origin,
+        "large_urban_centres": sorted(centres),
+        "centre_point_basis": "documented_landmarks" if "landmark" in str(luc.get("point_source", "")).lower() else luc.get("point_source"),
+        "centre_landmarks": {c: v.get("landmark") for c, v in centres.items()},
+        "island_rule": ("straight_line_x1.3" if float(net.get("euclid_factor") or 0) == 1.3 and "x 1.3" in pair else pair),
+        "island_flagged": "flags" in list(header) and "distance_method" in list(header),
+    }

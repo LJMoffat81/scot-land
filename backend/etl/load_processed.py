@@ -81,6 +81,9 @@ from paths import PROCESSED_DIR  # noqa: E402
 logger = logging.getLogger("etl.load_processed")
 
 MANIFEST_COLUMNS = ("file", "owner", "source", "licence", "publish_level", "zone_vintage", "key", "rows", "sha256")
+# Optional columns the loader reads; any other column is tolerated and ignored (logged).
+OPTIONAL_MANIFEST_COLUMNS = ("attribution", "key_type", "geometry_level", "source_granularity", "site_source",
+                             "source_year")
 ZONE_VINTAGES = VINTAGES  # (2011, 2022): integers only
 KEY_PREFIX = ("code", "vintage")
 CROSSWALK_PREFIX = ("dz2011", "dz2022")
@@ -134,6 +137,7 @@ class Entry:
     geometry_level: str = "zone"
     source_granularity: str = "zone"
     site_source: str = ""
+    source_year: int | None = None  # optional manifest column; metadata only (empty allowed)
 
     @property
     def path(self) -> Path:
@@ -195,6 +199,9 @@ def read_manifest(manifest: Path, include_internal: bool = False) -> list[Entry]
     missing = [c for c in MANIFEST_COLUMNS if c not in header]
     if missing:
         raise ManifestError([f"{manifest}: manifest lacks required column(s) {missing}"])
+    unknown = [c for c in header if c and c not in MANIFEST_COLUMNS + OPTIONAL_MANIFEST_COLUMNS]
+    if unknown:  # tolerated: owners may add columns without a code change
+        logger.info("%s: extra manifest column(s) %s ignored", manifest, unknown)
     entries: list[Entry] = []
     seen: set[str] = set()
     for i, raw in enumerate(reader, start=2):
@@ -232,6 +239,12 @@ def read_manifest(manifest: Path, include_internal: bool = False) -> list[Entry]
             source_granularity=(row.get("source_granularity") or "zone").lower(),
             site_source=(row.get("site_source") or "").lower(),
         )
+        raw_year = row.get("source_year", "")
+        if raw_year:
+            if re.fullmatch(r"\d{4}", raw_year) and 1900 <= int(raw_year) <= 2100:
+                e.source_year = int(raw_year)
+            else:
+                e.problems.append(f"source_year {raw_year!r} must be empty or a four-digit year")
         inferred = next((t for t, prefix in KEY_TYPES.items() if e.key[:len(prefix)] == prefix), None)
         if inferred == "vintage" and "code" in e.key:
             inferred = None  # zone keys start (code, vintage); (vintage, code) is not a key type
@@ -475,6 +488,7 @@ CREATE TABLE IF NOT EXISTS processed.manifest_loads (
 -- Registries created by earlier drafts: key_type column, the 'vintage' key type, integer vintages.
 ALTER TABLE processed.manifest_loads ADD COLUMN IF NOT EXISTS key_type TEXT;
 ALTER TABLE processed.manifest_loads ADD COLUMN IF NOT EXISTS attribution TEXT;
+ALTER TABLE processed.manifest_loads ADD COLUMN IF NOT EXISTS source_year SMALLINT;
 ALTER TABLE processed.manifest_loads DROP CONSTRAINT IF EXISTS manifest_loads_key_type_check;
 ALTER TABLE processed.manifest_loads ADD CONSTRAINT manifest_loads_key_type_check
   CHECK (key_type IN ('zone', 'crosswalk', 'vintage'));
@@ -624,18 +638,18 @@ def load(conn, entries: list[Entry]) -> dict[str, int]:
                     derive(cur, e)
                 cur.execute(
                     "INSERT INTO processed.manifest_loads (dataset, file, table_name, owner, source, licence, "
-                    "attribution, publish_level, zone_vintage, key_type, key_columns, rows, sha256) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
+                    "attribution, publish_level, zone_vintage, key_type, key_columns, rows, sha256, source_year) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
                     "ON CONFLICT (dataset, file) DO UPDATE SET table_name = EXCLUDED.table_name, "
                     "owner = EXCLUDED.owner, source = EXCLUDED.source, licence = EXCLUDED.licence, "
                     "attribution = EXCLUDED.attribution, "
                     "publish_level = EXCLUDED.publish_level, zone_vintage = EXCLUDED.zone_vintage, "
                     "key_type = EXCLUDED.key_type, "
                     "key_columns = EXCLUDED.key_columns, rows = EXCLUDED.rows, sha256 = EXCLUDED.sha256, "
-                    "loaded_at = now()",
+                    "source_year = EXCLUDED.source_year, loaded_at = now()",
                     (e.dataset, e.file, e.qualified_table, e.owner, e.source, e.licence, e.attribution or None,
                      e.publish_level,
-                     list(e.zone_vintages), e.key_type, list(e.key), e.rows, e.sha256),
+                     list(e.zone_vintages), e.key_type, list(e.key), e.rows, e.sha256, e.source_year),
                 )
                 loaded[e.label] = e.rows
         conn.commit()

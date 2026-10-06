@@ -1,0 +1,808 @@
+{
+ "build": {
+  "config_sha256": "0ff9055aa16995f8cd61ee65d74103fef147ec1763cd61c3965564b81ed86fc0",
+  "network": {
+   "links": 663660,
+   "nodes": 558206,
+   "components": 307,
+   "largest_component_nodes": 531462
+  },
+  "bres": {
+   "year": 2023,
+   "zones": 6976,
+   "total_employment": 2581645,
+   "zero_zones": 193,
+   "max_zone": 70000,
+   "obs_status": [
+    "These figures exclude farm agriculture (SIC subclass 01000)."
+   ],
+   "all_multiples_of_5": true
+  },
+  "luc_centres": [
+   {
+    "name": "Glasgow",
+    "x": 259265,
+    "y": 665392,
+    "snap_m": 37.4,
+    "in_main_component": true
+   },
+   {
+    "name": "Edinburgh",
+    "x": 325832,
+    "y": 673869,
+    "snap_m": 59.8,
+    "in_main_component": true
+   },
+   {
+    "name": "Aberdeen",
+    "x": 394431,
+    "y": 806392,
+    "snap_m": 38.0,
+    "in_main_component": true
+   },
+   {
+    "name": "Dundee",
+    "x": 340347,
+    "y": 730239,
+    "snap_m": 30.3,
+    "in_main_component": true
+   }
+  ],
+  "runtime_s": 51.4
+ },
+ "coverage": {
+  "2011": {
+   "rows": 6976,
+   "job_access_nonnull": 6976,
+   "log_nonnull": 6976,
+   "road_km_nonnull": 6976
+  },
+  "2022": {
+   "rows": 7392,
+   "job_access_nonnull": 7392,
+   "log_nonnull": 7392,
+   "road_km_nonnull": 7392
+  }
+ },
+ "quantiles": {
+  "job_access_2011": {
+   "0.0": 242.51,
+   "0.01": 712.272,
+   "0.05": 3375.93,
+   "0.1": 6816.57,
+   "0.25": 29744.878,
+   "0.5": 83855.4,
+   "0.75": 199880.568,
+   "0.9": 280512.77,
+   "0.95": 331745.508,
+   "0.99": 387917.383,
+   "1.0": 431916.51
+  },
+  "log_job_access_2011": {
+   "0.0": 5.491,
+   "0.01": 6.568,
+   "0.05": 8.124,
+   "0.1": 8.827,
+   "0.25": 10.3,
+   "0.5": 11.337,
+   "0.75": 12.205,
+   "0.9": 12.544,
+   "0.95": 12.712,
+   "0.99": 12.869,
+   "1.0": 12.976
+  },
+  "road_km_nearest_luc_2011": {
+   "0.0": 0.124,
+   "0.01": 1.425,
+   "0.05": 2.712,
+   "0.1": 4.098,
+   "0.25": 8.421,
+   "0.5": 23.175,
+   "0.75": 41.269,
+   "0.9": 107.646,
+   "0.95": 163.704,
+   "0.99": 335.051,
+   "1.0": 530.568
+  },
+  "origin_snap_m_2011": {
+   "0.0": 4.5,
+   "0.01": 12.1,
+   "0.05": 16.6,
+   "0.1": 19.2,
+   "0.25": 25.7,
+   "0.5": 38.5,
+   "0.75": 57.1,
+   "0.9": 80.1,
+   "0.95": 97.75,
+   "0.99": 186.575,
+   "1.0": 810.3
+  },
+  "km_nearest_emp_point_2011": {
+   "0.0": 0.0,
+   "0.01": 0.0,
+   "0.05": 0.0,
+   "0.1": 0.0,
+   "0.25": 0.0,
+   "0.5": 0.0,
+   "0.75": 0.0,
+   "0.9": 0.0,
+   "0.95": 0.0,
+   "0.99": 0.595,
+   "1.0": 1.441
+  },
+  "job_access_2022": {
+   "0.0": 26.28,
+   "0.01": 711.831,
+   "0.05": 3598.865,
+   "0.1": 6951.828,
+   "0.25": 30356.645,
+   "0.5": 85509.375,
+   "0.75": 199819.465,
+   "0.9": 280187.467,
+   "0.95": 331952.602,
+   "0.99": 389462.774,
+   "1.0": 431297.44
+  },
+  "log_job_access_2022": {
+   "0.0": 3.269,
+   "0.01": 6.568,
+   "0.05": 8.188,
+   "0.1": 8.847,
+   "0.25": 10.321,
+   "0.5": 11.356,
+   "0.75": 12.205,
+   "0.9": 12.543,
+   "0.95": 12.713,
+   "0.99": 12.873,
+   "1.0": 12.975
+  },
+  "road_km_nearest_luc_2022": {
+   "0.0": 0.124,
+   "0.01": 1.413,
+   "0.05": 2.715,
+   "0.1": 4.138,
+   "0.25": 8.421,
+   "0.5": 22.356,
+   "0.75": 40.887,
+   "0.9": 103.937,
+   "0.95": 163.396,
+   "0.99": 335.037,
+   "1.0": 531.403
+  },
+  "origin_snap_m_2022": {
+   "0.0": 4.9,
+   "0.01": 12.3,
+   "0.05": 16.3,
+   "0.1": 18.9,
+   "0.25": 25.075,
+   "0.5": 37.8,
+   "0.75": 56.2,
+   "0.9": 77.89,
+   "0.95": 94.645,
+   "0.99": 175.444,
+   "1.0": 729.3
+  },
+  "km_nearest_emp_point_2022": {
+   "0.0": 0.0,
+   "0.01": 0.0,
+   "0.05": 0.0,
+   "0.1": 0.0,
+   "0.25": 0.0,
+   "0.5": 0.0,
+   "0.75": 0.306,
+   "0.9": 0.669,
+   "0.95": 1.057,
+   "0.99": 3.488,
+   "1.0": 32.061
+  }
+ },
+ "distance_method": {
+  "2011": {
+   "network": 6851,
+   "euclid_x1.3": 125
+  },
+  "2022": {
+   "network": 7262,
+   "euclid_x1.3": 130
+  }
+ },
+ "job_access_method": {
+  "2011": {
+   "network": 4942,
+   "network+euclid_x1.3": 2034
+  },
+  "2022": {
+   "network": 5272,
+   "network+euclid_x1.3": 2120
+  }
+ },
+ "job_access_euclid_share_gt_1pct": {
+  "2011": 155,
+  "2022": 161
+ },
+ "flags": {
+  "2011": {
+   "none": 4916,
+   "job_access_partly_euclid_x1.3": 2034,
+   "off_mainland_network": 125,
+   "luc_distance_euclid_x1.3": 125
+  },
+  "2022": {
+   "none": 5224,
+   "job_access_partly_euclid_x1.3": 2120,
+   "off_mainland_network": 130,
+   "luc_distance_euclid_x1.3": 130,
+   "nearest_emp_point_gt_5km": 32
+  }
+ },
+ "nearest_luc": {
+  "2011": {
+   "Glasgow": 3387,
+   "Edinburgh": 1740,
+   "Aberdeen": 1089,
+   "Dundee": 760
+  },
+  "2022": {
+   "Glasgow": 3553,
+   "Edinburgh": 1895,
+   "Aberdeen": 1159,
+   "Dundee": 785
+  }
+ },
+ "top10_job_access": {
+  "2011": [
+   {
+    "code": "S01010275",
+    "name": "City Centre South - 04",
+    "job_access": 431916.51,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 0.53,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01010265",
+    "name": "City Centre East - 07",
+    "job_access": 427730.43,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 0.16,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01010273",
+    "name": "City Centre South - 02",
+    "job_access": 427446.77,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 1.03,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01010272",
+    "name": "City Centre South - 01",
+    "job_access": 423146.93,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 1.15,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01010274",
+    "name": "City Centre South - 03",
+    "job_access": 422993.52,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 1.02,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01010260",
+    "name": "City Centre East - 02",
+    "job_access": 422662.01,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 0.5,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01010271",
+    "name": "City Centre West - 06",
+    "job_access": 421399.38,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 1.2,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01010263",
+    "name": "City Centre East - 05",
+    "job_access": 421266.14,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 0.63,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01010264",
+    "name": "City Centre East - 06",
+    "job_access": 421132.91,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 0.8,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01010267",
+    "name": "City Centre West - 02",
+    "job_access": 418682.32,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 1.47,
+    "network_component": "mainland",
+    "distance_method": "network"
+   }
+  ],
+  "2022": [
+   {
+    "code": "S01017427",
+    "name": "City Centre South - 05",
+    "job_access": 431297.44,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 0.56,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01017415",
+    "name": "City Centre East - 08",
+    "job_access": 427730.43,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 0.16,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01017425",
+    "name": "City Centre South - 03",
+    "job_access": 427446.78,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 1.03,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01017426",
+    "name": "City Centre South - 04",
+    "job_access": 426773.97,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 0.95,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01017172",
+    "name": "Laurieston and Tradeston - 06",
+    "job_access": 424414.38,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 1.2,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01017410",
+    "name": "City Centre East - 03",
+    "job_access": 422655.95,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 0.5,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01017414",
+    "name": "City Centre East - 07",
+    "job_access": 422227.3,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 0.74,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01017422",
+    "name": "City Centre West - 07",
+    "job_access": 421399.38,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 1.2,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01017413",
+    "name": "City Centre East - 06",
+    "job_access": 421266.13,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 0.63,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01017406",
+    "name": "Gallowgate North and Bellgrove - 05",
+    "job_access": 420146.83,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 0.7,
+    "network_component": "mainland",
+    "distance_method": "network"
+   }
+  ]
+ },
+ "bottom10_job_access": {
+  "2011": [
+   {
+    "code": "S01010812",
+    "name": "Sutherland North and West - 03",
+    "job_access": 242.51,
+    "nearest_luc": "Aberdeen",
+    "road_km_nearest_luc": 328.84,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01010814",
+    "name": "Sutherland North and West - 05",
+    "job_access": 265.96,
+    "nearest_luc": "Aberdeen",
+    "road_km_nearest_luc": 299.06,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01012414",
+    "name": "North and East Isles - 02",
+    "job_access": 275.17,
+    "nearest_luc": "Aberdeen",
+    "road_km_nearest_luc": 530.57,
+    "network_component": "island_182",
+    "distance_method": "euclid_x1.3"
+   },
+   {
+    "code": "S01010813",
+    "name": "Sutherland North and West - 04",
+    "job_access": 277.49,
+    "nearest_luc": "Aberdeen",
+    "road_km_nearest_luc": 298.99,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01010693",
+    "name": "Ross and Cromarty North West - 04",
+    "job_access": 278.98,
+    "nearest_luc": "Aberdeen",
+    "road_km_nearest_luc": 289.19,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01009033",
+    "name": "Northwest Lewis - 06",
+    "job_access": 287.9,
+    "nearest_luc": "Aberdeen",
+    "road_km_nearest_luc": 374.61,
+    "network_component": "island_113",
+    "distance_method": "euclid_x1.3"
+   },
+   {
+    "code": "S01007324",
+    "name": "Whisky Isles - 01",
+    "job_access": 293.26,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 134.58,
+    "network_component": "island_83",
+    "distance_method": "euclid_x1.3"
+   },
+   {
+    "code": "S01010685",
+    "name": "Skye North West - 04",
+    "job_access": 296.25,
+    "nearest_luc": "Dundee",
+    "road_km_nearest_luc": 333.39,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01009021",
+    "name": "Benbecula and North Uist - 03",
+    "job_access": 298.21,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 356.1,
+    "network_component": "island_107",
+    "distance_method": "euclid_x1.3"
+   },
+   {
+    "code": "S01007287",
+    "name": "Mull, Iona, Coll and Tiree - 04",
+    "job_access": 303.94,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 183.52,
+    "network_component": "island_73",
+    "distance_method": "euclid_x1.3"
+   }
+  ],
+  "2022": [
+   {
+    "code": "S01017861",
+    "name": "Ross and Cromarty South West - 03",
+    "job_access": 26.28,
+    "nearest_luc": "Aberdeen",
+    "road_km_nearest_luc": 289.81,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01018395",
+    "name": "Uig and Bernera",
+    "job_access": 71.52,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 401.32,
+    "network_component": "island_113",
+    "distance_method": "euclid_x1.3"
+   },
+   {
+    "code": "S01017988",
+    "name": "Sutherland North and West - 03",
+    "job_access": 205.88,
+    "nearest_luc": "Aberdeen",
+    "road_km_nearest_luc": 329.97,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01017989",
+    "name": "Sutherland North and West - 04",
+    "job_access": 232.3,
+    "nearest_luc": "Aberdeen",
+    "road_km_nearest_luc": 297.13,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01018390",
+    "name": "East North Uist to Berneray",
+    "job_access": 242.32,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 343.06,
+    "network_component": "island_107",
+    "distance_method": "euclid_x1.3"
+   },
+   {
+    "code": "S01018389",
+    "name": "West North Uist",
+    "job_access": 250.39,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 357.72,
+    "network_component": "island_107",
+    "distance_method": "euclid_x1.3"
+   },
+   {
+    "code": "S01019748",
+    "name": "North and East Isles - 02",
+    "job_access": 252.94,
+    "nearest_luc": "Aberdeen",
+    "road_km_nearest_luc": 531.4,
+    "network_component": "island_182",
+    "distance_method": "euclid_x1.3"
+   },
+   {
+    "code": "S01017665",
+    "name": "Lochaber West - 02",
+    "job_access": 256.68,
+    "nearest_luc": "Glasgow",
+    "road_km_nearest_luc": 236.57,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01017866",
+    "name": "Ross and Cromarty North West - 04",
+    "job_access": 263.19,
+    "nearest_luc": "Aberdeen",
+    "road_km_nearest_luc": 288.72,
+    "network_component": "mainland",
+    "distance_method": "network"
+   },
+   {
+    "code": "S01017867",
+    "name": "Ross and Cromarty North West - 05",
+    "job_access": 263.29,
+    "nearest_luc": "Aberdeen",
+    "road_km_nearest_luc": 283.5,
+    "network_component": "mainland",
+    "distance_method": "network"
+   }
+  ]
+ },
+ "top_by_nearest_luc": {
+  "Aberdeen": [
+   {
+    "code": "S01013543",
+    "vintage": 2022,
+    "name": "Rosemount - 01",
+    "job_access": 125431.4,
+    "rank_all": 5304
+   },
+   {
+    "code": "S01006567",
+    "vintage": 2011,
+    "name": "Rosemount - 04",
+    "job_access": 125106.4,
+    "rank_all": 5308
+   },
+   {
+    "code": "S01006656",
+    "vintage": 2011,
+    "name": "Ashgrove - 04",
+    "job_access": 125094.8,
+    "rank_all": 5309
+   }
+  ],
+  "Dundee": [
+   {
+    "code": "S01007705",
+    "vintage": 2011,
+    "name": "City Centre - 05",
+    "job_access": 71102.7,
+    "rank_all": 7738
+   },
+   {
+    "code": "S01015383",
+    "vintage": 2022,
+    "name": "City Centre - 05",
+    "job_access": 71102.7,
+    "rank_all": 7738
+   },
+   {
+    "code": "S01007711",
+    "vintage": 2011,
+    "name": "Docks and Wellgate - 05",
+    "job_access": 70518.3,
+    "rank_all": 7764
+   }
+  ],
+  "Edinburgh": [
+   {
+    "code": "S01008661",
+    "vintage": 2011,
+    "name": "Tollcross - 03",
+    "job_access": 295862.0,
+    "rank_all": 1147
+   },
+   {
+    "code": "S01008675",
+    "vintage": 2011,
+    "name": "Old Town, Princes Street and Leith Street - 02",
+    "job_access": 295673.4,
+    "rank_all": 1152
+   },
+   {
+    "code": "S01008674",
+    "vintage": 2011,
+    "name": "Old Town, Princes Street and Leith Street - 01",
+    "job_access": 295467.5,
+    "rank_all": 1156
+   }
+  ],
+  "Glasgow": [
+   {
+    "code": "S01010275",
+    "vintage": 2011,
+    "name": "City Centre South - 04",
+    "job_access": 431916.5,
+    "rank_all": 1
+   },
+   {
+    "code": "S01017427",
+    "vintage": 2022,
+    "name": "City Centre South - 05",
+    "job_access": 431297.4,
+    "rank_all": 2
+   },
+   {
+    "code": "S01010265",
+    "vintage": 2011,
+    "name": "City Centre East - 07",
+    "job_access": 427730.4,
+    "rank_all": 3
+   }
+  ]
+ },
+ "island_vs_mainland_median_job_access": {
+  "island": 2534.0,
+  "mainland": 86654.6,
+  "island_share_in_bottom_decile": 0.146,
+  "island_share_all": 0.018
+ },
+ "edinburgh_centre_zones_euclid_le_1.5km": {
+  "n": 137,
+  "road_km": {
+   "0.0": 0.463,
+   "0.5": 1.655,
+   "0.9": 2.061,
+   "1.0": 2.586
+  }
+ },
+ "glasgow_centre_zones_euclid_le_1.5km": {
+  "n": 75,
+  "road_km_median": 1.439,
+  "road_km_max": 2.512
+ },
+ "aberdeen_centre_zones_euclid_le_1.5km": {
+  "n": 88,
+  "road_km_median": 1.44,
+  "road_km_max": 1.937
+ },
+ "dundee_centre_zones_euclid_le_1.5km": {
+  "n": 62,
+  "road_km_median": 1.437,
+  "road_km_max": 2.401
+ },
+ "road_to_straight_ratio_mainland": {
+  "2-5km": {
+   "n": 1800,
+   "p10": 1.091,
+   "p50": 1.198,
+   "p90": 1.343
+  },
+  "5-20km": {
+   "n": 4941,
+   "p10": 1.079,
+   "p50": 1.141,
+   "p90": 1.278
+  },
+  "20-50km": {
+   "n": 4808,
+   "p10": 1.074,
+   "p50": 1.124,
+   "p90": 1.24
+  },
+  "50-100km": {
+   "n": 1014,
+   "p10": 1.096,
+   "p50": 1.145,
+   "p90": 1.353
+  },
+  "100-1000km": {
+   "n": 919,
+   "p10": 1.157,
+   "p50": 1.24,
+   "p90": 1.745
+  }
+ },
+ "road_to_straight_ratio_mainland_all_gt5km_median": 1.141,
+ "euclid_fallbacks": {
+  "luc_rows": 255,
+  "zones_with_any_euclid_pair": 4154,
+  "zones_euclid_share_gt_10pct": 90
+ },
+ "vintage_agreement": {
+  "note": "each 2022 origin vs nearest 2011 origin",
+  "coincident_within_5m": {
+   "n": 3117,
+   "max_abs_log_ratio_job_access": 0.02672,
+   "max_abs_diff_road_km": 0.461
+  },
+  "within_250m": {
+   "n": 6547,
+   "median_abs_log_ratio": 0.0
+  },
+  "all_2022": {
+   "n": 7392,
+   "corr_log_job_access": 0.99932,
+   "corr_road_km": 0.99996
+  }
+ },
+ "notes": [
+  "BRES open-access zone counts are rounded (all multiples of 5 here; Nomis rounds small-area BRES) and exclude farm agriculture (SIC 01000); Scotland BRES 2023 total incl. farm agriculture = 2,651,000",
+  "employment is placed at the 2011 population-weighted centroid (residential), not a workplace point",
+  "Open Roads has no ferries; off-mainland pairs use 1.3 x straight line"
+ ]
+}

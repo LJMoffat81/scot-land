@@ -30,6 +30,7 @@ python -m etl.load_processed --dataset gis    # one folder only
 | `geometry_level` | no | `zone` (default), `site`, `parcel`, `plot`, `uprn` or `building`: the geometry the file's rows describe | publication geometry rule (below); a key column such as `plot_id`, `parcel_id`, `uprn`, `toid` or `site_ref` must be declared with its level |
 | `source_granularity` | no | `zone` (default) or `site`: the grain at which the upstream source itself is published | needed (`site`) for public site-level values |
 | `site_source` | no | `svdls`, `hls` or `business_rates`: the site-public source behind site-level values | public site-level value columns need one of these |
+| `source_year` | no | Reference year of the upstream source (e.g. BRES employment year for `dz_access.csv`). Empty is allowed | empty or a four-digit year; recorded in `processed.manifest_loads.source_year` and passed into API credits as `source_year` |
 | `rows` | yes | Data rows (CSV lines excluding the header; GeoJSON features) | must equal the file's count |
 | `sha256` | yes | SHA-256 of the file bytes, lower-case hex | must match; a mismatching file is not parsed |
 
@@ -54,6 +55,9 @@ CSV column names are lower_snake_case identifiers. **Extra columns are
 tolerated** and loaded as they are (e.g. EPC `recent10_*`; mean floor area columns
 are still to come), so GIS can add columns without a code change. Only the declared
 key columns are required.
+
+Any other manifest column is tolerated (logged, ignored) by the loader and by
+`scripts/check_publishable.py`, so owners can add metadata columns without a code change.
 
 ## Failure behaviour
 

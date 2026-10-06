@@ -384,6 +384,15 @@ def test_repo_gis_dataset_loads_into_postgis(pgconn):
         assert cur.fetchone()[0] is None  # zero-dwelling zone: area blank, never 0
         cur.execute("SELECT to_regclass('processed.gis_dz_detached_plot_bands') IS NOT NULL")
         assert cur.fetchone()[0] is True
+        # GIS access context: loaded as-is; manifest source_year recorded as metadata (NULL when empty).
+        assert loaded["gis/dz_access.csv"] == 14_368
+        cur.execute("SELECT file, source_year FROM processed.manifest_loads WHERE dataset = 'gis' ORDER BY file")
+        years = dict(cur.fetchall())
+        assert years["dz_access.csv"] == 2023 and years["epc_dz_rollup.csv"] is None
+        cur.execute("SELECT flags FROM processed.gis_dz_access WHERE code = 'S01006506' AND vintage = 2011")
+        assert cur.fetchone()[0] == ""  # no flags stays '' (FORCE_NOT_NULL not needed: TEXT, empty)
+        cur.execute("SELECT count(*) FROM processed.gis_dz_access WHERE flags LIKE '%nearest_emp_point_gt_5km%'")
+        assert cur.fetchone()[0] > 0
 
 
 # --------------------------------------------------------------------------- Data Zones (real, committed)
@@ -563,3 +572,28 @@ def test_site_values_need_a_site_public_source(tmp_path, extra, ok):
 def test_repo_manifests_are_zone_level():
     for e in lp.validate(PROCESSED_DIR):
         assert e.geometry_level == "zone", e.label
+
+
+# ---- Optional and unknown manifest columns (SYNTHETIC) --------------------------------------------------
+
+def test_unknown_manifest_columns_are_tolerated(tmp_path):
+    root = _dataset(tmp_path, {"zones.csv": ZONES}, overrides={"zones.csv": {"build_host": "box-7", "notes": "x"}})
+    assert len(lp.validate(root)) == 1
+
+
+@pytest.mark.parametrize("year,expect", [("2023", 2023), ("", None)])
+def test_source_year_is_metadata_and_may_be_empty(tmp_path, year, expect):
+    root = _dataset(tmp_path, {"zones.csv": ZONES}, overrides={"zones.csv": {"source_year": year}})
+    assert lp.validate(root)[0].source_year == expect
+
+
+@pytest.mark.parametrize("year", ["23", "2023/24", "year", "1066"])
+def test_bad_source_year_rejected(tmp_path, year):
+    root = _dataset(tmp_path, {"zones.csv": ZONES}, overrides={"zones.csv": {"source_year": year}})
+    assert "source_year" in _problems(root)
+
+
+def test_repo_gis_access_file_validates():
+    e = next(x for x in lp.validate(PROCESSED_DIR, "gis") if x.file == "dz_access.csv")
+    assert e.publish_level == "public_zone" and e.key == ("code", "vintage") and len(e.frame) == 14_368
+    assert e.source_year == 2023 and "OS data" in e.attribution and "Office for National Statistics" in e.attribution

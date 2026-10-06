@@ -84,3 +84,11 @@ def test_this_repo_passes():
         pytest.skip("not a git checkout")
     r = subprocess.run(["python3", str(GUARD)], cwd=root, capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_extra_and_unknown_manifest_columns_are_tolerated(tmp_path):
+    _repo(tmp_path, {
+        "data/processed/gis/manifest.csv": "file,publish_level,source_year,anything_new\nz.csv,public_zone,,x\n",
+        "data/processed/gis/z.csv": "code,vintage,job_access\nS01006506,2011,1.0\n",
+    })
+    assert _problems(tmp_path) == []

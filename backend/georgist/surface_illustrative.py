@@ -216,6 +216,30 @@ def plot_size_diag_v07(zones: Sequence[Mapping], inputs: Mapping[str, "sr.ZoneRe
     return {**res, "uniform_estate_fraction": ebar, "n_zones_own_plot_evidence": len(with_e)}
 
 
+def gradient_v07(zones: Sequence[Mapping], cfg: Mapping, *, land_rows: list | None, access_path: str | None = None,
+                 access_metadata: Mapping | None = None, override: bool = False, reason: str = "") -> dict:
+    """Pre-registered rules 12.2 v0.7 job-access gradient. Without dz_access it reports pending and reads
+    nothing. A scored run records (dz_access sha256, config hash) in the internal run log first and refuses
+    a repeat on the same input without override."""
+    from georgist import surface_harvester as hv
+    from georgist import surface_paths as sp
+
+    g = cfg["gradient_v07"]
+    if not access_path:
+        return sh.job_access_gradient_check([], residential_land_rows=land_rows, access_rows=None, gcfg=g,
+                                            expected_order=cfg["land_share_checks"]["ur6_expected_order"], access_metadata=None)
+    sha = hv.sha256_file(Path(access_path))
+    guard = sh.RunGuard(sp.expand(g["run_guard"]["log"]))
+    entry = guard.register(access_sha256=sha, cfg_hash=sh.config_hash(g), override=override, reason=reason)
+    acc = hv.load_gis_output(access_path).to_dict("records")
+    obs = [{"code": z["code"], "vintage": 2011, "ur6_class": z["ur6_class"], "fill_method": "observed_pooled",
+            "sales_n": z["sales_n"], "observed_land_value": z["price_indexed"] - z["drc"]["central"], "dwellings": z["dwellings"]}
+           for z in zones]
+    res = sh.job_access_gradient_check(obs, residential_land_rows=land_rows, access_rows=acc, gcfg=g,
+                                       expected_order=cfg["land_share_checks"]["ur6_expected_order"], access_metadata=access_metadata)
+    return {**res, "run_log_entry": entry}
+
+
 def gradient_v06(zones: Sequence[Mapping], cfg: Mapping, *, access_path: str, land_rows: list | None) -> dict:
     """Rules 12.2 (v0.6) per-residential-hectare gradient on OBSERVED zones (central DRC).
     Access minutes from Data Zones (verified vs its manifest); residential land from GIS when posted."""
@@ -227,17 +251,18 @@ def gradient_v06(zones: Sequence[Mapping], cfg: Mapping, *, access_path: str, la
            for z in zones]
     acc = hv.load_gis_output(access_path).to_dict("records")
     land = land_rows
-    return sh.per_hectare_gradient_check(obs, residential_land_rows=land, access_rows=acc,
+    return {"label": g.get("label", "superseded driver, reported"), **sh.per_hectare_gradient_check(obs, residential_land_rows=land, access_rows=acc,
                                          expected_order=cfg["land_share_checks"]["ur6_expected_order"],
                                          min_zones_per_class=g["min_zones_per_class"], access_rho_max=g["access_rho_max"],
                                          min_sales=g["min_sales"], max_missing_share=g["max_missing_share"],
-                                         methods_ok=tuple(g["residential_land"]["methods_ok"]))
+                                         methods_ok=tuple(g["residential_land"]["methods_ok"]))}
 
 
 def run(*, raw_dir: str, gis_dir: str, dz_dir: str | None = None, residential_land_path: str | None = None, cfg: Mapping | None = None, area_fn: Callable[[Mapping, "sr.ZoneRebuildInputs"], float] | None = None,
         epc_primary: str = "all_time", estate_mode: str | None = None, estate_rows: Mapping[str, Mapping] | None = None,
         estate_mid_weight: float | None = None, swings: bool = True, plot_bands_path: str | None = None,
-        res_land_low_coverage: str = "exclude") -> dict:
+        res_land_low_coverage: str = "exclude", access_v07_path: str | None = None, access_v07_metadata: Mapping | None = None,
+        access_v07_override: bool = False, access_v07_reason: str = "") -> dict:
     """Run the illustrative tables on the real inputs (local files only)."""
     import pandas as pd
 
@@ -386,6 +411,8 @@ def run(*, raw_dir: str, gis_dir: str, dz_dir: str | None = None, residential_la
         "res_land_exclusions_priced": (pd.Series([x for r in land_rows if r["code"] in {z["code"] for z in zones_epc}
                                                   for x in (r["gradient_exclude"] or ("kept",))]).value_counts().to_dict()
                                        if land_rows else None),
+        "gradient_v07": gradient_v07(zones_epc, cfg, land_rows=land_rows, access_path=access_v07_path,
+                                     access_metadata=access_v07_metadata, override=access_v07_override, reason=access_v07_reason),
         "zones_epc": zones_epc,
         "inputs": inputs_cache, "prices": {p["code"]: p for p in prices}, "band": band, "base_year": base_year,
         "epc_rows": epc,

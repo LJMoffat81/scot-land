@@ -375,7 +375,8 @@ surface_rent:
       mask_too_big: res_land_low_confidence_mask_too_big    # mask_too_big_parcel
       uprn_exceeds: res_land_low_confidence_uprn_exceeds_dwellings
 
-  gradient:                       # rules 12.2 (v0.6): surface_holdout.per_hectare_gradient_check
+  gradient:                       # rules 12.2 (v0.6): SIMD minutes = SUPERSEDED DRIVER, still computed and reported as run (label below)
+    label: "superseded driver, reported"
     measure: observed_land_value_per_residential_ha
     observed_only: true           # Georgist 2026-10-06: travel times drive the fill model -> model-filled zones excluded
     min_sales: 5
@@ -391,3 +392,55 @@ surface_rent:
       drive: [drive_petrol, drive_GP, drive_post, drive_primary, drive_retail, drive_secondary]
       public_transport: [PT_GP, PT_post, PT_retail]
       never: [ranks, scores, deciles, domain values]
+
+  # ------------------------------------------------------------------------------------------------------------
+  # PRE-REGISTERED 2026-10-06 (rules sha256 prefix 23df6297, 12.2 v0.7) BEFORE GIS dz_access.csv exists.
+  # Measure, decay, thresholds and sample are fixed here and must not change after the result is seen
+  # (a new measure is a new pre-set test; both results are published). Committed on its own, ahead of the data.
+  # ------------------------------------------------------------------------------------------------------------
+  gradient_v07:
+    status: pre_registered
+    registered: "2026-10-06"
+    rules_sha256_prefix: 23df6297
+    measure: observed_land_value_per_residential_ha        # same numerator/denominator as v0.6 (parcel residential land)
+    between_class: unchanged                                # ur6_expected_order on class medians, as land_share_checks
+    input:
+      file: dz_access.csv                                   # GIS, keyed (code, vintage); DZ2011 rows used
+      owner: gis
+      key: "(code, vintage)"
+      vintage: 2011
+      columns:                                              # column names to be confirmed from the GIS manifest/README
+        job_access: job_accessibility                       #   on arrival (a pure rename is a mapping, not a new measure)
+        centre_km: road_km_nearest_large_urban_centre
+        island_flag: island_straight_line_x1_3
+    primary:                                                # DECIDES pass/fail, every UR6 class
+      driver: job_accessibility
+      rho_min: 0.10                                         # Spearman(GBP/res-ha, job accessibility) >= +0.10 within class
+    secondary:                                              # REPORTED alongside, never decides
+      driver: road_km_nearest_large_urban_centre
+      rho_max: -0.10
+    sample:
+      observed_fill_methods: [observed_pooled, shrunk_to_model]
+      min_sales: 5
+      exclude: [weak_match, mask_too_big_parcel, res_uprn_exceeds_dwellings, zero_dwellings]   # + no_residential_parcel
+      min_share_res_uprn_in_parcels: 0.5
+      min_zones_per_class: 30                               # same as v0.6; below -> insufficient_n
+    expected_metadata:                                      # GIS fixed settings; asserted against the file's manifest/metadata
+      employment_source: BRES                               # Business Register and Employment Survey, open
+      employment_geography: DZ2011
+      decay: exponential
+      decay_scale_km: 10
+      cutoff_km: 60
+      own_zone_jobs_included: true
+      network: OS Open Roads
+      origins: SG population-weighted centroids             # official Scottish Government DZ2011 centroids
+      large_urban_centres: [Aberdeen, Dundee, Edinburgh, Glasgow]   # the 4 city centres
+      island_rule: straight_line_x1.3                       # non-road-linked islands: straight-line distance x 1.3
+      island_flagged: true
+    on_class_fail:
+      report: failed                                        # never "inconclusive"
+      model_filled_band_multiplier: 1.5                     # PLACEHOLDER - needs Georgist sign-off before use
+      multiplier_status: PLACEHOLDER_GEORGIST_SIGNOFF
+    run_guard:                                              # the scored run happens ONCE per dz_access checksum
+      log: "{valuation_out_dir}/run_log/gradient_v07_runs.jsonl"   # internal, never committed
+      refuse_repeat_without_override: true

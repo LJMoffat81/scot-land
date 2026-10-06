@@ -561,3 +561,30 @@ DRAFT, not yet approved by Laurie. Results are internal (out/ JSON only) until t
 - the EPC-age-only sensitivity;
 - the pending case for comparison;
 - weak-match `keep` for the gradient.
+
+### 12.7 Pre-registered job-access gradient (2026-10-06, rules sha256 prefix 23df6297)
+
+DRAFT, not approved by Laurie. This section was committed **before** GIS's `dz_access.csv` existed. Nothing in it was chosen after seeing that file, and no result has been computed from it.
+
+- **Primary within-class driver (decides pass or fail):** job accessibility from `dz_access.csv`, joined on (code, vintage 2011). For every UR6 class, the test passes if Spearman ρ between land value per residential hectare and job accessibility is **≥ +0.10** within that class.
+- **Secondary measure (reported only):** road distance to the nearest large urban centre. The reported pass mark is ρ ≤ −0.10. It is shown next to the primary result and never decides pass or fail.
+- **Sample (same rules as v0.6):**
+  - observed zones with 5 or more sales only;
+  - exclude `weak_match`, `mask_too_big_parcel`, `res_uprn_exceeds_dwellings` and `zero_dwellings`, plus zero-dwelling zones from the zone spine;
+  - a class needs at least 30 zones, otherwise it is reported as `insufficient_n` and the overall result is pending.
+- **Between-class test:** unchanged (UR6 expected order).
+- **Expected GIS metadata (`gradient_v07.expected_metadata`), checked against the file's manifest on arrival:**
+  - BRES 2011-DZ employment;
+  - exponential falloff, 10 km scale, 60 km cutoff, own-zone jobs included;
+  - OS Open Roads distances from official SG population-weighted centroids;
+  - the 4 city centres (Aberdeen, Dundee, Edinburgh, Glasgow);
+  - islands with no road link use straight-line distance × 1.3 and are flagged.
+
+  A mismatch stops the run (`AccessMetadataMismatch`). Missing keys leave the result pending and unverified. Rank columns are refused.
+- **Superseded driver:** the v0.6 SIMD drive-time result is still computed and published as it came out, labelled "superseded driver, reported".
+- **A class that fails:**
+  - it is reported as `failed`, not inconclusive;
+  - its model-filled zones get wider bands: (central − low) and (high − central) are each multiplied by `gradient_v07.on_class_fail.model_filled_band_multiplier`, with the low end floored at 0. Observed zones are not widened.
+  - The multiplier value is a **PLACEHOLDER awaiting Georgist sign-off** (`multiplier_status: PLACEHOLDER_GEORGIST_SIGNOFF`). Widened rows carry the tag `band_multiplier_placeholder`.
+- **Run once:** before scoring, a scored run writes the dz_access sha256 and a hash of the `gradient_v07` config section to an internal run log (`{valuation_out_dir}/run_log/gradient_v07_runs.jsonl`, outside the repo). A second scored run on the same input is refused (`RepeatScoredRunError`) unless an explicit override with a written reason is given, and the override is logged too.
+- **Tests:** synthetic fixtures only (`tests/surface/test_surface_gradient_v07.py`).

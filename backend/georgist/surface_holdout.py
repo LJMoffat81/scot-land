@@ -736,3 +736,197 @@ def residential_land_rows_from_gis(rows: Iterable[Mapping], *, low_coverage: str
         out.append({"code": str(r["code"]), "vintage": r["vintage"], "residential_land_ha": r.get("residential_parcel_ha"),
                     "method": method, "gradient_exclude": tuple(excl), "low_confidence": tuple(low)})
     return out
+
+
+# =========================================================================== rules 12.2 v0.7: PRE-REGISTERED job-access gradient
+#
+# Registered 2026-10-06 (rules 23df6297) before GIS dz_access.csv exists. Config `gradient_v07` fixes the
+# driver, decay settings, thresholds and sample. The SIMD-minutes check above stays as the superseded
+# driver, reported as run.
+
+import hashlib as _hashlib  # noqa: E402
+import json as _json  # noqa: E402
+from datetime import datetime as _dt, timezone as _tz  # noqa: E402
+from pathlib import Path as _Path  # noqa: E402
+
+
+class AccessMetadataMismatch(ValueError):
+    """dz_access.csv metadata contradicts the pre-registered GIS settings."""
+
+
+class RepeatScoredRunError(RuntimeError):
+    """A second scored run on the same dz_access checksum without an explicit override."""
+
+
+def _norm(v):
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return float(v)
+    if isinstance(v, (list, tuple, set)):
+        return sorted(_norm(x) for x in v)
+    s = str(v).strip()
+    if s.lower() in ("true", "false"):
+        return s.lower() == "true"
+    if ";" in s:
+        return sorted(_norm(x) for x in s.split(";") if x.strip())
+    try:
+        return float(s)
+    except ValueError:
+        return s.lower()
+
+
+def check_access_metadata(meta: Mapping | None, expected: Mapping) -> dict:
+    """Assert GIS's dz_access settings against the pre-registered `expected_metadata`.
+
+    Any key present with a different value raises AccessMetadataMismatch. Keys missing from
+    `meta` leave status `incomplete` (the scored run then refuses). All keys equal -> `verified`."""
+    meta = dict(meta or {})
+    missing = [k for k in expected if k not in meta]
+    bad = {k: (meta[k], expected[k]) for k in expected if k in meta and _norm(meta[k]) != _norm(expected[k])}
+    if bad:
+        raise AccessMetadataMismatch(f"dz_access metadata differs from pre-registration: {bad}")
+    return {"status": "verified" if not missing else "incomplete", "missing": missing}
+
+
+def config_hash(section: Mapping) -> str:
+    return _hashlib.sha256(_json.dumps(section, sort_keys=True, default=str).encode()).hexdigest()
+
+
+class RunGuard:
+    """Internal JSONL run log for the once-only scored run (rules 12.2 v0.7). Records the dz_access sha256
+    and the pre-registration config hash; refuses a second scored run on the same input unless
+    `override=True` (the override and its reason are logged)."""
+
+    def __init__(self, log_path):
+        self.path = _Path(log_path)
+
+    def entries(self) -> list[dict]:
+        if not self.path.exists():
+            return []
+        return [_json.loads(x) for x in self.path.read_text(encoding="utf-8").splitlines() if x.strip()]
+
+    def register(self, *, access_sha256: str, cfg_hash: str, override: bool = False, reason: str = "") -> dict:
+        prior = [e for e in self.entries() if e.get("access_sha256") == access_sha256]
+        if prior and not override:
+            raise RepeatScoredRunError(f"scored run already recorded for dz_access {access_sha256[:8]} at {prior[0]['at']}; "
+                                       "pass override=True with a reason to re-run")
+        if override and not reason:
+            raise ValueError("an override needs a stated reason")
+        e = {"at": _dt.now(_tz.utc).isoformat(), "access_sha256": access_sha256, "config_hash": cfg_hash,
+             "override": bool(override), "reason": reason, "n_prior": len(prior)}
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8") as fh:
+            fh.write(_json.dumps(e) + "\n")
+        return e
+
+
+def job_access_rows(rows: Iterable[Mapping], columns: Mapping[str, str], *, vintage=2011) -> dict[str, dict]:
+    """dz_access rows -> {code: {job_access, centre_km, island}} for one vintage (rank/score columns refused)."""
+    for c in (columns["job_access"], columns["centre_km"]):
+        if any(t in c.lower() for t in ACCESS_FORBIDDEN_TOKENS):
+            raise ValueError(f"{c}: ranks/scores are not access measures")
+    out = {}
+    for r in rows:
+        if not _vintage_ok(r.get("vintage"), vintage):
+            continue
+        try:
+            ja, km = float(r[columns["job_access"]]), float(r[columns["centre_km"]])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if ja != ja or km != km:
+            continue
+        isl = columns.get("island_flag")
+        out[str(r["code"])] = {"job_access": ja, "centre_km": km, "island": _truthy(r.get(isl)) if isl else False}
+    return out
+
+
+def job_access_gradient_check(
+    zones: Sequence[Mapping],
+    *,
+    residential_land_rows: Iterable[Mapping] | None,
+    access_rows: Iterable[Mapping] | None,
+    gcfg: Mapping,
+    expected_order: Sequence[Sequence[int]],
+    access_metadata: Mapping | None,
+    exclude: Iterable[str] = ZERO,
+    vintage=2011,
+) -> dict:
+    """Pre-registered rules 12.2 v0.7 within-class gradient (config `gradient_v07`).
+
+    PRIMARY (decides): Spearman rho(GBP per residential ha, job accessibility) >= primary.rho_min in EVERY
+    UR6 class. SECONDARY (reported only): rho(GBP/res-ha, road km to nearest large urban centre) <=
+    secondary.rho_max. Sample: observed zones (observed_pooled/shrunk_to_model, >= min_sales), minus the
+    residential-land quality exclusions (counted by reason) and zero-dwelling zones. A class below
+    min_zones_per_class is insufficient_n. A class failing the primary is `failed` (never inconclusive);
+    its model-filled zones get the on_class_fail band multiplier. Between-class test unchanged.
+    Pending without residential land, without dz_access, or with unverified metadata."""
+    s = gcfg["sample"]
+    base = {"check": "gradient_v07_job_access", "pre_registered": gcfg.get("registered"), "status": "pending",
+            "pass": None, "decides_on": "primary"}
+    if residential_land_rows is None:
+        return {**base, "reason": "residential_land_missing"}
+    if access_rows is None:
+        return {**base, "reason": "dz_access_missing (pre-registered; awaiting GIS)"}
+    meta = check_access_metadata(access_metadata, gcfg["expected_metadata"])
+    base["metadata"] = meta
+    if meta["status"] != "verified":
+        return {**base, "reason": f"dz_access metadata unverified: missing {meta['missing']}"}
+    land = residential_land(residential_land_rows, vintage=vintage)
+    acc = job_access_rows(access_rows, gcfg["input"]["columns"], vintage=vintage)
+    zs = _sr.sample_for("holdout", list(zones), exclude)
+    base["n_excluded_zero_dwellings"] = len(zones) - len(zs)
+    used, excl_by, n_filled, missing = [], {}, 0, 0
+    for z in zs:
+        if z.get("fill_method") not in tuple(s["observed_fill_methods"]) or int(z.get("sales_n") or 0) < int(s["min_sales"]):
+            n_filled += 1
+            continue
+        lz = land.get(str(z["code"]))
+        if lz and lz.get("exclude"):
+            for reason in lz["exclude"]:
+                excl_by[reason] = excl_by.get(reason, 0) + 1
+            continue
+        az = acc.get(str(z["code"]))
+        if not lz or lz["ha"] is None or not az or z.get("observed_land_value") is None or not z.get("dwellings"):
+            missing += 1
+            continue
+        v = float(z["observed_land_value"]) * float(z["dwellings"]) / lz["ha"]
+        used.append((int(z["ur6_class"]), v, az["job_access"], az["centre_km"], az["island"]))
+    base.update(n_excluded_not_observed=n_filled, excluded_res_land_by_reason=excl_by, n_missing_land_or_access=missing,
+                n_used=len(used), n_islands_used=sum(1 for u in used if u[4]))
+    rmin, rmax, nmin = float(gcfg["primary"]["rho_min"]), float(gcfg["secondary"]["rho_max"]), int(s["min_zones_per_class"])
+    classes, med, failed = {}, {}, []
+    for c in sorted({u[0] for u in used}):
+        p = [u for u in used if u[0] == c]
+        if len(p) < nmin:
+            classes[c] = {"n_used": len(p), "status": "insufficient_n"}
+            continue
+        vals = [u[1] for u in p]
+        med[c] = statistics.median(vals)
+        rj, rc = spearman(vals, [u[2] for u in p]), spearman(vals, [u[3] for u in p])
+        ok = rj is not None and rj >= rmin
+        classes[c] = {"n_used": len(p), "median_gbp_per_res_ha": med[c], "rho_job_access": rj, "primary_pass": ok,
+                      "rho_centre_km": rc, "secondary_pass_reported": rc is not None and rc <= rmax,
+                      "status": "pass" if ok else "failed"}
+        if not ok:
+            failed.append(c)
+    pairs = [{"higher": a, "lower": b, "status": ("pass" if med[a] >= med[b] else "fail") if a in med and b in med else "insufficient_n"}
+             for a, b in expected_order]
+    st = [v["status"] for v in classes.values()]
+    status = "fail" if failed or any(p["status"] == "fail" for p in pairs) else ("pending" if "insufficient_n" in st or not st else "pass")
+    return {**base, "classes": classes, "between_class": pairs, "failed_classes": failed, "status": status,
+            "pass": {"pass": True, "fail": False}.get(status), "rho_min": rmin, "secondary_rho_max": rmax}
+
+
+def widen_failed_class_band(land_value: float | None, low: float | None, high: float | None, *, fill_method: str,
+                            ur6_class: int, failed_classes: Iterable[int], multiplier: float,
+                            multiplier_status: str) -> tuple[float | None, float | None, tuple[str, ...]]:
+    """Rules 12.2 v0.7: MODEL-FILLED zones in a class that failed the pre-registered measure get a wider
+    band (distance from the value scaled by `multiplier`, low floored at 0). Observed zones unchanged."""
+    if land_value is None or low is None or high is None or fill_method != "model_filled" or int(ur6_class) not in set(failed_classes):
+        return low, high, ()
+    m = float(multiplier)
+    tags = ("band_widened_gradient_v07_class_failed",)
+    if multiplier_status != "SIGNED_OFF":
+        tags += ("band_multiplier_placeholder",)
+    return max(0.0, land_value - (land_value - low) * m), land_value + (high - land_value) * m, tags

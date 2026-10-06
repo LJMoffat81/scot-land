@@ -106,6 +106,30 @@ def quality_flags_sql(alias: str = "") -> str:
 QUALITY_FLAGS_SQL = quality_flags_sql()
 
 
+# Yield provenance, internal views only (yields are never served publicly). A configured
+# fallback yield is an assumption, not evidence (no PRS rent cell behind it): every internal
+# view tags it "placeholder" so a rent built on it is never read as measured.
+YIELD_PLACEHOLDER_SOURCES: tuple[str, ...] = ("config_fallback",)
+YIELD_PLACEHOLDER_TAGS: tuple[str, ...] = ("yield_fallback:config",)
+YIELD_PLACEHOLDER_NOTE = "configured land yield: placeholder assumption, no PRS rent evidence behind it"
+
+
+def yield_provenance(row: Mapping) -> dict:
+    """{"status": placeholder | evidence | none, "yield_source", "yield_land", "yield_gross", "note"}."""
+    source = row.get("yield_source")
+    tags = list(row.get("proxy_tags") or [])
+    land, gross = row.get("yield_land"), row.get("yield_gross")
+    if source in YIELD_PLACEHOLDER_SOURCES or any(t in tags for t in YIELD_PLACEHOLDER_TAGS):
+        status, note = "placeholder", YIELD_PLACEHOLDER_NOTE
+    elif source is None and land is None:
+        status, note = "none", "no yield on this row"
+    else:
+        status, note = "evidence", f"yield from {source}"
+    return {"status": status, "yield_source": source,
+            "yield_land": None if land is None else float(land),
+            "yield_gross": None if gross is None else float(gross), "note": note}
+
+
 # Storage-only columns the DB adds to Valuation's row.
 DB_EXTRA_COLUMNS: tuple[str, ...] = (
     "absent_from_ros_price_file",  # zone never appears in the RoS price file (6 DZ2011 codes)

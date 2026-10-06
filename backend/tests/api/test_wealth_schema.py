@@ -268,3 +268,14 @@ def test_reconciliation_ceiling_is_valuations_mean_x_dwellings_x_gross():
         gross_yield_value=0.05,
     )
     assert rec.ceiling_rent_gbp == pytest.approx(200_000 * 400 * 0.05)
+
+
+def test_yield_provenance_tags_config_fallback_as_placeholder():
+    from georgist.wealth_schema import yield_provenance
+
+    p = yield_provenance({"yield_source": "config_fallback", "yield_land": 0.05, "proxy_tags": []})
+    assert p["status"] == "placeholder" and "placeholder" in p["note"] and p["yield_land"] == 0.05
+    assert yield_provenance({"yield_source": None, "yield_land": 0.05,
+                             "proxy_tags": ["yield_fallback:config"]})["status"] == "placeholder"
+    assert yield_provenance({"yield_source": "cell", "yield_land": 0.03, "proxy_tags": []})["status"] == "evidence"
+    assert yield_provenance({"yield_source": None, "yield_land": None, "proxy_tags": None})["status"] == "none"

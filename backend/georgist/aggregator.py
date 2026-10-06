@@ -34,6 +34,7 @@ from georgist.wealth_schema import (
     QUALITY_FLAG_TAGS,
     QUALITY_FLAGS_SQL,
     VALUE_TIERS,
+    yield_provenance,
 )
 
 logger = logging.getLogger(__name__)
@@ -143,6 +144,7 @@ def _component(layer: str, row: Mapping[str, Any], rent_key: str, *, internal: b
         out["model_filled"] = bool(row.get("model_filled"))
     if internal and layer == "surface":
         out["diagnostics"] = {k: _jsonable(row.get(k)) for k in INTERNAL_ONLY_COLUMNS if k in row}
+        out["yield"] = yield_provenance(row)  # a config-fallback yield is tagged "placeholder"
     return out
 
 
@@ -339,6 +341,8 @@ def build_payload(
             components.append(_component(layer, r, "annual_rent_gbp", internal=internal))
     if internal and any(c["excluded_reason"] == "placeholder" for c in components):
         flags.append("placeholders_listed_internal_only")
+    if internal and any(c.get("yield", {}).get("status") == "placeholder" for c in components):
+        flags.append("yield_placeholder_internal_only")
     display = surface_views(
         None if "surface_not_measured" in flags else surface, denominators, shown=surface_shown,
         dwelling_count=dwelling_count, population_count=population_count, spine=spine,

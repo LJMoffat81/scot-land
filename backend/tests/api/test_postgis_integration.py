@@ -204,6 +204,61 @@ def test_internal_endpoints_show_diagnostics_when_enabled(pg, surface_row, monke
     assert "raw_residual" in w["wealth"]["components"][0]["diagnostics"]
 
 
+def test_blocked_internal_v1_output_shape_never_reaches_public(pg, client, surface_row, monkeypatch):
+    """SYNTHETIC rows shaped like Valuation's blocked v1 file: every row publication_status
+    blocked, measured rows publish_level internal on a config-fallback (placeholder) yield,
+    model-fill rows placeholders. Public endpoints show no value; internal views (only with
+    ENABLE_INTERNAL_ENDPOINTS) show it with the yield tagged placeholder."""
+    from fastapi.testclient import TestClient
+
+    from api.main import create_app
+    from etl.migrate_to_postgis import upsert_surface_rent
+
+    def blocked(zone, **over):
+        row = surface_row(zone=zone, **{"publication_status": "blocked", "publish_level": "internal",
+                                        "yield_source": "config_fallback", "yield_land": 0.05, **over})
+        row["proxy_tags"] = list(row["proxy_tags"] or []) + ["yield_fallback:config", "publication_blocked_surface_v1"]
+        return row
+
+    measured = blocked(ZONE)
+    pending = blocked("S01008678", quality="placeholder", publish_level="public_zone", measured_rent=None,
+                      measured_rent_per_dwelling=None, rent_per_res_ha=None, uncertainty_low=None,
+                      uncertainty_high=None, yield_land=None)
+    upsert_surface_rent(pg, [measured, pending])
+    rent = f"{measured['measured_rent']:.0f}"
+
+    layer = client.get("/layers/georgist/surface-rent")
+    assert layer.status_code == 503  # nothing publishable: "not built", with the reasons and no values
+    detail = layer.json()["detail"]
+    assert detail["error"] == "surface_rent_not_built"
+    assert detail["withheld_by_reason"] == {"blocked": 1, "placeholder": 1}
+    assert rent not in layer.text
+
+    r = client.get("/georgist/wealth", params={"lat": 55.95, "lng": -3.19, "zone_id": ZONE})
+    w = r.json()["wealth"]
+    c = w["components"][0]
+    assert c["excluded_reason"] == "blocked" and c["withheld"] is True
+    assert c["measured_rent_gbp"] is None and c["uncertainty_low"] is None and c["uncertainty_high"] is None
+    assert w["totals_by_tier"] == {} and w["policy"]["policy_rent"] is None
+    assert all(v["value"] is None for v in w["display"]["views"].values())
+    assert "yield" not in c and "yield_land" not in r.text and "config_fallback" not in r.text
+    assert rent not in r.text
+    pw = client.get("/georgist/wealth", params={"lat": 55.95, "lng": -3.19, "zone_id": "S01008678"}).json()["wealth"]
+    assert "surface_not_measured" in pw["flags"] and pw["totals_by_tier"] == {}
+
+    # Internal endpoints are not mounted without the flag.
+    assert client.get(f"/internal/georgist/surface-rent/{ZONE}").status_code == 404
+    monkeypatch.setenv("ENABLE_INTERNAL_ENDPOINTS", "1")
+    ic = TestClient(create_app())
+    row = ic.get(f"/internal/georgist/surface-rent/{ZONE}").json()
+    assert row["yield"]["status"] == "placeholder" and row["yield"]["yield_land"] == pytest.approx(0.05)
+    assert row["row"]["publication_status"] == "blocked"
+    iw = ic.get("/internal/georgist/wealth", params={"lat": 55.95, "lng": -3.19, "zone_id": ZONE}).json()["wealth"]
+    ic0 = iw["components"][0]
+    assert ic0["yield"]["status"] == "placeholder" and "yield_placeholder_internal_only" in iw["flags"]
+    assert ic0["excluded_reason"] == "blocked" and iw["totals_by_tier"] == {}  # same totals as public
+
+
 def test_db_rejects_bad_enums_and_area_crosswalk(pg, surface_row):
     import psycopg2
 

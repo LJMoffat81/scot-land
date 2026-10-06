@@ -21,6 +21,7 @@ from api.wealth_routes import VINTAGE_QUERY_DESCRIPTION, _attribution_missing, _
 from georgist import db
 from georgist.aggregator import MixedPriceYearError, aggregator
 from georgist.attribution import AttributionMissing
+from georgist.wealth_schema import yield_provenance
 
 ENV_FLAG = "ENABLE_INTERNAL_ENDPOINTS"
 HEADERS = {"X-Wealth-Internal": "true", "Cache-Control": "no-store"}
@@ -82,6 +83,7 @@ def internal_surface_row(
     if row is None:
         raise HTTPException(status_code=404, detail={"error": "surface_row_not_found", "zone": code, "vintage": vin})
     return JSONResponse({"internal": True, "warning": WARNING,
+                         "yield": yield_provenance(row),  # config-fallback yields tagged "placeholder"
                          "row": {k: _plain(v) if not hasattr(v, "isoformat") else v.isoformat() for k, v in row.items()}},
                         headers=HEADERS)
 

@@ -390,7 +390,7 @@ def test_repo_gis_dataset_loads_into_postgis(pgconn):
         years = dict(cur.fetchall())
         assert years["dz_access.csv"] == 2023 and years["epc_dz_rollup.csv"] is None
         cur.execute("SELECT flags FROM processed.gis_dz_access WHERE code = 'S01006506' AND vintage = 2011")
-        assert cur.fetchone()[0] == ""  # no flags stays '' (FORCE_NOT_NULL not needed: TEXT, empty)
+        assert cur.fetchone()[0] == ""  # no flags stays '', never NULL (FORCE_NOT_NULL, as for Data Zones)
         cur.execute("SELECT count(*) FROM processed.gis_dz_access WHERE flags LIKE '%nearest_emp_point_gt_5km%'")
         assert cur.fetchone()[0] > 0
 

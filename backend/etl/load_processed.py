@@ -500,6 +500,8 @@ ALTER TABLE processed.manifest_loads ALTER COLUMN zone_vintage TYPE SMALLINT[]
 def _pg_type(dtype, column: str = "") -> str:
     if column == "vintage":
         return "SMALLINT"
+    if column in FORCE_NOT_NULL_COLUMNS:
+        return "TEXT"  # ';'-separated flags: '' = no flags, never NULL
     kind = getattr(dtype, "kind", "O")
     return {"i": "BIGINT", "u": "BIGINT", "f": "DOUBLE PRECISION", "b": "BOOLEAN"}.get(kind, "TEXT")
 
@@ -522,8 +524,11 @@ def _load_csv(cur, e: Entry) -> None:
     buf = io.StringIO()
     df.to_csv(buf, index=False, header=False, na_rep="")
     buf.seek(0)
-    cur.copy_expert(sql.SQL("COPY {} ({}) FROM STDIN WITH (FORMAT csv, NULL '')").format(
-        tbl, sql.SQL(", ").join(map(sql.Identifier, df.columns))).as_string(cur), buf)
+    keep = [c for c in df.columns if c in FORCE_NOT_NULL_COLUMNS]  # e.g. GIS dz_access `flags`: '' stays ''
+    force = (sql.SQL(", FORCE_NOT_NULL ({})").format(sql.SQL(", ").join(map(sql.Identifier, keep)))
+             if keep else sql.SQL(""))
+    cur.copy_expert(sql.SQL("COPY {} ({}) FROM STDIN WITH (FORMAT csv, NULL ''{})").format(
+        tbl, sql.SQL(", ").join(map(sql.Identifier, df.columns)), force).as_string(cur), buf)
 
 
 def _typed_columns(cur, schema: str, table: str) -> list[str]:

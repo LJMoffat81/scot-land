@@ -43,6 +43,8 @@ export interface WealthComponent {
   withheld: boolean;
   model_filled?: boolean;
   status?: "ok" | "withheld" | "excluded" | "not_applicable";
+  /** Valuation quality tags passed through, e.g. plot_bands_borrowed. */
+  quality_flags?: string[];
 }
 
 export interface TierTotal {
@@ -70,6 +72,9 @@ export interface DisplayView {
   second_home_share?: number | null;
   second_home_share_status?: "ok" | "denominator_pending";
   vacant_share?: number | null;
+  /** per_residential_hectare only: "low" where UPRN-in-parcel coverage < 0.5 or the parcel mask is too big. */
+  confidence?: "normal" | "low" | null;
+  confidence_reasons?: string[];
 }
 
 export interface DisplayViews {
@@ -149,6 +154,10 @@ export interface SurfaceRentZone {
   measured_rent: number | null;
   rent_per_residential_ha: number | null;
   rent_per_residential_ha_status: ViewStatus;
+  rent_per_residential_ha_confidence: "normal" | "low" | null;
+  /** per_dwelling where the residential-area confidence is low. */
+  preferred_view: ViewId;
+  quality_flags: string[];
   rent_per_dwelling: number | null;
   rent_per_dwelling_status: ViewStatus;
   rent_per_resident: number | null;

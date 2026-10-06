@@ -81,7 +81,9 @@ text come **only** from the manifest's `attribution` column (`georgist/attributi
 `source: "manifest"`); READMEs are not scraped and there is no pinned copy. A missing
 attribution is a 503 `attribution_missing`, never a silent omission. The frontend inspector
 shows credits under "Data credits"; a future surface-rent map layer must put
-`layer.attributions` into the map attribution control.
+`layer.attributions` into the map attribution control. The per-residential-hectare view
+credits `gis/dz_residential_land.csv` (RoS / OS wording from GIS's manifest) whenever it shows
+a figure.
 
 **Zero-dwelling zones (rules v0.7).** Data Zones' `zone_spine.flags` is the single source.
 It is ONE text column, `;`-separated, `''` when there are no flags; the engine splits it
@@ -140,7 +142,24 @@ denominator) take precedence; `dz_denominators` fills gaps.
    (flagged when the share is ≥ 10%).
 
 A missing denominator gives `status: "denominator_pending"` and `value: null`. Nothing is
-computed in its place. There is no whole-zone area column, and rent per hectare of
+computed in its place.
+
+**Residential area and confidence.** `etl.load_processed` derives `dz_denominators` from GIS's
+`dz_residential_land.csv` (`residential_parcel_ha`, `settlement_ha`, plus
+`share_res_uprn_in_parcels`, `mask_too_big_parcel`, `res_uprn_exceeds_dwellings` and the
+method flags); a 0 or blank area becomes NULL (pending), never 0. The per-residential-hectare
+view carries `confidence`: `low` where `share_res_uprn_in_parcels < 0.5`, `mask_too_big_parcel`
+is set, or only the settlement mask is available, with `confidence_reasons`. Where it is low
+and a per-dwelling figure exists, `display.default` (and the layer's `preferred_view`) becomes
+`per_dwelling` and the zone is flagged `residential_area_low_confidence`. The layer adds
+`rent_per_residential_ha_confidence` per zone. Residential area is display only: it never
+changes `measured_rent` or any tier total (tested).
+
+**Quality flags from Valuation.** Tags listed in `wealth_schema.QUALITY_FLAG_TAGS` (today
+`plot_bands_borrowed`: the zone had no plot-band shares and borrowed its council × urban-rural
+class shares) are read from Valuation's internal `proxy_tags` and served as `quality_flags`
+on the surface component and in the layer, and added to the payload `flags`. No other tag is
+served, and the API never re-values such zones (no all-estate or all-one-off default). There is no whole-zone area column, and rent per hectare of
 whole-zone area is never served for surface rent.
 
 ## Schema (`backend/db/schema/*.sql`)

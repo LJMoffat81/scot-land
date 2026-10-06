@@ -76,8 +76,13 @@ previous load intact.
   (compared case-folded, because the SIMD access file has mixed-case headers, which is logged).
   `flags` is COPYed with `FORCE_NOT_NULL`, so "no flags" stays `''`, never NULL.
 * **Held files.** `HELD_FILES` in the loader lists manifest rows deliberately not validated or
-  loaded while the owner corrects them (today `gis/dz_residential_land.csv`, which is also
-  not copied into the repo). They are skipped with a warning.
+  loaded while the owner corrects them (empty today). They are skipped with a warning.
+* **Internal files.** Rows with `publish_level = internal` (e.g. GIS's
+  `dz_detached_plot_bands.csv`) are never copied into this public repo. The loader skips them
+  unless `--include-internal` is given (with `--root` pointing at the owner's folder), and then
+  loads them into schema `processed_internal`, which no public endpoint reads.
+* **Derived tables.** After `gis/dz_residential_land.csv` loads, the same transaction fills
+  `dz_denominators` (display areas and the per-hectare confidence inputs).
 * Provenance: `processed.manifest_loads` (dataset, file, table, owner, source,
   licence, attribution, publish_level, zone_vintage, key_type, key, rows, sha256, loaded_at).
 

@@ -1,0 +1,393 @@
+# Scot-LAND: surface land rent (residual) configuration. DRAFT v1.
+# A separate lens from the AGR roll (agr.yaml valuer_roll). Nothing here changes
+# the signed-off agr.yaml defaults. Spec: scot-land-valuation/surface_rent_spec.md
+# Labels: ASSUMPTION = placeholder awaiting sign-off; PENDING_SOURCE = must be
+# supplied before a production run (the code refuses to run without it).
+
+surface_rent:
+  method: residual_drc_surface_v1
+  valuation_date: "2025-04-01"
+  value_basis: proxy              # Georgist rule 2: never 'market'
+
+  price:
+    measure: mean                 # rules 6.1 (v0.3): MEAN for anything that adds up (rent, totals, ceiling)
+    ceiling_measure: mean         # rules 4.2: zone observed total = MEAN price x dwellings, same vintage and year
+    display_measure: median       # rules 6.1: shown as `typical_sale_gbp` only, never used in rent or totals
+    skew_flag:                    # rules 6.1 robustness flag -> price_skew_flag / tag price_skew_small_sample
+      mean_median_ratio_min: 1.40 # DEFAULT: ~95th pct of mean/median among RoS DZ2011 zone-years 2019-2023 with 5-14 sales
+                                  # (5-9 sales: p95 1.381; 10-14 sales: p95 1.389). Flags roughly 1 in 20 small zones.
+      small_sales_n_below: 15     # DEFAULT: = n_full; zones at/above this are used unshrunk and not flagged
+    index_to_valuation_year: true # within-RoS pooling indexes years to the latest RoS year (raw price_year)
+
+    pool_years: 3                 # first window (latest N years)
+    pool_years_max: 5             # widened window before falling back to the model
+    n_min: 5                      # RoS suppression threshold
+    n_full: 15                    # at or above this, observed value is used unshrunk
+    shrinkage_k: 8                # ASSUMPTION: weight of model in thin-zone blend
+
+  price_index:                    # rules 2 (v0.4): prices indexed TO the rebuild price year, never the reverse
+    source_id: uk_hpi_full_file
+    publisher: "HM Land Registry with Registers of Scotland and ONS (UK House Price Index, National Statistic)"
+    licence: OGL-3.0
+    url: "https://publicdata.landregistry.gov.uk/market-trend-data/house-price-index-data/UK-HPI-full-file-2026-07.csv"
+    landing_page: "https://www.gov.uk/government/statistical-data-sets/uk-house-price-index-data-downloads-july-2026"
+    sha256: "654a541934ba7b393a741e23bc0c6fb668690f562feb8a7b4fff62d653fd6607"   # downloaded 2026-10-06; data to Jul 2026
+    geography: council_area       # S12 council areas (32/32 match NRS DZ2011 council codes); NOT data zone
+    series: "Index (non-seasonally adjusted; Jan 2023 = 100) by property type: DetachedIndex, SemiDetachedIndex, TerracedIndex, FlatIndex; all-dwellings Index as fallback"
+    base: "annual mean of the 12 monthly index values in the raw RoS price year (RoS figures are calendar-year)"
+    target_month: "2025-04"       # = rebuild price base (Apr-2025)
+    price_year: 2025              # output `price_year` = year values are expressed in (= rebuild price base). RoS sales year -> `evidence_year`
+    type_weighting: "value-weighted (Laspeyres): sum s_t * P_t * f_t / sum s_t * P_t; s_t = zone type mix (NRS 2017 DZ2011 type counts until the EPC sold mix lands), P_t = council UKHPI average price by type in the base year"
+    proxy_tag: indexed_council_hpi   # within-council zone trends can differ
+    extreme_log_abs: 0.15         # ASSUMPTION: |ln factor| above this -> tag index_factor_extreme (e.g. Shetland 2023->Apr25 = 1.25)
+
+  rebuild:
+    status: OPEN_ESTIMATE         # Laurie/team 2026-10-06: open labelled estimate; BCIS licence only if holdout shows rebuild drives error
+    label: "APPROXIMATION - open-source estimate with a deliberately wide band. Not a BCIS licensed table, not a reinstatement valuation."
+    unit: "GBP per m2 gross internal floor area (GIFA), new-build replacement incl. on-costs"
+    price_base: "2025-04"         # BCIS UK median rates as quoted April 2025
+    valuation_date: "2025-04-01"  # = price base, so uplift factor is 1.0
+    uplift:
+      index: "ONS Construction Output Price Indices, new housing (UK, 2015=100)"
+      index_url: "https://www.ons.gov.uk/businessindustryandtrade/constructionindustry/datasets/interimconstructionoutputpriceindices"
+      factor_by_price_year:           # price-base -> price_year. Missing year => PendingSourceError (never assumed 1.0)
+        2025: 1.0                     # price base Apr-2025 = valuation date. Add years only from ONS OPI new housing.
+      scottish_crosscheck: "https://www.gov.scot/publications/scottish-social-housing-tender-price-index-sshtpi-quarterly-report-june-2025/"
+    # Derivation (band = rebuild cost band; NOTE low rebuild -> HIGH land value):
+    #   base(type)  = BCIS UK median £/m2 rows for that type [S1]:
+    #                 low = min row, central = mean of rows, high = max row
+    #   x location  = Scotland factor: low 0.86 [S1 Aberdeenshire factor], central 0.93 (midpoint), high 1.00
+    #                 [S2,S3 Lothian councils publish at ~UK level: Apr-2026 2-storey estate 1,424 / 1,506 vs UK Apr-2025 1,461]
+    #   x on-costs  = fees, externals, demolition/clearance: low 1.05, central 1.15, high 1.25 (ASSUMPTION;
+    #                 [S5] works costs >=83% of gross new-build cost => non-works ~<=20% of works, incl. acquisition)
+    #   rounded to £1. low = low x low x low; high = high x high x high (deliberately wide).
+    #   BCIS rows used (UK median, Apr 2025, via [S1]):
+    #     detached: estate generally 1-st 1718, 2-st 1461, 3-st 1562; one-off detached 1-st 2383, 2-st 2498
+    #     semi_detached: estate semi 1-st 1718, 2-st 1482, 3-st 1504; one-off semi 1918
+    #     terraced: estate terraced 1-st 1705, 2-st 1455, 3-st 1529
+    #     flat_purpose_built: flats 1-2 st 1666, 3-5 st 1729, 6+ st 2036
+    #     flat_conversion: purpose-built flat rows (no open conversion-rebuild row); high = 2370 Highland
+    #                      non-domestic-to-flat conversion rate [S4]
+    #     other: all house and flat rows above (min / mean / max)
+    #   1.5-storey rows excluded (Aberdeenshire derived them as +30%, not BCIS).
+    # Cross-checks (not used in the numbers): [S5] SHN DVfM 2022/23 affordable new build mean £2,145/m2
+    #   (range 776-3,771; 38 projects); SSHTPI 1Q2023 402 -> 1Q2025 389 (~-3%) => ~£2,080/m2 at 2025, inside
+    #   every type's band (affordable spec is above average stock). Current agr.yaml 1950/1850 also inside.
+    gbp_per_m2:
+      detached:           {low: 1319, central: 2058, high: 3122}
+      semi_detached:      {low: 1338, central: 1771, high: 2398}
+      terraced:           {low: 1314, central: 1672, high: 2131}
+      flat_purpose_built: {low: 1504, central: 1936, high: 2545}
+      flat_conversion:    {low: 1504, central: 1936, high: 2962}
+      other:              {low: 1314, central: 1880, high: 3122}
+      # rules 6.2 v0.7 procurement route: post-1980 detached on estates. Rows = [S1] p.1 Table 1 "Estate housing
+      # 4 units or more" (UK median BCIS, Apr 2025): single storey 1718, 2 storey 1461, 3 storey 1562 (1.5 storey
+      # excluded: derived +30%). NO free source publishes a separate "estate housing - detached" row; this is the
+      # generic estate row (built form not split): rate_basis generic_estate (rules 6.2 v0.7, Georgist-approved
+      # 2026-10-06, rules sha256 933c3767...). Same low-high band (same factors) as the other rates.
+      detached_estate:    {low: 1319, central: 1690, high: 2148}
+    rate_basis:                   # rules 6.2 v0.7 field: how each rate was sourced (surface_rent.RATE_BASES)
+      detached: bcis_median_type             # BCIS UK median rows for the type (estate + one-off detached)
+      semi_detached: bcis_median_type
+      terraced: bcis_median_type
+      flat_purpose_built: bcis_median_type
+      flat_conversion: bcis_median_type_override   # purpose-built flat rows; high = Highland conversion rate [S4]
+      other: bcis_median_all_rows                  # all house and flat rows
+      detached_estate: generic_estate              # [S1] "Estate housing 4 units or more" (mixes built forms)
+    base_rows_gbp_per_m2:         # BCIS UK median, Apr 2025, as quoted in [S1]; [S4] for flat_conversion high
+      detached: [1718, 1461, 1562, 2383, 2498]       # = estate generic + one-off rows (UNCHANGED; used for pre-1980 / non-estate detached)
+      detached_estate: [1718, 1461, 1562]            # [S1] p.1 Table 1 "Estate housing 4 units or more"
+      semi_detached: [1718, 1482, 1504, 1918]
+      terraced: [1705, 1455, 1529]
+      flat_purpose_built: [1666, 1729, 2036]
+      flat_conversion: {rows: [1666, 1729, 2036], high_override: 2370}
+      other: [1718, 1461, 1562, 2383, 2498, 1718, 1482, 1504, 1918, 1705, 1455, 1529, 1666, 1729, 2036]
+    factors:
+      location_scotland: {low: 0.86, central: 0.93, high: 1.00}
+      on_costs:          {low: 1.05, central: 1.15, high: 1.25}
+    sources:
+      - id: S1
+        title: "Aberdeenshire Council Building Standards - Aberdeenshire Cost Index 2025 (quotes BCIS online guide UK median £/m2; Aberdeenshire factor 0.86)"
+        url: "https://aberdeenshire.gov.uk/media/yzdb2yxh/aberdeenshire-cost-index.pdf"
+        date: "2025-04 (V06.00 April 2025)"
+      - id: S2
+        title: "West Lothian Council - Guide to estimating the value of building work (BCIS review of building prices, April 2026)"
+        url: "https://www.westlothian.gov.uk/article/33325/Guide-to-estimating-the-value-of-building-work"
+        date: "2026-04"
+      - id: S3
+        title: "Midlothian Council - Building Standards Midlothian Cost Index (v14)"
+        url: "https://www.midlothian.gov.uk/download/downloads/id/1048/midlothian_cost_index_pdf.pdf"
+        date: "2026-04-02"
+      - id: S4
+        title: "Highland Council - How fees are calculated (examples of building prices from the BCIS guide)"
+        url: "https://www.highland.gov.uk/building-standards/building-warrant-fees-costs/2"
+        date: "undated; accessed 2026-10-06"
+      - id: S5
+        title: "Scotland's Housing Network - Development Value for Money report 2022/23 (cost per m2, works share)"
+        url: "https://scotlandshousingnetwork.org/wp-content/uploads/2023/08/DVFM-Report-August-2023-v1.0.pdf"
+        date: "2023-08"
+      - id: S6
+        title: "BCIS - Rebuild cost models update (Jan-2025 base, +3.8% y/y; models licensed, no open £/m2)"
+        url: "https://www.bcis.co.uk/news/rebuild-cost-models-update-shows-uplift-in-reinstatement-costs/"
+        date: "2025-07"
+    region_factors:
+      default: 1.0                # Scotland factor is inside the band; sub-Scotland factors not yet sourced (SSHTPI location indices are a candidate)
+
+  estate:                         # rules 6.2 v0.7 procurement route + Georgist guard 2026-10-06 (weighted blend, no hard cut-off)
+    status: APPROVED_GENERIC_ESTATE      # Georgist approved 2026-10-06; rate_basis generic_estate (rebuild.rate_basis)
+    rules_sha256_prefix: 933c3767        # ECONOMIC_RULES.md draft v0.7 checked against
+    rate_source: "[S1] Aberdeenshire Cost Index 2025 (V06.00 April 2025), page 1, Table 1, 'Estate housing 4 units or more' (UK BCIS median column); sha256 c7a1efaba918e3a8212f238b5ba5fd73a9075d26f79ec29e796273e5fee5aef3"
+    rate_crosschecks: "[S2] West Lothian (BCIS Apr-2026) single/two/three storey estate 1687/1424/1493; [S3] Midlothian v14 (Apr-2026) 1764/1506/1579; [S4] Highland 'Estate housing (2-storey, incl. semi-detached)' 1576. None splits estate housing by built form."
+    rate_assumption: "BCIS estate housing = schemes of 4+ units (one-off = 3 units or less). The source states NO plot size; parcel bands are our proxy for 'on an estate'."
+    applies_to: "ALL detached homes whatever their age (rules 3b273073): estate/one-off split by plot evidence, weighted by GIS all_ages parcel-band shares; blank shares borrow the dwelling-weighted all_ages shares of their council x UR6 cell (plot_bands_borrowed), else UR6 nationally (plot_bands_borrowed_national); never the one-off rate or all-estate by default"
+    rules_sha256_prefix_split: 22c35eba   # ECONOMIC_RULES.md: plot evidence for all detached, no age gating; blank shares borrow council x UR6, then UR6 national
+    post_1980_bands: ["1984-1991", "1992-1998", "1999-2002", "2003-2007", "2008 onwards"]   # EPC-age-only SENSITIVITY only (1976-1983 straddles 1980)
+    mode: plot_bands              # plot_bands (main: all ages) | epc_age_upper_bound (SENSITIVITY: all post-1980 detached = estate) | pending
+    band_weights: {lt: 1.0, mid: 0.5, gt: 0.0}   # <0.05 ha fully estate; 0.05-0.1 ha config weight; >0.1 ha fully one-off
+    mid_weight_sensitivity: [0.0, 1.0]           # = hard cut-off at <0.05 ha (0.0) and at <0.1 ha (1.0)
+    min_homes: 5                  # GIS leaves shares blank below this -> estate_share_pending
+    source_file: dz_detached_plot_bands.csv      # GIS, publish_level INTERNAL (RoS INSPIRE + OS terms); sha256 prefix 9bb56d3b
+    source_sha256_prefix: 9bb56d3b
+    columns:                      # GIS dz_detached_plot_bands all_ages cohort
+      lt: all_ages_share_lt005
+      mid: all_ages_share_005_010
+      gt: all_ages_share_gt010
+      median_parcel_ha: all_ages_median_parcel_ha
+      n_matched: n_detached_all_ages_matched
+    publish_level_inherited: internal   # any output using this input stays internal until GIS clears the OS terms
+    never_a_driver: true          # plot / parcel size selects the rebuild RATE only; drivers.forbidden_substrings blocks it
+
+  zero_dwellings:                 # rules v0.7: no residential surface rent (fill_method not_applicable, null)
+    source: zone_spine_flags      # Data Zones zone_spine `flags` token zero_dwellings, when present
+    fallback_codes: [S01010206, S01010226, S01010227]   # tested fallback (Data Zones dwellings_by_year zero_dwellings 2018+)
+    overrides_price: true         # S01010227 Sighthill-03 still has RoS price rows
+    exclude_from: [model_fit, yield_calibration, fill_donor, holdout]   # surface_rent.sample_for
+
+  per_resident:
+    hide_flag: pop_dwellings_mismatch   # Data Zones zone_spine (upcoming; e.g. S01011598): per-resident figures null
+
+  epc_overcount:                  # demolished stock: old certificates bias EPC floor area and age
+    threshold: 1.25               # certificates / 2025 homes above this -> tag floor area + age proxy
+    ratio_by_source: {epc_all_time: coverage_share, epc_recent10: recent10_coverage_share, nrs2017: coverage_share}
+    prefer_flag_column: res_uprn_exceeds_dwellings   # GIS flag, used instead of the ratio once in the rollup
+
+  rebuild_mix:                    # rules 6.1: mean DRC for the SAME homes as the mean price
+    prefer: sold                  # rules 6.1 (v0.4): EPC certificates from the last 10 years as the sold-mix proxy
+    sold_proxy_years: 10
+    epc_coverage_over_100: recent_certificates_only   # flagged epc_coverage_over_100_recent_only
+    min_sold_records: 5           # ASSUMPTION: below this the zone's whole-stock EPC mix is used, flagged all_stock
+    bases: [sold, all_stock]      # stamped per row as rebuild_mix_basis
+
+  rebuild_inputs:                 # per-zone mix, age and floor area for the rebuild cost (rules 6.2)
+    source: "Scot-LAND GIS epc_dz_rollup.csv, verified against GIS manifest.csv (sha256, rows, key, vintages)"
+    vintage_used: DZ2011          # = price vintage; DZ2022 rows are never mixed in (rules 2)
+    epc_primary: all_time         # team 2026-10-06: all-certificate columns primary (73% coverage); recent10_ (54%) = sensitivity
+    chain: [epc_all_time, epc_recent10, nrs2017]   # coverage > 100% -> recent10 (rules 6.1), flagged
+    floor_area: "MEAN: tfa_mean_house_m2 (House+Bungalow) for det/semi/terr, tfa_mean_flat_m2 (Flat+Maisonette) for flats, each blank if <5 certs -> tfa_mean_m2 -> default (tagged). floor_area_basis=mean"
+    rollup_sha256_verified: "38d086bc248aff1d4ee5825b6334d756d1c371390b94846b24a5282412879071"   # 83 cols, 14,368 rows, verified vs GIS manifest 2026-10-06 01:2x BST
+    min_tfa_n: 5
+    default_floor_area_m2: 97     # NRS-2017 fallback only. agr.yaml typical_dwelling_sqm (SHCS 2023 KA4)
+    default_remaining_factor: 0.55   # only if a zone has no EPC age mix. agr.yaml average_stock_remaining_factor
+    type_mapping: "EPC marginals: flat+maisonette -> flat_purpose_built; park home+unknown -> other; house+bungalow split by built-form shares (det / semi / mid+end+enclosed terrace), unknown form dropped"
+
+  zones:                          # Data Zones convention (2026-10-06): vintage is the INTEGER 2011 | 2022, never 'DZ2011'
+    vintage_storage: integer
+    code_ranges: {2011: [S01006506, S01013481], 2022: [S01013482, S01020873]}   # surface_zones.CODE_RANGES; mismatches rejected
+    no_price_zones: "6 DZ2011 zones absent from the RoS price file (Data Zones zone_spine flag absent_from_ros_price_file) -> no price, model fill (land value None until the model exists), never zero"
+  urban_rural:                    # 6-fold class on the PRICE vintage (DZ2011)
+    source_id: sg_urban_rural_2020_dz2011
+    url: "https://www.gov.scot/binaries/content/documents/govscot/publications/advice-and-guidance/2022/05/scottish-government-urban-rural-classification-2020/documents/scottish-government-urban-rural-classification-2020-data-zone-2011-lookup/scottish-government-urban-rural-classification-2020-data-zone-2011-lookup/govscot%3Adocument/scottish-government-urban-rural-classification-2020-data-zone-2011-lookup.csv"
+    landing_page: "https://www.gov.scot/publications/scottish-government-urban-rural-classification-2020/documents/"
+    sha256: "0440de97902c393c2568780505901251dab9426f0781069fb9c6a3a383f04851"   # downloaded 2026-10-06; 6,976 zones
+    licence: OGL-3.0
+    assignment: population_weighted_centroid
+
+  depreciation:
+    # Rules 6.2 (v0.6, signed off 6 Oct 2026): straight line on age at the valuation date, floored.
+    # Central with a low-high band; the band feeds the land value band TOGETHER with the rebuild band.
+    # Engine settings keys to mirror: surface_rent.depreciation.life_years.{low,central,high},
+    #   surface_rent.depreciation.remaining_min.{low,central,high}, surface_rent.depreciation.band_combination.rule
+    life_years: {low: 80, central: 100, high: 120}        # building life, years
+    remaining_min: {low: 0.20, central: 0.30, high: 0.40}  # remaining building value never below this share
+    band_combination:
+      rule: corner                # joint extremes, NOT independent quadrature (see spec 12.4)
+      # DRC rises with rebuild GBP/m2, with life (slower write-down) and with the floor, so:
+      drc_high_land_low: {rebuild: high, life_years: high, remaining_min: high}   # -> land_value_low / drc_high_gbp
+      drc_low_land_high: {rebuild: low, life_years: low, remaining_min: low}      # -> land_value_high / drc_low_gbp
+      # central = central x central x central. The code rejects any other pairing (surface_rent.band_corners).
+    obsolescence_review:          # rules 6.2: large old homes with strong negatives -> review floor (not forced positive)
+      flag_pre1919_share_min: 0.40
+      flag_mean_area_m2_min: 110
+    # EPC construction age band -> representative build year (midpoint). ASSUMPTION.
+    # Band labels must be checked against the SEPCR publication note before ingest.
+    age_band_midpoint_year:
+      "before 1919": 1890
+      "1919-1929": 1924
+      "1930-1949": 1940
+      "1950-1964": 1957
+      "1965-1975": 1970
+      "1976-1983": 1980
+      "1984-1991": 1988
+      "1992-1998": 1995
+      "1999-2002": 2001
+      "2003-2007": 2005
+      "2008 onwards": 2016
+
+  yield:
+    table: brma_x_ur6             # team lock 2026-10-06
+    land_yield: 0.05              # rules 1: THE land yield = r - g (single figure; used as the fallback where cell
+                                  # evidence is thin). ASSUMPTION: matches agr.yaml valuer_roll.yield_rate.
+                                  # No r or g here: the code refuses them outside `scenarios`.
+    deductions:                   # gross -> land yield. ASSUMPTION pending sign-off
+      void: 0.04                  # share of gross rent lost to voids
+      running_costs: 0.25         # management, repairs, insurance, compliance (share of gross)
+      building_depreciation: from_life_years   # 1 / depreciation.life_years on building share
+    class_cap: [0.7, 1.4]         # cell yield bounded to this x BRMA-wide yield, flagged
+    prs_min_records: 30
+    price_min_sales: 30
+    brma_share_tolerance: 1.0e-6
+
+  uncertainty:                    # relative interval width (high-low)/value
+    low_max: 0.30
+    medium_max: 0.70
+
+  ur6_adjacency:                  # thin class borrows from nearest class (rule 4)
+    1: [2]
+    2: [1, 3]
+    3: [2, 4, 5]
+    4: [3, 6]
+    5: [3, 6]
+    6: [4, 5]
+  class_min_zones: 150
+
+  drivers:
+    allowed:
+      - simd_access_drive_times
+      - simd_access_pt_times
+      - bus_accessibility
+      - broadband
+      - dwelling_density
+      - ct_band_mix               # ranking signal for thin-sales zones
+      - derelict_proximity
+      - crime_housebreaking
+      - crime_vandalism
+      - crime_violence
+      - flood_exposure
+      - noise_exposure
+      - air_quality_exposure
+    forbidden_substrings: [income, employment, deprivation, simd_rank, simd_decile, simd_overall, parcel, plot, estate_share, post1980_, pre1980_, all_ages_, share_lt005, share_005_010, share_gt010]   # plot size selects the rebuild rate only (Georgist guard)
+  crime:
+    min_residents: 300            # ASSUMPTION: mask crime driver below this
+    mask_town_centres: true
+
+  # Exact team enum (rules 11). Surface may only use none | address_uprn | value_weighted.
+  crosswalk_methods: [none, pop_hhres_2022, address_uprn, value_weighted, footprint_area]
+  crosswalk_allowed_surface: [none, address_uprn, value_weighted]
+
+  # Output vocabulary (rules 2, 3, 5)
+  commons_class: surface
+  use_basis: existing_authorised_use
+  net_of_allowed: [extractive, eco_externality]
+  quality_by_fill:                # rules 5: data state, separate from value_tier
+    observed_pooled: derived
+    shrunk_to_model: modelled
+    model_filled: modelled
+    no_residential: placeholder   # placeholders never enter totals
+    not_applicable: placeholder   # rules v0.7 zero_dwellings: null, never 0; overrides any RoS price
+  publish_levels: [public_site, public_zone, internal]   # rules 2 (v0.3) exact enum
+  publish_by_fill:                # RoS/EPC-derived figures are zone totals only (rules 2: public_zone)
+    observed_pooled: public_zone
+    shrunk_to_model: public_zone
+    model_filled: public_zone     # flagged via fill_method/quality (rules 4.2: model-filled zones are flagged)
+    no_residential: internal
+    not_applicable: internal
+  # rules 2 (v0.4): publication_status ok|blocked is separate. Reconciliation breach -> blocked (publish_level
+  # unchanged), tag reconciliation_breach, excluded from totals and from the public view.
+  # Missing dwelling year -> quality placeholder (not served), tag dwellings_missing_year, excluded from totals.
+  # Diagnostic columns are internal only: surface_rent.INTERNAL_ONLY_COLUMNS, dropped by public_view().
+  residential_land:               # rules 6.4 (v0.5): map default = rent per hectare of RESIDENTIAL land
+    sources_allowed: [gis_residential_land, settlement_area]   # settlement_area flagged rough; whole-zone area NEVER
+    pending_flag: pending_residential_land       # rent_per_res_ha null until GIS supplies residential_land_ha
+
+  yield_blend:                    # rules 6.4 (v0.5)
+    shares: "split zones: GIS alt/dz_brma_share_dwelling_bounds.csv share_mid (sums to 1); share_halfwidth -> uncertainty band. Single-BRMA zones: 1.0. household_share NEVER used as dwellings"
+
+  outputs:
+    manifest_format: "scotland-gis manifest.csv: file, owner, source, licence, publish_level, zone_vintage, key, rows, sha256 + attribution"
+    key: [code, vintage]          # 2026-10-06 rename for the lead's loader: zone_code -> code, zone_vintage -> vintage (key = real columns)
+    years: "price_year = expressed year (2025, = rebuild base); evidence_year = RoS sales year (2023); count_year = dwelling count year (= price_year). Totals refuse mixed price_year."
+    epc_rows: "rows built from the EPC rollup carry its licence text (surface_manifest.EPC_ROLLUP_LICENCE); manifest attribution = OGL + NRS + Royal Mail PAF credit + OS (surface_manifest.EPC_ROLLUP_ATTRIBUTION)"
+
+  dwellings:                      # rules 2 / 4.2 / 6.4 (v0.5): TOTAL dwellings (incl. vacant + second homes), never households
+    loader: datazones_ct_table                  # 2026-10-06: Data Zones canonical table (surface_harvester.DWELLING_SOURCES)
+    path: "{datazones_dir}/dwellings_by_year.csv"   # expanded by georgist.surface_paths.expand
+    manifest_sha256: "b47605c6f8a7af1123cad5483f431340e117bd583584a00bbfdfde3aa2f8c2b7"   # Data Zones manifest, 98,496 rows, key (code, vintage, count_year); verified 2026-10-06 ~01:45 BST
+    column: dwellings_total                     # council tax, September; 2,757,376 on 2011 zones in 2025
+    occupancy_columns: [occupied, vacant, second_homes]   # shares carried alongside, never change rent
+    never_use: [assessor_dwellings_dec]         # Assessors' December count: reference only
+    source_id: datazones_dwellings_by_year
+    fallback_loaders: [nrs_dwelling_estimates, nrs_household_estimates]   # retained for checks only; interim tag dropped
+    year: 2025                                   # = price_year; counts JOIN ON price_year (Data Zones column `count_year`)
+    join_on: price_year
+    count_column: count_year
+    missing_count_year: flag_never_fill          # tag dwellings_missing_year; never another year
+    year_policy: strict           # strict (default) | lag_allowed (PENDING Georgist ruling): latest PUBLISHED year
+    max_lag_years: 0              #   up to this many years before the base; flagged dwelling_year_lag; never extrapolated
+    require_same_vintage: true
+    fill_missing_year: never      # flagged dwellings_missing_year; never nearest-year
+
+  policy:                         # rules 13: applied AFTER measured rent, own column, never inside measured_rent
+    despeculation:
+      urban: 0.70                 # Pickard, agr.yaml despeculation.urban_speculation_discount
+      farm: 0.20                  # Pickard, agr.yaml despeculation.farmland_market_to_productive (not used by residential surface)
+
+  scenarios:                      # rules 1: the ONLY place r and g may appear; code asserts r - g == land_yield
+    illustrative_r_g: {r: 0.07, g: 0.02}   # ILLUSTRATIVE only (0.07 - 0.02 = 0.05 = yield.land_yield)
+
+  reconciliation:                 # rules 4.2
+    rent_ceiling: mean_price_x_dwellings_x_gross_yield   # rules 4.2 v0.3 formula
+    tolerance: 0.0
+
+  land_share_checks:              # rules 12
+    national_range: [0.49, 0.73]  # see validation note in surface_holdout.py; Georgist to confirm
+    national_tolerance: 0.10      # ASSUMPTION
+    national_range_sources:
+      - "0.49 Wightman residential site share (repo data/config/agr.yaml site_share.residential_wightman; reference only)"
+      - "0.60 SLRG residential site share (repo agr.yaml site_share.residential_slrg; reference only)"
+      - "~0.73 UK 2020: ONS land underlying dwellings 5.4tn (https://www.ons.gov.uk/economy/nationalaccounts/uksectoraccounts/articles/improvingestimatesoflandunderlyingdwellingsinthenationalbalancesheetuk/2022) / (5.4tn + dwellings AN.111 1.978tn, ONS NBS release 2026-06-10 https://www.ons.gov.uk/economy/nationalaccounts/uksectoraccounts/datasets/nationalbalancesheet/current). UK, London/SE weighted, mixed vintages: treated as an UPPER reference for Scotland."
+    # rules 12.2 (v0.6): land share is used ONLY in the national plausibility check above.
+    ur6_expected_order: [[1, 2], [2, 3], [3, 4], [3, 5], [4, 6], [5, 6]]   # (a, b): median GBP per RESIDENTIAL ha in a >= b
+    gradient_tolerance: 0.0
+    two_route_max_median_abs_log_ratio: 0.25   # ASSUMPTION
+    two_route_independent_evidence: [saa_rateable_value, brma_held_out]   # rules 12.1; else not_applicable
+    negative_high_demand_ur6: [1, 2]           # rules 12.2: Large Urban, Other Urban
+    negative_max_share_high_demand: 0.10       # ASSUMPTION
+
+  residential_land:               # GIS dz_residential_land (public_zone), parcel method; rules 6.4 / 12.2
+    source_file: dz_residential_land.csv
+    source_sha256_prefix: "33207976"
+    area_column: residential_parcel_ha
+    gradient_exclude:             # zones dropped from the gradient (counted by reason), never from totals
+      min_share_res_uprn_in_parcels: 0.5
+      flags: [mask_too_big_parcel, res_uprn_exceeds_dwellings, zero_dwellings]
+    low_confidence_tags:          # per-hectare outputs only (rent_per_res_ha); totals never change
+      weak_match: res_land_low_confidence_weak_match        # share_res_uprn_in_parcels < 0.5 (surface_rent.RES_LAND_LOW_CONFIDENCE)
+      mask_too_big: res_land_low_confidence_mask_too_big    # mask_too_big_parcel
+      uprn_exceeds: res_land_low_confidence_uprn_exceeds_dwellings
+
+  gradient:                       # rules 12.2 (v0.6): surface_holdout.per_hectare_gradient_check
+    measure: observed_land_value_per_residential_ha
+    observed_only: true           # Georgist 2026-10-06: travel times drive the fill model -> model-filled zones excluded
+    min_sales: 5
+    observed_fill_methods: [observed_pooled, shrunk_to_model]   # shrunk zones use the OBSERVED residual, not the blend
+    min_zones_per_class: 30       # ASSUMPTION: below -> pending / insufficient_n for that class and its pairs
+    access_rho_max: -0.10         # ASSUMPTION: Spearman(GBP/res-ha, minutes) must be <= this for drive AND public transport
+    max_missing_share: 0.05       # ASSUMPTION: more observed zones than this without land/access -> pending
+    residential_land:
+      source: "Scot-LAND GIS dz_residential_land (code, vintage, residential_land_ha, method)"
+      methods_ok: [parcel_based]  # settlement_area or missing -> pending with the reason
+    access:
+      source: "Scot-LAND Data Zones {datazones_dir}/simd2020v2_access_indicators_dz2011.csv (code, vintage=2011, raw minutes; manifest sha 49428c29...b8ce, 6,976 rows)"
+      drive: [drive_petrol, drive_GP, drive_post, drive_primary, drive_retail, drive_secondary]
+      public_transport: [PT_GP, PT_post, PT_retail]
+      never: [ranks, scores, deciles, domain values]

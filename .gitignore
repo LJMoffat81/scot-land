@@ -56,3 +56,6 @@ frontend/out/
 data/external/
 # Separate empty nested git repo, not part of scot-land
 Cursor Demo/
+# surface-rent: machine-local data paths and never-committed outputs
+data/config/surface.local.yaml
+out/

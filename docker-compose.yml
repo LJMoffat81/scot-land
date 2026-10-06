@@ -1,4 +1,24 @@
+# Local full stack. Needs a .env next to this file with at least POSTGRES_PASSWORD
+# (see backend/.env.example). Compose refuses to start without it; there is no default.
 services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-scotland}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-scotland_wealth}
+    volumes:
+      - wealth_pgdata:/var/lib/postgresql/data
+      # Applied once, on first start with an empty volume. Tables are EPSG:27700.
+      - ./backend/db/schema:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   api:
     build:
       context: .
@@ -8,10 +28,16 @@ services:
     volumes:
       - ./data:/app/data:ro
     environment:
-      - W3W_API_KEY=${W3W_API_KEY:-}
-      - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
-      - ALLOW_VERCEL_PREVIEWS=false
-      - PORT=8000
+      W3W_API_KEY: ${W3W_API_KEY:-}
+      ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      ALLOW_VERCEL_PREVIEWS: "false"
+      PORT: "8000"
+      DATA_DIR: /app/data
+      # Password must be URL-safe (or percent-encoded) inside DATABASE_URL.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-scotland}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-scotland_wealth}
+    depends_on:
+      db:
+        condition: service_healthy
 
   frontend:
     build:
@@ -24,3 +50,6 @@ services:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
     depends_on:
       - api
+
+volumes:
+  wealth_pgdata:

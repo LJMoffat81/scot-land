@@ -1,166 +1,141 @@
+"""Apply the Wealth schema and load processed outputs into PostGIS.
+
+Connection comes only from the environment (DATABASE_URL or PG*), via
+georgist.db. Files come from DATA_DIR/processed (paths.py).
+
+    cd backend
+    python -m etl.migrate_to_postgis --schema-only
+    python -m etl.migrate_to_postgis              # schema + placeholder resource/eco
+
+The pre-spec `surface_wealth` table (rent_per_ha, SIMD ranks) is no longer
+created or loaded: surface rent now goes to `surface_rent_dz` via
+`upsert_surface_rent`, from Valuation's surface pipeline rows.
+"""
+
+from __future__ import annotations
+
+import argparse
 import json
 import logging
-import psycopg2
-from psycopg2 import extras
+import sys
 from pathlib import Path
-from typing import Any
+from typing import Iterable, Mapping
 
-logging.basicConfig(level=logging.INFO)
+from georgist import db
+from georgist.wealth_schema import SURFACE_DB_COLUMNS
+from paths import PROCESSED_DIR
+
 logger = logging.getLogger(__name__)
 
-# DB Configuration
-DB_CONFIG = {
-    "dbname": "scotland_wealth",
-    "user": "wealth_user",
-    "password": "wealth_password",
-    "host": "localhost",
-    "port": "5432"
-}
+SCHEMA_DIR = Path(__file__).resolve().parents[1] / "db" / "schema"
 
-PROCESSED_DIR = Path("scot-land/data/processed")
 
-def get_connection():
-    return psycopg2.connect(**DB_CONFIG)
-
-def setup_database():
-    """Initialize the PostGIS extension and create tables."""
-    logger.info("Initializing PostGIS database schema...")
-    conn = get_connection()
+def apply_schema(conn) -> list[str]:
+    applied = []
     with conn.cursor() as cur:
-        # Enable PostGIS
-        cur.execute("CREATE EXTENSION IF NOT EXISTS postgis;")
-
-        # 1. Surface Wealth Table
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS surface_wealth (
-                zone_id TEXT PRIMARY KEY,
-                pop_density FLOAT,
-                simd_income_rank INT,
-                simd_access_rank INT,
-                rent_per_ha FLOAT,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-
-        # 2. Resource Wealth Table
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS resource_wealth (
-                id SERIAL PRIMARY KEY,
-                resource_type TEXT,
-                name TEXT,
-                annual_rent_gbp FLOAT,
-                rent_per_ha FLOAT,
-                geom GEOMETRY(Polygon, 4326)
-            );
-        """)
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_res_geom ON resource_wealth USING GIST (geom);")
-
-        # 3. Eco Wealth Table
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS eco_wealth (
-                id SERIAL PRIMARY KEY,
-                resource_type TEXT,
-                name TEXT,
-                annual_rent_gbp FLOAT,
-                rent_per_ha FLOAT,
-                geom GEOMETRY(Polygon, 4326)
-            );
-        """)
-        cur.execute("CREATE INDEX IF NOT EXISTS idx_eco_geom ON eco_wealth USING GIST (geom);")
-
-        # 4. RoS INSPIRE Index Polygons (local ingest — raw files stay out of git)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS inspire_parcels (
-                inspire_id TEXT PRIMARY KEY,
-                national_reference TEXT,
-                label TEXT,
-                area_sqm DOUBLE PRECISION,
-                county TEXT,
-                geom GEOMETRY(MultiPolygon, 4326) NOT NULL
-            );
-        """)
-        cur.execute(
-            "CREATE INDEX IF NOT EXISTS idx_inspire_parcels_geom "
-            "ON inspire_parcels USING GIST (geom);"
-        )
-
+        for sql_file in sorted(SCHEMA_DIR.glob("*.sql")):
+            cur.execute(sql_file.read_text(encoding="utf-8"))
+            applied.append(sql_file.name)
     conn.commit()
-    conn.close()
-    logger.info("Database schema initialized successfully.")
+    logger.info("Applied schema: %s", ", ".join(applied))
+    return applied
 
-def migrate_surface_data():
-    """Migrate zone_wealth.json to PostGIS."""
-    file_path = PROCESSED_DIR / "zone_wealth.json"
-    if not file_path.exists():
-        logger.warning("No surface data found to migrate.")
-        return
 
-    logger.info("Migrating surface wealth data...")
-    with open(file_path, "r") as f:
-        data = json.load(f)
+def migrate_geojson_data(conn, file_name: str, table_name: str) -> int:
+    """Load a resource/eco GeoJSON (EPSG:4326) into a 27700 MultiPolygon table.
 
-    conn = get_connection()
-    with conn.cursor() as cur:
-        for zone_id, info in data.items():
-            stats = info.get("stats", {})
-            cur.execute("""
-                INSERT INTO surface_wealth (zone_id, pop_density, simd_income_rank, simd_access_rank, rent_per_ha)
-                VALUES (%s, %s, %s, %s, %s)
-                ON CONFLICT (zone_id) DO UPDATE SET
-                    pop_density = EXCLUDED.pop_density,
-                    simd_income_rank = EXCLUDED.simd_income_rank,
-                    simd_access_rank = EXCLUDED.simd_access_rank,
-                    rent_per_ha = EXCLUDED.rent_per_ha;
-            """, (
-                zone_id,
-                stats.get("pop_density"),
-                stats.get("simd_income_rank"),
-                stats.get("simd_access_rank"),
-                info.get("rent_per_ha")
-            ))
-    conn.commit()
-    conn.close()
-    logger.info(f"Migrated {len(data)} surface zones.")
-
-def migrate_geojson_data(file_name: str, table_name: str):
-    """Generic migrator for Resource and Eco GeoJSON files."""
+    Rows keep the file's quality tag; anything untagged is loaded as
+    'placeholder' so it can never reach totals by accident.
+    """
+    if table_name not in ("resource_wealth", "eco_wealth"):
+        raise ValueError(table_name)
     file_path = PROCESSED_DIR / file_name
     if not file_path.exists():
-        logger.warning(f"No {file_name} found to migrate.")
-        return
-
-    logger.info(f"Migrating {file_name} to {table_name}...")
-    with open(file_path, "r") as f:
-        data = json.load(f)
-
-    conn = get_connection()
+        logger.warning("No %s found in %s; skipping.", file_name, PROCESSED_DIR)
+        return 0
+    data = json.loads(file_path.read_text(encoding="utf-8"))
+    features = data.get("features", [])
     with conn.cursor() as cur:
-        for feat in data.get("features", []):
+        cur.execute(f"DELETE FROM {table_name} WHERE quality = 'placeholder'")
+        for feat in features:
             props = feat["properties"]
-            # Convert GeoJSON geometry to WKT for PostGIS
-            # For the MVP, we use ST_GeomFromGeoJSON
-            geom_json = json.dumps(feat["geometry"])
-
-            cur.execute(f"""
-                INSERT INTO {table_name} (resource_type, name, annual_rent_gbp, rent_per_ha, geom)
-                VALUES (%s, %s, %s, %s, ST_GeomFromGeoJSON(%s))
-            """, (
-                props.get("resource_type"),
-                props.get("name"),
-                props.get("annual_rent_gbp"),
-                props.get("rent_per_ha"),
-                geom_json
-            ))
+            cur.execute(
+                f"""
+                INSERT INTO {table_name} (resource_type, name, annual_rent_gbp, price_year,
+                    commons_class, value_tier, quality, crosswalk_method, source_id,
+                    licence, publish_level, geom)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    ST_Multi(ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326), 27700)))
+                """,
+                (
+                    props.get("resource_type"),
+                    props.get("name"),
+                    props.get("annual_rent_gbp"),
+                    props.get("price_year"),
+                    props.get("commons_class") or ("extractive" if table_name == "resource_wealth" else "eco"),
+                    props.get("value_tier") or "proxy",
+                    props.get("quality") or "placeholder",
+                    props.get("crosswalk_method") or "footprint_area",
+                    props.get("source_id") or file_name,
+                    props.get("licence"),
+                    props.get("publish_level") or "internal",
+                    json.dumps(feat["geometry"]),
+                ),
+            )
     conn.commit()
-    conn.close()
-    logger.info(f"Migrated {len(data.get('features', []))} features into {table_name}.")
+    logger.info("Loaded %d features into %s.", len(features), table_name)
+    return len(features)
+
+
+def upsert_surface_rent(conn, rows: Iterable[Mapping]) -> int:
+    """Upsert `surface_rent_dz` rows produced by georgist.wealth_schema.to_db_row."""
+    cols = SURFACE_DB_COLUMNS
+    pk = ("code", "vintage", "valuation_date")
+    sql = (
+        f"INSERT INTO surface_rent_dz ({', '.join(cols)}) VALUES ({', '.join(['%s'] * len(cols))}) "
+        f"ON CONFLICT ({', '.join(pk)}) DO UPDATE SET "
+        + ", ".join(f"{c} = EXCLUDED.{c}" for c in cols if c not in pk)
+        + ", updated_at = now()"
+    )
+    n = 0
+    with conn.cursor() as cur:
+        for row in rows:
+            if tuple(row) != cols:
+                raise ValueError("row does not match SURFACE_DB_COLUMNS; build it with to_db_row")
+            values = [
+                json.dumps(v) if c in ("brma_mix", "source_sha256") and v is not None else v
+                for c, v in row.items()
+            ]
+            cur.execute(sql, values)
+            n += 1
+    conn.commit()
+    return n
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--schema-only", action="store_true")
+    args = parser.parse_args(argv)
+    logging.basicConfig(level=logging.INFO)
+    try:
+        conn = db.connect()
+    except db.DatabaseUnavailable as exc:
+        logger.error("Database unavailable: %s", exc)
+        return 2
+    try:
+        apply_schema(conn)
+        if not args.schema_only:
+            migrate_geojson_data(conn, "resource_wealth.geojson", "resource_wealth")
+            migrate_geojson_data(conn, "eco_wealth.geojson", "eco_wealth")
+    except Exception:
+        conn.rollback()
+        logger.exception("Migration failed")
+        return 1
+    finally:
+        conn.close()
+    logger.info("Migration completed.")
+    return 0
+
 
 if __name__ == "__main__":
-    try:
-        setup_database()
-        migrate_surface_data()
-        migrate_geojson_data("resource_wealth.geojson", "resource_wealth")
-        migrate_geojson_data("eco_wealth.geojson", "eco_wealth")
-        logger.info("Full migration completed successfully!")
-    except Exception as e:
-        logger.error(f"Migration failed: {e}")
+    sys.exit(main())

@@ -1,22 +1,14 @@
 import logging
 import httpx
 import pandas as pd
-import psycopg2
-from psycopg2 import extras
 from pathlib import Path
+
+from georgist import db
 from datetime import datetime
 import json
 
 logger = logging.getLogger(__name__)
 
-# Configuration
-DB_CONFIG = {
-    "dbname": "scotland_wealth",
-    "user": "wealth_user",
-    "password": "wealth_password",
-    "host": "localhost",
-    "port": "5432"
-}
 
 # CKAN API Constants for Scottish Government Open Data
 CKAN_API_URL = "https://opendata.scot/api/3/action/package_show"
@@ -27,10 +19,11 @@ class RosSyncService:
     """
     Automatically synchronizes the la-calc engine with the latest
     Registers of Scotland open data via the CKAN API.
-    """
 
-    def __init__(self, db_config: dict = DB_CONFIG):
-        self.db_config = db_config
+    DEPRECATED path: superseded by georgist/surface_harvester.py (pinned file +
+    sha256). The CKAN package id and column names below are unverified, so the
+    API no longer exposes this; kept for reference only.
+    """
 
     def check_for_updates(self) -> bool:
         """
@@ -81,7 +74,7 @@ class RosSyncService:
             df = pd.read_csv(download_url)
 
             # 3. Push to PostGIS
-            conn = psycopg2.connect(**self.db_config)
+            conn = db.connect()  # env-configured; raises DatabaseUnavailable
             with conn.cursor() as cur:
                 for _, row in df.iterrows():
                     cur.execute("""

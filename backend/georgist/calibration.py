@@ -1,32 +1,26 @@
 import logging
-import psycopg2
 from psycopg2 import extras
+
+from georgist import db
 from pathlib import Path
 import json
 from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
-# DB Configuration
-DB_CONFIG = {
-    "dbname": "scotland_wealth",
-    "user": "wealth_user",
-    "password": "wealth_password",
-    "host": "localhost",
-    "port": "5432"
-}
 
 class CalibrationEngine:
     """
+    LEGACY: reads `surface_wealth.rent_per_ha`, the pre-spec la-calc table. The
+    new output is `surface_rent_dz` (no per-area rent); this engine needs a
+    rewrite against it before use. Not wired into the API.
+
     Calibrates the Georgist la-calc multipliers against actual market sales
     from Registers of Scotland (RoS).
     """
 
-    def __init__(self, db_config: dict = DB_CONFIG):
-        self.db_config = db_config
-
     def get_connection(self):
-        return psycopg2.connect(**self.db_config)
+        return db.connect()  # env-configured; raises DatabaseUnavailable
 
     def calculate_error_margin(self, zone_id: str) -> Dict[str, Any]:
         """

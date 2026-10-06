@@ -1,5 +1,4 @@
-# Surface-rent module (georgist/surface_*.py) and its tests. Not in the API image.
-pandas>=2.2
-openpyxl>=3.1
-pyyaml>=6.0.2
+# Test/dev extras. Runtime deps (pandas, openpyxl, psycopg2-binary) now live in
+# requirements.txt so the API image can import the Wealth modules.
+-r requirements.txt
 pytest>=8

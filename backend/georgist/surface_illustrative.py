@@ -337,7 +337,7 @@ def run(*, raw_dir: str, gis_dir: str, dz_dir: str | None = None, residential_la
     if estate_mode in ("plot_bands", "gis_bands") and estate_rows is None:
         if not plot_bands_path:
             raise ValueError("estate mode plot_bands needs plot_bands_path (GIS dz_detached_plot_bands, internal)")
-        pb = hv.load_gis_checked(plot_bands_path, sha_prefix=ecfg["source_sha256_prefix"], publish_level="internal")
+        pb = hv.load_gis_checked(plot_bands_path, sha_prefix=ecfg["source_sha256_prefix"], publish_level=tuple(ecfg.get("accepted_publish_levels", ["internal"])))
         plot_raw = {r["code"]: r for r in pb[pb["vintage"] == 2011].to_dict("records")}
         meta = {c: (n25i.loc[c, "council_code"], int(ur6[c])) for c in ur6 if c in n25i.index}
         estate_rows = sr.borrow_plot_bands(plot_raw, meta, ecfg)

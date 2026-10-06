@@ -178,3 +178,4 @@ def test_load_gis_checked_sha_prefix_and_publish_level(tmp_path):
         hv.load_gis_checked(p, sha_prefix=None, publish_level="internal")
     with pytest.raises(ValueError):
         hv.load_gis_checked(p, sha_prefix="ffffffff")
+    assert len(hv.load_gis_checked(p, sha_prefix=None, publish_level=("internal", "public_zone"))) == len(SPINE_ROWS)

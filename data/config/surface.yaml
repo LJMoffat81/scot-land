@@ -86,6 +86,10 @@ surface_rent:
       # generic estate row (built form not split): rate_basis generic_estate (rules 6.2 v0.7, Georgist-approved
       # 2026-10-06, rules sha256 933c3767...). Same low-high band (same factors) as the other rates.
       detached_estate:    {low: 1319, central: 1690, high: 2148}
+      # one-off route: rate for the NON-estate detached share in the split modes. Rows = [S1] p.1 Table 1 "One off
+      # detached houses 3 Units or less" (UK median BCIS, Apr 2025): single storey 2383, 2 storey 2498 (1.5 storey
+      # excluded: derived +30%). rate_basis one_off_detached. Same low-high band (same factors) as the other rates.
+      detached_one_off:   {low: 2152, central: 2610, high: 3122}
     rate_basis:                   # rules 6.2 v0.7 field: how each rate was sourced (surface_rent.RATE_BASES)
       detached: bcis_median_type             # BCIS UK median rows for the type (estate + one-off detached)
       semi_detached: bcis_median_type
@@ -94,9 +98,11 @@ surface_rent:
       flat_conversion: bcis_median_type_override   # purpose-built flat rows; high = Highland conversion rate [S4]
       other: bcis_median_all_rows                  # all house and flat rows
       detached_estate: generic_estate              # [S1] "Estate housing 4 units or more" (mixes built forms)
+      detached_one_off: one_off_detached           # [S1] "One off detached houses 3 Units or less"
     base_rows_gbp_per_m2:         # BCIS UK median, Apr 2025, as quoted in [S1]; [S4] for flat_conversion high
       detached: [1718, 1461, 1562, 2383, 2498]       # = estate generic + one-off rows (UNCHANGED; used for pre-1980 / non-estate detached)
       detached_estate: [1718, 1461, 1562]            # [S1] p.1 Table 1 "Estate housing 4 units or more"
+      detached_one_off: [2383, 2498]                 # [S1] p.1 Table 1 "One off detached houses 3 Units or less" (single, 2 storey)
       semi_detached: [1718, 1482, 1504, 1918]
       terraced: [1705, 1455, 1529]
       flat_purpose_built: [1666, 1729, 2036]
@@ -137,6 +143,9 @@ surface_rent:
     status: APPROVED_GENERIC_ESTATE      # Georgist approved 2026-10-06; rate_basis generic_estate (rebuild.rate_basis)
     rules_sha256_prefix: 933c3767        # ECONOMIC_RULES.md draft v0.7 checked against
     rate_source: "[S1] Aberdeenshire Cost Index 2025 (V06.00 April 2025), page 1, Table 1, 'Estate housing 4 units or more' (UK BCIS median column); sha256 c7a1efaba918e3a8212f238b5ba5fd73a9075d26f79ec29e796273e5fee5aef3"
+    oneoff_rate_type: detached_one_off   # non-estate detached share in plot_bands / epc_age_upper_bound (pending keeps the blended 'detached')
+    oneoff_rate_source: "[S1] Aberdeenshire Cost Index 2025 (V06.00 April 2025), page 1, Table 1, 'One off detached houses 3 Units or less' single storey / 2 storey (UK BCIS median column); sha256 c7a1efaba918e3a8212f238b5ba5fd73a9075d26f79ec29e796273e5fee5aef3"
+    oneoff_rate_crosschecks: "[S3] Midlothian v14 one-off single / multi storey 2442 / 2759; [S2] West Lothian (BCIS Apr-2026) one-off 2328 / 2642; [S4] Highland 'One-off detached house' 2859 (inside the band)."
     rate_crosschecks: "[S2] West Lothian (BCIS Apr-2026) single/two/three storey estate 1687/1424/1493; [S3] Midlothian v14 (Apr-2026) 1764/1506/1579; [S4] Highland 'Estate housing (2-storey, incl. semi-detached)' 1576. None splits estate housing by built form."
     rate_assumption: "BCIS estate housing = schemes of 4+ units (one-off = 3 units or less). The source states NO plot size; parcel bands are our proxy for 'on an estate'."
     applies_to: "ALL detached homes whatever their age (rules 3b273073): estate/one-off split by plot evidence, weighted by GIS all_ages parcel-band shares; blank shares borrow the dwelling-weighted all_ages shares of their council x UR6 cell (plot_bands_borrowed), else UR6 nationally (plot_bands_borrowed_national); never the one-off rate or all-estate by default"
@@ -155,6 +164,9 @@ surface_rent:
       median_parcel_ha: all_ages_median_parcel_ha
       n_matched: n_detached_all_ages_matched
     publish_level_inherited: internal   # any output using this input stays internal until GIS clears the OS terms
+    # GIS manifest relabelled this file public_zone (project-owner licence ruling, Oct 2026; data sha unchanged).
+    # Accepted on load; outputs are KEPT internal here until Scot-LAND / Laurie lift publish_level_inherited.
+    accepted_publish_levels: [internal, public_zone]
     never_a_driver: true          # plot / parcel size selects the rebuild RATE only; drivers.forbidden_substrings blocks it
 
   zero_dwellings:                 # rules v0.7: no residential surface rent (fill_method not_applicable, null)

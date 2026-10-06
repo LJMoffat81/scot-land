@@ -588,3 +588,25 @@ DRAFT, not approved by Laurie. This section was committed **before** GIS's `dz_a
   - The multiplier value is a **PLACEHOLDER awaiting Georgist sign-off** (`multiplier_status: PLACEHOLDER_GEORGIST_SIGNOFF`). Widened rows carry the tag `band_multiplier_placeholder`.
 - **Run once:** before scoring, a scored run writes the dz_access sha256 and a hash of the `gradient_v07` config section to an internal run log (`{valuation_out_dir}/run_log/gradient_v07_runs.jsonl`, outside the repo). A second scored run on the same input is refused (`RepeatScoredRunError`) unless an explicit override with a written reason is given, and the override is logged too.
 - **Tests:** synthetic fixtures only (`tests/surface/test_surface_gradient_v07.py`).
+
+### 12.8 One-off detached rate for the non-estate share (2026-10-06, rules sha256 prefix 23df6297)
+
+DRAFT, not approved by Laurie.
+
+- **Source found:** a free published one-off row exists, so the generic-detached fallback was **not** needed. [S1] Aberdeenshire Cost Index 2025 (V06.00 April 2025), **page 1, Table 1, "One off detached houses 3 Units or less"**, UK BCIS median column:
+  - single storey £2,383/m²;
+  - 2 storey £2,498/m²;
+  - the 1.5-storey row is excluded because Aberdeenshire derived it as +30%, not from BCIS.
+  - File sha256 c7a1efab…aef3.
+- **Cross-checks (not used in the numbers):**
+  - [S3] Midlothian v14 one-off single and multi-storey rows;
+  - [S2] West Lothian (BCIS Apr-2026) one-off rows;
+  - [S4] Highland "One-off detached house".
+- **New rate type `detached_one_off`, `rate_basis: one_off_detached`:** band built from those two rows with the same location and on-cost factors as every other type (min / mean / max × factors), giving £2,152 / £2,610 / £3,122 per m². Its high end equals the generic detached high end, because both take the highest one-off row as their maximum.
+- **Where it applies:**
+  - In `plot_bands` (main) and `epc_age_upper_bound` (sensitivity), the non-estate detached share (1 − e) now uses `detached_one_off` instead of the generic `detached` blend (estate + one-off rows). This is set by `estate.oneoff_rate_type`, and the component is tagged `oneoff_rate=detached_one_off`.
+  - `pending` keeps the generic blend.
+  - The estate share keeps `detached_estate` (generic_estate).
+- **Expected direction:** rebuild cost for the non-estate share goes up, so land value on those zones goes down. This removes the downward bias in one-off rebuild cost (and the upward bias in land value on big plots) that the generic blend would have caused.
+- **Data note:** GIS's manifest now marks `dz_detached_plot_bands.csv` as `public_zone`, following a project-owner licence ruling. The data sha is unchanged. The loader accepts `internal` or `public_zone` (`estate.accepted_publish_levels`), but outputs that use this input stay **internal** until Scot-LAND or Laurie lift `publish_level_inherited`.
+- Figures are kept only in the internal output folder, never in this repo.

@@ -86,12 +86,21 @@ def test_split_applies_only_to_post1980_detached(cfg):
     assert "estate_upper_bound_epc_age_only" in ub.tags
     r0 = sr.zone_rebuild_band(base, band=band, depreciation=dep, valuation_year=2025)["central"]
     r1 = sr.zone_rebuild_band(ub, band=band, depreciation=dep, valuation_year=2025)["central"]
-    diff = 0.6 * 0.5 * 110 * (band["detached"]["central"] - band["detached_estate"]["central"])
+    # post-1980 detached -> estate rate; the rest of detached -> one-off rate (non-estate share)
+    diff = 0.6 * 0.5 * 110 * (band["detached"]["central"] - band["detached_estate"]["central"]) \
+        + 0.6 * 0.5 * 110 * (band["detached"]["central"] - band["detached_one_off"]["central"])
     assert r0.rebuild_new_gbp - r1.rebuild_new_gbp == pytest.approx(diff)
+    assert "oneoff_rate=detached_one_off" in ub.tags and "oneoff_rate=detached_one_off" not in base.tags
     pre = _inp(ages={"before 1919": 1.0})
     a = sr.zone_rebuild_band(sr.with_estate(pre, cfg["estate"], mode="epc_age_upper_bound"), band=band, depreciation=dep, valuation_year=2025)
     b = sr.zone_rebuild_band(pre, band=band, depreciation=dep, valuation_year=2025)
-    assert a["central"].drc_gbp == pytest.approx(b["central"].drc_gbp)
+    assert a["central"].rebuild_new_gbp - b["central"].rebuild_new_gbp == pytest.approx(
+        0.6 * 110 * (band["detached_one_off"]["central"] - band["detached"]["central"]))
+    generic = sr.with_estate(pre, {**cfg["estate"], "oneoff_rate_type": "detached"}, mode="epc_age_upper_bound")
+    g = sr.zone_rebuild_band(generic, band=band, depreciation=dep, valuation_year=2025)
+    assert g["central"].drc_gbp == pytest.approx(b["central"].drc_gbp)
+    with pytest.raises(ValueError):
+        sr.with_estate(pre, {**cfg["estate"], "oneoff_rate_type": "semi_detached"}, mode="epc_age_upper_bound")
     straddle = _inp(ages={"1976-1983": 1.0})   # straddles 1980 -> kept on the one-off/blended rate
     assert "1976-1983" not in cfg["estate"]["post_1980_bands"]
     assert sr.oneoff_detached_share(sr.with_estate(straddle, cfg["estate"], mode="epc_age_upper_bound")) == pytest.approx(0.6)
@@ -257,3 +266,37 @@ def test_borrow_plot_bands_council_ur6_then_national_never_0_or_1(cfg):
     for c in meta:
         inp = sr.with_estate(_inp(), ec, mode="plot_bands", estate_row=out[c])
         assert inp.estate_fraction is not None and "estate_share_pending" not in inp.tags
+
+
+def test_one_off_rate_published_row(cfg):
+    """One-off detached rate from a free published row ([S1] p.1 'One off detached houses 3 Units or less')."""
+    rb = cfg["rebuild"]
+    assert rb["rate_basis"]["detached_one_off"] == "one_off_detached"
+    assert rb["base_rows_gbp_per_m2"]["detached_one_off"] == [2383, 2498]
+    assert sr.derive_rebuild_band(rb)["detached_one_off"] == rb["gbp_per_m2"]["detached_one_off"]
+    band = sr.rebuild_band(cfg)
+    assert band["detached_estate"]["central"] < band["detached"]["central"] < band["detached_one_off"]["central"]
+    assert cfg["estate"]["oneoff_rate_type"] == "detached_one_off"
+    assert "page 1" in cfg["estate"]["oneoff_rate_source"] and "One off detached" in cfg["estate"]["oneoff_rate_source"]
+    bad = {**cfg, "rebuild": {**rb, "rate_basis": {**rb["rate_basis"], "detached_one_off": "generic_detached"}}}
+    with pytest.raises(ValueError):
+        sr.rate_basis(bad)
+
+
+def test_plot_bands_non_estate_share_uses_one_off(cfg):
+    band = sr.rebuild_band(cfg)
+    dep = cfg["depreciation"]
+    old = _inp(ages={"before 1919": 0.5, "1976-1983": 0.5})
+    pb = sr.with_estate(old, cfg["estate"], mode="plot_bands", estate_row=_row(0.2, 0.6, 0.2), mid_weight=0.0)
+    mix = {c.dwelling_type for c in sr._zone_mix(pb)}
+    assert {"detached_estate", "detached_one_off"} <= mix and "detached" not in mix
+    assert sr.oneoff_detached_share(pb) == pytest.approx(0.6 * 0.8)
+    r = sr.zone_rebuild_band(pb, band=band, depreciation=dep, valuation_year=2025)["central"]
+    r0 = sr.zone_rebuild_band(old, band=band, depreciation=dep, valuation_year=2025)["central"]
+    assert r.rebuild_new_gbp - r0.rebuild_new_gbp == pytest.approx(
+        0.6 * 110 * (0.2 * band["detached_estate"]["central"] + 0.8 * band["detached_one_off"]["central"] - band["detached"]["central"]))
+    none = sr.with_estate(old, cfg["estate"], mode="plot_bands", estate_row=_row(0, 0, 1), mid_weight=0.0)
+    assert none.estate_fraction == 0.0 and {c.dwelling_type for c in sr._zone_mix(none)} >= {"detached_one_off"}
+    assert "detached" not in {c.dwelling_type for c in sr._zone_mix(none)}
+    pend = sr.with_estate(old, cfg["estate"], mode="pending")
+    assert "detached" in {c.dwelling_type for c in sr._zone_mix(pend)} and "detached_one_off" not in {c.dwelling_type for c in sr._zone_mix(pend)}

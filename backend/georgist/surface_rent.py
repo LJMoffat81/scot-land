@@ -48,8 +48,10 @@ METHOD = "residual_drc_surface_v1"
 VALUE_TIER = "proxy"
 CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "surface.yaml"
 
-RATE_BASES = ("bcis_median_type", "bcis_median_type_override", "bcis_median_all_rows", "generic_estate")  # rules 6.2 v0.7
-REBUILD_EXTRA_TYPES = ("detached_estate",)  # rules 6.2 v0.7: post-1980 detached on estates (volume-builder rate)
+RATE_BASES = ("bcis_median_type", "bcis_median_type_override", "bcis_median_all_rows", "generic_estate",
+              "one_off_detached", "generic_detached")  # rules 6.2 v0.7
+REBUILD_EXTRA_TYPES = ("detached_estate", "detached_one_off")  # rules 6.2 v0.7: estate (volume-builder) and one-off detached rates
+ONEOFF_RATE_TYPES = ("detached_one_off", "detached")  # rate for the non-estate detached share (detached = generic blend)
 DWELLING_TYPES = (
     "detached",
     "semi_detached",
@@ -592,12 +594,13 @@ class ZoneRebuildInputs:
     area_by_group: Mapping[str, float] | None = None  # {'house': m2, 'flat': m2} means where published
     estate_fraction: float | None = None    # share of post-1980 detached homes taking the estate rate (None = pending)
     estate_bands: tuple[str, ...] = ()      # EPC age bands counted as post-1980
+    oneoff_type: str = "detached"           # rate type for the non-estate detached share once a split is attached
 
     def area_for(self, dwelling_type: str) -> float:
         g = self.area_by_group or {}
         if dwelling_type.startswith("flat") and "flat" in g:
             return float(g["flat"])
-        if dwelling_type in ("detached", "detached_estate", "semi_detached", "terraced") and "house" in g:
+        if dwelling_type in ("detached", "detached_estate", "detached_one_off", "semi_detached", "terraced") and "house" in g:
             return float(g["house"])
         return float(self.floor_area_m2)
 
@@ -750,6 +753,8 @@ def rate_basis(config: Mapping) -> dict[str, str]:
         raise ValueError(f"rebuild.rate_basis missing {missing} / invalid {bad}; allowed {RATE_BASES}")
     if rb.get("detached_estate", "generic_estate") != "generic_estate":
         raise ValueError("detached_estate must carry rate_basis generic_estate (rules 6.2 v0.7)")
+    if rb.get("detached_one_off", "one_off_detached") != "one_off_detached":
+        raise ValueError("detached_one_off must carry rate_basis one_off_detached (a published one-off row)")
     return rb
 
 
@@ -846,7 +851,7 @@ def tag_epc_overcount(inp: "ZoneRebuildInputs", epc_row: Mapping | None, *, thre
     if inp.source.startswith("epc_"):
         t += ("floor_area_proxy_epc_overcount",)
     return ZoneRebuildInputs(inp.type_shares, inp.age_shares, inp.floor_area_m2, inp.floor_area_basis, inp.mix_basis,
-                             inp.source, inp.tags + t, inp.area_by_group, inp.estate_fraction, inp.estate_bands)
+                             inp.source, inp.tags + t, inp.area_by_group, inp.estate_fraction, inp.estate_bands, inp.oneoff_type)
 
 
 ESTATE_MODES = ("plot_bands", "gis_bands", "epc_age_upper_bound", "pending")   # gis_bands = legacy alias of plot_bands
@@ -946,8 +951,14 @@ def with_estate(inp: "ZoneRebuildInputs", estate_cfg: Mapping, *, mode: str = "p
         e, tags = 1.0, ("estate_upper_bound_epc_age_only", "rate_basis=generic_estate")
     else:
         e, tags = None, ("estate_share_pending",)
+    oneoff = "detached"
+    if e is not None:
+        oneoff = estate_cfg.get("oneoff_rate_type", "detached")
+        if oneoff not in ONEOFF_RATE_TYPES:
+            raise ValueError(f"estate.oneoff_rate_type must be one of {ONEOFF_RATE_TYPES}")
+        tags = tuple(tags) + (f"oneoff_rate={oneoff}",)
     return ZoneRebuildInputs(inp.type_shares, inp.age_shares, inp.floor_area_m2, inp.floor_area_basis, inp.mix_basis,
-                             inp.source, inp.tags + tuple(tags), inp.area_by_group, e, bands)
+                             inp.source, inp.tags + tuple(tags), inp.area_by_group, e, bands, oneoff)
 
 
 ALL_AGES = ("*",)
@@ -962,10 +973,14 @@ def _zone_mix(inp: "ZoneRebuildInputs") -> list["MixComponent"]:
         for a, sa in inp.age_shares.items():
             if sa <= 0:
                 continue
+            split = inp.estate_fraction is not None
+            oo = inp.oneoff_type if split else "detached"
             if t == "detached" and e > 0 and (inp.estate_bands == ALL_AGES or a in inp.estate_bands):
                 mix.append(MixComponent("detached_estate", st * sa * e, inp.area_for("detached_estate"), a))
                 if e < 1:
-                    mix.append(MixComponent("detached", st * sa * (1 - e), inp.area_for("detached"), a))
+                    mix.append(MixComponent(oo, st * sa * (1 - e), inp.area_for(oo), a))
+            elif t == "detached" and split:
+                mix.append(MixComponent(oo, st * sa, inp.area_for(oo), a))
             else:
                 mix.append(MixComponent(t, st * sa, inp.area_for(t), a))
     tot = sum(c.share for c in mix)
@@ -973,10 +988,10 @@ def _zone_mix(inp: "ZoneRebuildInputs") -> list["MixComponent"]:
 
 
 def oneoff_detached_share(inp: "ZoneRebuildInputs") -> float:
-    """Share of the zone's dwellings drawing the one-off/blended detached rate (diagnostic only)."""
+    """Share of the zone's dwellings drawing the one-off (or, when pending, the blended) detached rate (diagnostic only)."""
     if not inp.age_shares:
         return inp.type_shares.get("detached", 0.0)
-    return sum(c.share for c in _zone_mix(inp) if c.dwelling_type == "detached")
+    return sum(c.share for c in _zone_mix(inp) if c.dwelling_type in ("detached", "detached_one_off"))
 
 
 def zone_rebuild_band(

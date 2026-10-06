@@ -365,8 +365,8 @@ def read_flagged_csv(path) -> pd.DataFrame:
     return pd.read_csv(path, dtype={c: str for c in ("code", "brma_id") if c in head}, converters=conv)
 
 
-def load_gis_checked(path: Path | str, *, sha_prefix: str | None, publish_level: str | None = None) -> pd.DataFrame:
-    """load_gis_output plus an expected sha256 prefix and, if given, the manifest publish_level."""
+def load_gis_checked(path: Path | str, *, sha_prefix: str | None, publish_level: str | tuple | list | None = None) -> pd.DataFrame:
+    """load_gis_output plus an expected sha256 prefix and, if given, the manifest publish_level (one level or a set)."""
     path = Path(path)
     if sha_prefix and not sha256_file(path).startswith(sha_prefix):
         raise ValueError(f"{path.name} sha256 does not start {sha_prefix}")
@@ -374,7 +374,8 @@ def load_gis_checked(path: Path | str, *, sha_prefix: str | None, publish_level:
     if publish_level:
         man = pd.read_csv(path.parent / "manifest.csv", dtype=str).set_index("file")
         got = str(man.loc[path.name, "publish_level"]).strip().lower()
-        if got != publish_level:
+        allowed = (publish_level,) if isinstance(publish_level, str) else tuple(publish_level)
+        if got not in allowed:
             raise ValueError(f"{path.name} publish_level {got!r} != {publish_level!r}")
     return df
 

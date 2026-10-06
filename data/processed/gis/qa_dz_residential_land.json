@@ -2,10 +2,10 @@
  "2011": {
   "zones": 6976,
   "zone_ha": 7793711,
-  "settlement_ha": 192900,
-  "residential_parcel_ha": 69181,
+  "settlement_ha": 192886,
+  "residential_parcel_ha": 69171,
   "dwellings_total_2025": 2757376,
-  "national_dph_settlement": 14.29,
+  "national_dph_settlement": 14.3,
   "national_dph_parcel": 39.86,
   "national_official_dph_wholezone": 0.354,
   "zone_area_vs_nrs_implied_median_ratio": 1.0,
@@ -18,7 +18,7 @@
    "0.99": 139.3
   },
   "zones_no_settlement_mask": 242,
-  "mask_too_big_settlement_n": 3764,
+  "mask_too_big_settlement_n": 3761,
   "area_test_mask_ge_zone_settlement_n": 4536,
   "flag_and_area_test_both_settlement_n": 3585,
   "mask_too_big_settlement_mask_share_of_zone_quantiles": {
@@ -102,19 +102,19 @@
   ],
   "dph_parcel_quantiles": {
    "0.05": 13.6,
-   "0.25": 31.3,
+   "0.25": 31.4,
    "0.5": 48.9,
    "0.75": 90.6,
-   "0.95": 337.3,
-   "0.99": 956.4
+   "0.95": 337.4,
+   "0.99": 956.9
   },
   "zones_no_parcel_mask": 1,
-  "mask_too_big_parcel_n": 14,
+  "mask_too_big_parcel_n": 11,
   "area_test_mask_ge_zone_parcel_n": 7,
   "flag_and_area_test_both_parcel_n": 6,
   "mask_too_big_parcel_mask_share_of_zone_quantiles": {
-   "0.05": 0.6349,
-   "0.5": 0.9817,
+   "0.05": 0.9389,
+   "0.5": 0.9997,
    "0.95": 1.0
   },
   "mask_too_big_parcel_worst": [
@@ -194,9 +194,9 @@
   "official_area_base_differs_gt5pct_zones": 285,
   "mask_too_big_settlement_where_official_area_differs_gt5pct": 16,
   "mask_too_big_parcel_where_official_area_differs_gt5pct": 0,
-  "zones_low_parcel_coverage_lt0.5": 1005,
+  "zones_low_parcel_coverage_lt0.5": 998,
   "zones_n_res_parcels_0": 6,
-  "zones_settlement_ge_99pct_of_zone": 5197,
+  "zones_settlement_ge_99pct_of_zone": 5194,
   "sanity_glasgow_densest": [
    {
     "code": "S01009907",
@@ -250,7 +250,7 @@
     "official_dph_2025": 0.0,
     "dph_settlement": 9.637,
     "dph_parcel": 11.377,
-    "share_res_uprn_in_parcels": 0.734
+    "share_res_uprn_in_parcels": 0.594
    },
    {
     "code": "S01011858",
@@ -263,17 +263,75 @@
     "official_dph_2025": 0.04,
     "dph_settlement": 4.524,
     "dph_parcel": 16.346,
-    "share_res_uprn_in_parcels": 0.823
+    "share_res_uprn_in_parcels": 0.8
+   }
+  ],
+  "zero_dwellings_zones": [
+   "S01010206",
+   "S01010226",
+   "S01010227"
+  ],
+  "residential_parcel_ha_before_zero_rule": 69181.29,
+  "residential_parcel_ha_after_zero_rule": 69171.47,
+  "res_uprn_exceeds_dwellings_n": 14,
+  "res_uprn_exceeds_dwellings_worst": [
+   {
+    "code": "S01010207",
+    "n_res_uprn": 286,
+    "dwellings_total_2025": 145,
+    "residential_parcel_ha_before_zero_rule": 6.24
+   },
+   {
+    "code": "S01010106",
+    "n_res_uprn": 226,
+    "dwellings_total_2025": 116,
+    "residential_parcel_ha_before_zero_rule": 4.94
+   },
+   {
+    "code": "S01010219",
+    "n_res_uprn": 146,
+    "dwellings_total_2025": 76,
+    "residential_parcel_ha_before_zero_rule": 11.46
+   },
+   {
+    "code": "S01010309",
+    "n_res_uprn": 256,
+    "dwellings_total_2025": 142,
+    "residential_parcel_ha_before_zero_rule": 9.48
+   },
+   {
+    "code": "S01013122",
+    "n_res_uprn": 331,
+    "dwellings_total_2025": 198,
+    "residential_parcel_ha_before_zero_rule": 3.05
+   },
+   {
+    "code": "S01011361",
+    "n_res_uprn": 254,
+    "dwellings_total_2025": 167,
+    "residential_parcel_ha_before_zero_rule": 0.92
+   },
+   {
+    "code": "S01012493",
+    "n_res_uprn": 376,
+    "dwellings_total_2025": 260,
+    "residential_parcel_ha_before_zero_rule": 3.2
+   },
+   {
+    "code": "S01010362",
+    "n_res_uprn": 475,
+    "dwellings_total_2025": 337,
+    "residential_parcel_ha_before_zero_rule": 3.72
    }
   ],
   "zones_no_residential_parcel_but_dwellings>=10": 1,
-  "res_uprn_in_parcels_share_national": 0.7281,
+  "res_uprn_in_parcels_share_national": 0.7181,
   "res_uprn_per_dwelling_national": 0.6836,
   "share_res_uprn_in_parcels_zone_quantiles": {
-   "0.05": 0.342,
-   "0.25": 0.608,
-   "0.5": 0.793,
-   "0.75": 0.926
+   "0.05": 0.348,
+   "0.25": 0.592,
+   "0.5": 0.772,
+   "0.75": 0.921
   },
   "parcel_ha_gt_settlement_ha_zones": 492
  },
@@ -472,7 +530,7 @@
   "official_area_base_differs_gt5pct_zones": 249,
   "mask_too_big_settlement_where_official_area_differs_gt5pct": 0,
   "mask_too_big_parcel_where_official_area_differs_gt5pct": 0,
-  "zones_low_parcel_coverage_lt0.5": 1034,
+  "zones_low_parcel_coverage_lt0.5": 1038,
   "zones_n_res_parcels_0": 5,
   "zones_settlement_ge_99pct_of_zone": 6387,
   "sanity_glasgow_densest": [
@@ -528,7 +586,7 @@
     "official_dph_2025": 0.0,
     "dph_settlement": NaN,
     "dph_parcel": 9.72,
-    "share_res_uprn_in_parcels": 0.719
+    "share_res_uprn_in_parcels": 0.586
    },
    {
     "code": "S01018251",
@@ -541,17 +599,71 @@
     "official_dph_2025": 0.03,
     "dph_settlement": NaN,
     "dph_parcel": 6.171,
-    "share_res_uprn_in_parcels": 0.805
+    "share_res_uprn_in_parcels": 0.571
+   }
+  ],
+  "zero_dwellings_zones": [],
+  "residential_parcel_ha_before_zero_rule": 69181.39,
+  "residential_parcel_ha_after_zero_rule": 69181.39,
+  "res_uprn_exceeds_dwellings_n": 12,
+  "res_uprn_exceeds_dwellings_worst": [
+   {
+    "code": "S01017379",
+    "n_res_uprn": 898,
+    "dwellings_total_2025": 425,
+    "residential_parcel_ha_before_zero_rule": 13.08
+   },
+   {
+    "code": "S01017360",
+    "n_res_uprn": 592,
+    "dwellings_total_2025": 320,
+    "residential_parcel_ha_before_zero_rule": 7.82
+   },
+   {
+    "code": "S01017462",
+    "n_res_uprn": 449,
+    "dwellings_total_2025": 267,
+    "residential_parcel_ha_before_zero_rule": 11.32
+   },
+   {
+    "code": "S01020845",
+    "n_res_uprn": 971,
+    "dwellings_total_2025": 609,
+    "residential_parcel_ha_before_zero_rule": 31.33
+   },
+   {
+    "code": "S01017010",
+    "n_res_uprn": 437,
+    "dwellings_total_2025": 284,
+    "residential_parcel_ha_before_zero_rule": 2.86
+   },
+   {
+    "code": "S01018734",
+    "n_res_uprn": 380,
+    "dwellings_total_2025": 269,
+    "residential_parcel_ha_before_zero_rule": 3.59
+   },
+   {
+    "code": "S01017517",
+    "n_res_uprn": 475,
+    "dwellings_total_2025": 337,
+    "residential_parcel_ha_before_zero_rule": 3.73
+   },
+   {
+    "code": "S01019334",
+    "n_res_uprn": 527,
+    "dwellings_total_2025": 382,
+    "residential_parcel_ha_before_zero_rule": 30.57
    }
   ],
   "zones_no_residential_parcel_but_dwellings>=10": 2,
-  "res_uprn_in_parcels_share_national": 0.7281,
+  "res_uprn_in_parcels_share_national": 0.7181,
   "res_uprn_per_dwelling_national": 0.6836,
   "share_res_uprn_in_parcels_zone_quantiles": {
-   "0.05": 0.344,
-   "0.25": 0.617,
-   "0.5": 0.804,
-   "0.75": 0.938
+   "0.05": 0.349,
+   "0.25": 0.595,
+   "0.5": 0.779,
+   "0.75": 0.931
   },
   "parcel_ha_gt_settlement_ha_zones": 657
  }

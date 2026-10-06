@@ -5,6 +5,7 @@ These files are on the box only. Nothing has been pushed to the repo. The public
 |---|---|---|
 | epc_dz_rollup.csv | 14,368 | 84 columns: the original 38, plus `recent10_*` (lodged 1 Jul 2016–30 Jun 2026), plus floor-area mean/sum and house/flat means for both sets, plus `dwellings_total_2025` (the coverage denominator, Data Zones count_year 2025) and `dwellings_flag` |
 | dz_residential_land.csv | 14,368 | residential land ha per zone: settlement mask plus RoS INSPIRE residential-parcel union; official-dph `mask_too_big` QA flags |
+| dz_detached_plot_bands.csv | 14,368 | **internal**: plot-size bands (<0.05 / 0.05–0.10 / >0.10 ha) and median parcel ha for detached houses, post-1980 and pre-1980, from the EPC UPRN ↔ RoS INSPIRE match; see README_dz_detached_plot_bands.md |
 | dz_brma_share.csv | 14,593 | household-weighted (Census 2022 postcode points) |
 | dz_park_overlay.csv | 157 | household-weighted |
 | alt/dz_brma_share_oa2022.csv | 14,462 | OA2022-centroid variant |

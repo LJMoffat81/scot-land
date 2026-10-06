@@ -1,7 +1,7 @@
 # dz_residential_land.csv — residential land area per data zone (built 6 Oct 2026, box only)
 **Purpose:** the denominator for the default map view, rent per hectare of residential land.
 **Rows:** 14,368 (6,976 DZ2011 + 7,392 DZ2022). **Key:** (code, vintage). vintage is the integer 2011 or 2022. **Publish level:** public_zone. The file holds zone totals only; no parcel geometry or parcel IDs are in it.
-**Scripts (run in order):** `build_dz_residential_stage1.py` → `build_dz_residential_stage2a.py <counties>` → `build_dz_residential_stage2b.py` → `build_dz_residential_final.py` → `apply_team_rules.py`. QA: `qa_dz_residential_land.json`.
+**Scripts (run in order):** `build_dz_residential_stage1.py` → `build_dz_residential_stage2a.py <counties>` → `build_dz_residential_pairs.py` → `build_dz_residential_stage2b.py` → `build_dz_residential_final.py`. The final step uses the shared `zone_rules.py` (int vintage, code-range check, Data Zones dwellings_total 2025). QA: `qa_dz_residential_land.json`.
 
 ## Columns
 | column | meaning |
@@ -13,11 +13,12 @@
 | n_res_uprn | Residential UPRNs located in the zone (point in polygon) |
 | share_res_uprn_in_parcels | Share of those UPRNs that fall inside a kept residential parcel (coverage) |
 | capped_parcels_n, capped_ha | Residential parcels removed by the size cap (assigned by point-on-surface; full parcel area) |
-| method_flags | The method stamp, plus any of: `no_residential_parcel`, `low_parcel_coverage_lt0.5`, `area_from_parcels_centred_in_neighbour_zone`, `*_sliver_lt_0.01ha_zeroed` |
+| method_flags | The method stamp, plus any of: `zero_dwellings`, `res_uprn_exceeds_dwellings`, `no_residential_parcel`, `low_parcel_coverage_lt0.5`, `area_from_parcels_centred_in_neighbour_zone`, `*_sliver_lt_0.01ha_zeroed` |
+| res_uprn_exceeds_dwellings | True if n_res_uprn > 1.25 × dwellings_total_2025. EPC UPRNs survive for demolished stock, and OS Open UPRN still carries the points, so residential_parcel_ha may include cleared land. |
 | dwellings_total_2025 | QA denominator: Scot-LAND Data Zones `dwellings_by_year.csv` dwellings_total, count_year 2025, same vintage (team rule) |
 | official_dph_2025 | Official NRS dwellings per hectare (Dec 2025; assessor dwellings ÷ the whole zone's area), same vintage |
 | dph_settlement, dph_parcel | dwellings_total_2025 ÷ settlement_ha or residential_parcel_ha (blank if the mask is 0) |
-| mask_too_big_settlement, mask_too_big_parcel | True if our dph, rounded to 2 dp, is ≤ the official whole-zone dph. Blank if the mask is 0. |
+| mask_too_big_settlement, mask_too_big_parcel | True if our dph, rounded to 2 dp, is ≤ the official whole-zone dph. Blank if the mask is 0 or the zone has zero dwellings. |
 
 ## Method
 **Stage 1:** `make_valid`, then dissolve the settlements, then intersect each zone with the union. Mask slivers under 0.01 ha are set to 0 and flagged (13 DZ2011 zones and 255 DZ2022 zones, nearly all from boundary misalignment).
@@ -52,8 +53,8 @@
   - Rothes & N Speyside-02: official 0.03, parcel 6.2.
 
 **Coverage**
-- 72.8% of residential UPRNs fall in a kept parcel (74.1% before the cap). Zone median 0.80; p5 0.34.
-- 1,034 DZ2022 zones and 1,005 DZ2011 zones have coverage below 0.5 and are flagged. These are mostly city-centre tenements and Sasine-heavy areas, where `residential_parcel_ha` is too small and dph is too high.
+- 71.8% of residential UPRNs fall in a kept parcel (74.1% before the cap). Zone median 0.78; p5 0.35. A first build had mis-joined UPRN–parcel pairs and reported 72.8%; this was fixed by keying the pairs on inspireid. Areas were not affected.
+- 1,038 DZ2022 zones and 998 DZ2011 zones have coverage below 0.5 and are flagged. These are mostly city-centre tenements and Sasine-heavy areas, where `residential_parcel_ha` is too small and dph is too high.
 - EPC UPRNs cover only 68% of dwellings (homes with no EPC are invisible), so parcels holding only uncertified homes are missed.
 - Zones with no residential parcel: 2 in DZ2022 (S01014479, S01018629) and 1 in DZ2011 (S01008462).
 
@@ -63,11 +64,21 @@ The official figure comes from the NRS *Dwelling estimates by 2011/2022 Data Zon
 | | settlement mask | parcel method |
 |---|---|---|
 | DZ2022 flagged | **5,115** of 7,392 | **19** |
-| DZ2011 flagged | **3,764** of 6,976 | **14** |
+| DZ2011 flagged | **3,761** of 6,976 | **11** |
 | zones with mask ≥ the NRS whole-zone area (pure area test, DZ2022) | 6,339 | 13 |
 
 - **Settlement mask:** 6,387 DZ2022 zones lie at least 99% inside a settlement, so the mask equals the zone and our figure equals the official one, except for the numerator difference: council-tax dwellings_total against assessor counts (ratio p1 0.93, median 1.00, p99 1.09). Expected outcome: the settlement mask adds no information for urban zones. Worst DZ2022 cases are new-build or demolition zones where dwellings_total is far below the assessor count: S01017422 (ours 48.5 against official 82.7), S01014395 (4.2 against 6.6) and S01020586 (12.7 against 18.0). In DZ2011, the worst cases also come from the official figure using a different area base: S01012188 (Erskine E & Inchinnan-01) has a polygon of 319 ha, but the NRS area implied by its official dph is 33 ha. 285 DZ2011 zones and 249 DZ2022 zones have an NRS area base that differs from the polygon by more than 5%.
 - **Parcel method:** all flags are zones where large estate or common-ground titles cover more than 96% of the zone (median 99.95%). Worst DZ2022 cases: S01016463 (ours 22.7 against 24.0), S01016466 (14.2 against 15.0), S01016534 (23.8 against 25.0), S01016533, S01016467 (a cluster in one estate) and S01015385 (75.5 against 78.5). Worst DZ2011 case: S01009354 (16.2 against 17.0). The ratios are 0.95–1.00, so the cause is the mask rather than a data error. These zones need a building or land-use mask, for example OS Open Zoomstack or OSM, to strip roads and open space.
+
+## Zero-dwelling and demolished-stock rules (added 6 Oct 2026)
+- **Team rule (Georgist):** zones with `dwellings_total_2025` = 0 get `settlement_ha` and `residential_parcel_ha` = NA (blank), flag `zero_dwellings`, and blank `mask_too_big_*` and dph. These zones are valued through the vacant/derelict and housing land supply layers instead. The rule affects 3 DZ2011 zones: S01010206 Petershill-04, S01010226 Sighthill-02 and S01010227 Sighthill-03, all demolished towers. Before the rule they had 0.86, 2.92 and 6.04 ha of residential parcels, from 189, 253 and 142 EPC UPRNs of demolished flats. No DZ2022 zone has zero dwellings.
+- **National residential_parcel_ha:** DZ2011 went from 69,181.29 to 69,171.47 ha; DZ2022 is unchanged at 69,181.39 ha.
+- **`res_uprn_exceeds_dwellings`** (n_res_uprn > 1.25 × dwellings): 14 DZ2011 zones (the 3 above plus 11 others) and 12 DZ2022 zones. Top DZ2022 cases, which are the 2022 successors of the Sighthill/Petershill zones:
+  - S01017379: 898 UPRNs against 425 dwellings; 13.1 ha
+  - S01017360: 592 against 320; 7.8 ha
+
+  Others: S01017462, S01020845, S01017010 (Glasgow regeneration areas). Their residential_parcel_ha probably includes cleared land, so treat their dph as a lower bound.
+- **Demolition evidence:** no open demolition flag exists. The EPC register does not retire certificates, and OS Open UPRN keeps the points. Every EPC UPRN is required to be present in the current OS Open UPRN release (Sept 2026; 99.95% are), but that does not filter out demolished stock. A proper filter needs AddressBase status or an OSG/LLPG logical status, both licensed under the PSGA.
 
 ## Licences
 - **RoS INSPIRE Cadastral Parcels:** OGL v3, plus the OS INSPIRE end-user licence (© Crown copyright and database right 2026; © Registers of Scotland). Parcel geometry is used internally only. It is not redistributed: only zone-level area totals are published here. Please confirm the public_zone use of derived totals with the licence owner before any push.

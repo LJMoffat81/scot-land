@@ -1,0 +1,18 @@
+{
+ "DZ2011": {
+  "island_zones(>50%_hh_on_islands)": 139,
+  "island_zones_split_across_brma": 0,
+  "median_unoccupied_share_island": 0.109,
+  "median_unoccupied_share_mainland": 0.026,
+  "median_second_home_share_island": 0.036,
+  "median_second_home_share_mainland": 0.0
+ },
+ "DZ2022": {
+  "island_zones(>50%_hh_on_islands)": 145,
+  "island_zones_split_across_brma": 0,
+  "median_unoccupied_share_island": 0.098,
+  "median_unoccupied_share_mainland": 0.025,
+  "median_second_home_share_island": 0.033,
+  "median_second_home_share_mainland": 0.0
+ }
+}

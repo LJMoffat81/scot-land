@@ -1,0 +1,558 @@
+{
+ "2011": {
+  "zones": 6976,
+  "zone_ha": 7793711,
+  "settlement_ha": 192900,
+  "residential_parcel_ha": 69181,
+  "dwellings_total_2025": 2757376,
+  "national_dph_settlement": 14.29,
+  "national_dph_parcel": 39.86,
+  "national_official_dph_wholezone": 0.354,
+  "zone_area_vs_nrs_implied_median_ratio": 1.0,
+  "dph_settlement_quantiles": {
+   "0.05": 5.5,
+   "0.25": 12.2,
+   "0.5": 18.8,
+   "0.75": 26.9,
+   "0.95": 65.8,
+   "0.99": 139.3
+  },
+  "zones_no_settlement_mask": 242,
+  "mask_too_big_settlement_n": 3764,
+  "area_test_mask_ge_zone_settlement_n": 4536,
+  "flag_and_area_test_both_settlement_n": 3585,
+  "mask_too_big_settlement_mask_share_of_zone_quantiles": {
+   "0.05": 0.9992,
+   "0.5": 1.0,
+   "0.95": 1.0
+  },
+  "mask_too_big_settlement_worst": [
+   {
+    "code": "S01012188",
+    "zone_ha": 318.836,
+    "settlement_ha": 318.835,
+    "dwellings_total_2025": 256,
+    "official_dph_2025": 7.74,
+    "dph_settlement": 0.803,
+    "ratio": 0.104
+   },
+   {
+    "code": "S01012140",
+    "zone_ha": 118.421,
+    "settlement_ha": 118.421,
+    "dwellings_total_2025": 238,
+    "official_dph_2025": 18.97,
+    "dph_settlement": 2.01,
+    "ratio": 0.106
+   },
+   {
+    "code": "S01011463",
+    "zone_ha": 131.21,
+    "settlement_ha": 131.21,
+    "dwellings_total_2025": 611,
+    "official_dph_2025": 10.75,
+    "dph_settlement": 4.657,
+    "ratio": 0.433
+   },
+   {
+    "code": "S01009043",
+    "zone_ha": 54.611,
+    "settlement_ha": 54.589,
+    "dwellings_total_2025": 305,
+    "official_dph_2025": 12.19,
+    "dph_settlement": 5.587,
+    "ratio": 0.458
+   },
+   {
+    "code": "S01010267",
+    "zone_ha": 11.526,
+    "settlement_ha": 11.526,
+    "dwellings_total_2025": 474,
+    "official_dph_2025": 88.84,
+    "dph_settlement": 41.123,
+    "ratio": 0.463
+   },
+   {
+    "code": "S01007374",
+    "zone_ha": 32.878,
+    "settlement_ha": 32.877,
+    "dwellings_total_2025": 146,
+    "official_dph_2025": 6.82,
+    "dph_settlement": 4.441,
+    "ratio": 0.651
+   },
+   {
+    "code": "S01007702",
+    "zone_ha": 22.033,
+    "settlement_ha": 22.033,
+    "dwellings_total_2025": 352,
+    "official_dph_2025": 23.37,
+    "dph_settlement": 15.976,
+    "ratio": 0.684
+   },
+   {
+    "code": "S01013212",
+    "zone_ha": 10.703,
+    "settlement_ha": 10.703,
+    "dwellings_total_2025": 136,
+    "official_dph_2025": 18.03,
+    "dph_settlement": 12.707,
+    "ratio": 0.705
+   }
+  ],
+  "dph_parcel_quantiles": {
+   "0.05": 13.6,
+   "0.25": 31.3,
+   "0.5": 48.9,
+   "0.75": 90.6,
+   "0.95": 337.3,
+   "0.99": 956.4
+  },
+  "zones_no_parcel_mask": 1,
+  "mask_too_big_parcel_n": 14,
+  "area_test_mask_ge_zone_parcel_n": 7,
+  "flag_and_area_test_both_parcel_n": 6,
+  "mask_too_big_parcel_mask_share_of_zone_quantiles": {
+   "0.05": 0.6349,
+   "0.5": 0.9817,
+   "0.95": 1.0
+  },
+  "mask_too_big_parcel_worst": [
+   {
+    "code": "S01009354",
+    "zone_ha": 52.407,
+    "residential_parcel_ha": 52.012,
+    "dwellings_total_2025": 842,
+    "official_dph_2025": 17.02,
+    "dph_parcel": 16.189,
+    "ratio": 0.951
+   },
+   {
+    "code": "S01013156",
+    "zone_ha": 9.255,
+    "residential_parcel_ha": 8.492,
+    "dwellings_total_2025": 321,
+    "official_dph_2025": 39.01,
+    "dph_parcel": 37.799,
+    "ratio": 0.969
+   },
+   {
+    "code": "S01009352",
+    "zone_ha": 15.323,
+    "residential_parcel_ha": 14.878,
+    "dwellings_total_2025": 278,
+    "official_dph_2025": 19.25,
+    "dph_parcel": 18.685,
+    "ratio": 0.971
+   },
+   {
+    "code": "S01008212",
+    "zone_ha": 8.41,
+    "residential_parcel_ha": 8.091,
+    "dwellings_total_2025": 199,
+    "official_dph_2025": 25.21,
+    "dph_parcel": 24.595,
+    "ratio": 0.976
+   },
+   {
+    "code": "S01009359",
+    "zone_ha": 12.051,
+    "residential_parcel_ha": 11.572,
+    "dwellings_total_2025": 265,
+    "official_dph_2025": 23.32,
+    "dph_parcel": 22.9,
+    "ratio": 0.982
+   },
+   {
+    "code": "S01012054",
+    "zone_ha": 11.169,
+    "residential_parcel_ha": 11.169,
+    "dwellings_total_2025": 330,
+    "official_dph_2025": 29.55,
+    "dph_parcel": 29.546,
+    "ratio": 1.0
+   },
+   {
+    "code": "S01011710",
+    "zone_ha": 6.827,
+    "residential_parcel_ha": 6.827,
+    "dwellings_total_2025": 260,
+    "official_dph_2025": 38.09,
+    "dph_parcel": 38.086,
+    "ratio": 1.0
+   },
+   {
+    "code": "S01011746",
+    "zone_ha": 5.588,
+    "residential_parcel_ha": 5.588,
+    "dwellings_total_2025": 219,
+    "official_dph_2025": 39.19,
+    "dph_parcel": 39.192,
+    "ratio": 1.0
+   }
+  ],
+  "official_area_base_differs_gt5pct_zones": 285,
+  "mask_too_big_settlement_where_official_area_differs_gt5pct": 16,
+  "mask_too_big_parcel_where_official_area_differs_gt5pct": 0,
+  "zones_low_parcel_coverage_lt0.5": 1005,
+  "zones_n_res_parcels_0": 6,
+  "zones_settlement_ge_99pct_of_zone": 5197,
+  "sanity_glasgow_densest": [
+   {
+    "code": "S01009907",
+    "name": "Strathbungo - 03",
+    "la_name": "Glasgow City",
+    "zone_ha": 3.417,
+    "settlement_ha": 3.417,
+    "residential_parcel_ha": 0.994,
+    "dwellings_total_2025": 660,
+    "official_dph_2025": 193.16,
+    "dph_settlement": 193.157,
+    "dph_parcel": 664.055,
+    "share_res_uprn_in_parcels": 0.473
+   },
+   {
+    "code": "S01009845",
+    "name": "Govan and Linthouse - 05",
+    "la_name": "Glasgow City",
+    "zone_ha": 2.385,
+    "settlement_ha": 2.385,
+    "residential_parcel_ha": 0.626,
+    "dwellings_total_2025": 466,
+    "official_dph_2025": 187.41,
+    "dph_settlement": 195.381,
+    "dph_parcel": 744.849,
+    "share_res_uprn_in_parcels": 0.255
+   },
+   {
+    "code": "S01010385",
+    "name": "Hillhead - 05",
+    "la_name": "Glasgow City",
+    "zone_ha": 2.854,
+    "settlement_ha": 2.854,
+    "residential_parcel_ha": 0.303,
+    "dwellings_total_2025": 507,
+    "official_dph_2025": 177.62,
+    "dph_settlement": 177.618,
+    "dph_parcel": 1675.663,
+    "share_res_uprn_in_parcels": 0.108
+   }
+  ],
+  "sanity_rural": [
+   {
+    "code": "S01010532",
+    "name": "Badenoch and Strathspey South - 02",
+    "la_name": "Highland",
+    "zone_ha": 94628.565,
+    "settlement_ha": 39.017,
+    "residential_parcel_ha": 33.05,
+    "dwellings_total_2025": 376,
+    "official_dph_2025": 0.0,
+    "dph_settlement": 9.637,
+    "dph_parcel": 11.377,
+    "share_res_uprn_in_parcels": 0.734
+   },
+   {
+    "code": "S01011858",
+    "name": "Comrie, Gilmerton and St Fillans - 02",
+    "la_name": "Perth and Kinross",
+    "zone_ha": 10143.154,
+    "settlement_ha": 100.799,
+    "residential_parcel_ha": 27.896,
+    "dwellings_total_2025": 456,
+    "official_dph_2025": 0.04,
+    "dph_settlement": 4.524,
+    "dph_parcel": 16.346,
+    "share_res_uprn_in_parcels": 0.823
+   }
+  ],
+  "zones_no_residential_parcel_but_dwellings>=10": 1,
+  "res_uprn_in_parcels_share_national": 0.7281,
+  "res_uprn_per_dwelling_national": 0.6836,
+  "share_res_uprn_in_parcels_zone_quantiles": {
+   "0.05": 0.342,
+   "0.25": 0.608,
+   "0.5": 0.793,
+   "0.75": 0.926
+  },
+  "parcel_ha_gt_settlement_ha_zones": 492
+ },
+ "2022": {
+  "zones": 7392,
+  "zone_ha": 7790085,
+  "settlement_ha": 193202,
+  "residential_parcel_ha": 69181,
+  "dwellings_total_2025": 2757323,
+  "national_dph_settlement": 14.27,
+  "national_dph_parcel": 39.86,
+  "national_official_dph_wholezone": 0.354,
+  "zone_area_vs_nrs_implied_median_ratio": 1.0,
+  "dph_settlement_quantiles": {
+   "0.05": 4.9,
+   "0.25": 11.7,
+   "0.5": 18.4,
+   "0.75": 26.7,
+   "0.95": 64.3,
+   "0.99": 127.9
+  },
+  "zones_no_settlement_mask": 525,
+  "mask_too_big_settlement_n": 5115,
+  "area_test_mask_ge_zone_settlement_n": 6339,
+  "flag_and_area_test_both_settlement_n": 5082,
+  "mask_too_big_settlement_mask_share_of_zone_quantiles": {
+   "0.05": 1.0,
+   "0.5": 1.0,
+   "0.95": 1.0
+  },
+  "mask_too_big_settlement_worst": [
+   {
+    "code": "S01017422",
+    "zone_ha": 16.052,
+    "settlement_ha": 16.052,
+    "dwellings_total_2025": 779,
+    "official_dph_2025": 82.67,
+    "dph_settlement": 48.529,
+    "ratio": 0.587
+   },
+   {
+    "code": "S01014395",
+    "zone_ha": 34.682,
+    "settlement_ha": 34.682,
+    "dwellings_total_2025": 146,
+    "official_dph_2025": 6.6,
+    "dph_settlement": 4.21,
+    "ratio": 0.638
+   },
+   {
+    "code": "S01020586",
+    "zone_ha": 10.703,
+    "settlement_ha": 10.703,
+    "dwellings_total_2025": 136,
+    "official_dph_2025": 18.03,
+    "dph_settlement": 12.707,
+    "ratio": 0.705
+   },
+   {
+    "code": "S01015380",
+    "zone_ha": 25.317,
+    "settlement_ha": 25.317,
+    "dwellings_total_2025": 395,
+    "official_dph_2025": 22.04,
+    "dph_settlement": 15.602,
+    "ratio": 0.708
+   },
+   {
+    "code": "S01015952",
+    "zone_ha": 10.636,
+    "settlement_ha": 10.636,
+    "dwellings_total_2025": 126,
+    "official_dph_2025": 16.17,
+    "dph_settlement": 11.847,
+    "ratio": 0.733
+   },
+   {
+    "code": "S01014400",
+    "zone_ha": 198.037,
+    "settlement_ha": 198.037,
+    "dwellings_total_2025": 332,
+    "official_dph_2025": 2.14,
+    "dph_settlement": 1.676,
+    "ratio": 0.783
+   },
+   {
+    "code": "S01019732",
+    "zone_ha": 43.386,
+    "settlement_ha": 43.386,
+    "dwellings_total_2025": 357,
+    "official_dph_2025": 10.23,
+    "dph_settlement": 8.228,
+    "ratio": 0.804
+   },
+   {
+    "code": "S01020504",
+    "zone_ha": 6.348,
+    "settlement_ha": 6.348,
+    "dwellings_total_2025": 265,
+    "official_dph_2025": 51.04,
+    "dph_settlement": 41.746,
+    "ratio": 0.818
+   }
+  ],
+  "dph_parcel_quantiles": {
+   "0.05": 13.3,
+   "0.25": 30.4,
+   "0.5": 48.0,
+   "0.75": 89.7,
+   "0.95": 340.6,
+   "0.99": 1029.9
+  },
+  "zones_no_parcel_mask": 2,
+  "mask_too_big_parcel_n": 19,
+  "area_test_mask_ge_zone_parcel_n": 13,
+  "flag_and_area_test_both_parcel_n": 10,
+  "mask_too_big_parcel_mask_share_of_zone_quantiles": {
+   "0.05": 0.9617,
+   "0.5": 0.9995,
+   "0.95": 1.0
+  },
+  "mask_too_big_parcel_worst": [
+   {
+    "code": "S01016463",
+    "zone_ha": 9.863,
+    "residential_parcel_ha": 9.863,
+    "dwellings_total_2025": 224,
+    "official_dph_2025": 24.03,
+    "dph_parcel": 22.712,
+    "ratio": 0.945
+   },
+   {
+    "code": "S01016466",
+    "zone_ha": 21.397,
+    "residential_parcel_ha": 21.342,
+    "dwellings_total_2025": 302,
+    "official_dph_2025": 14.96,
+    "dph_parcel": 14.151,
+    "ratio": 0.946
+   },
+   {
+    "code": "S01016534",
+    "zone_ha": 8.465,
+    "residential_parcel_ha": 8.41,
+    "dwellings_total_2025": 200,
+    "official_dph_2025": 25.04,
+    "dph_parcel": 23.782,
+    "ratio": 0.95
+   },
+   {
+    "code": "S01016533",
+    "zone_ha": 10.824,
+    "residential_parcel_ha": 10.7,
+    "dwellings_total_2025": 201,
+    "official_dph_2025": 19.68,
+    "dph_parcel": 18.785,
+    "ratio": 0.955
+   },
+   {
+    "code": "S01016467",
+    "zone_ha": 20.28,
+    "residential_parcel_ha": 20.03,
+    "dwellings_total_2025": 255,
+    "official_dph_2025": 13.31,
+    "dph_parcel": 12.731,
+    "ratio": 0.956
+   },
+   {
+    "code": "S01015385",
+    "zone_ha": 8.085,
+    "residential_parcel_ha": 8.081,
+    "dwellings_total_2025": 610,
+    "official_dph_2025": 78.54,
+    "dph_parcel": 75.488,
+    "ratio": 0.961
+   },
+   {
+    "code": "S01017156",
+    "zone_ha": 8.045,
+    "residential_parcel_ha": 8.033,
+    "dwellings_total_2025": 413,
+    "official_dph_2025": 53.32,
+    "dph_parcel": 51.413,
+    "ratio": 0.964
+   },
+   {
+    "code": "S01015909",
+    "zone_ha": 8.361,
+    "residential_parcel_ha": 8.042,
+    "dwellings_total_2025": 199,
+    "official_dph_2025": 25.36,
+    "dph_parcel": 24.746,
+    "ratio": 0.976
+   }
+  ],
+  "official_area_base_differs_gt5pct_zones": 249,
+  "mask_too_big_settlement_where_official_area_differs_gt5pct": 0,
+  "mask_too_big_parcel_where_official_area_differs_gt5pct": 0,
+  "zones_low_parcel_coverage_lt0.5": 1034,
+  "zones_n_res_parcels_0": 5,
+  "zones_settlement_ge_99pct_of_zone": 6387,
+  "sanity_glasgow_densest": [
+   {
+    "code": "S01017423",
+    "name": "City Centre South - 01",
+    "la_name": "Glasgow City",
+    "zone_ha": 1.067,
+    "settlement_ha": 1.067,
+    "residential_parcel_ha": 0.042,
+    "dwellings_total_2025": 454,
+    "official_dph_2025": 425.54,
+    "dph_settlement": 425.544,
+    "dph_parcel": 10913.425,
+    "share_res_uprn_in_parcels": 0.338
+   },
+   {
+    "code": "S01017544",
+    "name": "Hillhead - 08",
+    "la_name": "Glasgow City",
+    "zone_ha": 6.731,
+    "settlement_ha": 6.731,
+    "residential_parcel_ha": 3.012,
+    "dwellings_total_2025": 1302,
+    "official_dph_2025": 193.44,
+    "dph_settlement": 193.442,
+    "dph_parcel": 432.324,
+    "share_res_uprn_in_parcels": 0.92
+   },
+   {
+    "code": "S01016969",
+    "name": "Govan and Linthouse - 05",
+    "la_name": "Glasgow City",
+    "zone_ha": 2.386,
+    "settlement_ha": 2.386,
+    "residential_parcel_ha": 0.626,
+    "dwellings_total_2025": 466,
+    "official_dph_2025": 187.32,
+    "dph_settlement": 195.286,
+    "dph_parcel": 744.155,
+    "share_res_uprn_in_parcels": 0.255
+   }
+  ],
+  "sanity_rural": [
+   {
+    "code": "S01017690",
+    "name": "Lochaber East and North - 07",
+    "la_name": "Highland",
+    "zone_ha": 81330.137,
+    "settlement_ha": 0.0,
+    "residential_parcel_ha": 41.565,
+    "dwellings_total_2025": 404,
+    "official_dph_2025": 0.0,
+    "dph_settlement": NaN,
+    "dph_parcel": 9.72,
+    "share_res_uprn_in_parcels": 0.719
+   },
+   {
+    "code": "S01018251",
+    "name": "Rothes and North Speyside - 02",
+    "la_name": "Moray",
+    "zone_ha": 8791.334,
+    "settlement_ha": 0.0,
+    "residential_parcel_ha": 36.948,
+    "dwellings_total_2025": 228,
+    "official_dph_2025": 0.03,
+    "dph_settlement": NaN,
+    "dph_parcel": 6.171,
+    "share_res_uprn_in_parcels": 0.805
+   }
+  ],
+  "zones_no_residential_parcel_but_dwellings>=10": 2,
+  "res_uprn_in_parcels_share_national": 0.7281,
+  "res_uprn_per_dwelling_national": 0.6836,
+  "share_res_uprn_in_parcels_zone_quantiles": {
+   "0.05": 0.344,
+   "0.25": 0.617,
+   "0.5": 0.804,
+   "0.75": 0.938
+  },
+  "parcel_ha_gt_settlement_ha_zones": 657
+ }
+}

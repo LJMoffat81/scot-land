@@ -25,6 +25,10 @@ data/processed/*
 !data/processed/glasgow_ward_18.geojson
 !data/processed/context_by_council.json
 !data/processed/sg_urban_rural_2022_urban_20m.geojson
+# Manifest-governed datasets (docs/processed_data_manifest.md). Files > 50 MB are
+# NOT committed: list them below with a re-pull note instead.
+!data/processed/gis/
+!data/processed/datazones/
 SG_UrbanRural_2022.zip
 # batch demos
 data/processed/demo_roll.*
@@ -59,3 +63,36 @@ Cursor Demo/
 # surface-rent: machine-local data paths and never-committed outputs
 data/config/surface.local.yaml
 out/
+
+# ---------------------------------------------------------------------------
+# NEVER PUBLISH (this repo is public). Enforced by scripts/check_publishable.py.
+# Raw downloads of any kind, in any folder
+**/raw/
+# Spatial Hub downloads (Improvement Service; not open data)
+**/spatialhub/
+**/spatial_hub/
+**/*spatialhub*
+**/*spatial_hub*
+**/*SpatialHub*
+# RoS-parcel-derived internal files (INSPIRE/cadastral: site outlines,
+# residential land, plot sizes). dz_residential_land is held pending GIS.
+data/**/*site_outline*
+data/**/*parcel*
+data/**/*plot*.csv
+data/**/*plot*.gpkg
+data/**/*plot*.geojson
+data/**/*plot*.parquet
+data/**/dz_residential_land*.csv
+data/**/*residential_land*.gpkg
+data/**/*residential_land*.geojson
+data/**/*residential_land*.parquet
+# Owner-internal outputs: internal/ folders, site-geometry layers (SVDLS/HLS site
+# gpkg are publish_level internal; some outlines are RoS INSPIRE), INSPIRE variants
+data/**/internal/
+data/**/*.gpkg
+data/**/*inspire*
+# Anything carrying addresses, postcodes or property identifiers
+data/**/*address*
+data/**/*postcode*
+data/**/*uprn*
+data/**/*udprn*

@@ -10,3 +10,6 @@
 *.geojson text eol=lf
 data/** text eol=lf
 config/** text eol=lf
+# Manifest-governed data: byte-exact (sha256 in manifest.csv), never EOL-normalised.
+data/processed/gis/** -text
+data/processed/datazones/** -text

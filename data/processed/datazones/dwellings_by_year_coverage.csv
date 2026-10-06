@@ -1,0 +1,43 @@
+vintage,count_year,ctax_split_published,ctax_source,assessor_ct_band_published,assessor_source
+2011,2005,False,,True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2005'
+2011,2006,False,,True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2006'
+2011,2007,False,,True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2007'
+2011,2008,False,,True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2008'
+2011,2009,False,,True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2009'
+2011,2010,False,,True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2010'
+2011,2011,False,,True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2011'
+2011,2012,False,,True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2012'
+2011,2013,False,,True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2013'
+2011,2014,True,household-estimates-by-2011-data-zones.xlsx sheet '2014',True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2014'
+2011,2015,True,household-estimates-by-2011-data-zones.xlsx sheet '2015',True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2015'
+2011,2016,True,household-estimates-by-2011-data-zones.xlsx sheet '2016',True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2016'
+2011,2017,True,household-estimates-by-2011-data-zones.xlsx sheet '2017',True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2017'
+2011,2018,True,household-estimates-by-2011-data-zones.xlsx sheet '2018',True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2018'
+2011,2019,True,household-estimates-by-2011-data-zones.xlsx sheet '2019',True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2019'
+2011,2020,True,household-estimates-by-2011-data-zones.xlsx sheet '2020',True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2020'
+2011,2021,True,household-estimates-by-2011-data-zones.xlsx sheet '2021',True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2021'
+2011,2022,True,household-estimates-by-2011-data-zones.xlsx sheet '2022',True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2022'
+2011,2023,True,household-estimates-by-2011-data-zones.xlsx sheet '2023',True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2023'
+2011,2024,True,household-estimates-by-2011-data-zones.xlsx sheet '2024',True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2024'
+2011,2025,True,household-estimates-by-2011-data-zones.xlsx sheet '2025',True,dwellings-estimate-by-2011-data-zones.xlsx sheet '2025'
+2022,2005,False,,False,
+2022,2006,False,,False,
+2022,2007,False,,False,
+2022,2008,False,,False,
+2022,2009,False,,False,
+2022,2010,False,,False,
+2022,2011,False,,False,
+2022,2012,False,,False,
+2022,2013,False,,False,
+2022,2014,False,,False,
+2022,2015,False,,False,
+2022,2016,False,,False,
+2022,2017,False,,False,
+2022,2018,False,,False,
+2022,2019,False,,False,
+2022,2020,False,,False,
+2022,2021,False,,False,
+2022,2022,False,,False,
+2022,2023,False,,False,
+2022,2024,True,household-estimates-by-2022-data-zones-24-25.xlsx sheet '2024',True,dwelling-estimates-by-2022-data-zones-24-25.xlsx sheet '2024'
+2022,2025,True,household-estimates-by-2022-data-zones-24-25.xlsx sheet '2025',True,dwelling-estimates-by-2022-data-zones-24-25.xlsx sheet '2025'

@@ -1,0 +1,24 @@
+{
+ "hh_postcodes":141760,
+ "hh_total":2508715.0,
+ "points_outside_all_brma":27,
+ "hh_outside_all_brma":583.0,
+ "nearest_snap_max_dist_m":2322.6768943665,
+ "DZ2011_zones":6976,
+ "DZ2011_fallback_zones":[
+  "S01010206",
+  "S01010226",
+  "S01010227"
+ ],
+ "DZ2011_zones_split_across_brma":107,
+ "DZ2011_max_abs_sum_error":0.0,
+ "DZ2022_zones":7392,
+ "DZ2022_fallback_zones":[
+
+ ],
+ "DZ2022_zones_split_across_brma":109,
+ "DZ2022_max_abs_sum_error":0.0,
+ "rows":14593,
+ "DZ2011_pc_centroid_outside_assigned_zone_pct_hh":0.001,
+ "DZ2022_pc_centroid_outside_assigned_zone_pct_hh":0.0
+}

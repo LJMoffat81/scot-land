@@ -1,0 +1,15 @@
+{
+ "oa_points": 46363,
+ "hh": 2508542,
+ "oa_outside_brma_snapped": 9,
+ "DZ2011_fallback_zones": 4,
+ "DZ2011_max_sum_err": 0.0,
+ "DZ2011_max_abs_diff_vs_postcode": 0.4022,
+ "DZ2011_zones_diff_gt_0.05": 24,
+ "DZ2011_zones_split_oa": 48,
+ "DZ2022_fallback_zones": 0,
+ "DZ2022_max_sum_err": 0.0,
+ "DZ2022_max_abs_diff_vs_postcode": 0.2147,
+ "DZ2022_zones_diff_gt_0.05": 24,
+ "DZ2022_zones_split_oa": 45
+}

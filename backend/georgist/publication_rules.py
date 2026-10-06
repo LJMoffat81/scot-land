@@ -116,6 +116,8 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     "/layers/georgist/resource-rent": LayerRule("site", "site", "measured", sources=SITE_PUBLIC_SOURCES),
     "/layers/georgist/eco-rent": LayerRule("site", "site", "measured", sources=SITE_PUBLIC_SOURCES),
     "/layers/context/data-zones/at": LayerRule("zone", "zone", "none", note="code, vintage, name"),
+    # Postcode search: a postcode centroid point (postcodes.io / ONSPD), no value or rent attached.
+    "/geocode/postcode": LayerRule("site", "site", "none", note="postcode centroid lat/lng only; no values"),
     # Legacy AGR router (not mounted today): RoS INSPIRE parcel shapes only, no value attached.
     "/layers/parcels/tiles/{z}/{x}/{y}.png": LayerRule("parcel", "zone", "none", note="plain parcel shapes"),
     "/layers/parcels/tiles/{z}/{x}/{y}": LayerRule("parcel", "zone", "none", note="plain parcel shapes"),

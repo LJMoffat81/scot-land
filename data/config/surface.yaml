@@ -440,6 +440,7 @@ surface_rent:
     expected_metadata:                                      # GIS fixed settings; asserted against the file's manifest/metadata
       employment_source: BRES                               # Business Register and Employment Survey, open
       employment_geography: DZ2011
+      employment_year: 2023                                 # = evidence_year (Georgist, room 2026-10-06); if BRES 2023 is unpublished at DZ level, nearest published year, recorded in GIS manifest and flagged
       decay: exponential
       decay_scale_km: 10
       cutoff_km: 60

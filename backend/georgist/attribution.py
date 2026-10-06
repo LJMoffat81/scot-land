@@ -7,7 +7,8 @@ attribution is missing, AttributionMissing is raised and the public endpoint ans
 `attribution_missing` instead of serving figures without their credit.
 
   surface_rent  always: gis/epc_dz_rollup.csv (Valuation's rebuild mix and floor area).
-                when used: datazones/dwellings_by_year.csv (per dwelling) and
+                when used: gis/dz_residential_land.csv (per residential hectare),
+                datazones/dwellings_by_year.csv (per dwelling) and
                 datazones/zone_spine.csv (per resident).
 """
 
@@ -23,11 +24,18 @@ from paths import PROCESSED_DIR
 EPC_ROLLUP = ("gis", "epc_dz_rollup.csv")
 DZ_DWELLINGS = ("datazones", "dwellings_by_year.csv")
 DZ_SPINE = ("datazones", "zone_spine.csv")
+GIS_RESIDENTIAL_LAND = ("gis", "dz_residential_land.csv")
 
 # Datasets every figure of a public layer is built from.
 LAYER_DATASETS: dict[str, tuple[tuple[str, str], ...]] = {"surface_rent": (EPC_ROLLUP,)}
 # Display views -> dataset whose count they divide by (credited only when the view is shown).
-VIEW_DATASETS: dict[str, tuple[str, str]] = {"per_dwelling": DZ_DWELLINGS, "per_resident": DZ_SPINE}
+VIEW_DATASETS: dict[str, tuple[str, str]] = {
+    "per_residential_hectare": GIS_RESIDENTIAL_LAND,  # RoS parcel-based area (RoS/OS attribution)
+    "per_dwelling": DZ_DWELLINGS,
+    "per_resident": DZ_SPINE,
+}
+# View statuses that put a figure on screen (and so need the denominator's credit).
+SHOWN_STATUSES = ("ok", "interim_rough")
 
 NON_COMMERCIAL = "Non-commercial research use only; licence check needed before any commercial use."
 

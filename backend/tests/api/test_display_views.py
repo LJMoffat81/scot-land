@@ -23,7 +23,7 @@ def test_default_is_residential_hectare_and_pending_without_denominators():
     assert d["order"] == list(VIEW_ORDER) == ["per_residential_hectare", "per_dwelling", "per_resident"]
     v = d["views"]
     assert v["per_residential_hectare"] == {"status": PENDING, "value": None, "low": None, "high": None,
-                                            "denominator": "residential_land_ha"}
+                                            "denominator": "residential_land_ha", "confidence": None}
     assert v["per_dwelling"]["status"] == "ok" and v["per_dwelling"]["value"] == 250.0
     assert v["per_dwelling"]["low"] == 150.0 and v["per_dwelling"]["high"] == 375.0
     assert v["per_resident"]["status"] == PENDING and v["per_resident"]["value"] is None

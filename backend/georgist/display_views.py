@@ -32,6 +32,12 @@ VIEW_ORDER = ("per_residential_hectare", "per_dwelling", "per_resident")
 DEFAULT_VIEW = "per_residential_hectare"
 PENDING = "denominator_pending"
 HIGH_SECOND_HOME_SHARE = 0.10  # label only; Georgist may change
+# Per-residential-hectare confidence (team rule 2026-10-06, GIS dz_residential_land): low where
+# fewer than half the zone's residential UPRNs fall in a kept parcel, or the parcel mask is too
+# big (our dwellings per ha <= the official whole-zone figure). Low => prefer the per-home view.
+MIN_UPRN_PARCEL_COVERAGE = 0.5
+RES_AREA_LOW_CONFIDENCE = "residential_area_low_confidence"
+PREFERRED_WHEN_LOW = "per_dwelling"
 
 
 def _num(v: Any) -> float | None:
@@ -46,6 +52,22 @@ def _per(rent: float | None, lo: float | None, hi: float | None, denom: float | 
         "low": round(lo / denom, 2) if lo is not None else None,
         "high": round(hi / denom, 2) if hi is not None else None,
     }
+
+
+def residential_confidence(denominators: Mapping[str, Any] | None, view_status: str) -> tuple[str | None, list[str]]:
+    """('normal' | 'low' | None, reasons) for the per-residential-hectare view. Display only."""
+    if view_status not in ("ok", "interim_rough"):
+        return None, []
+    d = denominators or {}
+    reasons = []
+    if view_status == "interim_rough":
+        reasons.append("settlement_mask_not_residential_land")
+    share = d.get("share_res_uprn_in_parcels")
+    if share is not None and float(share) < MIN_UPRN_PARCEL_COVERAGE:
+        reasons.append("share_res_uprn_in_parcels_lt_0.5")
+    if d.get("mask_too_big_parcel") is True:
+        reasons.append("mask_too_big_parcel")
+    return ("low" if reasons else "normal"), reasons
 
 
 def _unavailable(status: str, **extra: Any) -> dict[str, Any]:
@@ -216,4 +238,13 @@ def surface_views(
         views["per_resident"] = _unavailable(PENDING, denominator="population", **second,
                                              flag=f"no population count for {surface.get('vintage')} "
                                              f"{price_year}; not taken from another year")
+    rh = views["per_residential_hectare"]
+    confidence, reasons = residential_confidence(d, rh["status"])
+    rh["confidence"] = confidence
+    if reasons:
+        rh["confidence_reasons"] = reasons
+    if confidence == "low":
+        flags.append(RES_AREA_LOW_CONFIDENCE)
+        if views[PREFERRED_WHEN_LOW]["status"] == "ok":
+            base["default"] = PREFERRED_WHEN_LOW  # prefer the per-home view where the area is shaky
     return {**base, "views": views}

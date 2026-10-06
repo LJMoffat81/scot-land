@@ -90,6 +90,22 @@ PUBLIC_SURFACE_COLUMNS: tuple[str, ...] = (
     "negative_residual", "rebuild_status", "absent_from_ros_price_file",
 )
 
+# Valuation quality tags that the public API passes through as quality flags (read from the
+# internal proxy_tags column; nothing else from proxy_tags is served). plot_bands_borrowed
+# (rules v0.7): the zone had no plot-band shares and borrowed its council x urban-rural class
+# shares. The API never defaults such zones to all-estate or all-one-off; it only reports it.
+QUALITY_FLAG_TAGS: tuple[str, ...] = ("plot_bands_borrowed",)
+
+
+def quality_flags_sql(alias: str = "") -> str:
+    col = f"{alias}.proxy_tags" if alias else "proxy_tags"
+    tags = ", ".join("'" + t + "'" for t in QUALITY_FLAG_TAGS)
+    return f"ARRAY(SELECT t FROM unnest(COALESCE({col}, '{{}}'::text[])) AS t WHERE t IN ({tags}) ORDER BY t) AS quality_flags"
+
+
+QUALITY_FLAGS_SQL = quality_flags_sql()
+
+
 # Storage-only columns the DB adds to Valuation's row.
 DB_EXTRA_COLUMNS: tuple[str, ...] = (
     "absent_from_ros_price_file",  # zone never appears in the RoS price file (6 DZ2011 codes)

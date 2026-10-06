@@ -25,13 +25,13 @@ from georgist import db
 from georgist import dz_lookup
 from georgist.aggregator import MixedPriceYearError, aggregator
 from georgist.attribution import attributions_for
-from georgist.attribution import AttributionMissing
+from georgist.attribution import SHOWN_STATUSES, AttributionMissing
 from georgist.surface_settings import depreciation_settings
 from georgist.display_views import (
     DEFAULT_VIEW, NOT_APPLICABLE, VIEW_ORDER, ZERO_DWELLING_NULL_COLUMNS, ZERO_DWELLINGS, spine_from_flags,
     surface_views,
 )
-from georgist.wealth_schema import PUBLIC_SURFACE_COLUMNS, publicly_served
+from georgist.wealth_schema import PUBLIC_SURFACE_COLUMNS, QUALITY_FLAG_TAGS, publicly_served, quality_flags_sql
 
 logger = logging.getLogger(__name__)
 
@@ -201,8 +201,9 @@ _SURFACE_LAYER_SQL = (
     + ", ".join(f"s.{c}" if c != "valuation_date" else "s.valuation_date::text AS valuation_date"
                 for c in PUBLIC_SURFACE_COLUMNS)
     + ", (s.fill_method = 'model_filled') AS model_filled,"
-    " ('res_land_settlement_area_rough' = ANY(s.proxy_tags)) AS res_land_rough,"
+    " ('res_land_settlement_area_rough' = ANY(s.proxy_tags)) AS res_land_rough, " + quality_flags_sql("s") + ","
     " d.residential_land_ha AS d_residential_land_ha, d.settlement_area_ha AS d_settlement_area_ha,"
+    " d.share_res_uprn_in_parcels AS d_share_res_uprn_in_parcels, d.mask_too_big_parcel AS d_mask_too_big_parcel,"
     " dc.vintage AS dc_vintage, dc.count_year AS dc_count_year, dc.dwellings_total AS dc_total_dwellings,"
     " dc.vacant_share AS dc_vacant_share, dc.second_home_share AS dc_second_home_share,"
     " pc.vintage AS pc_vintage, pc.pop_year AS pc_count_year, pc.population AS pc_population,"
@@ -219,7 +220,7 @@ _SURFACE_LAYER_SQL = (
     " LEFT JOIN datazones.zone_spine zs ON zs.code = s.code AND zs.vintage = s.vintage"
     " WHERE s.vintage = %s ORDER BY s.code, s.valuation_date DESC"
 )
-_DENOM_KEYS = ("residential_land_ha", "settlement_area_ha")
+_DENOM_KEYS = ("residential_land_ha", "settlement_area_ha", "share_res_uprn_in_parcels", "mask_too_big_parcel")
 
 
 def _layer_views(r: dict) -> dict:
@@ -240,6 +241,10 @@ def _layer_views(r: dict) -> dict:
         "denominator_flags": out["flags"],
         "rent_per_residential_ha": v["per_residential_hectare"]["value"],
         "rent_per_residential_ha_status": v["per_residential_hectare"]["status"],
+        # Display only: low where UPRN-in-parcel coverage < 0.5 or the parcel mask is too big.
+        "rent_per_residential_ha_confidence": v["per_residential_hectare"].get("confidence"),
+        "preferred_view": out["default"],
+        "quality_flags": [t for t in (r.pop("quality_flags", None) or []) if t in QUALITY_FLAG_TAGS],
         "rent_per_dwelling": v["per_dwelling"]["value"],
         "rent_per_dwelling_status": v["per_dwelling"]["status"],
         "rent_per_resident": v["per_resident"]["value"],
@@ -318,7 +323,8 @@ def layer_georgist_surface_rent(
         "breakdown_columns": ["planning_uplift", "infra_share"],
         "method_settings": {"depreciation": depreciation_settings()},  # read from surface.yaml
         "attributions": _attributions_or_503(
-            "surface_rent", [view for view, counts in views_status.items() if counts.get("ok")]),
+            "surface_rent", [view for view, counts in views_status.items()
+                           if any(counts.get(st) for st in SHOWN_STATUSES)]),
         "zero_dwellings": sorted(c for c, z in data.items() if z["status"] == NOT_APPLICABLE),
         "note": "Rent per zone in GBP/yr priced in price_year (evidence_year = raw sales year). Proxy tier. planning_uplift and "
         "infra_share are breakdowns of measured_rent, never added to it.",

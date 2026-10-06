@@ -23,13 +23,15 @@ import logging
 from typing import Any, Iterable, Mapping
 
 from georgist import db
-from georgist.attribution import attributions_for
+from georgist.attribution import SHOWN_STATUSES, attributions_for
 from georgist.display_views import NOT_APPLICABLE, ZERO_DWELLINGS, spine_from_flags, surface_views, zero_dwellings
 from georgist.wealth_schema import (
     ATTRIBUTION_COLUMNS,
     INTERNAL_ONLY_COLUMNS,
     PUBLIC_LEVELS,
     PUBLIC_SURFACE_COLUMNS,
+    QUALITY_FLAG_TAGS,
+    QUALITY_FLAGS_SQL,
     VALUE_TIERS,
 )
 
@@ -39,12 +41,13 @@ _SURFACE_PUBLIC_SQL = (
     "SELECT " + ", ".join(PUBLIC_SURFACE_COLUMNS)
     + ", (fill_method = 'model_filled') AS model_filled"
     + ", ('res_land_settlement_area_rough' = ANY(proxy_tags)) AS res_land_rough"
+    + ", " + QUALITY_FLAGS_SQL
     + " FROM surface_rent_dz WHERE code = %s AND vintage = %s"
     " ORDER BY valuation_date DESC LIMIT 1"
 )
 _SURFACE_INTERNAL_SQL = (
     "SELECT *, (fill_method = 'model_filled') AS model_filled,"
-    " ('res_land_settlement_area_rough' = ANY(proxy_tags)) AS res_land_rough FROM surface_rent_dz"
+    " ('res_land_settlement_area_rough' = ANY(proxy_tags)) AS res_land_rough, " + QUALITY_FLAGS_SQL + " FROM surface_rent_dz"
     " WHERE code = %s AND vintage = %s ORDER BY valuation_date DESC LIMIT 1"
 )
 
@@ -60,7 +63,8 @@ _POINT_SQL = (
 _POINT_PUBLIC_SQL = _POINT_SQL + " AND quality <> 'placeholder'"
 
 _DENOMINATOR_SQL = (
-    "SELECT residential_land_ha, residential_land_source, settlement_area_ha, settlement_source"
+    "SELECT residential_land_ha, residential_land_source, settlement_area_ha, settlement_source,"
+    " share_res_uprn_in_parcels, mask_too_big_parcel"
     " FROM dz_denominators WHERE code = %s AND vintage = %s"
 )
 # Counts join on (code, vintage, count_year = price_year). Never another year or vintage.
@@ -265,8 +269,13 @@ def build_payload(
         zero = zero_dwellings(spine)  # Data Zones' zone_spine flag overrides any row or price
         comp = _component("surface", surface, "measured_rent", internal=internal,
                           not_applicable=ZERO_DWELLINGS if zero else None)
-        components.append(comp)
         shown = internal or not comp["withheld"]
+        # Valuation quality tags passed through (e.g. plot_bands_borrowed); never acted on here.
+        qflags = [t for t in (surface.get("quality_flags") or surface.get("proxy_tags") or [])
+                  if t in QUALITY_FLAG_TAGS] if shown else []
+        comp["quality_flags"] = sorted(set(qflags))
+        components.append(comp)
+        flags += [f for f in comp["quality_flags"] if f not in flags]
         surface_shown = shown
         has_figure = shown and not zero
         for col in ATTRIBUTION_COLUMNS:
@@ -297,7 +306,7 @@ def build_payload(
     )
     flags += [f for f in display["flags"] if f not in flags]
     surface_comp = any(c["layer"] == "surface" and c["excluded_reason"] != ZERO_DWELLINGS for c in components)
-    shown_views = [v for v, d in display["views"].items() if d["status"] == "ok"]
+    shown_views = [v for v, d in display["views"].items() if d["status"] in SHOWN_STATUSES]
     return {
         "components": components,
         "totals_by_tier": summarise(components),

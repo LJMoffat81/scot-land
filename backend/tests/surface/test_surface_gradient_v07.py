@@ -189,3 +189,49 @@ def test_metadata_from_gis_manifest_and_config(cfg):
     bad["large_urban_centres"]["centres"]["Glasgow"]["landmark"] = "Glasgow Central"
     with pytest.raises(ho.AccessMetadataMismatch):
         ho.check_access_metadata(ho.access_metadata_from_gis(SYNTH_MANIFEST, bad, SYNTH_HEADER), exp)
+
+
+def _synthetic_access_dir(tmp_path, cfg, acc):
+    """SYNTHETIC dz_access.csv + GIS-style manifest in tmp (never the real GIS file)."""
+    import hashlib
+    import pandas as pd
+    p = tmp_path / "dz_access.csv"
+    pd.DataFrame(acc).to_csv(p, index=False)
+    pd.DataFrame([{"file": "dz_access.csv", "owner": "gis", "source": "SYNTHETIC", "licence": "synthetic",
+                   "publish_level": "public_zone", "zone_vintage": "2011", "key": "(code, vintage)", "rows": len(acc),
+                   "sha256": hashlib.sha256(p.read_bytes()).hexdigest(), "source_year": "2023"}]).to_csv(tmp_path / "manifest.csv", index=False)
+    return p, hashlib.sha256(p.read_bytes()).hexdigest()
+
+
+def test_scored_path_runs_through_run_guard_on_tmp_log(tmp_path, cfg):
+    """Exercises surface_illustrative.gradient_v07's scored path (sha, metadata pre-check, RunGuard, load, check)
+    with SYNTHETIC data and a tmp run log. The real internal run log is never written."""
+    import copy
+    from pathlib import Path
+    from georgist import surface_illustrative as si
+    from georgist import surface_paths as sp
+
+    real_log = Path(sp.expand(cfg["gradient_v07"]["run_guard"]["log"]))
+    before = real_log.read_bytes() if real_log.exists() else None
+    zones, land, acc = _data(cfg, flip_class=2)
+    p, sha = _synthetic_access_dir(tmp_path, cfg, acc)
+    c = copy.deepcopy(cfg)
+    log = tmp_path / "run_log" / "gradient_v07_runs.jsonl"
+    c["gradient_v07"]["run_guard"]["log"] = str(log)
+    c["gradient_v07"]["input"]["frozen_sha256_prefix"] = sha[:8]
+    c["land_share_checks"]["ur6_expected_order"] = []
+    sz = [{"code": z["code"], "ur6_class": z["ur6_class"], "sales_n": z["sales_n"], "dwellings": z["dwellings"],
+           "price_indexed": z["observed_land_value"] + 100_000.0, "drc": {"central": 100_000.0}} for z in zones]
+    r = si.gradient_v07(sz, c, land_rows=land, access_path=str(p), access_metadata=_meta(c))
+    assert r["metadata"]["status"] == "verified" and r["failed_classes"] == [2] and r["status"] == "fail"
+    assert r["run_log_entry"]["access_sha256"] == sha and log.exists() and len(log.read_text().splitlines()) == 1
+    with pytest.raises(ho.RepeatScoredRunError):                      # once per input
+        si.gradient_v07(sz, c, land_rows=land, access_path=str(p), access_metadata=_meta(c))
+    with pytest.raises(ho.AccessMetadataMismatch):                    # metadata checked BEFORE the guard logs
+        si.gradient_v07(sz, c, land_rows=land, access_path=str(p), access_metadata=_meta(c, cutoff_km=45))
+    c2 = copy.deepcopy(c)
+    c2["gradient_v07"]["input"]["frozen_sha256_prefix"] = "00000000"
+    with pytest.raises(ValueError):                                   # frozen checksum checked BEFORE the guard logs
+        si.gradient_v07(sz, c2, land_rows=land, access_path=str(p), access_metadata=_meta(c))
+    assert len(log.read_text().splitlines()) == 1
+    assert (real_log.read_bytes() if real_log.exists() else None) == before    # real run log untouched

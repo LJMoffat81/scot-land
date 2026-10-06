@@ -24,6 +24,8 @@ import {
   apiJson,
   isServiceFailure,
   pingApi,
+  fetchCapabilities,
+  AGR_UNAVAILABLE,
   visitorFacingError,
 } from "../lib/api";
 import { CONTEXT_LAYERS } from "../lib/contextLayers";
@@ -486,6 +488,8 @@ export default function ScotlandMap() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SquareResponse | null>(null);
   const [apiOk, setApiOk] = useState<boolean | null>(null);
+  // Legacy ground-rent router mounted? null = not known yet. Its endpoints are never called when false.
+  const [agrAvailable, setAgrAvailable] = useState<boolean | null>(null);
   const [metricNote, setMetricNote] = useState<string | null>(null);
   const [activeStory, setActiveStory] = useState<StoryId>("who_pays");
   const [band, setBand] = useState<RentBand | null>(null);
@@ -620,6 +624,7 @@ export default function ScotlandMap() {
       generation?: number,
     ) => {
       const gen = generation ?? ++lookupGen.current;
+      if (!(await fetchCapabilities()).agr) return; // legacy breakdown not on this server: wealth panel only
       if (!keepLabel) {
                 setAddressLine(null);
       }
@@ -758,6 +763,10 @@ export default function ScotlandMap() {
   const runSearch = async () => {
     const q = query.trim();
     if (!q) return;
+    if (!(await fetchCapabilities()).agr) {
+      setError(AGR_UNAVAILABLE);
+      return;
+    }
     const generation = ++lookupGen.current;
     suggestGen.current += 1;
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
@@ -831,6 +840,11 @@ export default function ScotlandMap() {
 
   const loadSuggestions = async (text: string) => {
     const generation = ++suggestGen.current;
+    if (!(await fetchCapabilities()).agr) {
+      setSuggestions([]);
+      setSuggestNote(AGR_UNAVAILABLE);
+      return;
+    }
     setSuggesting(true);
     try {
       const response = await apiFetch(`/place?q=${encodeURIComponent(text)}`);
@@ -1240,6 +1254,7 @@ export default function ScotlandMap() {
       if (qWords) {
         setQuery(qWords);
         void (async () => {
+          if (!(await fetchCapabilities()).agr) return;
           try {
             const encoded = encodeURIComponent(qWords);
             const response = await apiFetch(
@@ -1373,13 +1388,26 @@ export default function ScotlandMap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Which optional routers the API mounts; legacy calls are skipped (quietly) when absent.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchCapabilities().then((caps) => {
+      if (cancelled || !caps.reachable) return;
+      setAgrAvailable(caps.agr);
+      if (!caps.agr) setMetricNote("Council ground-rent layers aren't available on this server yet.");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Load multi-metric council data once per scenario
   const metricsMetaRef = useRef<
     Record<string, { label?: string; unit?: string; min?: number; max?: number }> | null
   >(null);
 
   useEffect(() => {
-    if (!mapReady) return;
+    if (!mapReady || agrAvailable !== true) return; // council layer is part of the optional AGR router
     const map = mapRef.current;
     if (!map) return;
 
@@ -1420,7 +1448,7 @@ export default function ScotlandMap() {
     return () => {
       cancelled = true;
     };
-  }, [mapReady, scenario]);
+  }, [mapReady, scenario, agrAvailable]);
 
   // Paint / visibility when metric selection changes
   useEffect(() => {
@@ -1716,9 +1744,9 @@ export default function ScotlandMap() {
     map.setLayoutProperty(
       "parcels-wms",
       "visibility",
-      showBoundaries ? "visible" : "none",
+      showBoundaries && agrAvailable === true ? "visible" : "none", // tiles come from the optional AGR router
     );
-  }, [mapReady, showBoundaries]);
+  }, [mapReady, showBoundaries, agrAvailable]);
 
   useEffect(() => {
     if (!mapReady) return;
@@ -1734,6 +1762,10 @@ export default function ScotlandMap() {
         }
       } else if (map.getLayer(layer.id)) {
         map.setLayoutProperty(layer.id, "visibility", vis);
+      }
+      if (on && agrAvailable === false) {
+        setContextNote("This layer isn't available on this server yet.");
+        continue;
       }
       if (
         !on ||
@@ -1767,7 +1799,7 @@ export default function ScotlandMap() {
       cancelled = true;
       contextFlight.current.clear();
     };
-  }, [mapReady, contextOn]);
+  }, [mapReady, contextOn, agrAvailable]);
 
   useEffect(() => {
     if (!contextOn["urban-rural"] || !result) {
@@ -2229,6 +2261,20 @@ export default function ScotlandMap() {
 
               <label className="layer-select-label">The piece of land</label>
               <div className="layer-chips">
+                <button
+                  type="button"
+                  className={showBoundaries ? "chip active" : "chip"}
+                  onClick={() => {
+                    boundariesTouched.current = true;
+                    setShowBoundaries((v) => !v);
+                  }}
+                  title={agrAvailable === false
+                    ? "Register outlines aren't available on this server yet."
+                    : "Register outlines of neighbouring pieces of land. Zoom in."}
+                  disabled={agrAvailable === false}
+                >
+                  Register outlines
+                </button>
                 {["urban-rural", "data-zones"].map((id) => {
                   const layer = CONTEXT_LAYERS.find((item) => item.id === id);
                   if (!layer) return null;

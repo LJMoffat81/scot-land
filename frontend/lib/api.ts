@@ -139,6 +139,36 @@ export async function pingApi(): Promise<{ ok: boolean; message: string }> {
   }
 }
 
+/**
+ * Which optional API routers this server mounts (from /health `routers`). The legacy
+ * ground-rent (AGR) router is optional: when it is not loaded, its endpoints (/square,
+ * /place, /layers/councils, parcel and context tiles) 404, so the map must not call them.
+ * Cached for the page; a failed probe is retried on the next call.
+ */
+export type ApiCapabilities = { reachable: boolean; agr: boolean; platform: boolean };
+
+let capabilitiesPromise: Promise<ApiCapabilities> | null = null;
+
+export function fetchCapabilities(): Promise<ApiCapabilities> {
+  if (!capabilitiesPromise) {
+    capabilitiesPromise = apiJson<{ routers?: Record<string, { loaded?: boolean }> }>("/health")
+      .then((data) => ({
+        reachable: true,
+        agr: data.routers?.["api.agr_routes"]?.loaded === true,
+        platform: data.routers?.["api.platform_routes"]?.loaded === true,
+      }))
+      .catch(() => {
+        capabilitiesPromise = null;
+        return { reachable: false, agr: false, platform: false };
+      });
+  }
+  return capabilitiesPromise;
+}
+
+/** Shown only where a visitor asks for a legacy feature this server does not mount. */
+export const AGR_UNAVAILABLE =
+  "Address search and the ground-rent breakdown aren't available on this server yet. Click the map to look up a data zone.";
+
 export type EngineStamp = {
   engine_version?: string | null;
   valuation?: {

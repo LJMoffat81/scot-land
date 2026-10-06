@@ -27,6 +27,9 @@ python -m etl.load_processed --dataset gis    # one folder only
 | `zone_vintage` | yes | `;`-separated zone vintages present: `2011`, `2022` (the labels `DZ2011`/`DZ2022` are accepted here and normalised) | every row's `vintage` must be declared here |
 | `key` | yes | Declared primary key, e.g. `(code, vintage)`, `(code, vintage, brma_id)` or, for a crosswalk, `(dz2011, dz2022)` | must be one of the key types below; every key column present and non-empty; the **full** key is unique (duplicates listed); becomes the table's PRIMARY KEY |
 | `key_type` | no | `zone`, `crosswalk` or `vintage`. Optional: the key's leading columns already identify the type | when present, must agree with `key` |
+| `geometry_level` | no | `zone` (default), `site`, `parcel`, `plot`, `uprn` or `building`: the geometry the file's rows describe | publication geometry rule (below); a key column such as `plot_id`, `parcel_id`, `uprn`, `toid` or `site_ref` must be declared with its level |
+| `source_granularity` | no | `zone` (default) or `site`: the grain at which the upstream source itself is published | needed (`site`) for public site-level values |
+| `site_source` | no | `svdls`, `hls` or `business_rates`: the site-public source behind site-level values | public site-level value columns need one of these |
 | `rows` | yes | Data rows (CSV lines excluding the header; GeoJSON features) | must equal the file's count |
 | `sha256` | yes | SHA-256 of the file bytes, lower-case hex | must match; a mismatching file is not parsed |
 
@@ -77,8 +80,9 @@ previous load intact.
   `flags` is COPYed with `FORCE_NOT_NULL`, so "no flags" stays `''`, never NULL.
 * **Held files.** `HELD_FILES` in the loader lists manifest rows deliberately not validated or
   loaded while the owner corrects them (empty today). They are skipped with a warning.
-* **Internal files.** Rows with `publish_level = internal` (e.g. GIS's
-  `dz_detached_plot_bands.csv`) are never copied into this public repo. The loader skips them
+* **Internal files.** Rows with `publish_level = internal` are never copied into this public
+  repo (none today: GIS's `dz_detached_plot_bands.csv` became public_zone once RoS INSPIRE
+  parcels were confirmed OGL v3). The loader skips them
   unless `--include-internal` is given (with `--root` pointing at the owner's folder), and then
   loads them into schema `processed_internal`, which no public endpoint reads.
 * **Derived tables.** After `gis/dz_residential_land.csv` loads, the same transaction fills
@@ -88,6 +92,21 @@ previous load intact.
 
 `publish_level` is recorded, not enforced, at load time: nothing in `processed.*`
 is served by the public API yet. Any endpoint that serves it must check the level.
+The repo guard (`scripts/check_publishable.py`) takes each tracked file's publishability from
+its manifest `publish_level` alone (no hard-coded file names), so a level change in the owner's
+manifest is all it takes.
+
+**Publication geometry rule at load time** (`georgist/publication_rules.check_manifest_entry`).
+Modelled or proxy values and rents are zone-level only. A public file whose `geometry_level` is
+`parcel`, `plot`, `uprn` or `building` may not carry value or rent columns (names containing
+`rent`, `value`, `price`, `gbp`, `rv`, `valuation`, `rateable`); plain shapes and areas are fine.
+A public `site` file with values needs `source_granularity = site` and a `site_source` that is
+public at site level (SVDLS, HLS, published business rateable values). A `(code, vintage)` key
+is zone geometry. Internal files are exempt: they load only into `processed_internal`, which no
+public endpoint reads. Breaking the rule fails validation like any other problem.
+
+New files need no code: a GIS file such as the planned `dz_access.csv` (keyed `(code, vintage)`)
+is validated and loaded as soon as it is listed in GIS's manifest.
 
 ## Files in this repo
 

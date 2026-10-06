@@ -23,7 +23,7 @@ def _sha(path):
 def _dataset(tmp_path, files, *, name="syn", overrides=None, extra_rows=()):
     """files: {relpath: csv text}. Writes a manifest with correct sha/rows unless overridden.
 
-    Adds the optional `key_type` column when any override uses it."""
+    Adds optional columns (key_type, geometry_level, ...) when any override uses them."""
     root = tmp_path / name
     for rel, text in files.items():
         p = root / rel
@@ -39,7 +39,7 @@ def _dataset(tmp_path, files, *, name="syn", overrides=None, extra_rows=()):
         row.update((overrides or {}).get(rel, {}))
         rows.append(row)
     rows += list(extra_rows)
-    fields = HEADER + (["key_type"] if any("key_type" in r for r in rows) else [])
+    fields = HEADER + sorted({k for r in rows for k in r} - set(HEADER))  # optional columns as used
     with open(root / "manifest.csv", "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=fields, restval="")
         w.writeheader()
@@ -505,3 +505,61 @@ def test_internal_entry_targets_internal_schema(tmp_path):
     assert e.qualified_table == f"{lp.INTERNAL_SCHEMA}.syn_z"
     assert lp.validate(root) == []
 
+
+# ---- Publication geometry rule at load time (SYNTHETIC) -----------------------------------------------
+
+PLOT_RENT = "code,vintage,plot_id,rent_gbp\nS01006506,2011,P1,10.0\nS01006506,2011,P2,12.0\n"
+PLOT_SHAPE = "code,vintage,plot_id,area_m2\nS01006506,2011,P1,400.0\nS01006506,2011,P2,350.0\n"
+PLOT_KEY = {"key": "(code, vintage, plot_id)"}
+
+
+def test_public_plot_level_values_rejected_at_load(tmp_path):
+    root = _dataset(tmp_path, {"p.csv": PLOT_RENT}, overrides={"p.csv": {**PLOT_KEY, "geometry_level": "plot"}})
+    assert "values on sub-zone geometry are internal only" in _problems(root)
+
+
+def test_sub_zone_key_must_declare_its_geometry(tmp_path):
+    root = _dataset(tmp_path, {"p.csv": PLOT_SHAPE}, overrides={"p.csv": PLOT_KEY})
+    assert "identifies plot geometry" in _problems(root)
+
+
+def test_plain_plot_shapes_without_values_are_fine(tmp_path):
+    root = _dataset(tmp_path, {"p.csv": PLOT_SHAPE}, overrides={"p.csv": {**PLOT_KEY, "geometry_level": "plot"}})
+    assert lp.validate(root)[0].geometry_level == "plot"
+
+
+def test_internal_plot_spreading_is_exempt_and_internal_only(tmp_path):
+    root = _dataset(tmp_path, {"p.csv": PLOT_RENT},
+                    overrides={"p.csv": {**PLOT_KEY, "geometry_level": "plot", "publish_level": "internal"}})
+    assert lp.validate(root) == []  # skipped unless --include-internal
+    (e,) = lp.validate(root, include_internal=True)
+    assert e.schema == lp.INTERNAL_SCHEMA
+
+
+def test_zone_key_cannot_claim_sub_zone_geometry(tmp_path):
+    root = _dataset(tmp_path, {"zones.csv": ZONES}, overrides={"zones.csv": {"geometry_level": "parcel"}})
+    assert "keyed (code, vintage) but declares geometry_level 'parcel'" in _problems(root)
+
+
+SITE_RV = "code,vintage,site_ref,rateable_value_gbp\nS01006506,2011,A1,9000\nS01006506,2011,A2,7000\n"
+SITE_KEY = {"key": "(code, vintage, site_ref)", "geometry_level": "site"}
+
+
+@pytest.mark.parametrize("extra,ok", [
+    ({}, False),
+    ({"source_granularity": "site"}, False),
+    ({"source_granularity": "zone", "site_source": "business_rates"}, False),
+    ({"source_granularity": "site", "site_source": "home_model"}, False),
+    ({"source_granularity": "site", "site_source": "business_rates"}, True),
+])
+def test_site_values_need_a_site_public_source(tmp_path, extra, ok):
+    root = _dataset(tmp_path, {"s.csv": SITE_RV}, overrides={"s.csv": {**SITE_KEY, **extra}})
+    if ok:
+        assert lp.validate(root)[0].site_source == "business_rates"
+    else:
+        assert "site-level value column(s)" in _problems(root)
+
+
+def test_repo_manifests_are_zone_level():
+    for e in lp.validate(PROCESSED_DIR):
+        assert e.geometry_level == "zone", e.label

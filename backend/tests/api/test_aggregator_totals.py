@@ -16,7 +16,7 @@ MOCK_OIL = {"name": "North Sea Field A", "annual_rent_gbp": 750_000.0, "price_ye
             "publish_level": "internal"}
 LEASE = {"name": "Lease X", "annual_rent_gbp": 20_000.0, "price_year": 2023,
          "commons_class": "extractive", "value_tier": "market", "quality": "live",
-         "publish_level": "public_site"}
+         "publish_level": "public_site", "source_id": "business_rates"}
 PEAT = {"name": "Peat Y", "annual_rent_gbp": 5_000.0, "price_year": 2023,
         "commons_class": "eco", "value_tier": "shadow", "quality": "modelled",
         "publish_level": "public_zone"}
@@ -29,14 +29,16 @@ def test_component_carries_price_and_evidence_year():
 
 
 def test_totals_are_per_tier_and_never_mixed():
-    p = build_payload(SURFACE, [LEASE], [PEAT])
+    p = build_payload(SURFACE, [LEASE], [])
     t = p["totals_by_tier"]
-    assert set(t) == {"proxy", "market", "shadow"}
+    assert set(t) == {"proxy", "market"}
     assert t["proxy"]["total_gbp"] == 100_000.0
     assert t["market"]["total_gbp"] == 20_000.0
-    assert t["shadow"]["total_gbp"] == 5_000.0
     for banned in ("total_annual_rent", "total_gbp", "surface_rent"):
         assert banned not in p
+    # Shadow-priced eco rows are modelled: zone-level only, so totalled internally, never on a site publicly.
+    t = build_payload(SURFACE, [LEASE], [PEAT], internal=True)["totals_by_tier"]
+    assert set(t) == {"proxy", "market", "shadow"} and t["shadow"]["total_gbp"] == 5_000.0
 
 
 def test_placeholders_absent_from_public_payload():
@@ -132,7 +134,7 @@ def test_payload_with_mixed_years_raises():
     from georgist.aggregator import MixedPriceYearError
 
     with pytest.raises(MixedPriceYearError):
-        build_payload(SURFACE, [{**LEASE, "value_tier": "proxy", "price_year": 2025}], [])
+        build_payload(SURFACE, [{**LEASE, "price_year": 2025}], [{**LEASE, "name": "Rates Y"}])
 
 
 def test_incomplete_band_is_flagged():

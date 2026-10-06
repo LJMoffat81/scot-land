@@ -31,6 +31,14 @@ Per listed file, before anything is written:
     written 2011;2022 or DZ2011;DZ2022; it is normalised to integers.)
 Extra columns are tolerated (loaded as-is); key columns are required.
 
+Publication geometry rule (georgist.publication_rules): optional manifest columns
+`geometry_level` (zone|site|parcel|plot|uprn|building, default zone),
+`source_granularity` (zone|site, default zone) and `site_source` (svdls|hls|business_rates).
+A public file on parcel/plot/UPRN/building geometry may not carry value or rent columns;
+a public site-level file with values needs source_granularity site and a site-public
+site_source; a (code, vintage)-keyed file is zone geometry. Internal files are exempt
+(they load only into processed_internal and are never served).
+
 Datasets whose owner publishes a typed schema (TYPED_SCHEMAS: datazones -> the
 vendored backend/db/schema/004_datazones.sql) load into `<schema>.<file stem>` by
 COPYing the verified file bytes; the CSV header must equal the table's columns in
@@ -66,6 +74,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from georgist.dz_lookup import BOUNDARY_FILES, VINTAGES, vintage_for_code  # noqa: E402
+from georgist.publication_rules import check_manifest_entry  # noqa: E402
 from georgist.wealth_schema import PUBLIC_LEVELS, PUBLISH_LEVELS  # noqa: E402
 from paths import PROCESSED_DIR  # noqa: E402
 
@@ -121,6 +130,10 @@ class Entry:
     sha256: str
     problems: list[str] = field(default_factory=list)
     frame: Any = None  # pandas DataFrame (CSV) or list of boundary tuples (GeoJSON)
+    # Publication geometry rule (optional manifest columns; default zone/zone).
+    geometry_level: str = "zone"
+    source_granularity: str = "zone"
+    site_source: str = ""
 
     @property
     def path(self) -> Path:
@@ -215,6 +228,9 @@ def read_manifest(manifest: Path, include_internal: bool = False) -> list[Entry]
             attribution=row.get("attribution", ""),
             zone_vintages=tuple(_MANIFEST_VINTAGE[v] for v in declared_vintages if v in _MANIFEST_VINTAGE),
             key=parse_key(row["key"]), key_type="", rows=n_rows, sha256=row["sha256"].lower(),
+            geometry_level=(row.get("geometry_level") or "zone").lower(),
+            source_granularity=(row.get("source_granularity") or "zone").lower(),
+            site_source=(row.get("site_source") or "").lower(),
         )
         inferred = next((t for t, prefix in KEY_TYPES.items() if e.key[:len(prefix)] == prefix), None)
         if inferred == "vintage" and "code" in e.key:
@@ -412,6 +428,11 @@ def validate(root: Path = PROCESSED_DIR, dataset: str | None = None, include_int
             problems += exc.problems
     for e in entries:
         check_entry(e)
+        if not e.problems:  # publication geometry rule: no values on sub-zone geometry
+            columns = list(getattr(e.frame, "columns", []))
+            e.problems += check_manifest_entry(
+                geometry_level=e.geometry_level, source_granularity=e.source_granularity,
+                site_source=e.site_source, publish_level=e.publish_level, key=e.key, columns=columns)
         problems += [f"{e.label}: {p}" for p in e.problems]
     tables = [e.table for e in entries if e.table != "dz_boundaries"]
     clash = sorted({t for t in tables if tables.count(t) > 1})

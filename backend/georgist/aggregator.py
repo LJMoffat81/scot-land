@@ -24,6 +24,7 @@ from typing import Any, Iterable, Mapping
 
 from georgist import db
 from georgist.attribution import SHOWN_STATUSES, attributions_for
+from georgist.publication_rules import check_site_rows
 from georgist.display_views import NOT_APPLICABLE, ZERO_DWELLINGS, spine_from_flags, surface_views, zero_dwellings
 from georgist.wealth_schema import (
     ATTRIBUTION_COLUMNS,
@@ -256,6 +257,10 @@ def build_payload(
     `internal=True` (dev endpoints only) lists placeholders and withheld rows with
     their numbers and Valuation's diagnostics. Totals are identical in both modes.
     """
+    resource, eco = list(resource), list(eco)
+    if not internal:
+        # Point rows are site geometry: only measured figures from site-public sources (loud otherwise).
+        check_site_rows("/georgist/wealth", resource + eco)
     components: list[dict[str, Any]] = []
     flags: list[str] = []
     surface_shown = False

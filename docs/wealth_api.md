@@ -31,7 +31,7 @@ The app refuses to start if any (method, path) is registered twice.
 | `GET /georgist/wealth?lat&lng&zone_id[&vintage]` | 503 `wealth_database_unavailable` | `zone_id` must match `^S01\d{6}$` and fall in the 2011 (S01006506–S01013481) or 2022 (S01013482–S01020873) range, else 422. `vintage` is the integer `2011` or `2022` (anything else, including `DZ2011`, is 422 `invalid_vintage`); it is inferred from the code when omitted, and a mismatch is 422 `vintage_mismatch`. Outside Scotland is 400. Validation runs before any DB access. |
 | `GET /layers/context/data-zones/at?lat&lon` (`lng` alias) | 503 `dz_boundaries_unavailable` + `reasons` | Point → real `(code, vintage)` for every loaded vintage: `code`/`name`/`vintage` (integer; 2011 first), `zones[]`, `dz2011`, `dz2022` (`on_boundary`), `source`, `vintages_loaded`. PostGIS `dz_boundaries` first, then `DATA_DIR/processed/dz20xx_boundaries.geojson`. 404 `no_data_zone_at_point` on a miss; 400 outside Scotland. Never returns `unknown`. No boundary data ships yet, so it is 503 until GIS boundaries are loaded (`etl/load_processed.py`). |
 | `GET /layers/georgist/surface-rent?vintage=2011` | 503 | Latest row per zone from `surface_rent_dz`, served only if `publish_level` is public_zone/public_site, `publication_status = ok` and not a placeholder; `withheld` / `withheld_by_reason` count the rest. **Allowlisted columns only** plus per-zone `status` (`ok` or `not_applicable`) and the three display views (`rent_per_residential_ha[_status]`, `rent_per_dwelling[_status]`, `rent_per_resident[_status]`, `second_home_share`). Also `zero_dwellings` (codes shown as not applicable), `method_settings` (depreciation settings read from `data/config/surface.yaml`) and `attributions`. `vintage` defaults to 2011; 422 `invalid_vintage` otherwise. 503 `surface_rent_not_built` if none; 503 `attribution_missing` if a dataset behind a shown view has no manifest attribution. |
-| `GET /layers/georgist/resource-rent`, `/eco-rent` | 503 | Real, publishable (`public_site`, status ok, not placeholder) rows from `resource_wealth` / `eco_wealth` only, as GeoJSON. Today there are none, so 503 `<layer>_layer_not_built`. **Mock features are never served here.** |
+| `GET /layers/georgist/resource-rent`, `/eco-rent` | 503 | Real, publishable (`public_site`, status ok, not placeholder) rows from `resource_wealth` / `eco_wealth` only, as GeoJSON. Site geometry, so every row must be a measured figure from a site-public source (publication geometry rule, below); otherwise 500 `publication_rule_violation`. Today there are none, so 503 `<layer>_layer_not_built`. **Mock features are never served here.** |
 | `GET /internal/georgist/wealth`, `/internal/georgist/surface-rent/{zone}`, `/internal/layers/georgist/resource-rent`, `/internal/layers/georgist/eco-rent` | — | Only with `ENABLE_INTERNAL_ENDPOINTS` (otherwise 404). Placeholders and withheld rows with numbers, Valuation diagnostics, mock harvests. Header `X-Wealth-Internal: true`. Totals are computed by the same function as the public route. |
 | `POST /sync/ros` | — | Removed from the API: the CKAN package id and columns were unverified and the target table is not in the schema. Superseded by `georgist/surface_harvester.py`. |
 
@@ -226,6 +226,43 @@ above). Valuation's rows use these names directly. Land yield is one stored
 **Method settings.** `georgist/surface_settings.py` reads the depreciation life and floor
 (low/central/high) and the band-combination rule from `data/config/surface.yaml`; the layer
 serves them as `method_settings`. Nothing is hard-coded in the API.
+
+## Publication geometry rule
+
+**Modelled or proxy home land values and rents are zone-level only.** No public endpoint, tile
+or layer attaches a modelled or proxy value or rent to sub-zone geometry (site, parcel, plot,
+UPRN, building). Plain parcel shapes with no value attached are fine. A site-level figure is
+public only where its source is itself public at site level: SVDLS derelict sites, HLS housing
+land sites, published business rateable values; and it must be that source's measured figure
+(value tier `market`, quality not `modelled`). Spreading zone values down to plots is internal:
+`/internal` only, behind `ENABLE_INTERNAL_ENDPOINTS` (no such route exists yet).
+
+Implementation, `backend/georgist/publication_rules.py`:
+
+* Every public route declares a `LayerRule`: `geometry_level` (zone|site|parcel|plot|uprn|building),
+  `source_granularity` (zone|site), `value_basis` (none|measured|modelled) and, for site layers
+  with values, the site-public sources allowed. Declarations are validated on import.
+
+  | route | geometry_level | source_granularity | values |
+  |---|---|---|---|
+  | `/georgist/wealth` | zone | zone | modelled (zone); site rows from `resource_wealth`/`eco_wealth` checked per row |
+  | `/layers/georgist/surface-rent` | zone | zone | modelled |
+  | `/layers/georgist/resource-rent`, `/eco-rent` | site | site | measured, SVDLS/HLS/business rates only |
+  | `/layers/context/data-zones/at` | zone | zone | none |
+  | `/layers/parcels/tiles/...` (legacy AGR, not mounted) | parcel | zone | none (plain shapes) |
+
+* **App build.** `create_app` refuses an undeclared public route: the core Wealth router raises
+  `PublicationRuleError`; an optional router (AGR, platform) with one is not mounted and
+  `/health` says why. `/internal/...` routes are exempt and mounted only with
+  `ENABLE_INTERNAL_ENDPOINTS`.
+* **Load time.** Optional manifest columns `geometry_level`, `source_granularity`, `site_source`
+  (see `processed_data_manifest.md`); public sub-zone files with value columns are rejected.
+* **Public serializers.** The site layers and the wealth payload check every row whose figure would
+  be shown (`check_site_rows`); the surface layer checks each row is keyed by a Data Zone code
+  (`check_zone_row`). A violation is a loud 500 `publication_rule_violation`, never a silently
+  thinned layer. Internal payloads are not checked.
+* Tests: `backend/tests/api/test_publication_rules.py`, the load-time cases in
+  `tests/etl/test_load_processed.py`, and PostGIS cases in `tests/api/test_postgis_integration.py`.
 
 ## Economic rules
 

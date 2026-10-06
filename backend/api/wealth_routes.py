@@ -26,6 +26,7 @@ from georgist import dz_lookup
 from georgist.aggregator import MixedPriceYearError, aggregator
 from georgist.attribution import attributions_for
 from georgist.attribution import SHOWN_STATUSES, AttributionMissing
+from georgist.publication_rules import PublicationRuleError, check_site_rows, check_zone_row
 from georgist.surface_settings import depreciation_settings
 from georgist.display_views import (
     DEFAULT_VIEW, NOT_APPLICABLE, VIEW_ORDER, ZERO_DWELLING_NULL_COLUMNS, ZERO_DWELLINGS, spine_from_flags,
@@ -68,6 +69,16 @@ def _mixed_years(exc: MixedPriceYearError) -> HTTPException:
         detail={"error": "mixed_price_years", "tier": exc.tier, "price_years": exc.price_years,
                 "message": "Rents priced in different years cannot be added; no total returned. "
                 "This is a data error to fix upstream, not a figure."},
+    )
+
+
+def _publication_rule(exc: PublicationRuleError) -> HTTPException:
+    logger.error("Publication rule violated: %s", exc)
+    return HTTPException(
+        status_code=500,
+        detail={"error": "publication_rule_violation", "where": exc.where, "message": exc.message,
+                "rule": "Modelled or proxy values and rents are zone-level only; site-level figures only "
+                "from sources public at site level (docs/wealth_api.md). A data error to fix upstream."},
     )
 
 
@@ -187,6 +198,8 @@ def get_georgist_wealth(
         raise _mixed_years(exc) from exc
     except AttributionMissing as exc:
         raise _attribution_missing(exc) from exc
+    except PublicationRuleError as exc:
+        raise _publication_rule(exc) from exc
     return {
         "lat": lat,
         "lng": lng,
@@ -299,6 +312,10 @@ def layer_georgist_surface_rent(
         )
     data = {}
     for r in publishable:
+        try:
+            check_zone_row("/layers/georgist/surface-rent", r)  # zone-level only: keyed by Data Zone code
+        except PublicationRuleError as exc:
+            raise _publication_rule(exc) from exc
         row = {k: _plain(v) for k, v in r.items()}
         row.update(_layer_views(row))
         data[r["code"]] = row
@@ -344,14 +361,22 @@ _POINT_LAYER_SQL = (
 _POINT_LAYER_SITE_ONLY = " AND publish_level = 'public_site'"
 
 
-def _point_layer(table: str, layer: str) -> JSONResponse:
-    """Real, publishable extractive/eco features only. Mock harvests never appear here."""
+def _point_layer(table: str, layer: str, path: str) -> JSONResponse:
+    """Real, publishable extractive/eco features only. Mock harvests never appear here.
+
+    Site geometry: every row must be a measured figure from a site-public source
+    (publication_rules); one modelled/proxy row fails the whole layer loudly (500).
+    """
     try:
         with db.cursor() as cur:
             cur.execute(_POINT_LAYER_SQL.format(table=table) + _POINT_LAYER_SITE_ONLY)
             rows = cur.fetchall()
     except db.DatabaseUnavailable as exc:
         raise _unavailable(exc) from exc
+    try:
+        check_site_rows(path, rows)
+    except PublicationRuleError as exc:
+        raise _publication_rule(exc) from exc
     if not rows:
         raise HTTPException(
             status_code=503,
@@ -371,10 +396,10 @@ def _point_layer(table: str, layer: str) -> JSONResponse:
 @router.get("/layers/georgist/resource-rent")
 def layer_georgist_resource_rent() -> JSONResponse:
     """Extractive layer: real publishable rows from `resource_wealth` only (503 until they exist)."""
-    return _point_layer("resource_wealth", "extractive")
+    return _point_layer("resource_wealth", "extractive", "/layers/georgist/resource-rent")
 
 
 @router.get("/layers/georgist/eco-rent")
 def layer_georgist_eco_rent() -> JSONResponse:
     """Eco layer: real publishable rows from `eco_wealth` only (503 until they exist)."""
-    return _point_layer("eco_wealth", "eco")
+    return _point_layer("eco_wealth", "eco", "/layers/georgist/eco-rent")

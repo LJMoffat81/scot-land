@@ -154,14 +154,39 @@ def test_public_point_layers_never_serve_placeholders(pg, client):
     assert r.status_code == 503 and "MOCK" not in r.text
     with pg.cursor() as cur:
         cur.execute("""
-            INSERT INTO resource_wealth (name, annual_rent_gbp, price_year, value_tier, quality, publish_level, geom)
-            VALUES ('SYNTHETIC LEASE', 20000, 2023, 'market', 'live', 'public_site',
+            INSERT INTO resource_wealth (name, annual_rent_gbp, price_year, value_tier, quality, publish_level,
+                                         source_id, geom)
+            VALUES ('SYNTHETIC LEASE', 20000, 2023, 'market', 'live', 'public_site', 'business_rates',
               ST_Multi(ST_Transform(ST_SetSRID(ST_MakeEnvelope(-3.3, 55.9, -3.1, 56.0), 4326), 27700)))
         """)
     pg.commit()
     body = client.get("/layers/georgist/resource-rent").json()
     assert [f["properties"]["name"] for f in body["features"]] == ["SYNTHETIC LEASE"]
     assert body["features"][0]["geometry"]["type"] == "MultiPolygon"
+
+
+def test_public_site_layers_refuse_modelled_or_non_site_sources_loudly(pg, client):
+    """Publication geometry rule: a proxy/modelled figure on site geometry fails the layer (500), never served."""
+    with pg.cursor() as cur:
+        cur.execute("""
+            INSERT INTO eco_wealth (name, annual_rent_gbp, price_year, value_tier, quality, publish_level, geom)
+            VALUES ('SYNTHETIC MODELLED PEAT', 5000, 2023, 'shadow', 'modelled', 'public_site',
+              ST_Multi(ST_Transform(ST_SetSRID(ST_MakeEnvelope(-3.3, 55.9, -3.1, 56.0), 4326), 27700)))
+        """)
+    pg.commit()
+    r = client.get("/layers/georgist/eco-rent")
+    assert r.status_code == 500 and r.json()["detail"]["error"] == "publication_rule_violation"
+    assert "5000" not in r.text
+    w = client.get("/georgist/wealth", params={"lat": 55.95, "lng": -3.19, "zone_id": ZONE})
+    assert w.status_code == 500 and w.json()["detail"]["error"] == "publication_rule_violation"
+    with pg.cursor() as cur:
+        cur.execute("UPDATE eco_wealth SET value_tier = 'market', quality = 'live', source_id = 'private_feed'")
+    pg.commit()
+    assert client.get("/layers/georgist/eco-rent").status_code == 500
+    with pg.cursor() as cur:
+        cur.execute("UPDATE eco_wealth SET source_id = 'svdls'")
+    pg.commit()
+    assert client.get("/layers/georgist/eco-rent").status_code == 200
 
 
 def test_internal_endpoints_show_diagnostics_when_enabled(pg, surface_row, monkeypatch):
@@ -418,12 +443,14 @@ def test_mixed_price_years_fail_loudly_via_api(pg, client, surface_row):
     from etl.migrate_to_postgis import upsert_surface_rent
 
     upsert_surface_rent(pg, [surface_row()])  # proxy tier, price_year 2025
-    with pg.cursor() as cur:
-        cur.execute("""
-            INSERT INTO eco_wealth (name, annual_rent_gbp, price_year, value_tier, quality, publish_level, geom)
-            VALUES ('SYNTHETIC PEAT', 5000, 2023, 'proxy', 'modelled', 'public_site',
-              ST_Multi(ST_Transform(ST_SetSRID(ST_MakeEnvelope(-3.3, 55.9, -3.1, 56.0), 4326), 27700)))
-        """)
+    with pg.cursor() as cur:  # two measured site rows (site-public sources), market tier, different years
+        for name, year, src in (("SYNTHETIC RATES", 2025, "business_rates"), ("SYNTHETIC SITE", 2023, "svdls")):
+            cur.execute("""
+                INSERT INTO eco_wealth (name, annual_rent_gbp, price_year, value_tier, quality, publish_level,
+                                        source_id, geom)
+                VALUES (%s, 5000, %s, 'market', 'live', 'public_site', %s,
+                  ST_Multi(ST_Transform(ST_SetSRID(ST_MakeEnvelope(-3.3, 55.9, -3.1, 56.0), 4326), 27700)))
+            """, (name, year, src))
     pg.commit()
     r = client.get("/georgist/wealth", params={"lat": 55.95, "lng": -3.19, "zone_id": ZONE})
     assert r.status_code == 500

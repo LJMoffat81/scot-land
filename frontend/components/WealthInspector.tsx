@@ -324,10 +324,24 @@ export function WealthInspector({ isOpen, onClose, data, failure, isLoading }: W
           <p className="text-xs text-slate-500">
             Extractive and eco layers are not shown until real data exists. Placeholder figures are never displayed.
           </p>
-          {w.attributions.length > 0 && (
+          {w.context?.access?.status === "ok" && (
+            <section aria-label="Access context" className="text-[11px] text-slate-600 space-y-1">
+              <h3 className="text-xs font-bold text-slate-700">Access (context only)</h3>
+              <p>
+                Road distance to nearest large urban centre ({w.context.access.nearest_luc ?? "n/a"}):{" "}
+                {w.context.access.road_km_nearest_luc != null ? `${w.context.access.road_km_nearest_luc.toFixed(1)} km` : "n/a"}
+                {w.context.access.distance_method === "euclid_x1.3" ? " (1.3 × straight line, no road link)" : ""}
+              </p>
+              {w.context.access.flags.length > 0 && (
+                <p className="text-slate-500">Flags: {w.context.access.flags.join(", ")}</p>
+              )}
+              <p className="text-slate-400">{w.context.access.note}</p>
+            </section>
+          )}
+          {[...w.attributions, ...(w.context?.access?.attributions ?? [])].length > 0 && (
             <section aria-label="Data credits" className="text-[11px] text-slate-500 space-y-2">
               <h3 className="text-xs font-bold text-slate-700">Data credits</h3>
-              {w.attributions.map((a) => (
+              {[...w.attributions, ...(w.context?.access?.attributions ?? [])].map((a) => (
                 <div key={a.dataset}>
                   <p>{a.attribution}</p>
                   <p className="text-slate-400">Licence: {a.licence}</p>

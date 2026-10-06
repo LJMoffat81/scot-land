@@ -93,6 +93,23 @@ export interface DatasetAttribution {
   publish_level: string;
   use_restriction?: string;
   source: "manifest"; // the manifest attribution column is the only source
+  source_year?: number | null; // optional manifest column (metadata only)
+}
+
+/** GIS dz_access context: shown beside the figures, never used in them. Flags verbatim from GIS. */
+export interface AccessContext {
+  status: "ok" | "not_loaded" | "zone_missing" | "attribution_missing";
+  job_access?: number | null;
+  log_job_access?: number | null;
+  road_km_nearest_luc?: number | null;
+  nearest_luc?: string | null;
+  distance_method?: string | null; // network | euclid_x1.3
+  job_access_method?: string | null; // network | network+euclid_x1.3
+  network_component?: string | null;
+  flags: string[]; // e.g. luc_distance_euclid_x1.3, nearest_emp_point_gt_5km
+  source_year?: number | null;
+  attributions: DatasetAttribution[];
+  note?: string;
 }
 
 export interface WealthPayload {
@@ -106,6 +123,7 @@ export interface WealthPayload {
   };
   policy: { note: string; policy_rent?: number | null; policy_despec_factor?: number | null };
   display: DisplayViews;
+  context?: { access?: AccessContext };
   flags: string[];
   attributions: DatasetAttribution[];
   status: string;

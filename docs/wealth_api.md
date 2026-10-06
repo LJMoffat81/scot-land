@@ -227,6 +227,18 @@ above). Valuation's rows use these names directly. Land yield is one stored
 (low/central/high) and the band-combination rule from `data/config/surface.yaml`; the layer
 serves them as `method_settings`. Nothing is hard-coded in the API.
 
+### Access context (`wealth.context.access`)
+
+GIS's `dz_access.csv` (job accessibility from BRES employment, road km to the nearest large
+urban centre) is a context layer for Valuation's gradient check. `/georgist/wealth` passes the
+zone's row through as `context.access`: `job_access`, `log_job_access`, `road_km_nearest_luc`,
+`nearest_luc`, `distance_method`, `job_access_method`, `network_component`, the GIS `flags`
+verbatim as a list (e.g. `luc_distance_euclid_x1.3`, `job_access_partly_euclid_x1.3`,
+`off_mainland_network`, `nearest_emp_point_gt_5km`), `source_year` and the file's manifest
+`attributions`. `status` is `ok`, `not_loaded` (table absent), `zone_missing` or
+`attribution_missing` (context withheld, logged). It never enters rents, views or totals, and its
+credit sits inside the block, not in the top-level `attributions`.
+
 ## Publication geometry rule
 
 **Modelled or proxy home land values and rents are zone-level only.** No public endpoint, tile

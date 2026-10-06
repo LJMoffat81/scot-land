@@ -11,6 +11,9 @@ attribution is missing, AttributionMissing is raised and the public endpoint ans
                 when used: gis/dz_residential_land.csv (per residential hectare),
                 datazones/dwellings_by_year.csv (per dwelling) and
                 datazones/zone_spine.csv (per resident).
+  context       access: gis/dz_access.csv (job accessibility and road distance; context for
+                Valuation's gradient check, never in rents or totals).
+Each credit also carries the manifest's optional `source_year` (None when empty or absent).
 """
 
 from __future__ import annotations
@@ -27,6 +30,9 @@ DZ_DWELLINGS = ("datazones", "dwellings_by_year.csv")
 DZ_SPINE = ("datazones", "zone_spine.csv")
 GIS_RESIDENTIAL_LAND = ("gis", "dz_residential_land.csv")
 GIS_PLOT_BANDS = ("gis", "dz_detached_plot_bands.csv")  # Valuation's estate/one-off split (RoS parcels, OGL v3)
+GIS_ACCESS = ("gis", "dz_access.csv")  # context only: job accessibility, road km to nearest large urban centre
+# Context blocks (shown beside the figures, never part of them) -> datasets they come from.
+CONTEXT_DATASETS: dict[str, tuple[tuple[str, str], ...]] = {"access": (GIS_ACCESS,)}
 
 # Datasets every figure of a public layer is built from.
 LAYER_DATASETS: dict[str, tuple[tuple[str, str], ...]] = {"surface_rent": (EPC_ROLLUP, GIS_PLOT_BANDS)}
@@ -62,8 +68,10 @@ def dataset_attribution(dataset: str, file: str, root: str | None = None) -> dic
     attribution = (row.get("attribution") or "").strip()
     if not licence or not attribution:
         raise AttributionMissing([label], "manifest licence or attribution is empty")
+    year = (row.get("source_year") or "").strip()
     out = {"dataset": label, "licence": licence, "attribution": attribution,
-           "publish_level": (row.get("publish_level") or "").strip(), "source": "manifest"}
+           "publish_level": (row.get("publish_level") or "").strip(), "source": "manifest",
+           "source_year": int(year) if year.isdigit() else None}
     if "non-commercial" in licence.lower():
         out["use_restriction"] = NON_COMMERCIAL
     return out
@@ -82,3 +90,8 @@ def attributions_for(layer: str, views_shown: Iterable[str] = ()) -> list[dict[s
     if missing:
         raise AttributionMissing(missing, "no manifest attribution")
     return out
+
+
+def context_attributions(name: str) -> list[dict[str, Any]]:
+    """Credits for a context block (e.g. 'access'); raises AttributionMissing like attributions_for."""
+    return [dataset_attribution(*ds) for ds in CONTEXT_DATASETS[name]]

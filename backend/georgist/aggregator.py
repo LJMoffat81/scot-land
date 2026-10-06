@@ -23,7 +23,7 @@ import logging
 from typing import Any, Iterable, Mapping
 
 from georgist import db
-from georgist.attribution import SHOWN_STATUSES, attributions_for
+from georgist.attribution import SHOWN_STATUSES, AttributionMissing, attributions_for, context_attributions
 from georgist.publication_rules import check_site_rows
 from georgist.display_views import NOT_APPLICABLE, ZERO_DWELLINGS, spine_from_flags, surface_views, zero_dwellings
 from georgist.wealth_schema import (
@@ -76,6 +76,12 @@ _DWELLING_COUNT_SQL = (
 # Zone-level Data Zones flags (no year), from the ';'-separated zone_spine.flags string:
 # zero_dwellings is the single source (rules v0.7).
 _SPINE_FLAGS_SQL = "SELECT flags FROM datazones.zone_spine WHERE code = %s AND vintage = %s"
+# GIS access context (dz_access.csv): shown beside the figures, never used in them.
+ACCESS_TABLE = "processed.gis_dz_access"
+ACCESS_COLUMNS = ("job_access", "log_job_access", "road_km_nearest_luc", "nearest_luc", "distance_method",
+                  "job_access_method", "network_component")
+_ACCESS_PRESENT_SQL = f"SELECT to_regclass('{ACCESS_TABLE}') IS NOT NULL AS present"
+_ACCESS_SQL = (f"SELECT {', '.join(ACCESS_COLUMNS)}, flags FROM {ACCESS_TABLE} WHERE code = %s AND vintage = %s")
 _POPULATION_COUNT_SQL = (
     "SELECT vintage, pop_year AS count_year, population FROM datazones.zone_spine"
     " WHERE code = %s AND vintage = %s AND pop_year = %s"
@@ -231,6 +237,11 @@ class WealthAggregator:
             cur.execute(_SPINE_FLAGS_SQL, (zone_code, vintage))
             spine_row = cur.fetchone()
             spine = spine_from_flags(spine_row["flags"], present=True) if spine_row else None
+            cur.execute(_ACCESS_PRESENT_SQL)
+            access: Mapping[str, Any] | None | bool = False  # False = table not loaded
+            if cur.fetchone()["present"]:
+                cur.execute(_ACCESS_SQL, (zone_code, vintage))
+                access = cur.fetchone()
             dwelling_count = population_count = None
             if surface is not None and surface.get("price_year") is not None:
                 cur.execute(_DWELLING_COUNT_SQL, (zone_code, vintage, surface["price_year"]))
@@ -238,7 +249,29 @@ class WealthAggregator:
                 cur.execute(_POPULATION_COUNT_SQL, (zone_code, vintage, surface["price_year"]))
                 population_count = cur.fetchone()
         return build_payload(surface, resource, eco, internal=internal, denominators=denominators,
-                             dwelling_count=dwelling_count, population_count=population_count, spine=spine)
+                             dwelling_count=dwelling_count, population_count=population_count, spine=spine,
+                             access=access)
+
+
+def access_context(access: Mapping[str, Any] | None | bool) -> dict[str, Any]:
+    """GIS dz_access context for one zone. Values and flags passed through as GIS wrote them."""
+    if access is False:
+        return {"status": "not_loaded", "flags": [], "attributions": []}
+    if access is None:
+        return {"status": "zone_missing", "flags": [], "attributions": []}
+    try:
+        credits = context_attributions("access")
+    except AttributionMissing as exc:
+        logger.error("Access context withheld: %s", exc)
+        return {"status": "attribution_missing", "flags": [], "attributions": []}
+    out: dict[str, Any] = {"status": "ok"}
+    out.update({c: _num(access.get(c)) if c in ("job_access", "log_job_access", "road_km_nearest_luc")
+                else access.get(c) for c in ACCESS_COLUMNS})
+    out["flags"] = [f for f in str(access.get("flags") or "").split(";") if f]
+    out["source_year"] = credits[0].get("source_year")
+    out["attributions"] = credits
+    out["note"] = "Context for Valuation's gradient check; never used in rents or totals."
+    return out
 
 
 def build_payload(
@@ -251,6 +284,7 @@ def build_payload(
     dwelling_count: Mapping[str, Any] | None = None,
     population_count: Mapping[str, Any] | None = None,
     spine: Mapping[str, Any] | None = None,
+    access: Mapping[str, Any] | None | bool = False,
 ) -> dict[str, Any]:
     """Public by default: placeholders dropped, withheld figures redacted, allowlisted fields only.
 
@@ -318,6 +352,7 @@ def build_payload(
         "attribution": attribution,
         "policy": policy,
         "display": display,
+        "context": {"access": access_context(access)},
         "flags": flags,
         # Licence + attribution for every dataset behind the figures shown (e.g. EPC rollup).
         "attributions": attributions_for("surface_rent", shown_views) if surface_comp else [],

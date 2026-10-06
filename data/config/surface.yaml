@@ -475,8 +475,9 @@ surface_rent:
         accepted_by: Georgist (room)
     on_class_fail:
       report: failed                                        # never "inconclusive"
-      model_filled_band_multiplier: 1.5                     # PLACEHOLDER - needs Georgist sign-off before use
-      multiplier_status: PLACEHOLDER_GEORGIST_SIGNOFF
+      model_filled_band_multiplier: 1.5                     # REJECTED by the Georgist (room, 2026-10-06): never applied
+      multiplier_status: REJECTED_GEORGIST                  # surface_holdout.widen_failed_class_band refuses to widen
+      active_behaviour: fail_band_pending_holdout           # band left unwidened; model-filled rows in a failed class tagged
     run_guard:                                              # the scored run happens ONCE per dz_access checksum
       log: "{valuation_out_dir}/run_log/gradient_v07_runs.jsonl"   # internal, never committed
       refuse_repeat_without_override: true

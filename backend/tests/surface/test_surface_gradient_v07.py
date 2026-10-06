@@ -36,7 +36,8 @@ def test_pre_registration_fixed_in_config(cfg):
     assert all(c["accepted_by"].startswith("Georgist") for c in g["metadata_corrections"])
     assert set(g["sample"]["exclude"]) == {"weak_match", "mask_too_big_parcel", "res_uprn_exceeds_dwellings", "zero_dwellings"}
     assert g["sample"]["min_sales"] == 5
-    assert g["on_class_fail"]["multiplier_status"] == "PLACEHOLDER_GEORGIST_SIGNOFF"
+    assert g["on_class_fail"]["multiplier_status"] == "REJECTED_GEORGIST"
+    assert g["on_class_fail"]["active_behaviour"] == "fail_band_pending_holdout"
     assert cfg["gradient"]["label"] == "superseded driver, reported"
 
 
@@ -121,16 +122,20 @@ def test_job_access_rows_refuse_ranks(cfg):
         ho.job_access_rows([], {"job_access": "job_access_rank", "centre_km": "km"})
 
 
-def test_failed_class_widens_model_filled_bands_only(cfg):
-    oc = cfg["gradient_v07"]["on_class_fail"]
+def test_rejected_multiplier_never_applied(cfg):
+    """Georgist rejected the fail-band multiplier: bands are NEVER widened; model-filled rows in a failed class
+    are tagged fail_band_pending_holdout instead."""
+    oc = cfg["on_class_fail"] if "on_class_fail" in cfg else cfg["gradient_v07"]["on_class_fail"]
     kw = dict(failed_classes=[2], multiplier=oc["model_filled_band_multiplier"], multiplier_status=oc["multiplier_status"])
-    lo, hi, tags = ho.widen_failed_class_band(100.0, 80.0, 130.0, fill_method="model_filled", ur6_class=2, **kw)
-    m = oc["model_filled_band_multiplier"]
-    assert (lo, hi) == (pytest.approx(100 - 20 * m), pytest.approx(100 + 30 * m)) and "band_multiplier_placeholder" in tags
+    for lv, lo, hi in ((100.0, 80.0, 130.0), (10.0, 0.0, 30.0), (None, None, None)):
+        assert ho.widen_failed_class_band(lv, lo, hi, fill_method="model_filled", ur6_class=2, **kw) == (lo, hi, ("fail_band_pending_holdout",))
     assert ho.widen_failed_class_band(100.0, 80.0, 130.0, fill_method="observed_pooled", ur6_class=2, **kw) == (80.0, 130.0, ())
     assert ho.widen_failed_class_band(100.0, 80.0, 130.0, fill_method="model_filled", ur6_class=1, **kw) == (80.0, 130.0, ())
-    lo, _, _ = ho.widen_failed_class_band(10.0, 0.0, 30.0, fill_method="model_filled", ur6_class=2, **kw)
-    assert lo == 0.0
+    for status in ("REJECTED_GEORGIST", "rejected"):                  # any REJECTED status refuses, whatever the multiplier
+        assert ho.widen_failed_class_band(100.0, 80.0, 130.0, fill_method="model_filled", ur6_class=2, failed_classes=[2],
+                                          multiplier=9.0, multiplier_status=status)[:2] == (80.0, 130.0)
+    tags = ho.widen_failed_class_band(100.0, 80.0, 130.0, fill_method="model_filled", ur6_class=2, **kw)[2]
+    assert "band_multiplier_placeholder" not in tags and not any(t.startswith("band_widened") for t in tags)
 
 
 def test_run_guard_once_per_input(tmp_path, cfg):

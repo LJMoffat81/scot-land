@@ -940,12 +940,22 @@ def job_access_gradient_check(
             "pass": {"pass": True, "fail": False}.get(status), "rho_min": rmin, "secondary_rho_max": rmax}
 
 
+FAIL_BAND_PENDING_TAG = "fail_band_pending_holdout"
+
+
 def widen_failed_class_band(land_value: float | None, low: float | None, high: float | None, *, fill_method: str,
                             ur6_class: int, failed_classes: Iterable[int], multiplier: float,
                             multiplier_status: str) -> tuple[float | None, float | None, tuple[str, ...]]:
-    """Rules 12.2 v0.7: MODEL-FILLED zones in a class that failed the pre-registered measure get a wider
-    band (distance from the value scaled by `multiplier`, low floored at 0). Observed zones unchanged."""
-    if land_value is None or low is None or high is None or fill_method != "model_filled" or int(ur6_class) not in set(failed_classes):
+    """Rules 12.2 v0.7: MODEL-FILLED zones in a class that failed the pre-registered measure.
+
+    With `multiplier_status` REJECTED_* (Georgist, 2026-10-06) the multiplier is NEVER applied: the band is
+    returned unwidened and tagged `fail_band_pending_holdout` (the active behaviour). Otherwise the band
+    is widened (distance from the value scaled by `multiplier`, low floored at 0). Observed zones unchanged."""
+    if fill_method != "model_filled" or ur6_class is None or int(ur6_class) not in set(failed_classes):
+        return low, high, ()
+    if str(multiplier_status).upper().startswith("REJECTED"):
+        return low, high, (FAIL_BAND_PENDING_TAG,)
+    if land_value is None or low is None or high is None:
         return low, high, ()
     m = float(multiplier)
     tags = ("band_widened_gradient_v07_class_failed",)

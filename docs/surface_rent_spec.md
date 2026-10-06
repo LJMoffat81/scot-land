@@ -585,7 +585,7 @@ DRAFT, not approved by Laurie. This section was committed **before** GIS's `dz_a
 - **A class that fails:**
   - it is reported as `failed`, not inconclusive;
   - its model-filled zones get wider bands: (central − low) and (high − central) are each multiplied by `gradient_v07.on_class_fail.model_filled_band_multiplier`, with the low end floored at 0. Observed zones are not widened.
-  - The multiplier value is a **PLACEHOLDER awaiting Georgist sign-off** (`multiplier_status: PLACEHOLDER_GEORGIST_SIGNOFF`). Widened rows carry the tag `band_multiplier_placeholder`.
+  - **Update (2026-10-06):** the Georgist **rejected** the multiplier (`multiplier_status: REJECTED_GEORGIST`). It is never applied. Bands stay unwidened, and model-filled rows in a failed class are tagged `fail_band_pending_holdout`, which is the active behaviour (`on_class_fail.active_behaviour`).
 - **Run once:** before scoring, a scored run writes the dz_access sha256 and a hash of the `gradient_v07` config section to an internal run log (`{valuation_out_dir}/run_log/gradient_v07_runs.jsonl`, outside the repo). A second scored run on the same input is refused (`RepeatScoredRunError`) unless an explicit override with a written reason is given, and the override is logged too.
 - **Tests:** synthetic fixtures only (`tests/surface/test_surface_gradient_v07.py`).
 

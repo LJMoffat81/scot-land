@@ -45,3 +45,11 @@ cd backend
 .\.venv\Scripts\Activate.ps1
 python -m pytest tests/ -q
 ```
+
+## Cursor Cloud specific instructions
+
+- Python 3.12 and Node 22 are already on the default image. Use `backend/.venv` and `frontend/node_modules` after install.
+- `backend/georgist/` imports `psycopg2` and `pandas`. Those packages are not in `backend/requirements.txt`. The Cloud Agent install adds `psycopg2-binary`, `pandas`, and `pytest`.
+- Local PostGIS follows `backend/docker-compose.yml`: database `scotland_wealth`, user `wealth_user`, password `wealth_password`, host `localhost`, port `5432`. The dev role is a superuser so schema setup can run `CREATE EXTENSION postgis`.
+- API command: `cd backend && .venv/bin/uvicorn api.main:app --host 0.0.0.0 --port 8000`. UI command: `cd frontend && npm run dev -- --hostname 0.0.0.0 --port 3000`. In the browser the map calls same-origin `/backend`, which proxies to `http://127.0.0.1:8000`. `W3W_API_KEY` is optional for latitude/longitude assessment.
+- `uvicorn api.main:app` currently exits while importing `backend/api/main.py`. `backend/agr/engine.py` imports `agr.valuation`, and that module is not in the tree (along with `agr.wide_range`, `agr.zone_prices`, `agr.sales_comps`, `agr.seabed`, `agr.settlement`, `georgist.surface_rent`, `georgist.surface_harvester`, `layers.vdl`, `layers.public_land`, `layers.registers`, `layers.open_stats`, `validation.glasgow_ward_18`, and `validation.ratio_study`). PostgreSQL, PostGIS, and the Next.js dev server still start. `backend/pytest.ini` sets `testpaths = tests`, and there is no `backend/tests` directory, so pytest exits 4.

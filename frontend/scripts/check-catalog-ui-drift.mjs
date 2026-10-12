@@ -35,6 +35,7 @@ const FIXTURE_LIVE_IDS = [
   "cell_grid",
   "vdl",
   "public_crown",
+  "lca",
 ];
 
 function main() {

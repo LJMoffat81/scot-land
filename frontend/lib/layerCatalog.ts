@@ -84,6 +84,13 @@ export const LAYER_ATTRIBUTION: Record<
     sourceUrl:
       "https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897",
   },
+  lca: {
+    source: "James Hutton Institute — Land Capability for Agriculture 1:250k",
+    licence:
+      "James Hutton Institute Open Data Licence (PSI under OGL v2.0 — not pure OGL)",
+    sourceUrl:
+      "https://www.hutton.ac.uk/sites/default/files/files/soils/downloads/Hutton_LCA250K_OpenData.zip",
+  },
   la_holdings: {
     source: "Spatial Hub — Land Ownership Scotland",
     licence: "Not openly licensed for this portal",

@@ -110,6 +110,21 @@ Do not scrape Spatial Hub. Do not commit raw downloads under `data/external`.
 
 Registry: `data/config/sources.yaml` → `vdl`. Zone-level rollups used by the Wealth Engine live under `data/processed/gis/` (see `README_svdls_hls.md`); the public map layer uses the live OGL FeatureServer, not gitignored `data/external`. GIS will review licences / CRS / zone alignment before merge of the map-layer PR.
 
+## Land Capability for Agriculture (James Hutton LCA 1:250k)
+
+| Field | Value |
+|-------|--------|
+| Product | Land Capability for Agriculture 1:250,000 (`LCA_250K`) |
+| Licence | James Hutton Institute Open Data Licence — **not pure OGL**; public-sector information under OGL v2.0 per Hutton attribution |
+| Download | https://www.hutton.ac.uk/sites/default/files/files/soils/downloads/Hutton_LCA250K_OpenData.zip |
+| Catalogue | https://spatialdata.gov.scot/geonetwork/srv/api/records/24c6df5a-6b04-43f8-839f-0d45cc2802e3 |
+| BBox API | `GET /layers/open/lca` → **503** when PostGIS table empty |
+| Raw storage | `data/external/lca/` (gitignored) |
+| Refresh | [scripts/data/README-lca.md](../scripts/data/README-lca.md) |
+| Gaps | 1:250k scale only; 1:50k partial cover not loaded; capability ≠ rent or title |
+
+Registry: `data/config/sources.yaml` → `lca`.
+
 ## Local layout after acquisition
 
 ```text
@@ -121,6 +136,10 @@ data/licensed/
 data/external/inspire/        # gitignored — RoS Index Polygons extract
   index_polygons.geojson
   index_polygons.geojson.ingest.json   # local vintage stamp
+
+data/external/lca/            # gitignored — Hutton LCA 1:250k shapefile
+  LCA_250K.shp (+ .dbf .shx .prj)
+  LCA_250K.shp.ingest.json             # local vintage stamp
 ```
 
 Load via:

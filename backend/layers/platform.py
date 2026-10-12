@@ -152,6 +152,27 @@ def platform_catalog() -> dict[str, Any]:
                 "source_url": PUBLIC_LAND_MAP,
             },
             {
+                "id": "lca",
+                "group": "spatial",
+                "status": "live",
+                "label": "Land capability for agriculture",
+                "description": (
+                    "James Hutton Institute LCA 1:250,000 — soil and climate "
+                    "capability classes. Context only; not a rent or title. "
+                    "BBox from PostGIS ingest (503 when unloaded)."
+                ),
+                "endpoint": "/layers/open/lca",
+                "licence": (
+                    "James Hutton Institute Open Data Licence "
+                    "(public-sector information under OGL v2.0 — not pure OGL)"
+                ),
+                "minzoom": 7,
+                "source_url": (
+                    "https://www.hutton.ac.uk/sites/default/files/files/soils/"
+                    "downloads/Hutton_LCA250K_OpenData.zip"
+                ),
+            },
+            {
                 "id": "la_holdings",
                 "group": "ownership",
                 "status": "gap",

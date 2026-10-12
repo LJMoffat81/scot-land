@@ -27,6 +27,7 @@ npm run dev
 | `GET /layers/parcels/at?lat=&lng=` | Parcel under a point (live WMS GetFeatureInfo) |
 | `GET /layers/open/vdl` | SVDLS vacant/derelict sites (bbox; **503** if upstream down) |
 | `GET /layers/open/public-land` | Public / Crown Estate overlay (bbox, five bodies; **503** if upstream down) |
+| `GET /layers/open/lca` | Hutton LCA 1:250k capability polygons (PostGIS; **503** if not loaded) |
 | `GET /platform/place` | Ownership / vacant / gap card |
 | `GET /platform/gaps` | Visible register gaps |
 | `GET /downloads` | Open layer and official source index |

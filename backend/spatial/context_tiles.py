@@ -5,7 +5,9 @@ does not change a parcel rent. The proxy is not open: only the ids below
 are fetched, and only from the hosts named here.
 
 Left out on purpose:
-- James Hutton land capability (all rights reserved).
+- James Hutton land capability — served as a first-class PostGIS overlay
+  (``/layers/open/lca``) under the James Hutton Open Data Licence, not via
+  this context-tile proxy.
 - Ordnance Survey Open Zoomstack roads, rail, and airports. The data is
   Open Government Licence, but the only supply is a multi-gigabyte download
   and there is no public map service.

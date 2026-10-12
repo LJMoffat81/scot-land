@@ -22,6 +22,8 @@ from layers.registers import registers_payload
 from layers.data_zones import query_bbox as data_zones_bbox
 from layers.public_land import query_bbox as public_land_bbox
 from layers.vdl import query_bbox as vdl_bbox
+from layers.lca import LayerUnavailable as LcaUnavailable
+from layers.lca import query_bbox as lca_bbox
 
 router = APIRouter()
 
@@ -117,6 +119,34 @@ def layer_open_data_zones(
         )
     return JSONResponse(payload)
 
+
+@router.get("/layers/open/lca")
+def layer_open_lca(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=200, ge=1, le=200),
+) -> JSONResponse:
+    """Land Capability for Agriculture polygons in the viewport (PostGIS ingest).
+
+    James Hutton Institute Open Data Licence (PSI under OGL v2.0 — not pure
+    OGL). Returns **503** when ``lca_agriculture`` is missing or empty — never
+    invents capability polygons. An empty FeatureCollection with meta.ok=true
+    means no polygons in view.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    if south >= north or west >= east:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid bbox: require south < north and west < east",
+        )
+    try:
+        return JSONResponse(
+            lca_bbox(south, west, north, east, max_features=max_features)
+        )
+    except LcaUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 @router.get("/platform/place")
 def platform_place(

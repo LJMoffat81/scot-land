@@ -376,6 +376,7 @@ const PUBLIC_LAND_MIN_ZOOM = 8;
 const VDL_MIN_ZOOM = 8;
 /** Data Zone outlines are readable from neighbourhood zoom. */
 const DATA_ZONE_MIN_ZOOM = 10;
+const LCA_MIN_ZOOM = 7;
 
 const VDL_SITE_TYPES: Array<{ name: string; color: string }> = [
   { name: "Vacant Land", color: "#e8a317" },
@@ -393,6 +394,31 @@ const VDL_FILL: ExpressionSpecification = [
   "Derelict",
   "#7a2e00",
   "#c45c26",
+];
+
+/** Hutton LCA class bands (capability quality → green→brown; non-ag grey/blue). */
+const LCA_CLASSES: Array<{ name: string; color: string }> = [
+  { name: "Class 1–2 (wide crop range)", color: "#1a9850" },
+  { name: "Class 3–4 (moderate / narrow)", color: "#91cf60" },
+  { name: "Class 5 (improved grassland)", color: "#fee08b" },
+  { name: "Class 6–7 (rough / limited)", color: "#d73027" },
+  { name: "Built-up / water / other", color: "#9e9e9e" },
+];
+
+const LCA_FILL: ExpressionSpecification = [
+  "step",
+  ["coalesce", ["to-number", ["get", "lccode"]], 0],
+  "#9e9e9e",
+  1,
+  "#1a9850",
+  2.5,
+  "#91cf60",
+  4.5,
+  "#fee08b",
+  5.5,
+  "#d73027",
+  7.5,
+  "#9e9e9e",
 ];
 
 function escapeHtml(value: string): string {
@@ -414,6 +440,8 @@ function layerPopupHtml(parts: {
   vdlSiteCode?: string | null;
   vdlOwnerClass?: string | null;
   vdlGeometrySource?: string | null;
+  lcaClassLabel?: string | null;
+  lcaCode?: number | string | null;
   source?: string | null;
 }): string | null {
   const rows: string[] = [];
@@ -461,6 +489,16 @@ function layerPopupHtml(parts: {
       rows.push(
         `Geometry: ${escapeHtml(parts.vdlGeometrySource)}`,
       );
+    }
+  }
+  if (parts.lcaClassLabel || parts.lcaCode != null) {
+    rows.push(
+      `<strong>Land capability (agriculture)</strong><br/>${escapeHtml(
+        parts.lcaClassLabel || `Code ${String(parts.lcaCode)}`,
+      )}`,
+    );
+    if (parts.lcaCode != null && parts.lcaClassLabel) {
+      rows.push(`Code: ${escapeHtml(String(parts.lcaCode))}`);
     }
   }
   if (parts.source) {
@@ -517,6 +555,7 @@ export default function ScotlandMap() {
   const [showVdl, setShowVdl] = useState(false);
   const [showPublicLand, setShowPublicLand] = useState(false);
   const [showDataZones, setShowDataZones] = useState(false);
+  const [showLca, setShowLca] = useState(false);
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
   const publicLandTouched = useRef(false);
   const dataZonesTouched = useRef(false);
@@ -1393,6 +1432,30 @@ export default function ScotlandMap() {
         paint: { "line-color": "#5a2200", "line-width": 1.1, "line-opacity": 0.9 },
       });
 
+      map.addSource("lca-overlay", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution:
+          "Land Capability for Agriculture 1:250k © The James Hutton Institute. Open Data Licence (PSI under OGL v2.0).",
+      });
+      map.addLayer({
+        id: "lca-fill",
+        type: "fill",
+        source: "lca-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": LCA_FILL,
+          "fill-opacity": 0.38,
+        },
+      });
+      map.addLayer({
+        id: "lca-line",
+        type: "line",
+        source: "lca-overlay",
+        layout: { visibility: "none" },
+        paint: { "line-color": "#334422", "line-width": 0.6, "line-opacity": 0.55 },
+      });
+
       for (const layer of CONTEXT_LAYERS) {
         if (layer.kind === "raster") {
           map.addSource(layer.id, {
@@ -1695,6 +1758,20 @@ export default function ScotlandMap() {
             : typeof vdlSizeRaw === "string" && vdlSizeRaw !== ""
               ? Number(vdlSizeRaw)
               : null;
+        const lcaHits =
+          map.getLayer("lca-fill") &&
+          map.getLayoutProperty("lca-fill", "visibility") === "visible"
+            ? map.queryRenderedFeatures(event.point, {
+                layers: ["lca-fill"],
+              })
+            : [];
+        const lcaProps = lcaHits[0]?.properties as
+          | {
+              class_label?: string;
+              lccode?: number | string;
+              source?: string;
+            }
+          | undefined;
         let parcelId: string | null = null;
         let areaSqm: number | null = null;
         let parcelSource: string | null = null;
@@ -1741,11 +1818,14 @@ export default function ScotlandMap() {
             vdlProps?.geometry_source_label ||
             vdlProps?.geometry_source ||
             null,
+          lcaClassLabel: lcaProps?.class_label || null,
+          lcaCode: lcaProps?.lccode ?? null,
           source:
+            lcaProps?.source ||
             vdlProps?.source ||
             publicProps?.source ||
             parcelSource ||
-            (parcelId || publicProps || vdlProps
+            (parcelId || publicProps || vdlProps || lcaProps
               ? "Open land layers — research overlay, not a title"
               : null),
         });
@@ -2187,6 +2267,76 @@ export default function ScotlandMap() {
       map.off("moveend", onMove);
     };
   }, [mapReady, showPublicLand]);
+
+  // James Hutton LCA 1:250k (PostGIS ingest; Hutton Open Data Licence)
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const setVis = (vis: "visible" | "none") => {
+      if (!map.getLayer("lca-fill")) return;
+      map.setLayoutProperty("lca-fill", "visibility", vis);
+      map.setLayoutProperty("lca-line", "visibility", vis);
+    };
+
+    if (!showLca) {
+      setVis("none");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const loadLca = () => {
+      if (cancelled || !mapRef.current || inFlight) return;
+      const b = map.getBounds();
+      if (!b) return;
+      if (map.getZoom() < LCA_MIN_ZOOM) {
+        setVis("none");
+        return;
+      }
+      inFlight = true;
+      setLayerBusy(true);
+      const path =
+        `/layers/open/lca?south=${b.getSouth()}&west=${b.getWest()}` +
+        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=200`;
+      void apiJson<GeoJSON.FeatureCollection>(path)
+        .then((data) => {
+          if (cancelled) return;
+          (map.getSource("lca-overlay") as GeoJSONSource)?.setData(data);
+          setVis("visible");
+          setLayerNotice(null);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setVis("none");
+          if (err instanceof ApiError && err.status === 503) {
+            setLayerNotice(
+              "Land capability overlay is not available right now (PostGIS ingest unloaded). Gaps are not filled with guesses.",
+            );
+          }
+        })
+        .finally(() => {
+          inFlight = false;
+          if (!cancelled) setLayerBusy(false);
+        });
+    };
+
+    const onMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadLca, 700);
+    };
+
+    loadLca();
+    map.on("moveend", onMove);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off("moveend", onMove);
+    };
+  }, [mapReady, showLca]);
 
   useEffect(() => {
     if (!mapReady) return;
@@ -2654,6 +2804,8 @@ export default function ScotlandMap() {
                 <p className="layer-meta">
                   Data Zone outlines, RoS INSPIRE parcels, public-sector
                   holdings, and SVDLS vacant and derelict sites. Separate from
+                  RoS INSPIRE parcels, public-sector holdings, SVDLS vacant and
+                  derelict sites, and Hutton land capability. Separate from
                   Annual Ground Rent and Surface Rent.
                 </p>
                 <div className="layer-chips">
@@ -2701,6 +2853,15 @@ export default function ScotlandMap() {
                     title="Scottish Vacant and Derelict Land Survey sites. Survey polygons, not a title."
                   >
                     Vacant and derelict
+                  </button>
+                  <button
+                    type="button"
+                    className={showLca ? "chip active" : "chip"}
+                    data-testid="layer-lca"
+                    onClick={() => setShowLca((on) => !on)}
+                    title="James Hutton Land Capability for Agriculture 1:250k. Context only — not a rent or title."
+                  >
+                    Land capability
                   </button>
                 </div>
                 {showDataZones && (
@@ -2760,6 +2921,30 @@ export default function ScotlandMap() {
                       National Park Authority. © Scottish Government. Survey
                       polygons, not a title. Owner class is a survey field.
                       Zoom {VDL_MIN_ZOOM}+.
+                    </p>
+                  </>
+                )}
+                {showLca && (
+                  <>
+                    <ul className="layer-legend" aria-label="Land capability legend">
+                      {LCA_CLASSES.map((band) => (
+                        <li key={band.name}>
+                          <span
+                            className="layer-legend-swatch"
+                            style={{ background: band.color }}
+                            aria-hidden="true"
+                          />
+                          {band.name}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="layer-meta">
+                      Land Capability for Agriculture 1:250,000 © The James
+                      Hutton Institute. Used with permission. All rights
+                      reserved. Any public sector information contained in
+                      these data is licensed under the Open Government Licence
+                      v.2.0. National scale — not field boundaries; not a rent
+                      or title. Zoom {LCA_MIN_ZOOM}+. PostGIS ingest required.
                     </p>
                   </>
                 )}
@@ -2906,13 +3091,12 @@ export default function ScotlandMap() {
               ))}
               {contextNote && <p className="layer-meta">{contextNote}</p>}
               <p className="layer-meta">
-                Not drawn: land capability (James Hutton, all rights reserved).
-                Small-area population, jobs, and Ordnance Survey roads, rail,
-                airports and greenspace are not on this map yet. Wires, mains
-                and broadband are
-                not an open national map. Local development plan sites are not
-                on this map: the national file is for public bodies and
-                universities.
+                Not drawn here: small-area population, jobs, and Ordnance
+                Survey roads, rail, airports and greenspace. Wires, mains and
+                broadband are not an open national map. Local development plan
+                sites are not on this map: the national file is for public
+                bodies and universities. Land capability is a separate toggle
+                under Ownership and cadastre (Hutton Open Data Licence).
               </p>
             </div>
           </aside>

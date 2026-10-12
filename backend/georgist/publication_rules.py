@@ -129,6 +129,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     "/layers/open/data-zones": LayerRule(
         "zone", "zone", "none", note="Data Zone outlines by bbox; code/name only, no rent"
     ),
+    "/layers/open/lca": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="Hutton LCA 1:250k capability polygons; context only; no rent",
+    ),
     "/platform/place": LayerRule("site", "site", "none", note="ownership/vacant/gap card; no modelled rent"),
     "/platform/gaps": LayerRule("zone", "zone", "none", note="register gap catalogue"),
     "/api/catalog.json": LayerRule("zone", "zone", "none", note="open-data catalogue"),

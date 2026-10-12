@@ -45,6 +45,16 @@ const FIXTURE_CATALOG = {
       source_url: "https://www.arcgis.com/apps/dashboards/example",
     },
     {
+      id: "lca",
+      group: "spatial",
+      status: "live",
+      label: "Land capability for agriculture",
+      licence:
+        "James Hutton Institute Open Data Licence (PSI under OGL v2.0 — not pure OGL)",
+      source_url:
+        "https://www.hutton.ac.uk/sites/default/files/files/soils/downloads/Hutton_LCA250K_OpenData.zip",
+    },
+    {
       id: "la_holdings",
       group: "ownership",
       status: "gap",

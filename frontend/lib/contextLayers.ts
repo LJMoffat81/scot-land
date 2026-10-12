@@ -219,7 +219,7 @@ export const CONTEXT_LAYERS: ContextLayer[] = [
     attribution:
       "© SEPA. Licensed under the Open Government Licence v3.0.",
     title:
-      "Medium-likelihood river and coastal flood extent. Later this can only reduce a rent. © SEPA. Licensed under the Open Government Licence v3.0.",
+      "Medium-likelihood river and coastal flood extent from the SEPA OGL download (www2.sepa.org.uk/flooddata) after PostGIS ingest — not the SEPA MapServer or viewer. Later this can only reduce a rent. © SEPA. Licensed under the Open Government Licence v3.0.",
     minzoom: 8,
     maxzoom: 18,
     color: "#1d4e89",

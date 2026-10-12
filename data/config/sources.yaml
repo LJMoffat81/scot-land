@@ -4,13 +4,19 @@
 policy:
   allow_portal_scraping: false
   preferred_sales_authority: "Registers of Scotland"
+  require_licence_url: true
+  forbidden_products:
+    - Who Owns Scotland  # paid — do not introduce
   notes: >
     England & Wales HM Land Registry Price Paid is not a substitute for
     Scottish completed sales. Use ROS open products or licensed extracts.
+    Every catalogued source must carry licence_url. Prefer OGL-3.0; Hutton LCA
+    is accepted under the James Hutton Open Data Licence (not labelled OGL).
 
 hpi:
   name: UK House Price Index
   licence: OGL
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
   role: council_level_average_price_for_residual_mv
   base_url: https://publicdata.landregistry.gov.uk/market-trend-data/house-price-index-data
   average_prices_template: Average-prices-{period}.csv
@@ -21,8 +27,11 @@ hpi:
 postcodes:
   name: postcodes.io
   licence: open
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
   role: geocoding
   api_url: https://api.postcodes.io/postcodes
+  note: >-
+    Service wraps OS Open Data / ONS postcodes; cite OGL for underlying data.
 
 councils:
   # Context only. Valuation does not flag a whole council as rural.
@@ -36,6 +45,7 @@ councils:
 urban_rural:
   name: Scottish Government Urban Rural Classification 2022
   licence: Open Government Licence v3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
   credit: "Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right 2022."
   url: https://maps.gov.scot/ATOM/shapefiles/SG_UrbanRural_2022.zip
   sha256: 1b18bce2d4201d5f99dfd3bdacbf9fb5bc7a966294cee94262165e2c398d85a9
@@ -62,6 +72,7 @@ parcels:
   # Laurie ruling Oct 2026: RoS grants Index Polygons under OGL v3 (the 2017 OS
   # INSPIRE end-user licence linked from RoS's dataset guide is an RoS error).
   licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
   attribution: >-
     © Crown copyright. Reproduced with the permission of Registers of Scotland.
     Contains OS data © Crown copyright and database right 2026.
@@ -145,6 +156,7 @@ public_land:
   name: Scottish Public and Crown Estate Land 2024
   role: public_sector_holdings_overlay
   licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
   attribution: >-
     Scottish Public and Crown Estate Land 2024. Contains public sector
     information licensed under the Open Government Licence v3.0.
@@ -177,6 +189,8 @@ common_good:
     Council register pages (public web). Fife indicative titles under
     OS Public Sector End User Licence - INSPIRE — linked metadata only,
     not redistributed through this API.
+  licence_url: >-
+    https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
   attribution: >
     Common Good is a statutory LA register under the Community Empowerment
     (Scotland) Act 2015. No national open spatial layer. Verified council
@@ -201,6 +215,7 @@ vdl:
   name: Scottish Vacant and Derelict Land Survey (SVDLS)
   role: vacant_and_derelict_site_overlay
   licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
   attribution: >-
     Scottish Vacant and Derelict Land Survey. Contains public sector
     information licensed under the Open Government Licence v3.0. Contains
@@ -284,10 +299,12 @@ map_layers:
       source: SVDLS FeatureServer (OGL) — site-level as published
       endpoint: /layers/open/vdl
       licence: OGL-3.0
+      licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
     - id: public_land
       source: SG PublicLand_2024_Update FeatureServer
       endpoint: /layers/open/public-land
       licence: OGL-3.0
+      licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
       note: Five national bodies only; not a title; not local-authority land
     - id: hydro_sites
       source: SEPA Hydropower Sites ATOM shapefile (OGL) via PostGIS
@@ -304,6 +321,6 @@ map_layers:
       note: Download-only CSV ingest — no MapServer scrape; no £ rent
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
-  # Left off that list: James Hutton land capability; OS Open Zoomstack
-  # (no public map service); small-area population and jobs (tables, not a
-  # map service); wires, mains and broadband.
+  # SEPA flood MapServer is not allowlisted — OGL download → PostGIS only.
+  # Hutton LCA is a separate open layer (not a context tile proxy).
+  # Left off: OS Open Zoomstack; small-area population/jobs; wires/mains/broadband.

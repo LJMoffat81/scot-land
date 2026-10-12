@@ -77,18 +77,25 @@ parcels:
     © Crown copyright. Reproduced with the permission of Registers of Scotland.
     Contains OS data © Crown copyright and database right 2026.
   source_url: https://www.ros.gov.uk/open-data
+  # Interactive catalogue (legacy host). Self-fetch uses download_api below.
   download_url: https://ros.locationcentre.co.uk/inspire/
-  vintage: live-WMS; local PostGIS ingest stamp beside data/external extract
+  download_service: https://ros-inspire.themapcloud.com/
+  download_api: https://ros-inspire.themapcloud.com/maps/download/ros-cp.cadastralparcel/{code}
+  counties_module: backend/etl/inspire_counties.py
+  pilot_counties: [MID, FFE]   # Edinburgh (Midlothian) + Fife
+  vintage: live-WMS; PostGIS load stamp in inspire_parcels_meta
   wms_url: https://ros-inspire.themapcloud.com/maps/wms
   wms_layer: CP.CadastralParcel
   postgis_table: inspire_parcels
   bbox_endpoint: /layers/parcels
   tile_endpoint: /layers/parcels/tiles/{z}/{x}/{y}
-  ingest: python -m etl.ingest_inspire_parcels
+  # One command each (from backend/, DATABASE_URL set):
+  ingest_pilot: python -m etl.ingest_inspire_parcels --pilot --replace
+  ingest_all: python -m etl.ingest_inspire_parcels --all --replace
   ingest_fixture: python -m etl.ingest_inspire_parcels --fixture --replace
   ci_fixture: backend/tests/fixtures/cadastral_index_polygons.geojson
   refresh_doc: scripts/data/README-inspire.md
-  raw_dir: data/external/inspire   # gitignored — never commit raw downloads
+  # Self-fetch uses temp dirs only — never writes data/external/
   query_delta_degrees: 0.001
   # Keep short so map tiles fail soft (transparent) instead of hanging the UI
   timeout_seconds: 6
@@ -96,7 +103,9 @@ parcels:
     - Sasine titles without Land Register polygons
     - Private owner names are not in the open INSPIRE product
     - Index polygons are registered extents, not a title sheet
-    - Full national extracts stay in data/external/ (size); CI uses a synthetic fixture only
+    - RoS publishes 33 registration counties (Edinburgh = Midlothian/MID)
+    - CI uses a synthetic fixture only; production self-fetches county zips
+
 
 hydro_sites:
   name: SEPA Hydropower Sites

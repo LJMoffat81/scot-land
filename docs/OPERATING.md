@@ -87,7 +87,7 @@ npm run dev
 | Filters | Vacant / public overlays, rent band | `/?vacant=1&public=1&band=high` |
 | Click | Any cell | Layer popup (parcel id / area / owner type / SVDLS site) + residual place card |
 
-Cadastre ingest: `python -m etl.ingest_inspire_parcels` (production extract under `data/external/inspire/`) or `--fixture` for CI synthetic polygons — see `scripts/data/README-inspire.md`. Licence **OGL-3.0**.
+Cadastre ingest (one command each): `--pilot` (Edinburgh/MID + Fife), `--all` (33 counties), or `--fixture` (CI). Self-fetch never writes `data/external/`. See `scripts/data/README-inspire.md`. Licence **OGL-3.0**.
 
 Full national 3 m precompute is intentionally not stored (~billions of cells).
 

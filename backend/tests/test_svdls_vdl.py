@@ -6,7 +6,7 @@ from layers.svdls_geometry import (
     GEOMETRY_PRECEDENCE,
     GEOMETRY_SOURCE_SPATIALHUB_SURVEY,
 )
-from layers.vdl import SITE_TYPES, _site_props, _size_ha
+from layers.vdl import OUT_SR, SITE_TYPES, _site_props, _size_ha, query_bbox, query_point
 
 
 GLASGOW_BBOX = {
@@ -59,6 +59,38 @@ def test_published_site_types_documented():
         "Vacant Land and Buildings",
         "Derelict",
     )
+
+
+def test_featureserver_requests_set_out_sr_4326(monkeypatch):
+    """GIS note: live FeatureServer queries must request WGS84 (outSR=4326)."""
+    seen: list[dict] = []
+
+    class _Resp:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"type": "FeatureCollection", "features": []}
+
+    class _Client:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+        def get(self, _url, params=None):
+            seen.append(dict(params or {}))
+            return _Resp()
+
+    monkeypatch.setattr("layers.vdl._client", lambda: _Client())
+    assert OUT_SR == 4326
+    query_bbox(55.84, -4.30, 55.88, -4.22)
+    query_point(55.86, -4.26)
+    assert len(seen) == 2
+    for params in seen:
+        assert params.get("outSR") == 4326
+        assert params.get("inSR") == 4326
 
 
 def test_vdl_503_when_upstream_fails(client, monkeypatch):

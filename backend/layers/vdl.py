@@ -27,6 +27,9 @@ FEATURE_URL = (
 )
 TIMEOUT = 8.0
 MAX_FEATURES = 80
+# GIS: FeatureServer geometry must be requested in WGS84 for the map.
+OUT_SR = 4326
+IN_SR = 4326
 OUT_FIELDS = (
     "site_name,site_type,site_size,local_auth,la_s_code,"
     "owner_1,site_code,address,period"
@@ -131,11 +134,11 @@ def query_point(lat: float, lng: float) -> dict[str, Any]:
     params = {
         "geometry": f"{lng},{lat}",
         "geometryType": "esriGeometryPoint",
-        "inSR": 4326,
+        "inSR": IN_SR,
         "spatialRel": "esriSpatialRelIntersects",
         "outFields": OUT_FIELDS,
         "returnGeometry": "false",
-        "outSR": 4326,
+        "outSR": OUT_SR,
         "resultRecordCount": 5,
         "f": "json",
     }
@@ -196,11 +199,11 @@ def query_bbox(
     params = {
         "geometry": envelope,
         "geometryType": "esriGeometryEnvelope",
-        "inSR": 4326,
+        "inSR": IN_SR,
         "spatialRel": "esriSpatialRelIntersects",
         "outFields": OUT_FIELDS,
         "returnGeometry": "true",
-        "outSR": 4326,
+        "outSR": OUT_SR,
         "resultRecordCount": cap,
         "f": "geojson",
     }

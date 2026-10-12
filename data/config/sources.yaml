@@ -155,6 +155,8 @@ vdl:
     https://services2.arcgis.com/Ne8d9gKn5SJ3eAaw/ArcGIS/rest/services/Scottish_Vacant_and_Derelict_Land_2024/FeatureServer/1
   vintage: "2024 Spatial Hub republish (site-level as published)"
   bbox_endpoint: /layers/open/vdl
+  # Live FeatureServer queries set inSR/outSR=4326 (WGS84) for the map.
+  out_sr: 4326
   site_types:
     - Vacant Land
     - Vacant Land and Buildings

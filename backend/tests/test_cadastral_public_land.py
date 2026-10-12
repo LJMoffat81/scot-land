@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from layers.cadastral import LayerUnavailable
+from layers.platform import platform_catalog
+from layers.public_land import DASHBOARD_URL, LICENCE
 
 
 GLASGOW_BBOX = {
@@ -11,6 +13,15 @@ GLASGOW_BBOX = {
     "north": 55.88,
     "east": -4.22,
 }
+
+
+def test_public_crown_catalog_records_ogl_licence_and_source_url():
+    layer = next(
+        row for row in platform_catalog()["layers"] if row["id"] == "public_crown"
+    )
+    assert layer["licence"] == "OGL-3.0"
+    assert layer["source_url"] == DASHBOARD_URL
+    assert layer["endpoint"] == "/layers/open/public-land"
 
 
 def test_parcels_bbox_503_when_not_loaded(client, monkeypatch):
@@ -61,6 +72,8 @@ def test_public_land_ok_empty_viewport_is_not_503(client, monkeypatch):
                 "ok": True,
                 "layer": "public_land",
                 "count": 0,
+                "licence": LICENCE,
+                "source_url": DASHBOARD_URL,
                 "bodies": [],
                 "gaps": ["Local-authority land not included"],
             },
@@ -73,4 +86,17 @@ def test_public_land_ok_empty_viewport_is_not_503(client, monkeypatch):
     assert body["type"] == "FeatureCollection"
     assert body["features"] == []
     assert body["meta"]["ok"] is True
+    assert body["meta"]["licence"] == "OGL-3.0"
+    assert body["meta"]["source_url"] == DASHBOARD_URL
+
+
+def test_downloads_list_public_land_as_ogl(client):
+    r = client.get("/downloads")
+    assert r.status_code == 200, r.text
+    items = {row["id"]: row for row in r.json()["items"]}
+    overlay = items["public_land_overlay"]
+    assert overlay["licence"] == "OGL-3.0"
+    assert overlay["url"] == DASHBOARD_URL
+    assert items["public_crown_map"]["licence"] == "OGL-3.0"
+    assert items["public_crown_map"]["url"] == DASHBOARD_URL
 

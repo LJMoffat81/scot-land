@@ -255,8 +255,9 @@ def open_downloads() -> dict:
             {
                 "id": "public_land_overlay",
                 "label": "Public / Crown land overlay (this API)",
-                "licence": "SG 2024 dashboard overlay — not a title",
+                "licence": "OGL-3.0",
                 "endpoint": "/layers/open/public-land",
+                "url": "https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897",
                 "note": "Viewport query of the official map. Five bodies only.",
             },
             {
@@ -274,7 +275,7 @@ def open_downloads() -> dict:
             {
                 "id": "public_crown_map",
                 "label": "Scottish public and Crown Estate land map",
-                "licence": "official SG map — link, not a copy",
+                "licence": "OGL-3.0",
                 "url": "https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897",
             },
             {

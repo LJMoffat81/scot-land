@@ -125,6 +125,7 @@ def platform_catalog() -> dict[str, Any]:
                 ),
                 "endpoint": "/layers/open/public-land",
                 "minzoom": 6,
+                "licence": "OGL-3.0",
                 "source_url": PUBLIC_LAND_MAP,
             },
             {

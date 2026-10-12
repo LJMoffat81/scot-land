@@ -50,7 +50,7 @@ Public methodology and README must list active data sources. See `data/config/so
 | Layer | Source | Licence note |
 |-------|--------|----------------|
 | Cadastral parcels | Registers of Scotland INSPIRE Index Polygons | OGL / INSPIRE (Crown) — cite RoS; raw extracts stay in `data/external/` |
-| Public land | Scottish Government Public and Crown Estate Land 2024 | Official dashboard overlay — five bodies; not a title |
+| Public land | Scottish Government Public and Crown Estate Land 2024 | OGL-3.0 — cite Scottish Government; five bodies; indicative overlay, not a title |
 | Vacant & derelict | SVDLS site register + Spatial Hub VDL polygons | OGL-3.0 — cite Scottish Government and Improvement Service / local planning authorities; survey sites, not a title |
 | Common Good | Statutory LA registers + Fife indicative titles metadata | Linked only. No national open spatial layer. Fife under OS Public Sector End User Licence - INSPIRE — not redistributed here |
 

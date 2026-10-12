@@ -84,11 +84,12 @@ parcels:
 public_land:
   name: Scottish Public and Crown Estate Land 2024
   role: public_sector_holdings_overlay
-  licence: Scottish Government dashboard overlay (not a legal title)
+  licence: OGL-3.0
   attribution: >-
-    Scottish Public and Crown Estate Land 2024. Scottish Government;
-    landholding bodies listed on the official map. Five bodies only —
-    not exhaustive, not local-authority land, not a title.
+    Scottish Public and Crown Estate Land 2024. Contains public sector
+    information licensed under the Open Government Licence v3.0.
+    Scottish Government; landholding bodies listed on the official map.
+    Five bodies only — not exhaustive, not local-authority land, not a title.
   source_url: https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897
   feature_server: >-
     https://services-eu1.arcgis.com/4QkhM5AS8YOlkb6T/arcgis/rest/services/PublicLand_2024_Update/FeatureServer/8
@@ -226,6 +227,7 @@ map_layers:
     - id: public_land
       source: SG PublicLand_2024_Update FeatureServer
       endpoint: /layers/open/public-land
+      licence: OGL-3.0
       note: Five national bodies only; not a title; not local-authority land
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.

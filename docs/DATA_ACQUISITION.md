@@ -73,6 +73,8 @@ Supply **completed residential (then all-tenure) sales** for Scotland so the AGR
 | Field | Value |
 |-------|--------|
 | Source | Scottish Public and Crown Estate Land 2024 FeatureServer |
+| Licence | OGL-3.0 |
+| Source URL | https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897 |
 | Bodies | Forestry and Land Scotland, NatureScot, Scottish Crown Estate, Scottish Water, Crofting Agricultural Holdings |
 | BBox API | `GET /layers/open/public-land` → **503** when upstream unavailable |
 | Gaps | Local-authority land, Common Good, and bodies outside the five are not shown — never guessed |

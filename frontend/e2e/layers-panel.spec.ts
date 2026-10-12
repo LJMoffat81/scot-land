@@ -41,6 +41,7 @@ const FIXTURE_CATALOG = {
       group: "ownership",
       status: "live",
       label: "Public and Crown Estate land",
+      licence: "OGL-3.0",
       source_url: "https://www.arcgis.com/apps/dashboards/example",
     },
     {
@@ -108,6 +109,9 @@ test.describe("LayersPanel (catalog-driven)", () => {
     );
     await expect(page.getByTestId("layer-source-boundaries")).toContainText(
       "Registers of Scotland",
+    );
+    await expect(page.getByTestId("layer-licence-public_crown")).toContainText(
+      "OGL-3.0",
     );
   });
 

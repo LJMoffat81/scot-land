@@ -82,6 +82,13 @@ export default async function OpenApiPage() {
           </span>
         </li>
         <li>
+          Data Zone boundaries in view (2011 outlines; simplified GeoJSON by
+          bbox; code and name only — no AGR £)
+          <span className="download-path">
+            GET /layers/open/data-zones?south=&amp;west=&amp;north=&amp;east=
+          </span>
+        </li>
+        <li>
           Public and Crown land in view, for the five national bodies (503 when
           the overlay source is down)
           <span className="download-path">

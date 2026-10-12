@@ -233,7 +233,18 @@ export default function LayersPanel({
                       className="layer-meta"
                       data-testid={`layer-licence-${layer.id}`}
                     >
-                      Licence: {licence}
+                      Licence:{" "}
+                      {layer.licence_url ? (
+                        <a
+                          href={layer.licence_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {licence}
+                        </a>
+                      ) : (
+                        licence
+                      )}
                     </p>
 
                     {hasToggle && withheld && on && (

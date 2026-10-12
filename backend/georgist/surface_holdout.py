@@ -14,6 +14,8 @@ import statistics
 from dataclasses import dataclass
 from typing import Iterable, Callable, Mapping, Sequence
 
+import numpy as np
+
 TARGETS = {
     "median_ratio": (0.95, 1.05),
     "cod_max_urban": 15.0,
@@ -941,18 +943,101 @@ def job_access_gradient_check(
 
 
 FAIL_BAND_PENDING_TAG = "fail_band_pending_holdout"
+HOLDOUT_ERROR_BAND_TAG = "band_widened_holdout_error"
+HOLDOUT_ERROR_BAND_BEHAVIOUR = "holdout_error_band"
 
 
-def widen_failed_class_band(land_value: float | None, low: float | None, high: float | None, *, fill_method: str,
-                            ur6_class: int, failed_classes: Iterable[int], multiplier: float,
-                            multiplier_status: str) -> tuple[float | None, float | None, tuple[str, ...]]:
+def relative_holdout_errors(pred: Sequence[float], actual: Sequence[float]) -> list[float]:
+    """Holdout errors as (actual − pred) / pred for failed-class band widening."""
+    if len(pred) != len(actual) or not pred:
+        raise ValueError("pred and actual must be same non-zero length")
+    out = []
+    for p, a in zip(pred, actual):
+        if p is None or a is None or float(p) == 0:
+            continue
+        out.append((float(a) - float(p)) / float(p))
+    return out
+
+
+def holdout_error_percentiles(
+    errors: Sequence[float],
+    *,
+    percentile_low: float = 5.0,
+    percentile_high: float = 95.0,
+) -> tuple[float, float]:
+    if not errors:
+        raise ValueError("need holdout errors to form a class band")
+    arr = np.asarray(list(errors), dtype=float)
+    return float(np.percentile(arr, percentile_low)), float(np.percentile(arr, percentile_high))
+
+
+def apply_holdout_error_band(
+    land_value: float,
+    low: float,
+    high: float,
+    *,
+    error_p_low: float,
+    error_p_high: float,
+) -> tuple[float, float]:
+    """Widen [low, high] using holdout relative residuals (actual−pred)/pred at the given percentiles.
+
+    Candidate band is land_value × (1 + e_p). Applied only where wider than the existing band
+    (rules 12.2 / ECONOMIC_RULES.md). Low floored at 0. Research estimate support — not an
+    official uncertainty product.
+    """
+    cand_low = max(0.0, float(land_value) * (1.0 + float(error_p_low)))
+    cand_high = max(0.0, float(land_value) * (1.0 + float(error_p_high)))
+    if cand_low > cand_high:
+        cand_low, cand_high = cand_high, cand_low
+    return min(float(low), cand_low), max(float(high), cand_high)
+
+
+def widen_failed_class_band(
+    land_value: float | None,
+    low: float | None,
+    high: float | None,
+    *,
+    fill_method: str,
+    ur6_class: int,
+    failed_classes: Iterable[int],
+    multiplier: float,
+    multiplier_status: str,
+    active_behaviour: str | None = None,
+    holdout_errors: Sequence[float] | None = None,
+    percentile_low: float = 5.0,
+    percentile_high: float = 95.0,
+) -> tuple[float | None, float | None, tuple[str, ...]]:
     """Rules 12.2 v0.7: MODEL-FILLED zones in a class that failed the pre-registered measure.
 
-    With `multiplier_status` REJECTED_* (Georgist, 2026-10-06) the multiplier is NEVER applied: the band is
-    returned unwidened and tagged `fail_band_pending_holdout` (the active behaviour). Otherwise the band
-    is widened (distance from the value scaled by `multiplier`, low floored at 0). Observed zones unchanged."""
+    Active behaviour `holdout_error_band` (Valuation review after UR6 class 2 access-gradient
+    fail): widen using that class's own holdout prediction errors (5th–95th percentile of
+    relative residual), never a fixed multiplier. Until class holdout errors exist, tag
+    `fail_band_pending_holdout` and leave the band unwidened.
+
+    The fixed `model_filled_band_multiplier` remains REJECTED_GEORGIST and is never applied
+    when `multiplier_status` starts with REJECTED. Observed zones are unchanged.
+    """
     if fill_method != "model_filled" or ur6_class is None or int(ur6_class) not in set(failed_classes):
         return low, high, ()
+
+    behaviour = (active_behaviour or "").strip() or (
+        HOLDOUT_ERROR_BAND_BEHAVIOUR if holdout_errors is not None else "fail_band_pending_holdout"
+    )
+
+    if behaviour == HOLDOUT_ERROR_BAND_BEHAVIOUR:
+        if not holdout_errors:
+            return low, high, (FAIL_BAND_PENDING_TAG,)
+        if land_value is None or low is None or high is None:
+            return low, high, ()
+        e_lo, e_hi = holdout_error_percentiles(
+            holdout_errors, percentile_low=percentile_low, percentile_high=percentile_high,
+        )
+        new_low, new_high = apply_holdout_error_band(
+            land_value, low, high, error_p_low=e_lo, error_p_high=e_hi,
+        )
+        return new_low, new_high, (HOLDOUT_ERROR_BAND_TAG, f"holdout_error_band_ur6:{int(ur6_class)}",
+                                   "research_estimate")
+
     if str(multiplier_status).upper().startswith("REJECTED"):
         return low, high, (FAIL_BAND_PENDING_TAG,)
     if land_value is None or low is None or high is None:

@@ -11,13 +11,13 @@ const mona = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "SCOT-LAND MEGA BUILD 2026",
+  title: "Scot-LAND — open map of Scotland’s land",
   description:
-    "A research estimate of what Scotland's land alone is worth to use each year, by postcode. Not a bill.",
+    "Search a Scottish postcode, place or coordinates on an open land map. Research estimates, not a bill.",
   openGraph: {
-    title: "Scot-LAND: what is Scotland's land worth each year?",
+    title: "Scot-LAND — open map of Scotland’s land",
     description:
-      "Search any Scottish postcode for a research estimate of its Annual Ground Rent, on land value only.",
+      "Find a place on Scotland’s open land map. Ownership and research land-rent figures follow; not a tax bill.",
   },
 };
 

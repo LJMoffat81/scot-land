@@ -173,6 +173,22 @@ export function looksLikeFullPostcode(text: string): boolean {
   return /^[A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2}$/.test(text.trim().toUpperCase().replace(/\s+/g, " "));
 }
 
+/** Parse "lat, lng" or "lat lng" for the public search box (Scotland-ish bounds). */
+export function parseCoordinates(
+  text: string,
+): { lat: number; lng: number } | null {
+  const m = text
+    .trim()
+    .match(/^(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)$/);
+  if (!m) return null;
+  const lat = Number(m[1]);
+  const lng = Number(m[2]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  // Rough Scotland envelope — same spirit as backend bounds checks.
+  if (lat < 54.4 || lat > 61.0 || lng < -9.0 || lng > 0.2) return null;
+  return { lat, lng };
+}
+
 /** Shown only where a visitor asks for a legacy feature this server does not mount. */
 export const AGR_UNAVAILABLE =
   "Address search and the ground-rent breakdown aren't available on this server yet. Click the map to look up a data zone.";

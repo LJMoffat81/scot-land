@@ -63,7 +63,7 @@ const FIXTURE_CATALOG = {
   tools: [],
 };
 
-async function openPanel(page: Page) {
+async function mockCatalog(page: Page) {
   await page.route("**/layers/catalog", async (route) => {
     await route.fulfill({
       status: 200,
@@ -78,7 +78,19 @@ async function openPanel(page: Page) {
       body: JSON.stringify(FIXTURE_CATALOG),
     });
   });
+}
+
+async function openPanel(page: Page) {
+  await mockCatalog(page);
   await page.goto("/layers-panel");
+  await page.getByTestId("layers-panel").waitFor();
+}
+
+async function openPanelOnMap(page: Page) {
+  await mockCatalog(page);
+  await page.goto("/");
+  await page.locator(".maplibregl-canvas").waitFor();
+  await page.getByRole("button", { name: "Layers", exact: true }).click();
   await page.getByTestId("layers-panel").waitFor();
 }
 
@@ -142,4 +154,18 @@ test.describe("LayersPanel (catalog-driven)", () => {
     const body = await page.getByTestId("layers-panel").innerText();
     expect(body).not.toMatch(/£\d/);
   });
+
+  test("Layers button on the main map embeds the catalog panel", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    await openPanelOnMap(page);
+
+    const tools = page.locator("aside.hud-tools");
+    await expect(tools.getByTestId("layers-panel")).toBeVisible();
+    await expect(tools.getByTestId("layer-toggle-boundaries")).toBeVisible();
+    await expect(tools.getByTestId("layer-toggle-public_crown")).toBeVisible();
+    await expect(tools.getByTestId("layer-toggle-vdl")).toBeVisible();
+  });
 });
+

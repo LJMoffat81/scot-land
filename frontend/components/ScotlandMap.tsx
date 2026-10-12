@@ -15,6 +15,7 @@ import {
   type ScenarioId,
 } from "./AgrBreakdown";
 import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
+import LayersPanel, { type LayerToggleState } from "./LayersPanel";
 import {
   ApiError,
   SERVICE_BUSY,
@@ -517,11 +518,48 @@ export default function ScotlandMap() {
   const [showVdl, setShowVdl] = useState(false);
   const [showPublicLand, setShowPublicLand] = useState(false);
   const [showDataZones, setShowDataZones] = useState(false);
+  /** Catalog toggles for withheld public layers (honest unavailable; no map paint). */
+  const [withheldCatalogOn, setWithheldCatalogOn] = useState<LayerToggleState>(
+    {},
+  );
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
   const publicLandTouched = useRef(false);
   const dataZonesTouched = useRef(false);
+  const boundariesTouched = useRef(false);
   const layerPopupRef = useRef<maplibregl.Popup | null>(null);
   const dzHoverPopupRef = useRef<maplibregl.Popup | null>(null);
+
+  const catalogLayerEnabled: LayerToggleState = {
+    ...withheldCatalogOn,
+    boundaries: showBoundaries,
+    public_crown: showPublicLand,
+    vdl: showVdl,
+    data_zones: showDataZones,
+    // cell_grid stays internal (showCellGrid is fixed off on the public shell).
+    cell_grid: Boolean(withheldCatalogOn.cell_grid),
+  };
+
+  const onCatalogLayerEnabledChange = (next: LayerToggleState) => {
+    if (Boolean(next.boundaries) !== showBoundaries) {
+      boundariesTouched.current = true;
+      setShowBoundaries(Boolean(next.boundaries));
+    }
+    if (Boolean(next.public_crown) !== showPublicLand) {
+      publicLandTouched.current = true;
+      setShowPublicLand(Boolean(next.public_crown));
+    }
+    if (Boolean(next.vdl) !== showVdl) {
+      setShowVdl(Boolean(next.vdl));
+    }
+    if (Boolean(next.data_zones) !== showDataZones) {
+      dataZonesTouched.current = true;
+      setShowDataZones(Boolean(next.data_zones));
+    }
+    setWithheldCatalogOn({
+      agr_value: Boolean(next.agr_value),
+      cell_grid: Boolean(next.cell_grid),
+    });
+  };
 
   // Public place card (stub). Modelled AGR £ / Wealth / tax stay off the public shell.
   const [placeStub, setPlaceStub] = useState<PlaceStub | null>(null);
@@ -559,7 +597,6 @@ export default function ScotlandMap() {
   const [legendOpen, setLegendOpen] = useState(false);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const parcelLabelRef = useRef<maplibregl.Marker | null>(null);
-  const boundariesTouched = useRef(false);
   const headerRef = useRef<HTMLElement | null>(null);
   const scotlandRef = useRef<HTMLElement | null>(null);
 
@@ -2647,62 +2684,16 @@ export default function ScotlandMap() {
       {toolsOpen && (
       <aside className="hud-card hud-tools" aria-label="Map layers">
         <div className="layer-panel">
-              <p className="hud-tools-title">Map layers</p>
+              <LayersPanel
+                className="layers-panel-in-shell"
+                enabled={catalogLayerEnabled}
+                onEnabledChange={onCatalogLayerEnabledChange}
+              />
 
-              <section className="layer-ownership" aria-label="Ownership and cadastre">
-                <label className="layer-select-label">Ownership and cadastre</label>
-                <p className="layer-meta">
-                  Data Zone outlines, RoS INSPIRE parcels, public-sector
-                  holdings, and SVDLS vacant and derelict sites. Separate from
-                  Annual Ground Rent and Surface Rent.
-                </p>
-                <div className="layer-chips">
-                  <button
-                    type="button"
-                    className={showDataZones ? "chip active" : "chip"}
-                    data-testid="layer-data-zones"
-                    onClick={() => {
-                      dataZonesTouched.current = true;
-                      setShowDataZones((on) => !on);
-                    }}
-                    title="2011 Data Zone boundaries. On by default from neighbourhood zoom. Outlines only — no AGR £."
-                  >
-                    Data zone boundaries
-                  </button>
-                  <button
-                    type="button"
-                    className={showBoundaries ? "chip active" : "chip"}
-                    data-testid="layer-cadastral"
-                    onClick={() => {
-                      boundariesTouched.current = true;
-                      setShowBoundaries((v) => !v);
-                    }}
-                    title="RoS INSPIRE cadastral parcels. On by default from street zoom."
-                  >
-                    Cadastral parcels
-                  </button>
-                  <button
-                    type="button"
-                    className={showPublicLand ? "chip active" : "chip"}
-                    data-testid="layer-public-land"
-                    onClick={() => {
-                      publicLandTouched.current = true;
-                      setShowPublicLand((on) => !on);
-                    }}
-                    title="Five public and Crown bodies (SG 2024). On by default from regional zoom."
-                  >
-                    Public land
-                  </button>
-                  <button
-                    type="button"
-                    className={showVdl ? "chip active" : "chip"}
-                    data-testid="layer-vdl"
-                    onClick={() => setShowVdl((on) => !on)}
-                    title="Scottish Vacant and Derelict Land Survey sites. Survey polygons, not a title."
-                  >
-                    Vacant and derelict
-                  </button>
-                </div>
+              <section
+                className="layer-ownership-legends"
+                aria-label="Active layer legends"
+              >
                 {showDataZones && (
                   <p className="layer-meta" data-testid="layer-data-zones-credit">
                     Scottish Government Data Zone boundaries 2011 (OGL). Hover
@@ -2711,7 +2702,7 @@ export default function ScotlandMap() {
                   </p>
                 )}
                 {showBoundaries && (
-                  <p className="layer-meta">
+                  <p className="layer-meta" data-testid="layer-cadastral-credit">
                     © Crown copyright. Reproduced with the permission of Registers
                     of Scotland. Contains OS data. Registered extents only — not a
                     title sheet. Zoom {CADASTRAL_MIN_ZOOM}+.

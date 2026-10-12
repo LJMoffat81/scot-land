@@ -957,7 +957,7 @@ button.primary:disabled {
   border-bottom: 1px solid color-mix(in srgb, var(--slrg-navy) 12%, transparent);
 }
 
-/* Standalone LayersPanel (catalog-driven; slots into w3w shell later) */
+/* LayersPanel: standalone preview page + embedded in w3w shell tools */
 .layers-panel-page {
   min-height: 100vh;
   min-height: 100dvh;
@@ -995,6 +995,22 @@ button.primary:disabled {
   padding: 1rem 1.05rem 1.15rem;
   max-height: min(85dvh, 44rem);
   overflow: auto;
+}
+
+/* Nested in hud-tools: reuse the shell card chrome, not a second card */
+.hud-tools .layers-panel,
+.layers-panel-in-shell {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+.layer-ownership-legends {
+  margin-top: 0.55rem;
 }
 
 .layers-panel-group {

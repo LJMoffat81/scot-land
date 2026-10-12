@@ -58,3 +58,5 @@ After stamping, future revisions (`alembic revision` + `upgrade`) apply normally
 - Never touch gitignored `data/external`.
 - `inspire_parcels` (RoS INSPIRE ingest from PR #4) is part of the baseline
   (`005_inspire_parcels.sql`).
+- Natural-capital hydro + SEPA CAR: `006_hydro_sepa_car.sql` + Alembic
+  `20261012_0002` (`hydro_sites`, `sepa_car_licences`).

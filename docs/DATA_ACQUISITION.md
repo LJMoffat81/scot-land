@@ -85,6 +85,26 @@ Supply **completed residential (then all-tenure) sales** for Scotland so the AGR
 
 Registry: `data/config/sources.yaml` → `parcels` and `public_land`.
 
+## Hydropower sites + SEPA CAR (natural capital; no £)
+
+| Field | Value |
+|-------|--------|
+| Hydro source | SEPA Hydropower Sites ATOM → WGS84 shapefile |
+| Hydro licence | OGL-3.0 — https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ |
+| Hydro source URL | https://www.data.gov.uk/dataset/5750f8e5-d51b-4e75-a8d6-403a0d1ded81/hydropower_sites |
+| Hydro ingest | `python -m etl.ingest_hydro_sites` → PostGIS `hydro_sites` |
+| Hydro API | `GET /layers/open/hydro` → **503** until ingested |
+| Hydro tags | `commons_class=extractive`, `value_tier=proxy`, `publication_status=ok` |
+| CAR source | SEPA public register CSV export (https://search-the-register.sepa.org.uk/) |
+| CAR licence | OGL-3.0 (same licence URL) |
+| CAR ingest | `python -m etl.ingest_sepa_car --csv <export.csv>` → PostGIS `sepa_car_licences` |
+| CAR API | `GET /layers/open/sepa-car` → **503** until CSV loaded with geometry |
+| CAR tags | `commons_class=extractive`, `value_tier=proxy`, `publication_status=download_only` |
+| CAR honesty | **Download-only** — never scrape MapServer / viewer; no bulk open spatial package |
+| Gaps | No £ rent on either overlay; separate from surface rent; hydro ≠ full CAR register |
+
+Registry: `data/config/sources.yaml` → `hydro_sites` and `sepa_car`. Do not commit raw downloads under `data/external`.
+
 ## Common Good (linked registers; no national open map)
 
 | Field | Value |

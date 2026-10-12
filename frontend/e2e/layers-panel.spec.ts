@@ -45,6 +45,31 @@ const FIXTURE_CATALOG = {
       source_url: "https://www.arcgis.com/apps/dashboards/example",
     },
     {
+      id: "hydro_sites",
+      group: "spatial",
+      status: "live",
+      label: "Hydropower sites (SEPA CAR)",
+      licence: "OGL-3.0",
+      licence_url:
+        "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      source_url:
+        "https://www.data.gov.uk/dataset/5750f8e5-d51b-4e75-a8d6-403a0d1ded81/hydropower_sites",
+      value_tier: "proxy",
+      publication_status: "ok",
+    },
+    {
+      id: "sepa_car",
+      group: "spatial",
+      status: "live",
+      label: "SEPA CAR licences",
+      licence: "OGL-3.0",
+      licence_url:
+        "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      source_url: "https://search-the-register.sepa.org.uk/",
+      value_tier: "proxy",
+      publication_status: "download_only",
+    },
+    {
       id: "la_holdings",
       group: "ownership",
       status: "gap",

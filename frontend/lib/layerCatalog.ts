@@ -23,6 +23,10 @@ export type CatalogLayer = {
   minzoom?: number;
   also?: string;
   gaps?: unknown[];
+  /** Georgist evidence tier for natural-capital overlays (not a rent). */
+  value_tier?: "market" | "proxy" | "shadow" | string;
+  commons_class?: string;
+  publication_status?: string;
 };
 
 export type LayerCatalog = {
@@ -83,6 +87,17 @@ export const LAYER_ATTRIBUTION: Record<
     licence: "OGL-3.0",
     sourceUrl:
       "https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897",
+  },
+  hydro_sites: {
+    source: "SEPA Hydropower Sites (CAR)",
+    licence: "OGL-3.0",
+    sourceUrl:
+      "https://www.data.gov.uk/dataset/5750f8e5-d51b-4e75-a8d6-403a0d1ded81/hydropower_sites",
+  },
+  sepa_car: {
+    source: "SEPA public register (CAR) — download-only CSV",
+    licence: "OGL-3.0",
+    sourceUrl: "https://search-the-register.sepa.org.uk/",
   },
   la_holdings: {
     source: "Spatial Hub — Land Ownership Scotland",

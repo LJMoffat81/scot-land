@@ -38,6 +38,13 @@ SPATIAL_HUB_VDL = "https://data.spatialhub.scot/dataset/vacant_and_derelict_land
 SPATIAL_HUB_CAT = "https://data.spatialhub.scot/dataset/community_asset_transfer_register-is"
 SPATIAL_HUB_ASSETS = "https://data.spatialhub.scot/dataset/council_asset_register-is"
 SPATIAL_HUB_LA_OWN = "https://data.spatialhub.scot/dataset/land_ownership-is"
+OGL_V3_URL = (
+    "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+)
+HYDRO_SOURCE = (
+    "https://www.data.gov.uk/dataset/5750f8e5-d51b-4e75-a8d6-403a0d1ded81/hydropower_sites"
+)
+SEPA_CAR_REGISTER = "https://search-the-register.sepa.org.uk/"
 CROWN_ESTATE_HUB = "https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/"
 
 
@@ -157,6 +164,45 @@ def platform_catalog() -> dict[str, Any]:
                 "minzoom": 6,
                 "licence": "OGL-3.0",
                 "source_url": PUBLIC_LAND_MAP,
+            },
+            {
+                "id": "hydro_sites",
+                "group": "spatial",
+                "status": "live",
+                "label": "Hydropower sites (SEPA CAR)",
+                "description": (
+                    "SEPA OGL hydropower sites — CAR-licensed water abstractions for "
+                    "hydropower (PostGIS). Natural-capital extractive inventory "
+                    "(value_tier=proxy). No £ rent; separate from surface rent."
+                ),
+                "endpoint": "/layers/open/hydro",
+                "licence": "OGL-3.0",
+                "licence_url": OGL_V3_URL,
+                "minzoom": 6,
+                "source_url": HYDRO_SOURCE,
+                "commons_class": "extractive",
+                "value_tier": "proxy",
+                "publication_status": "ok",
+            },
+            {
+                "id": "sepa_car",
+                "group": "spatial",
+                "status": "live",
+                "label": "SEPA CAR licences",
+                "description": (
+                    "Controlled Activities Regulations authorisations from the SEPA "
+                    "public register CSV export (download-only — not MapServer). "
+                    "Natural-capital extractive inventory (value_tier=proxy). "
+                    "No £ rent; separate from surface rent. publication_status=download_only."
+                ),
+                "endpoint": "/layers/open/sepa-car",
+                "licence": "OGL-3.0",
+                "licence_url": OGL_V3_URL,
+                "minzoom": 6,
+                "source_url": SEPA_CAR_REGISTER,
+                "commons_class": "extractive",
+                "value_tier": "proxy",
+                "publication_status": "download_only",
             },
             {
                 "id": "la_holdings",

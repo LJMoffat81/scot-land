@@ -87,6 +87,60 @@ parcels:
     - Index polygons are registered extents, not a title sheet
     - Full national extracts stay in data/external/ (size); CI uses a synthetic fixture only
 
+hydro_sites:
+  name: SEPA Hydropower Sites
+  role: natural_capital_extractive_overlay
+  publisher: Scottish Environment Protection Agency (SEPA)
+  licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  attribution: >-
+    Contains public sector information licensed under the Open Government
+    Licence v3.0. © SEPA. Licensed hydropower sites under CAR that abstract
+    water for hydropower — site points, not a title, not a rent.
+  source_url: >-
+    https://www.data.gov.uk/dataset/5750f8e5-d51b-4e75-a8d6-403a0d1ded81/hydropower_sites
+  atom_url: https://map.sepa.org.uk/atom/SEPA_Hydropower_Sites.atom
+  shapefile_wgs84_url: >-
+    https://map.sepa.org.uk/atom/Data/SEPA_Hydropower_SITES_WGS84_shp.zip
+  vintage: "SEPA ATOM package (feed updated 2018-08-01)"
+  commons_class: extractive
+  value_tier: proxy
+  publication_status: ok
+  postgis_table: hydro_sites
+  bbox_endpoint: /layers/open/hydro
+  ingest: python -m etl.ingest_hydro_sites
+  gaps:
+    - CAR hydropower abstractions only — not the full CAR water register
+    - Points are licensed sites, not lease polygons or Land Register titles
+    - No £ rent on this overlay; separate from surface rent (la-calc)
+    - Full extract is not committed; load via ingest into PostGIS
+
+sepa_car:
+  name: SEPA Controlled Activities Regulations (CAR) licences
+  role: natural_capital_extractive_overlay
+  publisher: Scottish Environment Protection Agency (SEPA)
+  licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  attribution: >-
+    Contains public sector information licensed under the Open Government
+    Licence v3.0. © SEPA. CAR authorisations from the public register CSV
+    export — download-only; not scraped from MapServer; not a title; not a rent.
+  source_url: https://search-the-register.sepa.org.uk/
+  help_url: https://search-the-register.sepa.org.uk/Help
+  environmental_data_url: https://www.sepa.org.uk/environment/environmental-data/
+  commons_class: extractive
+  value_tier: proxy
+  publication_status: download_only
+  postgis_table: sepa_car_licences
+  bbox_endpoint: /layers/open/sepa-car
+  ingest: python -m etl.ingest_sepa_car --csv <public-register-export.csv>
+  gaps:
+    - No bulk open spatial download — CSV export from the public register only
+    - MapServer / viewer endpoints are not scraped or proxied
+    - Rows without a parseable NGR have no geometry
+    - No £ rent on this overlay; separate from surface rent (la-calc)
+    - Full CSV is not committed; load via ingest into PostGIS
+
 public_land:
   name: Scottish Public and Crown Estate Land 2024
   role: public_sector_holdings_overlay
@@ -235,6 +289,19 @@ map_layers:
       endpoint: /layers/open/public-land
       licence: OGL-3.0
       note: Five national bodies only; not a title; not local-authority land
+    - id: hydro_sites
+      source: SEPA Hydropower Sites ATOM shapefile (OGL) via PostGIS
+      endpoint: /layers/open/hydro
+      licence: OGL-3.0
+      value_tier: proxy
+      note: Natural-capital extractive sites only — no £ rent
+    - id: sepa_car
+      source: SEPA public register CAR CSV (download-only) via PostGIS
+      endpoint: /layers/open/sepa-car
+      licence: OGL-3.0
+      value_tier: proxy
+      publication_status: download_only
+      note: Download-only CSV ingest — no MapServer scrape; no £ rent
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
   # Left off that list: James Hutton land capability; OS Open Zoomstack

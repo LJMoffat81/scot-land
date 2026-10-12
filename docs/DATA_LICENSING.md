@@ -78,6 +78,8 @@ Public methodology and README must list active data sources. See `data/config/so
 | Community ownership | SG Community Ownership in Scotland 2024 Dataset | OGL v3.0 — cite Scottish Government; map points are postcode centroids, not title polygons; ownership-context (no public £ rent) |
 | National Forest Inventory | Forestry Commission NFI Woodland Scotland (NatureScot OGC) | OGL v3.0 — https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ — © Forestry Commission; contains OS data © Crown copyright; ledger row 1 land-use overlay, not a rent |
 | Native Woodland Survey | Scottish Forestry NWSS (NatureScot OGC) | OGL v3.0 — https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ — © Scottish Forestry / Forestry Commission; ledger row 1 land-use overlay, not a title |
+| REPD renewables | DESNZ Renewable Energy Planning Database quarterly CSV | OGL-3.0 — Scotland planning-site points via PostGIS ingest; not lease polygons; ledger row 3 (onshore wind + hydro resource); no £ rent |
+| Crown Estate Scotland offshore leases | CES Spatial Hub FeatureServers (offshore wind, wave, tidal, CCS) | OGL-3.0 — offshore lease polygons only; aquaculture is a separate layer; not a title sheet; ledger row 4 (seabed & foreshore); no £ rent |
 | Common Good | Statutory LA registers + Fife indicative titles metadata | Linked only. No national open spatial layer. Fife under OS Public Sector End User Licence - INSPIRE — not redistributed here |
 | Crofting Register / common grazings | Crofting Commission open-data CSVs (Parishes, Holdings, Grazings) | OGL-3.0 — load into PostGIS for valuation joins. Individuals CSV not ingested (personal data). RoS Crofting Register map extents are linked, not redrawn. Spatial Hub Decrofted Areas is Restricted — not used |
 
@@ -94,3 +96,4 @@ Public methodology and README must list active data sources. See `data/config/so
 | Who Owns Scotland | Paid ownership product |
 
 Missing open registers (local-authority holdings, national Common Good spatial file, Sasine, national OGL croft/grazing polygons) are catalogued as gaps — never invented.
+Full REPD / CES extracts are not committed; load with `python -m etl.ingest_repd` and `python -m etl.ingest_crown_estate_leases`.

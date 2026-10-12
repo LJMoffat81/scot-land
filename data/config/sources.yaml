@@ -496,6 +496,83 @@ nrs_settlements_localities:
     - Localities are not a land-ownership or title product
     - Small rural clusters below the settlement threshold are not drawn
     - Population counts are Census 2022 figures, not a land rent
+repd:
+  name: Renewable Energy Planning Database (REPD)
+  role: renewable_planning_sites_overlay
+  publisher: Department for Energy Security and Net Zero (DESNZ)
+  licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  ledger_role: ledger-row
+  ledger_row: "3"
+  ui_surface: ledger
+  attribution: >-
+    Contains public sector information licensed under the Open Government
+    Licence v3.0. Renewable Energy Planning Database © DESNZ / Crown copyright.
+    Planning-site points, not lease polygons, not a title. Ledger row 3 —
+    onshore wind + hydro resource evidence; no £ rent.
+  source_url: >-
+    https://www.gov.uk/government/publications/renewable-energy-planning-database-quarterly-extract
+  data_gov_url: >-
+    https://www.data.gov.uk/dataset/a5b0ed13-c960-49ce-b1f6-3a6bbe0db1b7/repd
+  csv_url: >-
+    https://assets.publishing.service.gov.uk/media/6a6cbdc00c36759b5ccaa305/REPD_Publication_Q2_2026.csv
+  vintage: "REPD July 2026 quarterly extract (Q2 2026)"
+  postgis_table: repd_sites
+  bbox_endpoint: /layers/open/repd
+  ingest: python -m etl.ingest_repd
+  filter: Scotland rows only (Country = Scotland); BNG → WGS84
+  gaps:
+    - UK-wide register — map shows Scotland rows only
+    - Coordinates are planning-site points, not lease or title polygons
+    - Status and capacity change with each quarterly extract
+    - Full CSV is not committed; load via ingest into PostGIS
+    - Ledger row 3 evidence only — no public £ rent
+
+crown_estate_leases:
+  name: Crown Estate Scotland offshore leases (Spatial Hub)
+  role: offshore_lease_overlay
+  publisher: Crown Estate Scotland
+  licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  ledger_role: ledger-row
+  ledger_row: "4"
+  ui_surface: ledger
+  attribution: >-
+    Contains public sector information, licensed under the Open Government
+    Licence v3.0, from Crown Estate Scotland. Lease polygons as published —
+    not a title sheet. Ledger row 4 (seabed & foreshore); no £ rent.
+  source_url: https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/
+  hub_news_url: >-
+    https://www.crownestatescotland.com/news/crown-estate-scotland-spatial-hub-brings-our-data-to-the-world
+  postgis_table: crown_estate_leases
+  bbox_endpoint: /layers/open/crown-estate-leases
+  ingest: python -m etl.ingest_crown_estate_leases
+  themes:
+    - id: offshore_wind
+      label: Offshore Wind
+      url: >-
+        https://services3.arcgis.com/nGV4jiurzcahJ9LV/arcgis/rest/services/Offshore_Wind_Crown_Estate_Scotland/FeatureServer/0
+    - id: wave
+      label: Wave
+      url: >-
+        https://services3.arcgis.com/nGV4jiurzcahJ9LV/arcgis/rest/services/Wave_Crown_Estate_Scotland/FeatureServer/0
+    - id: tidal
+      label: Tidal
+      url: >-
+        https://services3.arcgis.com/nGV4jiurzcahJ9LV/arcgis/rest/services/Tidal_Crown_Estate_Scotland/FeatureServer/0
+    - id: ccs
+      label: Carbon Capture Storage
+      url: >-
+        https://services3.arcgis.com/nGV4jiurzcahJ9LV/arcgis/rest/services/CCS_Crown_Estate_Scotland/FeatureServer/0
+  gaps:
+    - Offshore lease polygons only (wind, wave, tidal, CCS) — not onshore estate
+    - Aquaculture is a separate natural-capital layer — not mirrored here
+    - Lease polygons as published — not a Land Register title
+    - Cables, pipelines and recreational trail layers are not mirrored here
+    - Mines Royal / fishing rights themes stay on the CES hub (linked, not drawn)
+    - Full extracts are not committed; load via ingest into PostGIS
+    - Ledger row 4 evidence only — no public £ rent
+
 
 vdl:
   name: Scottish Vacant and Derelict Land Survey (SVDLS)
@@ -861,6 +938,24 @@ map_layers:
       ledger_row: "1"
       ui_surface: ledger
       note: Ledger row 1 land-use overlay — not a title or rent
+    - id: repd
+      source: DESNZ REPD quarterly CSV (OGL) — Scotland points via PostGIS
+      endpoint: /layers/open/repd
+      licence: OGL-3.0
+      licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+      ledger_role: ledger-row
+      ledger_row: "3"
+      ui_surface: ledger
+      note: Ledger row 3 (onshore wind + hydro resource) — no £ rent; not LayersPanel
+    - id: crown_estate_leases
+      source: Crown Estate Scotland Spatial Hub offshore leases (OGL) via PostGIS
+      endpoint: /layers/open/crown-estate-leases
+      licence: OGL-3.0
+      licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+      ledger_role: ledger-row
+      ledger_row: "4"
+      ui_surface: ledger
+      note: Ledger row 4 seabed — offshore wind/wave/tidal/CCS only; no £ rent
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
   # SEPA flood MapServer is not allowlisted — OGL download → PostGIS only.

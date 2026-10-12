@@ -363,6 +363,22 @@ const NATIVE_WOODLAND_MIN_ZOOM = 8;
 const NFI_FILL = "#1f6b3a";
 const NATIVE_WOODLAND_FILL = "#2d8f4e";
 const LDP_MIN_ZOOM = 8;
+const REPD_MIN_ZOOM = 6;
+const CROWN_LEASES_MIN_ZOOM = 5;
+
+const CES_LEASE_FILL: ExpressionSpecification = [
+  "match",
+  ["coalesce", ["get", "lease_theme"], ""],
+  "offshore_wind",
+  "#1f78b4",
+  "wave",
+  "#a6cee3",
+  "tidal",
+  "#33a02c",
+  "ccs",
+  "#ff7f00",
+  "#6a3d9a",
+];
 /** Community ownership points — postcode centroids, not titles. */
 const COMMUNITY_OWNERSHIP_MIN_ZOOM = 6;
 
@@ -537,6 +553,10 @@ export default function ScotlandMap() {
   const [showCommunityOwnership, setShowCommunityOwnership] = useState(false);
   /** NFI + Native Woodland paint when ledger row 1 (surface site rent) is on. */
   const showWoodland = Boolean(ledgerEnabled["1"]);
+  /** REPD paints when ledger row 3 (onshore wind + hydro resource) is on. */
+  const showRepd = Boolean(ledgerEnabled["3"]);
+  /** CES offshore leases paint when ledger row 4 (seabed & foreshore) is on. */
+  const showCrownLeases = Boolean(ledgerEnabled["4"]);
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
   const dataZonesTouched = useRef(false);
   const boundariesTouched = useRef(false);
@@ -1417,6 +1437,50 @@ export default function ScotlandMap() {
           "line-width": 0.9,
           "line-opacity": 0.85,
         },
+      });
+
+      map.addSource("repd-overlay", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution:
+          "REPD © DESNZ / Crown copyright (OGL v3.0). Planning-site points — ledger row 3, not a rent.",
+      });
+      map.addLayer({
+        id: "repd-circle",
+        type: "circle",
+        source: "repd-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "circle-radius": 5,
+          "circle-color": "#00796b",
+          "circle-stroke-width": 1,
+          "circle-stroke-color": "#ffffff",
+          "circle-opacity": 0.85,
+        },
+      });
+
+      map.addSource("crown-leases-overlay", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution:
+          "Contains public sector information, licensed under the Open Government Licence v3.0, from Crown Estate Scotland. Offshore leases — ledger row 4, not a title.",
+      });
+      map.addLayer({
+        id: "crown-leases-fill",
+        type: "fill",
+        source: "crown-leases-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": CES_LEASE_FILL,
+          "fill-opacity": 0.38,
+        },
+      });
+      map.addLayer({
+        id: "crown-leases-line",
+        type: "line",
+        source: "crown-leases-overlay",
+        layout: { visibility: "none" },
+        paint: { "line-color": "#0b3d5c", "line-width": 1.0, "line-opacity": 0.85 },
       });
 
       map.addSource("vdl-overlay", {
@@ -2403,6 +2467,140 @@ export default function ScotlandMap() {
     };
   }, [mapReady, showWoodland]);
 
+  // DESNZ REPD Scotland points (ledger row 3 — no £ rent)
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const setVis = (vis: "visible" | "none") => {
+      if (!map.getLayer("repd-circle")) return;
+      map.setLayoutProperty("repd-circle", "visibility", vis);
+    };
+
+    if (!showRepd) {
+      setVis("none");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const loadRepd = () => {
+      if (cancelled || !mapRef.current || inFlight) return;
+      const b = map.getBounds();
+      if (!b) return;
+      if (map.getZoom() < REPD_MIN_ZOOM) {
+        setVis("none");
+        return;
+      }
+      inFlight = true;
+      const path =
+        `/layers/open/repd?south=${b.getSouth()}&west=${b.getWest()}` +
+        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
+      void apiJson<GeoJSON.FeatureCollection>(path)
+        .then((data) => {
+          if (cancelled) return;
+          (map.getSource("repd-overlay") as GeoJSONSource)?.setData(data);
+          setVis("visible");
+          setLayerNotice(null);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setVis("none");
+          const msg =
+            err instanceof ApiError
+              ? visitorFacingError(err)
+              : "REPD overlay is unavailable right now.";
+          setLayerNotice(msg);
+        })
+        .finally(() => {
+          inFlight = false;
+        });
+    };
+
+    const onMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadRepd, 700);
+    };
+
+    loadRepd();
+    map.on("moveend", onMove);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off("moveend", onMove);
+    };
+  }, [mapReady, showRepd]);
+
+  // Crown Estate Scotland offshore leases (ledger row 4 — no £ rent)
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const setVis = (vis: "visible" | "none") => {
+      if (!map.getLayer("crown-leases-fill")) return;
+      map.setLayoutProperty("crown-leases-fill", "visibility", vis);
+      map.setLayoutProperty("crown-leases-line", "visibility", vis);
+    };
+
+    if (!showCrownLeases) {
+      setVis("none");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const loadCes = () => {
+      if (cancelled || !mapRef.current || inFlight) return;
+      const b = map.getBounds();
+      if (!b) return;
+      if (map.getZoom() < CROWN_LEASES_MIN_ZOOM) {
+        setVis("none");
+        return;
+      }
+      inFlight = true;
+      const path =
+        `/layers/open/crown-estate-leases?south=${b.getSouth()}&west=${b.getWest()}` +
+        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
+      void apiJson<GeoJSON.FeatureCollection>(path)
+        .then((data) => {
+          if (cancelled) return;
+          (map.getSource("crown-leases-overlay") as GeoJSONSource)?.setData(data);
+          setVis("visible");
+          setLayerNotice(null);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setVis("none");
+          const msg =
+            err instanceof ApiError
+              ? visitorFacingError(err)
+              : "Crown Estate Scotland leases overlay is unavailable right now.";
+          setLayerNotice(msg);
+        })
+        .finally(() => {
+          inFlight = false;
+        });
+    };
+
+    const onMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadCes, 700);
+    };
+
+    loadCes();
+    map.on("moveend", onMove);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off("moveend", onMove);
+    };
+  }, [mapReady, showCrownLeases]);
 
   // SG public / Crown Estate overlay (five national bodies)
   useEffect(() => {
@@ -3034,6 +3232,21 @@ export default function ScotlandMap() {
                 NFI + Native Woodland Survey (OGL v3.0) — ledger row 1 land-use.
                 Inventory / survey polygons, not a rent or title. Zoom{" "}
                 {NFI_MIN_ZOOM}+ / {NATIVE_WOODLAND_MIN_ZOOM}+.
+              </p>
+            )}
+            {showRepd && (
+              <p className="layer-meta" data-testid="layer-repd-credit">
+                REPD (DESNZ, OGL v3.0) — ledger row 3. Scotland planning-site
+                points from PostGIS — not lease polygons, not a rent or title.
+                Zoom {REPD_MIN_ZOOM}+.
+              </p>
+            )}
+            {showCrownLeases && (
+              <p className="layer-meta" data-testid="layer-crown-leases-credit">
+                Crown Estate Scotland Spatial Hub offshore leases (OGL v3.0) —
+                ledger row 4. Offshore wind, wave, tidal, CCS only —
+                aquaculture is a separate layer. Not a title sheet. Zoom{" "}
+                {CROWN_LEASES_MIN_ZOOM}+.
               </p>
             )}
             {layerNotice && <p className="layer-meta">{layerNotice}</p>}

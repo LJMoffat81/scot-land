@@ -73,6 +73,10 @@ NATIVE_WOODLAND_CATALOGUE = (
     "https://www.data.gov.uk/dataset/da3f8548-a130-4a0d-8ddd-45019adcf1f3/"
     "native-woodland-survey-of-scotland-nwss"
 )
+REPD_PUBLICATION = (
+    "https://www.gov.uk/government/publications/"
+    "renewable-energy-planning-database-quarterly-extract"
+)
 
 
 def scotlis_links(lat: float, lng: float, postcode: str | None = None) -> dict[str, Any]:
@@ -390,6 +394,53 @@ def platform_catalog() -> dict[str, Any]:
                 "source_url": NATIVE_WOODLAND_CATALOGUE,
                 "ledger_role": "ledger-row",
                 "ledger_row": "1",
+                "ui_surface": "ledger",
+            },
+            {
+                "id": "repd",
+                "group": "spatial",
+                "status": "live",
+                "label": "Renewable energy planning (REPD)",
+                "description": (
+                    "DESNZ Renewable Energy Planning Database — Scotland planning-site "
+                    "points from the OGL quarterly extract (PostGIS). Natural capital "
+                    "ledger row 3 (onshore wind + hydro resource) — not a LayersPanel "
+                    "toggle. Not lease polygons, not a rent, not a title. 503 when unloaded."
+                ),
+                "endpoint": "/layers/open/repd",
+                "licence": "OGL-3.0",
+                "licence_url": OGL_V3_URL,
+                "minzoom": 6,
+                "source_url": REPD_PUBLICATION,
+                "commons_class": "extractive",
+                "value_tier": "proxy",
+                "publication_status": "ok",
+                "ledger_role": "ledger-row",
+                "ledger_row": "3",
+                "ui_surface": "ledger",
+            },
+            {
+                "id": "crown_estate_leases",
+                "group": "ownership",
+                "status": "live",
+                "label": "Crown Estate Scotland offshore leases",
+                "description": (
+                    "CES Spatial Hub offshore lease polygons (offshore wind, wave, "
+                    "tidal, CCS) under OGL — PostGIS ingest. Offshore only — not "
+                    "onshore estate, not aquaculture (separate layer). Natural capital "
+                    "ledger row 4 (seabed & foreshore) — not a LayersPanel toggle, "
+                    "not a title sheet, no £ rent. 503 when unloaded."
+                ),
+                "endpoint": "/layers/open/crown-estate-leases",
+                "licence": "OGL-3.0",
+                "licence_url": OGL_V3_URL,
+                "minzoom": 5,
+                "source_url": CROWN_ESTATE_HUB,
+                "commons_class": "extractive",
+                "value_tier": "market",
+                "publication_status": "ok",
+                "ledger_role": "ledger-row",
+                "ledger_row": "4",
                 "ui_surface": "ledger",
             },
             {

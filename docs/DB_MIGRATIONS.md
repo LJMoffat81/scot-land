@@ -83,3 +83,7 @@ After stamping, future revisions (`alembic revision` + `upgrade`) apply normally
   Alembic revision `20261012_0013` (`down_revision` = `20261012_0012`).
   Ingest: `python -m etl.ingest_woodland_layers` (see
   `scripts/data/README-woodland.md`).
+- `repd_sites` and `crown_estate_leases` (DESNZ REPD + CES OGL offshore leases)
+  are in `017_open_energy_leases.sql` plus Alembic revision `20261012_0014`
+  (`down_revision` = `20261012_0013`).
+  Ingest: `python -m etl.ingest_repd` / `python -m etl.ingest_crown_estate_leases`.

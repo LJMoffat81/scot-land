@@ -190,6 +190,18 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     "/layers/open/nfi": LayerRule(
         "site", "site", "none", note="NFI woodland polygons from PostGIS; ledger row 1; no rent"
     ),
+    "/layers/open/repd": LayerRule(
+        "site",
+        "site",
+        "none",
+        note="DESNZ REPD planning-site points (Scotland); ledger row 3; no modelled rent",
+    ),
+    "/layers/open/crown-estate-leases": LayerRule(
+        "site",
+        "site",
+        "none",
+        note="Crown Estate Scotland OGL offshore lease polygons; ledger row 4; no modelled rent",
+    ),
     "/ledger": LayerRule(
         "zone",
         "zone",

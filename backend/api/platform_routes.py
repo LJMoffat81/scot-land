@@ -45,6 +45,8 @@ from layers.community_ownership import LayerUnavailable as CommunityOwnershipUna
 from layers.community_ownership import query_bbox as community_ownership_bbox
 from layers.woodland import LayerUnavailable as WoodlandUnavailable
 from layers.woodland import query_native_woodland_bbox, query_nfi_bbox
+from layers.crown_estate_leases import query_bbox as crown_estate_leases_bbox
+from layers.repd import query_bbox as repd_bbox
 
 router = APIRouter()
 
@@ -447,6 +449,67 @@ def layer_open_native_woodland(
                 "gaps are not filled with guesses."
             ),
         ) from exc
+    return JSONResponse(payload)
+
+
+@router.get("/layers/open/repd")
+def layer_open_repd(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=80, ge=1, le=80),
+) -> JSONResponse:
+    """DESNZ REPD Scotland planning-site points in the viewport (OGL).
+
+    Served from PostGIS after `python -m etl.ingest_repd`. **503** when the
+    table is missing or empty — never invents sites. Empty FeatureCollection
+    with meta.ok=true means no sites in view. Ledger row 3 — no £ rent.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    payload = repd_bbox(south, west, north, east, max_features=max_features)
+    meta = payload.get("meta") or {}
+    if meta.get("ok") is False:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "REPD overlay is not available: "
+                f"{meta.get('error') or 'PostGIS table missing or empty'}. "
+                "Load the OGL quarterly extract with python -m etl.ingest_repd."
+            ),
+        )
+    return JSONResponse(payload)
+
+
+@router.get("/layers/open/crown-estate-leases")
+def layer_open_crown_estate_leases(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=80, ge=1, le=80),
+) -> JSONResponse:
+    """Crown Estate Scotland offshore lease polygons in the viewport (OGL).
+
+    Served from PostGIS after `python -m etl.ingest_crown_estate_leases`.
+    Offshore wind / wave / tidal / CCS only. **503** when missing/empty —
+    never invents leases. Ledger row 4 — no £ rent.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    payload = crown_estate_leases_bbox(
+        south, west, north, east, max_features=max_features
+    )
+    meta = payload.get("meta") or {}
+    if meta.get("ok") is False:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Crown Estate Scotland leases overlay is not available: "
+                f"{meta.get('error') or 'PostGIS table missing or empty'}. "
+                "Load OGL Spatial Hub themes with "
+                "python -m etl.ingest_crown_estate_leases."
+            ),
+        )
     return JSONResponse(payload)
 
 

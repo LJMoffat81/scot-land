@@ -5,7 +5,10 @@ does not change a parcel rent. The proxy is not open: only the ids below
 are fetched, and only from the hosts named here.
 
 Left out on purpose:
-- James Hutton land capability (all rights reserved).
+- SEPA Flood Maps MapServer / viewer / other web services — OGL download from
+  https://www2.sepa.org.uk/flooddata only (PostGIS ingest; no live tile proxy).
+- James Hutton LCA is a separate open layer (Hutton Open Data Licence — not
+  OGL); not proxied as a context tile here.
 - Ordnance Survey Open Zoomstack roads, rail, and airports. The data is
   Open Government Licence, but the only supply is a multi-gigabyte download
   and there is no public map service.
@@ -44,7 +47,6 @@ _MERC_EXTENT = 20037508.342789244
 _ALLOWED_HOSTS = frozenset(
     {
         "msmap1.atkinsgeospatial.com",
-        "map.sepa.org.uk",
         "maps.gov.scot",
         "ogc.nature.scot",
         "services-eu1.arcgis.com",
@@ -231,14 +233,8 @@ RASTER: dict[str, RasterSpec] = {
         5,
         9,
     ),
-    "flood": RasterSpec(
-        "flood",
-        "export",
-        "https://map.sepa.org.uk/server/rest/services/Open/Flood_Maps/MapServer/export",
-        "1,7",
-        8,
-        18,
-    ),
+    # SEPA flood: no MapServer / viewer proxy. Ingest OGL download → PostGIS
+    # (see open-layer PRs); context tile id "flood" stays unknown until then.
 }
 
 FEATURES: dict[str, FeatureSpec] = {

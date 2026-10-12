@@ -16,6 +16,21 @@
 | Website scraping | Zoopla, Rightmove, ESPC, OnTheMarket, etc. | ToS, legal risk, poor provenance |
 | Grey-market scraped dumps | “Property data” torrents / unofficial CSVs of portal history | Same + unknown accuracy |
 | Redistributing paid data publicly | Putting licensed ROS extracts in a public repo | Licence breach |
+| Paid ownership datasets | Who Owns Scotland | Paid — **do not introduce** |
+
+## Laurie GIS licence rules
+
+Prefer **Open Government Licence v3.0** for open map / PostGIS layers. Every catalog entry in `data/config/sources.yaml` must carry a `licence_url` pointing at the exact licence text (for OGL: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
+
+| Topic | Rule |
+|-------|------|
+| Land Capability for Agriculture | **Do build** — James Hutton Open Data Licence is accepted. Catalog must record licence + attribution / share-alike terms (**not** labelled as OGL) |
+| Who Owns Scotland | **Out** — paid |
+| SEPA flood | Ingest the **OGL download** from https://www2.sepa.org.uk/flooddata only — never the viewer, web services, or MapServer |
+| Crofting | OGL **lists only** (parishes / holdings / grazings); **no boundaries**; never ingest the personal List of Individuals |
+| Crown Estate leases | **Offshore only** |
+| Community ownership | **Points** from the 2024 gov.scot publication only |
+| SSSI / Native Woodland | Catalog must record the exact OGL `licence_url` |
 
 ## Portal data (Zoopla, Rightmove, …)
 
@@ -55,5 +70,17 @@ Public methodology and README must list active data sources. See `data/config/so
 | Hydropower sites | SEPA Hydropower Sites (ATOM shapefile) | OGL-3.0 — cite SEPA; CAR hydropower abstractions; value_tier=proxy; no £ rent |
 | SEPA CAR licences | SEPA public register CSV export | OGL-3.0 — cite SEPA; **download-only** (`publication_status=download_only`); no MapServer scrape; value_tier=proxy; no £ rent |
 | Common Good | Statutory LA registers + Fife indicative titles metadata | Linked only. No national open spatial layer. Fife under OS Public Sector End User Licence - INSPIRE — not redistributed here |
+
+### Accepted non-OGL open licence
+
+| Product | Licence | Catalog requirement |
+|---------|---------|---------------------|
+| Land Capability for Agriculture (Hutton LCA 1:250k) | James Hutton Institute Open Data Licence | `licence` + `licence_url` + attribution / share-alike terms — **do not** label as OGL |
+
+### Won’t build (paid)
+
+| Product | Reason |
+|---------|--------|
+| Who Owns Scotland | Paid ownership product |
 
 Missing open registers (local-authority holdings, national Common Good spatial file, Sasine) are catalogued as gaps — never invented.

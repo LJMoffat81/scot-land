@@ -27,6 +27,14 @@ Supply **completed residential (then all-tenure) sales** for Scotland so the AGR
 
 - Scraping Zoopla, Rightmove, ESPC, or similar  
 - Purchasing scraped datasets of unknown provenance  
+- **Who Owns Scotland** (paid)  
+- SEPA Flood Maps via viewer / MapServer / other web services — use the OGL download at https://www2.sepa.org.uk/flooddata only  
+- Crofting Register **boundaries** or the personal **List of Individuals** — OGL lists (parishes / holdings / grazings) only  
+- Crown Estate Scotland **onshore** lease themes — offshore lease themes only  
+- Community ownership geometries other than **points** from the 2024 gov.scot publication  
+
+Land Capability for Agriculture (Hutton) **is in scope** under the James Hutton Open Data Licence — catalog licence + attribution / share-alike; never label it as OGL.  
+
 
 ## If commercial portal data is ever considered
 

@@ -1,0 +1,46 @@
+# SVDLS site valuation — research assumptions (ECONOMIC_RULES §7 / §15.5).
+# Not an official valuation or tax bill. GIS must re-review before merge.
+#
+# Formula: best permitted use (zone £/ha/year × valued hectares) minus
+# remediation by previous-use category. Result is never published as £0 for
+# land that remains on the SVDLS layer after the HLS overlap handoff.
+#
+# Overlap: housing land supply owns the shared hectares; SVDLS values only
+# ha_register_excl_hls_dup (excl_hls). See backend/georgist/svdls_valuation.py.
+
+schema_version: 1
+price_year: 2025
+use_basis: best_permitted_use
+commons_class: surface
+value_tier: proxy
+publish_level: public_site
+source_id: svdls
+licence: OGL-3.0
+crosswalk_method: footprint_area
+
+# Floor when remediation would wipe or exceed best-use rent on valued hectares.
+# Sites with land on the SVDLS layer are never left at £0 (idle-land trap).
+never_zero:
+  minimum_rent_gbp_per_ha_year: 1.0
+  flag: remediation_floor_applied
+
+# Provisional remediation £/ha (capital) converted to annual by land_yield.
+# Open decision ECONOMIC_RULES §15.5 — replace when GIS/Laurie sign off.
+land_yield: 0.05
+remediation_gbp_per_ha_capital:
+  default: 50000
+  by_previous_use:
+    # Coarse buckets; unmatched strings fall back to default.
+    agriculture: 10000
+    residential: 40000
+    manufacturing: 150000
+    mineral: 200000
+    landfill: 250000
+    utilities: 120000
+    commercial: 80000
+    unknown: 50000
+
+notes:
+  - Research estimate only — not a rates bill or ScotLIS valuation.
+  - Remediation bands are placeholders for team sign-off (§15.5).
+  - Zone rent_per_ha is supplied by the caller (surface rent / council metrics); never invented here.

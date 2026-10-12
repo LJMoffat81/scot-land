@@ -106,7 +106,20 @@ Do not scrape Spatial Hub. Do not commit raw downloads under `data/external`.
 | Live open overlay | Spatial Hub survey polygons only (`geometry_source=spatialhub_survey`) |
 | Gaps | Owner class is a survey field (not title); Spatial Hub vintage may lag the SG register; RoS title outlines stay internal until OS/RoS end-user terms cleared |
 
-Registry: `data/config/sources.yaml` → `vdl`. Zone-level rollups used by the Wealth Engine live under `data/processed/gis/` (see `README_svdls_hls.md`); the public map layer uses the live OGL FeatureServer, not gitignored `data/external`. GIS will review licences / CRS / zone alignment before merge of the map-layer PR.
+Registry: `data/config/sources.yaml` → `vdl`. Zone-level rollups used by the Wealth Engine live under `data/processed/gis/` (see `README_svdls_hls.md`); the public map layer uses the live OGL FeatureServer, not gitignored `data/external`.
+
+### SVDLS valuation (research)
+
+| Field | Value |
+|-------|--------|
+| Module | `backend/georgist/svdls_valuation.py` |
+| Config | `data/config/svdls_valuation.yaml` |
+| Use basis | Best permitted use − remediation (never £0 on SVDLS-owned ha) |
+| Overlap | Housing land supply owns SVDLS∩HLS hectares; SVDLS values `excl_hls` only |
+| Zone join | GIS rollup `(code, vintage)` via `footprint_area` (`etl/gis/build_svdls_hls.py`); runtime identity `georgist.dz_lookup` |
+| CRS | Live FeatureServer `outSR=4326` (`layers.vdl`) |
+
+Remediation bands are provisional (ECONOMIC_RULES §15.5). GIS must re-review valuation code before merge.
 
 ## Local layout after acquisition
 

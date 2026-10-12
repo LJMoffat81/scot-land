@@ -168,6 +168,8 @@ vdl:
     - point
   geometry_source_live: spatialhub_survey
   geometry_module: backend/layers/svdls_geometry.py
+  valuation_module: backend/georgist/svdls_valuation.py
+  valuation_config: data/config/svdls_valuation.yaml
   gaps:
     - Owner class is a survey field, not legal title
     - Survey polygons are indicative — confirm extent on ScotLIS

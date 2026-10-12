@@ -69,6 +69,10 @@ def source_meta(sources_key: str) -> dict[str, Any]:
     return {
         "source": block.get("name") or sources_key,
         "licence": block.get("licence") or "Open Government Licence v3.0",
+        "licence_url": (
+            "https://www.nationalarchives.gov.uk/doc/"
+            "open-government-licence/version/3/"
+        ),
         "attribution": block.get("attribution") or "",
         "source_url": block.get("source_url") or "",
         "wfs_url": block.get("wfs_url") or "",
@@ -88,6 +92,10 @@ def _nfi_props(row: dict[str, Any], meta: dict[str, Any]) -> dict[str, Any]:
         "layer": "nfi",
         "source": meta["source"],
         "licence": meta["licence"],
+        "licence_url": (
+            "https://www.nationalarchives.gov.uk/doc/"
+            "open-government-licence/version/3/"
+        ),
     }
 
 
@@ -105,6 +113,10 @@ def _nwss_props(row: dict[str, Any], meta: dict[str, Any]) -> dict[str, Any]:
         "layer": "native_woodland",
         "source": meta["source"],
         "licence": meta["licence"],
+        "licence_url": (
+            "https://www.nationalarchives.gov.uk/doc/"
+            "open-government-licence/version/3/"
+        ),
     }
 
 

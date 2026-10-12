@@ -22,8 +22,11 @@ npm run dev
 |----------|-----|
 | `GET /square?lat=&lng=` | Live AGR for a W3W cell (`platform` place card attached) |
 | `GET /layers/catalog` | Open-land layers with live / linked / gap status |
+| `GET /layers/parcels?...` | RoS INSPIRE Index Polygons bbox (PostGIS; **503** if not loaded) |
+| `GET /layers/parcels/tiles/{z}/{x}/{y}` | Live RoS INSPIRE WMS proxy (soft-fail tiles) |
+| `GET /layers/parcels/at?lat=&lng=` | Parcel under a point (live WMS GetFeatureInfo) |
 | `GET /layers/open/vdl` | Vacant and derelict land overlay (bbox) |
-| `GET /layers/open/public-land` | Public / Crown Estate overlay (bbox, five bodies) |
+| `GET /layers/open/public-land` | Public / Crown Estate overlay (bbox, five bodies; **503** if upstream down) |
 | `GET /platform/place` | Ownership / vacant / gap card |
 | `GET /platform/gaps` | Visible register gaps |
 | `GET /downloads` | Open layer and official source index |
@@ -43,14 +46,17 @@ npm run dev
 
 | Layer | Coverage | When |
 |-------|----------|------|
-| Council AGR | All Scotland | Overview choropleth |
+| **Cadastral parcels** | RoS INSPIRE Index Polygons | Top of Layers; on by default zoom ≥ 14; attribution + click popup |
+| **Public land** | SG 2024 five bodies | Top of Layers; on by default zoom ≥ 8; owner-type legend; gaps flagged |
+| Council AGR | All Scotland | Overview choropleth (Annual Ground Rent — not Surface Rent) |
 | W3W grid | Current map view | Zoom ≥ 12; every cell up to cap (then sampled) |
-| Vacant land | Viewport SVDLS sites | Toggle **Vacant land**; zoom ≥ 8 |
-| Public / Crown | Viewport SG 2024 holdings | Toggle **Public land**; zoom ≥ 6. Five bodies only; not a title |
+| Vacant land | Viewport SVDLS sites | Toggle **Vacant and derelict**; zoom ≥ 8 |
 | Coverage | Live vs linked/gap | Sidebar **Coverage** list; live rows toggle overlays |
 | Vacant residual story | Council choropleth + overlay | `/?story=vacant_land` |
 | Filters | Vacant / public overlays, rent band | `/?vacant=1&public=1&band=high` |
-| Click | Any cell | Full residual assessment + place card |
+| Click | Any cell | Layer popup (parcel id / area / owner type) + residual place card |
+
+Cadastre ingest: `python -m etl.ingest_inspire_parcels` — see `scripts/data/README-inspire.md`.
 
 Full national 3 m precompute is intentionally not stored (~billions of cells).
 

@@ -153,15 +153,18 @@ def query_bbox(
     cleaned = []
     for feat in features[:cap]:
         props = dict(feat.get("properties") or {})
+        organisation = props.get("Organisation")
         cleaned.append(
             {
                 "type": "Feature",
                 "geometry": feat.get("geometry"),
                 "properties": {
-                    "organisation": props.get("Organisation"),
+                    "organisation": organisation,
+                    "owner_type": organisation,
                     "site_name": props.get("SiteName"),
                     "area_ha": props.get("Area_Ha"),
                     "layer": "public_land",
+                    "source": ATTRIBUTION,
                 },
             }
         )
@@ -177,5 +180,11 @@ def query_bbox(
             "map_url": DASHBOARD_URL,
             "bodies": list(BODIES),
             "licence": "public SG dashboard overlay — not a title",
+            "gaps": [
+                "Local-authority land not included",
+                "Common Good not included",
+                "Holdings outside the five published bodies are not shown",
+                "Indicative overlay — not a legal title",
+            ],
         },
     }

@@ -68,6 +68,22 @@ def setup_database():
         """)
         cur.execute("CREATE INDEX IF NOT EXISTS idx_eco_geom ON eco_wealth USING GIST (geom);")
 
+        # 4. RoS INSPIRE Index Polygons (local ingest — raw files stay out of git)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS inspire_parcels (
+                inspire_id TEXT PRIMARY KEY,
+                national_reference TEXT,
+                label TEXT,
+                area_sqm DOUBLE PRECISION,
+                county TEXT,
+                geom GEOMETRY(MultiPolygon, 4326) NOT NULL
+            );
+        """)
+        cur.execute(
+            "CREATE INDEX IF NOT EXISTS idx_inspire_parcels_geom "
+            "ON inspire_parcels USING GIST (geom);"
+        )
+
     conn.commit()
     conn.close()
     logger.info("Database schema initialized successfully.")

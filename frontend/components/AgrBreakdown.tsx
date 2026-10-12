@@ -140,6 +140,7 @@ export type PlatformContext = {
     spatial?: {
       label?: string | null;
       metadata_url?: string | null;
+      catalog_url?: string | null;
       licence?: string | null;
       host_note?: string | null;
     } | null;
@@ -462,7 +463,13 @@ export default function AgrBreakdown({
       {platform?.common_good ? (
         <p className="meta">
           Common Good:{" "}
-          {platform.common_good.status === "linked" ? "linked register" : "gap"}
+          {platform.common_good.status === "live"
+            ? platform.common_good.on_this_point
+              ? "on this point (OGL overlay)"
+              : "OGL overlay live (partial coverage)"
+            : platform.common_good.status === "linked"
+              ? "linked register"
+              : "gap"}
           {platform.common_good.register?.url ? (
             <>
               {" · "}
@@ -475,20 +482,25 @@ export default function AgrBreakdown({
               </a>
             </>
           ) : null}
-          {platform.common_good.spatial?.metadata_url ? (
+          {platform.common_good.spatial?.metadata_url ||
+          platform.common_good.spatial?.catalog_url ? (
             <>
               {" · "}
               <a
-                href={platform.common_good.spatial.metadata_url}
+                href={
+                  platform.common_good.spatial.metadata_url ||
+                  platform.common_good.spatial.catalog_url ||
+                  undefined
+                }
                 target="_blank"
                 rel="noreferrer"
               >
-                {platform.common_good.spatial.label || "spatial metadata"}
+                {platform.common_good.spatial.label || "spatial source"}
               </a>
             </>
           ) : null}
           {" · "}
-          no national open map layer; not a title
+          partial coverage; not a title
         </p>
       ) : null}
 

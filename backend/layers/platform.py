@@ -479,14 +479,6 @@ def platform_catalog() -> dict[str, Any]:
             catalog_crofting_register(),
             catalog_common_grazings(),
             {
-                "id": "fife_land_map",
-                "group": "ownership",
-                "status": "linked",
-                "label": "Fife land map",
-                "description": "This council’s ArcGIS hub. Not a national layer.",
-                "source_url": "https://fife.maps.arcgis.com/home/index.html",
-            },
-            {
                 "id": "sasine_private",
                 "group": "ownership",
                 "status": "gap",
@@ -903,6 +895,10 @@ def place_context(
     else:
         ownership_flags.append("no_inspire_parcel")
 
+    common_good = place_common_good(council_code, lat=lat, lng=lng)
+    if common_good.get("on_this_point"):
+        ownership_flags.append("common_good")
+
     card: dict[str, Any] = {
         "contract": "place_card_v1",
         "lat": lat,
@@ -940,7 +936,7 @@ def place_context(
             "on_this_point": None,
             "reason": "National LA ownership layer is not openly licensed for this portal.",
         },
-        "common_good": place_common_good(council_code),
+        "common_good": common_good,
         "crofting": place_crofting(council_code),
         "community_ownership": {
             "status": "live" if community.get("ok") else "unavailable",

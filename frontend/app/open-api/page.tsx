@@ -152,7 +152,7 @@ export default function OpenApiPage() {
         </li>
         <li>
           <a href="/api/common-good.json">
-            Common Good registers — verified links; no national open map layer
+            Common Good — OGL overlay status, verified register links, and gaps
           </a>
           <span className="download-path">/api/common-good.json</span>
         </li>

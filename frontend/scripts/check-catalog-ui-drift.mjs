@@ -34,7 +34,7 @@ function checkCatalogUiDrift(panelLiveIds, toggleIds) {
 
 /**
  * Live layers that still use the legacy LayersPanel.
- * Ledger-mapped layers (flood, ldp_allocations, settlements, localities, …) are intentionally omitted.
+ * Ledger-mapped layers (flood, ldp_allocations, common_good, settlements, localities, …) are intentionally omitted.
  * Keep in sync with backend/layers/platform.py live rows without ledger_role.
  */
 const FIXTURE_PANEL_LIVE_IDS = [

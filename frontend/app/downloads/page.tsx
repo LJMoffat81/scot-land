@@ -42,7 +42,7 @@ const OPEN_JSON = [
   },
   {
     href: "/api/common-good.json",
-    name: "Common Good registers — verified links and gaps",
+    name: "Common Good — OGL overlay status, register links, and gaps",
   },
   {
     href: "/api/crofting.json",
@@ -56,7 +56,8 @@ const SOURCE_NAME: Record<string, string> = {
   inspire_parcels: "Registers of Scotland open land map",
   nfi_overlay: "National Forest Inventory woodland (PostGIS)",
   native_woodland_overlay: "Native Woodland Survey of Scotland (PostGIS)",
-  common_good: "Common Good registers (linked; no national open map)",
+  common_good:
+    "Common Good (Highland OGL PostGIS; Fife OS INSPIRE EUL linked)",
   crofting_register: "Crofting Register of Crofts (OGL; map extents on RoS)",
   common_grazings: "Common grazings (OGL list; no national open polygon)",
   scotlis: "ScotLIS, the official title record",

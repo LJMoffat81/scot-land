@@ -82,9 +82,25 @@ const FIXTURE_CATALOG = {
     {
       id: "common_good",
       group: "ownership",
+      status: "live",
+      label: "Common Good land",
+      description:
+        "OGL council open layers in PostGIS (Highland). Ownership-context (who/outline); partial coverage; Fife OS INSPIRE EUL linked only.",
+      licence: "OGL-3.0",
+      licence_url:
+        "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      source_url:
+        "https://www.highland.gov.uk/community-support-development/common-good-asset-register",
+      ledger_role: "ownership-context",
+      ledger_row: null,
+      ui_surface: "ledger",
+    },
+    {
+      id: "planning",
+      group: "spatial",
       status: "linked",
-      label: "Common Good registers",
-      description: "Linked registers. No national open spatial layer.",
+      label: "Planning applications",
+      description: "Verified official view pages; no national drawable WMS.",
     },
     {
       id: "crofting_register",
@@ -144,6 +160,15 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
 
     const liveIds = FIXTURE_CATALOG.layers
       .filter((layer) => layer.status === "live")
+      .filter(
+        (layer) =>
+          !(
+            "ledger_role" in layer && layer.ledger_role
+          ) &&
+          !(
+            "ui_surface" in layer && layer.ui_surface === "ledger"
+          ),
+      )
       .map((layer) => layer.id);
 
     for (const id of liveIds) {
@@ -178,9 +203,10 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
     await expect(page.getByTestId("layer-unavailable-la_holdings")).toContainText(
       /gap|unavailable|not scraped/i,
     );
+    await expect(page.getByTestId("layer-toggle-common_good")).toHaveCount(0);
     await expect(
       page.getByTestId("layer-unavailable-common_good"),
-    ).toContainText(/linked|no national/i);
+    ).toContainText(/ownership-context|OGL|Highland|who\/outline/i);
     await expect(
       page.getByTestId("layer-unavailable-crofting_register"),
     ).toContainText(/OGL|RoS|Register|extents/i);
@@ -193,6 +219,9 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
     await expect(
       page.getByTestId("layer-licence-common_grazings"),
     ).toContainText("OGL-3.0");
+    await expect(page.getByTestId("layer-unavailable-planning")).toContainText(
+      /linked|official|no national/i,
+    );
 
     await page.getByTestId("layer-toggle-agr_value").click();
     await expect(page.getByTestId("layer-unavailable-agr_value")).toContainText(

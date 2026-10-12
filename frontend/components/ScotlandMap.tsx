@@ -381,6 +381,8 @@ const CES_LEASE_FILL: ExpressionSpecification = [
 ];
 /** Community ownership points — postcode centroids, not titles. */
 const COMMUNITY_OWNERSHIP_MIN_ZOOM = 6;
+const COMMON_GOOD_MIN_ZOOM = 8;
+const COMMON_GOOD_FILL = "#2d6a4f";
 
 const VDL_SITE_TYPES: Array<{ name: string; color: string }> = [
   { name: "Vacant Land", color: "#e8a317" },
@@ -439,6 +441,10 @@ function layerPopupHtml(parts: {
   vdlSiteCode?: string | null;
   vdlOwnerClass?: string | null;
   vdlGeometrySource?: string | null;
+  commonGoodName?: string | null;
+  commonGoodKind?: string | null;
+  commonGoodCouncil?: string | null;
+  commonGoodLicence?: string | null;
   source?: string | null;
 }): string | null {
   const rows: string[] = [];
@@ -486,6 +492,22 @@ function layerPopupHtml(parts: {
       rows.push(
         `Geometry: ${escapeHtml(parts.vdlGeometrySource)}`,
       );
+    }
+  }
+  if (parts.commonGoodName || parts.commonGoodKind) {
+    rows.push(
+      `<strong>Common Good</strong><br/>${escapeHtml(
+        parts.commonGoodName || "Common Good site",
+      )}`,
+    );
+    if (parts.commonGoodKind) {
+      rows.push(`Kind: ${escapeHtml(parts.commonGoodKind)}`);
+    }
+    if (parts.commonGoodCouncil) {
+      rows.push(`Council: ${escapeHtml(parts.commonGoodCouncil)}`);
+    }
+    if (parts.commonGoodLicence) {
+      rows.push(`Licence: ${escapeHtml(parts.commonGoodLicence)}`);
     }
   }
   if (parts.source) {
@@ -551,6 +573,8 @@ export default function ScotlandMap() {
   const showCroftingConstraint = Boolean(ledgerEnabled.crofting);
   /** Ownership-context community ownership paint (URL ?community=1; not a LayersPanel toggle). */
   const [showCommunityOwnership, setShowCommunityOwnership] = useState(false);
+  /** Ownership-context Common Good paint (URL ?commongood=1; not a LayersPanel toggle). */
+  const [showCommonGood, setShowCommonGood] = useState(false);
   /** NFI + Native Woodland paint when ledger row 1 (surface site rent) is on. */
   const showWoodland = Boolean(ledgerEnabled["1"]);
   /** REPD paints when ledger row 3 (onshore wind + hydro resource) is on. */
@@ -1561,6 +1585,34 @@ export default function ScotlandMap() {
         },
       });
 
+      map.addSource("common-good-overlay", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution:
+          "Common Good — Highland Council open map data (OGL v3.0). Partial coverage; not a title.",
+      });
+      map.addLayer({
+        id: "common-good-fill",
+        type: "fill",
+        source: "common-good-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": COMMON_GOOD_FILL,
+          "fill-opacity": 0.4,
+        },
+      });
+      map.addLayer({
+        id: "common-good-line",
+        type: "line",
+        source: "common-good-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "line-color": "#1b4332",
+          "line-width": 1.0,
+          "line-opacity": 0.85,
+        },
+      });
+
       for (const layer of CONTEXT_LAYERS) {
         if (layer.kind === "raster") {
           map.addSource(layer.id, {
@@ -1746,6 +1798,9 @@ export default function ScotlandMap() {
       if (params.get("community") === "1") {
         setShowCommunityOwnership(true);
       }
+      if (params.get("commongood") === "1") {
+        setShowCommonGood(true);
+      }
       if (qWords) {
         setQuery(qWords);
         void (async () => {
@@ -1890,6 +1945,22 @@ export default function ScotlandMap() {
             : typeof vdlSizeRaw === "string" && vdlSizeRaw !== ""
               ? Number(vdlSizeRaw)
               : null;
+        const commonGoodHits =
+          map.getLayer("common-good-fill") &&
+          map.getLayoutProperty("common-good-fill", "visibility") === "visible"
+            ? map.queryRenderedFeatures(event.point, {
+                layers: ["common-good-fill"],
+              })
+            : [];
+        const commonGoodProps = commonGoodHits[0]?.properties as
+          | {
+              name?: string;
+              site_kind?: string;
+              council_name?: string;
+              licence?: string;
+              source_url?: string;
+            }
+          | undefined;
         let parcelId: string | null = null;
         let areaSqm: number | null = null;
         let parcelSource: string | null = null;
@@ -1936,11 +2007,16 @@ export default function ScotlandMap() {
             vdlProps?.geometry_source_label ||
             vdlProps?.geometry_source ||
             null,
+          commonGoodName: commonGoodProps?.name || null,
+          commonGoodKind: commonGoodProps?.site_kind || null,
+          commonGoodCouncil: commonGoodProps?.council_name || null,
+          commonGoodLicence: commonGoodProps?.licence || null,
           source:
+            commonGoodProps?.licence ||
             vdlProps?.source ||
             publicProps?.source ||
             parcelSource ||
-            (parcelId || publicProps || vdlProps
+            (parcelId || publicProps || vdlProps || commonGoodProps
               ? "Open land layers — research overlay, not a title"
               : null),
         });
@@ -2011,10 +2087,12 @@ export default function ScotlandMap() {
     else url.searchParams.delete("vacant");
     if (showCommunityOwnership) url.searchParams.set("community", "1");
     else url.searchParams.delete("community");
+    if (showCommonGood) url.searchParams.set("commongood", "1");
+    else url.searchParams.delete("commongood");
     url.searchParams.delete("public");
     url.searchParams.delete("band");
     window.history.replaceState({}, "", url.toString());
-  }, [showVdl, showCommunityOwnership]);
+  }, [showVdl, showCommunityOwnership, showCommonGood]);
 
   // Scot-LAND squares grid
   useEffect(() => {
@@ -2360,6 +2438,77 @@ export default function ScotlandMap() {
       map.off("moveend", onMove);
     };
   }, [mapReady, showCommunityOwnership]);
+
+  // Common Good overlay (OGL council open layers in PostGIS; ownership-context)
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const setVis = (vis: "visible" | "none") => {
+      if (!map.getLayer("common-good-fill")) return;
+      map.setLayoutProperty("common-good-fill", "visibility", vis);
+      map.setLayoutProperty("common-good-line", "visibility", vis);
+    };
+
+    if (!showCommonGood) {
+      setVis("none");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const loadCommonGood = () => {
+      if (cancelled || !mapRef.current || inFlight) return;
+      const b = map.getBounds();
+      if (!b) return;
+      if (map.getZoom() < COMMON_GOOD_MIN_ZOOM) {
+        setVis("none");
+        return;
+      }
+      inFlight = true;
+      setLayerBusy(true);
+      const path =
+        `/layers/open/common-good?south=${b.getSouth()}&west=${b.getWest()}` +
+        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
+      void apiJson<GeoJSON.FeatureCollection>(path)
+        .then((data) => {
+          if (cancelled) return;
+          (map.getSource("common-good-overlay") as GeoJSONSource)?.setData(data);
+          setVis("visible");
+          setLayerNotice(null);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setVis("none");
+          if (err instanceof ApiError && err.status === 503) {
+            setLayerNotice(
+              "Common Good overlay is not available right now (PostGIS unloaded or empty). OGL council layers only — gaps are not filled with guesses.",
+            );
+          }
+        })
+        .finally(() => {
+          inFlight = false;
+          if (!cancelled) setLayerBusy(false);
+        });
+    };
+
+    const onMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadCommonGood, 700);
+    };
+
+    loadCommonGood();
+    map.on("moveend", onMove);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off("moveend", onMove);
+    };
+  }, [mapReady, showCommonGood]);
+
 
   // National Forest Inventory + Native Woodland (ledger row 1 land-use)
   useEffect(() => {
@@ -3209,6 +3358,15 @@ export default function ScotlandMap() {
                 Mail copyright and database right 2026. Contains National Statistics
                 data © Crown copyright and database right 2026. Zoom{" "}
                 {COMMUNITY_OWNERSHIP_MIN_ZOOM}+. Enable with ?community=1.
+              </p>
+            )}
+            {showCommonGood && (
+              <p className="layer-meta" data-testid="layer-common-good-credit">
+                Highland Council Common Good open map data (OGL v3.0) —
+                ownership-context (who/outline), not a rent row. Partial
+                coverage; Fife OS INSPIRE EUL titles stay linked only.
+                Indicative holdings, not a title. Zoom {COMMON_GOOD_MIN_ZOOM}+.
+                Enable with ?commongood=1.
               </p>
             )}
             {showCroftingConstraint && (

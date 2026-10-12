@@ -220,8 +220,10 @@ export const LAYER_ATTRIBUTION: Record<
       "https://data.spatialhub.scot/dataset/council_asset_register-is",
   },
   common_good: {
-    source: "Council Common Good registers",
-    licence: "Linked registers; no national open map layer",
+    source: "Highland Council Common Good open map data (OGL)",
+    licence: "OGL-3.0 (partial coverage; Fife OS INSPIRE EUL linked only)",
+    sourceUrl:
+      "https://www.highland.gov.uk/community-support-development/common-good-asset-register",
   },
   crofting_register: {
     source: "Crofting Commission Register of Crofts",

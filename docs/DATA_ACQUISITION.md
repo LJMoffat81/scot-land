@@ -118,15 +118,20 @@ Registry: `data/config/sources.yaml` → `parcels` and `public_land`.
 
 Registry: `data/config/sources.yaml` → `hydro_sites` and `sepa_car`. Do not commit raw downloads under `data/external`.
 
-## Common Good (linked registers; no national open map)
+## Common Good (OGL PostGIS overlay + linked registers)
 
 | Field | Value |
 |-------|--------|
-| Status | Linked — not a live national overlay |
+| Status | Live bbox overlay when PostGIS loaded; **503** when empty |
 | Config | `data/config/common_good.yaml` |
-| API | `GET /api/common-good.json` |
-| Spatial | No national open polygon layer. Fife publishes indicative Common Good Titles (OS INSPIRE EUL) — metadata linked only; FeatureServer TLS was expired when checked 2026-10-12 and is **not** proxied |
-| Gaps | Most councils publish PDF/XLSX registers; Spatial Hub assets need login; on-point Common Good is never invented |
+| Catalogue | Highland Common Good Asset Register — https://www.highland.gov.uk/community-support-development/common-good-asset-register |
+| Licence (ingested) | **OGL-3.0** — Highland Council open map data |
+| PostGIS | `common_good_sites` (EPSG:4326) |
+| Ingest | `python -m etl.ingest_common_good --from-config` |
+| BBox API | `GET /layers/open/common-good` |
+| Stats / links | `GET /api/common-good.json` |
+| Folded | Former Fife-only catalog row → Common Good spatial_sources (OS INSPIRE EUL — **linked, not ingested**) |
+| Gaps | No national layer; Highland OGL only at v1; most councils PDF/XLSX; Spatial Hub login-gated |
 
 Do not scrape Spatial Hub. Do not commit raw downloads under `data/external`.
 

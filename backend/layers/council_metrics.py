@@ -299,10 +299,10 @@ def layer_catalog() -> dict[str, Any]:
             },
             {
                 "id": "cell_grid",
-                "label": "W3W cell grid",
+                "label": "Scot-LAND squares",
                 "type": "geojson",
                 "minzoom": 12,
-                "description": "Viewport What3Words cells with AGR (capped sample).",
+                "description": "Viewport Scot-LAND squares with AGR (capped sample).",
             },
             {
                 "id": "method",

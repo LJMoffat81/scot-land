@@ -20,7 +20,7 @@ npm run dev
 
 | Endpoint | Use |
 |----------|-----|
-| `GET /square?lat=&lng=` | Live AGR for a W3W cell (`platform` place card attached) |
+| `GET /square?lat=&lng=` | Live AGR for a Scot-LAND square (`platform` place card attached) |
 | `GET /layers/catalog` | Open-land layers with live / linked / gap status |
 | `GET /layers/parcels?...` | RoS INSPIRE Index Polygons bbox (PostGIS; **503** if not loaded) |
 | `GET /layers/parcels/tiles/{z}/{x}/{y}` | Live RoS INSPIRE WMS proxy (soft-fail tiles) |
@@ -50,7 +50,7 @@ npm run dev
 | **Cadastral parcels** | RoS INSPIRE Index Polygons | Top of Layers; on by default zoom ≥ 14; attribution + click popup |
 | **Public land** | SG 2024 five bodies | Top of Layers; on by default zoom ≥ 8; owner-type legend; gaps flagged |
 | Council AGR | All Scotland | Overview choropleth (Annual Ground Rent — not Surface Rent) |
-| W3W grid | Current map view | Zoom ≥ 12; every cell up to cap (then sampled) |
+| Scot-LAND squares | Current map view | Zoom ≥ 12; every cell up to cap (then sampled) |
 | **Vacant and derelict** | SVDLS site-level survey polygons | Ownership and cadastre; site-type legend + credits; zoom ≥ 8; click popup; each site tagged `geometry_source` (Spatial Hub survey > RoS title outline > point) |
 | Coverage | Live vs linked/gap | Sidebar **Coverage** list; live rows toggle overlays |
 | Vacant residual story | Council choropleth + overlay | `/?story=vacant_land` |

@@ -75,7 +75,7 @@ def platform_catalog() -> dict[str, Any]:
                 "group": "value",
                 "status": "live",
                 "label": "Annual Ground Rent",
-                "description": "Residual site-value AGR on W3W cells and notional plots.",
+                "description": "Residual site-value AGR on Scot-LAND squares and notional plots.",
             },
             {
                 "id": "boundaries",
@@ -96,7 +96,7 @@ def platform_catalog() -> dict[str, Any]:
                 "id": "cell_grid",
                 "group": "value",
                 "status": "live",
-                "label": "W3W cell grid",
+                "label": "Scot-LAND squares",
                 "minzoom": 12,
             },
             {

@@ -1,4 +1,4 @@
-"""Viewport W3W grid layer — AGR for every snapped cell in a bbox (capped)."""
+"""Viewport Scot-LAND squares layer — AGR for every snapped cell in a bbox (capped)."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ def build_w3w_agr_grid(
     max_cells: int = 500,
     service: ValuationService | None = None,
 ) -> dict[str, Any]:
-    """Return GeoJSON of W3W cells with AGR properties for a bounding box.
+    """Return GeoJSON of Scot-LAND squares with AGR properties for a bounding box.
 
     Scotland has ~billions of 3 m cells; this builds only the viewport (capped).
     """
@@ -118,8 +118,9 @@ def build_w3w_agr_grid(
             "agr_min_gbp": min(rents) if rents else None,
             "agr_max_gbp": max(rents) if rents else None,
             "note": (
-                "Viewport W3W cells only. Full Scotland at 3 m is ~billions of cells; "
-                "use stride/sampling when the bbox is large. Zoom in for denser coverage."
+                "Viewport Scot-LAND squares only. Full Scotland at 3 m is "
+                "~billions of cells; use stride/sampling when the bbox is large. "
+                "Zoom in for denser coverage."
             ),
             "status": "research_estimate",
         },

@@ -217,7 +217,7 @@ map_layers:
     - id: boundaries
       source: ROS INSPIRE WMS
     - id: cell_grid
-      source: viewport W3W residual grid
+      source: viewport Scot-LAND squares residual grid
     - id: method
       source: valuation method flag on council metrics
     - id: vdl

@@ -35,6 +35,7 @@ npm run dev
 | `GET /api/public-land.json` | Hectares by the five published bodies |
 | `GET /api/vdl.json` | SVDLS hectares by owner class |
 | `GET /api/place.json?pc=` | Place card (vacant / public / parcel / gaps) |
+| `GET /api/common-good.json` | Verified Common Good register links + spatial gaps |
 | `GET /assessment/report?format=markdown\|json` | Downloadable assessment pack |
 | `GET /validation/ward18-qa-pack` | Spatial + ratio + mini-roll for Ward 18 |
 | `GET /validation/ratio-study` | Residual vs sales-comp ratios |

@@ -126,7 +126,24 @@ export type PlatformContext = {
     note?: string;
   };
   local_authority_holding?: { status?: string; reason?: string };
-  common_good?: { status?: string; reason?: string };
+  common_good?: {
+    status?: string;
+    reason?: string;
+    on_this_point?: boolean | null;
+    national_gap?: string;
+    register?: {
+      url?: string | null;
+      label?: string | null;
+      kind?: string | null;
+      name?: string | null;
+    } | null;
+    spatial?: {
+      label?: string | null;
+      metadata_url?: string | null;
+      licence?: string | null;
+      host_note?: string | null;
+    } | null;
+  };
   land_register_outline?: { status?: string; note?: string };
   private_or_sasine?: { status?: string; note?: string };
   registers?: {
@@ -135,6 +152,10 @@ export type PlatformContext = {
     cat?: { url?: string | null; label?: string | null };
     land_map?: { url?: string | null; note?: string | null } | null;
     scotlis?: { url?: string | null };
+    common_good?: {
+      status?: string;
+      register?: { url?: string | null; label?: string | null } | null;
+    } | null;
   } | null;
   scotlis?: {
     public_home?: string;
@@ -426,6 +447,39 @@ export default function AgrBreakdown({
             .join(", ")}
           {" · "}
           overlay source, not a title
+        </p>
+      ) : null}
+
+      {platform?.common_good ? (
+        <p className="meta">
+          Common Good:{" "}
+          {platform.common_good.status === "linked" ? "linked register" : "gap"}
+          {platform.common_good.register?.url ? (
+            <>
+              {" · "}
+              <a
+                href={platform.common_good.register.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {platform.common_good.register.label || "council register"}
+              </a>
+            </>
+          ) : null}
+          {platform.common_good.spatial?.metadata_url ? (
+            <>
+              {" · "}
+              <a
+                href={platform.common_good.spatial.metadata_url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {platform.common_good.spatial.label || "spatial metadata"}
+              </a>
+            </>
+          ) : null}
+          {" · "}
+          no national open map layer; not a title
         </p>
       ) : null}
 

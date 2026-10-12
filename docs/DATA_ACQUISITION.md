@@ -79,6 +79,18 @@ Supply **completed residential (then all-tenure) sales** for Scotland so the AGR
 
 Registry: `data/config/sources.yaml` → `parcels` and `public_land`.
 
+## Common Good (linked registers; no national open map)
+
+| Field | Value |
+|-------|--------|
+| Status | Linked — not a live national overlay |
+| Config | `data/config/common_good.yaml` |
+| API | `GET /api/common-good.json` |
+| Spatial | No national open polygon layer. Fife publishes indicative Common Good Titles (OS INSPIRE EUL) — metadata linked only; FeatureServer TLS was expired when checked 2026-10-12 and is **not** proxied |
+| Gaps | Most councils publish PDF/XLSX registers; Spatial Hub assets need login; on-point Common Good is never invented |
+
+Do not scrape Spatial Hub. Do not commit raw downloads under `data/external`.
+
 ## Local layout after acquisition
 
 ```text

@@ -13,6 +13,7 @@ const OPEN_API = new Set([
   "vdl-councils.json",
   "place.json",
   "registers.json",
+  "common-good.json",
   "catalog.json",
 ]);
 

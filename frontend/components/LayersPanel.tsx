@@ -211,7 +211,7 @@ export default function LayersPanel({
                       </span>
                     </div>
 
-                    {layer.description && (
+                    {hasToggle && layer.description && (
                       <p className="layer-meta">{layer.description}</p>
                     )}
 

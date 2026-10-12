@@ -130,9 +130,11 @@ test.describe("LayersPanel (catalog-driven)", () => {
       /not on the public map|yield calibration|tax scenarios/i,
     );
 
+    // No scenario calculator UI — only the honest "not shown" disclaimer may mention tax.
     await expect(page.getByTestId("layers-panel")).not.toContainText(
-      /tax scenario|LVT calculator|replace_full_basket/i,
+      /LVT calculator|replace_full_basket|scenario calculators/i,
     );
+    await expect(page.getByRole("button", { name: /scenario/i })).toHaveCount(0);
     const body = await page.getByTestId("layers-panel").innerText();
     expect(body).not.toMatch(/£\d/);
   });

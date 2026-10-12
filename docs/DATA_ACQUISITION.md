@@ -198,10 +198,9 @@ Registry: `data/config/sources.yaml` → `hla`.
 | Product | SEPA Flood Maps v3.0 — medium-likelihood river + coastal (present day) |
 | Licence | OGL v3.0 |
 | Attribution | © SEPA 2025; see SEPA flood map attribution statements |
-| Download | https://www2.sepa.org.uk/flooddata/ |
-| MapServer | https://map.sepa.org.uk/server/rest/services/Open/Flood_Maps/MapServer |
-| BBox API | `GET /layers/open/flood` (PostGIS when ingested; else capped live query) |
-| Tiles | `GET /layers/context/flood/tiles/{z}/{x}/{y}` (preferred at zoom) |
+| Download | https://www2.sepa.org.uk/flooddata/ (**only** ingest source — never MapServer/viewer) |
+| Licence URL | https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ |
+| BBox API | `GET /layers/open/flood` (PostGIS when ingested; **503** when unloaded) |
 | Ingest | `python -m etl.ingest_sepa_flood --input ../data/external/sepa/...geojson --replace` |
 
 Registry: `data/config/sources.yaml` → `flood`. Raw geodatabases stay under gitignored `data/external/sepa/`.

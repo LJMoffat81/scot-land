@@ -1,0 +1,39 @@
+# ScotWind / INTOG option fees — HOLD (not a map-layer attribute).
+#
+# GIS (2026-10-12): press-release / FOI narrative only. Do NOT attach fee £ to
+# ces_scotwind_intog features or the public GeoJSON. Polygons stay geometry +
+# award descriptors. No surface-rent / la-calc £.
+#
+# This file is a sourced constant for research notes only.
+
+schema_version: 1
+status: hold
+layer_attachment: forbidden
+evidence: press_release_only
+note: >
+  Aggregate ScotWind option-fee totals appear in Crown Estate Scotland
+  announcements and FOI responses. They are not columns on the open Spatial
+  Hub FeatureServers. Per-site fees must not be invented or published on the
+  polygon layer.
+
+sources:
+  - id: ces_foi_scotwind_offers_2022-02-02
+    label: FOI — ScotWind offers (aggregate option fees)
+    url: https://www.crownestatescotland.com/news/foi-requests-related-to-scotwind
+    claim: >
+      Based on the 17 applicants then being offered options, £700m in option
+      fees would be paid to Crown Estate Scotland (aggregate press figure).
+    retrieved: "2026-10-12"
+  - id: ces_foi_263_zone14_valuation_bands
+    label: FOI 263 — ScotWind option fee valuation bands
+    url: https://www.crownestatescotland.com/news/263-scotwind-zone-14-option-fee-cap
+    claim: >
+      Applicant Valuation per km² bands (£2,000–£100,000) used to compute
+      option fees as Area × Applicant Valuation. Illustrative FOI example only;
+      not a per-feature layer attribute.
+    retrieved: "2026-10-12"
+
+polygons_layer:
+  table: ces_scotwind_intog
+  endpoint: /layers/open/scotwind-intog
+  fees_on_features: false

@@ -1,8 +1,10 @@
 """Ingest Crown Estate Scotland ScotWind / INTOG option polygons into PostGIS.
 
 Fetches the open CES Spatial Hub FeatureServers (or a local GeoJSON) and loads
-``ces_scotwind_intog``. Does **not** invent option-fee £ — those fields stay
-NULL with ``fee_status=not_in_open_attributes`` until an open fee column exists.
+``ces_scotwind_intog``. Polygons + award descriptors only.
+
+Option-fee £ are HOLD — see ``data/config/scotwind_option_fees.yaml``. They are
+never stored as layer attributes.
 
 Raw downloads may be written under ``data/external/ces/`` (gitignored). Never
 commit that directory.
@@ -48,10 +50,15 @@ SOURCES = (
 )
 
 EVIDENCE_TAG = "market"
-FEE_STATUS = "not_in_open_attributes"
-PUBLICATION_STATUS = "partial"
+PUBLICATION_STATUS = "ok"
 SOURCE_ID = "ces_spatial_hub_scotwind_intog"
-LICENCE = "OGL-3.0 (CES Spatial Hub; GIS confirming dataset-level terms)"
+LICENCE = "OGL-3.0"
+# Dropped if an earlier draft created them — fees are not layer attributes.
+_LEGACY_FEE_COLUMNS = (
+    "option_fee_gbp",
+    "option_fee_per_km2_gbp",
+    "fee_status",
+)
 
 
 def _db_config() -> dict[str, Any]:
@@ -89,9 +96,6 @@ def ensure_table(conn) -> None:
                 innovation_category TEXT,
                 capacity_mw DOUBLE PRECISION,
                 area_km2 DOUBLE PRECISION,
-                option_fee_gbp DOUBLE PRECISION,
-                option_fee_per_km2_gbp DOUBLE PRECISION,
-                fee_status TEXT NOT NULL DEFAULT '{FEE_STATUS}',
                 evidence_tag TEXT NOT NULL DEFAULT '{EVIDENCE_TAG}',
                 publication_status TEXT NOT NULL DEFAULT '{PUBLICATION_STATUS}',
                 source_id TEXT,
@@ -100,6 +104,8 @@ def ensure_table(conn) -> None:
             );
             """
         )
+        for col in _LEGACY_FEE_COLUMNS:
+            cur.execute(f"ALTER TABLE {TABLE} DROP COLUMN IF EXISTS {col};")
         cur.execute(
             f"CREATE INDEX IF NOT EXISTS idx_{TABLE}_geom "
             f"ON {TABLE} USING GIST (geom);"
@@ -159,9 +165,6 @@ def _row_from_feature(
         "innovation_category": in_cat,
         "capacity_mw": props.get(capacity_field) or props.get("capacity_mw"),
         "area_km2": props.get("Area_km2") or props.get("area_km2"),
-        "option_fee_gbp": None,
-        "option_fee_per_km2_gbp": None,
-        "fee_status": FEE_STATUS,
         "evidence_tag": EVIDENCE_TAG,
         "publication_status": PUBLICATION_STATUS,
         "source_id": SOURCE_ID,
@@ -206,7 +209,6 @@ def features_from_geojson(path: Path) -> list[dict[str, Any]]:
             if "capacity_mw" in props
             else ("Total_Cap" if leasing_round == "scotwind" else "Capacity")
         )
-        # Normalise nested geometry feature
         wrapped = {"geometry": feature.get("geometry"), "properties": props}
         row = _row_from_feature(
             wrapped,
@@ -231,13 +233,11 @@ def load_rows(conn, rows: list[dict[str, Any]], replace: bool) -> int:
                 INSERT INTO {TABLE} (
                     id, leasing_round, award_id, lead_applicant, technology,
                     category, innovation_category, capacity_mw, area_km2,
-                    option_fee_gbp, option_fee_per_km2_gbp, fee_status,
                     evidence_tag, publication_status, source_id, licence, geom
                 ) VALUES (
                     %(id)s, %(leasing_round)s, %(award_id)s, %(lead_applicant)s,
                     %(technology)s, %(category)s, %(innovation_category)s,
-                    %(capacity_mw)s, %(area_km2)s, %(option_fee_gbp)s,
-                    %(option_fee_per_km2_gbp)s, %(fee_status)s, %(evidence_tag)s,
+                    %(capacity_mw)s, %(area_km2)s, %(evidence_tag)s,
                     %(publication_status)s, %(source_id)s, %(licence)s,
                     ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(%(geom)s), 4326))
                 )
@@ -250,9 +250,6 @@ def load_rows(conn, rows: list[dict[str, Any]], replace: bool) -> int:
                     innovation_category = EXCLUDED.innovation_category,
                     capacity_mw = EXCLUDED.capacity_mw,
                     area_km2 = EXCLUDED.area_km2,
-                    option_fee_gbp = EXCLUDED.option_fee_gbp,
-                    option_fee_per_km2_gbp = EXCLUDED.option_fee_per_km2_gbp,
-                    fee_status = EXCLUDED.fee_status,
                     evidence_tag = EXCLUDED.evidence_tag,
                     publication_status = EXCLUDED.publication_status,
                     source_id = EXCLUDED.source_id,
@@ -281,7 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--replace",
         action="store_true",
-        help="TRUNCATE before load (default when --from-api)",
+        help="TRUNCATE before load (always on for --from-api)",
     )
     parser.add_argument(
         "--save-raw",
@@ -294,7 +291,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.from_api:
         rows = features_from_api()
-        # Full API refresh replaces the table so stale awards do not linger.
         replace = True
     else:
         rows = features_from_geojson(args.input)
@@ -328,11 +324,10 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         conn.close()
     logger.info(
-        "Loaded %d ScotWind/INTOG rows into %s (evidence=%s, fees=%s, publication=%s)",
+        "Loaded %d ScotWind/INTOG polygon rows into %s (evidence=%s, publication=%s; fees not on layer)",
         n,
         TABLE,
         EVIDENCE_TAG,
-        FEE_STATUS,
         PUBLICATION_STATUS,
     )
     return 0

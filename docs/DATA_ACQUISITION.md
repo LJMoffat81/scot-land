@@ -123,11 +123,13 @@ Registry: `data/config/sources.yaml` → `hydro_sites` and `sepa_car`. Do not co
 | Field | Value |
 |-------|--------|
 | Sources | CES Spatial Hub — ScotWind Offers + INTOG Application Areas FeatureServers |
-| Licence | OGL-3.0 — CES Spatial Hub; catalog credit: Contains information from the Crown Estate Scotland licensed under the Open Government Licence v3.0 |
+| Licence | **OGL-3.0** (GIS GO 2026-10-12; hub source pages: open datasets under OGL) |
+| Catalogue credit | Contains information from the Crown Estate Scotland licensed under the Open Government Licence v3.0 |
 | Licence URL | https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ |
 | Evidence tag | `market` (published CES award/option extents) |
+| `publication_status` | `ok` |
 | Ledger | Row 4 (seabed & foreshore) — `ledger_role=ledger-row`, `ui_surface=ledger`; not a LayersPanel toggle |
-| Fees | Option-fee £ HOLD in `data/config/scotwind_option_fees.yaml` — not layer attributes; never invent site fees or rent |
+| Fees | **HOLD** — press release / FOI only in `data/config/scotwind_option_fees.yaml`; **not** layer attributes |
 | PostGIS table | `ces_scotwind_intog` (`019_ces_scotwind_intog.sql` / Alembic `20261012_0016`) |
 | BBox API | `GET /layers/open/scotwind-intog` → **503** when table empty |
 | Ingest | `python -m etl.ingest_scotwind_intog --from-api` |

@@ -4,9 +4,8 @@ Natural-capital P1 overlay: observed award/option extents from the CES Spatial
 Hub FeatureServers. Separate from surface rent (la-calc) — overlays never add
 value or rent to the residual roll.
 
-Public GeoJSON carries geometry + descriptive award fields only. Option-fee £
-are **not** in the open FeatureServer attributes (confirmed against the live
-services); fee columns stay NULL in PostGIS and are never invented for the API.
+Polygons only. Option-fee £ are HOLD (press release / FOI) — see
+``data/config/scotwind_option_fees.yaml``; never layer attributes.
 Evidence tag for the polygons: ``market`` (published CES award extents).
 """
 
@@ -29,11 +28,14 @@ SOURCES_PATH = REPO_ROOT / "data" / "config" / "sources.yaml"
 TABLE = "ces_scotwind_intog"
 MAX_FEATURES = 80
 
-# Observed CES award polygons — not modelled / not shadow-priced.
 EVIDENCE_TAG = "market"
-FEE_STATUS_ABSENT = "not_in_open_attributes"
-PUBLICATION_STATUS_PARTIAL = "partial"
-
+PUBLICATION_STATUS_OK = "ok"
+LICENCE = "OGL-3.0"
+# GIS-confirmed catalog credit (CES Spatial Hub open datasets under OGL).
+CATALOG_CREDIT = (
+    "Contains information from the Crown Estate Scotland licensed under the "
+    "Open Government Licence v3.0"
+)
 OGL_LICENCE_URL = (
     "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
 )
@@ -72,15 +74,9 @@ def source_meta() -> dict[str, Any]:
     return {
         "source": block.get("name")
         or "Crown Estate Scotland ScotWind / INTOG option areas",
-        "licence": block.get("licence")
-        or "OGL-3.0 (CES Spatial Hub; GIS confirming dataset-level terms)",
+        "licence": block.get("licence") or LICENCE,
         "licence_url": block.get("licence_url") or OGL_LICENCE_URL,
-        "attribution": block.get("attribution")
-        or (
-            "Contains information from Crown Estate Scotland licensed under the "
-            "Open Government Licence v3.0. ScotWind / INTOG option polygons; "
-            "option-fee £ are not in the open FeatureServer attributes."
-        ),
+        "attribution": block.get("attribution") or CATALOG_CREDIT,
         "source_url": block.get("source_url")
         or (
             "https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/"
@@ -89,13 +85,12 @@ def source_meta() -> dict[str, Any]:
         "feature_servers": block.get("feature_servers") or {},
         "vintage": block.get("vintage") or "CES Spatial Hub extract",
         "evidence_tag": block.get("evidence_tag") or EVIDENCE_TAG,
-        "publication_status": block.get("publication_status")
-        or PUBLICATION_STATUS_PARTIAL,
-        "fee_status": block.get("fee_status") or FEE_STATUS_ABSENT,
+        "publication_status": block.get("publication_status") or PUBLICATION_STATUS_OK,
+        "fees_config": block.get("fees_config")
+        or "data/config/scotwind_option_fees.yaml",
         "gaps": block.get("gaps")
         or [
-            "Option-fee £ and generating rent are not in the open FeatureServer attributes",
-            "Open Net Zero lists ScotWind Offers licence as unknown — GIS confirming",
+            "Option-fee £ held in data/config/scotwind_option_fees.yaml (press release) — not on features",
             "Overlay never adds value to surface rent (la-calc)",
         ],
     }
@@ -136,7 +131,7 @@ def require_loaded() -> None:
 
 
 def _public_props(row: dict[str, Any], meta: dict[str, Any]) -> dict[str, Any]:
-    """Public feature properties — no rent, no invented fee £."""
+    """Public feature properties — polygons + award descriptors only; no fee £."""
     return {
         "id": row.get("id"),
         "leasing_round": row.get("leasing_round"),
@@ -148,14 +143,13 @@ def _public_props(row: dict[str, Any], meta: dict[str, Any]) -> dict[str, Any]:
         "capacity_mw": row.get("capacity_mw"),
         "area_km2": row.get("area_km2"),
         "evidence_tag": row.get("evidence_tag") or meta["evidence_tag"],
-        "fee_status": row.get("fee_status") or meta["fee_status"],
         "publication_status": row.get("publication_status")
         or meta["publication_status"],
         "layer": "scotwind_intog",
         "source": meta["source"],
         "licence": meta["licence"],
         "licence_url": meta["licence_url"],
-        # Explicit: this overlay does not carry surface rent / la-calc value.
+        "attribution": meta["attribution"],
         "adds_to_surface_rent": False,
     }
 
@@ -183,7 +177,6 @@ def query_bbox(
             capacity_mw,
             area_km2,
             evidence_tag,
-            fee_status,
             publication_status,
             ST_AsGeoJSON(geom)::json AS geometry
         FROM {TABLE}
@@ -227,8 +220,9 @@ def query_bbox(
             "capped": len(features) >= cap,
             "evidence_tag": meta["evidence_tag"],
             "publication_status": meta["publication_status"],
-            "fee_status": meta["fee_status"],
             "adds_to_surface_rent": False,
+            "fees_on_features": False,
+            "fees_config": meta["fees_config"],
             "source": meta["source"],
             "licence": meta["licence"],
             "licence_url": meta["licence_url"],

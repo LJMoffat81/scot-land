@@ -165,7 +165,7 @@ def layer_open_scotwind_intog(
     """ScotWind / INTOG option polygons from PostGIS (CES Spatial Hub ingest).
 
     Geometry + award descriptors only. **No surface rent / la-calc £.** Option-fee
-    £ are absent from the open FeatureServer attributes and are never invented.
+    £ are HOLD (``data/config/scotwind_option_fees.yaml``) — not layer attributes.
     Returns **503** when ``ces_scotwind_intog`` is missing or empty.
     """
     _scottish_waters_bounds_check((south + north) / 2.0, (west + east) / 2.0)
@@ -979,10 +979,14 @@ def open_downloads() -> dict:
             {
                 "id": "scotwind_intog",
                 "label": "ScotWind / INTOG option polygons (this API)",
-                "licence": "OGL-3.0 (CES Spatial Hub; GIS confirming dataset-level terms)",
+                "licence": "OGL-3.0",
                 "licence_url": (
                     "https://www.nationalarchives.gov.uk/doc/"
                     "open-government-licence/version/3/"
+                ),
+                "attribution": (
+                    "Contains information from the Crown Estate Scotland licensed "
+                    "under the Open Government Licence v3.0"
                 ),
                 "endpoint": "/layers/open/scotwind-intog",
                 "url": (
@@ -991,7 +995,7 @@ def open_downloads() -> dict:
                 ),
                 "note": (
                     "PostGIS ingest of CES ScotWind Offers + INTOG Application Areas. "
-                    "Evidence tag market. Option-fee £ not in open attributes — never invented. "
+                    "Polygons only. Option-fee £ HOLD in data/config/scotwind_option_fees.yaml. "
                     "Does not add to surface rent."
                 ),
             },

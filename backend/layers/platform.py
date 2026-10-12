@@ -495,9 +495,9 @@ def platform_catalog() -> dict[str, Any]:
                 "label": "ScotWind / INTOG seabed options",
                 "description": (
                     "Crown Estate Scotland ScotWind and INTOG option/award polygons "
-                    "(PostGIS ingest). Evidence tag market. Option-fee £ are HOLD "
-                    "(press release; see data/config/scotwind_option_fees.yaml), not "
-                    "layer attributes. Natural capital ledger row 4 (seabed & foreshore) "
+                    "(PostGIS ingest). Evidence tag market. Polygons only — option-fee £ "
+                    "are HOLD (press release; see data/config/scotwind_option_fees.yaml), "
+                    "not layer attributes. Natural capital ledger row 4 (seabed & foreshore) "
                     "— not a LayersPanel toggle. Separate from surface rent (la-calc) — "
                     "this overlay never adds value. No £ rent."
                 ),
@@ -506,7 +506,7 @@ def platform_catalog() -> dict[str, Any]:
                 "licence": scotwind_source_meta()["licence"],
                 "licence_url": SCOTWIND_LICENCE_URL,
                 "source_url": scotwind_source_meta()["source_url"],
-                "attribution": scotwind_source_meta().get("attribution"),
+                "attribution": scotwind_source_meta()["attribution"],
                 "evidence_tag": scotwind_source_meta()["evidence_tag"],
                 "publication_status": scotwind_source_meta()["publication_status"],
                 "commons_class": "extractive",

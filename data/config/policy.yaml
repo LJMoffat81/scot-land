@@ -1,9 +1,14 @@
 # Named charge settings. Laurie chooses the values. full_agr is today's charge.
+# Ownership (public / Crown / Common Good / LA) never zeros valuation rent.
+# Tax exemption for those owners belongs only here as scenario ownership_reliefs
+# (share in [0, 1] keyed by owner_class), never inside the residual engine.
 schema_version: 1
 scenarios:
   full_agr:
     tau: 1.0
     reliefs: []
+    # No ownership exemptions on full AGR — land is valued and charged alike.
+    ownership_reliefs: {}
     phasing:
       - year: 1
         share: 1.0
@@ -11,6 +16,7 @@ scenarios:
     status: placeholder
     tau: null
     reliefs: null
+    ownership_reliefs: null
     phasing: null
   deferral:
     status: placeholder

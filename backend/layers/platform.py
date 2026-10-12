@@ -22,6 +22,7 @@ from layers.flood import catalog_layer as flood_catalog_layer
 from layers.hla import SPATIAL_HUB_URL as SPATIAL_HUB_HLA
 from layers.hla import query_point as hla_at_point
 from layers.ldp import catalog_layer as ldp_catalog_layer
+from layers.ownership_value import ownership_value_block
 from layers.registers import registers_for_council
 from layers.vdl import query_point as vdl_at_point
 from spatial.parcels import lookup_parcel, lookup_parcel_geojson
@@ -969,6 +970,8 @@ def place_context(
             "value_band": None,
         },
     }
+    # Ownership tags the holder; it must never rewrite residual / surface rent.
+    card["ownership_value"] = ownership_value_block(card)
     outline = _land_register_outline(lat, lng)
     if outline is not None:
         card["land_register_outline"] = outline

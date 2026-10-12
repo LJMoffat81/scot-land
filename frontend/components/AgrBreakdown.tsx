@@ -153,6 +153,17 @@ export type PlatformContext = {
     ros_register_url?: string | null;
     spatial_gap?: string;
   };
+  ownership_value?: {
+    rule?: string;
+    valuation_affected?: boolean;
+    public_or_community_owner?: boolean;
+    note?: string;
+    owners?: Array<{
+      owner_class?: string | null;
+      label?: string | null;
+      organisation?: string | null;
+    }>;
+  };
   land_register_outline?: { status?: string; note?: string };
   private_or_sasine?: { status?: string; note?: string };
   registers?: {
@@ -522,6 +533,21 @@ export default function AgrBreakdown({
           ) : null}
           {" · "}
           no national OGL polygon overlay; not a title
+        </p>
+      ) : null}
+
+      {platform?.ownership_value?.public_or_community_owner ? (
+        <p className="meta" title={platform.ownership_value.note}>
+          Owner tagged
+          {platform.ownership_value.owners &&
+          platform.ownership_value.owners.length > 0
+            ? `: ${platform.ownership_value.owners
+                .map((o) => o.label || o.organisation || o.owner_class)
+                .filter(Boolean)
+                .join(", ")}`
+            : null}
+          {" · "}
+          land still valued; tax exemption only in scenarios
         </p>
       ) : null}
 

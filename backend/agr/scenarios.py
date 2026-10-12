@@ -8,6 +8,7 @@ import yaml
 
 from agr.config import CONFIG_PATH, load_config
 from agr.fiscal import basket_total_gbp
+from layers.ownership_value import scenario_ownership_relief_gbp
 
 POLICY_PATH = CONFIG_PATH.parent / "policy.yaml"
 
@@ -191,8 +192,18 @@ def _phasing_share(phasing: list) -> float:
     return earliest[1]
 
 
-def charge_after_policy(rent_gbp: float, spec: dict) -> float:
-    """charge = tau x phasing share x (rent - reliefs), after valuation."""
+def charge_after_policy(
+    rent_gbp: float,
+    spec: dict,
+    *,
+    owners: list | None = None,
+) -> float:
+    """charge = tau x phasing share x (rent - reliefs), after valuation.
+
+    Ownership (public / Common Good / LA) never rewrites the valuation rent.
+    Named ``ownership_reliefs`` on the scenario spec are the only place an
+    ownership tax exemption may reduce the **charge**.
+    """
     if spec.get("status") == "placeholder":
         raise ValueError("scenario not set")
     tau = spec.get("tau")
@@ -202,6 +213,12 @@ def charge_after_policy(rent_gbp: float, spec: dict) -> float:
         raise ValueError("scenario not set")
     tau_value = float(tau)
     relief_total = _relief_total(reliefs)
+    ownership_relief = scenario_ownership_relief_gbp(
+        rent_gbp,
+        owners,
+        spec.get("ownership_reliefs"),
+    )
+    relief_total = float(relief_total) + float(ownership_relief)
     share = _phasing_share(phasing)
     # tau 1, no relief and a full first-year share is today's charge, to the penny.
     if tau_value == 1.0 and share == 1.0 and relief_total == 0.0:

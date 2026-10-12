@@ -193,6 +193,10 @@ Comparison rule: a bare-land price includes whatever the buyer expects to be all
 
 The Pickard de-speculation factors (urban × 0.70, farmland × 0.20), scenario capture rates and the Sandilands national rent pool are **policy and scenario choices**, not measurements. They are applied **after** measured rent, shown in their own columns, and never folded into `measured_rent`. The national pool remains separate from the sum of zone rents unless explicitly calibrated, as in `methodology.md`.
 
+### 13.1 Ownership does not zero value
+
+Public, Crown, local-authority and Common Good ownership **tags the owner** and does **not** set land value to zero. Residual / surface rent is assessed like any other land. Any tax exemption for those owners belongs only in **scenario tools** (`policy.yaml` `ownership_reliefs` on a charge scenario), never inside the valuation engine. See `backend/layers/ownership_value.py`.
+
 ## 14. Changes to existing docs (for Laurie's decision)
 
 | `methodology.md` today | This draft | Effect |

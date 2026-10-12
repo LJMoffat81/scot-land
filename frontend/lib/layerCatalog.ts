@@ -95,9 +95,9 @@ export const LAYER_ATTRIBUTION: Record<
       "https://www.data.gov.uk/dataset/5750f8e5-d51b-4e75-a8d6-403a0d1ded81/hydropower_sites",
   },
   sepa_car: {
-    source: "SEPA public register (CAR) — download-only CSV",
+    source: "SEPA CAR licences (MapServer 194/195 → PostGIS)",
     licence: "OGL-3.0",
-    sourceUrl: "https://search-the-register.sepa.org.uk/",
+    sourceUrl: "https://www.sepa.org.uk/environment/environmental-data/",
   },
   la_holdings: {
     source: "Spatial Hub — Land Ownership Scotland",

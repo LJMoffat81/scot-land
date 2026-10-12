@@ -65,9 +65,9 @@ const FIXTURE_CATALOG = {
       licence: "OGL-3.0",
       licence_url:
         "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-      source_url: "https://search-the-register.sepa.org.uk/",
-      value_tier: "proxy",
-      publication_status: "download_only",
+      source_url: "https://www.sepa.org.uk/environment/environmental-data/",
+      value_tier: "market",
+      publication_status: "ok",
     },
     {
       id: "la_holdings",

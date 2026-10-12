@@ -44,7 +44,10 @@ OGL_V3_URL = (
 HYDRO_SOURCE = (
     "https://www.data.gov.uk/dataset/5750f8e5-d51b-4e75-a8d6-403a0d1ded81/hydropower_sites"
 )
-SEPA_CAR_REGISTER = "https://search-the-register.sepa.org.uk/"
+SEPA_ENV_DATA = "https://www.sepa.org.uk/environment/environmental-data/"
+SEPA_CAR_MAPSERVER = (
+    "https://map.sepa.org.uk/server/rest/services/Open/SEPA_Reference/MapServer"
+)
 CROWN_ESTATE_HUB = "https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/"
 
 
@@ -190,19 +193,22 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "SEPA CAR licences",
                 "description": (
-                    "Controlled Activities Regulations authorisations from the SEPA "
-                    "public register CSV export (download-only — not MapServer). "
-                    "Natural-capital extractive inventory (value_tier=proxy). "
-                    "No £ rent; separate from surface rent. publication_status=download_only."
+                    "SEPA Controlled Activities Regulations — Simple (MapServer 194) "
+                    "and Registration (195) ingested from Open/SEPA_Reference into "
+                    "PostGIS (`python -m etl.ingest_sepa_car`). OGL confirmed on SEPA "
+                    "Environmental data. API serves PostGIS only (never proxies "
+                    "MapServer). value_tier=market; no £ rent; not surface rent."
                 ),
                 "endpoint": "/layers/open/sepa-car",
                 "licence": "OGL-3.0",
                 "licence_url": OGL_V3_URL,
                 "minzoom": 6,
-                "source_url": SEPA_CAR_REGISTER,
+                "source_url": SEPA_ENV_DATA,
+                "mapserver_url": SEPA_CAR_MAPSERVER,
                 "commons_class": "extractive",
-                "value_tier": "proxy",
-                "publication_status": "download_only",
+                "value_tier": "market",
+                "publication_status": "ok",
+                "adds_to_surface_rent": False,
             },
             {
                 "id": "la_holdings",

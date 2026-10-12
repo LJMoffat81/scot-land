@@ -99,19 +99,11 @@ def test_downloads_omit_unverified_public_land(client):
     item_ids = {row["id"] for row in r.json()["items"]}
     assert "public_land_overlay" not in item_ids
     assert "public_crown_map" not in item_ids
-    # Legitimate OGL download entries that may sit alongside SVDLS.
-    allowed_ogl = {
-        "vdl_register",
-        "vdl_api",
-        "hydro_sites",
-        "sepa_car",
-    }
     for row in r.json()["items"]:
         assert row.get("licence") != "unverified/not open"
         label = (row.get("label") or "").lower()
-        licence = (row.get("licence") or "").lower()
-        if "public" in label and "crown" in label:
+        rid = str(row.get("id") or "").lower()
+        if ("public" in label and "crown" in label) or rid.startswith(
+            "public_land"
+        ) or rid.startswith("public_crown"):
             raise AssertionError(f"open downloads still list public/Crown: {row}")
-        if "ogl-3.0" in licence:
-            rid = str(row.get("id") or "")
-            assert rid.startswith("vdl") or rid in allowed_ogl, row

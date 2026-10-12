@@ -178,29 +178,36 @@ def test_tax_scenarios_does_not_hardcode_land_yield():
     assert "yield_placeholder" in src and "from georgist.surface_settings import yield_placeholder" in src
 
 
-def test_yield_placeholder_reads_shared_config_and_optional_band():
+def test_yield_placeholder_reads_shared_config_and_v3_passthrough():
     from georgist.surface_settings import yield_placeholder as yp_fn
 
     base = yp_fn()
     assert base["status"] == "placeholder" and base["owner"] == "Valuation"
     assert isinstance(base["land_yield"], float) and base["land_yield"] > 0
-    # Live shared config may still be the pre-calibration figure until Valuation's PR lands.
+    # Live shared config may still be pre-v3 until Valuation publishes; never invent here.
     assert "result_hash" not in base or isinstance(base.get("result_hash"), str)
-    # Optional Georgist/Valuation metadata: pass through when published; never invent.
-    with_meta = yp_fn({
+    # Georgist yield calibration v3: pass through when published in surface.yaml.
+    with_v3 = yp_fn({
         "yield": {
-            "land_yield": 0.0399,
-            "land_yield_band": [0.0352, 0.0450],
-            "clipped_at_cap": True,
-            "result_hash": "b3442d47",
-            "components": {"r": 0.0262, "p": 0.0237, "g": 0.01},
+            "land_yield": 0.04499,
+            "land_yield_band": [0.0398, 0.0450],
+            "result_hash": "4654e513",
+            "calibration_version": 3,
+            "central_at_cap": True,
+            "band_clipped_outer": True,
+            "bed_mapping_sensitive": True,
         },
     })
-    assert with_meta["land_yield"] == pytest.approx(0.0399)
-    assert with_meta["land_yield_band"] == [0.0352, 0.0450]
-    assert with_meta["clipped_at_cap"] is True
-    assert with_meta["result_hash"] == "b3442d47"
-    assert with_meta["status"] == "placeholder"
+    assert with_v3["land_yield"] == pytest.approx(0.04499)
+    assert with_v3["land_yield_band"] == [0.0398, 0.0450]
+    assert with_v3["result_hash"] == "4654e513"
+    assert with_v3["central_at_cap"] is True
+    assert with_v3["band_clipped_outer"] is True
+    assert with_v3["bed_mapping_sensitive"] is True
+    assert set(with_v3["flags"]) == {
+        "central_at_cap", "band_clipped_outer", "bed_mapping_sensitive",
+    }
+    assert with_v3["status"] == "placeholder"
 
 
 def test_aggregate_refuses_mixed_price_years():

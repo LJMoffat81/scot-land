@@ -1,9 +1,10 @@
 """Tax scenario illustrations from Wealth Engine Surface Rent (not AGR).
 
-INTERNAL ONLY until land-yield calibration lands. Configured land yield is read
-from shared ``data/config/surface.yaml`` (Valuation owns r−g) — never hardcoded
-here. Every payload is ``publication_status=blocked`` and must not appear on
-public pages or public API routes.
+HOLD — INTERNAL ONLY. Configured land yield is read from shared
+``data/config/surface.yaml`` (Valuation owns calibration; Georgist v3 metadata
+passed through when present) — never hardcoded here. Every payload is
+``publication_status=blocked`` and must not appear on public pages or public
+API routes. No public £.
 
 Money figures (£) are served at **Data Zone grain only**. Council / national
 blocks carry counts and labels, never summed £.

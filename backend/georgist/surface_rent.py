@@ -1250,14 +1250,70 @@ def resolve_land_value(
 # --------------------------------------------------------------------------- yield
 
 
+# Georgist INTERNAL provisional calibration (hash b3442d47). Counts are documentary;
+# model-fill of 727 zones stays null here (PR #18). Fallback-rent zones must be flagged.
+FALLBACK_RENT_ZONE_COUNT = 390
+MODEL_FILL_ZONE_COUNT_KEEP_NULL = 727
+YIELD_RESULT_HASH = "b3442d47"
+FALLBACK_RENT_ZONE_TAG = "fallback_rent_zone"
+BED_MAPPING_SENSITIVE_TAG = "bed_mapping_sensitive"
+YIELD_HIGH_CLIPPED_TAG = "yield_high_clipped_at_cap"
+
+
 def configured_land_yield(yield_cfg: Mapping) -> float:
-    """Rules 1: config stores ONE figure, the land yield (= r - g). No r or g outside scenarios."""
+    """Rules 1: config stores ONE figure, the land yield. No r or g outside scenarios.
+
+    Georgist INTERNAL provisional central is r + p − g (documented under
+    surface_rent.yield_calibration.decomposition); the yield block still holds
+    only the single land_yield figure.
+    """
     stray = {"r", "g", "discount_rate", "growth_rate"} & set(yield_cfg)
     if stray:
         raise YieldIdentityError(f"yield config must not set {sorted(stray)}; r and g belong in scenario runs only")
     if "land_yield" not in yield_cfg:
         raise PendingSourceError("yield.land_yield must be configured")
     return float(yield_cfg["land_yield"])
+
+
+def configured_yield_band(yield_cfg: Mapping) -> tuple[float, float, bool]:
+    """Return (low, high, high_clipped_at_cap) from yield.band (Georgist INTERNAL)."""
+    band = yield_cfg.get("band") or {}
+    if not band:
+        y = configured_land_yield(yield_cfg)
+        return y, y, False
+    return float(band["low"]), float(band["high"]), bool(band.get("high_clipped_at_cap", False))
+
+
+def yield_calibration_flags(config: Mapping) -> dict:
+    """INTERNAL yield-calibration metadata from surface.yaml (sibling of yield)."""
+    calib = config.get("yield_calibration") or {}
+    flags = calib.get("flags") or {}
+    fallback = calib.get("fallback_rent_zones") or {}
+    model_fill = calib.get("model_fill_zones") or {}
+    decomp = calib.get("decomposition") or {}
+    band = calib.get("band") or (config.get("yield") or {}).get("band") or {}
+    return {
+        "status": calib.get("status", "internal_provisional"),
+        "publication_status": calib.get("publication_status", "blocked"),
+        "result_hash": calib.get("result_hash", YIELD_RESULT_HASH),
+        "value_basis": flags.get("value_basis", VALUE_TIER),
+        "bed_mapping_sensitive": bool(flags.get("bed_mapping_sensitive", True)),
+        "decomposition": dict(decomp),
+        "band": {
+            "low": float(band["low"]) if band.get("low") is not None else None,
+            "high": float(band["high"]) if band.get("high") is not None else None,
+            "high_clipped_at_cap": bool(band.get("high_clipped_at_cap", False)),
+        },
+        "fallback_rent_zones": {
+            "count": int(fallback.get("count", FALLBACK_RENT_ZONE_COUNT)),
+            "tag": fallback.get("tag", "yield_fallback:config"),
+        },
+        "model_fill_zones": {
+            "count": int(model_fill.get("count", MODEL_FILL_ZONE_COUNT_KEEP_NULL)),
+            "keep_null": bool(model_fill.get("keep_null", True)),
+        },
+        "rent_display": "band",
+    }
 
 
 def scenario_r_g(scenario: Mapping, land_yield_value: float, *, tol: float = 1e-9) -> tuple[float, float]:
@@ -1377,7 +1433,16 @@ def resolve_cell_yield(
         return YieldCell(brma_id, ur6_class, cell_y, "cell", tuple(tags), cell_gross)
     if brma_wide_y is not None:
         return YieldCell(brma_id, ur6_class, brma_wide_y, "brma_wide", tuple(tags + ["yield_fallback:brma"]), cell_gross)
-    return YieldCell(brma_id, ur6_class, float(fallback), "config_fallback", tuple(tags + ["yield_fallback:config"]), cell_gross)
+    # Config fallback = one of the 390 fallback-rent zones (Georgist INTERNAL hash b3442d47).
+    # bed_mapping_sensitive: PRS bedroom mapping affects the calibration that set land_yield.
+    fallback_tags = (
+        "yield_fallback:config",
+        FALLBACK_RENT_ZONE_TAG,
+        BED_MAPPING_SENSITIVE_TAG,
+    )
+    if bool((yield_cfg.get("band") or {}).get("high_clipped_at_cap")):
+        fallback_tags = fallback_tags + (YIELD_HIGH_CLIPPED_TAG,)
+    return YieldCell(brma_id, ur6_class, float(fallback), "config_fallback", tuple(tags + list(fallback_tags)), cell_gross)
 
 
 @dataclass(frozen=True)
@@ -1429,11 +1494,14 @@ def _extreme_yield(shares: Mapping[str, float], hw: Mapping[str, float], y: Mapp
 def blend_zone_yield(
     shares: Mapping[str, float], cells: Mapping[str, YieldCell], *, tolerance: float = 1e-6,
     halfwidths: Mapping[str, float] | None = None,
+    yield_cfg: Mapping | None = None,
 ) -> ZoneYield:
     """Zone yield = Σ_b share(z,b) × y_land(b, class_z). Shares (dwelling share_mid) must sum to 1.
 
     With `halfwidths`, the yield range over all share vectors within ±halfwidth
-    (summing to 1) gives y_low / y_high for the uncertainty band.
+    (summing to 1) gives y_low / y_high for the uncertainty band. When halfwidths
+    are absent, `yield_cfg.band` (Georgist INTERNAL 3.52–4.50%) supplies the band
+    so rents are never shown as a point yield alone.
     """
     total = sum(shares.values())
     if abs(total - 1.0) > tolerance:
@@ -1453,7 +1521,41 @@ def blend_zone_yield(
         yb = {b: cells[b].y_land for b in shares}
         y_low, y_high = _extreme_yield(shares, halfwidths, yb, False), _extreme_yield(shares, halfwidths, yb, True)
         tags.append("brma_share_bounds_in_band")
+    elif yield_cfg is not None and yield_cfg.get("band"):
+        y_low, y_high, clipped = configured_yield_band(yield_cfg)
+        tags.append("yield_band_from_config")
+        if clipped:
+            tags.append(YIELD_HIGH_CLIPPED_TAG)
+        tags.append(BED_MAPPING_SENSITIVE_TAG)
     return ZoneYield(y, "+".join(sources), dict(shares), tuple(tags), y_low, y_high)
+
+
+def apply_config_yield_band(zone_yield: ZoneYield, yield_cfg: Mapping) -> ZoneYield:
+    """Ensure zone yields carry the configured band so rents are never a lone point.
+
+    Halfwidth bands from BRMA shares win when present. Otherwise yield.band
+    (3.52–4.50%, high clipped at 4.5%) is applied. Tags carry proxy / bed-mapping
+    / clip flags for INTERNAL consumers.
+    """
+    if zone_yield.y_low is not None and zone_yield.y_high is not None:
+        tags = list(zone_yield.tags)
+        if bool((yield_cfg.get("band") or {}).get("high_clipped_at_cap")) and YIELD_HIGH_CLIPPED_TAG not in tags:
+            tags.append(YIELD_HIGH_CLIPPED_TAG)
+        if BED_MAPPING_SENSITIVE_TAG not in tags:
+            tags.append(BED_MAPPING_SENSITIVE_TAG)
+        return ZoneYield(
+            zone_yield.y_land, zone_yield.source, zone_yield.brma_mix, tuple(tags),
+            zone_yield.y_low, zone_yield.y_high,
+        )
+    if not yield_cfg.get("band"):
+        return zone_yield
+    y_low, y_high, clipped = configured_yield_band(yield_cfg)
+    tags = list(zone_yield.tags) + ["yield_band_from_config", BED_MAPPING_SENSITIVE_TAG]
+    if clipped:
+        tags.append(YIELD_HIGH_CLIPPED_TAG)
+    return ZoneYield(
+        zone_yield.y_land, zone_yield.source, zone_yield.brma_mix, tuple(tags), y_low, y_high,
+    )
 
 
 # --------------------------------------------------------------------------- reconciliation (4.2)
@@ -1605,10 +1707,15 @@ def build_output_row(
         lv_low = lv_high = None
         tags.add(ZERO_DWELLINGS_FLAG)
     n = dwellings.count
+    if zone_yield is not None:
+        zone_yield = apply_config_yield_band(zone_yield, config.get("yield") or {})
     y = zone_yield.y_land if zone_yield else None
     y_pub = max(y, 0.0) if y is not None else None
     have = lv is not None and y_pub is not None and n is not None and n > 0
     lv_total = lv * n if (lv is not None and n is not None) else None  # zone total land value (mean x count)
+    # Rents are shown as a band (uncertainty_low/high), not a lone point. Central
+    # measured_rent stays for internal maths; consumers must prefer the band
+    # (rent_display=band / yield_calibration).
     rent = round(lv_total * y_pub, 2) if have else None
     rent_dw = round(rent / n, 2) if have else None  # per-home = zone total / count
     y_lo = max(zone_yield.y_low, 0.0) if (zone_yield and zone_yield.y_low is not None) else y_pub
@@ -1617,6 +1724,12 @@ def build_output_row(
     unc_high = round(lv_high * n * max(y_hi, y_pub), 2) if have else None
     if zone_yield is not None:
         tags |= set(zone_yield.tags)
+    # Band-only presentation + proxy / bed-mapping flags (Georgist INTERNAL).
+    tags.add(BED_MAPPING_SENSITIVE_TAG)
+    if (config.get("yield") or {}).get("band", {}).get("high_clipped_at_cap"):
+        tags.add(YIELD_HIGH_CLIPPED_TAG)
+    if zone_yield and zone_yield.source and "config_fallback" in zone_yield.source:
+        tags.add(FALLBACK_RENT_ZONE_TAG)
     if residential_land_ha is None:
         rent_ha = None
         tags.add("pending_residential_land")

@@ -245,12 +245,48 @@ surface_rent:
       "2003-2007": 2005
       "2008 onwards": 2016
 
+  # Georgist INTERNAL provisional yield (hash b3442d47). Sibling to yield.* so r/p/g
+  # documentation never sits inside yield (configured_land_yield refuses r/g there).
+  # Aligns with agr.yaml yield_calibration / valuer_roll.yield_rate. Not public.
+  yield_calibration:
+    status: internal_provisional
+    signed_by: Georgist
+    scope: INTERNAL_ONLY
+    publication_status: blocked
+    result_hash: b3442d47
+    decomposition:
+      r: 0.0262
+      p: 0.0237
+      g: 0.0100
+      central: 0.0399            # = r + p − g (documentary; land_yield stores the single figure)
+      identity: "central = r + p − g"
+    band:
+      low: 0.0352
+      high: 0.0450
+      high_clipped_at_cap: true  # high end clipped at the 4.5% cap
+    flags:
+      value_basis: proxy         # Georgist rule 2; never market
+      bed_mapping_sensitive: true
+    fallback_rent_zones:
+      count: 390                 # flag these (yield_fallback:config / fallback_rent_zone)
+      tag: yield_fallback:config
+      note: "Zones/cells with no PRS cell evidence; use configured land_yield."
+    model_fill_zones:
+      count: 727
+      keep_null: true            # do not fill here — PR #18 / separate work owns model fill
+      owned_by: "PR #18 / separate work"
+
   yield:
     table: brma_x_ur6             # team lock 2026-10-06
-    land_yield: 0.05              # rules 1: THE land yield = r - g (single figure; used as the fallback where cell
-                                  # evidence is thin). ASSUMPTION: matches agr.yaml valuer_roll.yield_rate.
-                                  # No r or g here: the code refuses them outside `scenarios`.
-    deductions:                   # gross -> land yield. ASSUMPTION pending sign-off
+    land_yield: 0.0399            # rules 1: THE land yield (single figure). Georgist INTERNAL hash b3442d47.
+                                  # Documentary identity: r + p − g = 0.0262 + 0.0237 − 0.0100.
+                                  # Matches agr.yaml valuer_roll.yield_rate. No r or g here: code refuses them
+                                  # outside `scenarios`.
+    band:
+      low: 0.0352
+      high: 0.0450
+      high_clipped_at_cap: true  # clipped at the 4.5% cap; supersedes earlier 3.5–4.5% wording
+    deductions:                   # gross -> land yield. ASSUMPTION pending further source work
       void: 0.04                  # share of gross rent lost to voids
       running_costs: 0.25         # management, repairs, insurance, compliance (share of gross)
       building_depreciation: from_life_years   # 1 / depreciation.life_years on building share
@@ -368,7 +404,9 @@ surface_rent:
       farm: 0.20                  # Pickard, agr.yaml despeculation.farmland_market_to_productive (not used by residential surface)
 
   scenarios:                      # rules 1: the ONLY place r and g may appear; code asserts r - g == land_yield
-    illustrative_r_g: {r: 0.07, g: 0.02}   # ILLUSTRATIVE only (0.07 - 0.02 = 0.05 = yield.land_yield)
+    # ILLUSTRATIVE: r_eff absorbs signed-off premium p so r_eff − g = land_yield.
+    # Documentary Georgist split remains yield_calibration.decomposition (r + p − g).
+    illustrative_r_g: {r: 0.0499, g: 0.01}   # 0.0499 − 0.01 = 0.0399 = yield.land_yield
 
   reconciliation:                 # rules 4.2
     rent_ceiling: mean_price_x_dwellings_x_gross_yield   # rules 4.2 v0.3 formula

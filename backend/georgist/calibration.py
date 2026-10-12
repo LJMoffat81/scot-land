@@ -1,12 +1,22 @@
 import logging
+from pathlib import Path
+from typing import Any, Dict, List
+
+import yaml
 from psycopg2 import extras
 
 from georgist import db
-from pathlib import Path
-import json
-from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
+
+_SURFACE_CONFIG = Path(__file__).resolve().parents[2] / "data" / "config" / "surface.yaml"
+
+
+def _configured_cap_rate() -> float:
+    """Land yield from surface.yaml (Georgist INTERNAL provisional). Never hard-code."""
+    with _SURFACE_CONFIG.open(encoding="utf-8") as handle:
+        cfg = yaml.safe_load(handle)
+    return float(cfg["surface_rent"]["yield"]["land_yield"])
 
 
 class CalibrationEngine:
@@ -53,9 +63,9 @@ class CalibrationEngine:
 
                 actual_price = float(actual["median_price"] or 0)
 
-                # In a real Georgist model, we convert Sale Price -> Land Rent
-                # using a capitalization rate (e.g., 5% = 0.05)
-                cap_rate = 0.05
+                # Convert sale price -> land rent via configured land yield
+                # (Georgist INTERNAL provisional; hash b3442d47). Not a public figure.
+                cap_rate = _configured_cap_rate()
                 implied_rent = actual_price * cap_rate
 
                 error = (implied_rent - predicted_rent) / implied_rent if implied_rent != 0 else 0

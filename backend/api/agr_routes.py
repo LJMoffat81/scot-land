@@ -76,10 +76,12 @@ internal_router = APIRouter(
 INTERNAL_HEADERS = {"X-Wealth-Internal": "true", "Cache-Control": "no-store"}
 INTERNAL_PUBLICATION = {
     "publication_status": "blocked",
-    "unpublished_reason": "yield_calibration_pending",
+    "unpublished_reason": "yield_calibration_internal_only",
     "note": (
-        "INTERNAL ONLY. Modelled residual AGR £ is blocked from the public map "
-        "until yield calibration (Data Zone publication rule)."
+        "INTERNAL ONLY. Georgist signed off a provisional yield band "
+        "(central 3.99% = r 2.62 + p 2.37 − g 1.0; band 3.52–4.50% clipped at "
+        "the 4.5% cap; hash b3442d47). Rents are shown as a band, not a point. "
+        "Not for public publication (Data Zone publication rule)."
     ),
 }
 

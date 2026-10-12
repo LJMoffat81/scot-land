@@ -64,8 +64,9 @@ The map now computes charges as an **open-data approximation of a valuer residua
 5. Site_capital_market = max(0, MV − DRC). An 85% ceiling is a bound, not an estimate.
          The old 15% floor is a sensitivity only.
 6. Site_capital_economic = Site_capital_market × Pickard urban factor (default 70%)
-7. Annual_rent_economic = Site_capital_economic × yield (default 5%)
-         That dwelling rent is the headline. Effective rate = 0.70 × 0.05, not calibrated.
+7. Annual_rent_economic = Site_capital_economic × yield band (INTERNAL provisional:
+         central 3.99% = r 2.62 + p 2.37 − g 1.0; band 3.52–4.50% clipped at the 4.5% cap;
+         hash b3442d47). Rents are shown as a band, not a point. publication_status=blocked.
 8. The 9 m² cell = diagnostic £/m² × 9 m² × scenario. It is not the parcel charge.
 ```
 
@@ -76,7 +77,7 @@ The notional plot is that one dwelling (default 280 m²). A known parcel is the 
 ```
 Category £/ha (2009 land-use table) × HPI factor
   × Pickard farmland productive factor (0.20 — market ~5× productive)
-  × yield 5% → annual rent / m²
+  × INTERNAL provisional yield band (3.52–4.50%, central 3.99%) → annual rent / m² (band)
 ```
 
 ### 1. Roger Sandilands (macro scenarios)

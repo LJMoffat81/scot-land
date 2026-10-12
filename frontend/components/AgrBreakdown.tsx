@@ -65,6 +65,29 @@ export type AgrResult = {
   pickard_label?: string;
   sensitivity_overrides?: Record<string, number>;
   stamp?: EngineStamp | null;
+  /** Georgist INTERNAL: rents shown as a band, not a point. */
+  rent_display?: "band" | "point";
+  yield_rate_low?: number | null;
+  yield_rate_high?: number | null;
+  yield_high_clipped_at_cap?: boolean;
+  yield_result_hash?: string | null;
+  value_basis?: string;
+  bed_mapping_sensitive?: boolean;
+  publication_status?: string;
+  annual_ground_rent_low_gbp?: number | null;
+  annual_ground_rent_high_gbp?: number | null;
+  roll_annual_rent_notional_plot_low_gbp?: number | null;
+  roll_annual_rent_notional_plot_high_gbp?: number | null;
+  roll_annual_rent_parcel_low_gbp?: number | null;
+  roll_annual_rent_parcel_high_gbp?: number | null;
+  rent_band?: {
+    low_gbp?: number | null;
+    high_gbp?: number | null;
+    yield_low?: number | null;
+    yield_high?: number | null;
+    high_clipped_at_cap?: boolean;
+    result_hash?: string | null;
+  };
 };
 
 export type SalesContext = {
@@ -263,6 +286,11 @@ function formatGbp(value: number, digits = 2) {
   })}`;
 }
 
+function formatGbpBand(low: number, high: number) {
+  const digits = high >= 100 ? 0 : 2;
+  return `${formatGbp(low, digits)}\u2013${formatGbp(high, digits)}`;
+}
+
 export default function AgrBreakdown({
   agr,
   areaSqm,
@@ -287,7 +315,7 @@ export default function AgrBreakdown({
     agr.roll_annual_rent_parcel_gbp != null
       ? agr.roll_annual_rent_parcel_gbp * scale
       : null;
-  const headline =
+  const headlineCentral =
     fiscal?.gross_plot_gbp != null && fiscal.gross_plot_gbp > 0
       ? fiscal.gross_plot_gbp
       : parcelFull != null && parcelFull > 0
@@ -295,6 +323,27 @@ export default function AgrBreakdown({
         : plotFull != null && plotFull > 0
           ? plotFull * scale
           : active.annual_charge_gbp;
+
+  // Georgist INTERNAL: show rents only as a band (not a point).
+  const bandLow =
+    agr.roll_annual_rent_parcel_low_gbp != null &&
+    agr.roll_annual_rent_parcel_low_gbp > 0
+      ? agr.roll_annual_rent_parcel_low_gbp * scale
+      : agr.roll_annual_rent_notional_plot_low_gbp != null
+        ? agr.roll_annual_rent_notional_plot_low_gbp * scale
+        : agr.annual_ground_rent_low_gbp ?? agr.rent_band?.low_gbp ?? null;
+  const bandHigh =
+    agr.roll_annual_rent_parcel_high_gbp != null &&
+    agr.roll_annual_rent_parcel_high_gbp > 0
+      ? agr.roll_annual_rent_parcel_high_gbp * scale
+      : agr.roll_annual_rent_notional_plot_high_gbp != null
+        ? agr.roll_annual_rent_notional_plot_high_gbp * scale
+        : agr.annual_ground_rent_high_gbp ?? agr.rent_band?.high_gbp ?? null;
+  const showBand =
+    agr.rent_display !== "point" &&
+    bandLow != null &&
+    bandHigh != null &&
+    bandHigh >= bandLow;
 
   const place = [placeLabel, postcode, agr.council_name].filter(Boolean).join(" \u00b7 ");
   const w3wClean = what3words ? what3words.replace(/^\/+/, "") : null;
@@ -325,6 +374,9 @@ export default function AgrBreakdown({
       ? "No register outline here, so this is one hectare at the countryside rate. The map colour is the town home plot, not this number."
       : "No register outline here, so this is one home plot at the town rate. Countryside in this council uses a different rate.";
   const classLine = zoneClassLine(dataZone, countryside);
+  const yieldClipNote = agr.yield_high_clipped_at_cap
+    ? " Yield band high end is clipped at the 4.5% cap."
+    : "";
 
   return (
     <div className="clarity-result">
@@ -341,11 +393,26 @@ export default function AgrBreakdown({
       {classLine ? <p className="meta">{classLine}</p> : null}
 
       <div className="agr-value" aria-live="polite">
-        {formatGbp(headline, headline >= 100 ? 0 : 2)}
+        {showBand
+          ? formatGbpBand(bandLow as number, bandHigh as number)
+          : formatGbp(headlineCentral, headlineCentral >= 100 ? 0 : 2)}
         <span className="agr-unit">/year</span>
       </div>
 
       <p className="headline-caption figure-line">{figureLine}</p>
+      {showBand ? (
+        <p className="headline-caption">
+          Band only (not a single point). Provisional internal yield
+          {agr.yield_result_hash ? ` · hash ${agr.yield_result_hash}` : ""}.
+          {yieldClipNote}
+          {agr.bed_mapping_sensitive
+            ? " Sensitive to bedroom-mapping assumptions."
+            : ""}
+          {agr.publication_status === "blocked"
+            ? " Not for public publication."
+            : ""}
+        </p>
+      ) : null}
       {agr.wide_range ? (
         <p className="headline-caption">
           Homes here sell for close to what they&apos;d cost to rebuild, so the land figure is less certain than most.

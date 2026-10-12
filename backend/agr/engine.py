@@ -7,6 +7,7 @@ from agr.config import load_config
 from agr.scenarios import compute_scenarios, resolve_active_scenario, scenario_to_dict
 from agr.valuation import assess_for_agr_roll
 from agr.wide_range import wide_range_for
+from agr.yield_config import scale_rent, yield_band_from_config, yield_signoff_payload
 from agr.zone_prices import resolve_zone_market_value
 from spatial.grid import GridSquare
 from spatial.parcels import lookup_parcel
@@ -66,6 +67,24 @@ class AgrBreakdown:
     wide_range: bool = False
     wide_range_ratio: float | None = None
     basis: str = "town"
+    # Georgist INTERNAL yield band — rents shown as band, not a point.
+    rent_display: str = "band"
+    yield_rate_low: float | None = None
+    yield_rate_high: float | None = None
+    yield_high_clipped_at_cap: bool = False
+    yield_result_hash: str | None = None
+    value_basis: str = "proxy"
+    bed_mapping_sensitive: bool = True
+    annual_ground_rent_low_gbp: float | None = None
+    annual_ground_rent_high_gbp: float | None = None
+    economic_annual_rent_low_gbp: float | None = None
+    economic_annual_rent_high_gbp: float | None = None
+    roll_annual_rent_notional_plot_low_gbp: float | None = None
+    roll_annual_rent_notional_plot_high_gbp: float | None = None
+    roll_annual_rent_parcel_low_gbp: float | None = None
+    roll_annual_rent_parcel_high_gbp: float | None = None
+    yield_calibration: dict = field(default_factory=dict)
+    publication_status: str = "blocked"
 
 
 def _equal_share_fields(economic_rent: float, config: dict) -> tuple[bool, float | None, float | None, int | None]:
@@ -207,6 +226,9 @@ def calculate_square_agr(
     )
     wide_range, wide_range_ratio = wide_range_for(council.code)
     basis = "countryside" if council.rural else "town"
+    yband = yield_band_from_config(config)
+    active_lo, active_hi = scale_rent(active_charge, yband)
+    econ_lo, econ_hi = scale_rent(round(economic_rent, 2), yband)
 
     return AgrBreakdown(
         annual_ground_rent_gbp=active_charge,
@@ -258,8 +280,38 @@ def calculate_square_agr(
         wide_range=wide_range,
         wide_range_ratio=wide_range_ratio,
         basis=basis,
+        rent_display="band",
+        yield_rate_low=assessment.yield_rate_low if assessment.yield_rate_low is not None else yband.low,
+        yield_rate_high=assessment.yield_rate_high if assessment.yield_rate_high is not None else yband.high,
+        yield_high_clipped_at_cap=bool(
+            assessment.yield_high_clipped_at_cap or yband.high_clipped_at_cap
+        ),
+        yield_result_hash=assessment.yield_result_hash or yband.result_hash,
+        value_basis=assessment.value_basis or yband.value_basis,
+        bed_mapping_sensitive=bool(assessment.bed_mapping_sensitive),
+        annual_ground_rent_low_gbp=active_lo,
+        annual_ground_rent_high_gbp=active_hi,
+        economic_annual_rent_low_gbp=econ_lo,
+        economic_annual_rent_high_gbp=econ_hi,
+        roll_annual_rent_notional_plot_low_gbp=assessment.roll_annual_rent_notional_plot_low_gbp,
+        roll_annual_rent_notional_plot_high_gbp=assessment.roll_annual_rent_notional_plot_high_gbp,
+        roll_annual_rent_parcel_low_gbp=assessment.roll_annual_rent_parcel_low_gbp,
+        roll_annual_rent_parcel_high_gbp=assessment.roll_annual_rent_parcel_high_gbp,
+        yield_calibration=yield_signoff_payload(yband),
+        publication_status=yband.publication_status,
     )
 
 
 def breakdown_to_dict(breakdown: AgrBreakdown) -> dict:
-    return asdict(breakdown)
+    """Serialise AGR breakdown. Point rent fields stay for maths; display is band-only."""
+    body = asdict(breakdown)
+    # Prefer band for any consumer that reads rent_display.
+    body["rent_band"] = {
+        "low_gbp": breakdown.annual_ground_rent_low_gbp,
+        "high_gbp": breakdown.annual_ground_rent_high_gbp,
+        "yield_low": breakdown.yield_rate_low,
+        "yield_high": breakdown.yield_rate_high,
+        "high_clipped_at_cap": breakdown.yield_high_clipped_at_cap,
+        "result_hash": breakdown.yield_result_hash,
+    }
+    return body

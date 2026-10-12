@@ -26,6 +26,7 @@ from dataclasses import asdict, dataclass, field
 
 from agr.areas import CouncilArea
 from agr.config import load_config
+from agr.yield_config import scale_rent, yield_band_from_config
 
 HPI_BASE_INDEX = 100.0
 
@@ -67,6 +68,18 @@ class RollAssessment:
     site_capital_clamped_sensitivity_gbp: float | None = None
     # Council median kept beside the published urban MV. Not a second charge.
     mv_council_gbp: float | None = None
+    # Georgist INTERNAL yield band (rents shown as band, not a point).
+    yield_rate_low: float | None = None
+    yield_rate_high: float | None = None
+    yield_high_clipped_at_cap: bool = False
+    yield_result_hash: str | None = None
+    roll_annual_rent_notional_plot_low_gbp: float | None = None
+    roll_annual_rent_notional_plot_high_gbp: float | None = None
+    roll_annual_rent_parcel_low_gbp: float | None = None
+    roll_annual_rent_parcel_high_gbp: float | None = None
+    rent_display: str = "band"
+    value_basis: str = "proxy"
+    bed_mapping_sensitive: bool = True
     notes: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -145,7 +158,8 @@ def _urban_residual_drc(
 
     floor_sqm = float(valuer.get("typical_dwelling_sqm", valuation.get("typical_dwelling_sqm", 85)))
     plot_sqm = float(valuer.get("typical_plot_sqm", 280))
-    yield_rate = float(valuer.get("yield_rate", valuation.get("yield_rate", 0.05)))
+    yband = yield_band_from_config(config)
+    yield_rate = float(valuer.get("yield_rate", valuation.get("yield_rate", yband.central)))
     remaining = float(
         (valuer.get("depreciation") or {}).get("average_stock_remaining_factor", 0.55)
     )
@@ -224,13 +238,22 @@ def _urban_residual_drc(
             f"Pickard urban economic factor {pickard:.0%} applied to residual site capital "
             "(speculative premium)."
         ),
-        f"Annual economic rent = economic site capital × yield {yield_rate:.0%}.",
         (
-            f"Effective rate = {pickard:.2f} × {yield_rate:.2f} = {effective_rate:.3f}. "
-            "These factors are labelled assumptions and are not calibrated."
+            f"Annual economic rent band = economic site capital × yield band "
+            f"{yband.low:.2%}–{yband.high:.2%} (central {yield_rate:.2%}; "
+            f"hash {yband.result_hash})."
+        ),
+        (
+            f"Yield decomposition (INTERNAL): r {yband.r:.2%} + p {yband.p:.2%} − g {yband.g:.2%} "
+            f"= {yband.central_from_decomposition:.2%}."
+            + (" High end clipped at the 4.5% cap." if yband.high_clipped_at_cap else "")
+        ),
+        (
+            f"Effective central rate = {pickard:.2f} × {yield_rate:.2f} = {effective_rate:.3f}. "
+            "Rents are shown as a band, not a point. publication_status=blocked."
         ),
         "The £/m² rate and the 9 m² cell are diagnostic. They are not the parcel charge.",
-        "Research estimate, not an official valuation or a tax bill.",
+        "Research estimate (INTERNAL provisional), not an official valuation or a tax bill.",
     ]
     if margin_note:
         notes.append(margin_note)
@@ -250,8 +273,8 @@ def _urban_residual_drc(
         used_ratio = min(raw_ratio, max_area_ratio)
         parcel_rent = round(dwelling_rent * (used_ratio ** eta), 2)
         notes.append(
-            f"Parcel roll line: £{parcel_rent:,.2f}/year = dwelling rent "
-            f"£{dwelling_rent:,.2f} × ({used_ratio:.3f})^{eta:.2f}."
+            f"Parcel roll line (central): £{parcel_rent:,.2f}/year = dwelling rent "
+            f"£{dwelling_rent:,.2f} × ({used_ratio:.3f})^{eta:.2f}. Display as yield band."
         )
         notes.append(
             f"Area elasticity {eta:.2f} is a labelled assumption. "
@@ -262,6 +285,9 @@ def _urban_residual_drc(
                 f"The area-ratio cap binds at {max_area_ratio:g} "
                 f"(parcel is {raw_ratio:.1f} times the {plot_sqm:.0f} m² reference plot)."
             )
+
+    plot_lo, plot_hi = scale_rent(dwelling_rent, yband)
+    parcel_lo, parcel_hi = scale_rent(parcel_rent, yband)
 
     return RollAssessment(
         method="residual_drc",
@@ -291,6 +317,17 @@ def _urban_residual_drc(
         parcel_area_sqm=parcel_area_sqm,
         site_capital_clamped_sensitivity_gbp=round(sensitivity, 2),
         mv_council_gbp=round(mv_council, 2),
+        yield_rate_low=yband.low,
+        yield_rate_high=yband.high,
+        yield_high_clipped_at_cap=yband.high_clipped_at_cap,
+        yield_result_hash=yband.result_hash,
+        roll_annual_rent_notional_plot_low_gbp=plot_lo,
+        roll_annual_rent_notional_plot_high_gbp=plot_hi,
+        roll_annual_rent_parcel_low_gbp=parcel_lo,
+        roll_annual_rent_parcel_high_gbp=parcel_hi,
+        rent_display="band",
+        value_basis=yband.value_basis,
+        bed_mapping_sensitive=yband.bed_mapping_sensitive,
         notes=notes,
     )
 
@@ -307,7 +344,8 @@ def _rural_productive(
     per_square = config["per_square"]
     land_use = config["land_use_values_gbp_per_ha_2009"]
 
-    yield_rate = float(valuer.get("yield_rate", valuation.get("yield_rate", 0.05)))
+    yband = yield_band_from_config(config)
+    yield_rate = float(valuer.get("yield_rate", valuation.get("yield_rate", yband.central)))
     pickard = float(despec.get("farmland_market_to_productive", 0.20))
     grid_sqm = float(per_square.get("area_sqm", 9))
     # Notional rural assessment unit = 1 ha for roll display, still report /sqm
@@ -326,6 +364,7 @@ def _rural_productive(
 
     rent_per_sqm = economic_per_sqm * yield_rate
     rent_market_per_sqm = market_per_sqm * yield_rate
+    plot_rent = round(rent_per_sqm * notional_plot, 2)
 
     notes = [
         "Rural productive assessment (Pickard / land-use category).",
@@ -333,15 +372,21 @@ def _rural_productive(
         "Uniform category rent across Scotland. Urban area elasticity is not applied.",
         f"Category capital £{agriculture_ha:,.0f}/ha (2009) × HPI factor {hpi_factor:.2f} = £{marketish_per_ha:,.0f}/ha.",
         f"Pickard farmland productive factor {pickard:.0%} (market ≈ 5× productive in Pickard 2018).",
-        f"Economic site capital £{economic_per_ha:,.0f}/ha; annual rent at {yield_rate:.0%} yield.",
+        (
+            f"Economic site capital £{economic_per_ha:,.0f}/ha; annual rent band at "
+            f"{yband.low:.2%}–{yband.high:.2%} (central {yield_rate:.2%}; hash {yband.result_hash})."
+        ),
         f"Council: {council.name} ({council.code}).",
-        "Research estimate, not an official valuation or a tax bill.",
+        "Research estimate (INTERNAL provisional), not an official valuation or a tax bill.",
     ]
     confidence = "medium" if council.distance_km < 25 else "low"
 
     parcel_rent = None
     if parcel_area_sqm and parcel_area_sqm > 0:
         parcel_rent = round(rent_per_sqm * parcel_area_sqm, 2)
+
+    plot_lo, plot_hi = scale_rent(plot_rent, yband)
+    parcel_lo, parcel_hi = scale_rent(parcel_rent, yband)
 
     return RollAssessment(
         method="productive_land_use",
@@ -366,9 +411,20 @@ def _rural_productive(
         pickard_label="farmland_market_to_productive",
         roll_annual_rent_per_sqm_gbp=round(rent_per_sqm, 6),
         roll_annual_rent_grid_square_gbp=round(rent_per_sqm * grid_sqm, 4),
-        roll_annual_rent_notional_plot_gbp=round(rent_per_sqm * notional_plot, 2),
+        roll_annual_rent_notional_plot_gbp=plot_rent,
         roll_annual_rent_parcel_gbp=parcel_rent,
         parcel_area_sqm=parcel_area_sqm,
+        yield_rate_low=yband.low,
+        yield_rate_high=yband.high,
+        yield_high_clipped_at_cap=yband.high_clipped_at_cap,
+        yield_result_hash=yband.result_hash,
+        roll_annual_rent_notional_plot_low_gbp=plot_lo,
+        roll_annual_rent_notional_plot_high_gbp=plot_hi,
+        roll_annual_rent_parcel_low_gbp=parcel_lo,
+        roll_annual_rent_parcel_high_gbp=parcel_hi,
+        rent_display="band",
+        value_basis=yband.value_basis,
+        bed_mapping_sensitive=yband.bed_mapping_sensitive,
         notes=notes,
     )
 

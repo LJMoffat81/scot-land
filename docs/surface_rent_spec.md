@@ -73,9 +73,9 @@ Suppression is detected by an absent Median row, not by 0. This matches the exis
 2. **Gross yield to land yield** (config deductions, all labelled ASSUMPTION until sourced):
    `y_land = g × (1 − void) × (1 − opex) − dep_bldg × (DRC/P)`
    with defaults `void = 0.04`, `opex = 0.25` (management, repairs, insurance, compliance), and `dep_bldg = 1/L_life` applied to the building share. Q3 covers the alternative residual-income form `rent_L = R_net − (y_land + dep) × DRC`.
-3. **Thin evidence:** a cell with fewer than `prs_min_records` (published sample counts) or fewer than `price_min_sales` falls back to the BRMA-wide value, then to `surface_rent.yield.fallback` (default 0.05). That default is consistent with `valuer_roll.yield_rate`, but the code still has `yield_rate` `as_of: unknown`. Tag `yield_fallback:<level>`.
-4. **Zone yield** = Σ_b `dz_brma_share(z,b) × y_land(b, c_z)`. GIS supplies `dz_brma_share(code, vintage, brma_id, dwelling_share)`, with Σ_b = 1 per zone validated at load (tolerance 1e-6).
-5. Never hard-coded (rule 3). Note: `backend/georgist/calibration.py` currently hard-codes `cap_rate = 0.05`, which must change.
+3. **Thin evidence:** a cell with fewer than `prs_min_records` (published sample counts) or fewer than `price_min_sales` falls back to the BRMA-wide value, then to configured `land_yield` (Georgist INTERNAL provisional **3.99%**, hash `b3442d47`; band **3.52–4.50%** clipped at the 4.5% cap). Matches `valuer_roll.yield_rate`. Tag `yield_fallback:<level>`; config fallbacks also carry `fallback_rent_zone` and `bed_mapping_sensitive` (390 fallback-rent zones). The 727 model-fill zones stay null here (PR #18).
+4. **Zone yield** = Σ_b `dz_brma_share(z,b) × y_land(b, c_z)`. GIS supplies `dz_brma_share(code, vintage, brma_id, dwelling_share)`, with Σ_b = 1 per zone validated at load (tolerance 1e-6). When share halfwidths are absent, `yield.band` supplies the rent band so figures are never a lone point.
+5. Never hard-coded (rule 3). `backend/georgist/calibration.py` reads `land_yield` from `surface.yaml`.
 6. Business land rent from SAA rateable values is a **later module** and is out of scope here.
 
 ## 5. Rent and apportionment

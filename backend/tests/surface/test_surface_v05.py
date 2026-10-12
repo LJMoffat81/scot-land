@@ -31,12 +31,21 @@ def test_yield_band_from_share_halfwidth():
     assert sr.blend_zone_yield({"B1": 1.0}, cells, halfwidths={"B1": 0.0}).y_low is None
 
 
-def test_share_halfwidth_widens_rent_band(cfg, band):
+def test_share_halfwidth_and_config_yield_bands(cfg, band):
+    """No halfwidths → Georgist config yield band; halfwidths → BRMA share-bounds band."""
     cells = {"B1": sr.YieldCell("B1", 2, 0.03, "cell"), "B2": sr.YieldCell("B2", 2, 0.05, "cell")}
-    narrow = _row(cfg, band, zone_yield=sr.blend_zone_yield({"B1": 0.85, "B2": 0.15}, cells))
-    wide = _row(cfg, band, zone_yield=sr.blend_zone_yield({"B1": 0.85, "B2": 0.15}, cells, halfwidths={"B1": 0.05, "B2": 0.05}))
-    assert wide["measured_rent"] == pytest.approx(narrow["measured_rent"])
-    assert wide["uncertainty_low"] < narrow["uncertainty_low"] and wide["uncertainty_high"] > narrow["uncertainty_high"]
+    config_band = _row(cfg, band, zone_yield=sr.blend_zone_yield({"B1": 0.85, "B2": 0.15}, cells))
+    share_band = _row(
+        cfg, band,
+        zone_yield=sr.blend_zone_yield(
+            {"B1": 0.85, "B2": 0.15}, cells, halfwidths={"B1": 0.05, "B2": 0.05},
+        ),
+    )
+    assert share_band["measured_rent"] == pytest.approx(config_band["measured_rent"])
+    assert "yield_band_from_config" in config_band["proxy_tags"]
+    assert "brma_share_bounds_in_band" in share_band["proxy_tags"]
+    assert config_band["uncertainty_low"] < config_band["measured_rent"] < config_band["uncertainty_high"]
+    assert share_band["uncertainty_low"] < share_band["measured_rent"] < share_band["uncertainty_high"]
 
 
 def test_rent_per_residential_hectare(cfg, band):

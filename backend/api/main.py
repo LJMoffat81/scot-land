@@ -24,6 +24,7 @@ from api.cadastral_routes import router as cadastral_router
 from api.common import _load_postcode_api_url, _scotland_bounds_check  # noqa: F401  (back-compat)
 from api.cors import cors_settings
 from api.internal_auth import ENV_TOKEN as INTERNAL_TOKEN_ENV, configured_token
+from api.nrs_routes import router as nrs_router
 from api.wealth_routes import router as wealth_router
 from georgist.db import db_status
 from georgist.publication_rules import check_router
@@ -41,6 +42,7 @@ OPTIONAL_ROUTERS: tuple[tuple[str, str], ...] = (
 ROUTER_STATUS: dict[str, dict[str, Any]] = {
     "api.wealth_routes": {"loaded": True},
     "api.cadastral_routes": {"loaded": True},
+    "api.nrs_routes": {"loaded": True},
 }
 
 
@@ -105,6 +107,8 @@ def create_app() -> FastAPI:
     app.include_router(wealth_router)
     check_router("api.cadastral_routes", [p for _, p in registered_routes(cadastral_router)])
     app.include_router(cadastral_router)
+    check_router("api.nrs_routes", [p for _, p in registered_routes(nrs_router)])
+    app.include_router(nrs_router)
     from api.geocode_routes import router as geocode_router  # noqa: PLC0415
 
     check_router("api.geocode_routes", [p for _, p in registered_routes(geocode_router)])

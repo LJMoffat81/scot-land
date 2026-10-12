@@ -11,6 +11,7 @@ Supply **completed residential (then all-tenure) sales** for Scotland so the AGR
 | Residential sales for pilot | Contact ROS re research / open / commercial extract for **Glasgow City** or **Ward 18 area** |
 | Fields | Price, completion/settlement date, property type, postcode or coordinates, title/UPRN if available, new-build flag if available |
 | Cadastre | Live INSPIRE WMS tiles + local PostGIS ingest of Index Polygons (`python -m etl.ingest_inspire_parcels`); see `scripts/data/README-inspire.md` |
+| Settlements / localities | NRS Census 2022 OGL polygons → PostGIS (`python -m etl.ingest_nrs_settlements --fetch`); see `scripts/data/README-nrs-settlements.md` |
 | Licence | Record in `data/licensed/LICENSE.txt` (local only) |
 
 **Do not** substitute England & Wales Price Paid as “Scotland sales.”

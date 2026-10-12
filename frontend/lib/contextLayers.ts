@@ -189,13 +189,27 @@ export const CONTEXT_LAYERS: ContextLayer[] = [
     group: "Place",
     kind: "raster",
     attribution:
-      "Contains National Records of Scotland data. Contains Ordnance Survey data © Crown copyright and database right.",
+      "Contains National Records of Scotland data © Crown copyright and database right. Contains Ordnance Survey data © Crown copyright and database right. OGL-3.0.",
     title:
-      "Census 2022 settlements, places of 500 people or more. Contains National Records of Scotland data. Contains Ordnance Survey data © Crown copyright and database right.",
+      "Census 2022 settlements, places of 500 people or more (NRS, OGL). Contains National Records of Scotland data. Contains Ordnance Survey data © Crown copyright and database right.",
     minzoom: 6,
     maxzoom: 18,
     color: "#0b1e3a",
     opacity: 0.65,
+  },
+  {
+    id: "localities",
+    label: "Localities",
+    group: "Place",
+    kind: "raster",
+    attribution:
+      "Contains National Records of Scotland data © Crown copyright and database right. Contains Ordnance Survey data © Crown copyright and database right. OGL-3.0.",
+    title:
+      "Census 2022 localities (NRS, OGL). Built-up localities — place geography, not ownership. Contains National Records of Scotland data. Contains Ordnance Survey data © Crown copyright and database right.",
+    minzoom: 7,
+    maxzoom: 18,
+    color: "#1d4e89",
+    opacity: 0.55,
   },
   {
     id: "urban-rural",

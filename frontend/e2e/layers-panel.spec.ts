@@ -29,6 +29,24 @@ const FIXTURE_CATALOG = {
       minzoom: 12,
     },
     {
+      id: "settlements",
+      group: "spatial",
+      status: "live",
+      label: "NRS Settlements",
+      licence: "OGL-3.0",
+      source_url:
+        "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer",
+    },
+    {
+      id: "localities",
+      group: "spatial",
+      status: "live",
+      label: "NRS Localities",
+      licence: "OGL-3.0",
+      source_url:
+        "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer",
+    },
+    {
       id: "vdl",
       group: "spatial",
       status: "live",

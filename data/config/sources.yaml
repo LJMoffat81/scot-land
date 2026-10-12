@@ -457,6 +457,42 @@ community_ownership:
     - Confidential assets excluded from the open dataset
     - Spatial Hub CAT register remains login-gated for WFS (separate product)
 
+nrs_settlements_localities:
+  name: NRS Census 2022 Settlements and Localities
+  role: settlement_and_locality_polygons_for_map_and_valuation_mask
+  licence: OGL-3.0
+  attribution: >-
+    Contains National Records of Scotland data © Crown copyright and database
+    right. Contains Ordnance Survey data © Crown copyright and database right.
+  source_url: https://www.nrscotland.gov.uk/statistics-and-data/geography
+  mapserver_url: >-
+    https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer
+  wfs_url: >-
+    https://maps.gov.scot/server/services/NRS/Census2022/MapServer/WFSServer
+  vintage: Census 2022
+  ingest: python -m etl.ingest_nrs_settlements --fetch --replace
+  raw_dir: data/external/nrs
+  refresh_doc: scripts/data/README-nrs-settlements.md
+  layers:
+    settlements:
+      name: NRS Census 2022 Settlements
+      product: Settlements (places of 500+ people)
+      wfs_type: CEN2022:Settlement2022
+      mapserver_layer_id: 8
+      postgis_table: nrs_settlements
+      bbox_endpoint: /layers/open/settlements
+    localities:
+      name: NRS Census 2022 Localities
+      product: Localities (built-up localities within / beside settlements)
+      wfs_type: CEN2022:Locality2022
+      mapserver_layer_id: 6
+      postgis_table: nrs_localities
+      bbox_endpoint: /layers/open/localities
+  gaps:
+    - Settlements cover places of 500 people or more only
+    - Localities are not a land-ownership or title product
+    - Small rural clusters below the settlement threshold are not drawn
+    - Population counts are Census 2022 figures, not a land rent
 
 vdl:
   name: Scottish Vacant and Derelict Land Survey (SVDLS)

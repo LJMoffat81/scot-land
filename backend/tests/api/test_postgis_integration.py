@@ -25,7 +25,7 @@ def pg(monkeypatch):
     conn = db.connect()
     with conn.cursor() as cur:  # throwaway DB: rebuild so schema changes always apply
         cur.execute(
-            "DROP TABLE IF EXISTS alembic_version, inspire_parcels_meta, inspire_parcels, surface_rent_dz, "
+            "DROP TABLE IF EXISTS alembic_version, inspire_parcels_meta, inspire_parcels, nrs_settlements, nrs_localities, surface_rent_dz, "
             "resource_wealth, eco_wealth, planning_sites, dz_spine, dz_boundaries, "
             "dz_denominators, dz_dwelling_counts, dz_population_counts CASCADE"
         )
@@ -572,3 +572,46 @@ def test_zero_dwellings_zone_with_old_ros_sales_is_not_applicable(pg, client, ma
     assert z["rent_per_dwelling"] is None and z["rent_per_residential_ha"] is None and z["rent_per_res_ha"] is None
     assert z["denominator_flags"] == ["zero_dwellings"] and layer["zero_dwellings"] == [zone]
     assert layer["data"][ZONE]["status"] == "ok" and layer["data"][ZONE]["measured_rent"] > 0
+
+
+def test_nrs_settlements_bbox_when_loaded(pg, client):
+    """SYNTHETIC NRS settlement polygon → bbox 200 with features."""
+    with pg.cursor() as cur:
+        cur.execute(
+            """
+            INSERT INTO nrs_settlements (code, name, popcount, area_m2, geom)
+            VALUES (
+              'S53009999', 'SYNTHETIC Settlement', 1200, 500000,
+              ST_Multi(ST_SetSRID(ST_MakeEnvelope(-4.30, 55.84, -4.22, 55.88), 4326))
+            )
+            ON CONFLICT (code) DO NOTHING
+            """
+        )
+        cur.execute(
+            """
+            INSERT INTO nrs_localities (code, name, popcount, area_m2, geom)
+            VALUES (
+              'S52009999', 'SYNTHETIC Locality', 800, 200000,
+              ST_Multi(ST_SetSRID(ST_MakeEnvelope(-4.29, 55.85, -4.23, 55.87), 4326))
+            )
+            ON CONFLICT (code) DO NOTHING
+            """
+        )
+    pg.commit()
+    r = client.get(
+        "/layers/open/settlements",
+        params={"south": 55.84, "west": -4.30, "north": 55.88, "east": -4.22},
+    )
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["type"] == "FeatureCollection"
+    assert body["meta"]["ok"] is True
+    assert any(f["properties"]["code"] == "S53009999" for f in body["features"])
+    r2 = client.get(
+        "/layers/open/localities",
+        params={"south": 55.84, "west": -4.30, "north": 55.88, "east": -4.22},
+    )
+    assert r2.status_code == 200, r2.text
+    assert any(
+        f["properties"]["code"] == "S52009999" for f in r2.json()["features"]
+    )

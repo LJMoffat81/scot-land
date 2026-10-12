@@ -55,6 +55,8 @@ npm run dev
 | `GET /layers/parcels?...` | RoS INSPIRE Index Polygons bbox (PostGIS; **503** if table empty; empty viewport **200** when loaded; CI may use `--fixture`) |
 | `GET /layers/parcels/tiles/{z}/{x}/{y}` | Live RoS INSPIRE WMS proxy (soft-fail tiles) |
 | `GET /layers/parcels/at?lat=&lng=` | Parcel under a point (live WMS GetFeatureInfo) |
+| `GET /layers/open/settlements?...` | NRS Census 2022 settlements bbox (PostGIS; **503** if not loaded) |
+| `GET /layers/open/localities?...` | NRS Census 2022 localities bbox (PostGIS; **503** if not loaded) |
 | `GET /layers/open/vdl` | SVDLS vacant/derelict sites (bbox; **503** if upstream down) |
 | `GET /layers/open/public-land` | Public / Crown Estate overlay (**licence unverified/not open** — hidden from public map; **503** if upstream down) |
 | `GET /layers/open/community-ownership` | SG Community Ownership 2024 points (PostGIS; **503** if unloaded; ownership-context, no £ rent) |

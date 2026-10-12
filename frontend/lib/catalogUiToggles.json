@@ -4,6 +4,8 @@
     "boundaries",
     "cell_grid",
     "data_zones",
+    "settlements",
+    "localities",
     "vdl",
     "hydro_sites",
     "sepa_car"

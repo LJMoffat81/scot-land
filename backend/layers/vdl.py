@@ -3,6 +3,10 @@
 Authoritative site list: Scottish Government SVDLS site register.
 Spatial overlay: Spatial Hub / Improvement Service republish of SVDLS
 polygons (OGL). Site-level as published — survey polygons, not a title plan.
+
+Geometry precedence (room decision): Spatial Hub survey > RoS title outline >
+point. Each site is tagged with ``geometry_source``. The live FeatureServer
+path is Spatial Hub survey only; see ``layers.svdls_geometry``.
 """
 
 from __future__ import annotations
@@ -10,6 +14,12 @@ from __future__ import annotations
 from typing import Any
 
 import httpx
+
+from layers.svdls_geometry import (
+    GEOMETRY_PRECEDENCE,
+    GEOMETRY_SOURCE_LABELS,
+    GEOMETRY_SOURCE_SPATIALHUB_SURVEY,
+)
 
 FEATURE_URL = (
     "https://services2.arcgis.com/Ne8d9gKn5SJ3eAaw/ArcGIS/rest/services/"
@@ -28,6 +38,10 @@ SITE_TYPES = (
     "Vacant Land and Buildings",
     "Derelict",
 )
+
+# Live open overlay geometry: Spatial Hub survey (highest public precedence).
+LIVE_GEOMETRY_SOURCE = GEOMETRY_SOURCE_SPATIALHUB_SURVEY
+
 
 ATTRIBUTION = (
     "Scottish Vacant and Derelict Land Survey. "
@@ -70,6 +84,9 @@ def _site_props(attrs: dict[str, Any]) -> dict[str, Any]:
         "site_code": attrs.get("site_code"),
         "address": attrs.get("address"),
         "period": attrs.get("period"),
+        # Live FeatureServer features are Spatial Hub survey polygons.
+        "geometry_source": LIVE_GEOMETRY_SOURCE,
+        "geometry_source_label": GEOMETRY_SOURCE_LABELS[LIVE_GEOMETRY_SOURCE],
         "layer": "vdl",
         "source": ATTRIBUTION,
     }
@@ -145,6 +162,8 @@ def query_point(lat: float, lng: float) -> dict[str, Any]:
                 "site_code": props["site_code"],
                 "address": props["address"],
                 "period": props["period"],
+                "geometry_source": props["geometry_source"],
+                "geometry_source_label": props["geometry_source_label"],
             }
         )
     return {
@@ -155,9 +174,11 @@ def query_point(lat: float, lng: float) -> dict[str, Any]:
         "register_url": REGISTER_URL,
         "spatial_hub_url": SPATIAL_HUB_URL,
         "licence": "OGL-3.0",
+        "geometry_precedence": list(GEOMETRY_PRECEDENCE),
         "note": (
             "SVDLS site class and owner class are survey fields, not a legal title. "
-            "Confirm ownership on ScotLIS."
+            "Confirm ownership on ScotLIS. Geometry precedence: Spatial Hub survey, "
+            "then RoS title outline, then point."
         ),
     }
 
@@ -227,11 +248,15 @@ def query_bbox(
             "publication_url": PUBLICATION_URL,
             "licence": "OGL-3.0",
             "site_types": list(SITE_TYPES),
+            "geometry_precedence": list(GEOMETRY_PRECEDENCE),
+            "geometry_source_live": LIVE_GEOMETRY_SOURCE,
             "gaps": [
                 "Owner class is a survey field, not legal title",
                 "Survey polygons are indicative — confirm extent on ScotLIS",
                 "Sites removed or re-coded since the Spatial Hub vintage may differ "
                 "from the latest SG site register",
+                "RoS title-outline geometry stays internal until OS/RoS end-user "
+                "terms are cleared for public publication",
             ],
         },
     }

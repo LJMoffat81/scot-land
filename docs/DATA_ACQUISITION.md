@@ -102,9 +102,11 @@ Do not scrape Spatial Hub. Do not commit raw downloads under `data/external`.
 | Spatial Hub | https://data.spatialhub.scot/dataset/vacant_and_derelict_land-is |
 | BBox API | `GET /layers/open/vdl` → **503** when upstream unavailable |
 | Site types | Vacant Land; Vacant Land and Buildings; Derelict |
-| Gaps | Owner class is a survey field (not title); Spatial Hub vintage may lag the SG register |
+| Geometry precedence | **Spatial Hub survey > RoS title outline > point** — each site tagged `geometry_source` (`backend/layers/svdls_geometry.py`) |
+| Live open overlay | Spatial Hub survey polygons only (`geometry_source=spatialhub_survey`) |
+| Gaps | Owner class is a survey field (not title); Spatial Hub vintage may lag the SG register; RoS title outlines stay internal until OS/RoS end-user terms cleared |
 
-Registry: `data/config/sources.yaml` → `vdl`. Zone-level rollups used by the Wealth Engine live under `data/processed/gis/` (see `README_svdls_hls.md`); the public map layer uses the live OGL FeatureServer, not gitignored `data/external`.
+Registry: `data/config/sources.yaml` → `vdl`. Zone-level rollups used by the Wealth Engine live under `data/processed/gis/` (see `README_svdls_hls.md`); the public map layer uses the live OGL FeatureServer, not gitignored `data/external`. GIS will review licences / CRS / zone alignment before merge of the map-layer PR.
 
 ## Local layout after acquisition
 

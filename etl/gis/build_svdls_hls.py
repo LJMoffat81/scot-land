@@ -1,8 +1,13 @@
 """Build SVDLS (vacant & derelict) and HLS (housing land supply) site layers + Data Zone rollups.
-Master list: gov.scot SVDLS Site Register 2025 (points, hectares).  Geometry order per site:
-  a) spatialhub_polygon / spatialhub_buffer  (Spatial Hub VDL polygon matched on local authority + site_code)
-  b) ros_inspire_outline  (RoS INSPIRE title containing the grid ref, area within +/-30% of register ha; INTERNAL)
-  c) point_sized          (circle at the grid ref with area = register ha)
+Master list: gov.scot SVDLS Site Register 2025 (points, hectares).  Geometry order per site
+(room decision — Spatial Hub survey > RoS title outline > point; tagged geom_provenance):
+  a) spatialhub_polygon / spatialhub_buffer  → geometry_source spatialhub_survey
+     (Spatial Hub VDL polygon matched on local authority + site_code)
+  b) ros_inspire_outline  → geometry_source ros_title_outline
+     (RoS INSPIRE title containing the grid ref, area within +/-30% of register ha; INTERNAL)
+  c) point_sized          → geometry_source point
+     (circle at the grid ref with area = register ha)
+Canonical tags/precedence: backend/layers/svdls_geometry.py
 Cross-list duplicates: HLS polygon overlapping an SVDLS site by >=50% of the smaller shape -> flagged both ways.
 Zone rollups: area-of-overlap allocation (footprint_area) to DZ2011 + DZ2022, point-on-surface/nearest fallback.
 All geometry EPSG:27700.  vintage = integer 2011 / 2022."""

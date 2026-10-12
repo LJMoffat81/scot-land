@@ -51,7 +51,7 @@ npm run dev
 | **Public land** | SG 2024 five bodies | Top of Layers; on by default zoom ≥ 8; owner-type legend; gaps flagged |
 | Council AGR | All Scotland | Overview choropleth (Annual Ground Rent — not Surface Rent) |
 | W3W grid | Current map view | Zoom ≥ 12; every cell up to cap (then sampled) |
-| **Vacant and derelict** | SVDLS site-level survey polygons | Ownership and cadastre; site-type legend + credits; zoom ≥ 8; click popup |
+| **Vacant and derelict** | SVDLS site-level survey polygons | Ownership and cadastre; site-type legend + credits; zoom ≥ 8; click popup; each site tagged `geometry_source` (Spatial Hub survey > RoS title outline > point) |
 | Coverage | Live vs linked/gap | Sidebar **Coverage** list; live rows toggle overlays |
 | Vacant residual story | Council choropleth + overlay | `/?story=vacant_land` |
 | Filters | Vacant / public overlays, rent band | `/?vacant=1&public=1&band=high` |

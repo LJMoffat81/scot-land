@@ -411,6 +411,7 @@ function layerPopupHtml(parts: {
   vdlSizeHa?: number | null;
   vdlSiteCode?: string | null;
   vdlOwnerClass?: string | null;
+  vdlGeometrySource?: string | null;
   source?: string | null;
 }): string | null {
   const rows: string[] = [];
@@ -452,6 +453,11 @@ function layerPopupHtml(parts: {
     if (parts.vdlOwnerClass) {
       rows.push(
         `Owner class (survey): ${escapeHtml(parts.vdlOwnerClass)}`,
+      );
+    }
+    if (parts.vdlGeometrySource) {
+      rows.push(
+        `Geometry: ${escapeHtml(parts.vdlGeometrySource)}`,
       );
     }
   }
@@ -1433,6 +1439,8 @@ export default function ScotlandMap() {
               size_ha?: number | string;
               site_code?: string;
               owner_class?: string;
+              geometry_source?: string;
+              geometry_source_label?: string;
               source?: string;
             }
           | undefined;
@@ -1485,6 +1493,10 @@ export default function ScotlandMap() {
             vdlSizeHa != null && Number.isFinite(vdlSizeHa) ? vdlSizeHa : null,
           vdlSiteCode: vdlProps?.site_code || null,
           vdlOwnerClass: vdlProps?.owner_class || null,
+          vdlGeometrySource:
+            vdlProps?.geometry_source_label ||
+            vdlProps?.geometry_source ||
+            null,
           source:
             vdlProps?.source ||
             publicProps?.source ||

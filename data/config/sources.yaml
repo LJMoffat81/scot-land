@@ -159,10 +159,18 @@ vdl:
     - Vacant Land
     - Vacant Land and Buildings
     - Derelict
+  # Room decision: Spatial Hub survey > RoS title outline > point (see layers/svdls_geometry.py)
+  geometry_precedence:
+    - spatialhub_survey
+    - ros_title_outline
+    - point
+  geometry_source_live: spatialhub_survey
+  geometry_module: backend/layers/svdls_geometry.py
   gaps:
     - Owner class is a survey field, not legal title
     - Survey polygons are indicative — confirm extent on ScotLIS
     - Spatial Hub vintage may lag the latest SG site register
+    - RoS title-outline geometry stays internal until OS/RoS end-user terms cleared
 
 sales:
   status: scaffolded

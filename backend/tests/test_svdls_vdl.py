@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from layers.svdls_geometry import (
+    GEOMETRY_PRECEDENCE,
+    GEOMETRY_SOURCE_SPATIALHUB_SURVEY,
+)
 from layers.vdl import SITE_TYPES, _site_props, _size_ha
 
 
@@ -43,6 +47,8 @@ def test_site_props_map_published_fields():
     assert props["address"] == "Arrochar"
     assert props["period"] == "1980 or earlier"
     assert props["layer"] == "vdl"
+    assert props["geometry_source"] == GEOMETRY_SOURCE_SPATIALHUB_SURVEY
+    assert props["geometry_source_label"] == "Spatial Hub survey"
     assert "Open Government Licence" in props["source"]
     assert "Improvement Service" in props["source"]
 
@@ -123,6 +129,8 @@ def test_vdl_ok_returns_site_level_properties(client, monkeypatch):
                         "local_authority": "Glasgow City",
                         "owner_class": "Local Authority",
                         "site_code": "GLA TEST1",
+                        "geometry_source": GEOMETRY_SOURCE_SPATIALHUB_SURVEY,
+                        "geometry_source_label": "Spatial Hub survey",
                         "layer": "vdl",
                         "source": "Scottish Vacant and Derelict Land Survey.",
                     },
@@ -133,6 +141,8 @@ def test_vdl_ok_returns_site_level_properties(client, monkeypatch):
                 "layer": "vdl",
                 "count": 1,
                 "licence": "OGL-3.0",
+                "geometry_precedence": list(GEOMETRY_PRECEDENCE),
+                "geometry_source_live": GEOMETRY_SOURCE_SPATIALHUB_SURVEY,
                 "register_url": (
                     "https://www.gov.scot/publications/"
                     "the-scottish-vacant-and-derelict-land-survey-site-register/"
@@ -149,4 +159,8 @@ def test_vdl_ok_returns_site_level_properties(client, monkeypatch):
     assert props["site_type"] == "Vacant Land"
     assert props["size_ha"] == 1.25
     assert props["owner_class"] == "Local Authority"
-    assert "register_url" in r.json()["meta"]
+    assert props["geometry_source"] == GEOMETRY_SOURCE_SPATIALHUB_SURVEY
+    meta = r.json()["meta"]
+    assert "register_url" in meta
+    assert meta["geometry_precedence"] == list(GEOMETRY_PRECEDENCE)
+    assert meta["geometry_source_live"] == GEOMETRY_SOURCE_SPATIALHUB_SURVEY

@@ -60,6 +60,8 @@ npm run dev
 | `GET /layers/open/vdl` | SVDLS vacant/derelict sites (bbox; **503** if upstream down) |
 | `GET /layers/open/public-land` | Public / Crown Estate overlay (**licence unverified/not open** — hidden from public map; **503** if upstream down) |
 | `GET /layers/open/community-ownership` | SG Community Ownership 2024 points (PostGIS; **503** if unloaded; ownership-context, no £ rent) |
+| `GET /layers/open/nfi` | National Forest Inventory woodland (PostGIS bbox; **503** if unloaded; ledger row 1) |
+| `GET /layers/open/native-woodland` | Native Woodland Survey of Scotland (PostGIS bbox; **503** if unloaded; ledger row 1) |
 | `GET /platform/place` | Ownership / vacant / gap card |
 | `GET /platform/gaps` | Visible register gaps |
 | `GET /downloads` | Open layer and official source index |
@@ -92,7 +94,8 @@ npm run dev
 | Filters | Vacant / public overlays, rent band | `/?vacant=1&public=1&band=high` |
 | Click | Any cell | Layer popup (parcel id / area / owner type / SVDLS site) + residual place card |
 
-Cadastre ingest (one command each): `--pilot` (Edinburgh/MID + Fife), `--all` (33 counties), or `--fixture` (CI). Self-fetch never writes `data/external/`. See `scripts/data/README-inspire.md`. Licence **OGL-3.0**.
+Cadastre ingest (one command each): `--pilot` (Edinburgh/MID + Fife), `--all` (33 counties), or `--fixture` (CI). Self-fetch never writes `data/external/`. See `scripts/data/README-inspire.md`. Licence **OGL-3.0**.  
+Woodland ingest: `python -m etl.ingest_woodland_layers` — see `scripts/data/README-woodland.md`.
 
 Crofting / common grazings (OGL CSV → PostGIS): `python -m etl.ingest_crofting --download` (raw under `data/external/crofting/`, gitignored). Fixtures: `python -m etl.ingest_crofting --from-fixtures`.
 

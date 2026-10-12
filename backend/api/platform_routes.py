@@ -43,6 +43,8 @@ from layers.naturescot import query_sssi_bbox as sssi_bbox
 from layers.vdl import query_bbox as vdl_bbox
 from layers.community_ownership import LayerUnavailable as CommunityOwnershipUnavailable
 from layers.community_ownership import query_bbox as community_ownership_bbox
+from layers.woodland import LayerUnavailable as WoodlandUnavailable
+from layers.woodland import query_native_woodland_bbox, query_nfi_bbox
 
 router = APIRouter()
 
@@ -385,6 +387,66 @@ def layer_open_community_ownership(
         )
     except CommunityOwnershipUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return JSONResponse(payload)
+
+
+@router.get("/layers/open/nfi")
+def layer_open_nfi(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=80, ge=1, le=80),
+) -> JSONResponse:
+    """National Forest Inventory woodland polygons (PostGIS ingest).
+
+    Returns **503** when ``nfi_woodland`` is missing or empty — never invents
+    woodland. An empty FeatureCollection with meta.ok=true means no polygons
+    in view. Ledger row 1 land-use overlay — no rent.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    try:
+        payload = query_nfi_bbox(south, west, north, east, max_features=max_features)
+    except WoodlandUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"National Forest Inventory overlay is not available: {exc}. "
+                "Load PostGIS via python -m etl.ingest_woodland_layers — "
+                "gaps are not filled with guesses."
+            ),
+        ) from exc
+    return JSONResponse(payload)
+
+
+@router.get("/layers/open/native-woodland")
+def layer_open_native_woodland(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=80, ge=1, le=80),
+) -> JSONResponse:
+    """Native Woodland Survey of Scotland polygons (PostGIS ingest).
+
+    Returns **503** when ``native_woodland`` is missing or empty — never invents
+    survey polygons. An empty FeatureCollection with meta.ok=true means none
+    in view. Ledger row 1 land-use overlay — no rent.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    try:
+        payload = query_native_woodland_bbox(
+            south, west, north, east, max_features=max_features
+        )
+    except WoodlandUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"Native Woodland Survey overlay is not available: {exc}. "
+                "Load PostGIS via python -m etl.ingest_woodland_layers — "
+                "gaps are not filled with guesses."
+            ),
+        ) from exc
     return JSONResponse(payload)
 
 

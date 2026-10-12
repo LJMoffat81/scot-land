@@ -641,6 +641,67 @@ naturescot_designations:
     - Status and extent can change after the download vintage
     - Constraint overlays are £0 and never a rent row (C-overlay)
 
+nfi:
+  name: National Forest Inventory Woodland Scotland
+  role: woodland_land_use_overlay
+  ledger_role: ledger-row
+  ledger_row: "1"
+  ui_surface: ledger
+  licence: Open Government Licence v3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  attribution: >-
+    © Forestry Commission copyright. Contains Ordnance Survey data
+    © Crown copyright and database right 2026. Licensed under the
+    Open Government Licence v3.0. Served via NatureScot Scottish Forestry GeoServer.
+  source_url: >-
+    https://www.data.gov.uk/dataset/c50cddf4-cdf0-42fb-8ac1-eae0cb6ef5ad/national-forest-inventory-scotland-2025
+  wfs_url: https://ogc.nature.scot/geoserver/scottishforestry/ows
+  wfs_type_name: scottishforestry:National_Forest_Inventory_Woodland_Scotland
+  wms_layer: National_Forest_Inventory_Woodland_Scotland
+  publisher: Forestry Commission / Forest Research (NatureScot OGC host)
+  vintage: NFI Scotland open product (see data.gov.uk year)
+  postgis_table: nfi_woodland
+  bbox_endpoint: /layers/open/nfi
+  ingest: python -m etl.ingest_woodland_layers --layer nfi
+  refresh_doc: scripts/data/README-woodland.md
+  raw_dir: data/external/woodland
+  gaps:
+    - Woodland ≥ 0.5 ha inventory polygons — ledger row 1 land-use, not a rent
+    - Full national extract is large; map serves PostGIS bbox after local ingest
+    - Context WMS raster (woodland) may still paint when PostGIS is unloaded
+
+native_woodland:
+  name: Native Woodland Survey of Scotland
+  role: native_woodland_land_use_overlay
+  ledger_role: ledger-row
+  ledger_row: "1"
+  ui_surface: ledger
+  licence: Open Government Licence v3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  attribution: >-
+    Native Woodland Survey of Scotland. © Scottish Forestry / Forestry Commission.
+    Contains Ordnance Survey data © Crown copyright and database right.
+    Licensed under the Open Government Licence v3.0. Served via NatureScot
+    Scottish Forestry GeoServer.
+  source_url: >-
+    https://www.data.gov.uk/dataset/da3f8548-a130-4a0d-8ddd-45019adcf1f3/native-woodland-survey-of-scotland-nwss
+  guidance_url: >-
+    https://forestry.gov.scot/forests-environment/biodiversity/native-woodlands/native-woodland-survey-of-scotland-nwss
+  wfs_url: https://ogc.nature.scot/geoserver/scottishforestry/ows
+  wfs_type_name: scottishforestry:Native_Woodland_Survey_of_Scotland
+  wms_layer: Native_Woodland_Survey_of_Scotland
+  publisher: Scottish Forestry (NatureScot OGC host)
+  vintage: NWSS national survey (see data.gov.uk / Scottish Forestry Open Data)
+  postgis_table: native_woodland
+  bbox_endpoint: /layers/open/native-woodland
+  ingest: python -m etl.ingest_woodland_layers --layer native_woodland
+  refresh_doc: scripts/data/README-woodland.md
+  raw_dir: data/external/woodland
+  gaps:
+    - Survey polygons and habitat attributes — ledger row 1 land-use, not a title or rent
+    - Full national extract is large; map serves PostGIS bbox after local ingest
+
+
 sales:
   status: scaffolded
   authority: Registers of Scotland
@@ -782,6 +843,24 @@ map_layers:
       ledger_row: null
       ui_surface: ledger
       note: Postcode-centroid points in PostGIS — not title polygons; ownership-context (who/outline), not a rent row
+    - id: nfi
+      source: Forestry Commission NFI Woodland Scotland (NatureScot WFS → PostGIS)
+      endpoint: /layers/open/nfi
+      licence: Open Government Licence v3.0
+      licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+      ledger_role: ledger-row
+      ledger_row: "1"
+      ui_surface: ledger
+      note: Ledger row 1 land-use overlay — not a rent
+    - id: native_woodland
+      source: Native Woodland Survey of Scotland (NatureScot WFS → PostGIS)
+      endpoint: /layers/open/native-woodland
+      licence: Open Government Licence v3.0
+      licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+      ledger_role: ledger-row
+      ledger_row: "1"
+      ui_surface: ledger
+      note: Ledger row 1 land-use overlay — not a title or rent
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
   # SEPA flood MapServer is not allowlisted — OGL download → PostGIS only.

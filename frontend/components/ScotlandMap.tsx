@@ -358,6 +358,10 @@ const PUBLIC_LAND_MIN_ZOOM = 8;
 const VDL_MIN_ZOOM = 8;
 /** Data Zone outlines are readable from neighbourhood zoom. */
 const DATA_ZONE_MIN_ZOOM = 10;
+const NFI_MIN_ZOOM = 7;
+const NATIVE_WOODLAND_MIN_ZOOM = 8;
+const NFI_FILL = "#1f6b3a";
+const NATIVE_WOODLAND_FILL = "#2d8f4e";
 const LDP_MIN_ZOOM = 8;
 /** Community ownership points — postcode centroids, not titles. */
 const COMMUNITY_OWNERSHIP_MIN_ZOOM = 6;
@@ -531,6 +535,8 @@ export default function ScotlandMap() {
   const showCroftingConstraint = Boolean(ledgerEnabled.crofting);
   /** Ownership-context community ownership paint (URL ?community=1; not a LayersPanel toggle). */
   const [showCommunityOwnership, setShowCommunityOwnership] = useState(false);
+  /** NFI + Native Woodland paint when ledger row 1 (surface site rent) is on. */
+  const showWoodland = Boolean(ledgerEnabled["1"]);
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
   const dataZonesTouched = useRef(false);
   const boundariesTouched = useRef(false);
@@ -1359,6 +1365,58 @@ export default function ScotlandMap() {
         source: "public-land-overlay",
         layout: { visibility: "none" },
         paint: { "line-color": "#1b4f72", "line-width": 0.9, "line-opacity": 0.75 },
+      });
+
+      map.addSource("nfi-overlay", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution:
+          "© Forestry Commission copyright. Contains OS data © Crown copyright. OGL v3.0. NFI woodland — ledger row 1 land-use, not a rent.",
+      });
+      map.addLayer({
+        id: "nfi-fill",
+        type: "fill",
+        source: "nfi-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": NFI_FILL,
+          "fill-opacity": 0.38,
+        },
+      });
+      map.addLayer({
+        id: "nfi-line",
+        type: "line",
+        source: "nfi-overlay",
+        layout: { visibility: "none" },
+        paint: { "line-color": "#0f3d22", "line-width": 0.9, "line-opacity": 0.85 },
+      });
+
+      map.addSource("native-woodland-overlay", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution:
+          "Native Woodland Survey of Scotland. © Scottish Forestry. OGL v3.0. Ledger row 1 land-use, not a title.",
+      });
+      map.addLayer({
+        id: "native-woodland-fill",
+        type: "fill",
+        source: "native-woodland-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": NATIVE_WOODLAND_FILL,
+          "fill-opacity": 0.4,
+        },
+      });
+      map.addLayer({
+        id: "native-woodland-line",
+        type: "line",
+        source: "native-woodland-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "line-color": "#145c32",
+          "line-width": 0.9,
+          "line-opacity": 0.85,
+        },
       });
 
       map.addSource("vdl-overlay", {
@@ -2239,6 +2297,113 @@ export default function ScotlandMap() {
     };
   }, [mapReady, showCommunityOwnership]);
 
+  // National Forest Inventory + Native Woodland (ledger row 1 land-use)
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const setNfiVis = (vis: "visible" | "none") => {
+      if (!map.getLayer("nfi-fill")) return;
+      map.setLayoutProperty("nfi-fill", "visibility", vis);
+      map.setLayoutProperty("nfi-line", "visibility", vis);
+    };
+    const setNativeVis = (vis: "visible" | "none") => {
+      if (!map.getLayer("native-woodland-fill")) return;
+      map.setLayoutProperty("native-woodland-fill", "visibility", vis);
+      map.setLayoutProperty("native-woodland-line", "visibility", vis);
+    };
+
+    if (!showWoodland) {
+      setNfiVis("none");
+      setNativeVis("none");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const loadWoodland = () => {
+      if (cancelled || !mapRef.current || inFlight) return;
+      const b = map.getBounds();
+      if (!b) return;
+      const zoom = map.getZoom();
+      inFlight = true;
+
+      const tasks: Promise<void>[] = [];
+
+      if (zoom >= NFI_MIN_ZOOM) {
+        const nfiUrl =
+          `/layers/open/nfi?south=${b.getSouth()}&west=${b.getWest()}` +
+          `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
+        tasks.push(
+          apiJson<FeatureCollection>(nfiUrl)
+            .then((data) => {
+              if (cancelled || !mapRef.current) return;
+              (map.getSource("nfi-overlay") as GeoJSONSource)?.setData(data);
+              setNfiVis("visible");
+            })
+            .catch((err: unknown) => {
+              if (cancelled) return;
+              setNfiVis("none");
+              const msg =
+                err instanceof ApiError
+                  ? visitorFacingError(err)
+                  : "National Forest Inventory overlay is unavailable right now.";
+              setLayerNotice(msg);
+            }),
+        );
+      } else {
+        setNfiVis("none");
+      }
+
+      if (zoom >= NATIVE_WOODLAND_MIN_ZOOM) {
+        const nativeUrl =
+          `/layers/open/native-woodland?south=${b.getSouth()}&west=${b.getWest()}` +
+          `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
+        tasks.push(
+          apiJson<FeatureCollection>(nativeUrl)
+            .then((data) => {
+              if (cancelled || !mapRef.current) return;
+              (map.getSource("native-woodland-overlay") as GeoJSONSource)?.setData(
+                data,
+              );
+              setNativeVis("visible");
+            })
+            .catch((err: unknown) => {
+              if (cancelled) return;
+              setNativeVis("none");
+              const msg =
+                err instanceof ApiError
+                  ? visitorFacingError(err)
+                  : "Native Woodland Survey overlay is unavailable right now.";
+              setLayerNotice(msg);
+            }),
+        );
+      } else {
+        setNativeVis("none");
+      }
+
+      void Promise.all(tasks).finally(() => {
+        inFlight = false;
+      });
+    };
+
+    loadWoodland();
+    const onMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadWoodland, 280);
+    };
+    map.on("moveend", onMove);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off("moveend", onMove);
+    };
+  }, [mapReady, showWoodland]);
+
+
   // SG public / Crown Estate overlay (five national bodies)
   useEffect(() => {
     if (!mapReady) return;
@@ -2862,6 +3027,13 @@ export default function ScotlandMap() {
                 </a>
                 . Individuals CSV not ingested. Spatial Hub Decrofted Areas is
                 Restricted — not used.
+              </p>
+            )}
+            {showWoodland && (
+              <p className="layer-meta" data-testid="layer-woodland-credit">
+                NFI + Native Woodland Survey (OGL v3.0) — ledger row 1 land-use.
+                Inventory / survey polygons, not a rent or title. Zoom{" "}
+                {NFI_MIN_ZOOM}+ / {NATIVE_WOODLAND_MIN_ZOOM}+.
               </p>
             )}
             {layerNotice && <p className="layer-meta">{layerNotice}</p>}

@@ -54,6 +54,8 @@ const SOURCE_NAME: Record<string, string> = {
   vdl_register: "Scottish Vacant and Derelict Land Survey",
   ldp_allocations: "Local Development Plan allocations (Spatial Hub / OGL)",
   inspire_parcels: "Registers of Scotland open land map",
+  nfi_overlay: "National Forest Inventory woodland (PostGIS)",
+  native_woodland_overlay: "Native Woodland Survey of Scotland (PostGIS)",
   common_good: "Common Good registers (linked; no national open map)",
   crofting_register: "Crofting Register of Crofts (OGL; map extents on RoS)",
   common_grazings: "Common grazings (OGL list; no national open polygon)",

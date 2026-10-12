@@ -260,6 +260,21 @@ Registry: `data/config/sources.yaml` → `flood`. Raw geodatabases stay under gi
 
 Registry: `data/config/sources.yaml` → `naturescot_sssi` and `naturescot_designations`. Refresh: [scripts/data/README-naturescot.md](../scripts/data/README-naturescot.md).
 
+## Woodland (NFI + Native Woodland Survey)
+
+| Field | NFI | Native Woodland Survey |
+|-------|-----|------------------------|
+| Product | National Forest Inventory Woodland Scotland | Native Woodland Survey of Scotland |
+| Licence | Open Government Licence v3.0 | Open Government Licence v3.0 |
+| Attribution | © Forestry Commission; contains OS data © Crown copyright | © Scottish Forestry / Forestry Commission |
+| Catalogue | https://www.data.gov.uk/dataset/c50cddf4-cdf0-42fb-8ac1-eae0cb6ef5ad/national-forest-inventory-scotland-2025 | https://www.data.gov.uk/dataset/da3f8548-a130-4a0d-8ddd-45019adcf1f3/native-woodland-survey-of-scotland-nwss |
+| OGC | NatureScot `scottishforestry` WFS/WMS | NatureScot `scottishforestry` WFS/WMS |
+| PostGIS | `nfi_woodland` | `native_woodland` |
+| BBox API | `GET /layers/open/nfi` → **503** when unloaded | `GET /layers/open/native-woodland` → **503** when unloaded |
+| Ingest | `python -m etl.ingest_woodland_layers --layer nfi` | `python -m etl.ingest_woodland_layers --layer native_woodland` |
+
+Refresh: [scripts/data/README-woodland.md](../scripts/data/README-woodland.md). Registry: `data/config/sources.yaml` → `nfi` and `native_woodland`. Land-use context only — never presented as AGR or Surface Rent.
+
 ## Local layout after acquisition
 
 ```text

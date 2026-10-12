@@ -94,7 +94,7 @@ if ($r.Code -ne 200) {
         if ($endpoint.Contains("{z}") -or $endpoint.Contains("{x}")) { continue }
         $lid = [string]$layer.id
         if ($endpoint.Contains("?")) { $full = "$ApiUrl$endpoint" }
-        else { $full = "$ApiUrl$endpoint?$Bbox" }
+        else { $full = "$ApiUrl${endpoint}?$Bbox" }
         $lr = Invoke-SmokeGet $full
         if ($lr.Code -eq 200) {
             try {

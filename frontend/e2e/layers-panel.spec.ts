@@ -182,6 +182,7 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
     await expect(page.getByTestId("layer-licence-public_crown")).toContainText(
       "unverified/not open",
     );
+    // ScotWind/INTOG is ledger row 4 (ui_surface=ledger) — not a LayersPanel toggle.
   });
 
   test("gap and linked rows show honest unavailable copy; no tax / plot AGR £", async ({

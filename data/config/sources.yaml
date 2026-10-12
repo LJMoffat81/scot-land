@@ -602,6 +602,47 @@ crown_estate_leases:
     - Ledger row 4 evidence only — no public £ rent
 
 
+scotwind_intog:
+  name: Crown Estate Scotland ScotWind / INTOG option areas
+  role: natural_capital_extractive_overlay
+  # GIS OGL GO (2026-10-12): CES Spatial Hub source pages state open datasets
+  # under the Open Government Licence. Catalog credit fixed below.
+  licence: OGL-3.0
+  licence_url: >-
+    https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  ledger_role: ledger-row
+  ledger_row: "4"
+  ui_surface: ledger
+  attribution: >-
+    Contains information from the Crown Estate Scotland licensed under the
+    Open Government Licence v3.0
+  source_url: >-
+    https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/datasets/coregis::scotwind-offers-crown-estate-scotland/about
+  intog_source_url: >-
+    https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/datasets/coregis::intog-application-areas-crown-estate-scotland/about
+  spatial_hub_url: https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/
+  feature_servers:
+    scotwind: >-
+      https://services3.arcgis.com/nGV4jiurzcahJ9LV/ArcGIS/rest/services/ScotWind_Offers_Crown_Estate_Scotland/FeatureServer/0
+    intog: >-
+      https://services3.arcgis.com/nGV4jiurzcahJ9LV/ArcGIS/rest/services/INTOG_Application_Areas/FeatureServer/0
+  postgis_table: ces_scotwind_intog
+  bbox_endpoint: /layers/open/scotwind-intog
+  ingest: python -m etl.ingest_scotwind_intog --from-api
+  raw_dir: data/external/ces   # gitignored — never commit raw downloads
+  evidence_tag: market
+  publication_status: ok
+  # Fees HOLD — press release / FOI only; not layer attributes.
+  fees_config: data/config/scotwind_option_fees.yaml
+  vintage: CES Spatial Hub ScotWind Offers + INTOG Application Areas
+  commons_class: extractive
+  separates_from: surface_rent_la_calc
+  gaps:
+    - Option-fee £ held in data/config/scotwind_option_fees.yaml (press release) — not on features
+    - Overlay never adds £ to surface rent (la-calc) or national wealth totals
+    - INTOG native CRS is EPSG:27700; ingest reprojects to WGS84 (outSR=4326)
+    - Ledger row 4 evidence only — no public £ rent
+
 vdl:
   name: Scottish Vacant and Derelict Land Survey (SVDLS)
   role: vacant_and_derelict_site_overlay
@@ -1027,6 +1068,17 @@ map_layers:
       ledger_row: "4"
       ui_surface: ledger
       note: Ledger row 4 seabed — offshore wind/wave/tidal/CCS only; no £ rent
+    - id: scotwind_intog
+      source: CES ScotWind Offers + INTOG Application Areas
+      endpoint: /layers/open/scotwind-intog
+      licence: OGL-3.0
+      licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+      ledger_role: ledger-row
+      ledger_row: "4"
+      ui_surface: ledger
+      evidence_tag: market
+      publication_status: ok
+      note: Ledger row 4 seabed options — polygons only; fees HOLD off-layer; no £ rent
     - id: lca
       source: James Hutton LCA 1:250k (PostGIS ingest)
       endpoint: /layers/open/lca

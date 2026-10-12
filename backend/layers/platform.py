@@ -23,6 +23,8 @@ from layers.hla import SPATIAL_HUB_URL as SPATIAL_HUB_HLA
 from layers.hla import query_point as hla_at_point
 from layers.ldp import catalog_layer as ldp_catalog_layer
 from layers.registers import registers_for_council
+from layers.scotwind import OGL_LICENCE_URL as SCOTWIND_LICENCE_URL
+from layers.scotwind import source_meta as scotwind_source_meta
 from layers.vdl import query_point as vdl_at_point
 from spatial.parcels import lookup_parcel, lookup_parcel_geojson
 from spatial.polygons import lookup_council_boundary
@@ -484,6 +486,33 @@ def platform_catalog() -> dict[str, Any]:
                 ),
                 "ledger_role": "constraint",
                 "ledger_row": None,
+                "ui_surface": "ledger",
+            },
+            {
+                "id": "scotwind_intog",
+                "group": "ownership",
+                "status": "live",
+                "label": "ScotWind / INTOG seabed options",
+                "description": (
+                    "Crown Estate Scotland ScotWind and INTOG option/award polygons "
+                    "(PostGIS ingest). Evidence tag market. Option-fee £ are HOLD "
+                    "(press release; see data/config/scotwind_option_fees.yaml), not "
+                    "layer attributes. Natural capital ledger row 4 (seabed & foreshore) "
+                    "— not a LayersPanel toggle. Separate from surface rent (la-calc) — "
+                    "this overlay never adds value. No £ rent."
+                ),
+                "endpoint": "/layers/open/scotwind-intog",
+                "minzoom": 5,
+                "licence": scotwind_source_meta()["licence"],
+                "licence_url": SCOTWIND_LICENCE_URL,
+                "source_url": scotwind_source_meta()["source_url"],
+                "attribution": scotwind_source_meta().get("attribution"),
+                "evidence_tag": scotwind_source_meta()["evidence_tag"],
+                "publication_status": scotwind_source_meta()["publication_status"],
+                "commons_class": "extractive",
+                "value_tier": "market",
+                "ledger_role": "ledger-row",
+                "ledger_row": "4",
                 "ui_surface": "ledger",
             },
             {

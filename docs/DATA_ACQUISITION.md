@@ -118,6 +118,24 @@ Registry: `data/config/sources.yaml` → `parcels` and `public_land`.
 
 Registry: `data/config/sources.yaml` → `hydro_sites` and `sepa_car`. Do not commit raw downloads under `data/external`.
 
+## ScotWind / INTOG option polygons (natural-capital P1)
+
+| Field | Value |
+|-------|--------|
+| Sources | CES Spatial Hub — ScotWind Offers + INTOG Application Areas FeatureServers |
+| Licence | OGL-3.0 — CES Spatial Hub; catalog credit: Contains information from the Crown Estate Scotland licensed under the Open Government Licence v3.0 |
+| Licence URL | https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ |
+| Evidence tag | `market` (published CES award/option extents) |
+| Ledger | Row 4 (seabed & foreshore) — `ledger_role=ledger-row`, `ui_surface=ledger`; not a LayersPanel toggle |
+| Fees | Option-fee £ HOLD in `data/config/scotwind_option_fees.yaml` — not layer attributes; never invent site fees or rent |
+| PostGIS table | `ces_scotwind_intog` (`019_ces_scotwind_intog.sql` / Alembic `20261012_0016`) |
+| BBox API | `GET /layers/open/scotwind-intog` → **503** when table empty |
+| Ingest | `python -m etl.ingest_scotwind_intog --from-api` |
+| Raw storage | `data/external/ces/` (gitignored) |
+| Separation | Overlay never adds value to surface rent (la-calc) |
+
+Registry: `data/config/sources.yaml` → `scotwind_intog`.
+
 ## Common Good (linked registers; no national open map)
 
 | Field | Value |

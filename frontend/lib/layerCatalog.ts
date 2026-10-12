@@ -17,7 +17,10 @@ export type CatalogLayer = {
   endpoint?: string;
   tile_endpoint?: string;
   licence?: string;
+  licence_note?: string;
   licence_url?: string;
+  attribution?: string;
+  share_alike?: string;
   source_url?: string;
   spatial_hub_url?: string;
   minzoom?: number;

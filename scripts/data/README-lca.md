@@ -10,8 +10,9 @@ layer from a local PostGIS load.
 |-------|--------|
 | Product | Land Capability for Agriculture 1:250,000 (`LCA_250K`) |
 | Authority | The James Hutton Institute (maintenance funded by Scottish Government RESAS) |
-| Licence | **James Hutton Institute Open Data Licence** — not pure OGL. Public-sector information in the product is licensed under **OGL v2.0** per the Hutton attribution clause. |
+| Licence | **James Hutton Institute Open Data Licence** — accepted for Scot-LAND; **not OGL-3.0**. Public-sector information in the product is licensed under **OGL v2.0** per the Hutton attribution clause. |
 | Attribution | Land Capability for Agriculture 1:250,000 copyright and database right The James Hutton Institute. Used with the permission of The James Hutton Institute. All rights reserved. Any public sector information contained in these data is licensed under the Open Government Licence v.2.0. |
+| Share-alike | Redistribution and derived data must be on equivalent Hutton Open Data Licence terms; retain attribution; pass that obligation through any sublicence. |
 | Download | https://www.hutton.ac.uk/sites/default/files/files/soils/downloads/Hutton_LCA250K_OpenData.zip |
 | Catalogue | https://spatialdata.gov.scot/geonetwork/srv/api/records/24c6df5a-6b04-43f8-839f-0d45cc2802e3 |
 | Licence PDF | https://www.hutton.ac.uk/wp-content/uploads/2024/05/The-James-Hutton-Institute-Open-Data-Licence-download.pdf |

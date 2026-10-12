@@ -526,10 +526,11 @@ def layer_open_lca(
 ) -> JSONResponse:
     """Land Capability for Agriculture polygons in the viewport (PostGIS ingest).
 
-    James Hutton Institute Open Data Licence (PSI under OGL v2.0 — not pure
-    OGL). Returns **503** when ``lca_agriculture`` is missing or empty — never
-    invents capability polygons. An empty FeatureCollection with meta.ok=true
-    means no polygons in view. Ledger constraint (£0) — changes best use only.
+    James Hutton Institute Open Data Licence (accepted; not OGL-3.0; PSI clause
+    under OGL v2.0). Returns **503** when ``lca_agriculture`` is missing or
+    empty — never invents capability polygons. An empty FeatureCollection with
+    meta.ok=true means no polygons in view. Ledger constraint (£0) — changes
+    best use only.
     """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     if south >= north or west >= east:
@@ -893,7 +894,7 @@ def open_downloads() -> dict:
                     "Hutton terms with required attribution. 503 when unloaded."
                 ),
             },
-            {
+                        {
                 "id": "data_zone_boundaries",
                 "label": "Data Zone boundaries overlay (this API)",
                 "licence": "OGL v3.0 — Scottish Government / OS",

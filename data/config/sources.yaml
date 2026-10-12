@@ -813,19 +813,22 @@ lca:
   name: Land Capability for Agriculture 1:250,000 (James Hutton Institute)
   product: LCA_250K
   role: agricultural_land_capability_context_overlay
+  # Laurie accepted: Hutton Open Data Licence (not OGL-3.0).
   licence: James Hutton Institute Open Data Licence
   licence_note: >-
-    Not OGL-3.0. Public-sector information in the product is under OGL v2.0
-    per the Hutton attribution clause.
-  share_alike: >-
-    Redistribution and derived data must be on equivalent Hutton Open Data
-    Licence terms; retain attribution and pass that obligation through any
-    sublicence.
+    Not OGL-3.0. The Hutton EULA permits worldwide royalty-free use
+    (commercial and non-commercial). Public-sector information in the
+    product is licensed under OGL v2.0 per the required attribution clause.
   attribution: >-
     Land Capability for Agriculture 1:250,000 copyright and database right
     The James Hutton Institute. Used with the permission of The James Hutton
     Institute. All rights reserved. Any public sector information contained
     in these data is licensed under the Open Government Licence v.2.0.
+  share_alike: >-
+    Redistribution to third parties and derived data (excluding mere
+    replication) must be on licence terms equivalent to the James Hutton
+    Institute Open Data Licence. Retain the required attribution; pass the
+    attribution obligation through any sublicence.
   source_url: >-
     https://www.hutton.ac.uk/sites/default/files/files/soils/downloads/Hutton_LCA250K_OpenData.zip
   catalogue_url: >-
@@ -1027,10 +1030,10 @@ map_layers:
     - id: lca
       source: James Hutton LCA 1:250k (PostGIS ingest)
       endpoint: /layers/open/lca
-      licence: James Hutton Open Data Licence (PSI under OGL v2.0)
-      note: Context only — does not change parcel AGR or Surface Rent
-
-
+      licence: James Hutton Institute Open Data Licence
+      note: >-
+        Accepted; not OGL-3.0. Attribution + share-alike / equivalent terms.
+        Ledger constraint (£0) — does not change parcel AGR or Surface Rent
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
   # SEPA flood MapServer is not allowlisted — OGL download → PostGIS only.

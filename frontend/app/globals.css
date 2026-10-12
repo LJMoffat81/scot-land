@@ -179,8 +179,58 @@ input {
   left: 50%;
   top: 1rem;
   transform: translateX(-50%);
-  width: min(34rem, calc(100vw - 52rem));
+  /* w3w-style: one big search, not squeezed by side chrome */
+  width: min(42rem, calc(100vw - 10rem));
   pointer-events: none;
+}
+
+.w3w-shell .hud-search-dock {
+  top: 1.15rem;
+}
+
+.w3w-shell .hud-search {
+  border-radius: 999px;
+  box-shadow: 0 12px 36px rgba(11, 30, 58, 0.18);
+}
+
+.w3w-shell .hud-search input {
+  font-size: 1.05rem;
+  padding: 0.78rem 1.15rem;
+}
+
+.w3w-shell .hud-search-go {
+  padding: 0.62rem 1.15rem;
+  font-size: 0.95rem;
+}
+
+.w3w-shell .hud-wordmark img {
+  width: 72px;
+  height: 72px;
+}
+
+.place-card-stub .place-card-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--slrg-muted);
+}
+
+.place-card-stub .place-card-title {
+  margin: 0.2rem 0 0;
+  font-size: 1.25rem;
+  line-height: 1.25;
+  color: var(--slrg-navy);
+  font-weight: 750;
+  padding-right: 1.5rem;
+}
+
+.place-card-stub .place-card-note {
+  margin: 0.85rem 0 0;
+  color: var(--slrg-text);
+  font-size: 0.88rem;
+  line-height: 1.45;
 }
 
 .hud-search-dock > * {
@@ -1230,7 +1280,8 @@ button.linkish:disabled {
     margin-left: auto;
   }
 
-  .hud-search-dock {
+  .hud-search-dock,
+  .w3w-shell .hud-search-dock {
     position: relative;
     left: auto;
     top: auto;
@@ -1239,6 +1290,11 @@ button.linkish:disabled {
     flex: 1 1 100%;
     width: auto;
     max-width: none;
+  }
+
+  .w3w-shell .hud-search input {
+    font-size: 1rem;
+    padding: 0.7rem 1rem;
   }
 
   .hud-tools {

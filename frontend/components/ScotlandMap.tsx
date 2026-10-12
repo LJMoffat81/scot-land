@@ -8,14 +8,13 @@ import maplibregl, {
   FilterSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import AgrBreakdown, {
-  AgrResult,
+import {
   MapStampFooter,
-  PlaceFiscal,
-  ScenarioId,
+  type AgrResult,
+  type PlaceFiscal,
+  type ScenarioId,
 } from "./AgrBreakdown";
-import { WealthInspector, type WealthInspectorData } from "./WealthInspector";
-import { useWealthApi } from "../lib/useWealthApi";
+import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
 import {
   ApiError,
   SERVICE_BUSY,
@@ -26,6 +25,7 @@ import {
   fetchCapabilities,
   POSTCODES_ONLY,
   looksLikeFullPostcode,
+  parseCoordinates,
   visitorFacingError,
 } from "../lib/api";
 import { CONTEXT_LAYERS } from "../lib/contextLayers";
@@ -508,7 +508,8 @@ export default function ScotlandMap() {
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [addressLine, setAddressLine] = useState<string | null>(null);
   const [scenario, setScenario] = useState<ScenarioId>("full_agr");
-  const [choropleth, setChoropleth] = useState<MetricId | "off">("gross_liability");
+  // Public shell: no modelled rent choropleth until later phases / yield calibration.
+  const [choropleth, setChoropleth] = useState<MetricId | "off">("off");
   const [showBoundaries, setShowBoundaries] = useState(false);
   const [showCellGrid] = useState(false);
   const [showVdl, setShowVdl] = useState(false);
@@ -517,10 +518,9 @@ export default function ScotlandMap() {
   const publicLandTouched = useRef(false);
   const layerPopupRef = useRef<maplibregl.Popup | null>(null);
 
-  // Georgist Wealth State
-  const { lookupWealthAt, isLoading: wealthLoading, failure: wealthFailure } = useWealthApi();
-  const [wealthData, setWealthData] = useState<WealthInspectorData | null>(null);
-  const [showWealthPanel, setShowWealthPanel] = useState(false);
+  // Public place card (stub). Modelled AGR £ / Wealth / tax stay off the public shell.
+  const [placeStub, setPlaceStub] = useState<PlaceStub | null>(null);
+  const [placeLoading, setPlaceLoading] = useState(false);
 
   const [contextOn, setContextOn] = useState<Record<string, boolean>>({});
 
@@ -717,7 +717,9 @@ export default function ScotlandMap() {
   const clearPlace = useCallback(() => {
     setResult(null);
     setError(null);
-        setAddressLine(null);
+    setAddressLine(null);
+    setPlaceStub(null);
+    setPlaceLoading(false);
     markerRef.current?.remove();
     markerRef.current = null;
     parcelLabelRef.current?.remove();
@@ -742,18 +744,33 @@ export default function ScotlandMap() {
     }
   }, []);
 
-  // One path for a point (map click, Locate, postcode search, ?lat=&lng=): marker, optional fly,
-  // shareable URL, then the data-zone lookup and the wealth panel. Needs no AGR router.
-  const inspectPoint = useCallback(
-    async (lat: number, lng: number, opts: { fly?: boolean } = {}) => {
+  // Public path for a point (map click, Locate, search, ?lat=&lng=): marker, optional fly,
+  // shareable URL, lightweight place card. No modelled AGR £ / Wealth / tax on the public shell.
+  const selectPlace = useCallback(
+    async (
+      lat: number,
+      lng: number,
+      opts: {
+        fly?: boolean;
+        label?: string | null;
+        postcode?: string | null;
+      } = {},
+    ) => {
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const gen = ++lookupGen.current;
       const map = mapRef.current;
-      if (map && opts.fly) {
-        markerRef.current?.remove();
+      markerRef.current?.remove();
+      if (map) {
         markerRef.current = new maplibregl.Marker({ color: "#0076d3" })
           .setLngLat([lng, lat])
           .addTo(map);
-        map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), essential: true });
+        if (opts.fly) {
+          map.flyTo({
+            center: [lng, lat],
+            zoom: Math.max(map.getZoom(), 15),
+            essential: true,
+          });
+        }
       }
       if (typeof window !== "undefined") {
         const url = new URL(window.location.href);
@@ -762,15 +779,47 @@ export default function ScotlandMap() {
         url.searchParams.delete("words");
         window.history.replaceState({}, "", url.toString());
       }
-      setWealthData(null);
-      setShowWealthPanel(true);
-      const res = await lookupWealthAt(lat, lng);
-      setWealthData(res.ok ? res.data : null);
+      setError(null);
+      setResult(null);
+      setAddressLine(opts.label ?? null);
+      setPlaceStub({
+        lat,
+        lng,
+        label: opts.label ?? null,
+        postcode: opts.postcode ?? null,
+        dataZoneCode: null,
+        dataZoneName: null,
+      });
+      setPlaceLoading(true);
+      if (window.matchMedia("(max-width: 640px)").matches) {
+        setLegendOpen(false);
+      }
+      try {
+        const data = await apiJson<{
+          code?: string;
+          name?: string;
+        }>(
+          `/layers/context/data-zones/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+          { cache: "no-store" },
+        );
+        if (gen !== lookupGen.current) return;
+        const code = data.code?.trim() || null;
+        const name = data.name?.trim() || null;
+        setPlaceStub((prev) =>
+          prev && prev.lat === lat && prev.lng === lng
+            ? { ...prev, dataZoneCode: code, dataZoneName: name }
+            : prev,
+        );
+      } catch {
+        /* zone label is best-effort; card still shows coordinates */
+      } finally {
+        if (gen === lookupGen.current) setPlaceLoading(false);
+      }
     },
-    [lookupWealthAt],
+    [],
   );
-  const inspectRef = useRef(inspectPoint);
-  inspectRef.current = inspectPoint;
+  const inspectRef = useRef(selectPlace);
+  inspectRef.current = selectPlace;
 
   const locateMe = useCallback(() => {
     if (!navigator.geolocation) {
@@ -781,15 +830,9 @@ export default function ScotlandMap() {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        void fetchCapabilities().then((caps) => {
-          if (caps.agr) {
-            void fetchSquare(latitude, longitude);
-            return;
-          }
-          setLoading(false);
-          setError(null);
-          void inspectRef.current(latitude, longitude, { fly: true });
-        });
+        setLoading(false);
+        setError(null);
+        void inspectRef.current(latitude, longitude, { fly: true });
       },
       () => {
         setLoading(false);
@@ -799,7 +842,7 @@ export default function ScotlandMap() {
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
     );
-  }, [fetchSquare]);
+  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -816,11 +859,11 @@ export default function ScotlandMap() {
         setToolsOpen(false);
         return;
       }
-      if (result || error) clearPlace();
+      if (placeStub || result || error) clearPlace();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toolsOpen, result, error, clearPlace]);
+  }, [toolsOpen, placeStub, result, error, clearPlace]);
 
   useEffect(() => {
     if (!mapReady) return;
@@ -843,37 +886,42 @@ export default function ScotlandMap() {
       status?: string;
     };
     if (generation !== lookupGen.current) return;
-    setAddressLine(null);
-    // Public postcode is centroid-only; modelled AGR £ is internal/blocked.
-    if (payload.status === "location_only" || payload.agr == null) {
-      const lat = payload.lat ?? payload.square?.lat;
-      const lng = payload.lng ?? payload.square?.lng;
-      if (lat != null && lng != null) {
-        void inspectRef.current(lat, lng, { fly: true });
-      }
+    const lat = payload.lat ?? payload.square?.lat;
+    const lng = payload.lng ?? payload.square?.lng;
+    if (lat == null || lng == null) {
+      setError("Postcode found, but no map point was returned.");
       return;
     }
-    applyResult(payload);
+    // Public postcode is centroid-only; modelled AGR £ is internal/blocked.
+    await inspectRef.current(lat, lng, {
+      fly: true,
+      postcode: payload.postcode?.postcode ?? postcode,
+      label: payload.postcode?.postcode ?? postcode,
+    });
   };
 
   const openWords = async (words: string, generation: number) => {
-    try {
-      const response = await apiFetch(
-        `/square?words=${encodeURIComponent(words)}&scenario=${scenario}`,
-      );
-      const payload = (await response.json()) as SquareResponse;
-      if (generation !== lookupGen.current) return;
-      setAddressLine(null);
-      applyResult(payload);
-    } catch (err) {
-      if (generation !== lookupGen.current) return;
-      // Cell AGR is internal; fall back to geocoding via place → wealth inspect.
-      if (err instanceof ApiError && err.status === 404) {
-        setApiOk(true);
-        return;
-      }
-      throw err;
+    // Public shell: resolve ///words via /place only (no /square AGR £).
+    const response = await apiFetch(
+      `/place?q=${encodeURIComponent(`///${words.replace(/^\/+/, "")}`)}`,
+    );
+    const body = (await response.json()) as PlaceLookup;
+    if (generation !== lookupGen.current) return;
+    if (body.kind === "point" && body.lat != null && body.lng != null) {
+      await inspectRef.current(body.lat, body.lng, {
+        fly: true,
+        label: body.label ?? `///${words}`,
+      });
+      return;
     }
+    if (body.kind === "words" && body.lat != null && body.lng != null) {
+      await inspectRef.current(body.lat, body.lng, {
+        fly: true,
+        label: `///${body.words ?? words}`,
+      });
+      return;
+    }
+    setError(body.note || "Those three words did not resolve on the map.");
   };
 
   const clearSuggestions = () => {
@@ -916,6 +964,25 @@ export default function ScotlandMap() {
   const runSearch = async () => {
     const q = query.trim();
     if (!q) return;
+    const coords = parseCoordinates(q);
+    if (coords) {
+      const generation = ++lookupGen.current;
+      suggestGen.current += 1;
+      if (suggestTimer.current) clearTimeout(suggestTimer.current);
+      clearSuggestions();
+      setLoading(true);
+      setError(null);
+      try {
+        await inspectRef.current(coords.lat, coords.lng, {
+          fly: true,
+          label: `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`,
+        });
+        if (generation === lookupGen.current) setApiOk(true);
+      } finally {
+        if (generation === lookupGen.current) setLoading(false);
+      }
+      return;
+    }
     if (!(await fetchCapabilities()).agr) {
       await searchPostcode(q);
       return;
@@ -935,16 +1002,31 @@ export default function ScotlandMap() {
       } else if (body.kind === "postcode" && body.postcode) {
         await openPostcode(body.postcode, generation);
       } else if (body.kind === "point" && body.lat != null && body.lng != null) {
-        setAddressLine(body.label ?? null);
-        await fetchSquare(body.lat, body.lng, undefined, true, generation);
+        await inspectRef.current(body.lat, body.lng, {
+          fly: true,
+          label: body.label ?? null,
+        });
       } else if (body.kind === "places" && body.matches && body.matches.length > 1) {
         clearPlace();
         const found = suggestionsFromLookup(body, q);
         setSuggestions(found.items);
         setActiveSuggest(found.items.length ? 0 : -1);
+      } else if (
+        body.kind === "places" &&
+        body.matches?.length === 1 &&
+        body.matches[0]
+      ) {
+        const match = body.matches[0];
+        await inspectRef.current(match.lat, match.lng, {
+          fly: true,
+          label: match.label,
+        });
       } else {
         clearPlace();
-        setError(body.note || "No place matched. Try a postcode, or click the map.");
+        setError(
+          body.note ||
+            "No place matched. Try a postcode, place name, coordinates, or click the map.",
+        );
       }
       if (generation === lookupGen.current) setApiOk(true);
     } catch (err) {
@@ -966,7 +1048,7 @@ export default function ScotlandMap() {
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
     clearSuggestions();
     setQuery(item.label);
-        setError(null);
+    setError(null);
     setLoading(true);
     try {
       if (item.kind === "words" && item.words) {
@@ -974,8 +1056,10 @@ export default function ScotlandMap() {
       } else if (item.kind === "postcode" && item.postcode) {
         await openPostcode(item.postcode, generation);
       } else if (item.lat != null && item.lng != null) {
-        setAddressLine(item.label);
-        await fetchSquare(item.lat, item.lng, undefined, true, generation);
+        await inspectRef.current(item.lat, item.lng, {
+          fly: true,
+          label: item.label,
+        });
       }
       if (generation === lookupGen.current) setApiOk(true);
     } catch (err) {
@@ -1410,12 +1494,9 @@ export default function ScotlandMap() {
         setQuery(qWords);
         void (async () => {
           if (!(await fetchCapabilities()).agr) return;
+          const generation = ++lookupGen.current;
           try {
-            const encoded = encodeURIComponent(qWords);
-            const response = await apiFetch(
-              `/square?words=${encoded}&scenario=full_agr`,
-            );
-            applyResult((await response.json()) as SquareResponse);
+            await openWords(qWords, generation);
             setApiOk(true);
           } catch (err) {
             setError(visitorFacingError(err));
@@ -1425,10 +1506,7 @@ export default function ScotlandMap() {
           }
         })();
       } else if (qLat && qLng) {
-        void fetchCapabilities().then((caps) => {
-          if (caps.agr) void fetchSquare(Number(qLat), Number(qLng));
-          else void inspectRef.current(Number(qLat), Number(qLng), { fly: true });
-        });
+        void inspectRef.current(Number(qLat), Number(qLng), { fly: true });
       }
     });
 
@@ -1549,18 +1627,8 @@ export default function ScotlandMap() {
         /* ignore popup failures */
       }
 
-      const hits = map.queryRenderedFeatures(event.point, {
-        layers: ["w3w-agr-fill", "council-fill"],
-      });
-      const point =
-        hits[0]?.properties?.lat != null && hits[0].layer?.id === "w3w-agr-fill"
-          ? { lat: Number(hits[0].properties.lat), lng: Number(hits[0].properties.lng) }
-          : { lat: event.lngLat.lat, lng: event.lngLat.lng };
-      void fetchSquare(point.lat, point.lng);
-
-      // Georgist wealth: point -> /layers/context/data-zones/at -> /georgist/wealth with the
-      // real DZ2011 code (DZ2022 if only that is loaded). Never sends 'unknown'.
-      await inspectRef.current(point.lat, point.lng);
+      // Public shell: location + stub place card only (no AGR £ / Wealth / tax).
+      await inspectRef.current(lat, lng, { fly: false });
     });
 
 
@@ -2111,30 +2179,24 @@ export default function ScotlandMap() {
       ? null
       : (METRICS.find((m) => m.id === choropleth) ?? null);
 
+  const placeOpen = Boolean(placeStub || result || error);
+
   return (
     <div
       className={
         toolsOpen
-          ? result || error
-            ? "app-shell tools-open place-open"
-            : "app-shell tools-open"
-          : result || error
-            ? "app-shell place-open"
-            : "app-shell"
+          ? placeOpen
+            ? "app-shell w3w-shell tools-open place-open"
+            : "app-shell w3w-shell tools-open"
+          : placeOpen
+            ? "app-shell w3w-shell place-open"
+            : "app-shell w3w-shell"
       }
     >
       <div className="map-stage">
       <div className="map-wrap">
         <div id="map" ref={mapContainer} />
       </div>
-
-      <WealthInspector
-        isOpen={showWealthPanel}
-        onClose={() => setShowWealthPanel(false)}
-        data={wealthData}
-        failure={wealthFailure}
-        isLoading={wealthLoading}
-      />
 
       <header className="hud-top" ref={headerRef}>
         <div className="hud-brand">
@@ -2184,7 +2246,7 @@ export default function ScotlandMap() {
         >
         <div className={loading || suggesting ? "hud-search loading" : "hud-search"}>
           <label className="sr-only" htmlFor="place-query">
-            Type part of an address or a postcode
+            Search a postcode, place name, or coordinates
           </label>
           <input
             id="place-query"
@@ -2197,8 +2259,12 @@ export default function ScotlandMap() {
             }
             value={query}
             autoComplete="off"
-            placeholder={agrAvailable === false ? "Postcode, e.g. G2 1DU" : "Address or postcode"}
-            title="A title number is looked up only if it is in the open set"
+            placeholder={
+              agrAvailable === false
+                ? "Postcode or coordinates, e.g. G2 1DU"
+                : "Postcode, place, or coordinates"
+            }
+            title="Search a Scottish postcode, place name, or lat, lng"
             onChange={(event) => {
               setQuery(event.target.value);
               scheduleSuggest(event.target.value);
@@ -2306,49 +2372,47 @@ export default function ScotlandMap() {
             <span className="hud-scotland-fold-hide">Hide legend</span>
           </button>
           <div className="hud-scotland-body" id="hud-scotland-body">
-            {agrAvailable !== true ? (
+            {legendMetric ? (
               <>
-                <p className="hud-scotland-job">Data zones</p>
+                <p className="hud-scotland-job">{legendMetric.label}</p>
                 <p className="hud-scotland-lead">
-                  Click the map, search a postcode or use Locate to see the data zone at that point.
+                  Optional research layer — not a tax bill.
                 </p>
-                <p className="hud-scotland-note">
-                  Surface land rent isn&apos;t published yet. When it is, it will be a research
-                  estimate for each data zone.
-                </p>
+                <div className="map-legend">
+                  <div
+                    className="map-legend-bar"
+                    style={{ background: legendGradient(legendMetric.stops) }}
+                    aria-hidden="true"
+                  />
+                  <div className="map-legend-stops">
+                    <span>
+                      {formatLegendStop(legendMetric.stops[0][0], legendMetric.id)}
+                    </span>
+                    <span>
+                      {formatLegendStop(
+                        legendMetric.stops[legendMetric.stops.length - 1][0],
+                        legendMetric.id,
+                      )}
+                    </span>
+                  </div>
+                  <p className="hud-scotland-note">{legendCaption(legendMetric.id)}</p>
+                </div>
               </>
             ) : (
               <>
-                <p className="hud-scotland-job">Annual Ground Rent</p>
-                <p className="hud-scotland-lead">A charge on the land alone.</p>
+                <p className="hud-scotland-job">Find a place</p>
+                <p className="hud-scotland-lead">
+                  Search a postcode, place or coordinates — or click the map.
+                </p>
+                <p className="hud-scotland-note">
+                  Modelled Annual Ground Rent and tax scenarios are not shown on
+                  the public map yet. Ownership and place details follow in later
+                  updates.
+                </p>
               </>
             )}
-            {agrAvailable === true && legendMetric && (
-              <div className="map-legend">
-                {legendMetric.id !== "gross_liability" && (
-                  <p className="map-legend-title">{legendMetric.label}</p>
-                )}
-                <div
-                  className="map-legend-bar"
-                  style={{ background: legendGradient(legendMetric.stops) }}
-                  aria-hidden="true"
-                />
-                <div className="map-legend-stops">
-                  <span>{formatLegendStop(legendMetric.stops[0][0], legendMetric.id)}</span>
-                  <span>
-                    {formatLegendStop(
-                      legendMetric.stops[legendMetric.stops.length - 1][0],
-                      legendMetric.id,
-                    )}
-                  </span>
-                </div>
-                <p className="hud-scotland-note">{legendCaption(legendMetric.id)}</p>
-              </div>
-            )}
             <p className="hud-scotland-foot">
-              {agrAvailable === true
-                ? "Research estimate, not a rates bill. "
-                : "Data zone boundaries: Scottish Government, OGL v3. "}
+              Research map, not a rates bill.{" "}
               <a href="/methodology">About</a>
             </p>
           </div>
@@ -2622,65 +2686,29 @@ export default function ScotlandMap() {
             </div>
           </aside>
       )}
-          {(result || error) && (
-          <aside className="hud-card hud-place">
-            <button
-              type="button"
-              className="hud-close"
-              title="Close place (Esc)"
-              onClick={() => clearPlace()}
-            >
-              ×
-            </button>
-            {error && <p className="error-line">{error}</p>}
-            {result?.reason === "not_land" && (
-              <>
-                <p className="location-line">
-                  {result.square.lat.toFixed(5)}, {result.square.lng.toFixed(5)}
-                </p>
-                <p className="headline-caption">The seabed is land.</p>
-                {seabed === null ? (
-                  <p className="meta">Looking up the published lease.</p>
-                ) : seabed.failed ? (
-                  <p className="headline-caption">The lease service did not answer.</p>
-                ) : seabed.notes.length === 0 ? (
-                  <p className="headline-caption">
-                    No published lease rent falls on this point.
-                  </p>
-                ) : (
-                  seabed.notes.map((note, index) => (
-                    <p key={`${index}-${note.slice(0, 24)}`} className="meta">
-                      {note}
-                    </p>
-                  ))
-                )}
-              </>
-            )}
-            {result?.agr && (
-              <AgrBreakdown
-                agr={result.agr}
-                areaSqm={result.square.area_sqm}
-                postcode={result.postcode?.postcode}
-                placeLabel={addressLine}
-                lat={result.square.lat}
-                lng={result.square.lng}
-                what3words={result.what3words}
-                parcelLabel={
-                  result.parcel?.properties?.label ?? result.agr.parcel_id
-                }
-                parcelAreaSqm={
-                  result.parcel?.properties?.area_sqm ??
-                  result.agr.parcel_area_sqm
-                }
-                fiscal={result.fiscal}
-                platform={result.platform}
-                locationClass={urbanRuralName}
-                dataZone={dataZone}
-                seabedNotes={seabed?.notes}
-              />
-            )}
-          </aside>
-          )}
+          {placeStub ? (
+            <PlaceCardStub
+              place={placeStub}
+              loading={placeLoading}
+              error={error}
+              onClose={() => clearPlace()}
+            />
+          ) : error ? (
+            <aside className="hud-card hud-place place-card-stub" aria-label="Place">
+              <button
+                type="button"
+                className="hud-close"
+                title="Close (Esc)"
+                onClick={() => clearPlace()}
+              >
+                ×
+              </button>
+              <p className="error-line">{error}</p>
+              <p className="meta">
+                Try a Scottish postcode, place name, coordinates, or click the map.
+              </p>
+            </aside>
+          ) : null}
       </div>
       <MapStampFooter />
     </div>

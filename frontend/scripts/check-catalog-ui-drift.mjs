@@ -33,8 +33,11 @@ const FIXTURE_LIVE_IDS = [
   "agr_value",
   "boundaries",
   "cell_grid",
+  "data_zones",
   "vdl",
   "public_crown",
+  "hydro_sites",
+  "sepa_car",
 ];
 
 function main() {

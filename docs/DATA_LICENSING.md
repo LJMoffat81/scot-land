@@ -52,6 +52,8 @@ Public methodology and README must list active data sources. See `data/config/so
 | Cadastral parcels | Registers of Scotland INSPIRE Index Polygons | OGL / INSPIRE (Crown) — cite RoS; raw extracts stay in `data/external/` |
 | Public land | Scottish Government Public and Crown Estate Land 2024 | OGL-3.0 — cite Scottish Government; five bodies; indicative overlay, not a title |
 | Vacant & derelict | SVDLS site register + Spatial Hub VDL polygons | OGL-3.0 — cite Scottish Government and Improvement Service / local planning authorities; survey sites, not a title |
+| Hydropower sites | SEPA Hydropower Sites (ATOM shapefile) | OGL-3.0 — cite SEPA; CAR hydropower abstractions; value_tier=proxy; no £ rent |
+| SEPA CAR licences | SEPA public register CSV export | OGL-3.0 — cite SEPA; **download-only** (`publication_status=download_only`); no MapServer scrape; value_tier=proxy; no £ rent |
 | Common Good | Statutory LA registers + Fife indicative titles metadata | Linked only. No national open spatial layer. Fife under OS Public Sector End User Licence - INSPIRE — not redistributed here |
 
 Missing open registers (local-authority holdings, national Common Good spatial file, Sasine) are catalogued as gaps — never invented.

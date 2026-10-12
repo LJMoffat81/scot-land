@@ -20,7 +20,9 @@ from layers.open_stats import (
 from layers.platform import place_context, platform_catalog
 from layers.registers import registers_payload
 from layers.data_zones import query_bbox as data_zones_bbox
+from layers.hydro import query_bbox as hydro_bbox
 from layers.public_land import query_bbox as public_land_bbox
+from layers.sepa_car import query_bbox as sepa_car_bbox
 from layers.vdl import query_bbox as vdl_bbox
 
 router = APIRouter()
@@ -113,6 +115,64 @@ def layer_open_data_zones(
                 "Data Zone boundaries are not available: "
                 f"{meta.get('error') or 'upstream source failed'}. "
                 "Boundaries only — gaps are not filled with guesses."
+            ),
+        )
+    return JSONResponse(payload)
+
+
+@router.get("/layers/open/hydro")
+def layer_open_hydro(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=80, ge=1, le=80),
+) -> JSONResponse:
+    """SEPA hydropower CAR sites in the viewport (OGL → PostGIS).
+
+    Natural-capital site inventory only — **no £ rent**. Served from PostGIS
+    after `python -m etl.ingest_hydro_sites`. **503** when unloaded.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    payload = hydro_bbox(south, west, north, east, max_features=max_features)
+    meta = payload.get("meta") or {}
+    if meta.get("ok") is False:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Hydropower sites overlay is not available: "
+                f"{meta.get('error') or 'PostGIS table missing'}. "
+                "Load the OGL ATOM shapefile with python -m etl.ingest_hydro_sites."
+            ),
+        )
+    return JSONResponse(payload)
+
+
+@router.get("/layers/open/sepa-car")
+def layer_open_sepa_car(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=80, ge=1, le=80),
+) -> JSONResponse:
+    """SEPA CAR licences in the viewport (public-register CSV → PostGIS).
+
+    Download-only ingest — **no MapServer scrape**, **no £ rent**. **503**
+    until `python -m etl.ingest_sepa_car --csv <export>` has loaded geometry.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    payload = sepa_car_bbox(south, west, north, east, max_features=max_features)
+    meta = payload.get("meta") or {}
+    if meta.get("ok") is False:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "SEPA CAR licences overlay is not available: "
+                f"{meta.get('error') or 'PostGIS table missing'}. "
+                "Export CSV from the SEPA public register and run "
+                "python -m etl.ingest_sepa_car --csv <path> "
+                "(download-only — no MapServer scrape)."
             ),
         )
     return JSONResponse(payload)
@@ -279,6 +339,28 @@ def open_downloads() -> dict:
                 "endpoint": "/layers/open/public-land",
                 "url": "https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897",
                 "note": "Viewport query of the official map. Five bodies only.",
+            },
+            {
+                "id": "hydro_sites",
+                "label": "SEPA hydropower sites (this API)",
+                "licence": "OGL-3.0",
+                "url": (
+                    "https://www.data.gov.uk/dataset/"
+                    "5750f8e5-d51b-4e75-a8d6-403a0d1ded81/hydropower_sites"
+                ),
+                "endpoint": "/layers/open/hydro",
+                "note": "PostGIS after ATOM ingest. value_tier=proxy. No £ rent.",
+            },
+            {
+                "id": "sepa_car",
+                "label": "SEPA CAR licences (this API)",
+                "licence": "OGL-3.0",
+                "url": "https://search-the-register.sepa.org.uk/",
+                "endpoint": "/layers/open/sepa-car",
+                "note": (
+                    "Download-only public-register CSV → PostGIS. "
+                    "publication_status=download_only. No £ rent."
+                ),
             },
             {
                 "id": "data_zone_boundaries",

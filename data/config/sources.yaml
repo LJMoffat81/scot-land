@@ -193,6 +193,11 @@ lca:
     https://spatialdata.gov.scot/geonetwork/srv/api/records/24c6df5a-6b04-43f8-839f-0d45cc2802e3
   licence_url: >-
     https://www.hutton.ac.uk/wp-content/uploads/2024/05/The-James-Hutton-Institute-Open-Data-Licence-download.pdf
+  terms: >-
+    James Hutton Institute Open Data Licence — attribution required; share-alike
+    (derivatives under the same licence). Not OGL. Public-sector information
+    contained in the product is under OGL v2.0 per Hutton attribution.
+  share_alike: true
   view_url: https://soils.environment.gov.scot
   sha256: 3028de37a45f2fa8e7b9a528f86d097d6f3c9642187c3525b463da3c209329cf
   vintage: "1:250k national open release (Hutton_LCA250K_OpenData.zip)"

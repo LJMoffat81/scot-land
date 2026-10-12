@@ -52,7 +52,7 @@ Public methodology and README must list active data sources. See `data/config/so
 | Cadastral parcels | Registers of Scotland INSPIRE Index Polygons | OGL / INSPIRE (Crown) — cite RoS; raw extracts stay in `data/external/` |
 | Public land | Scottish Government Public and Crown Estate Land 2024 | OGL-3.0 — cite Scottish Government; five bodies; indicative overlay, not a title |
 | Vacant & derelict | SVDLS site register + Spatial Hub VDL polygons | OGL-3.0 — cite Scottish Government and Improvement Service / local planning authorities; survey sites, not a title |
-| Land capability (agriculture) | James Hutton Institute LCA 1:250k open download | **James Hutton Open Data Licence** (not pure OGL). Public-sector information under OGL v2.0 per Hutton attribution. Raw stays in `data/external/lca/` |
+| Land capability (agriculture) | James Hutton Institute LCA 1:250k open download | **James Hutton Open Data Licence** (not OGL) — attribution + share-alike; licence PDF in catalog `licence_url`. Public-sector information under OGL v2.0 per Hutton attribution. Raw stays in `data/external/lca/` |
 | Common Good | Statutory LA registers + Fife indicative titles metadata | Linked only. No national open spatial layer. Fife under OS Public Sector End User Licence - INSPIRE — not redistributed here |
 
 Missing open registers (local-authority holdings, national Common Good spatial file, Sasine) are catalogued as gaps — never invented.

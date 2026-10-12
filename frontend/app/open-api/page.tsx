@@ -89,8 +89,8 @@ export default async function OpenApiPage() {
           </span>
         </li>
         <li>
-          Vacant and derelict land in view, from the Scottish Vacant and
-          Derelict Land Survey
+          Vacant and derelict land in view, site-level from the Scottish
+          Vacant and Derelict Land Survey (503 when the overlay source is down)
           <span className="download-path">
             GET /layers/open/vdl?south=&amp;west=&amp;north=&amp;east=
           </span>

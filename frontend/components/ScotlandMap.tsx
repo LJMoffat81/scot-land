@@ -373,6 +373,25 @@ const PUBLIC_LAND_FILL: ExpressionSpecification = [
 
 const CADASTRAL_MIN_ZOOM = 14;
 const PUBLIC_LAND_MIN_ZOOM = 8;
+const VDL_MIN_ZOOM = 8;
+
+const VDL_SITE_TYPES: Array<{ name: string; color: string }> = [
+  { name: "Vacant Land", color: "#e8a317" },
+  { name: "Vacant Land and Buildings", color: "#c45c26" },
+  { name: "Derelict", color: "#7a2e00" },
+];
+
+const VDL_FILL: ExpressionSpecification = [
+  "match",
+  ["coalesce", ["get", "site_type"], ""],
+  "Vacant Land",
+  "#e8a317",
+  "Vacant Land and Buildings",
+  "#c45c26",
+  "Derelict",
+  "#7a2e00",
+  "#c45c26",
+];
 
 function escapeHtml(value: string): string {
   return value
@@ -387,6 +406,11 @@ function layerPopupHtml(parts: {
   areaSqm?: number | null;
   ownerType?: string | null;
   siteName?: string | null;
+  vdlName?: string | null;
+  vdlSiteType?: string | null;
+  vdlSizeHa?: number | null;
+  vdlSiteCode?: string | null;
+  vdlOwnerClass?: string | null;
   source?: string | null;
 }): string | null {
   const rows: string[] = [];
@@ -405,6 +429,31 @@ function layerPopupHtml(parts: {
   }
   if (parts.siteName) {
     rows.push(`Site: ${escapeHtml(parts.siteName)}`);
+  }
+  if (
+    parts.vdlName ||
+    parts.vdlSiteType ||
+    parts.vdlSiteCode ||
+    parts.vdlSizeHa != null
+  ) {
+    const title = parts.vdlName
+      ? escapeHtml(parts.vdlName)
+      : "Vacant / derelict site";
+    rows.push(`<strong>SVDLS</strong><br/>${title}`);
+    if (parts.vdlSiteType) {
+      rows.push(`Type: ${escapeHtml(parts.vdlSiteType)}`);
+    }
+    if (parts.vdlSiteCode) {
+      rows.push(`Site code: ${escapeHtml(parts.vdlSiteCode)}`);
+    }
+    if (parts.vdlSizeHa != null && Number.isFinite(parts.vdlSizeHa)) {
+      rows.push(`Size: ${parts.vdlSizeHa.toLocaleString("en-GB")} ha`);
+    }
+    if (parts.vdlOwnerClass) {
+      rows.push(
+        `Owner class (survey): ${escapeHtml(parts.vdlOwnerClass)}`,
+      );
+    }
   }
   if (parts.source) {
     rows.push(`<span class="popup-source">${escapeHtml(parts.source)}</span>`);
@@ -1145,7 +1194,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "SVDLS © Scottish Government (OGL v3.0). Survey polygons, not a title.",
+          "SVDLS © Scottish Government / Improvement Service (OGL v3.0). Survey sites, not a title.",
       });
       map.addLayer({
         id: "vdl-fill",
@@ -1153,8 +1202,8 @@ export default function ScotlandMap() {
         source: "vdl-overlay",
         layout: { visibility: "none" },
         paint: {
-          "fill-color": "#c45c26",
-          "fill-opacity": 0.38,
+          "fill-color": VDL_FILL,
+          "fill-opacity": 0.42,
         },
       });
       map.addLayer({
@@ -1162,7 +1211,7 @@ export default function ScotlandMap() {
         type: "line",
         source: "vdl-overlay",
         layout: { visibility: "none" },
-        paint: { "line-color": "#7a2e00", "line-width": 1.1, "line-opacity": 0.9 },
+        paint: { "line-color": "#5a2200", "line-width": 1.1, "line-opacity": 0.9 },
       });
 
       for (const layer of CONTEXT_LAYERS) {
@@ -1353,7 +1402,7 @@ export default function ScotlandMap() {
       const lat = event.lngLat.lat;
       const lng = event.lngLat.lng;
 
-      // Layer popup: cadastral id / area and public owner type (ownership layers)
+      // Layer popup: cadastral / public land / SVDLS site (ownership layers)
       try {
         const publicHits =
           map.getLayer("public-land-fill") &&
@@ -1370,6 +1419,30 @@ export default function ScotlandMap() {
               source?: string;
             }
           | undefined;
+        const vdlHits =
+          map.getLayer("vdl-fill") &&
+          map.getLayoutProperty("vdl-fill", "visibility") === "visible"
+            ? map.queryRenderedFeatures(event.point, {
+                layers: ["vdl-fill"],
+              })
+            : [];
+        const vdlProps = vdlHits[0]?.properties as
+          | {
+              name?: string;
+              site_type?: string;
+              size_ha?: number | string;
+              site_code?: string;
+              owner_class?: string;
+              source?: string;
+            }
+          | undefined;
+        const vdlSizeRaw = vdlProps?.size_ha;
+        const vdlSizeHa =
+          typeof vdlSizeRaw === "number"
+            ? vdlSizeRaw
+            : typeof vdlSizeRaw === "string" && vdlSizeRaw !== ""
+              ? Number(vdlSizeRaw)
+              : null;
         let parcelId: string | null = null;
         let areaSqm: number | null = null;
         let parcelSource: string | null = null;
@@ -1406,10 +1479,17 @@ export default function ScotlandMap() {
           areaSqm,
           ownerType: publicProps?.owner_type || publicProps?.organisation || null,
           siteName: publicProps?.site_name || null,
+          vdlName: vdlProps?.name || null,
+          vdlSiteType: vdlProps?.site_type || null,
+          vdlSizeHa:
+            vdlSizeHa != null && Number.isFinite(vdlSizeHa) ? vdlSizeHa : null,
+          vdlSiteCode: vdlProps?.site_code || null,
+          vdlOwnerClass: vdlProps?.owner_class || null,
           source:
+            vdlProps?.source ||
             publicProps?.source ||
             parcelSource ||
-            (parcelId || publicProps
+            (parcelId || publicProps || vdlProps
               ? "Open land layers — research overlay, not a title"
               : null),
         });
@@ -1676,7 +1756,7 @@ export default function ScotlandMap() {
       if (cancelled || !mapRef.current || inFlight) return;
       const b = map.getBounds();
       if (!b) return;
-      if (map.getZoom() < 8) {
+      if (map.getZoom() < VDL_MIN_ZOOM) {
         setVis("none");
         return;
       }
@@ -1690,9 +1770,16 @@ export default function ScotlandMap() {
           if (cancelled) return;
           (map.getSource("vdl-overlay") as GeoJSONSource)?.setData(data);
           setVis("visible");
+          setLayerNotice(null);
         })
-        .catch(() => {
-          if (!cancelled) setVis("none");
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setVis("none");
+          if (err instanceof ApiError && err.status === 503) {
+            setLayerNotice(
+              "Vacant and derelict overlay is not available right now (SVDLS source unavailable). Gaps are not filled with guesses.",
+            );
+          }
         })
         .finally(() => {
           inFlight = false;
@@ -2249,8 +2336,9 @@ export default function ScotlandMap() {
               <section className="layer-ownership" aria-label="Ownership and cadastre">
                 <label className="layer-select-label">Ownership and cadastre</label>
                 <p className="layer-meta">
-                  RoS INSPIRE parcels and public-sector holdings. Separate from
-                  Annual Ground Rent and Surface Rent.
+                  RoS INSPIRE parcels, public-sector holdings, and SVDLS vacant
+                  and derelict sites. Separate from Annual Ground Rent and
+                  Surface Rent.
                 </p>
                 <div className="layer-chips">
                   <button
@@ -2276,6 +2364,15 @@ export default function ScotlandMap() {
                     title="Five public and Crown bodies (SG 2024). On by default from regional zoom."
                   >
                     Public land
+                  </button>
+                  <button
+                    type="button"
+                    className={showVdl ? "chip active" : "chip"}
+                    data-testid="layer-vdl"
+                    onClick={() => setShowVdl((on) => !on)}
+                    title="Scottish Vacant and Derelict Land Survey sites. Survey polygons, not a title."
+                  >
+                    Vacant and derelict
                   </button>
                 </div>
                 {showBoundaries && (
@@ -2303,6 +2400,31 @@ export default function ScotlandMap() {
                       Scottish Public and Crown Estate Land 2024. Five bodies
                       only — not local-authority land, not a title. Gaps are
                       flagged, never guessed. Zoom {PUBLIC_LAND_MIN_ZOOM}+.
+                    </p>
+                  </>
+                )}
+                {showVdl && (
+                  <>
+                    <ul className="layer-legend" aria-label="Vacant and derelict legend">
+                      {VDL_SITE_TYPES.map((site) => (
+                        <li key={site.name}>
+                          <span
+                            className="layer-legend-swatch"
+                            style={{ background: site.color }}
+                            aria-hidden="true"
+                          />
+                          {site.name}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="layer-meta">
+                      Scottish Vacant and Derelict Land Survey. Site-level as
+                      published (OGL v3.0). Contains data from Improvement
+                      Service under OGL, supplied by Scotland&apos;s local
+                      planning authorities and Loch Lomond &amp; The Trossachs
+                      National Park Authority. © Scottish Government. Survey
+                      polygons, not a title. Owner class is a survey field.
+                      Zoom {VDL_MIN_ZOOM}+.
                     </p>
                   </>
                 )}
@@ -2405,14 +2527,6 @@ export default function ScotlandMap() {
                       </button>
                     );
                   })}
-                  <button
-                    type="button"
-                    className={showVdl ? "chip active" : "chip"}
-                    title="Surveyed vacant and derelict land. Context, not the charge."
-                    onClick={() => setShowVdl((on) => !on)}
-                  >
-                    Vacant and derelict
-                  </button>
                   {CONTEXT_LAYERS.filter((layer) => layer.id === "flood").map((layer) => (
                     <button
                       key={layer.id}
@@ -2455,13 +2569,6 @@ export default function ScotlandMap() {
                   {layer.attribution}
                 </p>
               ))}
-              {showVdl && (
-                <p className="layer-meta">
-                  Scottish Vacant and Derelict Land Survey. Contains public
-                  sector information licensed under the Open Government Licence
-                  v3.0. Survey polygons, not a title.
-                </p>
-              )}
               {contextNote && <p className="layer-meta">{contextNote}</p>}
               <p className="layer-meta">
                 Not drawn: land capability (James Hutton, all rights reserved).

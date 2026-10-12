@@ -2,8 +2,10 @@
 
 The Wealth routes (api/wealth_routes.py) always load. The legacy AGR router
 (api/agr_routes.py) and the open-platform router (api/platform_routes.py) are
-optional: if their imports fail, the failure is logged, reported on /health and
-the router is skipped. Nothing is silently half-loaded.
+optional: if their imports or publication-geometry declarations fail, the
+failure is logged, reported on /health and the router is skipped. Modelled
+residual AGR £ routes live on agr_routes.internal_router under /internal/agr/...
+and mount only when ENABLE_INTERNAL_ENDPOINTS is on (auth required).
 
     cd backend && uvicorn api.main:app
 """
@@ -113,6 +115,10 @@ def create_app() -> FastAPI:
         "loaded": False,
         "note": "set ENABLE_INTERNAL_ENDPOINTS=1 and INTERNAL_API_TOKEN (never fall open)",
     }
+    ROUTER_STATUS["api.agr_internal_routes"] = {
+        "loaded": False,
+        "note": "modelled AGR £ (square, w3w-grid, councils-agr, fiscal); requires ENABLE_INTERNAL_ENDPOINTS",
+    }
     if internal_routes.internal_enabled():
         app.include_router(internal_routes.router)
         token_ok = configured_token() is not None
@@ -137,6 +143,21 @@ def create_app() -> FastAPI:
             )
     loaded = {name: _include_optional(app, name, attr) for name, attr in OPTIONAL_ROUTERS}
     agr = loaded.get("api.agr_routes")
+    if agr is not None and internal_routes.internal_enabled():
+        # Modelled residual AGR £ (plot grain + fiscal/councils-agr): auth, blocked.
+        try:
+            app.include_router(agr.internal_router)
+            ROUTER_STATUS["api.agr_internal_routes"] = {
+                "loaded": True,
+                "auth": "configured" if configured_token() is not None else "locked",
+                "note": "INTERNAL AGR modelled £ mounted; publication_status=blocked",
+            }
+        except Exception as exc:
+            logger.warning("Skipping api.agr_internal_routes: %s: %s", type(exc).__name__, exc)
+            ROUTER_STATUS["api.agr_internal_routes"] = {
+                "loaded": False,
+                "error": f"{type(exc).__name__}: {exc}",
+            }
 
     @app.get("/health")
     def health() -> dict:

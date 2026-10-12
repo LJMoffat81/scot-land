@@ -696,6 +696,11 @@ export default function ScotlandMap() {
         setApiOk(true);
       } catch (err) {
         if (gen !== lookupGen.current) return;
+        // Modelled cell AGR is internal/blocked; wealth panel still runs via inspectPoint.
+        if (err instanceof ApiError && err.status === 404) {
+          setApiOk(true);
+          return;
+        }
         setError(visitorFacingError(err));
         if (isServiceFailure(err)) {
           void pingApi().then((s) => {
@@ -830,22 +835,45 @@ export default function ScotlandMap() {
 
   const openPostcode = async (postcode: string, generation: number) => {
     const response = await apiFetch(
-      `/postcode/${encodeURIComponent(postcode)}?scenario=${scenario}`,
+      `/postcode/${encodeURIComponent(postcode)}`,
     );
-    const payload = (await response.json()) as SquareResponse;
+    const payload = (await response.json()) as SquareResponse & {
+      lat?: number;
+      lng?: number;
+      status?: string;
+    };
     if (generation !== lookupGen.current) return;
-        setAddressLine(null);
+    setAddressLine(null);
+    // Public postcode is centroid-only; modelled AGR £ is internal/blocked.
+    if (payload.status === "location_only" || payload.agr == null) {
+      const lat = payload.lat ?? payload.square?.lat;
+      const lng = payload.lng ?? payload.square?.lng;
+      if (lat != null && lng != null) {
+        void inspectRef.current(lat, lng, { fly: true });
+      }
+      return;
+    }
     applyResult(payload);
   };
 
   const openWords = async (words: string, generation: number) => {
-    const response = await apiFetch(
-      `/square?words=${encodeURIComponent(words)}&scenario=${scenario}`,
-    );
-    const payload = (await response.json()) as SquareResponse;
-    if (generation !== lookupGen.current) return;
-        setAddressLine(null);
-    applyResult(payload);
+    try {
+      const response = await apiFetch(
+        `/square?words=${encodeURIComponent(words)}&scenario=${scenario}`,
+      );
+      const payload = (await response.json()) as SquareResponse;
+      if (generation !== lookupGen.current) return;
+      setAddressLine(null);
+      applyResult(payload);
+    } catch (err) {
+      if (generation !== lookupGen.current) return;
+      // Cell AGR is internal; fall back to geocoding via place → wealth inspect.
+      if (err instanceof ApiError && err.status === 404) {
+        setApiOk(true);
+        return;
+      }
+      throw err;
+    }
   };
 
   const clearSuggestions = () => {

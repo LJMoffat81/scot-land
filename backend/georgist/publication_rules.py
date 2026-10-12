@@ -143,6 +143,44 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         note="Common Good register links and spatial gaps; no modelled rent",
     ),
     "/downloads": LayerRule("zone", "zone", "none", note="download index"),
+    # AGR router (optional). Shapes / metadata / search / context tiles are public.
+    # Modelled residual AGR £ (plot grid, cell square, councils-agr, fiscal, validation,
+    # assessment packs) lives on /internal/agr/... (auth; see api.agr_routes.internal_router).
+    "/signoff": LayerRule("zone", "zone", "none", note="economist sign-off metadata"),
+    "/config": LayerRule("zone", "zone", "none", note="agr.yaml public config mirror"),
+    "/boundaries/councils": LayerRule("zone", "zone", "none", note="council boundary shapes"),
+    "/boundaries/glasgow-ward-18": LayerRule("zone", "zone", "none", note="Ward 18 boundary shape"),
+    "/layers/catalog": LayerRule("zone", "zone", "none", note="layer catalogue; no rents"),
+    "/layers/councils": LayerRule(
+        "zone",
+        "zone",
+        "modelled",
+        note="Council multi-metric choropleth; AGR fields are research estimates at council grain",
+    ),
+    "/layers/context/urban-rural/class": LayerRule(
+        "site", "site", "none", note="urban-rural class label at a point; no rent",
+    ),
+    "/layers/context/seabed/at": LayerRule(
+        "site",
+        "site",
+        "none",
+        note="Crown Estate lease notes at a point; published lease text, not modelled land AGR",
+    ),
+    "/layers/context/{layer_id}/tiles/{z}/{x}/{y}": LayerRule(
+        "site", "site", "none", note="allowlisted context raster tiles; no AGR values",
+    ),
+    "/layers/context/{layer_id}": LayerRule(
+        "site", "site", "none", note="allowlisted context feature outlines; no AGR values",
+    ),
+    "/sales/status": LayerRule("zone", "zone", "none", note="sales pipeline status; no rents"),
+    "/postcode/{postcode}": LayerRule(
+        "site",
+        "site",
+        "none",
+        note="postcode centroid lat/lng only; modelled AGR is /internal/agr/postcode",
+    ),
+    "/place": LayerRule("site", "site", "none", note="place search; location only, no rent"),
+    "/address": LayerRule("site", "site", "none", note="door search; location only, no rent"),
 }
 
 for _path, _rule in PUBLIC_ROUTE_RULES.items():

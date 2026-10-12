@@ -71,6 +71,13 @@ export default function OpenApiPage() {
             GET /layers/open/vdl?south=&amp;west=&amp;north=&amp;east=
           </span>
         </li>
+        <li>
+          Housing land audit / supply sites in view, from Spatial Hub OGL
+          ingest in PostGIS (503 when unloaded)
+          <span className="download-path">
+            GET /layers/open/hla?south=&amp;west=&amp;north=&amp;east=
+          </span>
+        </li>
       </ul>
 
       <h2>Tables</h2>

@@ -272,6 +272,42 @@ vdl:
     - Spatial Hub vintage may lag the latest SG site register
     - RoS title-outline geometry stays internal until OS/RoS end-user terms cleared
 
+hla:
+  ledger_role: ledger-row
+  ledger_row: "1a"
+  ui_surface: ledger
+  name: Housing Land Supply / Housing Land Audit (Scotland)
+  role: housing_land_audit_site_overlay
+  licence: OGL-3.0
+  attribution: >-
+    Housing Land Supply – Scotland (Housing Land Audit amalgamation).
+    Contains public sector information licensed under the Open Government
+    Licence v3.0. Contains data from Improvement Service under OGL, supplied
+    by Scotland's local planning authorities. © Improvement Service /
+    Scottish Government. Audit site polygons, not a title.
+  spatial_hub_url: https://data.spatialhub.scot/dataset/housing_land_supply-is
+  metadata_url: >-
+    https://spatialdata.gov.scot/geonetwork/srv/api/records/911d7102-d5bc-4de9-bbfd-6e0abd429d01
+  licence_url: >-
+    https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  wfs_url: >-
+    https://geo.spatialhub.scot/geoserver/sh_hls/wfs?service=wfs&typeName=sh_hls:pub_hls
+  # National SG ArcGIS FeatureServer exists but is PSGA/Digimap-restricted — not used.
+  # Glasgow City Region OGL FeatureServer is regional only — not used as a national substitute.
+  postgis_table: planning_sites
+  postgis_source: hla
+  bbox_endpoint: /layers/open/hla
+  ingest: python -m etl.ingest_hla_sites
+  refresh_doc: docs/DATA_ACQUISITION.md
+  raw_dir: data/external/spatialhub/hls   # gitignored — never commit raw downloads
+  out_sr: 4326
+  gaps:
+    - Spatial Hub anonymous WFS returns 403 from this host; load a local OGL extract into PostGIS
+    - National ArcGIS “Housing Land Supply (Scotland)” FeatureServer is PSGA/Digimap — not OGL for this portal
+    - Some site geometry is a buffer on a recorded easting/northing where polygons were unavailable
+    - Audit capacity / remaining-homes fields are patchy by council and year
+    - Site polygons are indicative — confirm title extent on ScotLIS
+
 sales:
   status: scaffolded
   authority: Registers of Scotland
@@ -322,6 +358,10 @@ map_layers:
       endpoint: /layers/open/vdl
       licence: OGL-3.0
       licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+    - id: hla
+      source: Spatial Hub Housing Land Supply / HLA (OGL) via PostGIS ingest
+      endpoint: /layers/open/hla
+      licence: OGL-3.0
     - id: public_land
       source: SG PublicLand_2024_Update FeatureServer (dashboard only)
       endpoint: /layers/open/public-land

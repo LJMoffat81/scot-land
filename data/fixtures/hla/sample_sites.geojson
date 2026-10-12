@@ -1,0 +1,62 @@
+{
+  "type": "FeatureCollection",
+  "name": "hla_synthetic_fixture",
+  "crs": {
+    "type": "name",
+    "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "hls_uid": "SYN-HLA-001",
+        "site_refer": "SYN001",
+        "local_auth": "City of Edinburgh",
+        "la_s_code": "S12000036",
+        "hla_year": "2024/25",
+        "ha_geometry": 1.25,
+        "remaining": 42,
+        "is_buffer": false,
+        "licence": "synthetic-test-only"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-3.195, 55.95],
+            [-3.193, 55.95],
+            [-3.193, 55.9515],
+            [-3.195, 55.9515],
+            [-3.195, 55.95]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "hls_uid": "SYN-HLA-002",
+        "site_refer": "SYN002",
+        "local_auth": "Glasgow City",
+        "la_s_code": "S12000049",
+        "hla_year": "2024/25",
+        "ha_geometry": 0.4,
+        "remaining": 12,
+        "is_buffer": true,
+        "licence": "synthetic-test-only"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-4.26, 55.86],
+            [-4.258, 55.86],
+            [-4.258, 55.861],
+            [-4.26, 55.861],
+            [-4.26, 55.86]
+          ]
+        ]
+      }
+    }
+  ]
+}

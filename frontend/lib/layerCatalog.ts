@@ -27,6 +27,20 @@ export type CatalogLayer = {
   value_tier?: "market" | "proxy" | "shadow" | string;
   commons_class?: string;
   publication_status?: string;
+  /** Natural capital ledger mapping (FRONTEND_IA) — not a LayersPanel toggle. */
+  ledger_role?:
+    | "ledger-row"
+    | "ledger-frame"
+    | "constraint"
+    | "ownership-context"
+    | "data-only"
+    | "benchmark"
+    | "excluded"
+    | string;
+  /** Ledger row id: "1"…"10", "1a", or null/omitted for constraints. */
+  ledger_row?: string | null;
+  /** Prefer "ledger" for new layers; omit for legacy LayersPanel paint. */
+  ui_surface?: "ledger" | "layers_panel" | string;
 };
 
 export type LayerCatalog = {
@@ -81,6 +95,11 @@ export const LAYER_ATTRIBUTION: Record<
     licence: "OGL-3.0",
     sourceUrl:
       "https://www.gov.scot/publications/the-scottish-vacant-and-derelict-land-survey-site-register/",
+  },
+  hla: {
+    source: "Spatial Hub Housing Land Supply (Housing Land Audit)",
+    licence: "OGL-3.0",
+    sourceUrl: "https://data.spatialhub.scot/dataset/housing_land_supply-is",
   },
   public_crown: {
     source: "Scottish Public and Crown Estate Land 2024",

@@ -2,11 +2,15 @@
 /**
  * Frontend catalog ↔ UI drift check.
  *
- * Fails if any live catalog layer id (from fixture synced to platform_catalog,
- * or LIVE_CATALOG_IDS env JSON) lacks a UI toggle in catalogUiToggles.json.
+ * Fails if any live LayersPanel-bound catalog layer id (from fixture synced to
+ * platform_catalog, or LIVE_CATALOG_IDS env JSON) lacks a UI toggle in
+ * catalogUiToggles.json.
+ *
+ * Live layers with ledger_role / ui_surface=ledger feed the Natural capital
+ * ledger (or Data) — they must NOT require a LayersPanel pop-out toggle.
  *
  * Backend pytest test_catalog_ui_drift.py asserts the same against live
- * platform_catalog() so CI catches catalog additions that skip the panel.
+ * platform_catalog().
  */
 
 import { readFileSync } from "node:fs";
@@ -15,8 +19,8 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-function checkCatalogUiDrift(liveIds, toggleIds) {
-  const live = [...new Set(liveIds)].sort();
+function checkCatalogUiDrift(panelLiveIds, toggleIds) {
+  const live = [...new Set(panelLiveIds)].sort();
   const toggles = [...new Set(toggleIds)].sort();
   const toggleSet = new Set(toggles);
   const missingToggles = live.filter((id) => !toggleSet.has(id));
@@ -28,8 +32,12 @@ function checkCatalogUiDrift(liveIds, toggleIds) {
   };
 }
 
-/** Keep in sync with backend/layers/platform.py live layers (+ common_good is linked). */
-const FIXTURE_LIVE_IDS = [
+/**
+ * Live layers that still use the legacy LayersPanel.
+ * Ledger-mapped layers (ldp_allocations, …) are intentionally omitted.
+ * Keep in sync with backend/layers/platform.py live rows without ledger_role.
+ */
+const FIXTURE_PANEL_LIVE_IDS = [
   "agr_value",
   "boundaries",
   "cell_grid",
@@ -48,7 +56,7 @@ function main() {
     process.exit(1);
   }
 
-  let liveIds = FIXTURE_LIVE_IDS;
+  let liveIds = FIXTURE_PANEL_LIVE_IDS;
   if (process.env.LIVE_CATALOG_IDS) {
     liveIds = JSON.parse(process.env.LIVE_CATALOG_IDS);
   }
@@ -79,7 +87,6 @@ function main() {
     process.exit(1);
   }
 
-  // Guard: withheld public AGR layers must still have toggles (honest unavailable).
   for (const id of ["agr_value", "cell_grid"]) {
     if (!toggleIds.includes(id)) {
       console.error(`withheld live layer ${id} must keep a UI toggle row`);
@@ -88,7 +95,7 @@ function main() {
   }
 
   console.log(
-    `OK: ${result.live.length} live catalog layer(s) each have a UI toggle.`,
+    `OK: ${result.live.length} LayersPanel-bound live layer(s) each have a UI toggle.`,
   );
 }
 

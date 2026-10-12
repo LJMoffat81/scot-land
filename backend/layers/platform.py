@@ -13,6 +13,8 @@ import httpx
 from layers.common_good import catalog_layer as common_good_catalog_layer
 from layers.common_good import place_common_good
 from layers.council_metrics import METRIC_DEFS
+from layers.hla import SPATIAL_HUB_URL as SPATIAL_HUB_HLA
+from layers.hla import query_point as hla_at_point
 from layers.registers import registers_for_council
 from layers.vdl import query_point as vdl_at_point
 from spatial.parcels import lookup_parcel, lookup_parcel_geojson
@@ -152,6 +154,27 @@ def platform_catalog() -> dict[str, Any]:
                 "minzoom": 8,
                 "source_url": VDL_REGISTER,
                 "spatial_hub_url": SPATIAL_HUB_VDL,
+            },
+            {
+                "id": "hla",
+                "group": "spatial",
+                "status": "live",
+                "label": "Housing land audit",
+                "description": (
+                    "Spatial Hub Housing Land Supply (Housing Land Audit sites). "
+                    "PostGIS ingest of the OGL open product (503 when unloaded). "
+                    "Natural capital ledger row 1a (planning uplift, nested) — "
+                    "not a LayersPanel toggle. Audit polygons, not a title. "
+                    "No public AGR £."
+                ),
+                "endpoint": "/layers/open/hla",
+                "licence": "OGL-3.0",
+                "minzoom": 8,
+                "source_url": SPATIAL_HUB_HLA,
+                "spatial_hub_url": SPATIAL_HUB_HLA,
+                "ledger_role": "ledger-row",
+                "ledger_row": "1a",
+                "ui_surface": "ledger",
             },
             {
                 "id": "public_crown",
@@ -648,11 +671,15 @@ def place_context(
     parcel_props = (parcel_feature or {}).get("properties") or {}
 
     vdl = vdl_at_point(lat, lng)
+    hla = hla_at_point(lat, lng)
     vacant = bool(vdl.get("intersects"))
+    housing_land = bool(hla.get("intersects"))
 
     ownership_flags: list[str] = []
     if vacant:
         ownership_flags.append("vacant_or_derelict_survey")
+    if housing_land:
+        ownership_flags.append("housing_land_audit")
     if parcel_feature:
         ownership_flags.append("registered_cadastre")
     else:
@@ -668,6 +695,8 @@ def place_context(
         "data_zone": _data_zone_at(lat, lng),
         "vacant_or_derelict": vacant,
         "vdl": vdl,
+        "housing_land_audit": housing_land,
+        "hla": hla,
         "parcel": {
             "found": parcel_feature is not None,
             "label": parcel_props.get("label"),

@@ -8,5 +8,5 @@
     "hydro_sites",
     "sepa_car"
   ],
-  "note": "Every GET /layers/catalog layer with status=live must appear here and in LayersPanel. Withheld public AGR £ layers still need a toggle row (honest unavailable). public_crown is gap (unverified/not open) — no public map toggle."
+  "note": "Every GET /layers/catalog layer with status=live that still uses the LayersPanel must appear here. Ledger-mapped layers (ledger_role / ui_surface=ledger) feed the Natural capital ledger — no pop-out toggle. public_crown is gap (unverified/not open). Withheld public AGR GBP layers still need a toggle row (honest unavailable)."
 }

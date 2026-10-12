@@ -2,7 +2,9 @@
 
 Mounted under /internal only when ENABLE_INTERNAL_ENDPOINTS is truthy (1/true/yes/on);
 the default is off, so in a normal deployment these routes do not exist (404).
-There is no authentication beyond the flag: never enable it on a public host.
+
+When mounted, every route requires auth via INTERNAL_API_TOKEN (Bearer or X-API-Key).
+Missing secret → 403 locked (never fall open). Missing/wrong token → 401.
 
 Rules v0.4 section 2: placeholders and diagnostics are absent from the public API
 and map; developers can still see them here.
@@ -13,10 +15,11 @@ from __future__ import annotations
 import json
 import os
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from api.common import _scotland_bounds_check
+from api.internal_auth import require_internal_auth
 from api.wealth_routes import VINTAGE_QUERY_DESCRIPTION, _attribution_missing, _mixed_years, _unavailable, parse_vintage, resolve_zone
 from georgist import db
 from georgist.aggregator import MixedPriceYearError, aggregator
@@ -27,7 +30,10 @@ ENV_FLAG = "ENABLE_INTERNAL_ENDPOINTS"
 HEADERS = {"X-Wealth-Internal": "true", "Cache-Control": "no-store"}
 WARNING = "INTERNAL ONLY. Contains placeholder/mock figures and diagnostics. Do not publish."
 
-router = APIRouter(tags=["internal"])  # full /internal/... paths below (no prefix: keeps route audits literal)
+router = APIRouter(
+    tags=["internal"],
+    dependencies=[Depends(require_internal_auth)],
+)  # full /internal/... paths below (no prefix: keeps route audits literal)
 
 
 def internal_enabled() -> bool:

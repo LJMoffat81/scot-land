@@ -60,6 +60,10 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS postgis; SELECT postgis_version();"
+      - name: Alembic upgrade on fresh PostGIS + schema drift check
+        run: |
+          alembic upgrade head
+          python -m db.check_drift
       - name: Import api.main
         run: python -c "import api.main; print(api.main.app.title)"
       - name: Valuation surface tests

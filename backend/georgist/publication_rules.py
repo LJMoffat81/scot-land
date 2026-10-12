@@ -118,9 +118,25 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     "/layers/context/data-zones/at": LayerRule("zone", "zone", "none", note="code, vintage, name"),
     # Postcode search: a postcode centroid point (postcodes.io / ONSPD), no value or rent attached.
     "/geocode/postcode": LayerRule("site", "site", "none", note="postcode centroid lat/lng only; no values"),
-    # Legacy AGR router (not mounted today): RoS INSPIRE parcel shapes only, no value attached.
+    # Cadastral (always mounted): RoS INSPIRE parcel shapes only, no value attached.
+    "/layers/parcels": LayerRule("parcel", "zone", "none", note="plain parcel shapes (bbox GeoJSON)"),
+    "/layers/parcels/at": LayerRule("parcel", "zone", "none", note="plain parcel shape under a point"),
     "/layers/parcels/tiles/{z}/{x}/{y}.png": LayerRule("parcel", "zone", "none", note="plain parcel shapes"),
     "/layers/parcels/tiles/{z}/{x}/{y}": LayerRule("parcel", "zone", "none", note="plain parcel shapes"),
+    # Open-land platform router (mounted when imports + declarations succeed).
+    "/layers/open/vdl": LayerRule("site", "site", "none", note="vacant/derelict survey polygons; no rent"),
+    "/layers/open/public-land": LayerRule("site", "site", "none", note="public/Crown holdings overlay; no rent"),
+    "/platform/place": LayerRule("site", "site", "none", note="ownership/vacant/gap card; no modelled rent"),
+    "/platform/gaps": LayerRule("zone", "zone", "none", note="register gap catalogue"),
+    "/api/catalog.json": LayerRule("zone", "zone", "none", note="open-data catalogue"),
+    "/api/public-land.json": LayerRule("zone", "zone", "none", note="public-land download meta"),
+    "/api/vdl.json": LayerRule("zone", "zone", "none", note="VDL download meta"),
+    "/api/vdl-councils.json": LayerRule("zone", "zone", "none", note="VDL by council meta"),
+    "/api/roll.json": LayerRule("zone", "zone", "none", note="open stats roll"),
+    "/api/roll.csv": LayerRule("zone", "zone", "none", note="open stats roll csv"),
+    "/api/place.json": LayerRule("site", "site", "none", note="place card download"),
+    "/api/registers.json": LayerRule("zone", "zone", "none", note="registers catalogue"),
+    "/downloads": LayerRule("zone", "zone", "none", note="download index"),
 }
 
 for _path, _rule in PUBLIC_ROUTE_RULES.items():

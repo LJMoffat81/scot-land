@@ -24,12 +24,16 @@ def pg(monkeypatch):
 
     conn = db.connect()
     with conn.cursor() as cur:  # throwaway DB: rebuild so schema changes always apply
-        cur.execute("DROP TABLE IF EXISTS surface_rent_dz, resource_wealth, eco_wealth, planning_sites, "
-                    "dz_spine, dz_boundaries, dz_denominators, dz_dwelling_counts, dz_population_counts CASCADE")
+        cur.execute(
+            "DROP TABLE IF EXISTS alembic_version, inspire_parcels, surface_rent_dz, "
+            "resource_wealth, eco_wealth, planning_sites, dz_spine, dz_boundaries, "
+            "dz_denominators, dz_dwelling_counts, dz_population_counts CASCADE"
+        )
         cur.execute("DROP SCHEMA IF EXISTS processed CASCADE")
+        cur.execute("DROP SCHEMA IF EXISTS processed_internal CASCADE")
         cur.execute("DROP SCHEMA IF EXISTS datazones CASCADE")
     conn.commit()
-    apply_schema(conn)
+    apply_schema(conn)  # alembic upgrade head (uses DATABASE_URL)
     yield conn
     conn.close()
 
@@ -197,10 +201,16 @@ def test_internal_endpoints_show_diagnostics_when_enabled(pg, surface_row, monke
 
     upsert_surface_rent(pg, [surface_row()])
     monkeypatch.setenv("ENABLE_INTERNAL_ENDPOINTS", "1")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "test-internal-token")
+    auth = {"Authorization": "Bearer test-internal-token"}
     c = TestClient(create_app())
-    row = c.get(f"/internal/georgist/surface-rent/{ZONE}").json()["row"]
+    row = c.get(f"/internal/georgist/surface-rent/{ZONE}", headers=auth).json()["row"]
     assert "raw_residual" in row and "typical_sale_gbp" in row
-    w = c.get("/internal/georgist/wealth", params={"lat": 55.95, "lng": -3.19, "zone_id": ZONE}).json()
+    w = c.get(
+        "/internal/georgist/wealth",
+        params={"lat": 55.95, "lng": -3.19, "zone_id": ZONE},
+        headers=auth,
+    ).json()
     assert "raw_residual" in w["wealth"]["components"][0]["diagnostics"]
 
 
@@ -249,11 +259,17 @@ def test_blocked_internal_v1_output_shape_never_reaches_public(pg, client, surfa
     # Internal endpoints are not mounted without the flag.
     assert client.get(f"/internal/georgist/surface-rent/{ZONE}").status_code == 404
     monkeypatch.setenv("ENABLE_INTERNAL_ENDPOINTS", "1")
+    monkeypatch.setenv("INTERNAL_API_TOKEN", "test-internal-token")
+    auth = {"Authorization": "Bearer test-internal-token"}
     ic = TestClient(create_app())
-    row = ic.get(f"/internal/georgist/surface-rent/{ZONE}").json()
+    row = ic.get(f"/internal/georgist/surface-rent/{ZONE}", headers=auth).json()
     assert row["yield"]["status"] == "placeholder" and row["yield"]["yield_land"] == pytest.approx(0.05)
     assert row["row"]["publication_status"] == "blocked"
-    iw = ic.get("/internal/georgist/wealth", params={"lat": 55.95, "lng": -3.19, "zone_id": ZONE}).json()["wealth"]
+    iw = ic.get(
+        "/internal/georgist/wealth",
+        params={"lat": 55.95, "lng": -3.19, "zone_id": ZONE},
+        headers=auth,
+    ).json()["wealth"]
     ic0 = iw["components"][0]
     assert ic0["yield"]["status"] == "placeholder" and "yield_placeholder_internal_only" in iw["flags"]
     assert ic0["excluded_reason"] == "blocked" and iw["totals_by_tier"] == {}  # same totals as public

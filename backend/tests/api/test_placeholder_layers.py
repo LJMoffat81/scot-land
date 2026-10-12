@@ -2,10 +2,13 @@
 
 import pytest
 
+from api.internal_auth import ENV_TOKEN
 from georgist.eco_harvester import build_eco_features
 from georgist.resource_harvester import build_resource_features
 
 PUBLIC = ["/layers/georgist/resource-rent", "/layers/georgist/eco-rent"]
+INTERNAL_TOKEN = "test-internal-token"
+AUTH = {"Authorization": f"Bearer {INTERNAL_TOKEN}"}
 
 
 @pytest.mark.parametrize("build", [build_resource_features, build_eco_features])
@@ -26,7 +29,7 @@ def test_public_layers_never_serve_mocks(client, path):
     assert "X-Wealth-Quality" not in r.headers
 
 
-def _client(monkeypatch, flag):
+def _client(monkeypatch, flag, *, token: str | None = INTERNAL_TOKEN):
     from fastapi.testclient import TestClient
 
     from api.main import create_app
@@ -35,6 +38,10 @@ def _client(monkeypatch, flag):
         monkeypatch.delenv("ENABLE_INTERNAL_ENDPOINTS", raising=False)
     else:
         monkeypatch.setenv("ENABLE_INTERNAL_ENDPOINTS", flag)
+    if token is None:
+        monkeypatch.delenv(ENV_TOKEN, raising=False)
+    else:
+        monkeypatch.setenv(ENV_TOKEN, token)
     return TestClient(create_app())
 
 
@@ -51,7 +58,7 @@ def test_internal_endpoints_off_by_default(monkeypatch, flag):
 @pytest.mark.parametrize("path", ["/internal/layers/georgist/resource-rent", "/internal/layers/georgist/eco-rent"])
 def test_internal_mock_layers_when_enabled(monkeypatch, path):
     c = _client(monkeypatch, "1")
-    r = c.get(path)
+    r = c.get(path, headers=AUTH)
     assert r.status_code == 200
     assert r.headers["X-Wealth-Quality"] == "placeholder" and r.headers["X-Wealth-Internal"] == "true"
     body = r.json()
@@ -61,6 +68,14 @@ def test_internal_mock_layers_when_enabled(monkeypatch, path):
 
 def test_internal_wealth_still_fails_loudly_without_db(monkeypatch):
     c = _client(monkeypatch, "true")
-    r = c.get("/internal/georgist/wealth", params={"lat": 55.95, "lng": -3.19, "zone_id": "S01008677"})
+    r = c.get(
+        "/internal/georgist/wealth",
+        params={"lat": 55.95, "lng": -3.19, "zone_id": "S01008677"},
+        headers=AUTH,
+    )
     assert r.status_code == 503
-    assert c.get("/internal/georgist/wealth", params={"lat": 55.95, "lng": -3.19, "zone_id": "unknown"}).status_code == 422
+    assert c.get(
+        "/internal/georgist/wealth",
+        params={"lat": 55.95, "lng": -3.19, "zone_id": "unknown"},
+        headers=AUTH,
+    ).status_code == 422

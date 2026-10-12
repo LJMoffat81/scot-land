@@ -30,8 +30,10 @@ def _app(monkeypatch, internal=False):
 
     if internal:
         monkeypatch.setenv("ENABLE_INTERNAL_ENDPOINTS", "1")
+        monkeypatch.setenv("INTERNAL_API_TOKEN", "test-internal-token")
     else:
         monkeypatch.delenv("ENABLE_INTERNAL_ENDPOINTS", raising=False)
+        monkeypatch.delenv("INTERNAL_API_TOKEN", raising=False)
     return create_app()
 
 
@@ -110,21 +112,22 @@ def _router_paths(module_file: Path) -> list[str]:
     return re.findall(r'@router\.get\("([^"]+)"', module_file.read_text())
 
 
-def test_legacy_parcel_tiles_declared_as_plain_shapes():
-    """Legacy AGR (unmounted today) serves RoS INSPIRE parcel tiles: declared parcel geometry, no value."""
-    paths = _router_paths(BACKEND / "api" / "agr_routes.py")
-    tiles = [p for p in paths if p.startswith("/layers/parcels/tiles")]
-    assert tiles and all(not pr.rule_for(p).carries_values for p in tiles)
-    assert all(pr.rule_for(p).geometry_level == "parcel" for p in tiles)
+def test_cadastral_parcel_routes_declared_as_plain_shapes():
+    """Cadastral router serves RoS INSPIRE parcel shapes: declared parcel geometry, no value."""
+    paths = _router_paths(BACKEND / "api" / "cadastral_routes.py")
+    parcel_paths = [p for p in paths if p.startswith("/layers/parcels")]
+    assert parcel_paths and all(not pr.rule_for(p).carries_values for p in parcel_paths)
+    assert all(pr.rule_for(p).geometry_level == "parcel" for p in parcel_paths)
 
 
 def test_legacy_routers_with_undeclared_routes_would_not_mount():
-    """If AGR/platform imports are ever fixed, their undeclared value routes are refused, not served."""
-    for name in ("agr_routes.py", "platform_routes.py"):
-        missing = pr.undeclared(_router_paths(BACKEND / "api" / name))
-        if missing:
-            with pytest.raises(pr.PublicationRuleError):
-                pr.check_router(name, _router_paths(BACKEND / "api" / name))
+    """AGR still has undeclared routes (skipped at boot). Platform is fully declared and mounts."""
+    agr_missing = pr.undeclared(_router_paths(BACKEND / "api" / "agr_routes.py"))
+    assert agr_missing
+    with pytest.raises(pr.PublicationRuleError):
+        pr.check_router("agr_routes.py", _router_paths(BACKEND / "api" / "agr_routes.py"))
+    assert pr.undeclared(_router_paths(BACKEND / "api" / "platform_routes.py")) == []
+    assert pr.undeclared(_router_paths(BACKEND / "api" / "cadastral_routes.py")) == []
 
 
 def test_plot_level_spreading_is_internal_only(monkeypatch):

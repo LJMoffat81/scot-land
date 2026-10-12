@@ -54,11 +54,15 @@ The engine uses a high-performance spatial stack to provide real-time wealth agg
    cd backend
    pip install -r requirements-dev.txt
    export DATABASE_URL=postgresql://scotland:<password>@127.0.0.1:5432/scotland_wealth
-   python -m etl.migrate_to_postgis --schema-only
+   alembic upgrade head                    # see docs/DB_MIGRATIONS.md
+   python -m db.check_drift                # optional
+   python -m etl.migrate_to_postgis --schema-only   # also runs alembic upgrade head
    python -m etl.load_processed            # manifest-listed data/processed/*/ files (checksummed)
    ```
-   Mock resource/eco layers are only visible on `/internal/...` with `ENABLE_INTERNAL_ENDPOINTS=1` (dev only).
-
+   Mock resource/eco layers are only visible on `/internal/...` with
+   `ENABLE_INTERNAL_ENDPOINTS=1` **and** a configured `INTERNAL_API_TOKEN`
+   (Bearer or X-API-Key). Without the token the routes stay locked (403) —
+   they never fall open.
 4. **Start the API** (boots without a DB; `/health` reports `db.status`):
    ```bash
    uvicorn api.main:app --reload --port 8000

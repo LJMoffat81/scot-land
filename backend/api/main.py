@@ -18,8 +18,10 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.cadastral_routes import router as cadastral_router
 from api.common import _load_postcode_api_url, _scotland_bounds_check  # noqa: F401  (back-compat)
 from api.cors import cors_settings
+from api.internal_auth import ENV_TOKEN as INTERNAL_TOKEN_ENV, configured_token
 from api.wealth_routes import router as wealth_router
 from georgist.db import db_status
 from georgist.publication_rules import check_router
@@ -34,7 +36,10 @@ OPTIONAL_ROUTERS: tuple[tuple[str, str], ...] = (
     ("api.platform_routes", "router"),
 )
 
-ROUTER_STATUS: dict[str, dict[str, Any]] = {"api.wealth_routes": {"loaded": True}}
+ROUTER_STATUS: dict[str, dict[str, Any]] = {
+    "api.wealth_routes": {"loaded": True},
+    "api.cadastral_routes": {"loaded": True},
+}
 
 
 def _include_optional(app: FastAPI, module_name: str, attr: str) -> Any | None:
@@ -93,20 +98,43 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Core router: an undeclared or illegal public route stops the app (publication geometry rule).
+    # Core routers: an undeclared or illegal public route stops the app (publication geometry rule).
     check_router("api.wealth_routes", [p for _, p in registered_routes(wealth_router)])
     app.include_router(wealth_router)
+    check_router("api.cadastral_routes", [p for _, p in registered_routes(cadastral_router)])
+    app.include_router(cadastral_router)
     from api.geocode_routes import router as geocode_router  # noqa: PLC0415
 
     check_router("api.geocode_routes", [p for _, p in registered_routes(geocode_router)])
     app.include_router(geocode_router)
     from api import internal_routes  # noqa: PLC0415 (wealth-only deps)
 
-    ROUTER_STATUS["api.internal_routes"] = {"loaded": False, "note": "set ENABLE_INTERNAL_ENDPOINTS=1 for dev only"}
+    ROUTER_STATUS["api.internal_routes"] = {
+        "loaded": False,
+        "note": "set ENABLE_INTERNAL_ENDPOINTS=1 and INTERNAL_API_TOKEN (never fall open)",
+    }
     if internal_routes.internal_enabled():
         app.include_router(internal_routes.router)
-        ROUTER_STATUS["api.internal_routes"] = {"loaded": True, "note": "INTERNAL: placeholders and diagnostics exposed"}
-        logger.warning("Internal endpoints enabled: /internal/... exposes placeholders and diagnostics")
+        token_ok = configured_token() is not None
+        ROUTER_STATUS["api.internal_routes"] = {
+            "loaded": True,
+            "auth": "configured" if token_ok else "locked",
+            "note": (
+                "INTERNAL mounted; auth required (Bearer / X-API-Key)"
+                if token_ok
+                else f"INTERNAL mounted but locked: set {INTERNAL_TOKEN_ENV}"
+            ),
+        }
+        if token_ok:
+            logger.warning(
+                "Internal endpoints enabled with auth: /internal/... requires %s",
+                INTERNAL_TOKEN_ENV,
+            )
+        else:
+            logger.warning(
+                "Internal endpoints mounted but LOCKED: %s is unset (never fall open)",
+                INTERNAL_TOKEN_ENV,
+            )
     loaded = {name: _include_optional(app, name, attr) for name, attr in OPTIONAL_ROUTERS}
     agr = loaded.get("api.agr_routes")
 

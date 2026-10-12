@@ -1,11 +1,17 @@
-"""Apply the Wealth schema and load processed outputs into PostGIS.
+"""Apply the Wealth schema (via Alembic) and load processed outputs into PostGIS.
 
 Connection comes only from the environment (DATABASE_URL or PG*), via
 georgist.db. Files come from DATA_DIR/processed (paths.py).
 
     cd backend
+    alembic upgrade head                     # preferred schema path
     python -m etl.migrate_to_postgis --schema-only
     python -m etl.migrate_to_postgis              # schema + placeholder resource/eco
+
+Schema DDL lives in `db/schema/*.sql` and is applied by the Alembic baseline
+migration (`alembic/versions/20261012_0001_*.py`). Prefer `alembic upgrade head`
+for new databases. Existing DBs already created by the old CREATE IF NOT EXISTS
+path should run `alembic stamp head` once (see docs/DB_MIGRATIONS.md).
 
 The pre-spec `surface_wealth` table (rent_per_ha, SIMD ranks) is no longer
 created or loaded: surface rent now goes to `surface_rent_dz` via
@@ -21,23 +27,27 @@ import sys
 from pathlib import Path
 from typing import Iterable, Mapping
 
+from alembic import command
+from alembic.config import Config
+
 from georgist import db
 from georgist.wealth_schema import SURFACE_DB_COLUMNS
 from paths import PROCESSED_DIR
 
 logger = logging.getLogger(__name__)
 
-SCHEMA_DIR = Path(__file__).resolve().parents[1] / "db" / "schema"
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+SCHEMA_DIR = BACKEND_ROOT / "db" / "schema"
+ALEMBIC_INI = BACKEND_ROOT / "alembic.ini"
 
 
-def apply_schema(conn) -> list[str]:
-    applied = []
-    with conn.cursor() as cur:
-        for sql_file in sorted(SCHEMA_DIR.glob("*.sql")):
-            cur.execute(sql_file.read_text(encoding="utf-8"))
-            applied.append(sql_file.name)
-    conn.commit()
-    logger.info("Applied schema: %s", ", ".join(applied))
+def apply_schema(conn=None) -> list[str]:
+    """Run `alembic upgrade head` (ignores conn; Alembic opens its own connection)."""
+    del conn  # kept for call-site compatibility with older tests
+    cfg = Config(str(ALEMBIC_INI))
+    command.upgrade(cfg, "head")
+    applied = [p.name for p in sorted(SCHEMA_DIR.glob("*.sql"))]
+    logger.info("Alembic upgrade head (schema files: %s)", ", ".join(applied))
     return applied
 
 
@@ -128,7 +138,10 @@ def main(argv: list[str] | None = None) -> int:
             migrate_geojson_data(conn, "resource_wealth.geojson", "resource_wealth")
             migrate_geojson_data(conn, "eco_wealth.geojson", "eco_wealth")
     except Exception:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         logger.exception("Migration failed")
         return 1
     finally:

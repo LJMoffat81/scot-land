@@ -56,7 +56,7 @@ from spatial.context_tiles import (
     fetch_seabed_async,
     fetch_urban_rural_class_async,
 )
-from spatial.parcels import TRANSPARENT_PNG, fetch_parcel_tile_png, lookup_parcel_geojson
+from spatial.parcels import TRANSPARENT_PNG, lookup_parcel_geojson
 from validation.glasgow_ward_18 import run_validation
 from validation.ratio_study import ratio_study_points
 
@@ -387,35 +387,7 @@ def layer_w3w_grid(
     return JSONResponse(with_stamp(geo))
 
 
-def _parcel_tile_response(z: int, x: int, y: int) -> Response:
-    """Always 200 + PNG so MapLibre / Next rewrites never surface tile 500s."""
-    try:
-        if z < 0 or z > 22 or x < 0 or y < 0:
-            png = TRANSPARENT_PNG
-        else:
-            png = fetch_parcel_tile_png(z, x, y)
-    except Exception:
-        png = TRANSPARENT_PNG
-    return Response(
-        content=png,
-        media_type="image/png",
-        headers={
-            "Cache-Control": "public, max-age=3600",
-            "X-Layer-Source": "ROS-INSPIRE-CP.CadastralParcel",
-        },
-    )
-
-
-@router.get("/layers/parcels/tiles/{z}/{x}/{y}.png")
-def layer_parcel_tiles_png(z: int, x: int, y: int) -> Response:
-    """ROS INSPIRE cadastral parcels as XYZ PNG (with .png suffix)."""
-    return _parcel_tile_response(z, x, y)
-
-
-@router.get("/layers/parcels/tiles/{z}/{x}/{y}")
-def layer_parcel_tiles(z: int, x: int, y: int) -> Response:
-    """ROS INSPIRE cadastral parcels as XYZ PNG (extensionless, preferred)."""
-    return _parcel_tile_response(z, x, y)
+# Parcel tile / bbox / at routes live on api.cadastral_routes (always mounted).
 
 
 @router.get("/layers/context/urban-rural/class")
@@ -490,36 +462,6 @@ def layer_context_features(layer_id: str) -> JSONResponse:
     return JSONResponse(
         geo,
         headers={"Cache-Control": "public, max-age=3600"},
-    )
-
-
-@router.get("/layers/parcels/at")
-def layer_parcel_at(
-    lat: float = Query(..., ge=-90, le=90),
-    lng: float = Query(..., ge=-180, le=180),
-) -> JSONResponse:
-    """Cadastral parcel polygon under a point (GeoJSON FeatureCollection)."""
-    _scotland_bounds_check(lat, lng)
-    feature = lookup_parcel_geojson(lat, lng)
-    if feature is None:
-        return JSONResponse(
-            {
-                "type": "FeatureCollection",
-                "features": [],
-                "meta": {"source": "ROS INSPIRE", "found": False},
-            }
-        )
-    return JSONResponse(
-        {
-            "type": "FeatureCollection",
-            "features": [feature],
-            "meta": {
-                "source": "ROS INSPIRE CP.CadastralParcel",
-                "found": True,
-                "label": feature["properties"].get("label"),
-                "area_sqm": feature["properties"].get("area_sqm"),
-            },
-        }
     )
 
 

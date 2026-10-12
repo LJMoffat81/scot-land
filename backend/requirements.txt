@@ -10,3 +10,6 @@ pyshp==3.1.6
 psycopg2-binary>=2.9.9
 pandas>=2.2
 openpyxl>=3.1
+# Schema migrations (baseline + future revisions)
+alembic>=1.14
+sqlalchemy>=2.0

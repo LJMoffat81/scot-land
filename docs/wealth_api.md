@@ -19,7 +19,8 @@ The app refuses to start if any (method, path) is registered twice.
 |---|---|
 | `DATABASE_URL` or `PGHOST`+`PGDATABASE` (+`PGUSER`,`PGPASSWORD`,`PGPORT`) | PostGIS. No credential defaults. |
 | `DB_CONNECT_TIMEOUT` | Seconds, default 3. |
-| `ENABLE_INTERNAL_ENDPOINTS` | `1`/`true`/`yes`/`on` mounts the `/internal/...` developer routes (placeholders, mocks, diagnostics). **Default off; never enable on a public host** (no auth beyond the flag). |
+| `ENABLE_INTERNAL_ENDPOINTS` | `1`/`true`/`yes`/`on` mounts the `/internal/...` developer routes (placeholders, mocks, diagnostics). **Default off.** |
+| `INTERNAL_API_TOKEN` | Secret required whenever `/internal` is mounted. Send `Authorization: Bearer <token>` or `X-API-Key: <token>` (constant-time compare). **Missing secret → 403 `internal_locked` (never fall open). Missing/wrong token → 401.** |
 | `DATA_DIR` | Data root (`config/`, `processed/`, `raw/`). Default: repo `data/`. Used by the API, resource/eco harvesters and `etl/`. |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Compose only. `POSTGRES_PASSWORD` is required; compose refuses to start without it. |
 
@@ -33,7 +34,8 @@ The app refuses to start if any (method, path) is registered twice.
 | `GET /geocode/postcode?q=` | 503 `geocoder_unavailable` (4 s timeout) | Full UK postcode → its centroid `lat`/`lng` via postcodes.io (ONS Postcode Directory, OGL v3; OS and Royal Mail attributions). Point only: no value, rent or address. 422 not a postcode (free text is not geocoded) or outside Scotland; 404 unknown postcode or no location. The map then runs the data-zone lookup as for a click. Postcodes are not logged. |
 | `GET /layers/georgist/surface-rent?vintage=2011` | 503 | Latest row per zone from `surface_rent_dz`, served only if `publish_level` is public_zone/public_site, `publication_status = ok` and not a placeholder; `withheld` / `withheld_by_reason` count the rest. **Allowlisted columns only** plus per-zone `status` (`ok` or `not_applicable`) and the three display views (`rent_per_residential_ha[_status]`, `rent_per_dwelling[_status]`, `rent_per_resident[_status]`, `second_home_share`). Also `zero_dwellings` (codes shown as not applicable), `method_settings` (depreciation settings read from `data/config/surface.yaml`) and `attributions`. `vintage` defaults to 2011; 422 `invalid_vintage` otherwise. 503 `surface_rent_not_built` if none; 503 `attribution_missing` if a dataset behind a shown view has no manifest attribution. |
 | `GET /layers/georgist/resource-rent`, `/eco-rent` | 503 | Real, publishable (`public_site`, status ok, not placeholder) rows from `resource_wealth` / `eco_wealth` only, as GeoJSON. Site geometry, so every row must be a measured figure from a site-public source (publication geometry rule, below); otherwise 500 `publication_rule_violation`. Today there are none, so 503 `<layer>_layer_not_built`. **Mock features are never served here.** |
-| `GET /internal/georgist/wealth`, `/internal/georgist/surface-rent/{zone}`, `/internal/layers/georgist/resource-rent`, `/internal/layers/georgist/eco-rent` | — | Only with `ENABLE_INTERNAL_ENDPOINTS` (otherwise 404). Placeholders and withheld rows with numbers, Valuation diagnostics, mock harvests. Header `X-Wealth-Internal: true`. Totals are computed by the same function as the public route. |
+| `GET /internal/georgist/wealth`, `/internal/georgist/surface-rent/{zone}`, `/internal/layers/georgist/resource-rent`, `/internal/layers/georgist/eco-rent` | — | Only with `ENABLE_INTERNAL_ENDPOINTS` (otherwise 404). Always requires `INTERNAL_API_TOKEN` auth when mounted. Placeholders and withheld rows with numbers, Valuation diagnostics, mock harvests. Header `X-Wealth-Internal: true`. Totals are computed by the same function as the public route. |
+| `GET /layers/parcels`, `/layers/parcels/at`, `/layers/parcels/tiles/...` | 503 / empty / PNG | RoS INSPIRE cadastral shapes (always mounted). BBox returns 503 when `inspire_parcels` is missing or empty — never placeholders. |
 | `POST /sync/ros` | — | Removed from the API: the CKAN package id and columns were unverified and the target table is not in the schema. Superseded by `georgist/surface_harvester.py`. |
 
 DB failure reasons: `not_configured`, `connection_failed` (password scrubbed), `schema_missing`, `query_failed`, `driver_missing`.
@@ -163,7 +165,14 @@ on the surface component and in the layer, and added to the payload `flags`. No 
 served, and the API never re-values such zones (no all-estate or all-one-off default). There is no whole-zone area column, and rent per hectare of
 whole-zone area is never served for surface rent.
 
-## Schema (`backend/db/schema/*.sql`)
+## Schema (`backend/db/schema/*.sql` + Alembic)
+
+Schema is applied with **Alembic** (`alembic upgrade head`). See
+[`docs/DB_MIGRATIONS.md`](DB_MIGRATIONS.md). The baseline revision executes the
+SQL files under `backend/db/schema/`. CI upgrades a fresh PostGIS and runs
+`python -m db.check_drift`.
+
+## Schema files (`backend/db/schema/*.sql`)
 
 Applied by the postgis container on first start and by
 `python -m etl.migrate_to_postgis --schema-only`. Idempotent. Geometry is EPSG:27700.
@@ -268,7 +277,7 @@ Implementation, `backend/georgist/publication_rules.py`:
 * **App build.** `create_app` refuses an undeclared public route: the core Wealth router raises
   `PublicationRuleError`; an optional router (AGR, platform) with one is not mounted and
   `/health` says why. `/internal/...` routes are exempt and mounted only with
-  `ENABLE_INTERNAL_ENDPOINTS`.
+  `ENABLE_INTERNAL_ENDPOINTS`, and always require `INTERNAL_API_TOKEN` when mounted.
 * **Load time.** Optional manifest columns `geometry_level`, `source_granularity`, `site_source`
   (see `processed_data_manifest.md`); public sub-zone files with value columns are rejected.
 * **Public serializers.** The site layers and the wealth payload check every row whose figure would

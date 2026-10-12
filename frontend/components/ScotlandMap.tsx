@@ -20,12 +20,10 @@ import {
   ApiError,
   SERVICE_BUSY,
   apiFetch,
-
   apiJson,
   isServiceFailure,
   pingApi,
   fetchCapabilities,
-  ApiError,
   POSTCODES_ONLY,
   looksLikeFullPostcode,
   visitorFacingError,

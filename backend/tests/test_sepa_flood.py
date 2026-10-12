@@ -10,6 +10,7 @@ import pytest
 from layers.flood import (
     ATTRIBUTION,
     LICENCE,
+    LICENCE_URL,
     catalog_layer,
     query_bbox,
 )
@@ -29,9 +30,12 @@ def test_catalog_lists_flood_live_with_licence_and_source():
     assert layer["id"] == "flood"
     assert layer["status"] == "live"
     assert layer["licence"] == LICENCE
-    assert "sepa.org.uk/flooddata" in layer["source_url"]
+    assert layer["licence_url"] == LICENCE_URL
+    assert "www2.sepa.org.uk/flooddata" in layer["source_url"]
     assert layer["endpoint"] == "/layers/open/flood"
-    assert "flood/tiles" in layer["tile_endpoint"]
+    assert "tile_endpoint" not in layer
+    assert "mapserver_url" not in layer
+    assert "www2.sepa.org.uk/flooddata" in layer["description"]
 
     catalog = platform_catalog()
     ids = [row["id"] for row in catalog["layers"]]
@@ -39,81 +43,39 @@ def test_catalog_lists_flood_live_with_licence_and_source():
     flood = next(row for row in catalog["layers"] if row["id"] == "flood")
     assert flood["status"] == "live"
     assert flood["licence"] == "OGL-3.0"
+    assert flood["licence_url"] == LICENCE_URL
     assert flood["source_url"]
+    assert "mapserver_url" not in flood
 
 
-def test_query_bbox_live_or_empty_meta(monkeypatch):
-    """When PostGIS is empty, live MapServer path returns ok or honest failure."""
-
-    class _Resp:
-        def raise_for_status(self):
-            return None
-
-        def json(self):
-            return {
-                "type": "FeatureCollection",
-                "features": [
-                    {
-                        "type": "Feature",
-                        "geometry": {
-                            "type": "Polygon",
-                            "coordinates": [
-                                [
-                                    [-4.28, 55.85],
-                                    [-4.27, 55.85],
-                                    [-4.27, 55.86],
-                                    [-4.28, 55.86],
-                                    [-4.28, 55.85],
-                                ]
-                            ],
-                        },
-                        "properties": {
-                            "OBJECTID": 1,
-                            "SOURCE": "River",
-                            "PROB": "M",
-                            "SCENARIO": "Present Day",
-                            "MAP_TYPE": "Hazard",
-                            "REFERENCE": "HA_TEST",
-                            "VERSION": "v3_0",
-                        },
-                    }
-                ],
-            }
-
-    class _Client:
-        def __init__(self, *args, **kwargs):
-            pass
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            return False
-
-        def get(self, url, params=None):
-            assert "/Flood_Maps/MapServer/" in url
-            return _Resp()
-
+def test_query_bbox_unloaded_is_honest(monkeypatch):
+    """When PostGIS is empty, return ok=False — never hit live SEPA services."""
     monkeypatch.setattr("layers.flood.is_loaded", lambda: False)
-    monkeypatch.setattr("layers.flood.httpx.Client", _Client)
 
     payload = query_bbox(**GLASGOW_BBOX, max_features=10)
     assert payload["type"] == "FeatureCollection"
-    assert payload["meta"]["ok"] is True
+    assert payload["features"] == []
+    assert payload["meta"]["ok"] is False
     assert payload["meta"]["licence"] == LICENCE
-    assert payload["meta"]["backend"] == "sepa_mapserver"
-    assert len(payload["features"]) >= 1
-    assert payload["features"][0]["properties"]["licence"] == LICENCE
+    assert payload["meta"]["licence_url"] == LICENCE_URL
+    assert "flooddata" in payload["meta"]["source_url"]
+    assert payload["meta"].get("backend") == "postgis"
+    assert "sepa_mapserver" not in str(payload)
 
 
-def test_query_bbox_503_path_when_upstream_down(client, monkeypatch):
+def test_query_bbox_503_path_when_unloaded(client, monkeypatch):
     monkeypatch.setattr("layers.flood.is_loaded", lambda: False)
 
     def _boom(*args, **kwargs):
         return {
             "type": "FeatureCollection",
             "features": [],
-            "meta": {"ok": False, "error": "connection failed", "licence": LICENCE},
+            "meta": {
+                "ok": False,
+                "error": "sepa_flood is missing or empty",
+                "licence": LICENCE,
+                "licence_url": LICENCE_URL,
+            },
         }
 
     monkeypatch.setattr("api.platform_routes.flood_bbox", _boom)
@@ -133,6 +95,7 @@ def test_open_flood_ok(client, monkeypatch):
                 "backend": "postgis",
                 "count": 0,
                 "licence": LICENCE,
+                "licence_url": LICENCE_URL,
                 "source": ATTRIBUTION,
             },
         },
@@ -178,3 +141,14 @@ def test_fixture_geojson_is_valid():
     data = json.loads(FIXTURE.read_text(encoding="utf-8"))
     assert data["type"] == "FeatureCollection"
     assert data["features"]
+
+
+def test_flood_module_has_no_mapserver_constants():
+    import layers.flood as flood_mod
+
+    text = Path(flood_mod.__file__).read_text(encoding="utf-8")
+    assert "map.sepa.org.uk" not in text
+    assert "httpx" not in text
+    assert "MAPSERVER" not in text
+    assert "LIVE_LAYER_IDS" not in text
+    assert "_query_live_layer" not in text

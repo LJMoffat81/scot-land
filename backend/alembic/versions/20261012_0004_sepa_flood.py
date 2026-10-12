@@ -1,4 +1,4 @@
-"""SEPA flood extents table (OGL MapServer / geodatabase ingest).
+"""SEPA flood extents table (OGL download ingest from flooddata).
 
 Revision ID: 20261012_0004
 Revises: 20261012_0003

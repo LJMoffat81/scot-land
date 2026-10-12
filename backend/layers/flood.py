@@ -1,9 +1,10 @@
 """SEPA Flood Maps overlay (OGL-3.0).
 
 Present-day medium-likelihood river and coastal flood extents (200-year).
-Map paint prefers raster tiles via ``/layers/context/flood/tiles/...``.
-BBox GeoJSON prefers local PostGIS ingest; falls back to a capped live
-MapServer query when the table is empty. Never invents extents.
+Geometry comes only from the OGL download at www2.sepa.org.uk/flooddata,
+ingested into PostGIS. Never queries SEPA MapServer, viewer, or other web
+services. Returns an honest unloaded payload (API → 503) when the table is
+empty. Never invents extents.
 """
 
 from __future__ import annotations
@@ -12,35 +13,27 @@ import logging
 import os
 from typing import Any
 
-import httpx
 import psycopg2
 from psycopg2 import extras
 
 logger = logging.getLogger(__name__)
 
 TABLE = "sepa_flood"
-TIMEOUT = 10.0
 MAX_FEATURES = 80
-OUT_SR = 4326
-IN_SR = 4326
-
-MAPSERVER = "https://map.sepa.org.uk/server/rest/services/Open/Flood_Maps/MapServer"
-# Medium likelihood (200-year): river=1, coastal=7 — matches context tile layers.
-LIVE_LAYER_IDS = (1, 7)
-LAYER_SOURCE = {1: "River", 7: "Coastal", 4: "Surface Water"}
 
 DOWNLOAD_URL = "https://www2.sepa.org.uk/flooddata/"
-MAPSERVER_URL = MAPSERVER
 ATTRIBUTION_PDF = (
     "https://www.sepa.org.uk/media/5zidnja5/sepa_flood_maps_data_attribution_statements.pdf"
 )
 LICENCE = "OGL-3.0"
+LICENCE_URL = (
+    "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+)
 ATTRIBUTION = (
     "© SEPA 2025; this SEPA product is licensed under the Open Government Licence v3.0. "
     "Flood Maps v3.0 — medium-likelihood river and coastal extents (present day). "
     "Indicative hazard extents, not a flood insurance quote or title."
 )
-TILE_ENDPOINT = "/layers/context/flood/tiles/{z}/{x}/{y}"
 BBOX_ENDPOINT = "/layers/open/flood"
 MINZOOM = 8
 
@@ -97,38 +90,22 @@ def catalog_layer() -> dict[str, Any]:
         "label": "SEPA flood extent",
         "description": (
             "Medium-likelihood (200-year) river and coastal flood extents, "
-            "SEPA Flood Maps v3.0 present-day. Raster tiles for the map; "
-            "bbox GeoJSON from PostGIS when ingested, else a capped live query."
+            "SEPA Flood Maps v3.0 present-day. OGL download from "
+            "www2.sepa.org.uk/flooddata only — ingested to PostGIS "
+            "(503 when unloaded). No MapServer, viewer, or live web services."
         ),
         "endpoint": BBOX_ENDPOINT,
-        "tile_endpoint": TILE_ENDPOINT,
         "licence": LICENCE,
+        "licence_url": LICENCE_URL,
         "minzoom": MINZOOM,
         "source_url": DOWNLOAD_URL,
-        "mapserver_url": MAPSERVER_URL,
         "attribution_url": ATTRIBUTION_PDF,
         "gaps": [
-            "Surface-water and climate-change scenarios are on the MapServer but "
-            "not in the default public toggle (medium river + coastal only).",
+            "Surface-water and climate-change scenarios are in the OGL product "
+            "but not in the default public toggle (medium river + coastal only).",
             "Extents are indicative hazard maps — not a property-level flood quote.",
+            "Must ingest the OGL download into PostGIS; live SEPA services are not used.",
         ],
-    }
-
-
-def _feature_props(attrs: dict[str, Any], layer_id: int) -> dict[str, Any]:
-    source = attrs.get("SOURCE") or LAYER_SOURCE.get(layer_id) or "Unknown"
-    return {
-        "object_id": attrs.get("OBJECTID"),
-        "layer_id": layer_id,
-        "source": source,
-        "probability": attrs.get("PROB") or "M",
-        "scenario": attrs.get("SCENARIO") or "Present Day",
-        "map_type": attrs.get("MAP_TYPE"),
-        "reference": attrs.get("REFERENCE"),
-        "version": attrs.get("VERSION"),
-        "layer": "flood",
-        "source_label": ATTRIBUTION,
-        "licence": LICENCE,
     }
 
 
@@ -186,6 +163,7 @@ def _query_postgis(
             "layer": "flood",
             "source_label": ATTRIBUTION,
             "licence": LICENCE,
+            "licence_url": LICENCE_URL,
             "geometry_source": "postgis",
         }
         features.append(
@@ -204,57 +182,15 @@ def _query_postgis(
             "count": len(features),
             "max_features": max_features,
             "licence": LICENCE,
+            "licence_url": LICENCE_URL,
             "source": ATTRIBUTION,
             "source_url": DOWNLOAD_URL,
-            "tile_endpoint": TILE_ENDPOINT,
             "note": (
-                "PostGIS ingest of SEPA Flood Maps v3.0 (medium river + coastal). "
-                "Prefer raster tiles at zoom for performance."
+                "PostGIS ingest of SEPA Flood Maps v3.0 OGL download "
+                "(medium river + coastal). Source: www2.sepa.org.uk/flooddata."
             ),
         },
     }
-
-
-def _query_live_layer(
-    client: httpx.Client,
-    layer_id: int,
-    south: float,
-    west: float,
-    north: float,
-    east: float,
-    *,
-    max_features: int,
-) -> list[dict[str, Any]]:
-    params = {
-        "geometry": f"{west},{south},{east},{north}",
-        "geometryType": "esriGeometryEnvelope",
-        "inSR": str(IN_SR),
-        "spatialRel": "esriSpatialRelIntersects",
-        "outFields": "OBJECTID,MAP_TYPE,SOURCE,PROB,SCENARIO,REFERENCE,VERSION",
-        "returnGeometry": "true",
-        "outSR": str(OUT_SR),
-        "resultRecordCount": str(max_features),
-        "f": "geojson",
-    }
-    response = client.get(f"{MAPSERVER}/{layer_id}/query", params=params)
-    response.raise_for_status()
-    payload = response.json()
-    if not isinstance(payload, dict):
-        raise ValueError("SEPA flood response was not a JSON object")
-    out: list[dict[str, Any]] = []
-    for feat in payload.get("features") or []:
-        if not isinstance(feat, dict) or not feat.get("geometry"):
-            continue
-        props = _feature_props(feat.get("properties") or {}, layer_id)
-        props["geometry_source"] = "sepa_mapserver"
-        out.append(
-            {
-                "type": "Feature",
-                "geometry": feat["geometry"],
-                "properties": props,
-            }
-        )
-    return out
 
 
 def query_bbox(
@@ -265,7 +201,7 @@ def query_bbox(
     *,
     max_features: int = MAX_FEATURES,
 ) -> dict[str, Any]:
-    """Flood polygons in the viewport. PostGIS first; live MapServer fallback."""
+    """Flood polygons in the viewport from PostGIS only (OGL download ingest)."""
     limit = max(1, min(int(max_features), MAX_FEATURES))
     if south >= north or west >= east:
         return {
@@ -275,6 +211,7 @@ def query_bbox(
                 "ok": False,
                 "error": "invalid bbox",
                 "licence": LICENCE,
+                "licence_url": LICENCE_URL,
                 "source": ATTRIBUTION,
             },
         }
@@ -283,54 +220,21 @@ def query_bbox(
     if postgis is not None:
         return postgis
 
-    features: list[dict[str, Any]] = []
-    per_layer = max(1, limit // len(LIVE_LAYER_IDS))
-    try:
-        with httpx.Client(timeout=TIMEOUT) as client:
-            for layer_id in LIVE_LAYER_IDS:
-                if len(features) >= limit:
-                    break
-                room = min(per_layer, limit - len(features))
-                features.extend(
-                    _query_live_layer(
-                        client,
-                        layer_id,
-                        south,
-                        west,
-                        north,
-                        east,
-                        max_features=room,
-                    )
-                )
-    except (httpx.HTTPError, ValueError, TypeError) as exc:
-        return {
-            "type": "FeatureCollection",
-            "features": [],
-            "meta": {
-                "ok": False,
-                "error": str(exc),
-                "licence": LICENCE,
-                "source": ATTRIBUTION,
-                "source_url": DOWNLOAD_URL,
-                "tile_endpoint": TILE_ENDPOINT,
-            },
-        }
-
     return {
         "type": "FeatureCollection",
-        "features": features[:limit],
+        "features": [],
         "meta": {
-            "ok": True,
-            "backend": "sepa_mapserver",
-            "count": len(features[:limit]),
-            "max_features": limit,
+            "ok": False,
+            "error": (
+                f"{TABLE} is missing or empty. Download SEPA Flood Maps (OGL) "
+                f"from {DOWNLOAD_URL} and run `python -m etl.ingest_sepa_flood`. "
+                "MapServer / viewer / live web services are not used."
+            ),
+            "backend": "postgis",
+            "loaded": False,
             "licence": LICENCE,
+            "licence_url": LICENCE_URL,
             "source": ATTRIBUTION,
             "source_url": DOWNLOAD_URL,
-            "tile_endpoint": TILE_ENDPOINT,
-            "note": (
-                "Live SEPA MapServer query (capped). Ingest to PostGIS for "
-                "stable bbox; map paint should use raster tiles."
-            ),
         },
     }

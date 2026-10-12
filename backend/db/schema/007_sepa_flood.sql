@@ -1,6 +1,6 @@
 -- SEPA Flood Maps v3.0 (OGL-3.0). Raw geodatabase stays out of git (data/external).
 -- Live map prefers context raster tiles; bbox GeoJSON comes from this table when loaded,
--- else a capped live MapServer query (see layers.flood).
+-- from www2.sepa.org.uk/flooddata only (see layers.flood). No MapServer.
 
 CREATE EXTENSION IF NOT EXISTS postgis;
 

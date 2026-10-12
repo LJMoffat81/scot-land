@@ -2,14 +2,14 @@
 
 Raw geodatabases / national extracts stay under data/external/ (gitignored).
 Prefer exporting medium-likelihood river + coastal layers to GeoJSON
-(EPSG:4326) from the SEPA download or MapServer, then:
+(EPSG:4326) from the OGL download at www2.sepa.org.uk/flooddata, then:
 
   python -m etl.ingest_sepa_flood \\
     --input ../data/external/sepa/flood_medium_river_coastal.geojson \\
     --replace
 
 Each feature needs properties.layer_id (1=river medium, 7=coastal medium)
-or SOURCE / PROB fields matching the MapServer schema.
+or SOURCE / PROB fields matching the SEPA product schema.
 """
 
 from __future__ import annotations
@@ -167,9 +167,6 @@ def write_local_stamp(input_path: Path, count: int, vintage: str) -> Path:
         "product": "SEPA Flood Maps v3.0",
         "licence": "OGL-3.0",
         "source_url": "https://www2.sepa.org.uk/flooddata/",
-        "mapserver_url": (
-            "https://map.sepa.org.uk/server/rest/services/Open/Flood_Maps/MapServer"
-        ),
         "input": str(input_path),
         "row_count": count,
         "vintage": vintage,
@@ -190,8 +187,8 @@ def main() -> None:
         raise SystemExit(
             f"Input not found: {args.input}\n"
             "Download SEPA Flood Maps (OGL) from https://www2.sepa.org.uk/flooddata/ "
-            "or export medium river+coastal GeoJSON from the MapServer into "
-            "data/external/sepa/ (gitignored)."
+            "into data/external/sepa/ (gitignored). Do not use MapServer / viewer / "
+            "web services."
         )
     resolved = args.input.resolve()
     if "data/processed" in str(resolved).replace("\\", "/"):

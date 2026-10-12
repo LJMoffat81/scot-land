@@ -172,45 +172,9 @@ def data_zone_at(
                     "vintages_checked": found.vintages_loaded,
                     "message": "No data zone contains this point."},
         )
-    payload = {"lat": lat, "lon": lon, **found.to_dict()}
-    # Attach open context metrics (HPI / SIMD / density) — never modelled AGR £.
-    try:
-        from layers.dz_context import metrics_for_zone
-
-        context_rows = []
-        for zone in payload.get("zones") or []:
-            code = str(zone.get("code") or "")
-            vintage = zone.get("vintage")
-            if not code or vintage is None:
-                continue
-            metrics = metrics_for_zone(code, int(vintage))
-            if metrics:
-                context_rows.append(
-                    {
-                        "code": code,
-                        "vintage": int(vintage),
-                        "population": metrics.get("population"),
-                        "population_density_per_km2": metrics.get(
-                            "population_density_per_km2"
-                        ),
-                        "simd_decile": metrics.get("simd_decile"),
-                        "simd_rank": metrics.get("simd_rank"),
-                        "in_simd_20pct_most_deprived": metrics.get(
-                            "in_simd_20pct_most_deprived"
-                        ),
-                        "house_price_median_gbp": metrics.get("house_price_median_gbp"),
-                        "council_hpi_average_price_gbp": metrics.get(
-                            "council_hpi_average_price_gbp"
-                        ),
-                        "average_price_gbp": metrics.get("average_price_gbp"),
-                        "price_basis": metrics.get("price_basis"),
-                    }
-                )
-        if context_rows:
-            payload["context_metrics"] = context_rows
-    except Exception:
-        pass
-    return payload
+    # Context metrics (HPI/SIMD/density) stay on platform /layers/open/dz-context —
+    # wealth_routes must not import layers/agr (see test_wealth_router_does_not_import_agr).
+    return {"lat": lat, "lon": lon, **found.to_dict()}
 
 
 @router.get("/georgist/wealth")

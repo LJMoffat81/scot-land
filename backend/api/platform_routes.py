@@ -622,6 +622,30 @@ def open_downloads() -> dict:
                 ),
             },
             {
+                "id": "sssi_overlay",
+                "label": "NatureScot SSSI overlay (this API)",
+                "licence": "OGL-3.0",
+                "licence_url": (
+                    "https://www.nationalarchives.gov.uk/doc/"
+                    "open-government-licence/version/3/"
+                ),
+                "endpoint": "/layers/open/sssi",
+                "url": "https://opendata.nature.scot/maps/sites-of-special-scientific-interest",
+                "note": "PostGIS bbox after local OGL ingest; 503 when unloaded.",
+            },
+            {
+                "id": "naturescot_designations_overlay",
+                "label": "NatureScot SPA/SAC/NNR overlay (this API)",
+                "licence": "OGL-3.0",
+                "licence_url": (
+                    "https://www.nationalarchives.gov.uk/doc/"
+                    "open-government-licence/version/3/"
+                ),
+                "endpoint": "/layers/open/naturescot-designations",
+                "url": "https://opendata.nature.scot/",
+                "note": "PostGIS bbox after local OGL ingest; 503 when unloaded.",
+            },
+            {
                 "id": "data_zone_boundaries",
                 "label": "Data Zone boundaries overlay (this API)",
                 "licence": "OGL v3.0 — Scottish Government / OS",

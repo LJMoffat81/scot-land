@@ -72,8 +72,8 @@ Public methodology and README must list active data sources. See `data/config/so
 | Flood extent | SEPA Flood Maps v3.0 (river / coastal medium likelihood) | OGL-3.0 — © SEPA 2025; cite SEPA attribution statements; indicative hazard, not a quote |
 | Housing land audit | Spatial Hub Housing Land Supply – Scotland (HLA amalgamation) | OGL-3.0 — cite Improvement Service / local planning authorities; audit sites, not a title. PostGIS ingest from local extract; anonymous Spatial Hub WFS is gated; national SG ArcGIS republish is PSGA/Digimap (not used) |
 | LDP allocations | Spatial Hub Local Development Plans pack + authority OGL FeatureServers → PostGIS | OGL-3.0 — cite Improvement Service / planning authorities; fragmented national coverage (Edinburgh missing); planning extents, not a title; ledger nested row 1a |
-| SSSI | NatureScot Sites of Special Scientific Interest | OGL-3.0 — cite NatureScot; Constraint (£0); raw extracts stay in `data/external/` |
-| NatureScot designations | NatureScot SPA, SAC, NNR | OGL-3.0 — cite NatureScot; Constraint (£0); raw extracts stay in `data/external/` |
+| SSSI | NatureScot Sites of Special Scientific Interest | OGL-3.0 — https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ — cite NatureScot; Constraint (£0); raw extracts stay in `data/external/` |
+| NatureScot designations | NatureScot SPA, SAC, NNR | OGL-3.0 — https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ — cite NatureScot; Constraint (£0); raw extracts stay in `data/external/` |
 | Common Good | Statutory LA registers + Fife indicative titles metadata | Linked only. No national open spatial layer. Fife under OS Public Sector End User Licence - INSPIRE — not redistributed here |
 
 ### Accepted non-OGL open licence

@@ -10,6 +10,8 @@ API_DIR = Path(__file__).resolve().parents[2] / "api"
 WEALTH_PATHS = {
     "/health",
     "/georgist/wealth",
+    "/georgist/tax-scenario",
+    "/georgist/tax-scenario/zone",
     "/layers/georgist/surface-rent",
     "/layers/georgist/resource-rent",
     "/layers/georgist/eco-rent",

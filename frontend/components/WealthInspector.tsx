@@ -12,6 +12,7 @@ import type {
   WealthResponse,
 } from "../lib/useWealthApi";
 import { isQualityTag } from "../lib/qualityTag";
+import { TaxScenarioPanel } from "./TaxScenarioPanel";
 
 export interface WealthInspectorData {
   zone: DataZoneLookup;
@@ -317,6 +318,8 @@ export function WealthInspector({ isOpen, onClose, data, failure, isLoading }: W
               <span className="font-mono">{w.policy.policy_rent == null ? "–" : gbp(w.policy.policy_rent)}</span>
             </div>
           </section>
+
+          <TaxScenarioPanel zoneId={data.wealth.zone.code} vintage={data.wealth.zone.vintage} />
 
           {w.flags.length > 0 && (
             <section>

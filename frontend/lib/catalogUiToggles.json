@@ -3,6 +3,7 @@
     "agr_value",
     "boundaries",
     "cell_grid",
+    "data_zones",
     "vdl",
     "public_crown"
   ],

@@ -100,6 +100,29 @@ def platform_catalog() -> dict[str, Any]:
                 "minzoom": 12,
             },
             {
+                "id": "data_zones",
+                "group": "spatial",
+                "status": "live",
+                "label": "Data Zone boundaries",
+                "description": (
+                    "2011 Data Zone outlines from PostGIS dz_boundaries when loaded "
+                    "(Georgist/Valuation), else SG StatisticalUnits viewport query. "
+                    "Hover/click: code, name, council, population and dwellings. "
+                    "No AGR £ or Surface Rent on the map."
+                ),
+                "endpoint": "/layers/open/data-zones",
+                "licence": "Open Government Licence v3.0",
+                "licence_url": (
+                    "https://www.nationalarchives.gov.uk/doc/"
+                    "open-government-licence/version/3/"
+                ),
+                "minzoom": 10,
+                "source_url": (
+                    "https://www.spatialdata.gov.scot/geonetwork/srv/eng/catalog.search"
+                    "#/metadata/7d564e13-a967-495a-ae2f-048ffdfa4b03"
+                ),
+            },
+            {
                 "id": "vdl",
                 "group": "spatial",
                 "status": "live",

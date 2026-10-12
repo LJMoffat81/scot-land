@@ -17,6 +17,7 @@ export type CatalogLayer = {
   endpoint?: string;
   tile_endpoint?: string;
   licence?: string;
+  licence_url?: string;
   source_url?: string;
   spatial_hub_url?: string;
   minzoom?: number;
@@ -63,6 +64,13 @@ export const LAYER_ATTRIBUTION: Record<
   cell_grid: {
     source: "What3Words 3×3 m cell grid (internal AGR)",
     licence: "Not published on the public map until yield calibration",
+  },
+  data_zones: {
+    source: "Scottish Government Data Zone boundaries 2011",
+    licence:
+      "Open Government Licence v3.0 — outlines + open rollups; no AGR £",
+    sourceUrl:
+      "https://www.spatialdata.gov.scot/geonetwork/srv/eng/catalog.search#/metadata/7d564e13-a967-495a-ae2f-048ffdfa4b03",
   },
   vdl: {
     source: "Scottish Vacant and Derelict Land Survey",

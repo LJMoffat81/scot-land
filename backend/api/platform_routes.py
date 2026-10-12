@@ -19,6 +19,7 @@ from layers.open_stats import (
 )
 from layers.platform import place_context, platform_catalog
 from layers.registers import registers_payload
+from layers.data_zones import query_bbox as data_zones_bbox
 from layers.public_land import query_bbox as public_land_bbox
 from layers.vdl import query_bbox as vdl_bbox
 
@@ -83,6 +84,35 @@ def layer_open_public_land(
                 "Public land overlay is not available: "
                 f"{meta.get('error') or 'upstream source failed'}. "
                 "Five-body SG 2024 map only — gaps are not filled with guesses."
+            ),
+        )
+    return JSONResponse(payload)
+
+
+@router.get("/layers/open/data-zones")
+def layer_open_data_zones(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=120, ge=1, le=120),
+) -> JSONResponse:
+    """2011 Data Zone boundaries in the viewport (simplified GeoJSON).
+
+    Outlines only — code and name, no AGR £ / Surface Rent. Returns **503**
+    when the upstream SG StatisticalUnits service is unavailable. An empty
+    FeatureCollection with meta.ok=true means no zones in view.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    payload = data_zones_bbox(south, west, north, east, max_features=max_features)
+    meta = payload.get("meta") or {}
+    if meta.get("ok") is False:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Data Zone boundaries are not available: "
+                f"{meta.get('error') or 'upstream source failed'}. "
+                "Boundaries only — gaps are not filled with guesses."
             ),
         )
     return JSONResponse(payload)
@@ -258,6 +288,13 @@ def open_downloads() -> dict:
                 "licence": "SG 2024 dashboard overlay — not a title",
                 "endpoint": "/layers/open/public-land",
                 "note": "Viewport query of the official map. Five bodies only.",
+            },
+            {
+                "id": "data_zone_boundaries",
+                "label": "Data Zone boundaries overlay (this API)",
+                "licence": "OGL v3.0 — Scottish Government / OS",
+                "endpoint": "/layers/open/data-zones",
+                "note": "Simplified GeoJSON by bbox. Outlines only — no AGR £.",
             },
             {
                 "id": "council_agr",

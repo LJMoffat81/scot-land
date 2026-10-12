@@ -7,6 +7,13 @@ export type PlaceStub = {
   postcode?: string | null;
   dataZoneCode?: string | null;
   dataZoneName?: string | null;
+  /** Open rollups only — never AGR £ / Surface Rent. */
+  dataZoneVintage?: number | null;
+  laName?: string | null;
+  population?: number | null;
+  popYear?: number | null;
+  dwellings?: number | null;
+  dwYear?: number | null;
 };
 
 type PlaceCardStubProps = {
@@ -15,6 +22,10 @@ type PlaceCardStubProps = {
   error?: string | null;
   onClose: () => void;
 };
+
+function formatCount(value: number): string {
+  return value.toLocaleString("en-GB");
+}
 
 /**
  * Lightweight place card for the public w3w-style shell.
@@ -52,12 +63,32 @@ export default function PlaceCardStub({
         <p className="meta">Postcode: {place.postcode}</p>
       ) : null}
       {place.dataZoneCode ? (
-        <p className="meta">
-          Data zone: {place.dataZoneName || place.dataZoneCode}
-          {place.dataZoneName && place.dataZoneCode
-            ? ` (${place.dataZoneCode})`
-            : null}
-        </p>
+        <>
+          <p className="meta" data-testid="place-data-zone">
+            Data zone: {place.dataZoneName || place.dataZoneCode}
+            {place.dataZoneName && place.dataZoneCode
+              ? ` (${place.dataZoneCode})`
+              : null}
+            {place.dataZoneVintage ? ` · ${place.dataZoneVintage}` : null}
+          </p>
+          {place.laName ? (
+            <p className="meta" data-testid="place-la-name">
+              Council: {place.laName}
+            </p>
+          ) : null}
+          {place.population != null ? (
+            <p className="meta" data-testid="place-population">
+              Population: {formatCount(place.population)}
+              {place.popYear ? ` (${place.popYear})` : null}
+            </p>
+          ) : null}
+          {place.dwellings != null ? (
+            <p className="meta" data-testid="place-dwellings">
+              Dwellings: {formatCount(place.dwellings)}
+              {place.dwYear ? ` (${place.dwYear})` : null}
+            </p>
+          ) : null}
+        </>
       ) : loading ? (
         <p className="meta">Looking up this place…</p>
       ) : (

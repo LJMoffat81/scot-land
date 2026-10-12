@@ -126,6 +126,9 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     # Open-land platform router (mounted when imports + declarations succeed).
     "/layers/open/vdl": LayerRule("site", "site", "none", note="vacant/derelict survey polygons; no rent"),
     "/layers/open/public-land": LayerRule("site", "site", "none", note="public/Crown holdings overlay; no rent"),
+    "/layers/open/data-zones": LayerRule(
+        "zone", "zone", "none", note="Data Zone outlines by bbox; code/name only, no rent"
+    ),
     "/platform/place": LayerRule("site", "site", "none", note="ownership/vacant/gap card; no modelled rent"),
     "/platform/gaps": LayerRule("zone", "zone", "none", note="register gap catalogue"),
     "/api/catalog.json": LayerRule("zone", "zone", "none", note="open-data catalogue"),

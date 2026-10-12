@@ -374,6 +374,8 @@ const PUBLIC_LAND_FILL: ExpressionSpecification = [
 const CADASTRAL_MIN_ZOOM = 14;
 const PUBLIC_LAND_MIN_ZOOM = 8;
 const VDL_MIN_ZOOM = 8;
+/** Data Zone outlines are readable from neighbourhood zoom. */
+const DATA_ZONE_MIN_ZOOM = 10;
 
 const VDL_SITE_TYPES: Array<{ name: string; color: string }> = [
   { name: "Vacant Land", color: "#e8a317" },
@@ -514,9 +516,12 @@ export default function ScotlandMap() {
   const [showCellGrid] = useState(false);
   const [showVdl, setShowVdl] = useState(false);
   const [showPublicLand, setShowPublicLand] = useState(false);
+  const [showDataZones, setShowDataZones] = useState(false);
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
   const publicLandTouched = useRef(false);
+  const dataZonesTouched = useRef(false);
   const layerPopupRef = useRef<maplibregl.Popup | null>(null);
+  const dzHoverPopupRef = useRef<maplibregl.Popup | null>(null);
 
   // Public place card (stub). Modelled AGR £ / Wealth / tax stay off the public shell.
   const [placeStub, setPlaceStub] = useState<PlaceStub | null>(null);
@@ -754,6 +759,14 @@ export default function ScotlandMap() {
         fly?: boolean;
         label?: string | null;
         postcode?: string | null;
+        dataZoneCode?: string | null;
+        dataZoneName?: string | null;
+        dataZoneVintage?: number | null;
+        laName?: string | null;
+        population?: number | null;
+        popYear?: number | null;
+        dwellings?: number | null;
+        dwYear?: number | null;
       } = {},
     ) => {
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -782,22 +795,36 @@ export default function ScotlandMap() {
       setError(null);
       setResult(null);
       setAddressLine(opts.label ?? null);
+      const knownCode = opts.dataZoneCode?.trim() || null;
+      const knownName = opts.dataZoneName?.trim() || null;
       setPlaceStub({
         lat,
         lng,
-        label: opts.label ?? null,
+        label: opts.label ?? knownName ?? null,
         postcode: opts.postcode ?? null,
-        dataZoneCode: null,
-        dataZoneName: null,
+        dataZoneCode: knownCode,
+        dataZoneName: knownName,
+        dataZoneVintage: opts.dataZoneVintage ?? null,
+        laName: opts.laName ?? null,
+        population: opts.population ?? null,
+        popYear: opts.popYear ?? null,
+        dwellings: opts.dwellings ?? null,
+        dwYear: opts.dwYear ?? null,
       });
-      setPlaceLoading(true);
       if (window.matchMedia("(max-width: 640px)").matches) {
         setLegendOpen(false);
       }
+      // Polygon click already supplies code/name (+ optional rollups).
+      if (knownCode) {
+        setPlaceLoading(false);
+        return;
+      }
+      setPlaceLoading(true);
       try {
         const data = await apiJson<{
           code?: string;
           name?: string;
+          vintage?: number;
         }>(
           `/layers/context/data-zones/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
           { cache: "no-store" },
@@ -807,7 +834,13 @@ export default function ScotlandMap() {
         const name = data.name?.trim() || null;
         setPlaceStub((prev) =>
           prev && prev.lat === lat && prev.lng === lng
-            ? { ...prev, dataZoneCode: code, dataZoneName: name }
+            ? {
+                ...prev,
+                dataZoneCode: code,
+                dataZoneName: name,
+                dataZoneVintage:
+                  typeof data.vintage === "number" ? data.vintage : null,
+              }
             : prev,
         );
       } catch {
@@ -1284,6 +1317,34 @@ export default function ScotlandMap() {
         paint: { "line-color": "#7f0000", "line-width": 0.4, "line-opacity": 0.4 },
       });
 
+      map.addSource("data-zones-overlay", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution:
+          "Scottish Government Data Zone boundaries 2011 (OGL). Outlines only — not a rent.",
+      });
+      map.addLayer({
+        id: "data-zones-fill",
+        type: "fill",
+        source: "data-zones-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": "#0b1e3a",
+          "fill-opacity": 0.04,
+        },
+      });
+      map.addLayer({
+        id: "data-zones-line",
+        type: "line",
+        source: "data-zones-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "line-color": "#0b1e3a",
+          "line-width": 1.05,
+          "line-opacity": 0.78,
+        },
+      });
+
       map.addSource("public-land-overlay", {
         type: "geojson",
         data: emptyCollection,
@@ -1510,9 +1571,86 @@ export default function ScotlandMap() {
       }
     });
 
+    map.on("mousemove", "data-zones-fill", (event) => {
+      map.getCanvas().style.cursor = "pointer";
+      const feat = event.features?.[0];
+      const props = feat?.properties as
+        | { code?: string; name?: string; la_name?: string }
+        | undefined;
+      if (!props?.code || !event.lngLat) return;
+      const label = props.name
+        ? `${escapeHtml(props.name)} (${escapeHtml(props.code)})`
+        : escapeHtml(props.code);
+      const la = props.la_name
+        ? `<br/><span class="popup-source">${escapeHtml(props.la_name)}</span>`
+        : "";
+      if (!dzHoverPopupRef.current) {
+        dzHoverPopupRef.current = new maplibregl.Popup({
+          closeButton: false,
+          closeOnClick: false,
+          offset: 10,
+          className: "dz-hover-popup",
+        });
+      }
+      dzHoverPopupRef.current
+        .setLngLat(event.lngLat)
+        .setHTML(
+          `<div class="layer-popup"><strong>Data zone</strong><br/>${label}${la}</div>`,
+        )
+        .addTo(map);
+    });
+    map.on("mouseleave", "data-zones-fill", () => {
+      map.getCanvas().style.cursor = "";
+      dzHoverPopupRef.current?.remove();
+    });
+
     map.on("click", async (event) => {
       const lat = event.lngLat.lat;
       const lng = event.lngLat.lng;
+
+      // Data Zone click → place card (boundaries only; no AGR £).
+      const dzHits =
+        map.getLayer("data-zones-fill") &&
+        map.getLayoutProperty("data-zones-fill", "visibility") === "visible"
+          ? map.queryRenderedFeatures(event.point, {
+              layers: ["data-zones-fill"],
+            })
+          : [];
+      const dzProps = dzHits[0]?.properties as
+        | {
+            code?: string;
+            name?: string;
+            vintage?: number | string;
+            la_name?: string;
+            population?: number | string;
+            pop_year?: number | string;
+            dwellings?: number | string;
+            dw_year?: number | string;
+          }
+        | undefined;
+      if (dzProps?.code) {
+        dzHoverPopupRef.current?.remove();
+        const asNum = (v: number | string | undefined): number | null => {
+          if (typeof v === "number" && Number.isFinite(v)) return v;
+          if (typeof v === "string" && v !== "" && Number.isFinite(Number(v))) {
+            return Number(v);
+          }
+          return null;
+        };
+        void inspectRef.current(lat, lng, {
+          fly: false,
+          label: dzProps.name || dzProps.code,
+          dataZoneCode: dzProps.code,
+          dataZoneName: dzProps.name || null,
+          dataZoneVintage: asNum(dzProps.vintage),
+          laName: dzProps.la_name || null,
+          population: asNum(dzProps.population),
+          popYear: asNum(dzProps.pop_year),
+          dwellings: asNum(dzProps.dwellings),
+          dwYear: asNum(dzProps.dw_year),
+        });
+        return;
+      }
 
       // Layer popup: cadastral / public land / SVDLS site (ownership layers)
       try {
@@ -1839,6 +1977,77 @@ export default function ScotlandMap() {
     };
   }, [mapReady, showCellGrid, scenario]);
 
+  // Data Zone boundaries (simplified GeoJSON by bbox — outlines only, no AGR £)
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const setVis = (vis: "visible" | "none") => {
+      if (!map.getLayer("data-zones-fill")) return;
+      map.setLayoutProperty("data-zones-fill", "visibility", vis);
+      map.setLayoutProperty("data-zones-line", "visibility", vis);
+    };
+
+    if (!showDataZones) {
+      setVis("none");
+      dzHoverPopupRef.current?.remove();
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const loadDataZones = () => {
+      if (cancelled || !mapRef.current || inFlight) return;
+      const b = map.getBounds();
+      if (!b) return;
+      if (map.getZoom() < DATA_ZONE_MIN_ZOOM) {
+        setVis("none");
+        return;
+      }
+      inFlight = true;
+      setLayerBusy(true);
+      const path =
+        `/layers/open/data-zones?south=${b.getSouth()}&west=${b.getWest()}` +
+        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=120`;
+      void apiJson<GeoJSON.FeatureCollection>(path)
+        .then((data) => {
+          if (cancelled) return;
+          (map.getSource("data-zones-overlay") as GeoJSONSource)?.setData(data);
+          setVis("visible");
+          setLayerNotice(null);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setVis("none");
+          if (err instanceof ApiError && err.status === 503) {
+            setLayerNotice(
+              "Data Zone boundaries are not available right now (source unavailable). Gaps are not filled with guesses.",
+            );
+          }
+        })
+        .finally(() => {
+          inFlight = false;
+          if (!cancelled) setLayerBusy(false);
+        });
+    };
+
+    const onMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadDataZones, 700);
+    };
+
+    loadDataZones();
+    map.on("moveend", onMove);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off("moveend", onMove);
+    };
+  }, [mapReady, showDataZones]);
+
   // SVDLS vacant / derelict overlay (OGL survey polygons)
   useEffect(() => {
     if (!mapReady) return;
@@ -1993,6 +2202,9 @@ export default function ScotlandMap() {
       }
       if (!publicLandTouched.current) {
         setShowPublicLand(zoom >= PUBLIC_LAND_MIN_ZOOM);
+      }
+      if (!dataZonesTouched.current) {
+        setShowDataZones(zoom >= DATA_ZONE_MIN_ZOOM);
       }
     };
     sync();
@@ -2440,11 +2652,23 @@ export default function ScotlandMap() {
               <section className="layer-ownership" aria-label="Ownership and cadastre">
                 <label className="layer-select-label">Ownership and cadastre</label>
                 <p className="layer-meta">
-                  RoS INSPIRE parcels, public-sector holdings, and SVDLS vacant
-                  and derelict sites. Separate from Annual Ground Rent and
-                  Surface Rent.
+                  Data Zone outlines, RoS INSPIRE parcels, public-sector
+                  holdings, and SVDLS vacant and derelict sites. Separate from
+                  Annual Ground Rent and Surface Rent.
                 </p>
                 <div className="layer-chips">
+                  <button
+                    type="button"
+                    className={showDataZones ? "chip active" : "chip"}
+                    data-testid="layer-data-zones"
+                    onClick={() => {
+                      dataZonesTouched.current = true;
+                      setShowDataZones((on) => !on);
+                    }}
+                    title="2011 Data Zone boundaries. On by default from neighbourhood zoom. Outlines only — no AGR £."
+                  >
+                    Data zone boundaries
+                  </button>
                   <button
                     type="button"
                     className={showBoundaries ? "chip active" : "chip"}
@@ -2479,6 +2703,13 @@ export default function ScotlandMap() {
                     Vacant and derelict
                   </button>
                 </div>
+                {showDataZones && (
+                  <p className="layer-meta" data-testid="layer-data-zones-credit">
+                    Scottish Government Data Zone boundaries 2011 (OGL). Hover
+                    or click for code and name. Boundaries only — no Annual
+                    Ground Rent. Zoom {DATA_ZONE_MIN_ZOOM}+.
+                  </p>
+                )}
                 {showBoundaries && (
                   <p className="layer-meta">
                     © Crown copyright. Reproduced with the permission of Registers
@@ -2591,7 +2822,7 @@ export default function ScotlandMap() {
                 >
                   Register outlines
                 </button>
-                {["urban-rural", "data-zones"].map((id) => {
+                {["urban-rural"].map((id) => {
                   const layer = CONTEXT_LAYERS.find((item) => item.id === id);
                   if (!layer) return null;
                   return (
@@ -2604,7 +2835,7 @@ export default function ScotlandMap() {
                         setContextOn((cur) => ({ ...cur, [layer.id]: !cur[layer.id] }))
                       }
                     >
-                      {layer.id === "urban-rural" ? "Town or countryside" : layer.label}
+                      Town or countryside
                     </button>
                   );
                 })}

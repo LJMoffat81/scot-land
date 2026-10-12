@@ -306,6 +306,10 @@ def internal_tax_scenario(
     if la_code:
         payload["la_code"] = la_code
     assert payload.get("publication_status") == PUBLICATION_STATUS
+    assert payload.get("money_grain") == "data_zone"
+    assert payload.get("yield_placeholder", {}).get("land_yield") == 0.05
+    assert payload.get("policy_config", {}).get("status") == "not_finalised"
+    assert payload.get("policy_config", {}).get("separate_from_measured_land_values") is True
     return JSONResponse(payload, headers={**HEADERS, "X-Wealth-Publication-Status": PUBLICATION_STATUS})
 
 
@@ -343,11 +347,11 @@ def internal_tax_scenario_zone(
         )
     council_rows = [z for z in zones if z.la_code == match.la_code]
     try:
+        # Mixed-year guard on council membership (counts only; £ stays on the zone).
         aggregate_by_council(council_rows, capture_rate=rate)
         payload = zone_illustration(
             match,
             capture_rate=rate,
-            council_measured_total=sum(z.measured_rent for z in council_rows),
             council_zone_count=len(council_rows),
         )
     except TaxScenarioError as exc:
@@ -358,5 +362,7 @@ def internal_tax_scenario_zone(
     payload["zone_id"] = code
     payload["zone_meta"] = {"code": code, "vintage": vin, "vintage_source": vin_source}
     assert payload.get("publication_status") == PUBLICATION_STATUS
+    assert payload.get("money_grain") == "data_zone"
+    assert payload.get("yield_placeholder", {}).get("status") == "placeholder"
     assert INTERNAL_WARNING in (payload.get("warning") or "")
     return JSONResponse(payload, headers={**HEADERS, "X-Wealth-Publication-Status": PUBLICATION_STATUS})

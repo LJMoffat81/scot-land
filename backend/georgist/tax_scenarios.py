@@ -1,16 +1,22 @@
 """Tax scenario illustrations from Wealth Engine Surface Rent (not AGR).
 
 INTERNAL ONLY until land-yield calibration lands (configured 5% yield is a
-placeholder assumption). Every payload is ``publication_status=blocked`` and must
-not appear on public pages or public API routes.
+placeholder assumption; Valuation owns r−g). Every payload is
+``publication_status=blocked`` and must not appear on public pages or public
+API routes.
 
-Policy capture-rate maths only. Inputs may use publishable Wealth figures
-(``measured_rent`` from ``surface_rent_dz``); the scenario *output* stays blocked.
-No Sandilands pool, no fiscal basket, no invented national totals.
+Money figures (£) are served at **Data Zone grain only**. Council / national
+blocks carry counts and labels, never summed £.
+
+**Policy config is separate from measured land values.** Capture rate, exemptions,
+phase-in and revenue sharing are provisional policy knobs — not finalised here.
+Georgist owns that spec; this module must not invent a policy schema.
+
+Inputs may use publishable Wealth figures (``measured_rent`` from
+``surface_rent_dz``); the scenario *output* stays blocked. No Sandilands pool,
+no fiscal basket, no invented national totals.
 
 Surface Rent (la-calc residual) is a different lens from AGR residual plot charge.
-Sums of zone Surface Rent are research aggregates — not the national rent pool and
-not a tax bill.
 """
 
 from __future__ import annotations
@@ -28,8 +34,9 @@ LENS_NOTE = (
     "Not AGR residual plot charge. Not the Sandilands national rent pool."
 )
 CAPTURE_NOTE = (
-    "Policy illustration: capture_rate scales publishable Surface Rent measured_rent. "
-    "This is not a measured tax liability and not an official bill."
+    "Policy illustration only: capture_rate scales publishable Surface Rent measured_rent. "
+    "Rates / exemptions / phase-in / revenue sharing are policy config (not finalised; "
+    "Georgist owns the spec) and are never folded into measured land values."
 )
 STATUS = "experimental_research_estimate"
 PUBLICATION_STATUS = "blocked"
@@ -41,9 +48,45 @@ INTERNAL_WARNING = (
     "INTERNAL ONLY. Tax scenario output is publication_status=blocked until yield "
     "calibration lands. Do not publish on public pages."
 )
+# Valuation specialist owns r−g / land_yield; surface.yaml yield.land_yield = 0.05 is placeholder.
+YIELD_PLACEHOLDER = {
+    "status": "placeholder",
+    "land_yield": 0.05,
+    "source": "data/config/surface.yaml yield.land_yield",
+    "owner": "Valuation",
+    "note": (
+        "Configured land yield 5% (= r − g) is a PLACEHOLDER assumption. "
+        "Valuation specialist owns r−g and yield calibration against RoS evidence. "
+        "Do not treat scenario £ as calibrated."
+    ),
+}
+# Room rule: policy knobs stay out of measured land values; Georgist will write the spec.
+POLICY_CONFIG = {
+    "status": "not_finalised",
+    "owner": "Georgist",
+    "separate_from_measured_land_values": True,
+    "topics": ["rates", "exemptions", "phase_in", "revenue_sharing"],
+    "note": (
+        "Rates, exemptions, phase-in and revenue sharing are policy config, kept "
+        "separate from measured land values. Spec not finalised — Georgist will write "
+        "it first. capture_rate here is a provisional illustration knob only."
+    ),
+}
+MONEY_GRAIN = "data_zone"
+MONEY_GRAIN_NOTE = (
+    "Money figures (£) are Data Zone grain only. Council and national blocks list "
+    "membership counts, never summed £."
+)
 
-# Display presets only — not recommended policy rates.
+# Provisional display presets only — not a finalised policy rate schedule.
 DEFAULT_CAPTURE_RATES: tuple[float, ...] = (0.0, 0.25, 0.5, 0.75, 1.0)
+
+# Keys that must never appear on council/national blocks (Valuation: £ at DZ only).
+_FORBIDDEN_AGGREGATE_GBP = frozenset({
+    "measured_rent_total_gbp",
+    "illustrated_collection_gbp",
+    "measured_rent_gbp",
+})
 
 
 def _blocked_fields() -> dict[str, Any]:
@@ -52,6 +95,10 @@ def _blocked_fields() -> dict[str, Any]:
         "publication_status": PUBLICATION_STATUS,
         "blocked_reason": BLOCKED_REASON,
         "warning": INTERNAL_WARNING,
+        "yield_placeholder": dict(YIELD_PLACEHOLDER),
+        "policy_config": dict(POLICY_CONFIG),
+        "money_grain": MONEY_GRAIN,
+        "money_grain_note": MONEY_GRAIN_NOTE,
     }
 
 
@@ -71,7 +118,39 @@ def stamp_blocked(payload: dict[str, Any]) -> dict[str, Any]:
                 "publication_status": PUBLICATION_STATUS,
                 "blocked_reason": BLOCKED_REASON,
             })
+    for row in payload.get("by_zone") or []:
+        if isinstance(row, dict):
+            row.update({
+                "publication_status": PUBLICATION_STATUS,
+                "blocked_reason": BLOCKED_REASON,
+                "yield_placeholder": dict(YIELD_PLACEHOLDER),
+            })
     return payload
+
+
+def assert_no_aggregate_gbp(payload: Mapping[str, Any]) -> None:
+    """Refuse council/national £ fields (Valuation: money at Data Zone only)."""
+    for block_name in ("national", "council"):
+        block = payload.get(block_name)
+        if not isinstance(block, dict):
+            continue
+        bad = sorted(_FORBIDDEN_AGGREGATE_GBP & set(block))
+        if bad:
+            raise TaxScenarioError(
+                "aggregate_gbp_forbidden",
+                f"{block_name} must not carry £ fields {bad}; money is Data Zone grain only.",
+                fields=bad,
+            )
+    for row in payload.get("by_council") or []:
+        if not isinstance(row, dict):
+            continue
+        bad = sorted(_FORBIDDEN_AGGREGATE_GBP & set(row))
+        if bad:
+            raise TaxScenarioError(
+                "aggregate_gbp_forbidden",
+                f"by_council must not carry £ fields {bad}; money is Data Zone grain only.",
+                fields=bad,
+            )
 
 
 class TaxScenarioError(ValueError):
@@ -116,7 +195,7 @@ def parse_capture_rate(raw: Any) -> float:
 
 
 def illustrated_collection(measured_rent: float, capture_rate: float) -> float:
-    """Policy illustration: measured Surface Rent × capture rate."""
+    """Policy illustration: measured Surface Rent × capture rate (Data Zone only)."""
     return float(measured_rent) * float(capture_rate)
 
 
@@ -165,19 +244,36 @@ def _refuse_mixed_price_years(rows: Sequence[ZoneRentRow], *, where: str) -> int
     return years[0]
 
 
+def _zone_money_row(row: ZoneRentRow, *, capture_rate: float) -> dict[str, Any]:
+    """£ fields for one Data Zone only."""
+    return {
+        "code": row.code,
+        "vintage": row.vintage,
+        "la_code": row.la_code,
+        "la_name": row.la_name,
+        "price_year": row.price_year,
+        "measured_rent_gbp": row.measured_rent,
+        "illustrated_collection_gbp": illustrated_collection(row.measured_rent, capture_rate),
+        "money_grain": MONEY_GRAIN,
+        "status": STATUS,
+        "disclaimer": DISCLAIMER,
+        "yield_placeholder": dict(YIELD_PLACEHOLDER),
+    }
+
+
 def aggregate_by_council(
     rows: Iterable[ZoneRentRow],
     *,
     capture_rate: float,
     la_code: str | None = None,
 ) -> dict[str, Any]:
-    """Sum publishable zone Surface Rent by council; apply capture_rate as illustration."""
+    """Council membership + per-zone £ (no council/national £ sums)."""
     rate = parse_capture_rate(capture_rate)
     usable = list(rows)
     if la_code:
         usable = [r for r in usable if r.la_code == la_code]
     if not usable:
-        return stamp_blocked({
+        payload = stamp_blocked({
             "status": STATUS,
             "lens": LENS,
             "lens_note": LENS_NOTE,
@@ -185,15 +281,14 @@ def aggregate_by_council(
             "capture_rate": rate,
             "capture_note": CAPTURE_NOTE,
             "price_year": None,
-            "national": {
-                "zone_count": 0,
-                "measured_rent_total_gbp": None,
-                "illustrated_collection_gbp": None,
-            },
+            "national": {"zone_count": 0},
             "by_council": [],
+            "by_zone": [],
             "preset_rates": list(DEFAULT_CAPTURE_RATES),
             "note": "No publishable Surface Rent rows for this filter. Nothing was estimated.",
         })
+        assert_no_aggregate_gbp(payload)
+        return payload
 
     price_year = _refuse_mixed_price_years(usable, where="national")
     by_la: dict[str, list[ZoneRentRow]] = {}
@@ -204,20 +299,18 @@ def aggregate_by_council(
     for code in sorted(by_la, key=lambda c: by_la[c][0].la_name):
         group = by_la[code]
         _refuse_mixed_price_years(group, where=f"council:{code}")
-        measured = sum(r.measured_rent for r in group)
         councils.append({
             "la_code": code,
             "la_name": group[0].la_name,
             "zone_count": len(group),
             "price_year": price_year,
-            "measured_rent_total_gbp": measured,
-            "illustrated_collection_gbp": illustrated_collection(measured, rate),
+            "zone_codes": sorted(z.code for z in group),
             "status": STATUS,
             "disclaimer": DISCLAIMER,
         })
 
-    national_measured = sum(r.measured_rent for r in usable)
-    return stamp_blocked({
+    by_zone = [_zone_money_row(r, capture_rate=rate) for r in sorted(usable, key=lambda z: z.code)]
+    payload = stamp_blocked({
         "status": STATUS,
         "lens": LENS,
         "lens_note": LENS_NOTE,
@@ -227,70 +320,56 @@ def aggregate_by_council(
         "price_year": price_year,
         "national": {
             "zone_count": len(usable),
-            "measured_rent_total_gbp": national_measured,
-            "illustrated_collection_gbp": illustrated_collection(national_measured, rate),
             "price_year": price_year,
             "status": STATUS,
             "disclaimer": DISCLAIMER,
         },
         "by_council": councils,
+        "by_zone": by_zone,
         "preset_rates": list(DEFAULT_CAPTURE_RATES),
         "note": (
-            "Council and national figures are sums of publishable Data Zone Surface Rent "
-            "(research aggregates). They are not the Sandilands national rent pool, not AGR, "
-            "and not a tax bill. Output is publication_status=blocked until yield calibration."
+            "Internal tax scenario: £ at Data Zone grain only (by_zone). "
+            "Council/national blocks are membership counts, not £ totals. "
+            "capture_rate is provisional policy illustration — rates/exemptions/phase-in/"
+            "revenue sharing are not finalised (Georgist owns that spec) and stay separate "
+            "from measured land values. Not the Sandilands pool, not AGR, not a tax bill. "
+            "publication_status=blocked; 5% land yield is a Valuation placeholder."
         ),
     })
+    assert_no_aggregate_gbp(payload)
+    return payload
 
 
 def zone_illustration(
     row: ZoneRentRow,
     *,
     capture_rate: float,
-    council_measured_total: float | None = None,
     council_zone_count: int | None = None,
 ) -> dict[str, Any]:
-    """Who-pays illustration for one Data Zone at a capture rate."""
+    """Who-pays illustration for one Data Zone at a capture rate (£ on the zone only)."""
     rate = parse_capture_rate(capture_rate)
-    measured = row.measured_rent
-    illustrated = illustrated_collection(measured, rate)
-    share = None
-    if council_measured_total is not None and council_measured_total > 0:
-        share = measured / council_measured_total
-    return stamp_blocked({
+    zone = _zone_money_row(row, capture_rate=rate)
+    payload = stamp_blocked({
         "status": STATUS,
         "lens": LENS,
         "lens_note": LENS_NOTE,
         "disclaimer": DISCLAIMER,
         "capture_rate": rate,
         "capture_note": CAPTURE_NOTE,
-        "zone": {
-            "code": row.code,
-            "vintage": row.vintage,
-            "la_code": row.la_code,
-            "la_name": row.la_name,
-            "price_year": row.price_year,
-            "measured_rent_gbp": measured,
-            "illustrated_collection_gbp": illustrated,
-            "share_of_council_measured_rent": share,
-            "status": STATUS,
-            "disclaimer": DISCLAIMER,
-        },
+        "zone": zone,
         "council": {
             "la_code": row.la_code,
             "la_name": row.la_name,
             "zone_count": council_zone_count,
-            "measured_rent_total_gbp": council_measured_total,
-            "illustrated_collection_gbp": (
-                None if council_measured_total is None
-                else illustrated_collection(council_measured_total, rate)
-            ),
             "status": STATUS,
             "disclaimer": DISCLAIMER,
         },
         "note": (
-            "Illustrated collection = Surface Rent measured_rent × capture_rate. "
+            "Illustrated collection = Surface Rent measured_rent × capture_rate at Data Zone grain. "
             "Research estimate only; not AGR and not a tax bill. "
-            "Output is publication_status=blocked until yield calibration."
+            "publication_status=blocked; 5% land yield is a Valuation placeholder (r−g owned by Valuation). "
+            "Policy rates/exemptions/phase-in/revenue sharing are not finalised here."
         ),
     })
+    assert_no_aggregate_gbp(payload)
+    return payload

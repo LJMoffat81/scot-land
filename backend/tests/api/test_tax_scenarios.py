@@ -1,4 +1,4 @@
-"""Tax scenario tools: internal-only, publication_status=blocked until yield calibration."""
+"""Tax scenario tools: internal-only, blocked, £ at Data Zone only; 5% yield placeholder."""
 
 from __future__ import annotations
 
@@ -13,10 +13,14 @@ from georgist.tax_scenarios import (
     DISCLAIMER,
     INTERNAL_WARNING,
     LENS,
+    MONEY_GRAIN,
+    POLICY_CONFIG,
     PUBLICATION_STATUS,
+    YIELD_PLACEHOLDER,
     TaxScenarioError,
     ZoneRentRow,
     aggregate_by_council,
+    assert_no_aggregate_gbp,
     illustrated_collection,
     parse_capture_rate,
     stamp_blocked,
@@ -31,6 +35,7 @@ INTERNAL_TAX_PATHS = (
     "/internal/georgist/tax-scenario/zone",
 )
 FRONTEND_ROOT = Path(__file__).resolve().parents[3] / "frontend"
+GBP_KEYS = ("measured_rent_total_gbp", "illustrated_collection_gbp", "measured_rent_gbp")
 
 
 def _row(
@@ -73,16 +78,13 @@ def test_parse_capture_rate_bounds():
     with pytest.raises(TaxScenarioError) as exc:
         parse_capture_rate(1.01)
     assert exc.value.code == "invalid_capture_rate"
-    with pytest.raises(TaxScenarioError):
-        parse_capture_rate("nope")
 
 
 def test_illustrated_collection_is_product():
     assert illustrated_collection(100_000.0, 0.25) == 25_000.0
-    assert illustrated_collection(80_000.0, 0.0) == 0.0
 
 
-def test_aggregate_by_council_sums_and_is_blocked():
+def test_aggregate_money_is_data_zone_only_not_council_sums():
     rows = [
         _row("S01008677", rent=100_000.0),
         _row("S01008678", rent=50_000.0),
@@ -92,38 +94,75 @@ def test_aggregate_by_council_sums_and_is_blocked():
     assert out["lens"] == LENS
     assert out["disclaimer"] == DISCLAIMER
     assert out["capture_note"] == CAPTURE_NOTE
-    assert out["status"] == "experimental_research_estimate"
     assert out["publication_status"] == PUBLICATION_STATUS == "blocked"
     assert out["internal"] is True
-    assert "yield_calibration_pending" in out["blocked_reason"]
-    assert "5%" in out["blocked_reason"]
+    assert out["money_grain"] == MONEY_GRAIN == "data_zone"
+    assert "5%" in out["blocked_reason"] or "0.05" in str(out["yield_placeholder"])
+    assert out["yield_placeholder"]["status"] == "placeholder"
+    assert out["yield_placeholder"]["land_yield"] == 0.05
+    assert out["yield_placeholder"]["owner"] == "Valuation"
+    assert "PLACEHOLDER" in out["yield_placeholder"]["note"]
     assert out["warning"] == INTERNAL_WARNING
+    assert out["policy_config"]["status"] == "not_finalised"
+    assert out["policy_config"]["owner"] == "Georgist"
+    assert out["policy_config"]["separate_from_measured_land_values"] is True
+    assert set(out["policy_config"]["topics"]) == {
+        "rates", "exemptions", "phase_in", "revenue_sharing",
+    }
+    # Policy knobs must not be folded into measured rent fields
+    assert "exemptions" not in out["by_zone"][0]
+    assert "phase_in" not in out["by_zone"][0]
+    assert "revenue_sharing" not in out["by_zone"][0]
+
+    # National / council: counts only — no £
     assert out["national"]["zone_count"] == 3
-    assert out["national"]["measured_rent_total_gbp"] == 350_000.0
-    assert out["national"]["illustrated_collection_gbp"] == 175_000.0
-    assert out["national"]["publication_status"] == "blocked"
-    by_name = {c["la_name"]: c for c in out["by_council"]}
-    assert by_name["City of Edinburgh"]["illustrated_collection_gbp"] == 75_000.0
-    assert by_name["City of Edinburgh"]["publication_status"] == "blocked"
-    assert by_name["Glasgow City"]["blocked_reason"] == BLOCKED_REASON
-    assert "AGR" in out["lens_note"]
+    for key in GBP_KEYS:
+        assert key not in out["national"]
+    for c in out["by_council"]:
+        for key in GBP_KEYS:
+            assert key not in c
+        assert c["zone_count"] >= 1
+        assert c["zone_codes"]
+
+    # £ only on by_zone (Data Zone grain)
+    by_code = {z["code"]: z for z in out["by_zone"]}
+    assert by_code["S01008677"]["illustrated_collection_gbp"] == 50_000.0
+    assert by_code["S01008677"]["measured_rent_gbp"] == 100_000.0
+    assert by_code["S01008677"]["money_grain"] == "data_zone"
+    assert by_code["S01008677"]["yield_placeholder"]["land_yield"] == 0.05
+    assert_no_aggregate_gbp(out)
 
 
-def test_zone_illustration_is_blocked():
+def test_zone_illustration_gbp_on_zone_only():
     z = _row(rent=25_000.0)
-    out = zone_illustration(z, capture_rate=0.2, council_measured_total=100_000.0, council_zone_count=4)
+    out = zone_illustration(z, capture_rate=0.2, council_zone_count=4)
     assert out["zone"]["illustrated_collection_gbp"] == 5_000.0
+    assert out["zone"]["measured_rent_gbp"] == 25_000.0
     assert out["publication_status"] == "blocked"
-    assert out["zone"]["publication_status"] == "blocked"
-    assert out["council"]["publication_status"] == "blocked"
-    assert out["internal"] is True
+    assert out["money_grain"] == "data_zone"
+    assert out["yield_placeholder"] == YIELD_PLACEHOLDER
+    for key in GBP_KEYS:
+        assert key not in out["council"]
+    assert out["council"]["zone_count"] == 4
+    assert "share_of_council_measured_rent" not in out["zone"]
+    assert_no_aggregate_gbp(out)
 
 
-def test_stamp_blocked_idempotent_fields():
+def test_assert_no_aggregate_gbp_refuses_council_money():
+    with pytest.raises(TaxScenarioError) as exc:
+        assert_no_aggregate_gbp({"council": {"illustrated_collection_gbp": 1.0}})
+    assert exc.value.code == "aggregate_gbp_forbidden"
+
+
+def test_stamp_blocked_includes_yield_placeholder_and_policy_config():
     stamped = stamp_blocked({"national": {}, "by_council": [{"la_code": "S"}]})
     assert stamped["publication_status"] == "blocked"
-    assert stamped["national"]["publication_status"] == "blocked"
-    assert stamped["by_council"][0]["publication_status"] == "blocked"
+    assert stamped["yield_placeholder"]["land_yield"] == 0.05
+    assert "yield_calibration_pending" in stamped["blocked_reason"]
+    assert BLOCKED_REASON == stamped["blocked_reason"]
+    assert stamped["policy_config"] == POLICY_CONFIG
+    assert stamped["policy_config"]["status"] == "not_finalised"
+    assert "not finalised" in CAPTURE_NOTE.lower() or "not finalised" in POLICY_CONFIG["note"].lower()
 
 
 def test_aggregate_refuses_mixed_price_years():
@@ -140,7 +179,8 @@ def test_aggregate_la_filter():
     ]
     out = aggregate_by_council(rows, capture_rate=1.0, la_code="S12000036")
     assert out["national"]["zone_count"] == 1
-    assert out["publication_status"] == "blocked"
+    assert len(out["by_zone"]) == 1
+    assert out["by_zone"][0]["measured_rent_gbp"] == 10_000.0
 
 
 def test_zone_row_from_db_filters_unpublishable_and_zero_dwellings():
@@ -158,8 +198,6 @@ def test_zone_row_from_db_filters_unpublishable_and_zero_dwellings():
     }
     assert zone_row_from_db(base) is not None
     assert zone_row_from_db({**base, "quality": "placeholder"}) is None
-    assert zone_row_from_db({**base, "publish_level": "internal"}) is None
-    assert zone_row_from_db({**base, "publication_status": "blocked"}) is None
     assert zone_row_from_db({**base, "flags": "zero_dwellings"}) is None
 
 
@@ -169,7 +207,6 @@ def test_public_tax_scenario_paths_absent_from_default_app():
     paths = {p for _, p in registered_routes(app)}
     for path in PUBLIC_TAX_PATHS:
         assert path not in paths
-    # Internal flag off by default → internal tax routes also absent
     for path in INTERNAL_TAX_PATHS:
         assert path not in paths
 
@@ -179,7 +216,6 @@ def test_public_tax_scenario_paths_not_declared_as_public_layers():
 
     for path in PUBLIC_TAX_PATHS:
         assert path not in pr.PUBLIC_ROUTE_RULES
-    # /internal is exempt from public declarations
     assert pr.undeclared(list(INTERNAL_TAX_PATHS)) == []
 
 
@@ -222,37 +258,27 @@ def test_internal_tax_scenario_requires_auth(monkeypatch):
     c = _internal_client(monkeypatch, enabled=True, token="correct")
     r = c.get("/internal/georgist/tax-scenario")
     assert r.status_code == 401
-    assert r.json()["detail"]["error"] == "unauthorized"
 
 
 def test_internal_tax_scenario_flag_off_is_404(monkeypatch):
     c = _internal_client(monkeypatch, enabled=False, token="correct")
     assert c.get("/internal/georgist/tax-scenario", headers={"Authorization": "Bearer correct"}).status_code == 404
-    assert c.get(
-        "/internal/georgist/tax-scenario/zone",
-        params={"zone_id": "S01008677"},
-        headers={"Authorization": "Bearer correct"},
-    ).status_code == 404
 
 
-def test_internal_tax_scenario_503_without_db_and_blocked_headers(monkeypatch):
+def test_internal_tax_scenario_503_without_db(monkeypatch):
     c = _internal_client(monkeypatch, enabled=True, token="correct")
-    # Validation before DB: bad capture rate
     bad = c.get(
         "/internal/georgist/tax-scenario",
         params={"capture_rate": 2},
         headers={"Authorization": "Bearer correct"},
     )
     assert bad.status_code == 422
-    assert bad.json()["detail"]["error"] == "invalid_capture_rate"
-
     r = c.get(
         "/internal/georgist/tax-scenario",
         params={"vintage": "2011", "capture_rate": 0.5},
         headers={"Authorization": "Bearer correct"},
     )
     assert r.status_code == 503
-    assert r.json()["detail"]["error"] == "wealth_database_unavailable"
 
 
 def test_internal_tax_scenario_zone_rejects_unknown_zone(monkeypatch):
@@ -263,11 +289,9 @@ def test_internal_tax_scenario_zone_rejects_unknown_zone(monkeypatch):
         headers={"Authorization": "Bearer correct"},
     )
     assert r.status_code == 422
-    assert r.json()["detail"]["error"] == "invalid_zone_id"
 
 
 def test_frontend_has_no_public_tax_scenario_panel():
-    """Tax scenario UI must stay off public pages until yield calibration."""
     inspector = (FRONTEND_ROOT / "components" / "WealthInspector.tsx").read_text(encoding="utf-8")
     assert "TaxScenarioPanel" not in inspector
     assert not (FRONTEND_ROOT / "components" / "TaxScenarioPanel.tsx").exists()

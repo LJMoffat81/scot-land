@@ -25,7 +25,7 @@ npm run dev
 | `GET /layers/parcels?...` | RoS INSPIRE Index Polygons bbox (PostGIS; **503** if not loaded) |
 | `GET /layers/parcels/tiles/{z}/{x}/{y}` | Live RoS INSPIRE WMS proxy (soft-fail tiles) |
 | `GET /layers/parcels/at?lat=&lng=` | Parcel under a point (live WMS GetFeatureInfo) |
-| `GET /layers/open/vdl` | Vacant and derelict land overlay (bbox) |
+| `GET /layers/open/vdl` | SVDLS vacant/derelict sites (bbox; **503** if upstream down) |
 | `GET /layers/open/public-land` | Public / Crown Estate overlay (bbox, five bodies; **503** if upstream down) |
 | `GET /platform/place` | Ownership / vacant / gap card |
 | `GET /platform/gaps` | Visible register gaps |
@@ -51,11 +51,11 @@ npm run dev
 | **Public land** | SG 2024 five bodies | Top of Layers; on by default zoom ≥ 8; owner-type legend; gaps flagged |
 | Council AGR | All Scotland | Overview choropleth (Annual Ground Rent — not Surface Rent) |
 | W3W grid | Current map view | Zoom ≥ 12; every cell up to cap (then sampled) |
-| Vacant land | Viewport SVDLS sites | Toggle **Vacant and derelict**; zoom ≥ 8 |
+| **Vacant and derelict** | SVDLS site-level survey polygons | Ownership and cadastre; site-type legend + credits; zoom ≥ 8; click popup; each site tagged `geometry_source` (Spatial Hub survey > RoS title outline > point) |
 | Coverage | Live vs linked/gap | Sidebar **Coverage** list; live rows toggle overlays |
 | Vacant residual story | Council choropleth + overlay | `/?story=vacant_land` |
 | Filters | Vacant / public overlays, rent band | `/?vacant=1&public=1&band=high` |
-| Click | Any cell | Layer popup (parcel id / area / owner type) + residual place card |
+| Click | Any cell | Layer popup (parcel id / area / owner type / SVDLS site) + residual place card |
 
 Cadastre ingest: `python -m etl.ingest_inspire_parcels` — see `scripts/data/README-inspire.md`.
 

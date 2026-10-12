@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import os
 from pathlib import Path
 
@@ -11,8 +10,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
-from etl.ingest_sepa_car import ngr_to_wgs84, parse_car_csv
 from layers.platform import platform_catalog
+from layers import sepa_car as sepa_car_layer
 
 client = TestClient(app)
 
@@ -28,6 +27,7 @@ SCHEMA_SQL = (
     Path(__file__).resolve().parents[1] / "db" / "schema" / "006_hydro_sepa_car.sql"
 )
 OGL_URL = "open-government-licence"
+SEPA_ENV = "sepa.org.uk/environment/environmental-data"
 
 
 def _dsn() -> str | None:
@@ -51,19 +51,18 @@ def test_catalog_lists_hydro_and_sepa_car_ogl_with_tiers():
     assert car["endpoint"] == "/layers/open/sepa-car"
     assert hydro["licence"] == "OGL-3.0"
     assert car["licence"] == "OGL-3.0"
-    assert OGL_URL in (hydro.get("licence_url") or "")
     assert OGL_URL in (car.get("licence_url") or "")
-    assert "data.gov.uk" in (hydro.get("source_url") or "")
-    assert "sepa" in (car.get("source_url") or "").lower()
-    assert hydro["value_tier"] == "proxy"
-    assert car["value_tier"] == "proxy"
-    assert hydro["commons_class"] == "extractive"
+    assert SEPA_ENV in (car.get("source_url") or "")
+    assert "map.sepa.org.uk" in (car.get("mapserver_url") or "")
+    assert car["value_tier"] == "market"
     assert car["commons_class"] == "extractive"
-    assert hydro["publication_status"] == "ok"
-    assert car["publication_status"] == "download_only"
-    for blob in (hydro.get("description") or "", car.get("description") or ""):
-        assert "£" not in blob or "No £" in blob
-        assert "surface rent" in blob.lower()
+    assert car["publication_status"] == "ok"
+    assert car.get("adds_to_surface_rent") is False
+    desc = car.get("description") or ""
+    assert "194" in desc and "195" in desc
+    assert "never prox" in desc.lower() or "PostGIS only" in desc
+    assert "No £" in desc or "no £" in desc
+    assert "surface rent" in desc.lower()
 
 
 def test_publication_rules_declare_hydro_and_car_routes():
@@ -73,6 +72,16 @@ def test_publication_rules_declare_hydro_and_car_routes():
     assert "/layers/open/sepa-car" in PUBLIC_ROUTE_RULES
     assert PUBLIC_ROUTE_RULES["/layers/open/hydro"].value_basis == "none"
     assert PUBLIC_ROUTE_RULES["/layers/open/sepa-car"].value_basis == "none"
+
+
+def test_sepa_car_layer_module_never_imports_httpx():
+    """Request path must not proxy MapServer — PostGIS only."""
+    import inspect
+
+    source = inspect.getsource(sepa_car_layer)
+    assert "httpx" not in source
+    assert "MapServer" in source  # documented ingest source only
+    assert "query_bbox" in source
 
 
 def _truncate_tables() -> None:
@@ -110,104 +119,9 @@ def test_open_sepa_car_503_when_unloaded():
     assert r.status_code == 503
     detail = r.json().get("detail", "").lower()
     assert "car" in detail
-    assert "download" in detail or "csv" in detail or "ingest" in detail
-
-
-def test_ngr_to_wgs84_parses_scotland_point():
-    coords = ngr_to_wgs84("NS 95844 21321")
-    assert coords is not None
-    lng, lat = coords
-    assert 55.4 < lat < 55.6
-    assert -3.7 < lng < -3.5
-
-
-def test_parse_car_csv_filters_car_water_rows(tmp_path: Path):
-    path = tmp_path / "car.csv"
-    with path.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(
-            handle,
-            fieldnames=[
-                "Authorisation number",
-                "Authorisation holder",
-                "Authorisation location",
-                "Authorisation level",
-                "Authorisation status",
-                "Regulatory area",
-                "NGR",
-            ],
-        )
-        writer.writeheader()
-        writer.writerow(
-            {
-                "Authorisation number": "CAR/L/1011412",
-                "Authorisation holder": "Example Hydro",
-                "Authorisation location": "Breadalbane",
-                "Authorisation level": "CAR Complex Licence",
-                "Authorisation status": "Granted",
-                "Regulatory area": "Water",
-                "NGR": "NN 12345 45678",
-            }
-        )
-        writer.writerow(
-            {
-                "Authorisation number": "WML/123",
-                "Authorisation holder": "Skip me",
-                "Authorisation location": "Landfill",
-                "Authorisation level": "Waste Management Licence",
-                "Authorisation status": "Granted",
-                "Regulatory area": "Waste",
-                "NGR": "NS 10000 20000",
-            }
-        )
-    rows = parse_car_csv(path)
-    assert len(rows) == 1
-    assert rows[0]["authorisation_no"] == "CAR/L/1011412"
-    assert rows[0]["lng"] is not None
-
-
-def test_hydro_bbox_after_fixture_load():
-    dsn = _dsn()
-    if not dsn:
-        pytest.skip("No DATABASE_URL for PostGIS fixture load")
-    try:
-        conn = psycopg2.connect(dsn)
-    except Exception as exc:
-        pytest.skip(f"PostGIS unavailable: {exc}")
-    try:
-        with conn.cursor() as cur:
-            cur.execute(SCHEMA_SQL.read_text(encoding="utf-8"))
-            cur.execute("TRUNCATE hydro_sites")
-            cur.execute(
-                """
-                INSERT INTO hydro_sites (lic_no, site_name, geom, value_tier, publication_status)
-                VALUES (
-                  'CAR/L/TEST1',
-                  'Fixture Hydro',
-                  ST_SetSRID(ST_MakePoint(-4.25, 55.85), 4326),
-                  'proxy',
-                  'ok'
-                )
-                """
-            )
-        conn.commit()
-    finally:
-        conn.close()
-
-    r = client.get("/layers/open/hydro", params=SCOTLAND_BBOX)
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert body["type"] == "FeatureCollection"
-    assert body["meta"]["ok"] is True
-    assert body["meta"]["licence"] == "OGL-3.0"
-    assert body["meta"]["value_tier"] == "proxy"
-    assert body["meta"]["publication_status"] == "ok"
-    assert "rent" not in (body["meta"].get("note") or "").lower() or "no £" in (
-        body["meta"].get("note") or ""
-    ).lower()
-    assert any(
-        f.get("properties", {}).get("lic_no") == "CAR/L/TEST1"
-        for f in body["features"]
-    )
+    assert "ingest_sepa_car" in detail or "python -m etl.ingest_sepa_car" in detail
+    assert "mapserver" in detail
+    assert "never prox" in detail or "postgis" in detail
 
 
 def test_sepa_car_bbox_after_fixture_load():
@@ -225,15 +139,16 @@ def test_sepa_car_bbox_after_fixture_load():
             cur.execute(
                 """
                 INSERT INTO sepa_car_licences (
-                  authorisation_no, authorisation_level, regulatory_area,
-                  geom, value_tier, publication_status
+                  authorisation_no, car_layer, authorisation_level,
+                  regulatory_area, geom, value_tier, publication_status
                 ) VALUES (
                   'CAR/S/TEST1',
+                  'simple',
                   'CAR Simple Licence',
                   'Water',
                   ST_SetSRID(ST_MakePoint(-4.20, 55.90), 4326),
-                  'proxy',
-                  'download_only'
+                  'market',
+                  'ok'
                 )
                 """
             )
@@ -246,19 +161,23 @@ def test_sepa_car_bbox_after_fixture_load():
     body = r.json()
     assert body["meta"]["ok"] is True
     assert body["meta"]["licence"] == "OGL-3.0"
-    assert body["meta"]["value_tier"] == "proxy"
-    assert body["meta"]["publication_status"] == "download_only"
-    assert "download" in (body["meta"].get("note") or "").lower()
+    assert OGL_URL in (body["meta"].get("licence_url") or "")
+    assert SEPA_ENV in (body["meta"].get("source_url") or "")
+    assert body["meta"]["value_tier"] == "market"
+    assert body["meta"]["publication_status"] == "ok"
+    assert "proxy" in (body["meta"].get("note") or "").lower()
     assert any(
         f.get("properties", {}).get("authorisation_no") == "CAR/S/TEST1"
         for f in body["features"]
     )
 
 
-def test_downloads_list_hydro_and_car():
+def test_downloads_list_sepa_car_mapserver_path():
     r = client.get("/downloads")
     assert r.status_code == 200
     items = {row["id"]: row for row in r.json()["items"]}
-    assert items["hydro_sites"]["licence"] == "OGL-3.0"
     assert items["sepa_car"]["licence"] == "OGL-3.0"
-    assert "download" in (items["sepa_car"].get("note") or "").lower()
+    assert SEPA_ENV in (items["sepa_car"].get("url") or "")
+    note = (items["sepa_car"].get("note") or "").lower()
+    assert "mapserver" in note or "194" in note
+    assert "ingest_sepa_car" in note or "postgis" in note

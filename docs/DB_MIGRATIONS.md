@@ -60,3 +60,5 @@ After stamping, future revisions (`alembic revision` + `upgrade`) apply normally
   (`005_inspire_parcels.sql`).
 - Natural-capital hydro + SEPA CAR: `006_hydro_sepa_car.sql` + Alembic
   `20261012_0002` (`hydro_sites`, `sepa_car_licences`).
+- SEPA CAR MapServer ingest shape: Alembic `20261012_0003` recreates
+  `sepa_car_licences` for layers 194/195 (`python -m etl.ingest_sepa_car`).

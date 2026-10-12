@@ -1,109 +1,53 @@
-"""Ingest SEPA CAR licences from a public-register CSV export into PostGIS.
+"""Ingest SEPA CAR licences from OGL MapServer into PostGIS.
 
-Download-only: operators export CSV from the SEPA public register
-(https://search-the-register.sepa.org.uk/). This tool never scrapes MapServer
-or viewer endpoints. Rows without a parseable NGR load with NULL geometry.
+Default (one command)::
 
-  python -m etl.ingest_sepa_car --csv /path/to/sepa_car_export.csv --replace
+    python -m etl.ingest_sepa_car
+
+Fetches Open/SEPA_Reference MapServer layers **194** (CAR Simple Licenced
+Site) and **195** (CAR Registration) from map.sepa.org.uk, with retry/backoff,
+and loads them into ``sepa_car_licences``.
+
+The public API must serve PostGIS only — never proxy MapServer to clients.
+Does not write under ``data/external``.
 """
 
 from __future__ import annotations
 
 import argparse
-import csv
+import logging
 import os
-import re
+import time
 from datetime import date
 from pathlib import Path
 from typing import Any
 
+import httpx
 import psycopg2
+import yaml
 from psycopg2.extras import execute_batch
-from pyproj import Transformer
+
+logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+SOURCES_PATH = REPO_ROOT / "data" / "config" / "sources.yaml"
 TABLE = "sepa_car_licences"
 SCHEMA_SQL = REPO_ROOT / "backend" / "db" / "schema" / "006_hydro_sepa_car.sql"
 
-_TO_WGS84 = Transformer.from_crs("EPSG:27700", "EPSG:4326", always_xy=True)
-
-# OSGB 100km grid letters → SW corner metres (easting, northing of square).
-_GRID_SQ = {
-    "HL": (0, 1_200_000),
-    "HM": (100_000, 1_200_000),
-    "HN": (200_000, 1_200_000),
-    "HO": (300_000, 1_200_000),
-    "HP": (400_000, 1_200_000),
-    "JL": (500_000, 1_200_000),
-    "JM": (600_000, 1_200_000),
-    "HQ": (0, 1_100_000),
-    "HR": (100_000, 1_100_000),
-    "HS": (200_000, 1_100_000),
-    "HT": (300_000, 1_100_000),
-    "HU": (400_000, 1_100_000),
-    "JQ": (500_000, 1_100_000),
-    "JR": (600_000, 1_100_000),
-    "HV": (0, 1_000_000),
-    "HW": (100_000, 1_000_000),
-    "HX": (200_000, 1_000_000),
-    "HY": (300_000, 1_000_000),
-    "HZ": (400_000, 1_000_000),
-    "JV": (500_000, 1_000_000),
-    "JW": (600_000, 1_000_000),
-    "NA": (0, 900_000),
-    "NB": (100_000, 900_000),
-    "NC": (200_000, 900_000),
-    "ND": (300_000, 900_000),
-    "NE": (400_000, 900_000),
-    "OA": (500_000, 900_000),
-    "OB": (600_000, 900_000),
-    "NF": (0, 800_000),
-    "NG": (100_000, 800_000),
-    "NH": (200_000, 800_000),
-    "NJ": (300_000, 800_000),
-    "NK": (400_000, 800_000),
-    "OF": (500_000, 800_000),
-    "OG": (600_000, 800_000),
-    "NL": (0, 700_000),
-    "NM": (100_000, 700_000),
-    "NN": (200_000, 700_000),
-    "NO": (300_000, 700_000),
-    "NP": (400_000, 700_000),
-    "OL": (500_000, 700_000),
-    "OM": (600_000, 700_000),
-    "NQ": (0, 600_000),
-    "NR": (100_000, 600_000),
-    "NS": (200_000, 600_000),
-    "NT": (300_000, 600_000),
-    "NU": (400_000, 600_000),
-    "OQ": (500_000, 600_000),
-    "OR": (600_000, 600_000),
-    "NV": (0, 500_000),
-    "NW": (100_000, 500_000),
-    "NX": (200_000, 500_000),
-    "NY": (300_000, 500_000),
-    "NZ": (400_000, 500_000),
-    "OV": (500_000, 500_000),
-    "OW": (600_000, 500_000),
-    "SA": (0, 400_000),
-    "SB": (100_000, 400_000),
-    "SC": (200_000, 400_000),
-    "SD": (300_000, 400_000),
-    "SE": (400_000, 400_000),
-    "TA": (500_000, 400_000),
-    "TB": (600_000, 400_000),
-    "SF": (0, 300_000),
-    "SG": (100_000, 300_000),
-    "SH": (200_000, 300_000),
-    "SJ": (300_000, 300_000),
-    "SK": (400_000, 300_000),
-    "TF": (500_000, 300_000),
-    "TG": (600_000, 300_000),
-}
-
-_NGR_RE = re.compile(
-    r"^\s*([A-Z]{2})\s*(\d{2,5})\s+(\d{2,5})\s*$",
-    re.IGNORECASE,
+DEFAULT_MAPSERVER = (
+    "https://map.sepa.org.uk/server/rest/services/Open/SEPA_Reference/MapServer"
+)
+DEFAULT_LAYERS = (
+    {"id": 194, "car_layer": "simple", "label": "CAR Simple Licenced Site"},
+    {"id": 195, "car_layer": "registration", "label": "CAR Registration"},
+)
+PAGE_SIZE = 1000
+MAX_RETRIES = 5
+BACKOFF_SECONDS = (1.0, 2.0, 4.0, 8.0, 16.0)
+OUT_FIELDS = (
+    "authorisation_no,authorisation_holder,authorisation_description,"
+    "authorisation_status,authorisation_level,category,regulatory_area,"
+    "authorisation_activity,representative_ngr,easting,northing"
 )
 
 
@@ -120,99 +64,176 @@ def _db_connect():
     )
 
 
+def _config() -> dict[str, Any]:
+    with SOURCES_PATH.open(encoding="utf-8") as handle:
+        sources = yaml.safe_load(handle) or {}
+    return sources.get("sepa_car") or {}
+
+
 def _ensure_table(conn) -> None:
     with conn.cursor() as cur:
         cur.execute(SCHEMA_SQL.read_text(encoding="utf-8"))
     conn.commit()
 
 
-def ngr_to_wgs84(ngr: str | None) -> tuple[float, float] | None:
-    """Parse a compact OSGB NGR (e.g. 'NS 95844 21321') to WGS84 lng/lat."""
-    if not ngr:
+def _as_int(value: Any) -> int | None:
+    if value is None or value == "":
         return None
-    match = _NGR_RE.match(ngr.strip().upper().replace(",", " "))
-    if not match:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
         return None
-    letters, east_s, north_s = match.group(1), match.group(2), match.group(3)
-    if len(east_s) != len(north_s):
+
+
+def get_with_retry(
+    client: httpx.Client,
+    url: str,
+    *,
+    params: dict[str, Any],
+    max_retries: int = MAX_RETRIES,
+    backoff: tuple[float, ...] = BACKOFF_SECONDS,
+) -> httpx.Response:
+    """GET with exponential backoff on timeouts / 429 / 5xx."""
+    last_exc: Exception | None = None
+    for attempt in range(max_retries):
+        try:
+            response = client.get(url, params=params)
+            if response.status_code in (429, 500, 502, 503, 504):
+                raise httpx.HTTPStatusError(
+                    f"retryable status {response.status_code}",
+                    request=response.request,
+                    response=response,
+                )
+            response.raise_for_status()
+            return response
+        except (httpx.TimeoutException, httpx.TransportError, httpx.HTTPStatusError) as exc:
+            last_exc = exc
+            if attempt >= max_retries - 1:
+                break
+            delay = backoff[min(attempt, len(backoff) - 1)]
+            logger.warning(
+                "SEPA MapServer request failed (attempt %s/%s): %s; retry in %.1fs",
+                attempt + 1,
+                max_retries,
+                exc,
+                delay,
+            )
+            time.sleep(delay)
+    assert last_exc is not None
+    raise last_exc
+
+
+def feature_to_row(feat: dict[str, Any], car_layer: str) -> dict[str, Any] | None:
+    """Map one GeoJSON feature to a PostGIS row dict (no network)."""
+    props = feat.get("properties") or {}
+    auth_no = str(props.get("authorisation_no") or "").strip()
+    if not auth_no:
         return None
-    origin = _GRID_SQ.get(letters)
-    if origin is None:
-        return None
-    digits = len(east_s)
-    scale = 10 ** (5 - digits)
-    easting = origin[0] + int(east_s) * scale
-    northing = origin[1] + int(north_s) * scale
-    lng, lat = _TO_WGS84.transform(easting, northing)
-    if not (54.4 <= lat <= 61.0 and -9.0 <= lng <= 0.2):
-        return None
-    return lng, lat
+    geom = feat.get("geometry") or {}
+    coords = geom.get("coordinates") if geom.get("type") == "Point" else None
+    lng = lat = None
+    if isinstance(coords, (list, tuple)) and len(coords) >= 2:
+        lng, lat = float(coords[0]), float(coords[1])
+        if not (54.4 <= lat <= 61.0 and -9.0 <= lng <= 0.2):
+            lng = lat = None
+    status = str(props.get("authorisation_status") or "").strip() or None
+    publication_status = "ok" if (lng is not None or status) else "blocked"
+    return {
+        "authorisation_no": auth_no,
+        "car_layer": car_layer,
+        "authorisation_holder": str(props.get("authorisation_holder") or "").strip()
+        or None,
+        "authorisation_description": str(
+            props.get("authorisation_description") or ""
+        ).strip()
+        or None,
+        "authorisation_level": str(props.get("authorisation_level") or "").strip()
+        or None,
+        "authorisation_status": status,
+        "regulatory_area": str(props.get("regulatory_area") or "").strip() or None,
+        "authorisation_activity": str(props.get("authorisation_activity") or "").strip()
+        or None,
+        "category": str(props.get("category") or "").strip() or None,
+        "ngr": str(props.get("representative_ngr") or "").strip() or None,
+        "easting": _as_int(props.get("easting")),
+        "northing": _as_int(props.get("northing")),
+        "value_tier": "market",
+        "publication_status": publication_status,
+        "lng": lng,
+        "lat": lat,
+    }
 
 
-def _field(row: dict[str, str], *names: str) -> str:
-    lower = {k.lower().strip(): v for k, v in row.items() if k}
-    for name in names:
-        value = lower.get(name.lower())
-        if value is not None and str(value).strip():
-            return str(value).strip()
-    return ""
+def fetch_layer_features(
+    client: httpx.Client,
+    mapserver: str,
+    layer_id: int,
+    *,
+    page_size: int = PAGE_SIZE,
+) -> list[dict[str, Any]]:
+    """Page GeoJSON from a MapServer layer (ingest-time only)."""
+    features: list[dict[str, Any]] = []
+    offset = 0
+    query_url = f"{mapserver.rstrip('/')}/{layer_id}/query"
+    while True:
+        response = get_with_retry(
+            client,
+            query_url,
+            params={
+                "where": "1=1",
+                "outFields": OUT_FIELDS,
+                "returnGeometry": "true",
+                "outSR": 4326,
+                "resultOffset": offset,
+                "resultRecordCount": page_size,
+                "f": "geojson",
+            },
+        )
+        payload = response.json()
+        batch = payload.get("features") or []
+        if not batch:
+            break
+        features.extend(batch)
+        if len(batch) < page_size:
+            break
+        offset += len(batch)
+        if offset > 500_000:
+            break
+    return features
 
 
-def _is_car_row(level: str, auth_no: str, regulatory_area: str) -> bool:
-    blob = f"{level} {auth_no} {regulatory_area}".upper()
-    return "CAR" in blob or regulatory_area.lower() == "water"
-
-
-def parse_car_csv(path: Path) -> list[dict[str, Any]]:
+def rows_from_features(
+    features: list[dict[str, Any]], car_layer: str
+) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    with path.open(newline="", encoding="utf-8-sig") as handle:
-        reader = csv.DictReader(handle)
-        for raw in reader:
-            auth_no = _field(
-                raw, "Authorisation number", "authorisation_no", "Authorisation Number"
-            )
-            if not auth_no:
-                continue
-            level = _field(
-                raw, "Authorisation level", "authorisation_level", "Authorisation Level"
-            )
-            area = _field(raw, "Regulatory area", "regulatory_area", "Regulatory Area")
-            if not _is_car_row(level, auth_no, area):
-                continue
-            ngr = _field(raw, "NGR", "representative_ngr", "Representative NGR")
-            coords = ngr_to_wgs84(ngr)
-            rows.append(
-                {
-                    "authorisation_no": auth_no,
-                    "authorisation_holder": _field(
-                        raw, "Authorisation holder", "authorisation_holder"
-                    )
-                    or None,
-                    "authorisation_location": _field(
-                        raw, "Authorisation location", "authorisation_location"
-                    )
-                    or None,
-                    "authorisation_level": level or None,
-                    "authorisation_status": _field(
-                        raw, "Authorisation status", "authorisation_status"
-                    )
-                    or None,
-                    "regulatory_area": area or None,
-                    "authorisation_activity": _field(
-                        raw, "Authorisation activity", "authorisation_activity"
-                    )
-                    or None,
-                    "ngr": ngr or None,
-                    "lng": coords[0] if coords else None,
-                    "lat": coords[1] if coords else None,
-                }
-            )
+    for feat in features:
+        row = feature_to_row(feat, car_layer)
+        if row:
+            rows.append(row)
     return rows
 
 
-def ingest(csv_path: Path, *, replace: bool = True) -> dict[str, Any]:
+def ingest(*, replace: bool = True) -> dict[str, Any]:
+    """Fetch MapServer 194/195 and load PostGIS. One-command default path."""
+    cfg = _config()
+    mapserver = cfg.get("mapserver_url") or DEFAULT_MAPSERVER
+    layers = cfg.get("mapserver_layers") or list(DEFAULT_LAYERS)
     retrieved = date.today()
-    rows = parse_car_csv(csv_path)
+    rows: list[dict[str, Any]] = []
+
+    with httpx.Client(timeout=120.0, follow_redirects=True) as client:
+        for layer in layers:
+            layer_id = int(layer["id"])
+            car_layer = str(layer["car_layer"])
+            features = fetch_layer_features(client, mapserver, layer_id)
+            rows.extend(rows_from_features(features, car_layer))
+            logger.info(
+                "SEPA CAR layer %s (%s): %s features",
+                layer_id,
+                car_layer,
+                len(features),
+            )
+
     conn = _db_connect()
     try:
         _ensure_table(conn)
@@ -223,28 +244,37 @@ def ingest(csv_path: Path, *, replace: bool = True) -> dict[str, Any]:
                 cur,
                 f"""
                 INSERT INTO {TABLE} (
-                  authorisation_no, authorisation_holder, authorisation_location,
-                  authorisation_level, authorisation_status, regulatory_area,
-                  authorisation_activity, ngr, geom, retrieved_at
+                  authorisation_no, car_layer, authorisation_holder,
+                  authorisation_description, authorisation_level,
+                  authorisation_status, regulatory_area, authorisation_activity,
+                  category, ngr, easting, northing, value_tier,
+                  publication_status, geom, retrieved_at
                 ) VALUES (
-                  %(authorisation_no)s, %(authorisation_holder)s,
-                  %(authorisation_location)s, %(authorisation_level)s,
+                  %(authorisation_no)s, %(car_layer)s, %(authorisation_holder)s,
+                  %(authorisation_description)s, %(authorisation_level)s,
                   %(authorisation_status)s, %(regulatory_area)s,
-                  %(authorisation_activity)s, %(ngr)s,
+                  %(authorisation_activity)s, %(category)s, %(ngr)s,
+                  %(easting)s, %(northing)s, %(value_tier)s,
+                  %(publication_status)s,
                   CASE
                     WHEN %(lng)s IS NULL THEN NULL
                     ELSE ST_SetSRID(ST_MakePoint(%(lng)s, %(lat)s), 4326)
                   END,
                   %(retrieved_at)s
                 )
-                ON CONFLICT (authorisation_no) DO UPDATE SET
+                ON CONFLICT (authorisation_no, car_layer) DO UPDATE SET
                   authorisation_holder = EXCLUDED.authorisation_holder,
-                  authorisation_location = EXCLUDED.authorisation_location,
+                  authorisation_description = EXCLUDED.authorisation_description,
                   authorisation_level = EXCLUDED.authorisation_level,
                   authorisation_status = EXCLUDED.authorisation_status,
                   regulatory_area = EXCLUDED.regulatory_area,
                   authorisation_activity = EXCLUDED.authorisation_activity,
+                  category = EXCLUDED.category,
                   ngr = EXCLUDED.ngr,
+                  easting = EXCLUDED.easting,
+                  northing = EXCLUDED.northing,
+                  value_tier = EXCLUDED.value_tier,
+                  publication_status = EXCLUDED.publication_status,
                   geom = EXCLUDED.geom,
                   retrieved_at = EXCLUDED.retrieved_at
                 """,
@@ -260,22 +290,27 @@ def ingest(csv_path: Path, *, replace: bool = True) -> dict[str, Any]:
         "table": TABLE,
         "rows": len(rows),
         "rows_with_geometry": with_geom,
+        "layers": [dict(layer) for layer in layers],
         "retrieved_at": retrieved.isoformat(),
         "licence": "OGL-3.0",
-        "value_tier": "proxy",
+        "value_tier": "market",
         "commons_class": "extractive",
-        "publication_status": "download_only",
-        "note": "CSV export from SEPA public register only — no MapServer scrape",
+        "publication_status": "ok",
+        "command": "python -m etl.ingest_sepa_car",
+        "note": (
+            "Ingested from SEPA_Reference MapServer 194/195 into PostGIS. "
+            "Public API must not proxy MapServer."
+        ),
     }
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--csv",
-        type=Path,
-        required=True,
-        help="Local CSV exported from the SEPA public register",
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Load SEPA CAR licences from OGL MapServer 194/195 into PostGIS. "
+            "One command: python -m etl.ingest_sepa_car"
+        )
     )
     parser.add_argument(
         "--replace",
@@ -284,9 +319,7 @@ def main() -> None:
         help="TRUNCATE before load (default: true)",
     )
     args = parser.parse_args()
-    if not args.csv.is_file():
-        raise SystemExit(f"CSV not found: {args.csv}")
-    print(ingest(args.csv, replace=args.replace))
+    print(ingest(replace=args.replace))
 
 
 if __name__ == "__main__":

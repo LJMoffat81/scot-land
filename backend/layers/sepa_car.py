@@ -1,9 +1,11 @@
-"""SEPA Controlled Activities Regulations (CAR) licences — download-only.
+"""SEPA CAR licences — PostGIS only (MapServer ingest, never client proxy).
 
-Public-register CSV → PostGIS `sepa_car_licences` after
-`python -m etl.ingest_sepa_car --csv …`. Never scrapes MapServer/viewer.
-Natural-capital evidence only: value_tier=proxy, publication_status=download_only.
-No £ rent figures. Overlay never adds value to surface rent.
+Load with one command::
+
+    python -m etl.ingest_sepa_car
+
+That fetches Open/SEPA_Reference MapServer layers 194/195 into PostGIS.
+This module never calls MapServer at request time. OGL-3.0. No £ rent.
 """
 
 from __future__ import annotations
@@ -27,6 +29,10 @@ TABLE = "sepa_car_licences"
 MAX_FEATURES = 80
 OGL_V3_URL = (
     "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+)
+SEPA_ENV_DATA = "https://www.sepa.org.uk/environment/environmental-data/"
+MAPSERVER = (
+    "https://map.sepa.org.uk/server/rest/services/Open/SEPA_Reference/MapServer"
 )
 
 
@@ -56,27 +62,29 @@ def source_meta() -> dict[str, Any]:
         sources = yaml.safe_load(handle) or {}
     row = sources.get("sepa_car") or {}
     return {
-        "source": row.get("name") or "SEPA CAR licences (public register)",
+        "source": row.get("name") or "SEPA CAR licences",
         "licence": row.get("licence") or "OGL-3.0",
         "licence_url": row.get("licence_url") or OGL_V3_URL,
         "attribution": row.get("attribution")
         or (
             "Contains public sector information licensed under the Open "
-            "Government Licence v3.0. © SEPA. CAR authorisations from the "
-            "public register CSV export — download-only; not a title."
+            "Government Licence v3.0. © Scottish Environment Protection Agency. "
+            "CAR Simple (194) and Registration (195) from SEPA_Reference "
+            "MapServer — ingested to PostGIS; not proxied live. Not a title."
         ),
-        "source_url": row.get("source_url")
-        or "https://search-the-register.sepa.org.uk/",
+        "source_url": row.get("source_url") or SEPA_ENV_DATA,
+        "mapserver_url": row.get("mapserver_url") or MAPSERVER,
         "publisher": row.get("publisher") or "SEPA",
         "commons_class": row.get("commons_class") or "extractive",
-        "value_tier": row.get("value_tier") or "proxy",
-        "publication_status": row.get("publication_status") or "download_only",
+        "value_tier": row.get("value_tier") or "market",
+        "publication_status": row.get("publication_status") or "ok",
+        "adds_to_surface_rent": False,
         "gaps": row.get("gaps")
         or [
-            "No bulk open spatial download — CSV export from the public register only",
-            "MapServer / viewer endpoints are not scraped or proxied",
-            "Rows without a parseable NGR have no geometry",
-            "Full CSV is not committed; load via ingest into PostGIS",
+            "Served from PostGIS after ingest — MapServer is never proxied to clients",
+            "Layers 194 (simple) and 195 (registration) only",
+            "No £ rent — natural-capital licence inventory only",
+            "Load with: python -m etl.ingest_sepa_car",
         ],
     }
 
@@ -92,7 +100,13 @@ def is_loaded() -> bool:
             cur.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{TABLE}",))
             if not cur.fetchone()[0]:
                 return False
-            cur.execute(f"SELECT 1 FROM {TABLE} WHERE geom IS NOT NULL LIMIT 1")
+            cur.execute(
+                f"""
+                SELECT 1 FROM {TABLE}
+                WHERE geom IS NOT NULL AND publication_status = 'ok'
+                LIMIT 1
+                """
+            )
             return cur.fetchone() is not None
     except Exception as exc:
         logger.info("SEPA CAR load check failed: %s", exc)
@@ -108,7 +122,7 @@ def query_bbox(
     east: float,
     max_features: int = MAX_FEATURES,
 ) -> dict[str, Any]:
-    """CAR licence points in the viewport (download-only ingest; no rent)."""
+    """CAR licence points from PostGIS only (never MapServer at request time)."""
     meta = source_meta()
     tier_keys = (
         "source",
@@ -116,9 +130,11 @@ def query_bbox(
         "licence_url",
         "attribution",
         "source_url",
+        "mapserver_url",
         "commons_class",
         "value_tier",
         "publication_status",
+        "adds_to_surface_rent",
         "gaps",
     )
     if not is_loaded():
@@ -128,10 +144,9 @@ def query_bbox(
             "meta": {
                 "ok": False,
                 "error": (
-                    f"{TABLE} is missing or empty. Export CSV from the SEPA "
-                    "public register and run "
-                    "`python -m etl.ingest_sepa_car --csv <path>` "
-                    "(download-only — no MapServer scrape)."
+                    f"{TABLE} is missing or empty. Run "
+                    "`python -m etl.ingest_sepa_car` to load MapServer "
+                    "layers 194/195 into PostGIS (API never proxies MapServer)."
                 ),
                 "loaded": False,
                 **{k: meta[k] for k in tier_keys},
@@ -140,13 +155,14 @@ def query_bbox(
 
     cap = max(1, min(int(max_features), MAX_FEATURES))
     sql = f"""
-        SELECT authorisation_no, authorisation_holder, authorisation_location,
-               authorisation_level, authorisation_status, regulatory_area,
-               authorisation_activity, ngr,
-               commons_class, value_tier, publication_status,
+        SELECT authorisation_no, car_layer, authorisation_holder,
+               authorisation_description, authorisation_level,
+               authorisation_status, regulatory_area, authorisation_activity,
+               category, ngr, commons_class, value_tier, publication_status,
                ST_AsGeoJSON(geom)::json AS geometry
         FROM {TABLE}
         WHERE geom IS NOT NULL
+          AND publication_status = 'ok'
           AND geom && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
           AND ST_Intersects(geom, ST_MakeEnvelope(%s, %s, %s, %s, 4326))
         ORDER BY authorisation_no
@@ -186,12 +202,14 @@ def query_bbox(
                 "geometry": geom,
                 "properties": {
                     "authorisation_no": row.get("authorisation_no"),
+                    "car_layer": row.get("car_layer"),
                     "holder": row.get("authorisation_holder"),
-                    "location": row.get("authorisation_location"),
+                    "description": row.get("authorisation_description"),
                     "level": row.get("authorisation_level"),
                     "status": row.get("authorisation_status"),
                     "regulatory_area": row.get("regulatory_area"),
                     "activity": row.get("authorisation_activity"),
+                    "category": row.get("category"),
                     "ngr": row.get("ngr"),
                     "commons_class": row.get("commons_class") or meta["commons_class"],
                     "value_tier": row.get("value_tier") or meta["value_tier"],
@@ -212,8 +230,8 @@ def query_bbox(
             "max_features": cap,
             "as_of": date.today().isoformat(),
             "note": (
-                "Natural-capital licence inventory only — no £ rent; "
-                "download-only CSV ingest; not surface rent"
+                "Natural-capital CAR inventory from PostGIS only — "
+                "no MapServer proxy; no £ rent; not surface rent"
             ),
             **{k: meta[k] for k in tier_keys},
         },

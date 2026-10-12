@@ -156,10 +156,11 @@ def layer_open_sepa_car(
     east: float = Query(..., description="BBox east longitude"),
     max_features: int = Query(default=80, ge=1, le=80),
 ) -> JSONResponse:
-    """SEPA CAR licences in the viewport (public-register CSV → PostGIS).
+    """SEPA CAR licences in the viewport (MapServer 194/195 → PostGIS).
 
-    Download-only ingest — **no MapServer scrape**, **no £ rent**. **503**
-    until `python -m etl.ingest_sepa_car --csv <export>` has loaded geometry.
+    Ingest loads Open/SEPA_Reference layers into PostGIS with
+    `python -m etl.ingest_sepa_car`. This route serves **PostGIS only —
+    never proxies MapServer**. **No £ rent**. **503** until loaded.
     """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     payload = sepa_car_bbox(south, west, north, east, max_features=max_features)
@@ -170,9 +171,8 @@ def layer_open_sepa_car(
             detail=(
                 "SEPA CAR licences overlay is not available: "
                 f"{meta.get('error') or 'PostGIS table missing'}. "
-                "Export CSV from the SEPA public register and run "
-                "python -m etl.ingest_sepa_car --csv <path> "
-                "(download-only — no MapServer scrape)."
+                "Run python -m etl.ingest_sepa_car to load MapServer "
+                "layers 194/195 into PostGIS (API never proxies MapServer)."
             ),
         )
     return JSONResponse(payload)
@@ -355,11 +355,11 @@ def open_downloads() -> dict:
                 "id": "sepa_car",
                 "label": "SEPA CAR licences (this API)",
                 "licence": "OGL-3.0",
-                "url": "https://search-the-register.sepa.org.uk/",
+                "url": "https://www.sepa.org.uk/environment/environmental-data/",
                 "endpoint": "/layers/open/sepa-car",
                 "note": (
-                    "Download-only public-register CSV → PostGIS. "
-                    "publication_status=download_only. No £ rent."
+                    "MapServer 194/195 → PostGIS via python -m etl.ingest_sepa_car; "
+                    "API never proxies. value_tier=market. No £ rent."
                 ),
             },
             {

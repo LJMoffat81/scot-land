@@ -116,30 +116,43 @@ hydro_sites:
     - Full extract is not committed; load via ingest into PostGIS
 
 sepa_car:
-  name: SEPA Controlled Activities Regulations (CAR) licences
+  name: SEPA CAR licences (natural capital)
   role: natural_capital_extractive_overlay
   publisher: Scottish Environment Protection Agency (SEPA)
   licence: OGL-3.0
+  # Confirmed on SEPA Environmental data → Authorisations (Open Government Licence).
   licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
   attribution: >-
     Contains public sector information licensed under the Open Government
-    Licence v3.0. © SEPA. CAR authorisations from the public register CSV
-    export — download-only; not scraped from MapServer; not a title; not a rent.
-  source_url: https://search-the-register.sepa.org.uk/
-  help_url: https://search-the-register.sepa.org.uk/Help
-  environmental_data_url: https://www.sepa.org.uk/environment/environmental-data/
+    Licence v3.0. © Scottish Environment Protection Agency. CAR Simple (194)
+    and Registration (195) from Open/SEPA_Reference MapServer — ingested to
+    PostGIS at load time; never proxied live to clients. Not a title; not a rent.
+  source_url: https://www.sepa.org.uk/environment/environmental-data/
+  mapserver_url: >-
+    https://map.sepa.org.uk/server/rest/services/Open/SEPA_Reference/MapServer
+  mapserver_layers:
+    - id: 194
+      car_layer: simple
+      label: CAR Simple Licenced Site
+      layer_url: >-
+        https://map.sepa.org.uk/server/rest/services/Open/SEPA_Reference/MapServer/194
+    - id: 195
+      car_layer: registration
+      label: CAR Registration
+      layer_url: >-
+        https://map.sepa.org.uk/server/rest/services/Open/SEPA_Reference/MapServer/195
   commons_class: extractive
-  value_tier: proxy
-  publication_status: download_only
+  value_tier: market
+  publication_status: ok
+  adds_to_surface_rent: false
   postgis_table: sepa_car_licences
   bbox_endpoint: /layers/open/sepa-car
-  ingest: python -m etl.ingest_sepa_car --csv <public-register-export.csv>
+  ingest: python -m etl.ingest_sepa_car
   gaps:
-    - No bulk open spatial download — CSV export from the public register only
-    - MapServer / viewer endpoints are not scraped or proxied
-    - Rows without a parseable NGR have no geometry
-    - No £ rent on this overlay; separate from surface rent (la-calc)
-    - Full CSV is not committed; load via ingest into PostGIS
+    - API serves PostGIS only — MapServer is never proxied to clients
+    - Layers 194 (simple) and 195 (registration) only — not CAR Complex (198)
+    - No £ rent — natural-capital licence inventory only
+    - Full extract is not committed; load via ingest into PostGIS
 
 public_land:
   name: Scottish Public and Crown Estate Land 2024
@@ -296,12 +309,11 @@ map_layers:
       value_tier: proxy
       note: Natural-capital extractive sites only — no £ rent
     - id: sepa_car
-      source: SEPA public register CAR CSV (download-only) via PostGIS
+      source: SEPA_Reference MapServer 194/195 → PostGIS (never client-proxied)
       endpoint: /layers/open/sepa-car
       licence: OGL-3.0
-      value_tier: proxy
-      publication_status: download_only
-      note: Download-only CSV ingest — no MapServer scrape; no £ rent
+      value_tier: market
+      note: Ingest with python -m etl.ingest_sepa_car; API PostGIS only; no £ rent
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
   # Left off that list: James Hutton land capability; OS Open Zoomstack

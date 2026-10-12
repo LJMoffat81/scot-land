@@ -95,12 +95,12 @@ Registry: `data/config/sources.yaml` → `parcels` and `public_land`.
 | Hydro ingest | `python -m etl.ingest_hydro_sites` → PostGIS `hydro_sites` |
 | Hydro API | `GET /layers/open/hydro` → **503** until ingested |
 | Hydro tags | `commons_class=extractive`, `value_tier=proxy`, `publication_status=ok` |
-| CAR source | SEPA public register CSV export (https://search-the-register.sepa.org.uk/) |
-| CAR licence | OGL-3.0 (same licence URL) |
-| CAR ingest | `python -m etl.ingest_sepa_car --csv <export.csv>` → PostGIS `sepa_car_licences` |
-| CAR API | `GET /layers/open/sepa-car` → **503** until CSV loaded with geometry |
-| CAR tags | `commons_class=extractive`, `value_tier=proxy`, `publication_status=download_only` |
-| CAR honesty | **Download-only** — never scrape MapServer / viewer; no bulk open spatial package |
+| CAR source | Open/SEPA_Reference MapServer layers 194 (simple) + 195 (registration) |
+| CAR licence | OGL-3.0 — confirmed on https://www.sepa.org.uk/environment/environmental-data/ |
+| CAR licence URL | https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ |
+| CAR ingest (one command) | `python -m etl.ingest_sepa_car` → PostGIS `sepa_car_licences` |
+| CAR API | `GET /layers/open/sepa-car` → **503** until ingested; **PostGIS only** (never proxies MapServer) |
+| CAR tags | `commons_class=extractive`, `value_tier=market`, `publication_status=ok` |
 | Gaps | No £ rent on either overlay; separate from surface rent; hydro ≠ full CAR register |
 
 Registry: `data/config/sources.yaml` → `hydro_sites` and `sepa_car`. Do not commit raw downloads under `data/external`.

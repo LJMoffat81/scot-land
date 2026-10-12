@@ -80,7 +80,7 @@ export const LAYER_ATTRIBUTION: Record<
   },
   public_crown: {
     source: "Scottish Public and Crown Estate Land 2024",
-    licence: "Open Government Licence v3.0",
+    licence: "OGL-3.0",
     sourceUrl:
       "https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897",
   },

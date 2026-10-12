@@ -56,6 +56,7 @@ const FIXTURE_CATALOG = {
       group: "ownership",
       status: "live",
       label: "Public and Crown Estate land",
+      licence: "OGL-3.0",
       source_url:
         "https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897",
     },

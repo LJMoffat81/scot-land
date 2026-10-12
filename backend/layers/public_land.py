@@ -33,10 +33,13 @@ DASHBOARD_URL = (
 )
 NEWS_URL = "https://www.gov.scot/news/interactive-map/"
 
+LICENCE = "OGL-3.0"
+
 ATTRIBUTION = (
     "Scottish Public and Crown Estate Land 2024. "
-    "Scottish Government; landholding bodies listed on the official map. "
-    "Non-exhaustive — five bodies only, not a legal title."
+    "Contains public sector information licensed under the Open Government "
+    "Licence v3.0. Scottish Government; landholding bodies listed on the "
+    "official map. Non-exhaustive — five bodies only, not a legal title."
 )
 
 
@@ -179,7 +182,8 @@ def query_bbox(
             "source": ATTRIBUTION,
             "map_url": DASHBOARD_URL,
             "bodies": list(BODIES),
-            "licence": "public SG dashboard overlay — not a title",
+            "licence": LICENCE,
+            "source_url": DASHBOARD_URL,
             "gaps": [
                 "Local-authority land not included",
                 "Common Good not included",

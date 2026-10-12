@@ -124,7 +124,11 @@ def platform_place(
     lng: float = Query(..., ge=-180, le=180),
     postcode: str | None = Query(default=None),
 ) -> dict:
-    """Ownership / vacant / gap card for one point."""
+    """Public place card for one clicked spot (place_card_v1).
+
+    Council, data zone, intersecting layers, and official links.
+    No modelled AGR £ — residual plot rent stays on /internal/agr/*.
+    """
     _scotland_bounds_check(lat, lng)
     return place_context(lat, lng, postcode=postcode)
 
@@ -194,7 +198,7 @@ def api_place(
     lat: float | None = Query(default=None),
     lng: float | None = Query(default=None),
 ) -> dict:
-    """Place card: vacant / public / parcel / gaps. AGR stays on /square."""
+    """Place card download (place_card_v1). No modelled AGR £."""
     result: dict = {}
     if pc:
         import httpx
@@ -220,17 +224,10 @@ def api_place(
     council_code = None
     council_name = None
     if pc:
-        codes = result.get("codes") if pc else None
+        codes = result.get("codes") if isinstance(result.get("codes"), dict) else None
         if isinstance(codes, dict):
             council_code = codes.get("admin_district")
         council_name = result.get("admin_district")
-
-    from agr.service import ValuationService
-
-    breakdown = ValuationService.default().assess_point(lat, lng)
-    if not council_code:
-        council_code = breakdown.council_code
-        council_name = breakdown.council_name
     card = place_context(
         lat,
         lng,
@@ -238,15 +235,8 @@ def api_place(
         council_code=council_code,
         council_name=council_name,
     )
-    card["postcode"] = pc
-    card["agr"] = {
-        "council_code": breakdown.council_code,
-        "council_name": breakdown.council_name,
-        "plot_gbp": breakdown.roll_annual_rent_notional_plot_gbp,
-        "per_sqm_gbp": round(float(breakdown.site_rental_per_sqm_gbp), 4),
-        "method": breakdown.method,
-        "disclaimer": "Research estimate, not a rates bill.",
-    }
+    # Defence in depth: public download must never carry residual plot AGR £.
+    card.pop("agr", None)
     return with_stamp(card)
 
 

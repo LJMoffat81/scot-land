@@ -191,3 +191,182 @@ a.chip.link-chip {
   color: var(--slrg-muted);
   white-space: nowrap;
 }
+
+/* —— Standalone place card (w3w shell will reuse .place-card) —— */
+
+.place-card-standalone {
+  position: relative;
+  width: min(380px, 100%);
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: var(--hud-radius);
+  box-shadow: var(--hud-shadow);
+  padding: 1.25rem 1.15rem 1.1rem;
+}
+
+.place-card-header {
+  margin-bottom: 0.85rem;
+}
+
+.place-card-kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--slrg-muted);
+}
+
+.place-card-title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--slrg-text);
+  line-height: 1.25;
+}
+
+.place-card-meta {
+  margin: 0.3rem 0 0;
+  font-size: 0.8rem;
+  color: var(--slrg-muted);
+  line-height: 1.35;
+}
+
+.place-card-section {
+  margin: 0 0 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--slrg-muted);
+}
+
+.place-card-body {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.place-layer-list,
+.place-link-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.place-layer-row {
+  padding: 0.45rem 0.55rem;
+  border-radius: 10px;
+  background: #f4f7fa;
+  border: 1px solid #e4eaf1;
+}
+
+.place-layer-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.place-layer-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--slrg-text);
+}
+
+.place-layer-state {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  background: #e4eaf1;
+  color: #243b53;
+}
+
+.place-layer-hit .place-layer-state {
+  background: #d4edda;
+  color: #1b5e4a;
+}
+
+.place-layer-miss .place-layer-state {
+  background: #e8eef4;
+  color: #52606d;
+}
+
+.place-layer-linked .place-layer-state {
+  background: #d6eaf8;
+  color: #1b4f72;
+}
+
+.place-layer-gap .place-layer-state {
+  background: #f0e6cc;
+  color: #5c4813;
+}
+
+.place-layer-unknown .place-layer-state {
+  background: #f6e1d0;
+  color: #7a2e00;
+}
+
+.place-layer-note {
+  margin: 0.25rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--slrg-muted);
+}
+
+.place-link-list a {
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.place-card-disclaimer,
+.place-card-loading,
+.place-card-empty,
+.place-card-error {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--slrg-muted);
+}
+
+.place-card-error {
+  color: var(--danger);
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  background: #fdecea;
+}
+
+.place-card-preview {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem 1rem;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(0, 118, 211, 0.12), transparent),
+    linear-gradient(165deg, #e8eef4 0%, #f2f5f8 45%, #dce6f0 100%);
+}
+
+.place-card-preview-stage {
+  width: min(400px, 100%);
+}
+
+.place-card-preview-note {
+  margin: 0;
+  max-width: 28rem;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--slrg-muted);
+  line-height: 1.4;
+}
+
+.place-card-preview-note code {
+  font-size: 0.72rem;
+}

@@ -21,11 +21,8 @@ def test_health_ok(client):
 def test_no_duplicate_surface_rent_route():
     from collections import Counter
 
-    from api.main import app
+    from api.main import app, registered_routes
 
-    paths = [
-        getattr(route, "path", None)
-        for route in app.routes
-        if getattr(route, "path", None) == "/layers/georgist/surface-rent"
-    ]
+    # Wealth routes live on an included router; walk with registered_routes.
+    paths = [path for _method, path in registered_routes(app) if path == "/layers/georgist/surface-rent"]
     assert Counter(paths)["/layers/georgist/surface-rent"] == 1

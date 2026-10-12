@@ -39,8 +39,9 @@ def yield_placeholder(config: Mapping[str, Any] | None = None) -> dict[str, Any]
     """Configured land yield from shared surface.yaml — always tagged placeholder until calibrated.
 
     Tax scenarios and other consumers must call this (or ``configured_land_yield``) rather than
-    hardcoding a rate. Valuation owns r−g / land_yield; optional ``land_yield_band`` is passed
-    through when present in config (no invented band here).
+    hardcoding a rate. Valuation owns r−g / land_yield. Optional Georgist/Valuation metadata
+    (``land_yield_band``, ``clipped_at_cap``, ``result_hash``, component ``r``/``p``/``g``) is
+    passed through only when present in shared config — never invented here.
     """
     cfg = dict(config) if config is not None else sr.load_config()
     ycfg = cfg.get("yield") or {}
@@ -58,11 +59,20 @@ def yield_placeholder(config: Mapping[str, Any] | None = None) -> dict[str, Any]
             "config; do not hardcode a yield rate in tax-scenario code."
         ),
     }
-    # Optional band when Valuation publishes it (e.g. provisional [0.035, 0.045]); never invent.
+    # Optional band when Valuation publishes it; never invent.
     raw_band = ycfg.get("land_yield_band")
     if isinstance(raw_band, (list, tuple)) and len(raw_band) == 2:
         lo, hi = float(raw_band[0]), float(raw_band[1])
         if lo > hi:
             raise SettingsError("surface_rent.yield.land_yield_band must be [low, high]")
         out["land_yield_band"] = [lo, hi]
+    # Optional calibration metadata (Georgist sign-off fields) — pass-through only.
+    if "clipped_at_cap" in ycfg:
+        out["clipped_at_cap"] = bool(ycfg["clipped_at_cap"])
+    if ycfg.get("result_hash"):
+        out["result_hash"] = str(ycfg["result_hash"])
+    components = ycfg.get("components")
+    if isinstance(components, Mapping) and components:
+        # e.g. {r, p, g} when Valuation records the central identity; never invent.
+        out["components"] = {str(k): float(v) for k, v in components.items()}
     return out

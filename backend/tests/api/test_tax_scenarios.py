@@ -184,11 +184,23 @@ def test_yield_placeholder_reads_shared_config_and_optional_band():
     base = yp_fn()
     assert base["status"] == "placeholder" and base["owner"] == "Valuation"
     assert isinstance(base["land_yield"], float) and base["land_yield"] > 0
-    # Optional band: pass through when Valuation publishes it; never invent.
-    with_band = yp_fn({"yield": {"land_yield": 0.0399, "land_yield_band": [0.035, 0.045]}})
-    assert with_band["land_yield"] == pytest.approx(0.0399)
-    assert with_band["land_yield_band"] == [0.035, 0.045]
-    assert with_band["status"] == "placeholder"
+    # Live shared config may still be the pre-calibration figure until Valuation's PR lands.
+    assert "result_hash" not in base or isinstance(base.get("result_hash"), str)
+    # Optional Georgist/Valuation metadata: pass through when published; never invent.
+    with_meta = yp_fn({
+        "yield": {
+            "land_yield": 0.0399,
+            "land_yield_band": [0.0352, 0.0450],
+            "clipped_at_cap": True,
+            "result_hash": "b3442d47",
+            "components": {"r": 0.0262, "p": 0.0237, "g": 0.01},
+        },
+    })
+    assert with_meta["land_yield"] == pytest.approx(0.0399)
+    assert with_meta["land_yield_band"] == [0.0352, 0.0450]
+    assert with_meta["clipped_at_cap"] is True
+    assert with_meta["result_hash"] == "b3442d47"
+    assert with_meta["status"] == "placeholder"
 
 
 def test_aggregate_refuses_mixed_price_years():

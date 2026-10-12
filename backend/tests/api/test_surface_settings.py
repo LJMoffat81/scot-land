@@ -38,6 +38,25 @@ def test_yield_placeholder_passes_band_when_configured():
     assert yp["land_yield_band"] == [0.035, 0.045]
 
 
+def test_yield_placeholder_passes_georgist_signoff_metadata_when_configured():
+    """Pass-through only — values come from shared config when Valuation's yield PR lands."""
+    yp = yield_placeholder({
+        "yield": {
+            "land_yield": 0.0399,
+            "land_yield_band": [0.0352, 0.0450],
+            "clipped_at_cap": True,
+            "result_hash": "b3442d47",
+            "components": {"r": 0.0262, "p": 0.0237, "g": 0.01},
+        },
+    })
+    assert yp["land_yield"] == pytest.approx(0.0399)
+    assert yp["land_yield_band"] == [0.0352, 0.0450]
+    assert yp["clipped_at_cap"] is True
+    assert yp["result_hash"] == "b3442d47"
+    assert yp["components"] == {"r": 0.0262, "p": 0.0237, "g": 0.01}
+    assert yp["status"] == "placeholder"
+
+
 def test_no_copied_values_in_engine_code():
     root = Path(__file__).resolve().parents[2]
     for p in list((root / "georgist").glob("*.py")) + list((root / "api").glob("*.py")):

@@ -13,6 +13,7 @@ import httpx
 from layers.common_good import catalog_layer as common_good_catalog_layer
 from layers.common_good import place_common_good
 from layers.council_metrics import METRIC_DEFS
+from layers.flood import catalog_layer as flood_catalog_layer
 from layers.hla import SPATIAL_HUB_URL as SPATIAL_HUB_HLA
 from layers.hla import query_point as hla_at_point
 from layers.ldp import catalog_layer as ldp_catalog_layer
@@ -157,6 +158,7 @@ def platform_catalog() -> dict[str, Any]:
                 "source_url": VDL_REGISTER,
                 "spatial_hub_url": SPATIAL_HUB_VDL,
             },
+            flood_catalog_layer(),
             ldp_catalog_layer(),
             {
                 "id": "hla",

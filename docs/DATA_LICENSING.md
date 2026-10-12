@@ -69,6 +69,7 @@ Public methodology and README must list active data sources. See `data/config/so
 | Vacant & derelict | SVDLS site register + Spatial Hub VDL polygons | OGL-3.0 — cite Scottish Government and Improvement Service / local planning authorities; survey sites, not a title |
 | Hydropower sites | SEPA Hydropower Sites (ATOM shapefile) | OGL-3.0 — cite SEPA; CAR hydropower abstractions; value_tier=proxy; no £ rent |
 | SEPA CAR licences | SEPA Open/SEPA_Reference MapServer 194/195 → PostGIS | OGL-3.0 — cite SEPA (confirmed on Environmental data); ingest-time MapServer load; **never proxied to clients**; value_tier=market; no £ rent |
+| Flood extent | SEPA Flood Maps v3.0 (river / coastal medium likelihood) | OGL-3.0 — © SEPA 2025; cite SEPA attribution statements; indicative hazard, not a quote |
 | Housing land audit | Spatial Hub Housing Land Supply – Scotland (HLA amalgamation) | OGL-3.0 — cite Improvement Service / local planning authorities; audit sites, not a title. PostGIS ingest from local extract; anonymous Spatial Hub WFS is gated; national SG ArcGIS republish is PSGA/Digimap (not used) |
 | LDP allocations | Spatial Hub Local Development Plans pack + authority OGL FeatureServers → PostGIS | OGL-3.0 — cite Improvement Service / planning authorities; fragmented national coverage (Edinburgh missing); planning extents, not a title; ledger nested row 1a |
 

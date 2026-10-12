@@ -1,0 +1,55 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "OBJECTID": 900001,
+        "layer_id": 1,
+        "SOURCE": "River",
+        "PROB": "M",
+        "SCENARIO": "Present Day",
+        "MAP_TYPE": "Hazard",
+        "REFERENCE": "HA_FIXTURE",
+        "VERSION": "v3_0"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-4.285, 55.852],
+            [-4.280, 55.852],
+            [-4.280, 55.856],
+            [-4.285, 55.856],
+            [-4.285, 55.852]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "OBJECTID": 900002,
+        "layer_id": 7,
+        "SOURCE": "Coastal",
+        "PROB": "M",
+        "SCENARIO": "Present Day",
+        "MAP_TYPE": "Hazard",
+        "REFERENCE": "HA_FIXTURE_C",
+        "VERSION": "v3_0"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-4.275, 55.850],
+            [-4.270, 55.850],
+            [-4.270, 55.854],
+            [-4.275, 55.854],
+            [-4.275, 55.850]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -96,6 +96,11 @@ export const LAYER_ATTRIBUTION: Record<
     sourceUrl:
       "https://www.gov.scot/publications/the-scottish-vacant-and-derelict-land-survey-site-register/",
   },
+  flood: {
+    source: "SEPA Flood Maps v3.0",
+    licence: "OGL-3.0",
+    sourceUrl: "https://www2.sepa.org.uk/flooddata/",
+  },
   hla: {
     source: "Spatial Hub Housing Land Supply (Housing Land Audit)",
     licence: "OGL-3.0",

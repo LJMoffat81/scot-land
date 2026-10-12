@@ -129,6 +129,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "site", "site", "none", note="housing land audit / supply polygons; no rent"
     ),
     "/layers/open/public-land": LayerRule("site", "site", "none", note="public/Crown holdings overlay; no rent"),
+    "/layers/open/flood": LayerRule(
+        "site",
+        "site",
+        "none",
+        note="SEPA flood hazard extents (OGL); no rent",
+    ),
     "/layers/open/data-zones": LayerRule(
         "zone", "zone", "none", note="Data Zone outlines by bbox; code/name only, no rent"
     ),

@@ -30,6 +30,7 @@ from layers.ledger import ledger_payload
 from layers.platform import place_context, platform_catalog
 from layers.registers import registers_payload
 from layers.data_zones import query_bbox as data_zones_bbox
+from layers.flood import query_bbox as flood_bbox
 from layers.hydro import query_bbox as hydro_bbox
 from layers.hla import query_bbox as hla_bbox
 from layers.public_land import query_bbox as public_land_bbox
@@ -155,6 +156,35 @@ def layer_open_hla(
                 "Housing land audit overlay is not available: "
                 f"{meta.get('error') or 'PostGIS HLA source not loaded'}. "
                 "Spatial Hub OGL extract only — gaps are not filled with guesses."
+            ),
+        )
+    return JSONResponse(payload)
+
+
+@router.get("/layers/open/flood")
+def layer_open_flood(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=80, ge=1, le=80),
+) -> JSONResponse:
+    """SEPA medium-likelihood river/coastal flood extents in the viewport (OGL).
+
+    PostGIS only — ingest the OGL download from www2.sepa.org.uk/flooddata.
+    Never uses SEPA MapServer, viewer, or live web services. Returns **503**
+    when unloaded — never invents extents.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    payload = flood_bbox(south, west, north, east, max_features=max_features)
+    meta = payload.get("meta") or {}
+    if meta.get("ok") is False:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "SEPA flood overlay is not available: "
+                f"{meta.get('error') or 'upstream source failed'}. "
+                "OGL Flood Maps v3.0 only — gaps are not filled with guesses."
             ),
         )
     return JSONResponse(payload)

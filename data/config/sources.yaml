@@ -56,13 +56,55 @@ boundaries:
     validation_label: "Glasgow Ward 18 — East Centre (Wightman validation case study)"
 
 parcels:
-  name: ROS INSPIRE cadastral parcels (WMS)
-  role: parcel_geometry_lookup
+  name: ROS INSPIRE Index Polygons (cadastral parcels)
+  product: INSPIRE Index Polygons (CP.CadastralParcel)
+  role: parcel_geometry_lookup_and_map_layer
+  licence: OGL / INSPIRE (Crown)
+  attribution: >-
+    © Crown copyright. Reproduced with the permission of Registers of Scotland.
+    Contains OS data © Crown copyright and database right 2026.
+  source_url: https://www.ros.gov.uk/open-data
+  vintage: live-WMS; local PostGIS ingest stamp beside data/external extract
   wms_url: https://ros-inspire.themapcloud.com/maps/wms
   wms_layer: CP.CadastralParcel
+  postgis_table: inspire_parcels
+  bbox_endpoint: /layers/parcels
+  tile_endpoint: /layers/parcels/tiles/{z}/{x}/{y}
+  ingest: python -m etl.ingest_inspire_parcels
+  refresh_doc: scripts/data/README-inspire.md
+  raw_dir: data/external/inspire   # gitignored — never commit raw downloads
   query_delta_degrees: 0.001
   # Keep short so map tiles fail soft (transparent) instead of hanging the UI
   timeout_seconds: 6
+  gaps:
+    - Sasine titles without Land Register polygons
+    - Private owner names are not in the open INSPIRE product
+    - Index polygons are registered extents, not a title sheet
+
+public_land:
+  name: Scottish Public and Crown Estate Land 2024
+  role: public_sector_holdings_overlay
+  licence: Scottish Government dashboard overlay (not a legal title)
+  attribution: >-
+    Scottish Public and Crown Estate Land 2024. Scottish Government;
+    landholding bodies listed on the official map. Five bodies only —
+    not exhaustive, not local-authority land, not a title.
+  source_url: https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897
+  feature_server: >-
+    https://services-eu1.arcgis.com/4QkhM5AS8YOlkb6T/arcgis/rest/services/PublicLand_2024_Update/FeatureServer/8
+  vintage: "2024"
+  bbox_endpoint: /layers/open/public-land
+  bodies:
+    - Forestry and Land Scotland
+    - NatureScot
+    - Scottish Crown Estate
+    - Scottish Water
+    - Crofting Agricultural Holdings
+  gaps:
+    - Local-authority land holdings (Spatial Hub login — not mirrored)
+    - Common Good spatial file (no single open national layer)
+    - Holdings outside the five published bodies are not shown
+    - Overlay is indicative — confirm title on ScotLIS
 
 sales:
   status: scaffolded

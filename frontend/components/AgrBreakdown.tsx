@@ -412,6 +412,22 @@ export default function AgrBreakdown({
       )}
 
       {parcelLabel ? <p className="meta">Register parcel {parcelLabel}</p> : null}
+      {platform?.parcel?.inspire_id ? (
+        <p className="meta">INSPIRE id {platform.parcel.inspire_id}</p>
+      ) : null}
+      {platform?.public_or_crown?.on_this_point &&
+      platform.public_or_crown.holdings &&
+      platform.public_or_crown.holdings.length > 0 ? (
+        <p className="meta">
+          Public land owner type:{" "}
+          {platform.public_or_crown.holdings
+            .map((h) => h.organisation)
+            .filter(Boolean)
+            .join(", ")}
+          {" · "}
+          overlay source, not a title
+        </p>
+      ) : null}
 
       {platform?.land_register_outline?.status === "no_outline" ? (
         <>

@@ -53,8 +53,10 @@ from spatial.context_tiles import (
     fetch_urban_rural_class_async,
 )
 from spatial.parcels import TRANSPARENT_PNG, fetch_parcel_tile_png, lookup_parcel_geojson
+from layers.cadastral import LayerUnavailable, query_bbox as parcels_bbox
 from validation.glasgow_ward_18 import run_validation
 from validation.ratio_study import ratio_study_points
+from api.platform_routes import router as platform_router
 
 app = FastAPI(
     title="Scot-LAND API",
@@ -74,6 +76,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Open-land platform routes (public land, VDL, downloads, place card, …)
+app.include_router(platform_router)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SOURCES_PATH = REPO_ROOT / "data" / "config" / "sources.yaml"
@@ -513,6 +517,33 @@ def _parcel_tile_response(z: int, x: int, y: int) -> Response:
             "X-Layer-Source": "ROS-INSPIRE-CP.CadastralParcel",
         },
     )
+
+
+@app.get("/layers/parcels")
+def layer_parcels_bbox(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=200, ge=1, le=200),
+) -> JSONResponse:
+    """RoS INSPIRE Index Polygons in the viewport (PostGIS ingest).
+
+    Returns 503 when inspire_parcels is missing or empty — never placeholder
+    geometry. Live WMS tiles remain on /layers/parcels/tiles for map display.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    if south >= north or west >= east:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid bbox: require south < north and west < east",
+        )
+    try:
+        return JSONResponse(
+            parcels_bbox(south, west, north, east, max_features=max_features)
+        )
+    except LayerUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @app.get("/layers/parcels/tiles/{z}/{x}/{y}.png")

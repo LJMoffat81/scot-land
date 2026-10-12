@@ -44,3 +44,13 @@ Synthetic fixtures must set `licence: synthetic-test-only` and must never be pre
 ## Attribution
 
 Public methodology and README must list active data sources. See `data/config/sources.yaml`.
+
+### Open spatial layers (map)
+
+| Layer | Source | Licence note |
+|-------|--------|----------------|
+| Cadastral parcels | Registers of Scotland INSPIRE Index Polygons | OGL / INSPIRE (Crown) — cite RoS; raw extracts stay in `data/external/` |
+| Public land | Scottish Government Public and Crown Estate Land 2024 | Official dashboard overlay — five bodies; not a title |
+| Vacant & derelict | SVDLS | OGL-3.0 |
+
+Missing open registers (local-authority holdings, Common Good spatial file, Sasine) are catalogued as gaps — never invented.

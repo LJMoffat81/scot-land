@@ -50,11 +50,25 @@ def layer_open_public_land(
     east: float = Query(..., description="BBox east longitude"),
     max_features: int = Query(default=80, ge=1, le=80),
 ) -> JSONResponse:
-    """Public and Crown Estate holdings in the viewport (SG 2024 overlay)."""
+    """Public and Crown Estate holdings in the viewport (SG 2024 overlay).
+
+    Returns 503 when the upstream open overlay is unavailable — never invents
+    holdings. An empty FeatureCollection with meta.ok=true means no holdings
+    in view (coverage gaps stay visible, not guessed).
+    """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
-    return JSONResponse(
-        public_land_bbox(south, west, north, east, max_features=max_features)
-    )
+    payload = public_land_bbox(south, west, north, east, max_features=max_features)
+    meta = payload.get("meta") or {}
+    if meta.get("ok") is False:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Public land overlay is not available: "
+                f"{meta.get('error') or 'upstream source failed'}. "
+                "Five-body SG 2024 map only — gaps are not filled with guesses."
+            ),
+        )
+    return JSONResponse(payload)
 
 
 @router.get("/platform/place")

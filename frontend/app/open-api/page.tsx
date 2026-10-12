@@ -75,16 +75,24 @@ export default async function OpenApiPage() {
       <h2>Map layers</h2>
       <ul>
         <li>
+          RoS INSPIRE cadastral parcels in view (PostGIS ingest; 503 when not
+          loaded)
+          <span className="download-path">
+            GET /layers/parcels?south=&amp;west=&amp;north=&amp;east=
+          </span>
+        </li>
+        <li>
+          Public and Crown land in view, for the five national bodies (503 when
+          the overlay source is down)
+          <span className="download-path">
+            GET /layers/open/public-land?south=&amp;west=&amp;north=&amp;east=
+          </span>
+        </li>
+        <li>
           Vacant and derelict land in view, from the Scottish Vacant and
           Derelict Land Survey
           <span className="download-path">
             GET /layers/open/vdl?south=&amp;west=&amp;north=&amp;east=
-          </span>
-        </li>
-        <li>
-          Public and Crown land in view, for the five national bodies
-          <span className="download-path">
-            GET /layers/open/public-land?south=&amp;west=&amp;north=&amp;east=
           </span>
         </li>
         <li>

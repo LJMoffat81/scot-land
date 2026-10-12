@@ -17,6 +17,7 @@ import AgrBreakdown, {
 import { WealthInspector } from "./WealthInspector";
 import { useWealthApi, WealthResponse } from "../lib/useWealthApi";
 import {
+  ApiError,
   SERVICE_BUSY,
   apiFetch,
 
@@ -344,6 +345,14 @@ const STORIES: Array<{ id: StoryId; label: string; metric: MetricId; blurb: stri
   },
 ];
 
+const PUBLIC_LAND_BODIES: Array<{ name: string; color: string }> = [
+  { name: "Forestry and Land Scotland", color: "#66c2a5" },
+  { name: "NatureScot", color: "#8da0cb" },
+  { name: "Scottish Crown Estate", color: "#e78ac3" },
+  { name: "Scottish Water", color: "#a6d854" },
+  { name: "Crofting Agricultural Holdings", color: "#fc8d62" },
+];
+
 const PUBLIC_LAND_FILL: ExpressionSpecification = [
   "match",
   ["coalesce", ["get", "organisation"], ""],
@@ -359,6 +368,48 @@ const PUBLIC_LAND_FILL: ExpressionSpecification = [
   "#fc8d62",
   "#2b6cb0",
 ];
+
+const CADASTRAL_MIN_ZOOM = 14;
+const PUBLIC_LAND_MIN_ZOOM = 8;
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function layerPopupHtml(parts: {
+  parcelId?: string | null;
+  areaSqm?: number | null;
+  ownerType?: string | null;
+  siteName?: string | null;
+  source?: string | null;
+}): string | null {
+  const rows: string[] = [];
+  if (parts.parcelId) {
+    rows.push(
+      `<strong>Cadastral parcel</strong><br/>ID: ${escapeHtml(parts.parcelId)}`,
+    );
+  }
+  if (parts.areaSqm != null && Number.isFinite(parts.areaSqm)) {
+    rows.push(`Area: ${Math.round(parts.areaSqm).toLocaleString("en-GB")} m²`);
+  }
+  if (parts.ownerType) {
+    rows.push(
+      `<strong>Public land</strong><br/>Owner type: ${escapeHtml(parts.ownerType)}`,
+    );
+  }
+  if (parts.siteName) {
+    rows.push(`Site: ${escapeHtml(parts.siteName)}`);
+  }
+  if (parts.source) {
+    rows.push(`<span class="popup-source">${escapeHtml(parts.source)}</span>`);
+  }
+  if (rows.length === 0) return null;
+  return `<div class="layer-popup">${rows.join("<br/>")}</div>`;
+}
 
 const CELL_AGR_COLOR: ExpressionSpecification = [
   "interpolate",
@@ -405,6 +456,9 @@ export default function ScotlandMap() {
   const [showCellGrid] = useState(false);
   const [showVdl, setShowVdl] = useState(false);
   const [showPublicLand, setShowPublicLand] = useState(false);
+  const [layerNotice, setLayerNotice] = useState<string | null>(null);
+  const publicLandTouched = useRef(false);
+  const layerPopupRef = useRef<maplibregl.Popup | null>(null);
 
   // Georgist Wealth State
   const {
@@ -1177,6 +1231,16 @@ export default function ScotlandMap() {
       if (qBand === "low" || qBand === "mid" || qBand === "high") {
         setBand(qBand);
       }
+      if (params.get("public") === "1") {
+        publicLandTouched.current = true;
+        setShowPublicLand(true);
+      } else if (params.get("public") === "0") {
+        publicLandTouched.current = true;
+        setShowPublicLand(false);
+      }
+      if (params.get("vacant") === "1") {
+        setShowVdl(true);
+      }
       if (qWords) {
         setQuery(qWords);
         void (async () => {
@@ -1200,6 +1264,85 @@ export default function ScotlandMap() {
     });
 
     map.on("click", async (event) => {
+      const lat = event.lngLat.lat;
+      const lng = event.lngLat.lng;
+
+      // Layer popup: cadastral id / area and public owner type (ownership layers)
+      try {
+        const publicHits =
+          map.getLayer("public-land-fill") &&
+          map.getLayoutProperty("public-land-fill", "visibility") === "visible"
+            ? map.queryRenderedFeatures(event.point, {
+                layers: ["public-land-fill"],
+              })
+            : [];
+        const publicProps = publicHits[0]?.properties as
+          | {
+              organisation?: string;
+              owner_type?: string;
+              site_name?: string;
+              source?: string;
+            }
+          | undefined;
+        let parcelId: string | null = null;
+        let areaSqm: number | null = null;
+        let parcelSource: string | null = null;
+        if (map.getZoom() >= CADASTRAL_MIN_ZOOM) {
+          try {
+            const parcelBody = await apiJson<{
+              features?: Array<{
+                properties?: {
+                  inspire_id?: string;
+                  label?: string;
+                  national_reference?: string;
+                  area_sqm?: number;
+                  source?: string;
+                };
+              }>;
+              meta?: { source?: string; found?: boolean };
+            }>(`/layers/parcels/at?lat=${lat}&lng=${lng}`);
+            const props = parcelBody.features?.[0]?.properties;
+            parcelId =
+              props?.inspire_id ||
+              props?.national_reference ||
+              props?.label ||
+              null;
+            areaSqm =
+              typeof props?.area_sqm === "number" ? props.area_sqm : null;
+            parcelSource =
+              props?.source || parcelBody.meta?.source || "ROS INSPIRE";
+          } catch {
+            /* popup is best-effort; place card still loads */
+          }
+        }
+        const html = layerPopupHtml({
+          parcelId,
+          areaSqm,
+          ownerType: publicProps?.owner_type || publicProps?.organisation || null,
+          siteName: publicProps?.site_name || null,
+          source:
+            publicProps?.source ||
+            parcelSource ||
+            (parcelId || publicProps
+              ? "Open land layers — research overlay, not a title"
+              : null),
+        });
+        layerPopupRef.current?.remove();
+        layerPopupRef.current = null;
+        if (html) {
+          layerPopupRef.current = new maplibregl.Popup({
+            closeButton: true,
+            maxWidth: "280px",
+            className: "layer-feature-popup",
+          })
+            .setLngLat([lng, lat])
+            .setHTML(html)
+            .addTo(map);
+        }
+      } catch {
+        /* ignore popup failures */
+      }
+
       const hits = map.queryRenderedFeatures(event.point, {
         layers: ["w3w-agr-fill", "council-fill"],
       });
@@ -1217,15 +1360,11 @@ export default function ScotlandMap() {
         setShowWealthPanel(true);
         return;
       }
-      void fetchSquare(event.lngLat.lat, event.lngLat.lng);
+      void fetchSquare(lat, lng);
 
       // For generic clicks, we still want the wealth data
       // In a real app, we'd fetch the zoneId for these coordinates first
-      const wealth = await fetchTotalWealth(
-        event.lngLat.lat,
-        event.lngLat.lng,
-        "unknown"
-      );
+      const wealth = await fetchTotalWealth(lat, lng, "unknown");
       setWealthData(wealth);
       setShowWealthPanel(true);
     });
@@ -1238,6 +1377,8 @@ export default function ScotlandMap() {
       markerRef.current = null;
       parcelLabelRef.current?.remove();
       parcelLabelRef.current = null;
+      layerPopupRef.current?.remove();
+      layerPopupRef.current = null;
       map.remove();
       mapRef.current = null;
       setMapReady(false);
@@ -1354,7 +1495,7 @@ export default function ScotlandMap() {
     if (showVdl) url.searchParams.set("vacant", "1");
     else url.searchParams.delete("vacant");
     if (showPublicLand) url.searchParams.set("public", "1");
-    else url.searchParams.set("public", "0");
+    else url.searchParams.delete("public");
     if (band) url.searchParams.set("band", band);
     else url.searchParams.delete("band");
     window.history.replaceState({}, "", url.toString());
@@ -1511,7 +1652,7 @@ export default function ScotlandMap() {
       if (cancelled || !mapRef.current || inFlight) return;
       const b = map.getBounds();
       if (!b) return;
-      if (map.getZoom() < 6) {
+      if (map.getZoom() < PUBLIC_LAND_MIN_ZOOM) {
         setVis("none");
         return;
       }
@@ -1525,9 +1666,16 @@ export default function ScotlandMap() {
           if (cancelled) return;
           (map.getSource("public-land-overlay") as GeoJSONSource)?.setData(data);
           setVis("visible");
+          setLayerNotice(null);
         })
-        .catch(() => {
-          if (!cancelled) setVis("none");
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setVis("none");
+          if (err instanceof ApiError && err.status === 503) {
+            setLayerNotice(
+              "Public land overlay is not available right now (source unavailable). Gaps are not filled with guesses.",
+            );
+          }
         })
         .finally(() => {
           inFlight = false;
@@ -1554,10 +1702,16 @@ export default function ScotlandMap() {
     const map = mapRef.current;
     if (!map) return;
     const sync = () => {
-      const close = map.getZoom() >= 14;
+      const zoom = map.getZoom();
+      const close = zoom >= CADASTRAL_MIN_ZOOM;
       setStreetScale(close);
-      if (boundariesTouched.current || map.isMoving()) return;
-      setShowBoundaries(close);
+      if (map.isMoving()) return;
+      if (!boundariesTouched.current) {
+        setShowBoundaries(close);
+      }
+      if (!publicLandTouched.current) {
+        setShowPublicLand(zoom >= PUBLIC_LAND_MIN_ZOOM);
+      }
     };
     sync();
     map.on("zoomend", sync);
@@ -1978,9 +2132,73 @@ export default function ScotlandMap() {
       )}
 
       {toolsOpen && (
-      <aside className="hud-card hud-tools">
+      <aside className="hud-card hud-tools" aria-label="Map layers">
         <div className="layer-panel">
               <p className="hud-tools-title">Map layers</p>
+
+              <section className="layer-ownership" aria-label="Ownership and cadastre">
+                <label className="layer-select-label">Ownership and cadastre</label>
+                <p className="layer-meta">
+                  RoS INSPIRE parcels and public-sector holdings. Separate from
+                  Annual Ground Rent and Surface Rent.
+                </p>
+                <div className="layer-chips">
+                  <button
+                    type="button"
+                    className={showBoundaries ? "chip active" : "chip"}
+                    data-testid="layer-cadastral"
+                    onClick={() => {
+                      boundariesTouched.current = true;
+                      setShowBoundaries((v) => !v);
+                    }}
+                    title="RoS INSPIRE cadastral parcels. On by default from street zoom."
+                  >
+                    Cadastral parcels
+                  </button>
+                  <button
+                    type="button"
+                    className={showPublicLand ? "chip active" : "chip"}
+                    data-testid="layer-public-land"
+                    onClick={() => {
+                      publicLandTouched.current = true;
+                      setShowPublicLand((on) => !on);
+                    }}
+                    title="Five public and Crown bodies (SG 2024). On by default from regional zoom."
+                  >
+                    Public land
+                  </button>
+                </div>
+                {showBoundaries && (
+                  <p className="layer-meta">
+                    © Crown copyright. Reproduced with the permission of Registers
+                    of Scotland. Contains OS data. Registered extents only — not a
+                    title sheet. Zoom {CADASTRAL_MIN_ZOOM}+.
+                  </p>
+                )}
+                {showPublicLand && (
+                  <>
+                    <ul className="layer-legend" aria-label="Public land legend">
+                      {PUBLIC_LAND_BODIES.map((body) => (
+                        <li key={body.name}>
+                          <span
+                            className="layer-legend-swatch"
+                            style={{ background: body.color }}
+                            aria-hidden="true"
+                          />
+                          {body.name}
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="layer-meta">
+                      Scottish Public and Crown Estate Land 2024. Five bodies
+                      only — not local-authority land, not a title. Gaps are
+                      flagged, never guessed. Zoom {PUBLIC_LAND_MIN_ZOOM}+.
+                    </p>
+                  </>
+                )}
+                {layerNotice && <p className="layer-meta">{layerNotice}</p>}
+              </section>
+
               <label className="layer-select-label">The charge</label>
               <div className="layer-chips story-chips">
                 {STORIES.map((s) => (
@@ -1997,6 +2215,7 @@ export default function ScotlandMap() {
               </div>
               <p className="layer-meta">
                 Filters the charge colour. Low is under £1,500 a year. High is £4,500 or more.
+                Annual Ground Rent (residual) is not Surface Rent (la-calc).
               </p>
               <div className="layer-chips">
                 {(["low", "mid", "high"] as RentBand[]).map((id) => (
@@ -2022,17 +2241,6 @@ export default function ScotlandMap() {
 
               <label className="layer-select-label">The piece of land</label>
               <div className="layer-chips">
-                <button
-                  type="button"
-                  className={showBoundaries ? "chip active" : "chip"}
-                  onClick={() => {
-                    boundariesTouched.current = true;
-                    setShowBoundaries((v) => !v);
-                  }}
-                  title="Register outlines of neighbouring pieces of land. Zoom in."
-                >
-                  Register outlines
-                </button>
                 {["urban-rural", "data-zones"].map((id) => {
                   const layer = CONTEXT_LAYERS.find((item) => item.id === id);
                   if (!layer) return null;
@@ -2081,14 +2289,6 @@ export default function ScotlandMap() {
                   >
                     Vacant and derelict
                   </button>
-                  <button
-                    type="button"
-                    className={showPublicLand ? "chip active" : "chip"}
-                    title="Five public and Crown holdings. Context, not the charge."
-                    onClick={() => setShowPublicLand((on) => !on)}
-                  >
-                    Public and Crown
-                  </button>
                   {CONTEXT_LAYERS.filter((layer) => layer.id === "flood").map((layer) => (
                     <button
                       key={layer.id}
@@ -2136,12 +2336,6 @@ export default function ScotlandMap() {
                   Scottish Vacant and Derelict Land Survey. Contains public
                   sector information licensed under the Open Government Licence
                   v3.0. Survey polygons, not a title.
-                </p>
-              )}
-              {showPublicLand && (
-                <p className="layer-meta">
-                  Scottish Public and Crown Estate Land 2024. Five bodies only,
-                  not a title and not a unique rent.
                 </p>
               )}
               {contextNote && <p className="layer-meta">{contextNote}</p>}

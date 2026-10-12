@@ -901,6 +901,50 @@ button.primary:disabled {
   letter-spacing: -0.02em;
 }
 
+.layer-ownership {
+  margin: 0 0 0.85rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--slrg-navy) 12%, transparent);
+}
+
+.layer-legend {
+  list-style: none;
+  margin: 0.45rem 0 0.35rem;
+  padding: 0;
+  display: grid;
+  gap: 0.28rem;
+}
+
+.layer-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  color: var(--slrg-muted);
+}
+
+.layer-legend-swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  flex: 0 0 auto;
+  border-radius: 2px;
+}
+
+.layer-feature-popup .maplibregl-popup-content {
+  padding: 0.55rem 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--slrg-text);
+}
+
+.layer-feature-popup .popup-source {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  color: var(--slrg-muted);
+}
+
 .ownership-toggle {
   display: flex;
   width: 100%;

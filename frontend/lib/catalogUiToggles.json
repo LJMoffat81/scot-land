@@ -1,0 +1,10 @@
+{
+  "uiToggleIds": [
+    "agr_value",
+    "boundaries",
+    "cell_grid",
+    "vdl",
+    "public_crown"
+  ],
+  "note": "Every GET /layers/catalog layer with status=live must appear here and in LayersPanel. Withheld public AGR £ layers still need a toggle row (honest unavailable)."
+}

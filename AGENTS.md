@@ -1,8 +1,8 @@
 # AGENTS.md — working on Scot-LAND
 
-## Current build
+## Workflow
 
-Grok Bot is the only writer until this Scot-LAND build is finished. Cursor and Grok Build do not edit this repo. Do not put the tri-tier contract back. When the build is finished, say so and stop. The next job uses the three-tool rule in `C:\Users\lauri\.grok\rules\multi-tool.md`.
+Grok Bot plans and writes PRDs; the Repo Outer Loop bot sends coding prompts to the Cursor Project `scot-land`. Cursor does all coding. No single writer. Pull the latest `main` first and never discard others' uncommitted work. Full rule: `C:\Projects\.cursor\rules\two-tool.mdc`.
 
 ## Product
 Build the **open land information platform** described in [docs/PLATFORM.md](docs/PLATFORM.md).

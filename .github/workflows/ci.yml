@@ -12,10 +12,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  backend:
-    name: Backend tests
+  guard:
+    name: Publishability guard
     runs-on: ubuntu-latest
-    # PostGIS is available for suites that need it; local/unit tests may skip.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python3 scripts/check_publishable.py
+
+  backend:
+    name: Backend tests (PostGIS)
+    runs-on: ubuntu-latest
     services:
       postgis:
         image: postgis/postgis:17-3.5
@@ -34,6 +43,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://wealth_ci:ci-throwaway-only@127.0.0.1:5432/wealth_it
       WEALTH_TEST_DATABASE_URL: postgresql://wealth_ci:ci-throwaway-only@127.0.0.1:5432/wealth_it
+      WEALTH_REQUIRE_POSTGIS: "1"
     defaults:
       run:
         working-directory: backend
@@ -50,10 +60,18 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS postgis; SELECT postgis_version();"
+      - name: Alembic upgrade on fresh PostGIS + schema drift check
+        run: |
+          alembic upgrade head
+          python -m db.check_drift
       - name: Import api.main
         run: python -c "import api.main; print(api.main.app.title)"
-      - name: Backend suite
+      - name: Valuation surface tests
+        run: python -m pytest -q -p no:cacheprovider tests/surface
+      - name: Full backend suite (PostGIS tests must run, not skip)
         run: python -m pytest -q -p no:cacheprovider -rs
+      - name: Processed-data manifests (GIS and Data Zones; see docs/processed_data_manifest.md)
+        run: python -m etl.load_processed --check
 
   frontend:
     name: Frontend typecheck and build

@@ -14,16 +14,18 @@ import AgrBreakdown, {
   PlaceFiscal,
   ScenarioId,
 } from "./AgrBreakdown";
-import { WealthInspector } from "./WealthInspector";
-import { useWealthApi, WealthResponse } from "../lib/useWealthApi";
+import { WealthInspector, type WealthInspectorData } from "./WealthInspector";
+import { useWealthApi } from "../lib/useWealthApi";
 import {
   ApiError,
   SERVICE_BUSY,
   apiFetch,
-
   apiJson,
   isServiceFailure,
   pingApi,
+  fetchCapabilities,
+  POSTCODES_ONLY,
+  looksLikeFullPostcode,
   visitorFacingError,
 } from "../lib/api";
 import { CONTEXT_LAYERS } from "../lib/contextLayers";
@@ -461,12 +463,8 @@ export default function ScotlandMap() {
   const layerPopupRef = useRef<maplibregl.Popup | null>(null);
 
   // Georgist Wealth State
-  const {
-    fetchTotalWealth,
-    isLoading: wealthLoading,
-    error: wealthError
-  } = useWealthApi();
-  const [wealthData, setWealthData] = useState<WealthResponse | null>(null);
+  const { lookupWealthAt, isLoading: wealthLoading, failure: wealthFailure } = useWealthApi();
+  const [wealthData, setWealthData] = useState<WealthInspectorData | null>(null);
   const [showWealthPanel, setShowWealthPanel] = useState(false);
 
   const [contextOn, setContextOn] = useState<Record<string, boolean>>({});
@@ -490,6 +488,8 @@ export default function ScotlandMap() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SquareResponse | null>(null);
   const [apiOk, setApiOk] = useState<boolean | null>(null);
+  // Legacy ground-rent router mounted? null = not known yet. Its endpoints are never called when false.
+  const [agrAvailable, setAgrAvailable] = useState<boolean | null>(null);
   const [metricNote, setMetricNote] = useState<string | null>(null);
   const [activeStory, setActiveStory] = useState<StoryId>("who_pays");
   const [band, setBand] = useState<RentBand | null>(null);
@@ -624,6 +624,7 @@ export default function ScotlandMap() {
       generation?: number,
     ) => {
       const gen = generation ?? ++lookupGen.current;
+      if (!(await fetchCapabilities()).agr) return; // legacy breakdown not on this server: wealth panel only
       if (!keepLabel) {
                 setAddressLine(null);
       }
@@ -681,6 +682,36 @@ export default function ScotlandMap() {
     }
   }, []);
 
+  // One path for a point (map click, Locate, postcode search, ?lat=&lng=): marker, optional fly,
+  // shareable URL, then the data-zone lookup and the wealth panel. Needs no AGR router.
+  const inspectPoint = useCallback(
+    async (lat: number, lng: number, opts: { fly?: boolean } = {}) => {
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      const map = mapRef.current;
+      if (map && opts.fly) {
+        markerRef.current?.remove();
+        markerRef.current = new maplibregl.Marker({ color: "#0076d3" })
+          .setLngLat([lng, lat])
+          .addTo(map);
+        map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), essential: true });
+      }
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("lat", lat.toFixed(6));
+        url.searchParams.set("lng", lng.toFixed(6));
+        url.searchParams.delete("words");
+        window.history.replaceState({}, "", url.toString());
+      }
+      setWealthData(null);
+      setShowWealthPanel(true);
+      const res = await lookupWealthAt(lat, lng);
+      setWealthData(res.ok ? res.data : null);
+    },
+    [lookupWealthAt],
+  );
+  const inspectRef = useRef(inspectPoint);
+  inspectRef.current = inspectPoint;
+
   const locateMe = useCallback(() => {
     if (!navigator.geolocation) {
       setError("This browser cannot share a location.");
@@ -689,7 +720,16 @@ export default function ScotlandMap() {
     setLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        void fetchSquare(pos.coords.latitude, pos.coords.longitude);
+        const { latitude, longitude } = pos.coords;
+        void fetchCapabilities().then((caps) => {
+          if (caps.agr) {
+            void fetchSquare(latitude, longitude);
+            return;
+          }
+          setLoading(false);
+          setError(null);
+          void inspectRef.current(latitude, longitude, { fly: true });
+        });
       },
       () => {
         setLoading(false);
@@ -759,9 +799,44 @@ export default function ScotlandMap() {
     setActiveSuggest(-1);
   };
 
+  // Postcode-only search (postcodes.io via /geocode/postcode) when the AGR place search is absent.
+  const searchPostcode = async (q: string) => {
+    const generation = ++lookupGen.current;
+    suggestGen.current += 1;
+    if (suggestTimer.current) clearTimeout(suggestTimer.current);
+    clearSuggestions();
+    setError(null);
+    if (!looksLikeFullPostcode(q)) {
+      setError(POSTCODES_ONLY);
+      return;
+    }
+    setLoading(true);
+    try {
+      const body = await apiJson<{ postcode: string; lat: number; lng: number }>(
+        `/geocode/postcode?q=${encodeURIComponent(q)}`,
+      );
+      if (generation !== lookupGen.current) return;
+      setQuery(body.postcode);
+      void inspectRef.current(body.lat, body.lng, { fly: true });
+    } catch (err) {
+      if (generation !== lookupGen.current) return;
+      setError(
+        err instanceof ApiError && err.status === 503
+          ? "Postcode search is unavailable right now. Click the map instead."
+          : visitorFacingError(err),
+      );
+    } finally {
+      if (generation === lookupGen.current) setLoading(false);
+    }
+  };
+
   const runSearch = async () => {
     const q = query.trim();
     if (!q) return;
+    if (!(await fetchCapabilities()).agr) {
+      await searchPostcode(q);
+      return;
+    }
     const generation = ++lookupGen.current;
     suggestGen.current += 1;
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
@@ -835,6 +910,13 @@ export default function ScotlandMap() {
 
   const loadSuggestions = async (text: string) => {
     const generation = ++suggestGen.current;
+    if (!(await fetchCapabilities()).agr) {
+      setSuggestions([]);
+      setSuggestNote(
+        looksLikeFullPostcode(text) ? "Press Enter to find this postcode." : POSTCODES_ONLY,
+      );
+      return;
+    }
     setSuggesting(true);
     try {
       const response = await apiFetch(`/place?q=${encodeURIComponent(text)}`);
@@ -1244,6 +1326,7 @@ export default function ScotlandMap() {
       if (qWords) {
         setQuery(qWords);
         void (async () => {
+          if (!(await fetchCapabilities()).agr) return;
           try {
             const encoded = encodeURIComponent(qWords);
             const response = await apiFetch(
@@ -1259,7 +1342,10 @@ export default function ScotlandMap() {
           }
         })();
       } else if (qLat && qLng) {
-        void fetchSquare(Number(qLat), Number(qLng));
+        void fetchCapabilities().then((caps) => {
+          if (caps.agr) void fetchSquare(Number(qLat), Number(qLng));
+          else void inspectRef.current(Number(qLat), Number(qLng), { fly: true });
+        });
       }
     });
 
@@ -1346,27 +1432,15 @@ export default function ScotlandMap() {
       const hits = map.queryRenderedFeatures(event.point, {
         layers: ["w3w-agr-fill", "council-fill"],
       });
-      if (hits[0]?.properties?.lat != null && hits[0].layer?.id === "w3w-agr-fill") {
-        void fetchSquare(Number(hits[0].properties.lat), Number(hits[0].properties.lng));
+      const point =
+        hits[0]?.properties?.lat != null && hits[0].layer?.id === "w3w-agr-fill"
+          ? { lat: Number(hits[0].properties.lat), lng: Number(hits[0].properties.lng) }
+          : { lat: event.lngLat.lat, lng: event.lngLat.lng };
+      void fetchSquare(point.lat, point.lng);
 
-        // Georgist Wealth Lookup
-        const zoneId = hits[0].properties.zone_id || "unknown";
-        const wealth = await fetchTotalWealth(
-          Number(hits[0].properties.lat),
-          Number(hits[0].properties.lng),
-          zoneId
-        );
-        setWealthData(wealth);
-        setShowWealthPanel(true);
-        return;
-      }
-      void fetchSquare(lat, lng);
-
-      // For generic clicks, we still want the wealth data
-      // In a real app, we'd fetch the zoneId for these coordinates first
-      const wealth = await fetchTotalWealth(lat, lng, "unknown");
-      setWealthData(wealth);
-      setShowWealthPanel(true);
+      // Georgist wealth: point -> /layers/context/data-zones/at -> /georgist/wealth with the
+      // real DZ2011 code (DZ2022 if only that is loaded). Never sends 'unknown'.
+      await inspectRef.current(point.lat, point.lng);
     });
 
 
@@ -1386,13 +1460,26 @@ export default function ScotlandMap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Which optional routers the API mounts; legacy calls are skipped (quietly) when absent.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchCapabilities().then((caps) => {
+      if (cancelled || !caps.reachable) return;
+      setAgrAvailable(caps.agr);
+      if (!caps.agr) setMetricNote("Council ground-rent layers aren't available on this server yet.");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Load multi-metric council data once per scenario
   const metricsMetaRef = useRef<
     Record<string, { label?: string; unit?: string; min?: number; max?: number }> | null
   >(null);
 
   useEffect(() => {
-    if (!mapReady) return;
+    if (!mapReady || agrAvailable !== true) return; // council layer is part of the optional AGR router
     const map = mapRef.current;
     if (!map) return;
 
@@ -1433,7 +1520,7 @@ export default function ScotlandMap() {
     return () => {
       cancelled = true;
     };
-  }, [mapReady, scenario]);
+  }, [mapReady, scenario, agrAvailable]);
 
   // Paint / visibility when metric selection changes
   useEffect(() => {
@@ -1729,9 +1816,9 @@ export default function ScotlandMap() {
     map.setLayoutProperty(
       "parcels-wms",
       "visibility",
-      showBoundaries ? "visible" : "none",
+      showBoundaries && agrAvailable === true ? "visible" : "none", // tiles come from the optional AGR router
     );
-  }, [mapReady, showBoundaries]);
+  }, [mapReady, showBoundaries, agrAvailable]);
 
   useEffect(() => {
     if (!mapReady) return;
@@ -1747,6 +1834,10 @@ export default function ScotlandMap() {
         }
       } else if (map.getLayer(layer.id)) {
         map.setLayoutProperty(layer.id, "visibility", vis);
+      }
+      if (on && agrAvailable === false) {
+        setContextNote("This layer isn't available on this server yet.");
+        continue;
       }
       if (
         !on ||
@@ -1780,7 +1871,7 @@ export default function ScotlandMap() {
       cancelled = true;
       contextFlight.current.clear();
     };
-  }, [mapReady, contextOn]);
+  }, [mapReady, contextOn, agrAvailable]);
 
   useEffect(() => {
     if (!contextOn["urban-rural"] || !result) {
@@ -1914,6 +2005,7 @@ export default function ScotlandMap() {
         isOpen={showWealthPanel}
         onClose={() => setShowWealthPanel(false)}
         data={wealthData}
+        failure={wealthFailure}
         isLoading={wealthLoading}
       />
 
@@ -1978,7 +2070,7 @@ export default function ScotlandMap() {
             }
             value={query}
             autoComplete="off"
-            placeholder="Address or postcode"
+            placeholder={agrAvailable === false ? "Postcode, e.g. G2 1DU" : "Address or postcode"}
             title="A title number is looked up only if it is in the open set"
             onChange={(event) => {
               setQuery(event.target.value);
@@ -2087,9 +2179,24 @@ export default function ScotlandMap() {
             <span className="hud-scotland-fold-hide">Hide legend</span>
           </button>
           <div className="hud-scotland-body" id="hud-scotland-body">
-            <p className="hud-scotland-job">Annual Ground Rent</p>
-            <p className="hud-scotland-lead">A charge on the land alone.</p>
-            {legendMetric && (
+            {agrAvailable !== true ? (
+              <>
+                <p className="hud-scotland-job">Data zones</p>
+                <p className="hud-scotland-lead">
+                  Click the map, search a postcode or use Locate to see the data zone at that point.
+                </p>
+                <p className="hud-scotland-note">
+                  Surface land rent isn&apos;t published yet. When it is, it will be a research
+                  estimate for each data zone.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="hud-scotland-job">Annual Ground Rent</p>
+                <p className="hud-scotland-lead">A charge on the land alone.</p>
+              </>
+            )}
+            {agrAvailable === true && legendMetric && (
               <div className="map-legend">
                 {legendMetric.id !== "gross_liability" && (
                   <p className="map-legend-title">{legendMetric.label}</p>
@@ -2112,7 +2219,10 @@ export default function ScotlandMap() {
               </div>
             )}
             <p className="hud-scotland-foot">
-              Research estimate, not a rates bill. <a href="/methodology">About</a>
+              {agrAvailable === true
+                ? "Research estimate, not a rates bill. "
+                : "Data zone boundaries: Scottish Government, OGL v3. "}
+              <a href="/methodology">About</a>
             </p>
           </div>
         </div>
@@ -2241,6 +2351,20 @@ export default function ScotlandMap() {
 
               <label className="layer-select-label">The piece of land</label>
               <div className="layer-chips">
+                <button
+                  type="button"
+                  className={showBoundaries ? "chip active" : "chip"}
+                  onClick={() => {
+                    boundariesTouched.current = true;
+                    setShowBoundaries((v) => !v);
+                  }}
+                  title={agrAvailable === false
+                    ? "Register outlines aren't available on this server yet."
+                    : "Register outlines of neighbouring pieces of land. Zoom in."}
+                  disabled={agrAvailable === false}
+                >
+                  Register outlines
+                </button>
                 {["urban-rural", "data-zones"].map((id) => {
                   const layer = CONTEXT_LAYERS.find((item) => item.id === id);
                   if (!layer) return null;

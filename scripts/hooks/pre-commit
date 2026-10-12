@@ -1,0 +1,5 @@
+#!/bin/sh
+# Blocks commits that would publish internal, raw or address-level data (repo is PUBLIC).
+# Install once per clone:  git config core.hooksPath scripts/hooks
+#   (or: ln -s ../../scripts/hooks/pre-commit .git/hooks/pre-commit)
+exec python3 "$(git rev-parse --show-toplevel)/scripts/check_publishable.py"

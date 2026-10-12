@@ -19,7 +19,7 @@ def test_parcels_bbox_503_when_not_loaded(client, monkeypatch):
             "Cadastral parcels are not available: inspire_parcels is missing or empty."
         )
 
-    monkeypatch.setattr("api.main.parcels_bbox", _boom)
+    monkeypatch.setattr("api.cadastral_routes.parcels_bbox", _boom)
     r = client.get("/layers/parcels", params=GLASGOW_BBOX)
     assert r.status_code == 503, r.text
     detail = r.json().get("detail", "").lower()

@@ -1,0 +1,43 @@
+{
+ "park_area_km2":{
+  "S21000003":4528.1,
+  "S21000002":1863.4
+ },
+ "hh_postcodes_park_flag_disagree_with_SPD":0,
+ "hh_in_park_by_points":{
+  "S21000002":6835.0,
+  "S21000003":8518.0
+ },
+ "hh_in_park_by_SPD_flag":{
+  "S21000002":6835.0,
+  "S21000003":8518.0
+ },
+ "DZ2011_zones_with_park_hh_but_no_polygon_overlap":[
+
+ ],
+ "DZ2011_rows":81,
+ "DZ2011_fully_inside(area_share>=0.9999)":24,
+ "DZ2011_slivers(<0.1%_area,0_hh_in_park)":8,
+ "DZ2011_rows_by_park":{
+  "S21000002":41,
+  "S21000003":40
+ },
+ "DZ2011_hh_in_park_sum":{
+  "S21000002":6835.0,
+  "S21000003":8518.0
+ },
+ "DZ2022_zones_with_park_hh_but_no_polygon_overlap":[
+
+ ],
+ "DZ2022_rows":76,
+ "DZ2022_fully_inside(area_share>=0.9999)":29,
+ "DZ2022_slivers(<0.1%_area,0_hh_in_park)":12,
+ "DZ2022_rows_by_park":{
+  "S21000003":38,
+  "S21000002":38
+ },
+ "DZ2022_hh_in_park_sum":{
+  "S21000002":6835.0,
+  "S21000003":8518.0
+ }
+}

@@ -6,6 +6,10 @@ httpx>=0.27.0
 shapely==2.1.2
 pyproj>=3.6.0
 pyshp==3.1.6
-# National Wealth Engine (PostGIS aggregator, RoS sync)
+# Wealth Engine: PostGIS access, surface-rent harvester, RoS sync and ETL
 psycopg2-binary>=2.9.9
 pandas>=2.2
+openpyxl>=3.1
+# Schema migrations (baseline + future revisions)
+alembic>=1.14
+sqlalchemy>=2.0

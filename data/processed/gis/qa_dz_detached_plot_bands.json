@@ -1,0 +1,82 @@
+{
+ "latest_per_uprn": 1885772,
+ "detached_house_bungalow": 359902,
+ "cohorts": {
+  "post1980": 169682,
+  "pre1980": 144226,
+  "straddle_1976_1983": 24483,
+  "unknown_age": 21511
+ },
+ "post1980_from_sap_new_dwelling": 39771,
+ "national": {
+  "all_ages": {
+   "n_matched": 290695.0,
+   "share_lt005": 0.4492,
+   "share_005_010": 0.3226,
+   "share_gt010": 0.2282,
+   "median_parcel_ha": 0.0544,
+   "n_excl_multi_address": 25344.0,
+   "n_excl_capped": 8283.0,
+   "n_excl_unmatched": 35275.0,
+   "matched_rate": 0.8084,
+   "parcel_ha_quantiles_matched": {
+    "0.1": 0.0283,
+    "0.25": 0.036,
+    "0.5": 0.0544,
+    "0.75": 0.0936,
+    "0.9": 0.1907
+   }
+  },
+  "post1980": {
+   "n_matched": 145573.0,
+   "share_lt005": 0.5855,
+   "share_005_010": 0.2513,
+   "share_gt010": 0.1632,
+   "median_parcel_ha": 0.0438,
+   "n_excl_multi_address": 12527.0,
+   "n_excl_capped": 2421.0,
+   "n_excl_unmatched": 9038.0,
+   "matched_rate": 0.8585,
+   "parcel_ha_quantiles_matched": {
+    "0.1": 0.0271,
+    "0.25": 0.0322,
+    "0.5": 0.0438,
+    "0.75": 0.0718,
+    "0.9": 0.1476
+   }
+  },
+  "pre1980": {
+   "n_matched": 106614.0,
+   "share_lt005": 0.2408,
+   "share_005_010": 0.4276,
+   "share_gt010": 0.3317,
+   "median_parcel_ha": 0.0733,
+   "n_excl_multi_address": 9526.0,
+   "n_excl_capped": 5317.0,
+   "n_excl_unmatched": 22605.0,
+   "matched_rate": 0.7401,
+   "parcel_ha_quantiles_matched": {
+    "0.1": 0.0363,
+    "0.25": 0.0507,
+    "0.5": 0.0733,
+    "0.75": 0.1219,
+    "0.9": 0.253
+   }
+  }
+ },
+ "post1980_share_sum_maxerr": 2.220446049250313e-16,
+ "post1980_zones_with_shares": {
+  "2011": 3387,
+  "2022": 3662
+ },
+ "pre1980_share_sum_maxerr": 1.1102230246251565e-16,
+ "pre1980_zones_with_shares": {
+  "2011": 3523,
+  "2022": 3599
+ },
+ "all_ages_share_sum_maxerr": 2.220446049250313e-16,
+ "all_ages_zones_with_shares": {
+  "2011": 4716,
+  "2022": 5031
+ }
+}

@@ -1,0 +1,29 @@
+# SHA-256 of every raw input build.py reads, paths relative to RAW. Verified by scripts/fetch.py.
+# A file may have several lines: each listed hash is an accepted version that rebuilds byte-identical outputs.
+# dz_park_overlay.csv is a MANUAL input (Scot-LAND GIS data/processed/gis/dz_park_overlay.csv), not downloaded:
+#   fb7e0fc0... = current GIS version (vintage as integer 2011/2022, GIS team rules 6 Oct 2026)
+#   d3547676... = earlier GIS version (vintage 'DZ2011'/'DZ2022'); otherwise byte-identical
+4e93069ddb9c39c211cafdc56eeb16c4b0ed4872c9a95c20e23ec73c3b499057  spd_postcodeindex_cut_26_2_csv.zip
+1d7d29be4d6c0415bf808dd19288a7a56ab86a758491cace9fc59c2f56566f9a  spd_geographylookups_26_2_csv.zip
+0e4096a321cba2318dc5d2e35c197bf815ac333aebdf4cb0ddce82112b57a261  census_2022_index.zip
+6e1673bafa2d31a4342a767bb96872639697232706c0fa4cde5250da71afc58f  Census-2022-Output-Area-v1.zip
+3565794561306479b6c618aaa3915f1f29fdce31ee798fdcdab45f880a7ba4aa  oa22_dz22_iz22.zip
+24f5697fd7b2ab12b421a5e4b75d20a570aa89320544d2f2bc6c553668ffe2ee  sape22_11.xlsx
+d24ae6c4de6f967350babf21820c3bbef180b26e760e23f078825ab45339b747  sape-2024-22dz-data.xlsx
+4061bbba01790a7e25dfb1598ad46d47116ae911a91b7a3e708a9c8ba1ba4fe6  household-estimates-by-2011-data-zones.xlsx
+c7e1df4c7964e2206668ba46d85002fceed93d7b38b881e8c220920abb337f5b  household-estimates-by-2022-data-zones-24-25.xlsx
+6fdf2951223dd01e5790069d61428ce25d92aed5f260197ee546223113df4e49  dwellings-estimate-by-2011-data-zones.xlsx
+5d61db5faf7e81451d838e5d394b8e0682bbf501341c1220aea4a78082ceb033  dwelling-estimates-by-2022-data-zones-24-25.xlsx
+0a64937af60fb339a1be85cd2f65b6a3d410a38dc5b6c7f25a72ba2d7060a03e  SIMD_2020v2_datazone_lookup_updated_2025.xlsx
+9904aa957a8177853564415e848e08553c17491d1578ff631a5074cacc9fb296  SIMD_2020v2_ranks.xlsx
+a90b4078e1af13cf48d540f324defaa01effb9043af3ed2cb3d2f11eefc3e365  SIMD_2020v2_indicators.xlsx
+702c9ada0b26dad9904e97f00ea7aa3357e1bf449e724e83292b5265f0549cf2  dgs_house_prices.csv
+b356dfab98a707bc001b27f4756730ff1e68852bcbe044ca615bb683700fd3e1  dgs_ct_band_2022dz.csv
+30cbcac8fd4d9483194fc8aa58e3bbddc75e66e02230b59c674ed7f8d9514a40  dgs_ct_band_cgb_2011dz.csv
+5d649aadec9ae9e645e4190ab3ffdfa0352c1aa4e5be12a932b240f7d0a59f8d  dgs_dwellings_by_type.csv
+82eae2a1d5ca99c2027940a833313d640cf25f6d813ffb1ad5c334df696e7771  dgs_dwellings_by_rooms.csv
+fb7e0fc0b88b6b193aabee6b7522ca2fa7e9c1c8df6122b1092733ddf7d2aa57  dz_park_overlay.csv
+d3547676e957370a22d8d69eebd86a094ad3fefb19448dfd0cfdcd3081efc519  dz_park_overlay.csv
+# Downloaded for reference/QA but not read by build.py (fetch.py does not fetch these):
+3fcf759384309e0ec02fe90d239f0e1a551efdf8cb9f17c1f3fffdee7b9dea88  household-estimates-by-2022-data-zones_2024release.xlsx
+c8e10c741cf46f52858cb70d0ea67eb0b379a9729899310c0ad82b8a2978dd64  postcode2022_usualresidentpopulation.csv

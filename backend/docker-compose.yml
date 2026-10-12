@@ -1,17 +1,24 @@
-version: '3.8'
+# Database only, for running the API on the host (`uvicorn api.main:app`) against
+# a local PostGIS. Run from backend/ with POSTGRES_PASSWORD in backend/.env.
+# Then: export DATABASE_URL=postgresql://scotland:<password>@127.0.0.1:5432/scotland_wealth
 services:
   db:
-    image: postgis/postgis:15-3.3
-    container_name: scotland_wealth_db
-    restart: always
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: wealth_user
-      POSTGRES_PASSWORD: wealth_password
-      POSTGRES_DB: scotland_wealth
+      POSTGRES_USER: ${POSTGRES_USER:-scotland}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-scotland_wealth}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgis_data:/var/lib/postgresql/data
+      - ./db/schema:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   postgis_data:

@@ -1,0 +1,138 @@
+{
+ "epc_dz_rollup.csv": {
+  "rows": 14368,
+  "sha8": "13a5f647",
+  "vintage_dtype": "int64",
+  "zones_by_vintage": {
+   "2011": 6976,
+   "2022": 7392
+  },
+  "old_cols_present": [],
+  "dwellings_flag": {
+   "": 14365,
+   "zero_dwellings_2025": 3
+  },
+  "flagged": [
+   [
+    "S01010206",
+    2011,
+    "zero_dwellings_2025"
+   ],
+   [
+    "S01010226",
+    2011,
+    "zero_dwellings_2025"
+   ],
+   [
+    "S01010227",
+    2011,
+    "zero_dwellings_2025"
+   ]
+  ],
+  "2011_dwellings_total_2025_sum": 2757376,
+  "2011_coverage_all": 0.7328,
+  "2011_coverage_recent10": 0.5428,
+  "2022_dwellings_total_2025_sum": 2757323,
+  "2022_coverage_all": 0.7328,
+  "2022_coverage_recent10": 0.5428,
+  "dwellings_source": [
+   "Scot-LAND Data Zones dwellings_by_year (NRS council-tax dwellings, Sept 2025), count_year 2025"
+  ]
+ },
+ "dz_brma_share.csv": {
+  "rows": 14593,
+  "sha8": "abb626a3",
+  "vintage_dtype": "int64",
+  "zones_by_vintage": {
+   "2011": 6976,
+   "2022": 7392
+  },
+  "old_cols_present": [],
+  "zone_counts_complete": true,
+  "max_abs_sum_err": 1.000088900582341e-12
+ },
+ "dz_park_overlay.csv": {
+  "rows": 157,
+  "sha8": "fb7e0fc0",
+  "vintage_dtype": "int64",
+  "zones_by_vintage": {
+   "2011": 81,
+   "2022": 76
+  },
+  "old_cols_present": []
+ },
+ "alt/dz_brma_share_oa2022.csv": {
+  "rows": 14462,
+  "sha8": "c2b1ab6e",
+  "vintage_dtype": "int64",
+  "zones_by_vintage": {
+   "2011": 6976,
+   "2022": 7392
+  },
+  "old_cols_present": [],
+  "zone_counts_complete": true,
+  "max_abs_sum_err": 4.001243780749064e-13
+ },
+ "alt/dz_brma_share_dwelling_bounds.csv": {
+  "rows": 441,
+  "sha8": "85772a81",
+  "vintage_dtype": "int64",
+  "zones_by_vintage": {
+   "2011": 107,
+   "2022": 109
+  },
+  "old_cols_present": [],
+  "max_abs_sum_err_share_mid": 9.992007221626409e-16,
+  "lower_le_hh_le_upper": true,
+  "dwellings_flag": {
+   "": 441
+  },
+  "flagged": []
+ },
+ "alt/dz_park_overlay_dwelling_bounds.csv": {
+  "rows": 157,
+  "sha8": "151a2c39",
+  "vintage_dtype": "int64",
+  "zones_by_vintage": {
+   "2011": 81,
+   "2022": 76
+  },
+  "old_cols_present": [],
+  "dwellings_flag": {
+   "": 157
+  },
+  "flagged": [],
+  "2011_S21000002_mid_pm_half": [
+   7938,
+   693
+  ],
+  "2011_S21000002_bounds": [
+   7245,
+   8632
+  ],
+  "2011_S21000003_mid_pm_half": [
+   11161,
+   764
+  ],
+  "2011_S21000003_bounds": [
+   10397,
+   11924
+  ],
+  "2022_S21000002_mid_pm_half": [
+   7990,
+   650
+  ],
+  "2022_S21000002_bounds": [
+   7340,
+   8640
+  ],
+  "2022_S21000003_mid_pm_half": [
+   11226,
+   573
+  ],
+  "2022_S21000003_bounds": [
+   10653,
+   11799
+  ]
+ }
+}

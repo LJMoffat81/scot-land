@@ -1,0 +1,52 @@
+{
+ "window": "LODGEMENT_DATE 2016-07-01..2026-06-30 inclusive",
+ "properties_with_cert_in_window": 1497380,
+ "hist_rows_outside_window_future_dated(>2026-06-30)": 1,
+ "unmatched": 735,
+ "unmatched_postcode_rate_pct": 0.049,
+ "valid_file_properties": 1496601,
+ "valid_file_properties_in_recent10": 1496573,
+ "tfa_valid_pct": 100.0,
+ "DZ2011_zones_suppressed_lt5": 3,
+ "DZ2011_suppressed_codes": [
+  "S01010206",
+  "S01010226",
+  "S01010227"
+ ],
+ "DZ2011_certs_assigned": 1496645,
+ "DZ2011_recent10_coverage_quantiles": {
+  "0": 0.066,
+  "0.05": 0.325,
+  "0.25": 0.417,
+  "0.5": 0.506,
+  "0.75": 0.606,
+  "0.95": 0.769,
+  "1": 1.519
+ },
+ "DZ2011_national_recent10_coverage": 0.5428,
+ "DZ2011_pt_max_sum_err": 2.220446049250313e-16,
+ "DZ2011_bf_max_sum_err": 2.220446049250313e-16,
+ "DZ2011_age_max_sum_err": 3.3306690738754696e-16,
+ "DZ2022_zones_suppressed_lt5": 0,
+ "DZ2022_suppressed_codes": [],
+ "DZ2022_certs_assigned": 1496645,
+ "DZ2022_recent10_coverage_quantiles": {
+  "0": 0.048,
+  "0.05": 0.326,
+  "0.25": 0.419,
+  "0.5": 0.51,
+  "0.75": 0.616,
+  "0.95": 0.805,
+  "1": 1.588
+ },
+ "DZ2022_national_recent10_coverage": 0.5428,
+ "DZ2022_pt_max_sum_err": 2.220446049250313e-16,
+ "DZ2022_bf_max_sum_err": 3.3306690738754696e-16,
+ "DZ2022_age_max_sum_err": 4.440892098500626e-16,
+ "DZ2011_median_abs_diff_flat_share_recent_vs_all": 0.0131,
+ "DZ2011_median_abs_diff_tfa_median_recent_vs_all_m2": 1.0,
+ "DZ2022_median_abs_diff_flat_share_recent_vs_all": 0.0125,
+ "DZ2022_median_abs_diff_tfa_median_recent_vs_all_m2": 1.0,
+ "rows": 14368,
+ "columns": 72
+}

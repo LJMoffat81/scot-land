@@ -40,11 +40,15 @@ def pg(monkeypatch):
 
     conn = db.connect()
     with conn.cursor() as cur:
+        # Drop alembic_version so apply_schema (alembic upgrade head) rebuilds
+        # after CI already stamped head on this throwaway DB.
         cur.execute(
-            "DROP TABLE IF EXISTS surface_rent_dz, resource_wealth, eco_wealth, planning_sites, "
-            "dz_spine, dz_boundaries, dz_denominators, dz_dwelling_counts, dz_population_counts CASCADE"
+            "DROP TABLE IF EXISTS alembic_version, inspire_parcels, surface_rent_dz, "
+            "resource_wealth, eco_wealth, planning_sites, dz_spine, dz_boundaries, "
+            "dz_denominators, dz_dwelling_counts, dz_population_counts CASCADE"
         )
         cur.execute("DROP SCHEMA IF EXISTS processed CASCADE")
+        cur.execute("DROP SCHEMA IF EXISTS processed_internal CASCADE")
         cur.execute("DROP SCHEMA IF EXISTS datazones CASCADE")
     conn.commit()
     apply_schema(conn)

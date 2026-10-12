@@ -44,22 +44,31 @@ The engine uses a high-performance spatial stack to provide real-time wealth agg
    cd scot-land
    ```
 
-2. **Launch the Infrastructure:**
+2. **Launch the Infrastructure** (needs `POSTGRES_PASSWORD` in `.env`; see `backend/.env.example`):
    ```bash
-   docker-compose up -d
+   docker compose up -d db
    ```
 
-3. **Migrate the Data:**
+3. **Apply the Wealth schema / load placeholder layers (internal only) and manifest data:**
    ```bash
    cd backend
-   pip install -r requirements.txt
-   export PYTHONPATH=. && python3 etl/migrate_to_postgis.py
+   pip install -r requirements-dev.txt
+   export DATABASE_URL=postgresql://scotland:<password>@127.0.0.1:5432/scotland_wealth
+   alembic upgrade head                    # see docs/DB_MIGRATIONS.md
+   python -m db.check_drift                # optional
+   python -m etl.migrate_to_postgis --schema-only   # also runs alembic upgrade head
+   python -m etl.load_processed            # manifest-listed data/processed/*/ files (checksummed)
    ```
-
-4. **Start the API:**
+   Mock resource/eco layers are only visible on `/internal/...` with
+   `ENABLE_INTERNAL_ENDPOINTS=1` **and** a configured `INTERNAL_API_TOKEN`
+   (Bearer or X-API-Key). Without the token the routes stay locked (403) —
+   they never fall open.
+4. **Start the API** (boots without a DB; `/health` reports `db.status`):
    ```bash
    uvicorn api.main:app --reload --port 8000
    ```
+
+   See [`docs/wealth_api.md`](../docs/wealth_api.md) for endpoints, error codes and the `surface_rent_dz` / `planning_sites` schema.
 
 5. **Start the Frontend:**
    ```bash
@@ -74,6 +83,8 @@ The engine uses a high-performance spatial stack to provide real-time wealth agg
 The la-calc engine avoids "guessing" prices. It uses a **weighted multi-factor model**:
 
 $$\text{Total Rent} = \text{Surface Rent} + \text{Resource Rent} + \text{Eco Rent}$$
+
+> **Superseded (draft economic rules, Oct 2026):** the API no longer returns one mixed total. Totals are reported per value tier (market / proxy / shadow), placeholder layers are excluded, and the surface method is the residual method in `docs/surface_rent_spec.md`, not the SIMD multipliers below.
 
 The **Surface Rent** is calculated as:
 $$\text{Base Rent} \times (\text{Density Multiplier}) \times (\text{Economic Multiplier}) \times (\text{Access Multiplier})$$

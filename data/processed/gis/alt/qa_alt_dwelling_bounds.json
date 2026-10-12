@@ -1,0 +1,80 @@
+{
+ "brma_mid_raw_zone_sum_range": [
+  1.0,
+  1.039146
+ ],
+ "brma_mid_max_abs_renorm_adjustment": 0.035004,
+ "brma_mid_rows_adjusted_gt_1e-12": 27,
+ "brma_mid_zones_adjusted": 9,
+ "brma_mid_max_renorm_row": {
+  "code": "S01013002",
+  "vintage": "2011",
+  "brma_id": "S33000008",
+  "share_mid_raw": "0.929207459563943",
+  "share_mid": "0.894203068963535"
+ },
+ "brma_mid_max_abs_sum_err": 2.220446049250313e-16,
+ "brma_halfwidth_quantiles": {
+  "0.5": 0.0146,
+  "0.9": 0.0543,
+  "1": 0.1557
+ },
+ "brma_split_rows": 441,
+ "brma_split_zones": 216,
+ "brma_max_shift_quantiles": {
+  "0.5": 0.0267,
+  "0.9": 0.0952,
+  "0.99": 0.2484,
+  "1": 0.2998
+ },
+ "brma_zones_max_shift_gt_0.05": 57,
+ "park_rows": 157,
+ "park_rows_partially_inhabited_in_park(0<hh_share<1)": 49,
+ "park_2011_S21000002_partial_rows": 15,
+ "park_2011_S21000002_median_max_shift": 0.0407,
+ "park_2011_S21000002_max_max_shift": 0.2431,
+ "park_2011_S21000003_partial_rows": 15,
+ "park_2011_S21000003_median_max_shift": 0.1419,
+ "park_2011_S21000003_max_max_shift": 0.212,
+ "park_2022_S21000002_partial_rows": 12,
+ "park_2022_S21000002_median_max_shift": 0.0417,
+ "park_2022_S21000002_max_max_shift": 0.2429,
+ "park_2022_S21000003_partial_rows": 7,
+ "park_2022_S21000003_median_max_shift": 0.127,
+ "park_2022_S21000003_max_max_shift": 0.1562,
+ "park_2011_S21000002_in_park_dwellings_bounds": [
+  7245,
+  8632
+ ],
+ "park_2011_S21000002_in_park_dwellings_mid": 7938,
+ "park_2011_S21000002_in_park_dwellings_mid_halfwidth": 694,
+ "park_2011_S21000003_in_park_dwellings_bounds": [
+  10397,
+  11924
+ ],
+ "park_2011_S21000003_in_park_dwellings_mid": 11161,
+ "park_2011_S21000003_in_park_dwellings_mid_halfwidth": 764,
+ "park_2022_S21000002_in_park_dwellings_bounds": [
+  7340,
+  8640
+ ],
+ "park_2022_S21000002_in_park_dwellings_mid": 7990,
+ "park_2022_S21000002_in_park_dwellings_mid_halfwidth": 650,
+ "park_2022_S21000003_in_park_dwellings_bounds": [
+  10653,
+  11799
+ ],
+ "park_2022_S21000003_in_park_dwellings_mid": 11226,
+ "park_2022_S21000003_in_park_dwellings_mid_halfwidth": 573,
+ "dwellings_source": "Scot-LAND Data Zones dwellings_by_year (NRS council-tax dwellings, Sept 2025), count_year 2025",
+ "rows_flagged": {
+  "missing_count_2025": {
+   "brma": 0,
+   "park": 0
+  },
+  "zero_dwellings_2025": {
+   "brma": 0,
+   "park": 0
+  }
+ }
+}

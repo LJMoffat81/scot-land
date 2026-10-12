@@ -1,0 +1,402 @@
+{
+  "rows_hh11_2025": 6976,
+  "rows_hh22_2025": 7392,
+  "rows_dw11_2025": 6976,
+  "rows_dw22_2025": 7392,
+  "dz2011_la_code_mismatch_simd_vs_nrs_sape": 0,
+  "dz2011_la_code_mismatch_hh_vs_sape": 0,
+  "dz2022_la_code_mismatch_hh_vs_sape": 0,
+  "ros_price_file_dz2011_present": 6970,
+  "ros_price_file_dz2011_absent": [
+    "S01007788",
+    "S01010206",
+    "S01010226",
+    "S01010462",
+    "S01010493",
+    "S01011598"
+  ],
+  "ros_price_file_years": [
+    "2004",
+    "2023"
+  ],
+  "spd_oa2022_differs_from_census_frozen_index_postcodes": 220,
+  "postcodes_census_index_households_ne_spd": 0,
+  "postcodes_census_index_hhpop_ne_spd_usual_residents": 2074,
+  "census_postcodes_without_spd_dz2011": 0,
+  "census2022_postcodes": 153192,
+  "census2022_postcode_household_population_total": 5330984,
+  "census2022_postcode_households_total": 2508715,
+  "spd_postcode_usual_residents_total_(incl_communal)": 5439129,
+  "postcodes_spd_current_dz2022_differs_from_census_frozen_oa": 100,
+  "postcodes_spd_current_dz2022_differs_hh_pop": 1417,
+  "census2022_oa_household_residents_total_UV101b": 5332173,
+  "census2022_oa_communal_residents_total_UV101b": 108018,
+  "oa_postcode_hhpop_vs_UV101b_abs_diff": {
+    "oas_equal": 26980,
+    "max_abs": 14,
+    "mean_abs": 1.174
+  },
+  "census_oas_without_postcodes": 0,
+  "dz2011_with_zero_2022_household_residents": [
+    "S01010206",
+    "S01010226",
+    "S01010227"
+  ],
+  "fallback_rows": [
+    {
+      "dz2011": "S01010206",
+      "dz2022": "S01017360",
+      "basis_count": 497.0,
+      "method": "fallback_census2011_pop_terminated_postcodes"
+    },
+    {
+      "dz2011": "S01010226",
+      "dz2022": "S01017379",
+      "basis_count": 816.0,
+      "method": "fallback_census2011_pop_terminated_postcodes"
+    },
+    {
+      "dz2011": "S01010227",
+      "dz2022": "S01017379",
+      "basis_count": 692.0,
+      "method": "fallback_census2011_pop_terminated_postcodes"
+    }
+  ],
+  "cw_rows": 10473,
+  "cw_dz2011_covered": 6976,
+  "cw_dz2022_covered": 7392,
+  "cw_max_abs_dev_weight_sum": 1.1102230246251565e-16,
+  "cw_max_abs_dev_reverse_sum": 1.1102230246251565e-16,
+  "cw_one_to_one_pairs": 3145,
+  "cw_dz2011_split_(maps_to_>1_dz2022)": 2369,
+  "cw_dz2011_wholly_in_one_dz2022": 4607,
+  "cw_dz2022_merged_(draws_from_>1_dz2011)": 2498,
+  "cw_dz2022_from_single_dz2011": 4894,
+  "cw_material_(>=2%)_dz2011_split": 2117,
+  "cw_material_(>=2%)_dz2022_merged": 2106,
+  "cw_dz2011_max_weight_>=0.98": 4874,
+  "cw_dz2022_max_reverse_>=0.98": 5277,
+  "cw_basis_total_hhres": 5330984.0,
+  "dz2011_iz_mismatch_simd_vs_spd": 0,
+  "dz2022_iz_mismatch_nrs_oa_lookup_vs_spd": 0,
+  "dz2011_la_mismatch_vs_spd": 0,
+  "dz2022_la_mismatch_vs_spd": 0,
+  "iz2011_count": 1279,
+  "la_count_2011": 32,
+  "iz2011_spanning_>1_la": 0,
+  "iz2022_count": 1334,
+  "la_count_2022": 32,
+  "iz2022_spanning_>1_la": 0,
+  "spine_zero_dwellings": [
+    "S01010206/2011",
+    "S01010226/2011",
+    "S01010227/2011"
+  ],
+  "spine_pop_dwellings_mismatch": [
+    "S01010227/2011",
+    "S01011598/2011"
+  ],
+  "spine_2011_rows": 6976,
+  "spine_2011_population_total": 5447000,
+  "spine_2011_households_total": 2647347,
+  "spine_2011_dwellings_total": 2757376,
+  "spine_2011_nulls": {
+    "iz_code": 0,
+    "la_code": 0,
+    "population": 0,
+    "households": 0,
+    "dwellings": 0
+  },
+  "spine_2011_flag_counts": {
+    "absent_from_ros_price_file": 6,
+    "no_census2022_household_residents": 3,
+    "zero_dwellings": 3,
+    "population_zero": 2,
+    "pop_dwellings_mismatch": 2
+  },
+  "spine_2022_rows": 7392,
+  "spine_2022_population_total": 5543300,
+  "spine_2022_households_total": 2647296,
+  "spine_2022_dwellings_total": 2757323,
+  "spine_2022_nulls": {
+    "iz_code": 0,
+    "la_code": 0,
+    "population": 0,
+    "households": 0,
+    "dwellings": 0
+  },
+  "spine_2022_flag_counts": {},
+  "simd_domain_half_ranks": {
+    "income_rank": 700,
+    "employment_rank": 568,
+    "education_rank": 0,
+    "health_rank": 0,
+    "access_rank": 0,
+    "crime_rank": 156,
+    "housing_rank": 472
+  },
+  "simd_null_cells": {},
+  "simd_rank_mismatch_lookup_vs_ranks_file": {
+    "simd_rank": 0,
+    "income_rank": 0,
+    "employment_rank": 0,
+    "education_rank": 0,
+    "health_rank": 0,
+    "access_rank": 0,
+    "crime_rank": 0,
+    "housing_rank": 0
+  },
+  "simd_rank_is_permutation_1_6976": true,
+  "simd_decile_counts": {
+    "1": 697,
+    "2": 698,
+    "3": 697,
+    "4": 698,
+    "5": 698,
+    "6": 697,
+    "7": 698,
+    "8": 697,
+    "9": 698,
+    "10": 698
+  },
+  "simd_quintile_counts": {
+    "1": 1395,
+    "2": 1395,
+    "3": 1395,
+    "4": 1395,
+    "5": 1396
+  },
+  "simd22_rows": 7392,
+  "simd22_max_dev_decile_sum": 2.220446049250313e-16,
+  "simd22_max_dev_quintile_sum": 2.220446049250313e-16,
+  "simd22_zones_single_decile_(share>=0.999)": 5362,
+  "access_rows": 6976,
+  "access_codes_in_spine": 6976,
+  "access_nulls": {
+    "drive_petrol": 0,
+    "drive_GP": 0,
+    "drive_post": 0,
+    "drive_primary": 0,
+    "drive_retail": 0,
+    "drive_secondary": 0,
+    "PT_GP": 0,
+    "PT_post": 0,
+    "PT_retail": 0,
+    "broadband": 2
+  },
+  "access_broadband_suppressed_codes": [
+    "S01010206",
+    "S01010226"
+  ],
+  "access_minutes_range": {
+    "drive_petrol": [
+      0.661,
+      64.953
+    ],
+    "drive_GP": [
+      0.56,
+      89.377
+    ],
+    "drive_post": [
+      0.65,
+      23.939
+    ],
+    "drive_primary": [
+      0.941,
+      29.886
+    ],
+    "drive_retail": [
+      0.785,
+      190.0
+    ],
+    "drive_secondary": [
+      1.018,
+      119.231
+    ],
+    "PT_GP": [
+      1.596,
+      119.79
+    ],
+    "PT_post": [
+      1.832,
+      41.01
+    ],
+    "PT_retail": [
+      1.835,
+      190.0
+    ]
+  },
+  "access_broadband_range": [
+    0.0,
+    1.0
+  ],
+  "ct_rows": 161277,
+  "ct_rows_by_vintage_year": {
+    "2011": {
+      "min": 2005,
+      "max": 2025,
+      "count": 146493
+    },
+    "2022": {
+      "min": 2024,
+      "max": 2025,
+      "count": 14784
+    }
+  },
+  "ct_rows_band_sum_ne_total": 0,
+  "ct_band_sum_ne_total_max_abs": 0,
+  "ct_codes_per_vintage_year_min_max": {
+    "min": 6973,
+    "max": 7392
+  },
+  "ct_recon_vs_dgs_summary_2022dz": {
+    "matched_rows": 7392,
+    "years": [
+      2024
+    ],
+    "mismatch_AC": 0,
+    "mismatch_DE": 0,
+    "mismatch_FH": 0,
+    "mismatch_total_dwellings": 0
+  },
+  "ct_recon_vs_dgs_summary_cgb_2011dz": {
+    "matched_rows": 132541,
+    "years": [
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023
+    ],
+    "mismatch_AC": 0,
+    "mismatch_DE": 0,
+    "mismatch_FH": 0,
+    "mismatch_total_dwellings": 0
+  },
+  "mix_rows": 27904,
+  "mix_codes_per_year": {
+    "2014": 6976,
+    "2015": 6976,
+    "2016": 6976,
+    "2017": 6976
+  },
+  "mix_type_parts_ne_all": 278,
+  "mix_rooms_sum_ne_type_all": 0,
+  "mix_2017_mismatch_vs_nrs_xlsx": {
+    "type_detached": 0,
+    "type_semi_detached": 0,
+    "type_terraced": 0,
+    "type_flat": 0,
+    "type_unknown": 0,
+    "rooms_1": 0,
+    "rooms_unknown": 0,
+    "rooms_7_plus": 0
+  },
+  "sape_2011dz_mid2022_scotland": 5447000,
+  "simd_lookup_la_codes_sample": [
+    "S12000005",
+    "S12000006",
+    "S12000008",
+    "S12000010",
+    "S12000011",
+    "S12000013",
+    "S12000014",
+    "S12000017",
+    "S12000018",
+    "S12000019",
+    "S12000020",
+    "S12000021",
+    "S12000023",
+    "S12000026",
+    "S12000027",
+    "S12000028",
+    "S12000029",
+    "S12000030",
+    "S12000033",
+    "S12000034",
+    "S12000035",
+    "S12000036",
+    "S12000038",
+    "S12000039",
+    "S12000040",
+    "S12000041",
+    "S12000042",
+    "S12000045",
+    "S12000047",
+    "S12000048",
+    "S12000049",
+    "S12000050"
+  ],
+  "dby_rows": 98496,
+  "dby_occupied_plus_vacant_plus_second_ne_total": 7191,
+  "dby_flag_counts": {
+    "zero_dwellings": 27,
+    "assessor_dwellings_missing_for_zone_year": 3
+  },
+  "dby_2025_totals": {
+    "2011": {
+      "dwellings_total": 2757376,
+      "occupied": 2647347,
+      "vacant": 89516,
+      "second_homes": 20876,
+      "assessor_dwellings_dec": 2763896
+    },
+    "2022": {
+      "dwellings_total": 2757323,
+      "occupied": 2647296,
+      "vacant": 89497,
+      "second_homes": 20876,
+      "assessor_dwellings_dec": 2763896
+    }
+  },
+  "park_overlay_rows": 157,
+  "park_hh_totals_2011": {
+    "S21000002": 6835,
+    "S21000003": 8518
+  },
+  "park_hh_totals_2022": {
+    "S21000002": 6835,
+    "S21000003": 8518
+  },
+  "park_overlay_zones_not_in_spine": 0,
+  "zones_in_both_parks": 0,
+  "pa_rows": 14455,
+  "pa_zones": 14368,
+  "pa_max_dev_share_sum": 0.0,
+  "pa_method_counts": {
+    "2011:council_outside_park": 6895,
+    "2011:park_split_census2022_postcode_households": 104,
+    "2011:wholly_in_park": 24,
+    "2022:council_outside_park": 7316,
+    "2022:park_split_census2022_postcode_households": 87,
+    "2022:wholly_in_park": 29
+  },
+  "pa_park_hh_check": {
+    "2011": {
+      "S21000002": 6835,
+      "S21000003": 8518
+    },
+    "2022": {
+      "S21000002": 6835,
+      "S21000003": 8518
+    }
+  },
+  "pa_distinct_plan_making_authorities": {
+    "2011": 34,
+    "2022": 34
+  }
+}

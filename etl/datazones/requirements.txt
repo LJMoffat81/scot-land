@@ -1,0 +1,7 @@
+# Python 3.13 (built and verified with 3.13.5). Pinned to the versions used for the published build.
+pandas==3.0.6
+numpy==2.5.3
+openpyxl==3.1.5
+python-dateutil==2.9.0.post0
+et_xmlfile==2.0.0
+six==1.17.0

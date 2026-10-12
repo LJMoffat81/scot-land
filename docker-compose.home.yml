@@ -1,6 +1,37 @@
 # Staging stack for this office PC. The browser calls same-origin /backend,
 # and Next proxies to the API container. Vercel and Railway stay on docker-compose.yml.
+# Needs a .env with POSTGRES_PASSWORD (URL-safe; no default, compose refuses to start without it).
+#
+#   docker compose -f docker-compose.home.yml up -d --build db api
+#   docker compose -f docker-compose.home.yml exec api python -m etl.load_processed
+#   # Data Zone boundaries are not in the repo. Put the boundaries/ dataset (manifest.csv +
+#   # dz2011/dz2022_boundaries.geojson) in ../scot-land-local (or set SCOT_LAND_LOCAL_DIR), then:
+#   docker compose -f docker-compose.home.yml exec api python -m etl.load_processed --root /app/local --dataset boundaries
+#   docker compose -f docker-compose.home.yml up -d --build frontend
+#
+# The schema is applied by the db container on first init and again (idempotently) by the loader.
 services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-scotland}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-scotland_wealth}
+    # Loopback only, for psql/QGIS on this PC (5433: 5432 is often taken by another local
+    # Postgres). Remove to keep the DB internal.
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - wealth_pgdata:/var/lib/postgresql/data
+      - ./backend/db/schema:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   api:
     build:
       context: .
@@ -12,11 +43,18 @@ services:
       - "127.0.0.1:8000:8000"
     volumes:
       - ./data:/app/data:ro
+      # Machine-local datasets that are not in the repo (e.g. Data Zone boundaries), read-only.
+      - ${SCOT_LAND_LOCAL_DIR:-../scot-land-local}:/app/local:ro
     environment:
       W3W_API_KEY: ${W3W_API_KEY:-}
       ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://192.168.0.171:3000,http://100.94.77.68:3000
       ALLOW_VERCEL_PREVIEWS: "false"
       PORT: "8000"
+      DATA_DIR: /app/data
+      DATABASE_URL: postgresql://${POSTGRES_USER:-scotland}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-scotland_wealth}
+    depends_on:
+      db:
+        condition: service_healthy
 
   frontend:
     build:
@@ -31,3 +69,6 @@ services:
       API_PROXY_TARGET: http://api:8000
     depends_on:
       - api
+
+volumes:
+  wealth_pgdata:

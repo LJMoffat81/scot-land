@@ -22,7 +22,7 @@ npm run dev
 |----------|-----|
 | `GET /square?lat=&lng=` | Live AGR for a Scot-LAND square (`platform` place card attached) |
 | `GET /layers/catalog` | Open-land layers with live / linked / gap status |
-| `GET /layers/parcels?...` | RoS INSPIRE Index Polygons bbox (PostGIS; **503** if not loaded) |
+| `GET /layers/parcels?...` | RoS INSPIRE Index Polygons bbox (PostGIS; **503** if table empty; empty viewport **200** when loaded; CI may use `--fixture`) |
 | `GET /layers/parcels/tiles/{z}/{x}/{y}` | Live RoS INSPIRE WMS proxy (soft-fail tiles) |
 | `GET /layers/parcels/at?lat=&lng=` | Parcel under a point (live WMS GetFeatureInfo) |
 | `GET /layers/open/vdl` | SVDLS vacant/derelict sites (bbox; **503** if upstream down) |
@@ -57,7 +57,7 @@ npm run dev
 | Filters | Vacant / public overlays, rent band | `/?vacant=1&public=1&band=high` |
 | Click | Any cell | Layer popup (parcel id / area / owner type / SVDLS site) + residual place card |
 
-Cadastre ingest: `python -m etl.ingest_inspire_parcels` — see `scripts/data/README-inspire.md`.
+Cadastre ingest: `python -m etl.ingest_inspire_parcels` (production extract under `data/external/inspire/`) or `--fixture` for CI synthetic polygons — see `scripts/data/README-inspire.md`. Licence **OGL-3.0**.
 
 Full national 3 m precompute is intentionally not stored (~billions of cells).
 

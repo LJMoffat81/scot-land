@@ -57,8 +57,8 @@ export const LAYER_ATTRIBUTION: Record<
     licence: "Research estimate — not a rates bill; plot £ not public yet",
   },
   boundaries: {
-    source: "Registers of Scotland INSPIRE",
-    licence: "OGL / INSPIRE (Crown)",
+    source: "Registers of Scotland INSPIRE Index Polygons",
+    licence: "OGL-3.0",
     sourceUrl: "https://www.ros.gov.uk/open-data",
   },
   cell_grid: {

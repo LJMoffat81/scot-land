@@ -34,6 +34,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     # Destructive: drops Wealth / platform tables introduced by this baseline.
     # Safe for throwaway CI DBs; do not run against production without a backup.
+    op.execute("DROP TABLE IF EXISTS inspire_parcels_meta CASCADE")
     op.execute("DROP TABLE IF EXISTS inspire_parcels CASCADE")
     op.execute("DROP TABLE IF EXISTS eco_wealth CASCADE")
     op.execute("DROP TABLE IF EXISTS resource_wealth CASCADE")

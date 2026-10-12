@@ -25,7 +25,7 @@ def pg(monkeypatch):
     conn = db.connect()
     with conn.cursor() as cur:  # throwaway DB: rebuild so schema changes always apply
         cur.execute(
-            "DROP TABLE IF EXISTS alembic_version, inspire_parcels, surface_rent_dz, "
+            "DROP TABLE IF EXISTS alembic_version, inspire_parcels_meta, inspire_parcels, surface_rent_dz, "
             "resource_wealth, eco_wealth, planning_sites, dz_spine, dz_boundaries, "
             "dz_denominators, dz_dwelling_counts, dz_population_counts CASCADE"
         )

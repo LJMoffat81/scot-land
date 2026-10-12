@@ -47,7 +47,9 @@ def layer_parcels_bbox(
     """RoS INSPIRE Index Polygons in the viewport (PostGIS ingest).
 
     Returns 503 when inspire_parcels is missing or empty — never placeholder
-    geometry. Live WMS tiles remain on /layers/parcels/tiles for map display.
+    geometry. When loaded, an empty viewport returns 200 with features=[]
+    (including fixture-scoped CI loads). Live WMS tiles remain on
+    /layers/parcels/tiles for map display.
     """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     if south >= north or west >= east:

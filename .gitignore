@@ -103,3 +103,4 @@ data/**/*address*
 data/**/*postcode*
 data/**/*uprn*
 data/**/*udprn*
+*.ingest.json

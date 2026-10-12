@@ -1,0 +1,57 @@
+{
+  "type": "FeatureCollection",
+  "name": "synthetic_cadastral_index_polygons",
+  "crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "SYN-GLA-001",
+      "properties": {
+        "inspireid": "SYN-GLA-001",
+        "nationalcadastralreference": "SYN-GLA-001",
+        "label": "SYN-GLA-001",
+        "area_sqm": 900.0,
+        "county": "synthetic-test-only",
+        "fixture": true,
+        "note": "Synthetic CI geometry — not a real RoS title"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-4.2600, 55.8600],
+            [-4.2590, 55.8600],
+            [-4.2590, 55.8608],
+            [-4.2600, 55.8608],
+            [-4.2600, 55.8600]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SYN-GLA-002",
+      "properties": {
+        "inspireid": "SYN-GLA-002",
+        "nationalcadastralreference": "SYN-GLA-002",
+        "label": "SYN-GLA-002",
+        "area_sqm": 1200.0,
+        "county": "synthetic-test-only",
+        "fixture": true,
+        "note": "Synthetic CI geometry — not a real RoS title"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-4.2585, 55.8602],
+            [-4.2575, 55.8602],
+            [-4.2575, 55.8610],
+            [-4.2585, 55.8610],
+            [-4.2585, 55.8602]
+          ]
+        ]
+      }
+    }
+  ]
+}

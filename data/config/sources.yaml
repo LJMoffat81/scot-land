@@ -59,11 +59,14 @@ parcels:
   name: ROS INSPIRE Index Polygons (cadastral parcels)
   product: INSPIRE Index Polygons (CP.CadastralParcel)
   role: parcel_geometry_lookup_and_map_layer
-  licence: OGL / INSPIRE (Crown)
+  # Laurie ruling Oct 2026: RoS grants Index Polygons under OGL v3 (the 2017 OS
+  # INSPIRE end-user licence linked from RoS's dataset guide is an RoS error).
+  licence: OGL-3.0
   attribution: >-
     © Crown copyright. Reproduced with the permission of Registers of Scotland.
     Contains OS data © Crown copyright and database right 2026.
   source_url: https://www.ros.gov.uk/open-data
+  download_url: https://ros.locationcentre.co.uk/inspire/
   vintage: live-WMS; local PostGIS ingest stamp beside data/external extract
   wms_url: https://ros-inspire.themapcloud.com/maps/wms
   wms_layer: CP.CadastralParcel
@@ -71,6 +74,8 @@ parcels:
   bbox_endpoint: /layers/parcels
   tile_endpoint: /layers/parcels/tiles/{z}/{x}/{y}
   ingest: python -m etl.ingest_inspire_parcels
+  ingest_fixture: python -m etl.ingest_inspire_parcels --fixture --replace
+  ci_fixture: backend/tests/fixtures/cadastral_index_polygons.geojson
   refresh_doc: scripts/data/README-inspire.md
   raw_dir: data/external/inspire   # gitignored — never commit raw downloads
   query_delta_degrees: 0.001
@@ -80,6 +85,7 @@ parcels:
     - Sasine titles without Land Register polygons
     - Private owner names are not in the open INSPIRE product
     - Index polygons are registered extents, not a title sheet
+    - Full national extracts stay in data/external/ (size); CI uses a synthetic fixture only
 
 public_land:
   name: Scottish Public and Crown Estate Land 2024

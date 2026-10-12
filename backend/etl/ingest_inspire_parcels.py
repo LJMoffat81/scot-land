@@ -6,12 +6,14 @@ never commits geometry — it only loads a local extract into PostGIS.
 Expected input: GeoJSON FeatureCollection (WGS84) with properties that
 include inspireid / nationalcadastralreference / label where available.
 
-Usage:
+Usage (production extract):
   export DATABASE_URL=postgresql://...
   python -m etl.ingest_inspire_parcels \\
-    --input ../data/external/inspire/index_polygons.geojson
+    --input ../data/external/inspire/index_polygons.geojson \\
+    --replace
 
-Optional vintage stamp is written next to the input (not to git).
+Usage (CI / local synthetic fixture — not real RoS titles):
+  python -m etl.ingest_inspire_parcels --fixture --replace
 """
 
 from __future__ import annotations
@@ -31,8 +33,18 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
 TABLE = "inspire_parcels"
+META_TABLE = "inspire_parcels_meta"
 DEFAULT_INPUT = REPO_ROOT / "data" / "external" / "inspire" / "index_polygons.geojson"
+DEFAULT_FIXTURE = (
+    BACKEND_ROOT / "tests" / "fixtures" / "cadastral_index_polygons.geojson"
+)
+
+# Committed registry fields (overridden for --fixture loads).
+PRODUCTION_LICENCE = "OGL-3.0"
+PRODUCTION_SOURCE_URL = "https://www.ros.gov.uk/open-data"
+PRODUCTION_PRODUCT = "ROS INSPIRE Index Polygons (CP.CadastralParcel)"
 
 
 def _db_config() -> dict[str, Any]:
@@ -73,6 +85,14 @@ def ensure_table(conn) -> None:
         cur.execute(
             f"CREATE INDEX IF NOT EXISTS idx_{TABLE}_geom "
             f"ON {TABLE} USING GIST (geom);"
+        )
+        cur.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {META_TABLE} (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
+            """
         )
     conn.commit()
 
@@ -145,21 +165,77 @@ def load_geojson(path: Path, conn, replace: bool) -> int:
     return inserted
 
 
-def write_local_stamp(input_path: Path, count: int, vintage: str) -> Path:
+def write_load_meta(
+    conn,
+    *,
+    count: int,
+    vintage: str,
+    load_scope: str,
+    licence: str,
+    source_url: str,
+    input_path: Path,
+) -> None:
+    """Persist load provenance for the API (fixture vs production extract)."""
+    rows = {
+        "load_scope": load_scope,
+        "licence": licence,
+        "source_url": source_url,
+        "product": PRODUCTION_PRODUCT,
+        "vintage": vintage,
+        "row_count": str(count),
+        "input": str(input_path),
+        "ingested_on": date.today().isoformat(),
+    }
+    with conn.cursor() as cur:
+        extras.execute_batch(
+            cur,
+            f"""
+            INSERT INTO {META_TABLE} (key, value) VALUES (%s, %s)
+            ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+            """,
+            list(rows.items()),
+        )
+    conn.commit()
+
+
+def write_local_stamp(
+    input_path: Path,
+    count: int,
+    vintage: str,
+    *,
+    load_scope: str,
+    licence: str,
+    source_url: str,
+) -> Path:
     stamp_path = input_path.with_suffix(input_path.suffix + ".ingest.json")
     stamp = {
         "layer": "inspire_parcels",
-        "product": "ROS INSPIRE Index Polygons",
-        "licence": "OGL / INSPIRE (Crown) — cite Registers of Scotland",
-        "source_url": "https://www.ros.gov.uk/open-data",
+        "product": PRODUCTION_PRODUCT,
+        "licence": licence,
+        "source_url": source_url,
+        "load_scope": load_scope,
         "input": str(input_path),
         "row_count": count,
         "vintage": vintage,
         "ingested_on": date.today().isoformat(),
-        "note": "Local stamp only — raw geometry stays out of git (data/external/).",
+        "note": (
+            "Local stamp only — raw geometry stays out of git (data/external/). "
+            "Synthetic fixtures must not be shown as real RoS titles."
+        ),
     }
     stamp_path.write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
     return stamp_path
+
+
+def _assert_allowed_input(path: Path) -> None:
+    resolved = path.resolve()
+    as_posix = str(resolved).replace("\\", "/")
+    if "data/processed" in as_posix:
+        raise SystemExit(
+            "Refuse to read cadastral geometry from data/processed/. "
+            "Keep raw extracts under data/external/ (gitignored), or use "
+            "--fixture for the synthetic CI polygons."
+        )
 
 
 def main() -> None:
@@ -167,8 +243,17 @@ def main() -> None:
     parser.add_argument(
         "--input",
         type=Path,
-        default=DEFAULT_INPUT,
+        default=None,
         help="Path to GeoJSON FeatureCollection under data/external/ (gitignored)",
+    )
+    parser.add_argument(
+        "--fixture",
+        action="store_true",
+        help=(
+            "Load the committed synthetic CI fixture "
+            f"({DEFAULT_FIXTURE.relative_to(REPO_ROOT)}). "
+            "Marks load_scope=fixture — not real RoS titles."
+        ),
     )
     parser.add_argument(
         "--vintage",
@@ -181,28 +266,60 @@ def main() -> None:
         help="TRUNCATE inspire_parcels before load",
     )
     args = parser.parse_args()
-    if not args.input.is_file():
+
+    if args.fixture and args.input is not None:
+        raise SystemExit("Use either --fixture or --input, not both.")
+
+    if args.fixture:
+        input_path = DEFAULT_FIXTURE
+        load_scope = "fixture"
+        licence = "synthetic-test-only"
+        source_url = str(DEFAULT_FIXTURE.relative_to(REPO_ROOT))
+    else:
+        input_path = args.input or DEFAULT_INPUT
+        load_scope = "production"
+        licence = PRODUCTION_LICENCE
+        source_url = PRODUCTION_SOURCE_URL
+
+    if not input_path.is_file():
         raise SystemExit(
-            f"Input not found: {args.input}\n"
+            f"Input not found: {input_path}\n"
             "Download RoS INSPIRE Index Polygons to data/external/inspire/ "
-            "(gitignored) and pass --input. See docs/DATA_ACQUISITION.md."
+            "(gitignored) and pass --input, or use --fixture for CI. "
+            "See scripts/data/README-inspire.md."
         )
-    # Refuse paths that look like they would be committed under processed/
-    resolved = args.input.resolve()
-    if "data/processed" in str(resolved).replace("\\", "/"):
-        raise SystemExit(
-            "Refuse to read cadastral geometry from data/processed/. "
-            "Keep raw extracts under data/external/ (gitignored)."
-        )
+    _assert_allowed_input(input_path)
 
     conn = connect()
     try:
         ensure_table(conn)
-        count = load_geojson(args.input, conn, replace=args.replace)
+        count = load_geojson(input_path, conn, replace=args.replace)
+        write_load_meta(
+            conn,
+            count=count,
+            vintage=args.vintage,
+            load_scope=load_scope,
+            licence=licence,
+            source_url=source_url,
+            input_path=input_path,
+        )
     finally:
         conn.close()
-    stamp = write_local_stamp(args.input, count, args.vintage)
-    logger.info("Loaded %s parcels into %s. Stamp: %s", count, TABLE, stamp)
+    stamp = write_local_stamp(
+        input_path,
+        count,
+        args.vintage,
+        load_scope=load_scope,
+        licence=licence,
+        source_url=source_url,
+    )
+    logger.info(
+        "Loaded %s parcels into %s (scope=%s). Stamp: %s",
+        count,
+        TABLE,
+        load_scope,
+        stamp,
+    )
 
 
 if __name__ == "__main__":

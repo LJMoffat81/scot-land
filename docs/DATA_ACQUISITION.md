@@ -55,11 +55,15 @@ Supply **completed residential (then all-tenure) sales** for Scotland so the AGR
 | Field | Value |
 |-------|--------|
 | Product | INSPIRE Index Polygons (`CP.CadastralParcel`) |
-| Licence | OGL / INSPIRE (Crown) — cite Registers of Scotland |
+| Licence | **OGL-3.0** — cite Registers of Scotland (Laurie's ruling Oct 2026) |
 | Attribution | © Crown copyright. Reproduced with the permission of Registers of Scotland |
+| Source / catalogue | https://www.ros.gov.uk/open-data |
+| Download | https://ros.locationcentre.co.uk/inspire/ |
 | Live WMS | `https://ros-inspire.themapcloud.com/maps/wms` |
-| BBox API | `GET /layers/parcels` → **503** when PostGIS table empty |
-| Raw storage | `data/external/inspire/` (gitignored) |
+| BBox API | `GET /layers/parcels` → **503** when PostGIS table empty; empty viewport is **200** when loaded |
+| ETL | `python -m etl.ingest_inspire_parcels` (PostGIS); CI: `--fixture` |
+| CI fixture | `backend/tests/fixtures/cadastral_index_polygons.geojson` (`synthetic-test-only`) |
+| Raw storage | `data/external/inspire/` (gitignored — never commit) |
 | Refresh | [scripts/data/README-inspire.md](../scripts/data/README-inspire.md) |
 
 ### Known gaps

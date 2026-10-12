@@ -1,4 +1,4 @@
-"""Tax scenario tools: internal-only, blocked, £ at Data Zone only; 5% yield placeholder."""
+"""Tax scenario tools: internal-only, blocked, £ at Data Zone only; yield from shared config."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from georgist.surface_settings import yield_placeholder
 from georgist.tax_scenarios import (
     BLOCKED_REASON,
     CAPTURE_NOTE,
@@ -16,7 +17,6 @@ from georgist.tax_scenarios import (
     MONEY_GRAIN,
     POLICY_CONFIG,
     PUBLICATION_STATUS,
-    YIELD_PLACEHOLDER,
     TaxScenarioError,
     ZoneRentRow,
     aggregate_by_council,
@@ -97,10 +97,13 @@ def test_aggregate_money_is_data_zone_only_not_council_sums():
     assert out["publication_status"] == PUBLICATION_STATUS == "blocked"
     assert out["internal"] is True
     assert out["money_grain"] == MONEY_GRAIN == "data_zone"
-    assert "5%" in out["blocked_reason"] or "0.05" in str(out["yield_placeholder"])
+    assert "surface.yaml" in out["blocked_reason"]
+    assert "hardcode" in out["blocked_reason"]
+    shared = yield_placeholder()
     assert out["yield_placeholder"]["status"] == "placeholder"
-    assert out["yield_placeholder"]["land_yield"] == 0.05
+    assert out["yield_placeholder"]["land_yield"] == shared["land_yield"]
     assert out["yield_placeholder"]["owner"] == "Valuation"
+    assert out["yield_placeholder"]["source"] == "data/config/surface.yaml yield.land_yield"
     assert "PLACEHOLDER" in out["yield_placeholder"]["note"]
     assert out["warning"] == INTERNAL_WARNING
     assert out["policy_config"]["status"] == "not_finalised"
@@ -129,7 +132,7 @@ def test_aggregate_money_is_data_zone_only_not_council_sums():
     assert by_code["S01008677"]["illustrated_collection_gbp"] == 50_000.0
     assert by_code["S01008677"]["measured_rent_gbp"] == 100_000.0
     assert by_code["S01008677"]["money_grain"] == "data_zone"
-    assert by_code["S01008677"]["yield_placeholder"]["land_yield"] == 0.05
+    assert by_code["S01008677"]["yield_placeholder"]["land_yield"] == shared["land_yield"]
     assert_no_aggregate_gbp(out)
 
 
@@ -140,7 +143,7 @@ def test_zone_illustration_gbp_on_zone_only():
     assert out["zone"]["measured_rent_gbp"] == 25_000.0
     assert out["publication_status"] == "blocked"
     assert out["money_grain"] == "data_zone"
-    assert out["yield_placeholder"] == YIELD_PLACEHOLDER
+    assert out["yield_placeholder"] == yield_placeholder()
     for key in GBP_KEYS:
         assert key not in out["council"]
     assert out["council"]["zone_count"] == 4
@@ -157,12 +160,35 @@ def test_assert_no_aggregate_gbp_refuses_council_money():
 def test_stamp_blocked_includes_yield_placeholder_and_policy_config():
     stamped = stamp_blocked({"national": {}, "by_council": [{"la_code": "S"}]})
     assert stamped["publication_status"] == "blocked"
-    assert stamped["yield_placeholder"]["land_yield"] == 0.05
+    assert stamped["yield_placeholder"] == yield_placeholder()
     assert "yield_calibration_pending" in stamped["blocked_reason"]
     assert BLOCKED_REASON == stamped["blocked_reason"]
     assert stamped["policy_config"] == POLICY_CONFIG
     assert stamped["policy_config"]["status"] == "not_finalised"
     assert "not finalised" in CAPTURE_NOTE.lower() or "not finalised" in POLICY_CONFIG["note"].lower()
+
+
+def test_tax_scenarios_does_not_hardcode_land_yield():
+    """Defer to shared surface.yaml; do not embed a numeric yield rate in this module."""
+    src = (API_DIR.parent / "georgist" / "tax_scenarios.py").read_text(encoding="utf-8")
+    assert "land_yield\": 0.05" not in src
+    assert "land_yield\": 0.0399" not in src
+    assert '"land_yield": 0.05' not in src
+    assert "configured 5%" not in src
+    assert "yield_placeholder" in src and "from georgist.surface_settings import yield_placeholder" in src
+
+
+def test_yield_placeholder_reads_shared_config_and_optional_band():
+    from georgist.surface_settings import yield_placeholder as yp_fn
+
+    base = yp_fn()
+    assert base["status"] == "placeholder" and base["owner"] == "Valuation"
+    assert isinstance(base["land_yield"], float) and base["land_yield"] > 0
+    # Optional band: pass through when Valuation publishes it; never invent.
+    with_band = yp_fn({"yield": {"land_yield": 0.0399, "land_yield_band": [0.035, 0.045]}})
+    assert with_band["land_yield"] == pytest.approx(0.0399)
+    assert with_band["land_yield_band"] == [0.035, 0.045]
+    assert with_band["status"] == "placeholder"
 
 
 def test_aggregate_refuses_mixed_price_years():

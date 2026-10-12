@@ -6,7 +6,7 @@ import pytest
 import yaml
 
 from georgist import surface_rent as sr
-from georgist.surface_settings import SettingsError, depreciation_settings
+from georgist.surface_settings import SettingsError, depreciation_settings, yield_placeholder
 
 
 def test_read_from_surface_yaml():
@@ -20,6 +20,22 @@ def test_read_from_surface_yaml():
 def test_missing_keys_refused():
     with pytest.raises(SettingsError):
         depreciation_settings({"depreciation": {"life_years": {"low": 80, "central": 100}}})
+
+
+def test_yield_placeholder_from_surface_yaml():
+    raw = yaml.safe_load(Path(sr.CONFIG_PATH).read_text())["surface_rent"]["yield"]
+    yp = yield_placeholder()
+    assert yp["land_yield"] == pytest.approx(float(raw["land_yield"]))
+    assert yp["status"] == "placeholder" and yp["owner"] == "Valuation"
+    assert yp["source"] == "data/config/surface.yaml yield.land_yield"
+    if "land_yield_band" not in raw:
+        assert "land_yield_band" not in yp
+
+
+def test_yield_placeholder_passes_band_when_configured():
+    yp = yield_placeholder({"yield": {"land_yield": 0.0399, "land_yield_band": [0.035, 0.045]}})
+    assert yp["land_yield"] == pytest.approx(0.0399)
+    assert yp["land_yield_band"] == [0.035, 0.045]
 
 
 def test_no_copied_values_in_engine_code():

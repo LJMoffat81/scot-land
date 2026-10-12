@@ -10,7 +10,8 @@ Rules v0.4 section 2: placeholders and diagnostics are absent from the public AP
 and map; developers can still see them here.
 
 Tax scenario tools also live here: publication_status=blocked until yield calibration
-(configured 5% land yield is a placeholder). Never mount them on public routes.
+(land yield deferred to shared surface.yaml; Valuation owns r−g). Never mount them on
+public routes.
 """
 
 from __future__ import annotations
@@ -307,7 +308,11 @@ def internal_tax_scenario(
         payload["la_code"] = la_code
     assert payload.get("publication_status") == PUBLICATION_STATUS
     assert payload.get("money_grain") == "data_zone"
-    assert payload.get("yield_placeholder", {}).get("land_yield") == 0.05
+    yp = payload.get("yield_placeholder") or {}
+    assert yp.get("status") == "placeholder"
+    assert yp.get("owner") == "Valuation"
+    assert yp.get("source") == "data/config/surface.yaml yield.land_yield"
+    assert isinstance(yp.get("land_yield"), (int, float)) and yp["land_yield"] > 0
     assert payload.get("policy_config", {}).get("status") == "not_finalised"
     assert payload.get("policy_config", {}).get("separate_from_measured_land_values") is True
     return JSONResponse(payload, headers={**HEADERS, "X-Wealth-Publication-Status": PUBLICATION_STATUS})

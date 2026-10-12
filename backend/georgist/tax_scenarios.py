@@ -1,9 +1,9 @@
 """Tax scenario illustrations from Wealth Engine Surface Rent (not AGR).
 
-INTERNAL ONLY until land-yield calibration lands (configured 5% yield is a
-placeholder assumption; Valuation owns r−g). Every payload is
-``publication_status=blocked`` and must not appear on public pages or public
-API routes.
+INTERNAL ONLY until land-yield calibration lands. Configured land yield is read
+from shared ``data/config/surface.yaml`` (Valuation owns r−g) — never hardcoded
+here. Every payload is ``publication_status=blocked`` and must not appear on
+public pages or public API routes.
 
 Money figures (£) are served at **Data Zone grain only**. Council / national
 blocks carry counts and labels, never summed £.
@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
 
 from georgist.display_views import ZERO_DWELLINGS, parse_zone_flags
+from georgist.surface_settings import yield_placeholder
 from georgist.wealth_schema import publicly_served
 
 DISCLAIMER = "Experimental research estimate. Not an official valuation or tax bill."
@@ -41,25 +42,14 @@ CAPTURE_NOTE = (
 STATUS = "experimental_research_estimate"
 PUBLICATION_STATUS = "blocked"
 BLOCKED_REASON = (
-    "yield_calibration_pending: land yield (configured 5%) is a placeholder assumption "
-    "until calibration against RoS market evidence; tax scenario output is internal-only"
+    "yield_calibration_pending: land yield from shared surface.yaml is a placeholder "
+    "assumption until calibration against RoS market evidence; tax scenario output is "
+    "internal-only (defer to Valuation yield config — do not hardcode a rate here)"
 )
 INTERNAL_WARNING = (
     "INTERNAL ONLY. Tax scenario output is publication_status=blocked until yield "
     "calibration lands. Do not publish on public pages."
 )
-# Valuation specialist owns r−g / land_yield; surface.yaml yield.land_yield = 0.05 is placeholder.
-YIELD_PLACEHOLDER = {
-    "status": "placeholder",
-    "land_yield": 0.05,
-    "source": "data/config/surface.yaml yield.land_yield",
-    "owner": "Valuation",
-    "note": (
-        "Configured land yield 5% (= r − g) is a PLACEHOLDER assumption. "
-        "Valuation specialist owns r−g and yield calibration against RoS evidence. "
-        "Do not treat scenario £ as calibrated."
-    ),
-}
 # Room rule: policy knobs stay out of measured land values; Georgist will write the spec.
 POLICY_CONFIG = {
     "status": "not_finalised",
@@ -90,12 +80,14 @@ _FORBIDDEN_AGGREGATE_GBP = frozenset({
 
 
 def _blocked_fields() -> dict[str, Any]:
+    # Live read from shared surface.yaml — picks up Valuation's provisional yield when that PR lands.
+    yp = yield_placeholder()
     return {
         "internal": True,
         "publication_status": PUBLICATION_STATUS,
         "blocked_reason": BLOCKED_REASON,
         "warning": INTERNAL_WARNING,
-        "yield_placeholder": dict(YIELD_PLACEHOLDER),
+        "yield_placeholder": yp,
         "policy_config": dict(POLICY_CONFIG),
         "money_grain": MONEY_GRAIN,
         "money_grain_note": MONEY_GRAIN_NOTE,
@@ -104,7 +96,9 @@ def _blocked_fields() -> dict[str, Any]:
 
 def stamp_blocked(payload: dict[str, Any]) -> dict[str, Any]:
     """Stamp scenario output as internal-only / publication_status=blocked (room rule)."""
-    payload.update(_blocked_fields())
+    fields = _blocked_fields()
+    payload.update(fields)
+    yp = fields["yield_placeholder"]
     for key in ("national", "zone", "council"):
         nested = payload.get(key)
         if isinstance(nested, dict):
@@ -123,7 +117,7 @@ def stamp_blocked(payload: dict[str, Any]) -> dict[str, Any]:
             row.update({
                 "publication_status": PUBLICATION_STATUS,
                 "blocked_reason": BLOCKED_REASON,
-                "yield_placeholder": dict(YIELD_PLACEHOLDER),
+                "yield_placeholder": dict(yp),
             })
     return payload
 
@@ -257,7 +251,7 @@ def _zone_money_row(row: ZoneRentRow, *, capture_rate: float) -> dict[str, Any]:
         "money_grain": MONEY_GRAIN,
         "status": STATUS,
         "disclaimer": DISCLAIMER,
-        "yield_placeholder": dict(YIELD_PLACEHOLDER),
+        "yield_placeholder": yield_placeholder(),
     }
 
 
@@ -333,7 +327,8 @@ def aggregate_by_council(
             "capture_rate is provisional policy illustration — rates/exemptions/phase-in/"
             "revenue sharing are not finalised (Georgist owns that spec) and stay separate "
             "from measured land values. Not the Sandilands pool, not AGR, not a tax bill. "
-            "publication_status=blocked; 5% land yield is a Valuation placeholder."
+            "publication_status=blocked; land yield deferred to shared surface.yaml "
+            "(Valuation placeholder until calibrated)."
         ),
     })
     assert_no_aggregate_gbp(payload)
@@ -367,8 +362,9 @@ def zone_illustration(
         "note": (
             "Illustrated collection = Surface Rent measured_rent × capture_rate at Data Zone grain. "
             "Research estimate only; not AGR and not a tax bill. "
-            "publication_status=blocked; 5% land yield is a Valuation placeholder (r−g owned by Valuation). "
-            "Policy rates/exemptions/phase-in/revenue sharing are not finalised here."
+            "publication_status=blocked; land yield deferred to shared surface.yaml "
+            "(Valuation owns r−g). Policy rates/exemptions/phase-in/revenue sharing "
+            "are not finalised here."
         ),
     })
     assert_no_aggregate_gbp(payload)

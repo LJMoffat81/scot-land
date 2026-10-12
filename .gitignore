@@ -52,3 +52,7 @@ frontend/out/
 # Legacy installers
 *.msi
 *.exe
+# Raw external datasets (~295 MB, too large for GitHub)
+data/external/
+# Separate empty nested git repo, not part of scot-land
+Cursor Demo/

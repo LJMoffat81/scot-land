@@ -128,6 +128,18 @@ export const LAYER_ATTRIBUTION: Record<
     licence: "OGL-3.0",
     sourceUrl: "https://www.sepa.org.uk/environment/environmental-data/",
   },
+  sssi: {
+    source: "NatureScot Sites of Special Scientific Interest",
+    licence: "OGL-3.0",
+    sourceUrl:
+      "https://opendata.nature.scot/maps/sites-of-special-scientific-interest",
+  },
+  naturescot_designations: {
+    source: "NatureScot designations (SPA, SAC, NNR)",
+    licence: "OGL-3.0",
+    sourceUrl: "https://opendata.nature.scot/",
+  },
+
   la_holdings: {
     source: "Spatial Hub — Land Ownership Scotland",
     licence: "Not openly licensed for this portal",

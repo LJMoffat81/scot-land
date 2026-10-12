@@ -53,6 +53,10 @@ SEPA_CAR_MAPSERVER = (
     "https://map.sepa.org.uk/server/rest/services/Open/SEPA_Reference/MapServer"
 )
 CROWN_ESTATE_HUB = "https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/"
+NATURESCOT_OPEN_DATA = "https://opendata.nature.scot/"
+NATURESCOT_SSSI = (
+    "https://opendata.nature.scot/maps/sites-of-special-scientific-interest"
+)
 
 
 def scotlis_links(lat: float, lng: float, postcode: str | None = None) -> dict[str, Any]:
@@ -236,6 +240,46 @@ def platform_catalog() -> dict[str, Any]:
                 "publication_status": "ok",
                 "adds_to_surface_rent": False,
             },
+
+            {
+                "id": "sssi",
+                "group": "spatial",
+                "status": "live",
+                "label": "Sites of Special Scientific Interest",
+                "description": (
+                    "NatureScot SSSI boundaries (OGL-3.0). Indicative designations "
+                    "from PostGIS ingest — not a title plan. Natural capital Constraint "
+                    "(£0, no rent row); changes best use only. 503 when unloaded."
+                ),
+                "endpoint": "/layers/open/sssi",
+                "licence": "OGL-3.0",
+                "licence_url": OGL_V3_URL,
+                "minzoom": 7,
+                "source_url": NATURESCOT_SSSI,
+                "ledger_role": "constraint",
+                "ledger_row": None,
+                "ui_surface": "ledger",
+            },
+            {
+                "id": "naturescot_designations",
+                "group": "spatial",
+                "status": "live",
+                "label": "NatureScot designations",
+                "description": (
+                    "NatureScot SPA, SAC and NNR boundaries (OGL-3.0). "
+                    "SSSI is a separate layer. Constraint (£0, no rent row). "
+                    "Indicative — 503 when unloaded."
+                ),
+                "endpoint": "/layers/open/naturescot-designations",
+                "licence": "OGL-3.0",
+                "licence_url": OGL_V3_URL,
+                "minzoom": 7,
+                "source_url": NATURESCOT_OPEN_DATA,
+                "ledger_role": "constraint",
+                "ledger_row": None,
+                "ui_surface": "ledger",
+            },
+
             {
                 "id": "la_holdings",
                 "group": "ownership",

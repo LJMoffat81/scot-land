@@ -464,6 +464,22 @@ map_layers:
       endpoint: /layers/open/ldp
       licence: OGL-3.0
       note: Fragmented national coverage; Edinburgh missing; planning extents not titles
+    - id: sssi
+      source: NatureScot SSSI (OGL-3.0) via PostGIS ingest
+      endpoint: /layers/open/sssi
+      licence: OGL-3.0
+      ledger_role: constraint
+      ledger_row: null
+      ui_surface: ledger
+      note: Constraint — £0, no rent row; changes best use only
+    - id: naturescot_designations
+      source: NatureScot SPA / SAC / NNR (OGL-3.0) via PostGIS ingest
+      endpoint: /layers/open/naturescot-designations
+      licence: OGL-3.0
+      ledger_role: constraint
+      ledger_row: null
+      ui_surface: ledger
+      note: Constraint — £0, no rent row; changes best use only
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
   # SEPA flood MapServer is not allowlisted — OGL download → PostGIS only.

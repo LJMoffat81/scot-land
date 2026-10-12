@@ -86,6 +86,20 @@ export default function OpenApiPage() {
             GET /layers/open/ldp?south=&amp;west=&amp;north=&amp;east=
           </span>
         </li>
+        <li>
+          NatureScot SSSI in view (OGL PostGIS ingest; 503 when unloaded).
+          Constraint (£0, no rent row).
+          <span className="download-path">
+            GET /layers/open/sssi?south=&amp;west=&amp;north=&amp;east=
+          </span>
+        </li>
+        <li>
+          NatureScot SPA / SAC / NNR in view (OGL PostGIS ingest; 503 when
+          unloaded). Constraint (£0, no rent row).
+          <span className="download-path">
+            GET /layers/open/naturescot-designations?south=&amp;west=&amp;north=&amp;east=
+          </span>
+        </li>
       </ul>
 
       <h2>Tables</h2>

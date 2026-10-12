@@ -15,6 +15,7 @@ from layers.common_good import place_common_good
 from layers.council_metrics import METRIC_DEFS
 from layers.hla import SPATIAL_HUB_URL as SPATIAL_HUB_HLA
 from layers.hla import query_point as hla_at_point
+from layers.ldp import catalog_layer as ldp_catalog_layer
 from layers.registers import registers_for_council
 from layers.vdl import query_point as vdl_at_point
 from spatial.parcels import lookup_parcel, lookup_parcel_geojson
@@ -36,6 +37,7 @@ VDL_REGISTER = (
     "https://www.gov.scot/publications/the-scottish-vacant-and-derelict-land-survey-site-register/"
 )
 SPATIAL_HUB_VDL = "https://data.spatialhub.scot/dataset/vacant_and_derelict_land-is"
+SPATIAL_HUB_LDP = "https://data.spatialhub.scot/dataset/local_development_plans-is"
 SPATIAL_HUB_CAT = "https://data.spatialhub.scot/dataset/community_asset_transfer_register-is"
 SPATIAL_HUB_ASSETS = "https://data.spatialhub.scot/dataset/council_asset_register-is"
 SPATIAL_HUB_LA_OWN = "https://data.spatialhub.scot/dataset/land_ownership-is"
@@ -155,6 +157,7 @@ def platform_catalog() -> dict[str, Any]:
                 "source_url": VDL_REGISTER,
                 "spatial_hub_url": SPATIAL_HUB_VDL,
             },
+            ldp_catalog_layer(),
             {
                 "id": "hla",
                 "group": "spatial",

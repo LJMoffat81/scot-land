@@ -233,6 +233,48 @@ common_good:
     - Spatial Hub amalgamated assets require login
     - Fife extents are indicative and OS INSPIRE EUL — not mirrored here
 
+ldp_allocations:
+  name: Local Development Plan allocations (Scotland)
+  role: planning_allocation_overlay
+  licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  attribution: >-
+    Local Development Plan allocations. Contains public sector information
+    licensed under the Open Government Licence v3.0. Spatial Hub / Improvement
+    Service amalgamated pack (fragmented per planning authority). Authority
+    OGL FeatureServers (e.g. Highland Council) are ingested into PostGIS.
+    Planning allocations, not a title. Review with the adopted LDP and NPF4.
+  spatial_hub_url: https://data.spatialhub.scot/dataset/local_development_plans-is
+  spatialdata_metadata_url: >-
+    https://spatialdata.gov.scot/geonetwork/srv/api/records/8e13ad58-41f2-4308-a3a8-5ffe8593e731
+  vintage: "Spatial Hub quarterly; PostGIS ingest stamp beside data/external extract"
+  bbox_endpoint: /layers/open/ldp
+  postgis_table: ldp_allocations
+  ingest: python -m etl.ingest_ldp_allocations --from-config
+  raw_dir: data/external/ldp   # gitignored — never commit raw Spatial Hub ZIPs
+  # Seed OGL FeatureServers that can be ingested without Spatial Hub login.
+  ingest_seeds:
+    - id: highland_ldp_allocations
+      authority: Highland
+      licence: OGL-3.0
+      source_url: >-
+        https://map-highland.opendata.arcgis.com/datasets/b1872ca2e09d45f1bf632f2730113ea8_0/about
+      spatialdata_record: >-
+        https://spatialdata.gov.scot/geonetwork/srv/api/records/580a0c77-072e-4765-83c1-abfc6fd6dce2
+      feature_server: >-
+        https://services1.arcgis.com/MfbPb778y5QTu2Wv/arcgis/rest/services/LocalDevelopmentPlanAllocations/FeatureServer
+      feature_server_query: >-
+        https://services1.arcgis.com/MfbPb778y5QTu2Wv/arcgis/rest/services/LocalDevelopmentPlanAllocations/FeatureServer/0/query
+      note: >-
+        Highland Council allocations under UK OGL v3.0. Does not cover Badenoch
+        & Strathspey (Cairngorms National Park planning authority).
+  gaps:
+    - City of Edinburgh LDP spatial data is unavailable in the Spatial Hub pack
+    - National coverage is fragmented — per-authority ZIPs or portal links, not one seamless national layer
+    - Some authorities publish portal links only; those are not mirrored until an OGL download or FeatureServer is ingested
+    - Allocations are planning policy extents — not a title sheet or ownership layer
+    - Review polygons with the adopted LDP documents and National Planning Framework 4
+
 vdl:
   name: Scottish Vacant and Derelict Land Survey (SVDLS)
   role: vacant_and_derelict_site_overlay
@@ -382,6 +424,11 @@ map_layers:
       licence: OGL-3.0
       value_tier: market
       note: Ingest with python -m etl.ingest_sepa_car; API PostGIS only; no £ rent
+    - id: ldp_allocations
+      source: Spatial Hub LDP pack + OGL authority FeatureServers → PostGIS
+      endpoint: /layers/open/ldp
+      licence: OGL-3.0
+      note: Fragmented national coverage; Edinburgh missing; planning extents not titles
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
   # SEPA flood MapServer is not allowlisted — OGL download → PostGIS only.

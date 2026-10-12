@@ -101,6 +101,11 @@ export const LAYER_ATTRIBUTION: Record<
     licence: "OGL-3.0",
     sourceUrl: "https://data.spatialhub.scot/dataset/housing_land_supply-is",
   },
+  ldp_allocations: {
+    source: "Spatial Hub — Local Development Plans (Scotland)",
+    licence: "OGL-3.0",
+    sourceUrl: "https://data.spatialhub.scot/dataset/local_development_plans-is",
+  },
   public_crown: {
     source: "Scottish Public and Crown Estate Land 2024",
     licence: "unverified/not open",

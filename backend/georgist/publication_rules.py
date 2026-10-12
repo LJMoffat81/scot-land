@@ -144,6 +144,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="SEPA CAR licences from public-register CSV (download-only); no rent",
     ),
+    "/layers/open/ldp": LayerRule(
+        "site",
+        "site",
+        "none",
+        note="LDP allocation polygons from PostGIS; ledger nested 1a; no rent",
+    ),
     "/ledger": LayerRule(
         "zone",
         "zone",
@@ -173,6 +179,7 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     ),
     "/api/public-land.json": LayerRule("zone", "zone", "none", note="public-land download meta"),
     "/api/vdl.json": LayerRule("zone", "zone", "none", note="VDL download meta"),
+    "/api/ldp.json": LayerRule("zone", "zone", "none", note="LDP allocation coverage meta"),
     "/api/vdl-councils.json": LayerRule("zone", "zone", "none", note="VDL by council meta"),
     "/api/roll.json": LayerRule("zone", "zone", "none", note="open stats roll"),
     "/api/roll.csv": LayerRule("zone", "zone", "none", note="open stats roll csv"),

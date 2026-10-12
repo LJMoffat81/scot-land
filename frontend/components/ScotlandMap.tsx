@@ -358,6 +358,7 @@ const PUBLIC_LAND_MIN_ZOOM = 8;
 const VDL_MIN_ZOOM = 8;
 /** Data Zone outlines are readable from neighbourhood zoom. */
 const DATA_ZONE_MIN_ZOOM = 10;
+const LDP_MIN_ZOOM = 8;
 
 const VDL_SITE_TYPES: Array<{ name: string; color: string }> = [
   { name: "Vacant Land", color: "#e8a317" },
@@ -376,6 +377,8 @@ const VDL_FILL: ExpressionSpecification = [
   "#7a2e00",
   "#c45c26",
 ];
+
+const LDP_FILL = "#5b8c5a";
 
 function escapeHtml(value: string): string {
   return value
@@ -502,6 +505,8 @@ export default function ScotlandMap() {
   const [showDataZones, setShowDataZones] = useState(false);
   /** Ledger row + constraint toggles (paint where the rent class / constraint applies). */
   const [ledgerEnabled, setLedgerEnabled] = useState<LedgerToggleState>({});
+  /** LDP allocations paint when nested ledger row 1a (planning) is on. */
+  const showLdp = Boolean(ledgerEnabled["1a"]);
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
   const dataZonesTouched = useRef(false);
   const boundariesTouched = useRef(false);
@@ -1356,6 +1361,30 @@ export default function ScotlandMap() {
         paint: { "line-color": "#5a2200", "line-width": 1.1, "line-opacity": 0.9 },
       });
 
+      map.addSource("ldp-overlay", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution:
+          "LDP allocations © planning authorities / Spatial Hub (OGL v3.0). Fragmented national coverage; not a title.",
+      });
+      map.addLayer({
+        id: "ldp-fill",
+        type: "fill",
+        source: "ldp-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": LDP_FILL,
+          "fill-opacity": 0.38,
+        },
+      });
+      map.addLayer({
+        id: "ldp-line",
+        type: "line",
+        source: "ldp-overlay",
+        layout: { visibility: "none" },
+        paint: { "line-color": "#2f5d2e", "line-width": 1.0, "line-opacity": 0.85 },
+      });
+
       for (const layer of CONTEXT_LAYERS) {
         if (layer.kind === "raster") {
           map.addSource(layer.id, {
@@ -2010,6 +2039,76 @@ export default function ScotlandMap() {
     };
   }, [mapReady, showVdl]);
 
+  // LDP allocations (PostGIS / OGL Spatial Hub + authority seeds)
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const setVis = (vis: "visible" | "none") => {
+      if (!map.getLayer("ldp-fill")) return;
+      map.setLayoutProperty("ldp-fill", "visibility", vis);
+      map.setLayoutProperty("ldp-line", "visibility", vis);
+    };
+
+    if (!showLdp) {
+      setVis("none");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const loadLdp = () => {
+      if (cancelled || !mapRef.current || inFlight) return;
+      const b = map.getBounds();
+      if (!b) return;
+      if (map.getZoom() < LDP_MIN_ZOOM) {
+        setVis("none");
+        return;
+      }
+      inFlight = true;
+      setLayerBusy(true);
+      const path =
+        `/layers/open/ldp?south=${b.getSouth()}&west=${b.getWest()}` +
+        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
+      void apiJson<GeoJSON.FeatureCollection>(path)
+        .then((data) => {
+          if (cancelled) return;
+          (map.getSource("ldp-overlay") as GeoJSONSource)?.setData(data);
+          setVis("visible");
+          setLayerNotice(null);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setVis("none");
+          if (err instanceof ApiError && err.status === 503) {
+            setLayerNotice(
+              "LDP allocations are not loaded yet (PostGIS empty or unavailable). National coverage is fragmented — gaps are not filled with guesses.",
+            );
+          }
+        })
+        .finally(() => {
+          inFlight = false;
+          if (!cancelled) setLayerBusy(false);
+        });
+    };
+
+    const onMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadLdp, 700);
+    };
+
+    loadLdp();
+    map.on("moveend", onMove);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off("moveend", onMove);
+    };
+  }, [mapReady, showLdp]);
+
   // SG public / Crown Estate overlay (five national bodies)
   useEffect(() => {
     if (!mapReady) return;
@@ -2601,6 +2700,13 @@ export default function ScotlandMap() {
               Shadow ledger totals stay separate and are never summed into the
               headline.
             </p>
+            {showLdp && (
+              <p className="layer-meta" data-testid="layer-ldp-credit">
+                LDP allocations (OGL v3.0) — ledger nested row 1a. Spatial Hub
+                pack is fragmented; Edinburgh unavailable. Planning extents, not
+                a title. Zoom {LDP_MIN_ZOOM}+.
+              </p>
+            )}
             {layerNotice && <p className="layer-meta">{layerNotice}</p>}
             {contextNote && <p className="layer-meta">{contextNote}</p>}
             {CONTEXT_LAYERS.filter((layer) => contextOn[layer.id]).map((layer) => (

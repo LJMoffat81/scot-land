@@ -42,8 +42,18 @@ ALEMBIC_INI = BACKEND_ROOT / "alembic.ini"
 
 
 def apply_schema(conn=None) -> list[str]:
-    """Run `alembic upgrade head` (ignores conn; Alembic opens its own connection)."""
-    del conn  # kept for call-site compatibility with older tests
+    """Run `alembic upgrade head`.
+
+    When ``conn`` is provided and core tables were wiped (throwaway test DBs that
+    DROP TABLE but leave ``alembic_version`` at head), clear the version table so
+    upgrade recreates the schema instead of no-oping.
+    """
+    if conn is not None:
+        with conn.cursor() as cur:
+            cur.execute("SELECT to_regclass('public.surface_rent_dz')")
+            if cur.fetchone()[0] is None:
+                cur.execute("DROP TABLE IF EXISTS alembic_version")
+        conn.commit()
     cfg = Config(str(ALEMBIC_INI))
     command.upgrade(cfg, "head")
     applied = [p.name for p in sorted(SCHEMA_DIR.glob("*.sql"))]

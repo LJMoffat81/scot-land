@@ -1,0 +1,84 @@
+# Common Good land — open sources and honest gaps.
+# Checked 2026-10-12 from this environment. Only official URLs that returned
+# HTTP 200 with Common Good register / asset content are listed as verified.
+# No national open spatial layer exists. Do not invent extents. Do not scrape
+# Spatial Hub login layers. Do not mirror OS INSPIRE EUL geometry through this API.
+
+checked: "2026-10-12"
+
+national:
+  status: linked
+  gap: No single open national Common Good spatial layer.
+  guidance:
+    url: https://www.gov.scot/publications/community-empowerment-common-good-property-guidance-local-authorities/
+    label: Scottish Government Common Good property guidance
+    note: Statutory duty under Community Empowerment (Scotland) Act 2015 s.102 — each LA maintains its own register.
+  spatial_hub_assets:
+    url: https://data.spatialhub.scot/dataset/council_asset_register-is
+    note: Amalgamated council assets require Spatial Hub login — linked, not mirrored.
+
+# Indicative open spatial source for one council only. Licence is OS Public Sector
+# End User Licence - INSPIRE (not OGL). Link the official metadata / service;
+# do not republish geometries here. FeatureServer TLS certificate was expired
+# when probed 2026-10-12 — live overlay needs a healthy host certificate
+# (Laurie Windows / Cloudflare Tunnel ops), not an insecure client bypass.
+spatial_sources:
+  - id: fife_common_good_titles
+    council_code: S12000047
+    council_name: Fife
+    status: linked
+    kind: indicative_spatial
+    label: Fife Common Good Titles (indicative)
+    metadata_url: https://spatialdata.gov.scot/geonetwork/srv/api/records/7a1bbc72-252c-4cd0-beca-ad3180875524
+    feature_server: https://arcgis-live-as.fife.gov.uk/server/rest/services/Hosted/Fife_Council_Common_Good/FeatureServer/0
+    licence: OS Public Sector End User Licence - INSPIRE
+    vintage_note: Metadata begin date 2005; extents indicative from former-burgh records.
+    feature_count_observed: 239
+    host_note: >
+      FeatureServer TLS certificate expired when checked 2026-10-12.
+      Not proxied by this API. Fix on the Fife / tunnel host before any live overlay.
+    gaps:
+      - Indicative extents — not a title plan
+      - Fife only — not national coverage
+      - Not redistributed here (OS INSPIRE EUL)
+
+# Statutory / published register landing pages (non-spatial lists or downloads).
+registers:
+  S12000036:
+    name: City of Edinburgh
+    url: https://www.edinburgh.gov.uk/commercial-property-sale-let/common-good-register
+    label: Edinburgh Common Good register
+    kind: register
+  S12000017:
+    name: Highland
+    url: https://www.highland.gov.uk/community-support-development/common-good-asset-register
+    label: Highland Common Good asset registers
+    kind: register
+  S12000041:
+    name: Angus
+    url: https://www.angus.gov.uk/communities_and_people/common_good_properties
+    label: Angus Common Good properties
+    kind: register
+  S12000020:
+    name: Moray
+    url: https://www.moray.gov.uk/benefits-and-grants/council-and-government-grants/common-good-funds/
+    label: Moray Common Good funds and asset list
+    kind: register
+  S12000029:
+    name: South Lanarkshire
+    url: https://www.southlanarkshire.gov.uk/info/200172/budgets_and_finance/1780/common_good_funds
+    label: South Lanarkshire Common Good register
+    kind: register
+  S12000047:
+    name: Fife
+    url: https://spatialdata.gov.scot/geonetwork/srv/api/records/7a1bbc72-252c-4cd0-beca-ad3180875524
+    label: Fife Common Good Land spatial metadata
+    kind: spatial_metadata
+    note: Council web register page not confirmed HTTP 200 here; spatial metadata is open to view.
+
+gaps:
+  - No national open Common Good polygon layer
+  - Most councils publish PDF/XLSX registers without open WFS/GeoJSON
+  - Spatial Hub amalgamated assets require login
+  - Common Good character is not readable from RoS INSPIRE parcels alone
+  - Private / Sasine research still needed for contested assets

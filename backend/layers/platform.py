@@ -10,6 +10,8 @@ from typing import Any
 
 import httpx
 
+from layers.common_good import catalog_layer as common_good_catalog_layer
+from layers.common_good import place_common_good
 from layers.council_metrics import METRIC_DEFS
 from layers.public_land import query_point as public_land_at_point
 from layers.registers import registers_for_council
@@ -152,13 +154,7 @@ def platform_catalog() -> dict[str, Any]:
                 "source_url": SPATIAL_HUB_ASSETS,
                 "also": SPATIAL_HUB_CAT,
             },
-            {
-                "id": "common_good",
-                "group": "ownership",
-                "status": "linked",
-                "label": "Common Good registers",
-                "description": "Statutory LA registers; no single open national spatial layer yet.",
-            },
+            common_good_catalog_layer(),
             {
                 "id": "fife_land_map",
                 "group": "ownership",
@@ -331,11 +327,7 @@ def place_context(
             "on_this_point": None,
             "reason": "National LA ownership layer is not openly licensed for this portal.",
         },
-        "common_good": {
-            "status": "gap",
-            "on_this_point": None,
-            "reason": "No single open national Common Good spatial layer.",
-        },
+        "common_good": place_common_good(council_code),
         "private_or_sasine": {
             "status": "gap",
             "note": "Private names and Sasine extents stay on ScotLIS / paid products.",

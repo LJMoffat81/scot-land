@@ -13,6 +13,8 @@ from typing import Any
 
 import yaml
 
+from layers.common_good import place_common_good
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REGISTERS_PATH = REPO_ROOT / "data" / "config" / "registers.yaml"
 
@@ -68,10 +70,7 @@ def registers_for_council(code: str | None) -> dict[str, Any] | None:
         "code": code,
         "name": council.get("name"),
         "planning": _planning_link(national, council),
-        "common_good": {
-            "url": None,
-            "note": "No single open national Common Good spatial file. Statutory LA register.",
-        },
+        "common_good": place_common_good(code),
         "cat": {
             "url": (national.get("spatial_hub_cat") or {}).get("url"),
             "label": "Spatial Hub CAT register",
@@ -109,11 +108,13 @@ def registers_payload() -> dict[str, Any]:
         "note": (
             f"{council_specific} of 32 councils have a verified official planning "
             "view page in this file. Others use national ePlanning. "
-            "Common Good has no national spatial file. Spatial Hub CAT/assets "
-            "require login. LA ownership is not open."
+            "Common Good has no national open spatial file — see "
+            "/api/common-good.json for verified register links. Spatial Hub "
+            "CAT/assets require login. LA ownership is not open."
         ),
         "national": national,
         "councils": councils,
         "council_specific_planning": council_specific,
         "council_count": len(councils),
+        "common_good_endpoint": "/api/common-good.json",
     }

@@ -48,12 +48,17 @@ const OPEN_JSON = [
     href: "/api/registers.json",
     name: "Official register pages",
   },
+  {
+    href: "/api/common-good.json",
+    name: "Common Good registers — verified links and gaps",
+  },
 ];
 
 const SOURCE_NAME: Record<string, string> = {
   vdl_register: "Scottish Vacant and Derelict Land Survey",
   inspire_parcels: "Registers of Scotland open land map",
   public_crown_map: "Public and Crown land, five national bodies",
+  common_good: "Common Good registers (linked; no national open map)",
   scotlis: "ScotLIS, the official title record",
 };
 

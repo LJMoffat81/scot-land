@@ -136,6 +136,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     "/api/roll.csv": LayerRule("zone", "zone", "none", note="open stats roll csv"),
     "/api/place.json": LayerRule("site", "site", "none", note="place card download"),
     "/api/registers.json": LayerRule("zone", "zone", "none", note="registers catalogue"),
+    "/api/common-good.json": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="Common Good register links and spatial gaps; no modelled rent",
+    ),
     "/downloads": LayerRule("zone", "zone", "none", note="download index"),
 }
 

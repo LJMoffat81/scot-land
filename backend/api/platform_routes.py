@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from agr.export_stamp import current_stamp, stamp_comment, with_stamp
+from layers.common_good import common_good_payload
 from layers.open_stats import (
     catalog_json,
     public_land_json,
@@ -208,6 +209,12 @@ def api_registers() -> dict:
     return with_stamp(registers_payload())
 
 
+@router.get("/api/common-good.json")
+def api_common_good() -> dict:
+    """Verified Common Good register links and spatial gaps — research / education."""
+    return with_stamp(common_good_payload())
+
+
 @router.get("/downloads")
 def open_downloads() -> dict:
     """Index of freely licensed layers and official sources."""
@@ -253,6 +260,16 @@ def open_downloads() -> dict:
                 "label": "Scottish public and Crown Estate land map",
                 "licence": "official SG map — link, not a copy",
                 "url": "https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897",
+            },
+            {
+                "id": "common_good",
+                "label": "Common Good registers (verified links)",
+                "licence": "council pages + Fife OS INSPIRE EUL metadata — links only",
+                "endpoint": "/api/common-good.json",
+                "note": (
+                    "No national open spatial layer. Fife indicative titles are "
+                    "linked, not mirrored. Spatial Hub assets stay login-gated."
+                ),
             },
             {
                 "id": "scotlis",

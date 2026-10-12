@@ -106,6 +106,36 @@ public_land:
     - Holdings outside the five published bodies are not shown
     - Overlay is indicative — confirm title on ScotLIS
 
+common_good:
+  name: Common Good registers and indicative spatial sources
+  role: ownership_linked_registers
+  status: linked
+  config_path: data/config/common_good.yaml
+  endpoint: /api/common-good.json
+  licence: >
+    Council register pages (public web). Fife indicative titles under
+    OS Public Sector End User Licence - INSPIRE — linked metadata only,
+    not redistributed through this API.
+  attribution: >
+    Common Good is a statutory LA register under the Community Empowerment
+    (Scotland) Act 2015. No national open spatial layer. Verified council
+    links only; gaps stay visible.
+  guidance_url: >-
+    https://www.gov.scot/publications/community-empowerment-common-good-property-guidance-local-authorities/
+  spatial_sources:
+    - id: fife_common_good_titles
+      council: Fife
+      metadata_url: >-
+        https://spatialdata.gov.scot/geonetwork/srv/api/records/7a1bbc72-252c-4cd0-beca-ad3180875524
+      feature_server: >-
+        https://arcgis-live-as.fife.gov.uk/server/rest/services/Hosted/Fife_Council_Common_Good/FeatureServer/0
+      host_note: TLS certificate expired when checked 2026-10-12 — not proxied
+  gaps:
+    - No national open Common Good polygon layer
+    - Most LA registers are PDF/XLSX without open WFS/GeoJSON
+    - Spatial Hub amalgamated assets require login
+    - Fife extents are indicative and OS INSPIRE EUL — not mirrored here
+
 sales:
   status: scaffolded
   authority: Registers of Scotland

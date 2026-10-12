@@ -136,6 +136,12 @@ export default async function OpenApiPage() {
           <a href="/api/registers.json">Official register pages</a>
           <span className="download-path">/api/registers.json</span>
         </li>
+        <li>
+          <a href="/api/common-good.json">
+            Common Good registers — verified links; no national open map layer
+          </a>
+          <span className="download-path">/api/common-good.json</span>
+        </li>
       </ul>
 
       <p className="downloads-note">

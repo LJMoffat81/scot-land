@@ -274,6 +274,276 @@ def _land_register_outline(lat: float, lng: float) -> dict[str, str] | None:
     return _outline_field("no_outline")
 
 
+def _resolve_council(
+    lat: float,
+    lng: float,
+    *,
+    council_code: str | None,
+    council_name: str | None,
+) -> tuple[str | None, str | None]:
+    """Prefer caller-supplied codes; otherwise open council polygons."""
+    if council_code and council_name:
+        return council_code, council_name
+    try:
+        match = lookup_council_boundary(lat, lng)
+    except FileNotFoundError:
+        return council_code, council_name
+    if match is None:
+        return council_code, council_name
+    return (
+        council_code or match.hpi_code,
+        council_name or match.name,
+    )
+
+
+def _data_zone_at(lat: float, lng: float) -> dict[str, Any]:
+    """Data Zone at a point. Never invents a code; unavailable stays explicit."""
+    from georgist import dz_lookup
+
+    try:
+        found = dz_lookup.lookup(lat, lng)
+    except dz_lookup.BoundariesUnavailable as exc:
+        return {
+            "status": "unavailable",
+            "code": None,
+            "name": None,
+            "vintage": None,
+            "zones": [],
+            "reasons": list(exc.reasons),
+            "note": "Data zone boundaries are not loaded for this server.",
+        }
+    if not found.zones:
+        return {
+            "status": "miss",
+            "code": None,
+            "name": None,
+            "vintage": None,
+            "zones": [],
+            "vintages_checked": found.vintages_loaded,
+            "source": found.source,
+            "note": "No Scottish data zone contains this point (e.g. at sea).",
+        }
+    payload = found.to_dict()
+    return {
+        "status": "ok",
+        "code": payload.get("code"),
+        "name": payload.get("name"),
+        "vintage": payload.get("vintage"),
+        "zones": payload.get("zones") or [],
+        "dz2011": payload.get("dz2011"),
+        "dz2022": payload.get("dz2022"),
+        "source": payload.get("source"),
+        "vintages_loaded": payload.get("vintages_loaded") or [],
+    }
+
+
+def _layer_row(
+    *,
+    layer_id: str,
+    label: str,
+    status: str,
+    intersects: bool | None,
+    note: str | None = None,
+    source_url: str | None = None,
+    detail: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    row: dict[str, Any] = {
+        "id": layer_id,
+        "label": label,
+        "status": status,
+        "intersects": intersects,
+    }
+    if note:
+        row["note"] = note
+    if source_url:
+        row["source_url"] = source_url
+    if detail:
+        row["detail"] = detail
+    return row
+
+
+def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
+    """Which catalog layers meet this spot — live hit/miss, linked, or gap."""
+    layers: list[dict[str, Any]] = []
+    parcel = card.get("parcel") or {}
+    outline = card.get("land_register_outline") or {}
+    if parcel.get("found"):
+        layers.append(
+            _layer_row(
+                layer_id="boundaries",
+                label="ROS INSPIRE parcels",
+                status="live",
+                intersects=True,
+                note=parcel.get("note"),
+                source_url="https://www.ros.gov.uk/open-data",
+                detail={
+                    "label": parcel.get("label"),
+                    "inspire_id": parcel.get("inspire_id"),
+                    "area_sqm": parcel.get("area_sqm"),
+                },
+            )
+        )
+    elif outline.get("status") == "unknown":
+        layers.append(
+            _layer_row(
+                layer_id="boundaries",
+                label="ROS INSPIRE parcels",
+                status="live",
+                intersects=None,
+                note="Parcel lookup did not complete for this point.",
+                source_url="https://www.ros.gov.uk/open-data",
+            )
+        )
+    else:
+        layers.append(
+            _layer_row(
+                layer_id="boundaries",
+                label="ROS INSPIRE parcels",
+                status="live",
+                intersects=False,
+                note=(outline.get("note") if outline else None)
+                or "No Land Register outline at this point.",
+                source_url="https://www.ros.gov.uk/open-data",
+            )
+        )
+
+    vdl = card.get("vdl") or {}
+    vdl_ok = vdl.get("ok")
+    layers.append(
+        _layer_row(
+            layer_id="vdl",
+            label="Vacant and derelict land",
+            status="live",
+            intersects=bool(vdl.get("intersects")) if vdl_ok else None,
+            note=None if vdl_ok else (vdl.get("error") or "SVDLS overlay unavailable."),
+            source_url=VDL_REGISTER,
+            detail={"sites": vdl.get("sites") or []} if vdl_ok else None,
+        )
+    )
+
+    public = card.get("public_or_crown") or {}
+    public_ok = public.get("on_this_point") is not None
+    layers.append(
+        _layer_row(
+            layer_id="public_crown",
+            label="Public and Crown Estate land",
+            status="live",
+            intersects=public.get("on_this_point") if public_ok else None,
+            note=public.get("note"),
+            source_url=PUBLIC_LAND_MAP,
+            detail={"holdings": public.get("holdings") or []} if public_ok else None,
+        )
+    )
+
+    common_good = card.get("common_good") or {}
+    layers.append(
+        _layer_row(
+            layer_id="common_good",
+            label="Common Good",
+            status=str(common_good.get("status") or "gap"),
+            intersects=None,
+            note=common_good.get("national_gap")
+            or common_good.get("reason")
+            or "No national open Common Good map layer.",
+            source_url=(common_good.get("register") or {}).get("url"),
+        )
+    )
+
+    la = card.get("local_authority_holding") or {}
+    layers.append(
+        _layer_row(
+            layer_id="la_holdings",
+            label="Local-authority land holdings",
+            status="gap",
+            intersects=None,
+            note=la.get("reason")
+            or "National LA ownership layer is not openly licensed for this portal.",
+            source_url=SPATIAL_HUB_LA_OWN,
+        )
+    )
+
+    sasine = card.get("private_or_sasine") or {}
+    layers.append(
+        _layer_row(
+            layer_id="sasine_private",
+            label="Private owners and Sasine land",
+            status="gap",
+            intersects=None,
+            note=sasine.get("note")
+            or "Private names and Sasine extents stay on ScotLIS / paid products.",
+            source_url=SCOTLIS_PUBLIC,
+        )
+    )
+    return layers
+
+
+def _place_links(card: dict[str, Any]) -> list[dict[str, str]]:
+    """Official / open links for the place card (never modelled rent)."""
+    links: list[dict[str, str]] = []
+    scotlis = card.get("scotlis") or {}
+    if scotlis.get("public_home"):
+        links.append(
+            {
+                "id": "scotlis",
+                "label": scotlis.get("label") or "Official title on ScotLIS",
+                "url": scotlis["public_home"],
+            }
+        )
+    public = card.get("public_or_crown") or {}
+    if public.get("map_url"):
+        links.append(
+            {
+                "id": "public_land_map",
+                "label": "Scottish public and Crown Estate land map",
+                "url": public["map_url"],
+            }
+        )
+    registers = card.get("registers") or {}
+    planning = registers.get("planning") or {}
+    if planning.get("url"):
+        links.append(
+            {
+                "id": "planning",
+                "label": planning.get("label") or "Planning applications",
+                "url": planning["url"],
+            }
+        )
+    common_good = card.get("common_good") or {}
+    register = common_good.get("register") or {}
+    if register.get("url"):
+        links.append(
+            {
+                "id": "common_good_register",
+                "label": register.get("label") or "Common Good register",
+                "url": register["url"],
+            }
+        )
+    spatial = common_good.get("spatial") or {}
+    if spatial.get("metadata_url"):
+        links.append(
+            {
+                "id": "common_good_spatial",
+                "label": spatial.get("label") or "Common Good spatial metadata",
+                "url": spatial["metadata_url"],
+            }
+        )
+    links.append(
+        {
+            "id": "vdl_register",
+            "label": "SVDLS site register",
+            "url": VDL_REGISTER,
+        }
+    )
+    links.append(
+        {
+            "id": "methodology",
+            "label": "Sources and method",
+            "url": "/methodology",
+        }
+    )
+    return links
+
+
 def place_context(
     lat: float,
     lng: float,
@@ -283,7 +553,14 @@ def place_context(
     council_code: str | None = None,
     council_name: str | None = None,
 ) -> dict[str, Any]:
-    """Who-holds / what-status card for one place, with honest gaps."""
+    """Who-holds / what-status card for one place, with honest gaps.
+
+    Public place-card contract (no modelled AGR £). Shells may render this
+    payload as-is. Contract version: place_card_v1.
+    """
+    council_code, council_name = _resolve_council(
+        lat, lng, council_code=council_code, council_name=council_name
+    )
     parcel_feature = parcel if parcel is not None else lookup_parcel_geojson(lat, lng)
     parcel_props = (parcel_feature or {}).get("properties") or {}
 
@@ -303,8 +580,13 @@ def place_context(
         ownership_flags.append("no_inspire_parcel")
 
     card: dict[str, Any] = {
+        "contract": "place_card_v1",
         "lat": lat,
         "lng": lng,
+        "postcode": postcode,
+        "council_code": council_code,
+        "council_name": council_name,
+        "data_zone": _data_zone_at(lat, lng),
         "vacant_or_derelict": vacant,
         "vdl": vdl,
         "parcel": {
@@ -338,8 +620,6 @@ def place_context(
             "note": "Private names and Sasine extents stay on ScotLIS / paid products.",
         },
         "registers": registers_for_council(council_code),
-        "council_code": council_code,
-        "council_name": council_name,
         "flags": ownership_flags,
         "scotlis": scotlis_links(lat, lng, postcode),
         "filters": {
@@ -351,4 +631,6 @@ def place_context(
     outline = _land_register_outline(lat, lng)
     if outline is not None:
         card["land_register_outline"] = outline
+    card["layers"] = _layers_at_point(card)
+    card["links"] = _place_links(card)
     return card

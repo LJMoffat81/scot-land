@@ -140,9 +140,10 @@ export async function pingApi(): Promise<{ ok: boolean; message: string }> {
 }
 
 /**
- * Which optional API routers this server mounts (from /health `routers`). The legacy
- * ground-rent (AGR) router is optional: when it is not loaded, its endpoints (/square,
- * /place, /layers/councils, parcel and context tiles) 404, so the map must not call them.
+ * Which optional API routers this server mounts (from /health `routers`). The AGR
+ * router is optional: when it is not loaded, public place/layer endpoints (/place,
+ * /layers/councils, parcel and context tiles) 404, so the map must not call them.
+ * Modelled residual AGR £ stays on internal routes only.
  * Cached for the page; a failed probe is retried on the next call.
  */
 export type ApiCapabilities = { reachable: boolean; agr: boolean; platform: boolean };

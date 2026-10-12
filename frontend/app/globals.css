@@ -584,8 +584,7 @@ input {
   margin-top: 0.55rem;
 }
 
-.hud-stats .fiscal-dash,
-.hud-stats .national-strip {
+.hud-stats .fiscal-dash {
   border: 0;
   border-radius: 12px;
   padding: 0.65rem 0.7rem;
@@ -643,52 +642,6 @@ input {
   font-size: 0.72rem;
   color: var(--slrg-muted);
   line-height: 1.35;
-}
-
-.national-strip {
-  flex-shrink: 0;
-  padding: 0.55rem 0.85rem;
-  border-bottom: 1px solid var(--line);
-  background: #f7f9fc;
-}
-
-.national-strip-title {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--slrg-muted);
-  margin-bottom: 0.35rem;
-}
-
-.national-strip-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.35rem;
-}
-
-.national-strip-grid .fd-label {
-  display: block;
-  font-size: 0.68rem;
-  color: var(--slrg-muted);
-}
-
-.national-strip-grid .fd-value {
-  display: block;
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--slrg-navy);
-}
-
-.national-strip-note {
-  margin: 0.35rem 0 0;
-  font-size: 0.72rem;
-  color: var(--slrg-muted);
-  line-height: 1.35;
-}
-
-.national-strip-note a {
-  color: var(--slrg-navy);
 }
 
 .downloads-page {

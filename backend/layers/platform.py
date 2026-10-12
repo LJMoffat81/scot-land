@@ -110,6 +110,7 @@ def platform_catalog() -> dict[str, Any]:
                 "endpoint": "/layers/parcels",
                 "tile_endpoint": "/layers/parcels/tiles/{z}/{x}/{y}",
                 "licence": "OGL-3.0",
+                "licence_url": OGL_V3_URL,
                 "source_url": "https://www.ros.gov.uk/open-data",
                 "gaps": [
                     "Sasine titles without Land Register polygons",
@@ -158,6 +159,10 @@ def platform_catalog() -> dict[str, Any]:
                 ),
                 "endpoint": "/layers/open/vdl",
                 "licence": "OGL-3.0",
+                "licence_url": (
+                    "https://www.nationalarchives.gov.uk/doc/"
+                    "open-government-licence/version/3/"
+                ),
                 "minzoom": 8,
                 "source_url": VDL_REGISTER,
                 "spatial_hub_url": SPATIAL_HUB_VDL,

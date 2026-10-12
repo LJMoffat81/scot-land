@@ -345,6 +345,7 @@ vdl:
     - Spatial Hub vintage may lag the latest SG site register
     - RoS title-outline geometry stays internal until OS/RoS end-user terms cleared
 
+<<<<<<< HEAD
 hla:
   ledger_role: ledger-row
   ledger_row: "1a"
@@ -380,6 +381,76 @@ hla:
     - Some site geometry is a buffer on a recorded easting/northing where polygons were unavailable
     - Audit capacity / remaining-homes fields are patchy by council and year
     - Site polygons are indicative — confirm title extent on ScotLIS
+=======
+naturescot_sssi:
+  name: NatureScot Sites of Special Scientific Interest (Scotland)
+  role: protected_area_overlay
+  ledger_role: constraint
+  ledger_row: null
+  ui_surface: ledger
+  licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  attribution: >-
+    Contains NatureScot information licensed under the Open Government Licence v3.0.
+    Indicative boundaries — not a title plan.
+  source_url: https://opendata.nature.scot/maps/sites-of-special-scientific-interest
+  metadata_url: >-
+    https://spatialdata.gov.scot/geonetwork/srv/api/records/ECA527A8-DC9A-49F3-8911-F4CF9C3019A5
+  download_url: https://gis-downloads.nature.scot/SSSI_SCOTLAND_GEOJSON_4326.zip
+  wfs_url: https://ogc.nature.scot/geoserver/protectedareas/wfs
+  wfs_type_name: protectedareas:sssi
+  vintage: live-WFS; local PostGIS ingest stamp beside data/external extract
+  postgis_table: naturescot_sssi
+  bbox_endpoint: /layers/open/sssi
+  ingest: python -m etl.ingest_naturescot --layer sssi
+  refresh_doc: scripts/data/README-naturescot.md
+  raw_dir: data/external/naturescot   # gitignored — never commit raw downloads
+  gaps:
+    - Indicative NatureScot boundaries — not a title plan
+    - Status and extent can change after the download vintage
+    - Constraint overlays are £0 and never a rent row (C-overlay)
+
+naturescot_designations:
+  name: NatureScot designations (SPA, SAC, NNR)
+  role: protected_area_overlay
+  ledger_role: constraint
+  ledger_row: null
+  ui_surface: ledger
+  licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  attribution: >-
+    Contains NatureScot information licensed under the Open Government Licence v3.0.
+    Special Protection Areas, Special Areas of Conservation, and National Nature
+    Reserves. Indicative boundaries — not a title plan. SSSI is a separate layer.
+  source_url: https://opendata.nature.scot/
+  wfs_url: https://ogc.nature.scot/geoserver/protectedareas/wfs
+  designation_types:
+    - spa
+    - sac
+    - nnr
+  downloads:
+    spa: https://gis-downloads.nature.scot/SPA_SCOTLAND_GEOJSON_4326.zip
+    sac: https://gis-downloads.nature.scot/SAC_SCOTLAND_GEOJSON_4326.zip
+    nnr: https://gis-downloads.nature.scot/NNR_SCOTLAND_GEOJSON_4326.zip
+  metadata_urls:
+    spa: >-
+      https://spatialdata.gov.scot/geonetwork/srv/api/records/CB547E72-E70A-4E66-9ED1-88ED1BC50DE5
+    sac: >-
+      https://spatialdata.gov.scot/geonetwork/srv/api/records/B0D1377C-F580-4FC2-B068-5758541B79E2
+    nnr: >-
+      https://spatialdata.gov.scot/geonetwork/srv/api/records/16E144E5-4ACC-42B0-AA4A-366F7E8A87B2
+  vintage: live-WFS; local PostGIS ingest stamp beside data/external extract
+  postgis_table: naturescot_designations
+  bbox_endpoint: /layers/open/naturescot-designations
+  ingest: python -m etl.ingest_naturescot --layer designations
+  refresh_doc: scripts/data/README-naturescot.md
+  raw_dir: data/external/naturescot   # gitignored — never commit raw downloads
+  gaps:
+    - Indicative NatureScot boundaries — not a title plan
+    - SSSI is published as a separate layer
+    - Status and extent can change after the download vintage
+    - Constraint overlays are £0 and never a rent row (C-overlay)
+>>>>>>> 8408629 (fix(gis): add exact OGL licence_url for SSSI/designations catalog)
 
 sales:
   status: scaffolded

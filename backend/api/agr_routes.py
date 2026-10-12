@@ -78,10 +78,10 @@ INTERNAL_PUBLICATION = {
     "publication_status": "blocked",
     "unpublished_reason": "yield_calibration_internal_only",
     "note": (
-        "INTERNAL ONLY. Georgist signed off a provisional yield band "
-        "(central 3.99% = r 2.62 + p 2.37 − g 1.0; band 3.52–4.50% clipped at "
-        "the 4.5% cap; hash b3442d47). Rents are shown as a band, not a point. "
-        "Not for public publication (Data Zone publication rule)."
+        "INTERNAL ONLY. Georgist yield calibration v3 "
+        "(central 4.499% at cap; band 3.98–4.50% band_clipped_outer; "
+        "hash 4654e513; supersedes b3442d47). Rents are shown as a band, not a "
+        "point. Not for public publication (Data Zone publication rule)."
     ),
 }
 

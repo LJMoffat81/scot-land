@@ -159,30 +159,29 @@ fiscal:
 # MV − DRC residual (Wightman) → Pickard economic base → × yield = annual rent
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
-# Georgist yield calibration — INTERNAL provisional only (hash b3442d47)
-# Central 3.99% = r 2.62% + p 2.37% − g 1.0%. Band 3.52–4.50% (high clipped at 4.5% cap).
-# Rents must be shown as a band, not a point. publication_status stays blocked.
+# Georgist yield calibration v3 — INTERNAL provisional only (hash 4654e513)
+# Central 4.499% (central_at_cap); band 3.98–4.50% (band_clipped_outer at 4.5% cap).
+# Supersedes v2 hash b3442d47. Rents as a band only; publication_status stays blocked.
 # Do not put r/g under surface yield.* (surface_rent.configured_land_yield refuses them).
 # ---------------------------------------------------------------------------
 yield_calibration:
+  version: 3
   status: internal_provisional
   signed_by: Georgist
   scope: INTERNAL_ONLY
   publication_status: blocked
-  result_hash: b3442d47
-  decomposition:
-    r: 0.0262
-    p: 0.0237
-    g: 0.0100
-    central: 0.0399  # = r + p − g
-    identity: "central = r + p − g"
+  result_hash: 4654e513
+  supersedes_hash: b3442d47
+  central: 0.04499
   band:
-    low: 0.0352
+    low: 0.0398
     high: 0.0450
-    high_clipped_at_cap: true  # high end clipped at the 4.5% cap
+    high_clipped_at_cap: true  # band_clipped_outer at the 4.5% cap
   flags:
     value_basis: proxy
     bed_mapping_sensitive: true
+    central_at_cap: true
+    band_clipped_outer: true
   fallback_rent_zones:
     count: 390
     tag: yield_fallback:config
@@ -200,12 +199,12 @@ valuer_roll:
   typical_dwelling_sqm: 97
   # Notional residential plot for whole-site roll line (Scotland suburban average order)
   typical_plot_sqm: 280
-  # Georgist INTERNAL provisional (hash b3442d47). Was 0.05 placeholder.
-  yield_rate: 0.0399  # = yield_calibration.decomposition.central (r + p − g)
+  # Georgist INTERNAL provisional v3 (hash 4654e513). Supersedes v2 b3442d47 / 5% placeholder.
+  yield_rate: 0.04499  # = yield_calibration.central (central_at_cap)
   yield_band:
-    low: 0.0352
+    low: 0.0398
     high: 0.0450
-    high_clipped_at_cap: true  # clipped at the 4.5% cap
+    high_clipped_at_cap: true  # band_clipped_outer at the 4.5% cap
   property_mix:
     house_share: 0.75
     flat_share: 0.25
@@ -242,7 +241,7 @@ valuation:
   primary_method: residual_drc
   fallback_method: productive_land_use
   rural_fallback: land_use_category
-  yield_rate: 0.0399  # aligned with valuer_roll / yield_calibration (INTERNAL hash b3442d47)
+  yield_rate: 0.04499  # aligned with valuer_roll / yield_calibration v3 (INTERNAL hash 4654e513)
   habu_rule: existing_authorised_use
   typical_dwelling_sqm: 97
   hpi_base_year: 2009
@@ -263,16 +262,21 @@ _meta:
     as_of: "2026-10-12"
     owner: Georgist
     status: internal_provisional
-    value: 0.0399
-    low: 0.0352
+    version: 3
+    value: 0.04499
+    low: 0.0398
     high: 0.0450
     high_clipped_at_cap: true
-    result_hash: b3442d47
-    note: "INTERNAL only. central = r 0.0262 + p 0.0237 − g 0.0100. Band high clipped at 4.5% cap. Not for public publication."
+    central_at_cap: true
+    band_clipped_outer: true
+    bed_mapping_sensitive: true
+    result_hash: 4654e513
+    supersedes_hash: b3442d47
+    note: "INTERNAL only v3. Central 4.499% at cap; band 3.98–4.50% clipped outer. Not for public publication."
   yield_calibration.result_hash:
-    value: b3442d47
+    value: 4654e513
     as_of: "2026-10-12"
-    note: "Georgist signed-off INTERNAL provisional yield calibration result."
+    note: "Georgist signed-off INTERNAL provisional yield calibration v3 (supersedes b3442d47)."
   valuer_roll.rebuild.house_gbp_per_m2:
     owner: policy-economics
     unit: "GBP per m²"
@@ -385,7 +389,7 @@ integrity:
   macro_pool_label: "National rent pool (Sandilands)"
   caveats:
     - "Urban path: market value is the data-zone median house price (an improved dwelling), shrunk when the sales count is thin. A suppressed cell is missing, not zero. The council median is the comparison and the fallback. Site capital = max(0, MV − DRC). The 85% ceiling is a bound, not an estimate. The 15% floor is a sensitivity only."
-    - "Economic rent base applies Pickard factors to residual site capital, then × the INTERNAL provisional yield band (central 3.99%, 3.52–4.50% clipped at 4.5% cap; hash b3442d47) for annual AGR. Rents are shown as a band, not a point. publication_status=blocked. Not calibrated to the Sandilands pool."
+    - "Economic rent base applies Pickard factors to residual site capital, then × the INTERNAL provisional yield band v3 (central 4.499% at cap, 3.98–4.50% band_clipped_outer; hash 4654e513) for annual AGR. Rents are shown as a band, not a point. publication_status=blocked. Not calibrated to the Sandilands pool."
     - "HABU policy = existing authorised use; hope value excluded from assessment basis. The house price is still an improved-dwelling sale, not a full planning strip."
     - "Spatial grain for urban market value is the 2011 data zone, then the intermediate zone, then the council. It is not a finished national roll and not a fitted model. Rural rent is one category rate for the whole of Scotland."
     - "Rural path uses productive land-use capital (Pickard 5× farmland market distortion), not farm-sale residual."

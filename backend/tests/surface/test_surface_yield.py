@@ -77,12 +77,12 @@ def test_land_yield_is_single_config_figure(cfg):
 
 def test_scenario_r_g_must_equal_land_yield(cfg):
     y = cfg["yield"]["land_yield"]
-    # illustrative_r_g uses r_eff = signed-off r+p so r_eff − g = land_yield
-    assert sr.scenario_r_g(cfg["scenarios"]["illustrative_r_g"], y) == (0.0499, 0.01)
+    # illustrative_r_g satisfies r − g = land_yield (v3 central 0.04499)
+    assert sr.scenario_r_g(cfg["scenarios"]["illustrative_r_g"], y) == (0.05499, 0.01)
     with pytest.raises(sr.YieldIdentityError):
         sr.scenario_r_g({"r": 0.08, "g": 0.02}, y)
     assert sr.capital_value(500.0, y) == pytest.approx(500.0 / y)
-    r_eff, g = 0.0499, 0.01
+    r_eff, g = 0.05499, 0.01
     assert sr.capital_value(500.0, y, scenario={"r": r_eff, "g": g}) == pytest.approx(500.0 / y)
     with pytest.raises(sr.YieldIdentityError):
         sr.capital_value(500.0, y, scenario={"r": 0.06, "g": 0.02})

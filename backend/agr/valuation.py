@@ -241,12 +241,20 @@ def _urban_residual_drc(
         (
             f"Annual economic rent band = economic site capital × yield band "
             f"{yband.low:.2%}–{yband.high:.2%} (central {yield_rate:.2%}; "
-            f"hash {yband.result_hash})."
+            f"v{yband.version} hash {yband.result_hash})."
         ),
         (
-            f"Yield decomposition (INTERNAL): r {yband.r:.2%} + p {yband.p:.2%} − g {yband.g:.2%} "
-            f"= {yband.central_from_decomposition:.2%}."
-            + (" High end clipped at the 4.5% cap." if yband.high_clipped_at_cap else "")
+            "Yield flags (INTERNAL v3): "
+            + ", ".join(
+                flag
+                for flag, on in (
+                    ("central_at_cap", yband.central_at_cap),
+                    ("band_clipped_outer", yband.band_clipped_outer),
+                    ("bed_mapping_sensitive", yband.bed_mapping_sensitive),
+                )
+                if on
+            )
+            + "."
         ),
         (
             f"Effective central rate = {pickard:.2f} × {yield_rate:.2f} = {effective_rate:.3f}. "

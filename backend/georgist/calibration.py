@@ -64,7 +64,7 @@ class CalibrationEngine:
                 actual_price = float(actual["median_price"] or 0)
 
                 # Convert sale price -> land rent via configured land yield
-                # (Georgist INTERNAL provisional; hash b3442d47). Not a public figure.
+                # (Georgist INTERNAL provisional v3; hash 4654e513). Not a public figure.
                 cap_rate = _configured_cap_rate()
                 implied_rent = actual_price * cap_rate
 

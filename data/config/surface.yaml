@@ -245,28 +245,27 @@ surface_rent:
       "2003-2007": 2005
       "2008 onwards": 2016
 
-  # Georgist INTERNAL provisional yield (hash b3442d47). Sibling to yield.* so r/p/g
-  # documentation never sits inside yield (configured_land_yield refuses r/g there).
+  # Georgist INTERNAL provisional yield v3 (hash 4654e513; supersedes v2 b3442d47).
+  # Sibling to yield.* so r/g never sit inside yield (configured_land_yield refuses them).
   # Aligns with agr.yaml yield_calibration / valuer_roll.yield_rate. Not public.
   yield_calibration:
+    version: 3
     status: internal_provisional
     signed_by: Georgist
     scope: INTERNAL_ONLY
     publication_status: blocked
-    result_hash: b3442d47
-    decomposition:
-      r: 0.0262
-      p: 0.0237
-      g: 0.0100
-      central: 0.0399            # = r + p − g (documentary; land_yield stores the single figure)
-      identity: "central = r + p − g"
+    result_hash: 4654e513
+    supersedes_hash: b3442d47
+    central: 0.04499             # central_at_cap
     band:
-      low: 0.0352
+      low: 0.0398
       high: 0.0450
-      high_clipped_at_cap: true  # high end clipped at the 4.5% cap
+      high_clipped_at_cap: true  # band_clipped_outer at the 4.5% cap
     flags:
       value_basis: proxy         # Georgist rule 2; never market
       bed_mapping_sensitive: true
+      central_at_cap: true
+      band_clipped_outer: true
     fallback_rent_zones:
       count: 390                 # flag these (yield_fallback:config / fallback_rent_zone)
       tag: yield_fallback:config
@@ -278,14 +277,13 @@ surface_rent:
 
   yield:
     table: brma_x_ur6             # team lock 2026-10-06
-    land_yield: 0.0399            # rules 1: THE land yield (single figure). Georgist INTERNAL hash b3442d47.
-                                  # Documentary identity: r + p − g = 0.0262 + 0.0237 − 0.0100.
-                                  # Matches agr.yaml valuer_roll.yield_rate. No r or g here: code refuses them
-                                  # outside `scenarios`.
+    land_yield: 0.04499           # rules 1: THE land yield (single figure). Georgist INTERNAL v3 hash 4654e513.
+                                  # central_at_cap; band 3.98–4.50% band_clipped_outer. Matches agr.yaml.
+                                  # No r or g here: code refuses them outside `scenarios`.
     band:
-      low: 0.0352
+      low: 0.0398
       high: 0.0450
-      high_clipped_at_cap: true  # clipped at the 4.5% cap; supersedes earlier 3.5–4.5% wording
+      high_clipped_at_cap: true  # band_clipped_outer; supersedes v2 3.52–4.50% / earlier 3.5–4.5%
     deductions:                   # gross -> land yield. ASSUMPTION pending further source work
       void: 0.04                  # share of gross rent lost to voids
       running_costs: 0.25         # management, repairs, insurance, compliance (share of gross)
@@ -320,7 +318,7 @@ surface_rent:
     note: >
       Fills null residential Data Zones via per-UR6-class log-linear prediction.
       Never copies a neighbour. Thin classes borrow adjacent-class training rows
-      (tag borrowed_class). Yield figure is owned by yield_calibration (INTERNAL 3.99%, hash b3442d47).
+      (tag borrowed_class). Yield figure is owned by yield_calibration v3 (INTERNAL 4.499%, hash 4654e513).
 
   drivers:
     allowed:
@@ -404,9 +402,8 @@ surface_rent:
       farm: 0.20                  # Pickard, agr.yaml despeculation.farmland_market_to_productive (not used by residential surface)
 
   scenarios:                      # rules 1: the ONLY place r and g may appear; code asserts r - g == land_yield
-    # ILLUSTRATIVE: r_eff absorbs signed-off premium p so r_eff − g = land_yield.
-    # Documentary Georgist split remains yield_calibration.decomposition (r + p − g).
-    illustrative_r_g: {r: 0.0499, g: 0.01}   # 0.0499 − 0.01 = 0.0399 = yield.land_yield
+    # ILLUSTRATIVE only: r − g must equal yield.land_yield (v3 central 0.04499).
+    illustrative_r_g: {r: 0.05499, g: 0.01}   # 0.05499 − 0.01 = 0.04499 = yield.land_yield
 
   reconciliation:                 # rules 4.2
     rent_ceiling: mean_price_x_dwellings_x_gross_yield   # rules 4.2 v0.3 formula

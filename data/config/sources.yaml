@@ -643,6 +643,41 @@ scotwind_intog:
     - INTOG native CRS is EPSG:27700; ingest reprojects to WGS84 (outSR=4326)
     - Ledger row 4 evidence only — no public £ rent
 
+repd_onshore_wind:
+  name: REPD onshore wind (natural capital)
+  role: natural_capital_onshore_wind_overlay
+  publisher: Department for Energy Security and Net Zero (DESNZ)
+  licence: OGL-3.0
+  licence_url: >-
+    https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  ledger_role: ledger-row
+  ledger_row: "3"
+  ui_surface: ledger
+  attribution: >-
+    Contains public sector information licensed under the Open Government
+    Licence v3.0. Renewable Energy Planning Database © DESNZ / Crown copyright.
+    Scotland onshore wind planning-site points — MW and status only. Not a
+    lease polygon, not Surface Rent, not AGR, not a title. Ledger row 3.
+  source_url: >-
+    https://www.gov.uk/government/publications/renewable-energy-planning-database-quarterly-extract
+  data_gov_url: >-
+    https://www.data.gov.uk/dataset/a5b0ed13-c960-49ce-b1f6-3a6bbe0db1b7/repd
+  csv_url: >-
+    https://assets.publishing.service.gov.uk/media/6a6cbdc00c36759b5ccaa305/REPD_Publication_Q2_2026.csv
+  vintage: "REPD July 2026 quarterly extract (Q2 2026)"
+  postgis_table: repd_onshore_wind
+  bbox_endpoint: /layers/open/repd-onshore-wind
+  ingest: python -m etl.ingest_repd_onshore_wind
+  filter: Scotland + Technology Type = Wind Onshore; BNG → WGS84
+  value_tier: market
+  adds_to_surface_rent: false
+  gaps:
+    - UK-wide register — map shows Scotland onshore wind only
+    - Coordinates are planning-site points, not lease or title polygons
+    - No £ rent on this layer — natural-capital evidence (MW/status) only
+    - Rows with neither capacity nor status are publication_status=blocked
+    - Full CSV is not committed; load via ingest into PostGIS
+
 vdl:
   name: Scottish Vacant and Derelict Land Survey (SVDLS)
   role: vacant_and_derelict_site_overlay
@@ -1086,6 +1121,16 @@ map_layers:
       note: >-
         Accepted; not OGL-3.0. Attribution + share-alike / equivalent terms.
         Ledger constraint (£0) — does not change parcel AGR or Surface Rent
+    - id: repd_onshore_wind
+      source: DESNZ REPD onshore wind (OGL) — Scotland points via PostGIS
+      endpoint: /layers/open/repd-onshore-wind
+      licence: OGL-3.0
+      licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+      ledger_role: ledger-row
+      ledger_row: "3"
+      ui_surface: ledger
+      value_tier: market
+      note: Ledger row 3 onshore wind MW/status — natural-capital evidence; never adds to Surface Rent
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
   # SEPA flood MapServer is not allowlisted — OGL download → PostGIS only.

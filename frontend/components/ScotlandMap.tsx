@@ -364,6 +364,8 @@ const NFI_FILL = "#1f6b3a";
 const NATIVE_WOODLAND_FILL = "#2d8f4e";
 const LDP_MIN_ZOOM = 8;
 const REPD_MIN_ZOOM = 6;
+/** REPD onshore wind planning-site points (natural capital — MW/status only). */
+const REPD_ONSHORE_WIND_MIN_ZOOM = 6;
 const CROWN_LEASES_MIN_ZOOM = 5;
 
 const CES_LEASE_FILL: ExpressionSpecification = [
@@ -593,6 +595,8 @@ export default function ScotlandMap() {
   const showWoodland = Boolean(ledgerEnabled["1"]);
   /** REPD paints when ledger row 3 (onshore wind + hydro resource) is on. */
   const showRepd = Boolean(ledgerEnabled["3"]);
+  /** Dedicated onshore-wind MW/status table — same ledger row 3. */
+  const showRepdOnshoreWind = Boolean(ledgerEnabled["3"]);
   /** CES offshore leases paint when ledger row 4 (seabed & foreshore) is on. */
   const showCrownLeases = Boolean(ledgerEnabled["4"]);
   /** LCA constraint — Hutton Open Data Licence; £0, changes best use. */
@@ -1400,6 +1404,26 @@ export default function ScotlandMap() {
           "line-color": "#0b1e3a",
           "line-width": 1.05,
           "line-opacity": 0.78,
+        },
+      });
+
+      map.addSource("repd-onshore-wind-overlay", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution:
+          "REPD onshore wind © DESNZ / Crown copyright (OGL v3.0). MW/status only — not a rent.",
+      });
+      map.addLayer({
+        id: "repd-onshore-wind-circle",
+        type: "circle",
+        source: "repd-onshore-wind-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "circle-radius": 5,
+          "circle-color": "#00796b",
+          "circle-stroke-width": 1,
+          "circle-stroke-color": "#ffffff",
+          "circle-opacity": 0.85,
         },
       });
 
@@ -2231,6 +2255,77 @@ export default function ScotlandMap() {
       map.off("moveend", onMove);
     };
   }, [mapReady, showDataZones]);
+
+  // DESNZ REPD onshore wind (natural capital — MW/status only, no £ rent)
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const setVis = (vis: "visible" | "none") => {
+      if (!map.getLayer("repd-onshore-wind-circle")) return;
+      map.setLayoutProperty("repd-onshore-wind-circle", "visibility", vis);
+    };
+
+    if (!showRepdOnshoreWind) {
+      setVis("none");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const loadRepdOnshoreWind = () => {
+      if (cancelled || !mapRef.current || inFlight) return;
+      const b = map.getBounds();
+      if (!b) return;
+      if (map.getZoom() < REPD_ONSHORE_WIND_MIN_ZOOM) {
+        setVis("none");
+        return;
+      }
+      inFlight = true;
+      setLayerBusy(true);
+      const path =
+        `/layers/open/repd-onshore-wind?south=${b.getSouth()}&west=${b.getWest()}` +
+        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
+      void apiJson<GeoJSON.FeatureCollection>(path)
+        .then((data) => {
+          if (cancelled) return;
+          (map.getSource("repd-onshore-wind-overlay") as GeoJSONSource)?.setData(
+            data,
+          );
+          setVis("visible");
+          setLayerNotice(null);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setVis("none");
+          if (err instanceof ApiError && err.status === 503) {
+            setLayerNotice(
+              "REPD onshore wind is not loaded yet (run python -m etl.ingest_repd_onshore_wind on the OGL CSV). Gaps are not filled with guesses.",
+            );
+          }
+        })
+        .finally(() => {
+          inFlight = false;
+          if (!cancelled) setLayerBusy(false);
+        });
+    };
+
+    const onMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadRepdOnshoreWind, 700);
+    };
+
+    loadRepdOnshoreWind();
+    map.on("moveend", onMove);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off("moveend", onMove);
+    };
+  }, [mapReady, showRepdOnshoreWind]);
 
   // SVDLS vacant / derelict overlay (OGL survey polygons)
   useEffect(() => {
@@ -3401,6 +3496,14 @@ export default function ScotlandMap() {
                 REPD (DESNZ, OGL v3.0) — ledger row 3. Scotland planning-site
                 points from PostGIS — not lease polygons, not a rent or title.
                 Zoom {REPD_MIN_ZOOM}+.
+              </p>
+            )}
+            {showRepdOnshoreWind && (
+              <p className="layer-meta" data-testid="layer-repd-onshore-wind-credit">
+                REPD onshore wind (DESNZ, OGL v3.0) — ledger row 3. Scotland
+                planning-site points with MW and status only — natural-capital
+                evidence, not Surface Rent, not AGR, not a lease. Zoom{" "}
+                {REPD_ONSHORE_WIND_MIN_ZOOM}+.
               </p>
             )}
             {showCrownLeases && (

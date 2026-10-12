@@ -42,6 +42,7 @@ from layers.naturescot import query_designations_bbox as naturescot_designations
 from layers.naturescot import query_sssi_bbox as sssi_bbox
 from layers.scotwind import LayerUnavailable as ScotwindUnavailable
 from layers.scotwind import query_bbox as scotwind_bbox
+from layers.repd_onshore_wind import query_bbox as repd_onshore_wind_bbox
 from layers.vdl import query_bbox as vdl_bbox
 from layers.community_ownership import LayerUnavailable as CommunityOwnershipUnavailable
 from layers.community_ownership import query_bbox as community_ownership_bbox
@@ -180,6 +181,38 @@ def layer_open_scotwind_intog(
         )
     except ScotwindUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get("/layers/open/repd-onshore-wind")
+def layer_open_repd_onshore_wind(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=80, ge=1, le=80),
+) -> JSONResponse:
+    """DESNZ REPD onshore wind sites (Scotland) — MW and status only.
+
+    Natural-capital overlay from PostGIS after OGL CSV ingest. **No £ rent.**
+    **503** when unloaded. Empty FeatureCollection with meta.ok=true means no
+    sites in view.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    payload = repd_onshore_wind_bbox(
+        south, west, north, east, max_features=max_features
+    )
+    meta = payload.get("meta") or {}
+    if meta.get("ok") is False:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "REPD onshore wind overlay is not available: "
+                f"{meta.get('error') or 'PostGIS source not loaded'}. "
+                "Run python -m etl.ingest_repd_onshore_wind on the OGL CSV — "
+                "gaps are not filled with guesses."
+            ),
+        )
+    return JSONResponse(payload)
 
 
 @router.get("/layers/open/data-zones")

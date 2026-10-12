@@ -68,7 +68,7 @@ The current codebase already delivers a working AGR engine, map interface, counc
 Next development prioritises:
 
 1. Surfacing the free cadastral and public-land layers more prominently — **in progress**: RoS INSPIRE Index Polygons (WMS tiles + PostGIS bbox with 503 when unloaded) and SG 2024 public-land overlay sit at the top of the map layer control, on by default at suitable zoom, with attribution, legend, and click popup. Known gaps (Sasine, private names, LA holdings outside the five bodies) stay visible. Refresh: `scripts/data/README-inspire.md` and `data/config/sources.yaml`.
-2. Adding vacant & derelict land and local-authority holdings
+2. Vacant & derelict land — **in progress**: SVDLS site-level overlay (OGL) in Ownership and cadastre with site-type legend, attribution/credits, click popup, and **503** when the upstream FeatureServer is down. Geometry precedence: Spatial Hub survey > RoS title outline > point (each site tagged `geometry_source`). Local-authority holdings remain a flagged gap.
 3. Common Good — **linked registers**: verified council register / metadata links via `/api/common-good.json`; no national open spatial layer. Fife indicative titles (OS INSPIRE EUL) are linked, not mirrored.
 4. Improving national statistics and data-gap indicators
 5. Keeping the AGR calculation engine and scenario tools as the analytical centre

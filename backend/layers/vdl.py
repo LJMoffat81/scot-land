@@ -1,8 +1,12 @@
 """Scottish Vacant and Derelict Land overlay.
 
-Authoritative statistics: Scottish Government SVDLS site register.
-Spatial overlay queried from a public FeatureServer republish of Spatial Hub
-SVDLS polygons (OGL). Indicative geometry — not a title plan.
+Authoritative site list: Scottish Government SVDLS site register.
+Spatial overlay: Spatial Hub / Improvement Service republish of SVDLS
+polygons (OGL). Site-level as published — survey polygons, not a title plan.
+
+Geometry precedence (room decision): Spatial Hub survey > RoS title outline >
+point. Each site is tagged with ``geometry_source``. The live FeatureServer
+path is Spatial Hub survey only; see ``layers.svdls_geometry``.
 """
 
 from __future__ import annotations
@@ -11,26 +15,84 @@ from typing import Any
 
 import httpx
 
+from layers.svdls_geometry import (
+    GEOMETRY_PRECEDENCE,
+    GEOMETRY_SOURCE_LABELS,
+    GEOMETRY_SOURCE_SPATIALHUB_SURVEY,
+)
+
 FEATURE_URL = (
     "https://services2.arcgis.com/Ne8d9gKn5SJ3eAaw/ArcGIS/rest/services/"
     "Scottish_Vacant_and_Derelict_Land_2024/FeatureServer/1/query"
 )
 TIMEOUT = 8.0
 MAX_FEATURES = 80
-OUT_FIELDS = "site_name,site_type,site_size,local_auth,la_s_code,owner_1,site_code,address"
+# GIS: FeatureServer geometry must be requested in WGS84 for the map.
+OUT_SR = 4326
+IN_SR = 4326
+OUT_FIELDS = (
+    "site_name,site_type,site_size,local_auth,la_s_code,"
+    "owner_1,site_code,address,period"
+)
+
+# Published site_type values from the Spatial Hub / SVDLS FeatureServer.
+SITE_TYPES = (
+    "Vacant Land",
+    "Vacant Land and Buildings",
+    "Derelict",
+)
+
+# Live open overlay geometry: Spatial Hub survey (highest public precedence).
+LIVE_GEOMETRY_SOURCE = GEOMETRY_SOURCE_SPATIALHUB_SURVEY
+
 
 ATTRIBUTION = (
     "Scottish Vacant and Derelict Land Survey. "
     "Contains public sector information licensed under the Open Government Licence v3.0. "
-    "Spatial Hub / Improvement Service; site register: Scottish Government."
+    "Contains data from Improvement Service under OGL, supplied by Scotland's local "
+    "planning authorities and Loch Lomond & The Trossachs National Park Authority. "
+    "© Scottish Government. Survey polygons, not a title."
 )
 REGISTER_URL = (
     "https://www.gov.scot/publications/the-scottish-vacant-and-derelict-land-survey-site-register/"
+)
+SPATIAL_HUB_URL = "https://data.spatialhub.scot/dataset/vacant_and_derelict_land-is"
+PUBLICATION_URL = (
+    "https://www.gov.scot/publications/scottish-vacant-and-derelict-land-survey-2025/"
 )
 
 
 def _client() -> httpx.Client:
     return httpx.Client(timeout=TIMEOUT)
+
+
+def _size_ha(raw: Any) -> float | None:
+    """Register site size is published as hectares (sometimes as a string)."""
+    if raw is None or raw == "":
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def _site_props(attrs: dict[str, Any]) -> dict[str, Any]:
+    """Map FeatureServer attributes to public site fields as published."""
+    return {
+        "name": attrs.get("site_name"),
+        "site_type": attrs.get("site_type"),
+        "size_ha": _size_ha(attrs.get("site_size")),
+        "local_authority": attrs.get("local_auth"),
+        "owner_class": attrs.get("owner_1"),
+        "site_code": attrs.get("site_code"),
+        "address": attrs.get("address"),
+        "period": attrs.get("period"),
+        # Live FeatureServer features are Spatial Hub survey polygons.
+        "geometry_source": LIVE_GEOMETRY_SOURCE,
+        "geometry_source_label": GEOMETRY_SOURCE_LABELS[LIVE_GEOMETRY_SOURCE],
+        "layer": "vdl",
+        "source": ATTRIBUTION,
+    }
 
 
 def by_council_hectares() -> dict[str, dict[str, Any]]:
@@ -72,11 +134,11 @@ def query_point(lat: float, lng: float) -> dict[str, Any]:
     params = {
         "geometry": f"{lng},{lat}",
         "geometryType": "esriGeometryPoint",
-        "inSR": 4326,
+        "inSR": IN_SR,
         "spatialRel": "esriSpatialRelIntersects",
         "outFields": OUT_FIELDS,
         "returnGeometry": "false",
-        "outSR": 4326,
+        "outSR": OUT_SR,
         "resultRecordCount": 5,
         "f": "json",
     }
@@ -92,15 +154,19 @@ def query_point(lat: float, lng: float) -> dict[str, Any]:
     sites = []
     for feat in features:
         attrs = feat.get("attributes") or {}
+        props = _site_props(attrs)
         sites.append(
             {
-                "name": attrs.get("site_name"),
-                "site_type": attrs.get("site_type"),
-                "size_ha": attrs.get("site_size"),
-                "local_authority": attrs.get("local_auth"),
-                "owner_class": attrs.get("owner_1"),
-                "site_code": attrs.get("site_code"),
-                "address": attrs.get("address"),
+                "name": props["name"],
+                "site_type": props["site_type"],
+                "size_ha": props["size_ha"],
+                "local_authority": props["local_authority"],
+                "owner_class": props["owner_class"],
+                "site_code": props["site_code"],
+                "address": props["address"],
+                "period": props["period"],
+                "geometry_source": props["geometry_source"],
+                "geometry_source_label": props["geometry_source_label"],
             }
         )
     return {
@@ -109,9 +175,13 @@ def query_point(lat: float, lng: float) -> dict[str, Any]:
         "sites": sites,
         "source": ATTRIBUTION,
         "register_url": REGISTER_URL,
+        "spatial_hub_url": SPATIAL_HUB_URL,
+        "licence": "OGL-3.0",
+        "geometry_precedence": list(GEOMETRY_PRECEDENCE),
         "note": (
             "SVDLS site class and owner class are survey fields, not a legal title. "
-            "Confirm ownership on ScotLIS."
+            "Confirm ownership on ScotLIS. Geometry precedence: Spatial Hub survey, "
+            "then RoS title outline, then point."
         ),
     }
 
@@ -123,17 +193,17 @@ def query_bbox(
     east: float,
     max_features: int = MAX_FEATURES,
 ) -> dict[str, Any]:
-    """Viewport VDL polygons as GeoJSON (WGS84)."""
+    """Viewport VDL polygons as GeoJSON (WGS84), site-level as published."""
     cap = max(1, min(int(max_features), MAX_FEATURES))
     envelope = f"{west},{south},{east},{north}"
     params = {
         "geometry": envelope,
         "geometryType": "esriGeometryEnvelope",
-        "inSR": 4326,
+        "inSR": IN_SR,
         "spatialRel": "esriSpatialRelIntersects",
         "outFields": OUT_FIELDS,
         "returnGeometry": "true",
-        "outSR": 4326,
+        "outSR": OUT_SR,
         "resultRecordCount": cap,
         "f": "geojson",
     }
@@ -164,15 +234,7 @@ def query_bbox(
             {
                 "type": "Feature",
                 "geometry": feat.get("geometry"),
-                "properties": {
-                    "name": props.get("site_name"),
-                    "site_type": props.get("site_type"),
-                    "size_ha": props.get("site_size"),
-                    "local_authority": props.get("local_auth"),
-                    "owner_class": props.get("owner_1"),
-                    "site_code": props.get("site_code"),
-                    "layer": "vdl",
-                },
+                "properties": _site_props(props),
             }
         )
     return {
@@ -185,6 +247,19 @@ def query_bbox(
             "capped": len(features) >= cap,
             "source": ATTRIBUTION,
             "register_url": REGISTER_URL,
+            "spatial_hub_url": SPATIAL_HUB_URL,
+            "publication_url": PUBLICATION_URL,
             "licence": "OGL-3.0",
+            "site_types": list(SITE_TYPES),
+            "geometry_precedence": list(GEOMETRY_PRECEDENCE),
+            "geometry_source_live": LIVE_GEOMETRY_SOURCE,
+            "gaps": [
+                "Owner class is a survey field, not legal title",
+                "Survey polygons are indicative — confirm extent on ScotLIS",
+                "Sites removed or re-coded since the Spatial Hub vintage may differ "
+                "from the latest SG site register",
+                "RoS title-outline geometry stays internal until OS/RoS end-user "
+                "terms are cleared for public publication",
+            ],
         },
     }

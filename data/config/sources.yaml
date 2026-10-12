@@ -136,6 +136,44 @@ common_good:
     - Spatial Hub amalgamated assets require login
     - Fife extents are indicative and OS INSPIRE EUL — not mirrored here
 
+vdl:
+  name: Scottish Vacant and Derelict Land Survey (SVDLS)
+  role: vacant_and_derelict_site_overlay
+  licence: OGL-3.0
+  attribution: >-
+    Scottish Vacant and Derelict Land Survey. Contains public sector
+    information licensed under the Open Government Licence v3.0. Contains
+    data from Improvement Service under OGL, supplied by Scotland's local
+    planning authorities and Loch Lomond & The Trossachs National Park
+    Authority. © Scottish Government. Survey polygons, not a title.
+  register_url: >-
+    https://www.gov.scot/publications/the-scottish-vacant-and-derelict-land-survey-site-register/
+  publication_url: >-
+    https://www.gov.scot/publications/scottish-vacant-and-derelict-land-survey-2025/
+  spatial_hub_url: https://data.spatialhub.scot/dataset/vacant_and_derelict_land-is
+  feature_server: >-
+    https://services2.arcgis.com/Ne8d9gKn5SJ3eAaw/ArcGIS/rest/services/Scottish_Vacant_and_Derelict_Land_2024/FeatureServer/1
+  vintage: "2024 Spatial Hub republish (site-level as published)"
+  bbox_endpoint: /layers/open/vdl
+  # Live FeatureServer queries set inSR/outSR=4326 (WGS84) for the map.
+  out_sr: 4326
+  site_types:
+    - Vacant Land
+    - Vacant Land and Buildings
+    - Derelict
+  # Room decision: Spatial Hub survey > RoS title outline > point (see layers/svdls_geometry.py)
+  geometry_precedence:
+    - spatialhub_survey
+    - ros_title_outline
+    - point
+  geometry_source_live: spatialhub_survey
+  geometry_module: backend/layers/svdls_geometry.py
+  gaps:
+    - Owner class is a survey field, not legal title
+    - Survey polygons are indicative — confirm extent on ScotLIS
+    - Spatial Hub vintage may lag the latest SG site register
+    - RoS title-outline geometry stays internal until OS/RoS end-user terms cleared
+
 sales:
   status: scaffolded
   authority: Registers of Scotland
@@ -182,8 +220,9 @@ map_layers:
     - id: method
       source: valuation method flag on council metrics
     - id: vdl
-      source: SVDLS FeatureServer (OGL)
+      source: SVDLS FeatureServer (OGL) — site-level as published
       endpoint: /layers/open/vdl
+      licence: OGL-3.0
     - id: public_land
       source: SG PublicLand_2024_Update FeatureServer
       endpoint: /layers/open/public-land

@@ -104,10 +104,15 @@ def platform_catalog() -> dict[str, Any]:
                 "group": "spatial",
                 "status": "live",
                 "label": "Vacant and derelict land",
-                "description": "SVDLS sites (survey polygons). Owner class is not legal title.",
+                "description": (
+                    "SVDLS sites (survey polygons, site-level as published). "
+                    "Owner class is a survey field, not legal title."
+                ),
                 "endpoint": "/layers/open/vdl",
                 "licence": "OGL-3.0",
+                "minzoom": 8,
                 "source_url": VDL_REGISTER,
+                "spatial_hub_url": SPATIAL_HUB_VDL,
             },
             {
                 "id": "public_crown",

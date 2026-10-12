@@ -38,9 +38,25 @@ def layer_open_vdl(
     east: float = Query(..., description="BBox east longitude"),
     max_features: int = Query(default=80, ge=1, le=80),
 ) -> JSONResponse:
-    """Vacant and derelict land polygons in the viewport (OGL survey overlay)."""
+    """Vacant and derelict land polygons in the viewport (OGL survey overlay).
+
+    Returns site-level SVDLS features as published. **503** when the upstream
+    open FeatureServer is unavailable — never invents sites. An empty
+    FeatureCollection with meta.ok=true means no sites in view.
+    """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
-    return JSONResponse(vdl_bbox(south, west, north, east, max_features=max_features))
+    payload = vdl_bbox(south, west, north, east, max_features=max_features)
+    meta = payload.get("meta") or {}
+    if meta.get("ok") is False:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Vacant and derelict land overlay is not available: "
+                f"{meta.get('error') or 'upstream source failed'}. "
+                "SVDLS survey sites only — gaps are not filled with guesses."
+            ),
+        )
+    return JSONResponse(payload)
 
 
 @router.get("/layers/open/public-land")

@@ -186,10 +186,11 @@ common_good:
   config_path: data/config/common_good.yaml
   endpoint: /api/common-good.json
   licence: >
-  licence_url: https://www.gov.scot/publications/community-empowerment-common-good-property-guidance-local-authorities/
     Council register pages (public web). Fife indicative titles under
     OS Public Sector End User Licence - INSPIRE — linked metadata only,
     not redistributed through this API.
+  licence_url: >-
+    https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
   attribution: >
     Common Good is a statutory LA register under the Community Empowerment
     (Scotland) Act 2015. No national open spatial layer. Verified council

@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "check:catalog-ui-drift": "node scripts/check-catalog-ui-drift.mjs",
+    "test:catalog-ui-drift": "node scripts/test-catalog-ui-drift.mjs"
   },
   "dependencies": {
     "@fontsource-variable/mona-sans": "^5.3.0",

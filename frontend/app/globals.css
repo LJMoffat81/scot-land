@@ -907,6 +907,116 @@ button.primary:disabled {
   border-bottom: 1px solid color-mix(in srgb, var(--slrg-navy) 12%, transparent);
 }
 
+/* Standalone LayersPanel (catalog-driven; slots into w3w shell later) */
+.layers-panel-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 1.25rem 1rem 2.5rem;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% 0%, rgba(0, 118, 211, 0.08), transparent 55%),
+    linear-gradient(180deg, #e8eef4 0%, var(--slrg-bg) 40%, #eef2f6 100%);
+}
+
+.layers-panel-page-inner {
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+.layers-panel-page-brand {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--rugby-navy);
+}
+
+.layers-panel-page-lead {
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--slrg-muted);
+}
+
+.layers-panel {
+  background: var(--slrg-panel);
+  border: 1px solid color-mix(in srgb, var(--slrg-navy) 12%, transparent);
+  border-radius: var(--hud-radius);
+  box-shadow: var(--hud-shadow);
+  padding: 1rem 1.05rem 1.15rem;
+  max-height: min(85dvh, 44rem);
+  overflow: auto;
+}
+
+.layers-panel-group {
+  margin-top: 0.35rem;
+}
+
+.layers-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.layers-panel-row {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--slrg-navy) 10%, transparent);
+}
+
+.layers-panel-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.layers-panel-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.layers-panel-label {
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--slrg-text);
+}
+
+.layers-panel-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: #eef1f4;
+  color: var(--slrg-muted);
+}
+
+.layers-panel-status.tone-live {
+  background: color-mix(in srgb, var(--rugby-sky) 18%, white);
+  color: var(--rugby-navy);
+}
+
+.layers-panel-status.tone-linked {
+  background: #eef1f4;
+  color: var(--slrg-muted);
+}
+
+.layers-panel-status.tone-gap {
+  background: color-mix(in srgb, var(--danger) 12%, white);
+  color: var(--danger);
+}
+
+.layers-panel-unavailable {
+  margin: 0.4rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--slrg-muted);
+  border-left: 3px solid color-mix(in srgb, var(--slrg-navy) 28%, transparent);
+  padding-left: 0.55rem;
+}
+
 .layer-legend {
   list-style: none;
   margin: 0.45rem 0 0.35rem;

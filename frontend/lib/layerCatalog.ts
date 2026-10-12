@@ -61,7 +61,7 @@ export const LAYER_ATTRIBUTION: Record<
     sourceUrl: "https://www.ros.gov.uk/open-data",
   },
   cell_grid: {
-    source: "What3Words 3×3 m cell grid (internal AGR)",
+    source: "Scot-LAND squares 3×3 m grid (internal AGR)",
     licence: "Not published on the public map until yield calibration",
   },
   vdl: {
@@ -109,7 +109,7 @@ export const LAYER_ATTRIBUTION: Record<
 };
 
 export const WITHHELD_PUBLIC_MESSAGE =
-  "Not on the public map yet. Modelled plot Annual Ground Rent and the W3W rent grid stay internal until yield calibration. No public tax scenarios.";
+  "Not on the public map yet. Modelled plot Annual Ground Rent and Scot-LAND squares stay internal until yield calibration. No public tax scenarios.";
 
 export function layerSource(layer: CatalogLayer): string {
   const fallback = LAYER_ATTRIBUTION[layer.id];

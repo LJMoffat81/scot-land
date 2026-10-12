@@ -130,7 +130,9 @@ def render_report_markdown(report: dict[str, Any]) -> str:
     agr = report["assessment"]
     roll = report["roll_lines"]
     w3w = place.get("what3words")
-    w3w_line = f"///{w3w}" if w3w else "3×3 m W3W-aligned cell (words pending API key)"
+    w3w_line = (
+        f"///{w3w}" if w3w else "3×3 m Scot-LAND square (words pending API key)"
+    )
 
     lines: list[str] = []
     stamp = report.get("stamp")
@@ -149,7 +151,7 @@ def render_report_markdown(report: dict[str, Any]) -> str:
         "",
         f"- **Council:** {place.get('council_name')} ({place.get('council_code')})",
         f"- **Coordinates:** {place['lat']:.6f}, {place['lng']:.6f}",
-        f"- **What3Words:** {w3w_line}",
+        f"- **Scot-LAND square:** {w3w_line}",
         f"- **Grid cell:** {place['area_sqm']} m²",
     ]
     if place.get("ward_name"):

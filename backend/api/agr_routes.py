@@ -386,7 +386,7 @@ def internal_layer_w3w_grid(
     scenario: str = Query(default="full_agr"),
     max_cells: int = Query(default=400, ge=10),
 ) -> JSONResponse:
-    """INTERNAL: W3W cells with modelled AGR (plot grain; never public)."""
+    """INTERNAL: Scot-LAND squares with modelled AGR (plot grain; never public)."""
     if south >= north or west >= east:
         raise HTTPException(
             status_code=400,
@@ -603,7 +603,10 @@ def internal_assessment_report(
 def internal_get_square(
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
-    words: str | None = Query(default=None, description="What3Words address e.g. filled.count.soap"),
+    words: str | None = Query(
+        default=None,
+        description="Scot-LAND square three-word address e.g. filled.count.soap",
+    ),
     scenario: str | None = Query(
         default="full_agr",
         description="Policy scenario: full_agr, replace_income_tax, revenue_neutral",
@@ -625,7 +628,7 @@ def internal_get_square(
         description="Include nearby sales from fixture/licensed store (research).",
     ),
 ) -> JSONResponse:
-    """INTERNAL: W3W cell residual AGR (plot grain). Blocked from public map."""
+    """INTERNAL: Scot-LAND square residual AGR (plot grain). Blocked from public map."""
     words_hint: str | None = None
     if words:
         try:

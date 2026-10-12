@@ -1776,7 +1776,7 @@ export default function ScotlandMap() {
     window.history.replaceState({}, "", url.toString());
   }, [showVdl, showPublicLand, band]);
 
-  // W3W cell grid
+  // Scot-LAND squares grid
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;

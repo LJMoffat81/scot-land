@@ -390,7 +390,7 @@ export default function AgrBreakdown({
 
       {w3wParts.length === 3 && (
         <div className="w3w-hero-row">
-          <p className="w3w-hero" aria-label={`what3words ${w3wClean}`}>
+          <p className="w3w-hero" aria-label={`Scot-LAND square ${w3wClean}`}>
             <span className="w3w-slash">{"///"}</span>
             {w3wParts.map((word, i) => (
               <span key={word + i}>
@@ -403,7 +403,7 @@ export default function AgrBreakdown({
             <button
               type="button"
               className="w3w-copy"
-              title="Copy three-word address"
+              title="Copy Scot-LAND square address"
               onClick={() => {
                 void navigator.clipboard?.writeText(`///${w3wClean}`).then(() => {
                   setCopied(true);

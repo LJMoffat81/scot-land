@@ -29,7 +29,7 @@ The platform is permanently free for everyone to view, explore and download (whe
 
 **Value & AGR layer (existing core)**
 - Residual site-value estimates and Annual Ground Rent calculations
-- 3×3 m What3Words grid and parcel-level views
+- 3×3 m Scot-LAND squares grid and parcel-level views
 - Policy scenarios (full AGR, tax-replacement, revenue-neutral options, equal-share illustrations)
 - Full public methodology and integrity caveats
 

@@ -11,6 +11,8 @@ PATHS = [
     "/internal/layers/georgist/eco-rent",
     "/internal/georgist/surface-rent/S01008677",
     "/internal/georgist/surface-rent-rollup",
+    "/internal/georgist/tax-scenario",
+    "/internal/georgist/tax-scenario/zone?zone_id=S01008677",
 ]
 
 

@@ -1,8 +1,12 @@
 """Tax scenario illustrations from Wealth Engine Surface Rent (not AGR).
 
-Policy capture-rate maths only. Inputs must already be publishable Wealth figures
-(``measured_rent`` from ``surface_rent_dz``). No Sandilands pool, no fiscal basket,
-no invented national totals.
+INTERNAL ONLY until land-yield calibration lands (configured 5% yield is a
+placeholder assumption). Every payload is ``publication_status=blocked`` and must
+not appear on public pages or public API routes.
+
+Policy capture-rate maths only. Inputs may use publishable Wealth figures
+(``measured_rent`` from ``surface_rent_dz``); the scenario *output* stays blocked.
+No Sandilands pool, no fiscal basket, no invented national totals.
 
 Surface Rent (la-calc residual) is a different lens from AGR residual plot charge.
 Sums of zone Surface Rent are research aggregates — not the national rent pool and
@@ -28,9 +32,46 @@ CAPTURE_NOTE = (
     "This is not a measured tax liability and not an official bill."
 )
 STATUS = "experimental_research_estimate"
+PUBLICATION_STATUS = "blocked"
+BLOCKED_REASON = (
+    "yield_calibration_pending: land yield (configured 5%) is a placeholder assumption "
+    "until calibration against RoS market evidence; tax scenario output is internal-only"
+)
+INTERNAL_WARNING = (
+    "INTERNAL ONLY. Tax scenario output is publication_status=blocked until yield "
+    "calibration lands. Do not publish on public pages."
+)
 
 # Display presets only — not recommended policy rates.
 DEFAULT_CAPTURE_RATES: tuple[float, ...] = (0.0, 0.25, 0.5, 0.75, 1.0)
+
+
+def _blocked_fields() -> dict[str, Any]:
+    return {
+        "internal": True,
+        "publication_status": PUBLICATION_STATUS,
+        "blocked_reason": BLOCKED_REASON,
+        "warning": INTERNAL_WARNING,
+    }
+
+
+def stamp_blocked(payload: dict[str, Any]) -> dict[str, Any]:
+    """Stamp scenario output as internal-only / publication_status=blocked (room rule)."""
+    payload.update(_blocked_fields())
+    for key in ("national", "zone", "council"):
+        nested = payload.get(key)
+        if isinstance(nested, dict):
+            nested.update({
+                "publication_status": PUBLICATION_STATUS,
+                "blocked_reason": BLOCKED_REASON,
+            })
+    for row in payload.get("by_council") or []:
+        if isinstance(row, dict):
+            row.update({
+                "publication_status": PUBLICATION_STATUS,
+                "blocked_reason": BLOCKED_REASON,
+            })
+    return payload
 
 
 class TaxScenarioError(ValueError):
@@ -136,7 +177,7 @@ def aggregate_by_council(
     if la_code:
         usable = [r for r in usable if r.la_code == la_code]
     if not usable:
-        return {
+        return stamp_blocked({
             "status": STATUS,
             "lens": LENS,
             "lens_note": LENS_NOTE,
@@ -152,7 +193,7 @@ def aggregate_by_council(
             "by_council": [],
             "preset_rates": list(DEFAULT_CAPTURE_RATES),
             "note": "No publishable Surface Rent rows for this filter. Nothing was estimated.",
-        }
+        })
 
     price_year = _refuse_mixed_price_years(usable, where="national")
     by_la: dict[str, list[ZoneRentRow]] = {}
@@ -176,7 +217,7 @@ def aggregate_by_council(
         })
 
     national_measured = sum(r.measured_rent for r in usable)
-    return {
+    return stamp_blocked({
         "status": STATUS,
         "lens": LENS,
         "lens_note": LENS_NOTE,
@@ -197,9 +238,9 @@ def aggregate_by_council(
         "note": (
             "Council and national figures are sums of publishable Data Zone Surface Rent "
             "(research aggregates). They are not the Sandilands national rent pool, not AGR, "
-            "and not a tax bill."
+            "and not a tax bill. Output is publication_status=blocked until yield calibration."
         ),
-    }
+    })
 
 
 def zone_illustration(
@@ -216,7 +257,7 @@ def zone_illustration(
     share = None
     if council_measured_total is not None and council_measured_total > 0:
         share = measured / council_measured_total
-    return {
+    return stamp_blocked({
         "status": STATUS,
         "lens": LENS,
         "lens_note": LENS_NOTE,
@@ -249,6 +290,7 @@ def zone_illustration(
         },
         "note": (
             "Illustrated collection = Surface Rent measured_rent × capture_rate. "
-            "Research estimate only; not AGR and not a tax bill."
+            "Research estimate only; not AGR and not a tax bill. "
+            "Output is publication_status=blocked until yield calibration."
         ),
-    }
+    })

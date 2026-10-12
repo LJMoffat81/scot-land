@@ -113,15 +113,7 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     "/georgist/wealth": LayerRule("zone", "zone", "modelled", site_rows_from=_SITE_POINT_TABLES,
                                   note="Data Zone surface rent; site rows from point tables are checked per row"),
     "/layers/georgist/surface-rent": LayerRule("zone", "zone", "modelled", note="Data Zone polygons only"),
-    # Tax scenario tools: council/national aggregates of zone Surface Rent × capture rate (policy illustration).
-    "/georgist/tax-scenario": LayerRule(
-        "zone", "zone", "modelled",
-        note="Aggregates publishable Data Zone Surface Rent by council; no sub-zone geometry",
-    ),
-    "/georgist/tax-scenario/zone": LayerRule(
-        "zone", "zone", "modelled",
-        note="Single Data Zone Surface Rent × capture rate; council context from zone sums",
-    ),
+    # Tax scenario tools live under /internal only (publication_status=blocked until yield calibration).
     "/layers/georgist/resource-rent": LayerRule("site", "site", "measured", sources=SITE_PUBLIC_SOURCES),
     "/layers/georgist/eco-rent": LayerRule("site", "site", "measured", sources=SITE_PUBLIC_SOURCES),
     "/layers/context/data-zones/at": LayerRule("zone", "zone", "none", note="code, vintage, name"),

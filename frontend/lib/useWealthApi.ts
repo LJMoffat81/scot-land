@@ -200,76 +200,6 @@ export interface SurfaceRentLayer {
   zero_dwellings: string[];
 }
 
-/** Wealth Engine tax-scenario scaffold: Surface Rent × capture rate (not AGR). */
-export interface TaxScenarioCouncilRow {
-  la_code: string;
-  la_name: string;
-  zone_count: number;
-  price_year: number | null;
-  measured_rent_total_gbp: number | null;
-  illustrated_collection_gbp: number | null;
-  status: string;
-  disclaimer: string;
-}
-
-export interface TaxScenarioResponse {
-  ok: boolean;
-  status: string;
-  lens: "surface_rent";
-  lens_note: string;
-  disclaimer: string;
-  capture_rate: number;
-  capture_note: string;
-  price_year: number | null;
-  vintage: Vintage;
-  national: {
-    zone_count: number;
-    measured_rent_total_gbp: number | null;
-    illustrated_collection_gbp: number | null;
-    price_year?: number | null;
-    status?: string;
-    disclaimer?: string;
-  };
-  by_council: TaxScenarioCouncilRow[];
-  preset_rates: number[];
-  note: string;
-  source?: string;
-}
-
-export interface TaxScenarioZoneResponse {
-  ok: boolean;
-  status: string;
-  lens: "surface_rent";
-  lens_note: string;
-  disclaimer: string;
-  capture_rate: number;
-  capture_note: string;
-  zone: {
-    code: string;
-    vintage: Vintage;
-    la_code: string;
-    la_name: string;
-    price_year: number | null;
-    measured_rent_gbp: number | null;
-    illustrated_collection_gbp: number | null;
-    share_of_council_measured_rent: number | null;
-    status: string;
-    disclaimer: string;
-  };
-  council: {
-    la_code: string;
-    la_name: string;
-    zone_count: number | null;
-    measured_rent_total_gbp: number | null;
-    illustrated_collection_gbp: number | null;
-    status: string;
-    disclaimer: string;
-  };
-  note: string;
-  vintage: Vintage;
-  zone_id: string;
-}
-
 /** A failed call, with the API's structured detail when it sent one. */
 export interface ApiFailure {
   status: number; // 0 = network error
@@ -380,40 +310,9 @@ export function useWealthApi() {
     [],
   );
 
-  const fetchTaxScenario = useCallback(
-    (opts: { vintage?: Vintage; captureRate?: number; laCode?: string } = {}) => {
-      const q = new URLSearchParams({
-        vintage: String(opts.vintage ?? 2011),
-        capture_rate: String(opts.captureRate ?? 1),
-      });
-      if (opts.laCode) q.set("la_code", opts.laCode);
-      return getJson<TaxScenarioResponse>(`/georgist/tax-scenario?${q.toString()}`);
-    },
-    [],
-  );
-
-  const fetchTaxScenarioZone = useCallback(
-    (zoneId: string, opts: { vintage?: Vintage; captureRate?: number } = {}) => {
-      const q = new URLSearchParams({
-        zone_id: zoneId,
-        capture_rate: String(opts.captureRate ?? 1),
-      });
-      if (opts.vintage) q.set("vintage", String(opts.vintage));
-      return getJson<TaxScenarioZoneResponse>(`/georgist/tax-scenario/zone?${q.toString()}`);
-    },
-    [],
-  );
-
+  // Tax scenario tools are internal-only (publication_status=blocked) until yield
+  // calibration lands — not exposed on the public map or useWealthApi.
   // No resource/eco fetchers: today those layers hold only mock data, which the
   // public API does not serve (rules v0.4 section 2). Developers use /internal/...
-  return {
-    isLoading,
-    failure,
-    fetchDataZoneAt,
-    fetchTotalWealth,
-    lookupWealthAt,
-    fetchSurfaceRentLayer,
-    fetchTaxScenario,
-    fetchTaxScenarioZone,
-  };
+  return { isLoading, failure, fetchDataZoneAt, fetchTotalWealth, lookupWealthAt, fetchSurfaceRentLayer };
 }

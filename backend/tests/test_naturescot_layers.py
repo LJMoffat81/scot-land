@@ -14,17 +14,25 @@ GLASGOW_BBOX = {
 }
 
 
+OGL_V3_URL = (
+    "https://www.nationalarchives.gov.uk/doc/"
+    "open-government-licence/version/3/"
+)
+
+
 def test_catalog_includes_sssi_and_naturescot_with_ogl():
     layers = {row["id"]: row for row in platform_catalog()["layers"]}
     sssi = layers["sssi"]
     assert sssi["status"] == "live"
     assert sssi["licence"] == "OGL-3.0"
+    assert sssi["licence_url"] == OGL_V3_URL
     assert sssi["endpoint"] == "/layers/open/sssi"
     assert "nature.scot" in (sssi.get("source_url") or "")
 
     des = layers["naturescot_designations"]
     assert des["status"] == "live"
     assert des["licence"] == "OGL-3.0"
+    assert des["licence_url"] == OGL_V3_URL
     assert des["endpoint"] == "/layers/open/naturescot-designations"
     assert "nature.scot" in (des.get("source_url") or "")
 

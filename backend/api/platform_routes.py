@@ -641,6 +641,22 @@ def open_downloads() -> dict:
                 ),
             },
             {
+                "id": "sssi_overlay",
+                "label": "SSSI overlay (this API — PostGIS ingest)",
+                "licence": "OGL-3.0",
+                "endpoint": "/layers/open/sssi",
+                "url": "https://opendata.nature.scot/maps/sites-of-special-scientific-interest",
+                "note": "NatureScot SSSI. 503 when PostGIS table unloaded.",
+            },
+            {
+                "id": "naturescot_designations_overlay",
+                "label": "NatureScot designations overlay (SPA / SAC / NNR)",
+                "licence": "OGL-3.0",
+                "endpoint": "/layers/open/naturescot-designations",
+                "url": "https://opendata.nature.scot/",
+                "note": "NatureScot SPA, SAC, NNR. 503 when PostGIS table unloaded.",
+            },
+            {
                 "id": "council_agr",
                 "label": "Council AGR metrics GeoJSON",
                 "licence": "research estimate + OGL inputs",

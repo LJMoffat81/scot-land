@@ -138,6 +138,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     "/layers/open/data-zones": LayerRule(
         "zone", "zone", "none", note="Data Zone outlines by bbox; code/name only, no rent"
     ),
+    "/layers/open/dz-context": LayerRule(
+        "zone",
+        "zone",
+        "measured",
+        note="Data Zone HPI/SIMD/population density context; ledger frame row 1; no modelled AGR £",
+    ),
     "/layers/open/hydro": LayerRule(
         "site",
         "site",

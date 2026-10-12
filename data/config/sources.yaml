@@ -24,6 +24,61 @@ hpi:
   period: "2026-03"
   scotland_region_code: S92000003
 
+# Data Zone context (HPI / SIMD / population density) — OGL NRS/SG (+ RoS prices, UK HPI).
+# Attributes in PostGIS via gis/dz_context_metrics.csv. Polygons from dz_boundaries (separate).
+dz_context_metrics:
+  role: data_zone_hpi_simd_population_density
+  path: data/processed/gis/dz_context_metrics.csv
+  postgis_table: processed.gis_dz_context_metrics
+  endpoint: /layers/open/dz-context
+  licence: OGL v3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  ledger_role: ledger-frame
+  ledger_row: "1"
+  ui_surface: ledger
+  attribution: >
+    Contains National Records of Scotland data (small area population estimates)
+    © Crown copyright and database right 2026; contains Scottish Government data
+    (SIMD 2020v2) © Crown copyright 2025; contains Registers of Scotland data
+    (residential sales and price) © Crown copyright 2026; UK House Price Index
+    © Crown copyright (HM Land Registry, Registers of Scotland, ONS).
+    Licensed under the Open Government Licence v3.0.
+  build: python etl/gis/build_dz_context_metrics.py
+  sources:
+    simd:
+      name: SIMD 2020v2 data zone look-up
+      publisher: Scottish Government
+      licence: OGL v3.0
+      url: https://www.gov.scot/publications/scottish-index-of-multiple-deprivation-2020v2-data-zone-look-up/
+    population:
+      name: NRS small area population estimates
+      publisher: National Records of Scotland
+      licence: OGL v3.0
+      url: https://www.nrscotland.gov.uk/publications/small-area-population-estimates-mid-2024-2022-data-zones/
+    zone_area:
+      name: Data Zone area (ha) from GIS dz_residential_land
+      publisher: Scottish Government boundaries via Scot-LAND GIS
+      licence: OGL v3.0
+      url: https://www.spatialdata.gov.scot/
+    ros_house_prices:
+      name: House prices — residential properties sales and price
+      publisher: Registers of Scotland / Scottish Government
+      licence: OGL v3.0
+      url: https://data.gov.scot/dataset/house_prices___residential_properties_sales_and_price
+    uk_hpi:
+      name: UK House Price Index (council averages, attributed via LA)
+      publisher: HM Land Registry / RoS / ONS
+      licence: OGL v3.0
+      url: https://publicdata.landregistry.gov.uk/market-trend-data/house-price-index-data/
+  gaps:
+    - UK HPI has no Data Zone series — council HPI is attributed via LA code
+    - RoS sale medians are DZ2011 only (2004–2023 open file)
+    - Map polygons require dz_boundaries (separate GIS boundaries work)
+  metrics:
+    - house_price
+    - simd
+    - pop_density
+
 postcodes:
   name: postcodes.io
   licence: open
@@ -537,6 +592,10 @@ map_layers:
       - site_capital
       - simd
       - pop_density
+    note: >
+      House price / SIMD / population density choropleths move to Data Zone
+      grain via dz_context_metrics (/layers/open/dz-context). Council AGR
+      metrics stay on /layers/councils (research estimates; not public £ until calibrated).
   context_stats:
     path: data/processed/context_by_council.json
     simd: SIMD 2020v2 local authority shares (SG open)
@@ -620,6 +679,17 @@ map_layers:
       ledger_row: null
       ui_surface: ledger
       note: Tabular extents (ha); no national OGL polygon overlay
+    - id: dz_context
+      source: GIS dz_context_metrics (NRS/SG/RoS/UK HPI OGL)
+      endpoint: /layers/open/dz-context
+      licence: OGL v3.0
+      licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+      ledger_role: ledger-frame
+      ledger_row: "1"
+      ui_surface: ledger
+      note: >-
+        Data Zone HPI/SIMD/density surface inputs for ledger row 1 (zone grain).
+        Polygons when dz_boundaries loaded. No modelled AGR £.
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
   # SEPA flood MapServer is not allowlisted — OGL download → PostGIS only.

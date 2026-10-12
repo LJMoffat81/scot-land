@@ -15,6 +15,7 @@ from layers.common_good import place_common_good
 from layers.council_metrics import METRIC_DEFS
 from layers.crofting import catalog_common_grazings, catalog_crofting_register
 from layers.crofting import place_crofting
+from layers.dz_context import catalog_layers as dz_context_catalog_layers
 from layers.flood import catalog_layer as flood_catalog_layer
 from layers.hla import SPATIAL_HUB_URL as SPATIAL_HUB_HLA
 from layers.hla import query_point as hla_at_point
@@ -192,6 +193,7 @@ def platform_catalog() -> dict[str, Any]:
                 "ledger_row": "1a",
                 "ui_surface": "ledger",
             },
+            *dz_context_catalog_layers(),
             {
                 "id": "public_crown",
                 "group": "ownership",

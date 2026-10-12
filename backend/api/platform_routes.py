@@ -18,6 +18,7 @@ from georgist.place_stack import (
 )
 from layers.common_good import common_good_payload
 from layers.crofting import crofting_payload
+from layers.dz_context import build_metrics_payload
 from layers.ldp import coverage_summary as ldp_coverage
 from layers.ldp import query_bbox as ldp_bbox
 from layers.open_stats import (
@@ -73,6 +74,33 @@ def layer_open_vdl(
                 "Vacant and derelict land overlay is not available: "
                 f"{meta.get('error') or 'upstream source failed'}. "
                 "SVDLS survey sites only — gaps are not filled with guesses."
+            ),
+        )
+    return JSONResponse(payload)
+
+
+@router.get("/layers/open/dz-context")
+def layer_open_dz_context(
+    vintage: int = Query(default=2011, description="Data Zone vintage: 2011 or 2022"),
+) -> JSONResponse:
+    """Data Zone house prices, SIMD and population density (OGL context).
+
+    Attributes always load from the staged GIS metrics table. Zone polygons are
+    included only when ``dz_boundaries`` is loaded — never invented. No modelled
+    AGR £ is attached.
+    """
+    if vintage not in (2011, 2022):
+        raise HTTPException(
+            status_code=422,
+            detail={"error": "invalid_vintage", "message": "vintage must be 2011 or 2022"},
+        )
+    payload = build_metrics_payload(vintage=vintage, include_geometry=True)
+    if not payload.get("features"):
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Data Zone context metrics are not available "
+                "(dz_context_metrics not staged). Gaps are not filled with guesses."
             ),
         )
     return JSONResponse(payload)
@@ -658,6 +686,13 @@ def open_downloads() -> dict:
                 "licence": "OGL v3.0 — Scottish Government / OS",
                 "endpoint": "/layers/open/data-zones",
                 "note": "Simplified GeoJSON by bbox. Outlines only — no AGR £.",
+            },
+            {
+                "id": "dz_context",
+                "label": "Data Zone HPI / SIMD / population density",
+                "licence": "OGL v3.0",
+                "endpoint": "/layers/open/dz-context",
+                "note": "Ledger-frame surface inputs for row 1; no modelled AGR £",
             },
             {
                 "id": "ldp_allocations",

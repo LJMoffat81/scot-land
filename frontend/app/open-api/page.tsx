@@ -79,6 +79,14 @@ export default function OpenApiPage() {
           </span>
         </li>
         <li>
+          Data Zone house prices, SIMD and population density (OGL context;
+          ledger frame for row 1; polygons when boundaries are loaded — no
+          modelled AGR £)
+          <span className="download-path">
+            GET /layers/open/dz-context?vintage=2011
+          </span>
+        </li>
+        <li>
           LDP allocations in view from PostGIS (OGL Spatial Hub / authority
           seeds; 503 when the table is empty; national coverage is fragmented;
           feeds ledger nested row 1a)

@@ -169,8 +169,8 @@ export function PlaceCard({
           </section>
 
           <p className="place-card-disclaimer">
-            Ownership and survey context only. No modelled plot AGR £ on this
-            card. Research map — not a title or a rates bill.
+            Ownership and survey context only. No modelled plot Annual Ground
+            Rent on this card. Research map — not a title or a rates bill.
           </p>
         </div>
       ) : null}

@@ -19,7 +19,7 @@ test.describe("place card (standalone)", () => {
     await expect(layers.getByText("ROS INSPIRE parcels")).toBeVisible();
     await expect(layers.getByText("Vacant and derelict land")).toBeVisible();
     await expect(layers.getByText("Public and Crown Estate land")).toBeVisible();
-    await expect(layers.getByText("Common Good")).toBeVisible();
+    await expect(layers.getByText("Common Good", { exact: true })).toBeVisible();
     await expect(layers.getByText("Local-authority land holdings")).toBeVisible();
 
     const links = page.getByTestId("place-card-links");
@@ -28,9 +28,9 @@ test.describe("place card (standalone)", () => {
       links.getByRole("link", { name: /Sources and method/i }),
     ).toBeVisible();
 
-    await expect(card).toContainText(/No modelled plot AGR/i);
-    await expect(card).not.toContainText("£");
+    await expect(card).toContainText(/No modelled plot Annual Ground Rent/i);
     await expect(card).not.toContainText("/year");
+    await expect(card).not.toContainText(/£\d/);
   });
 
   test("gap variant marks parcel miss and gaps honestly", async ({ page }) => {

@@ -76,7 +76,7 @@ function PlaceCardPreviewInner() {
       </div>
       <p className="place-card-preview-note">
         Standalone place-card preview ({variant}). Slots into the w3w shell via{" "}
-        <code>GET /platform/place</code>. No modelled AGR £.
+        <code>GET /platform/place</code>. No modelled Annual Ground Rent.
       </p>
     </main>
   );

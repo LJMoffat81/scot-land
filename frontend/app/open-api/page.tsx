@@ -53,10 +53,6 @@ export default async function OpenApiPage() {
       <h2>One place</h2>
       <ul>
         <li>
-          The Annual Ground Rent at a point on the map
-          <span className="download-path">GET /square?lat=&amp;lng=</span>
-        </li>
-        <li>
           A short card for one postcode
           <span className="download-path">
             <a href="/api/place.json?pc=EH1+1YZ">

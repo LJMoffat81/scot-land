@@ -47,6 +47,8 @@ from layers.woodland import LayerUnavailable as WoodlandUnavailable
 from layers.woodland import query_native_woodland_bbox, query_nfi_bbox
 from layers.crown_estate_leases import query_bbox as crown_estate_leases_bbox
 from layers.repd import query_bbox as repd_bbox
+from layers.lca import LayerUnavailable as LcaUnavailable
+from layers.lca import query_bbox as lca_bbox
 
 router = APIRouter()
 
@@ -513,6 +515,37 @@ def layer_open_crown_estate_leases(
     return JSONResponse(payload)
 
 
+
+@router.get("/layers/open/lca")
+def layer_open_lca(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=200, ge=1, le=200),
+) -> JSONResponse:
+    """Land Capability for Agriculture polygons in the viewport (PostGIS ingest).
+
+    James Hutton Institute Open Data Licence (PSI under OGL v2.0 — not pure
+    OGL). Returns **503** when ``lca_agriculture`` is missing or empty — never
+    invents capability polygons. An empty FeatureCollection with meta.ok=true
+    means no polygons in view. Ledger constraint (£0) — changes best use only.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    if south >= north or west >= east:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid bbox: require south < north and west < east",
+        )
+    try:
+        return JSONResponse(
+            lca_bbox(south, west, north, east, max_features=max_features)
+        )
+    except LcaUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+
 @router.get("/platform/place")
 def platform_place(
     lat: float = Query(..., ge=-90, le=90),
@@ -837,6 +870,28 @@ def open_downloads() -> dict:
                 "endpoint": "/layers/open/naturescot-designations",
                 "url": "https://opendata.nature.scot/",
                 "note": "PostGIS bbox after local OGL ingest; 503 when unloaded.",
+            },
+            {
+                "id": "lca_overlay",
+                "label": "Land Capability for Agriculture overlay (this API)",
+                "licence": (
+                    "James Hutton Institute Open Data Licence "
+                    "(not OGL-3.0; PSI clause under OGL v2.0)"
+                ),
+                "licence_url": (
+                    "https://www.hutton.ac.uk/wp-content/uploads/2024/05/"
+                    "The-James-Hutton-Institute-Open-Data-Licence-download.pdf"
+                ),
+                "endpoint": "/layers/open/lca",
+                "url": (
+                    "https://www.hutton.ac.uk/sites/default/files/files/soils/"
+                    "downloads/Hutton_LCA250K_OpenData.zip"
+                ),
+                "note": (
+                    "PostGIS ingest of Hutton LCA 1:250k. Ledger constraint (£0) — "
+                    "not a rent or title. Redistribution / derived data on equivalent "
+                    "Hutton terms with required attribution. 503 when unloaded."
+                ),
             },
             {
                 "id": "data_zone_boundaries",

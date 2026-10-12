@@ -36,8 +36,11 @@ def test_null_dz_fill_target_documented(cfg):
     assert cfg["model_fill"]["null_dz_fill_target_n"] == 727
     assert cfg["model_fill"]["publication"] == "internal_calibration_only"
     assert cfg["model_fill"]["status"] == "research_estimate"
-    # Valuation owns r−g; this work must not rewrite the 5% yield placeholder.
-    assert cfg["yield"]["land_yield"] == pytest.approx(0.05)
+    # Yield calibration (PR #19): Georgist INTERNAL provisional central 3.99%
+    # (hash b3442d47). Model-fill work must not silently revert that figure.
+    assert cfg["yield"]["land_yield"] == pytest.approx(0.0399)
+    assert cfg["yield"]["band"]["high_clipped_at_cap"] is True
+    assert (cfg.get("yield_calibration") or {}).get("result_hash") == "b3442d47"
 
 
 def test_fill_null_zones_never_copies_neighbour(cfg):

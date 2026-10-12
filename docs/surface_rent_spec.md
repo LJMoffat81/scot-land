@@ -246,7 +246,7 @@ The v0.3 rules supersede items 1, 2, 4, 6 and 7 in the conflict list above. What
   - Why 1.40: in RoS DZ2011 zone-years 2019–2023, the 95th percentile of mean ÷ median is 1.381 for zones with 5–9 sales and 1.389 for 10–14 sales. So the flag catches roughly the top 1 in 20 small zones.
 - **Rebuild mix for the same homes.** `choose_rebuild_mix()` uses the mix of homes that sold (EPCs lodged for marketed sales in the price window) when there are at least `rebuild_mix.min_sold_records` (5, ASSUMPTION). Otherwise it uses the whole stock. `rebuild_mix_basis` (sold | all_stock) is stamped on every row, and all_stock is also tagged.
 - **Land yield is r − g (rule 1).**
-  - Config holds one figure, `yield.land_yield` (0.05, ASSUMPTION), which is also the thin-cell fallback.
+  - Config holds one figure, `yield.land_yield` (Georgist INTERNAL provisional 0.0399, hash b3442d47; band 3.52–4.50% clipped at 4.5%), which is also the thin-cell fallback.
   - `configured_land_yield()` refuses `r`, `g`, `discount_rate` or `growth_rate` in the yield config.
   - r and g may appear only under `scenarios`. `scenario_r_g()` and `capital_value(..., scenario=)` assert r − g == land_yield. V = R / land_yield, derived only.
 - **Two-route check (12.1).** A pair counts only when its rent evidence is `saa_rateable_value`, or `brma_held_out` for a BRMA not in `calibration_brmas`. Same-cell PRS pairs are dropped and counted in `n_dropped_not_independent`. With nothing countable, `status = not_applicable` and `pass = None`. The shared rebuild assumption is still recorded.

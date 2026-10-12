@@ -320,7 +320,7 @@ surface_rent:
     note: >
       Fills null residential Data Zones via per-UR6-class log-linear prediction.
       Never copies a neighbour. Thin classes borrow adjacent-class training rows
-      (tag borrowed_class). Leave yield.land_yield (5% placeholder) untouched.
+      (tag borrowed_class). Yield figure is owned by yield_calibration (INTERNAL 3.99%, hash b3442d47).
 
   drivers:
     allowed:

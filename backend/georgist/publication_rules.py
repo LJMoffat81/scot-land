@@ -177,6 +177,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="Natural capital ledger skeleton; placeholders only, no published AGR £",
     ),
+    "/layers/open/community-ownership": LayerRule(
+        "site",
+        "site",
+        "none",
+        note="SG community ownership OGL points from PostGIS; ownership-context; no rent",
+    ),
     "/platform/place": LayerRule("site", "site", "none", note="ownership/vacant/gap card; no modelled rent"),
     "/platform/gaps": LayerRule("zone", "zone", "none", note="register gap catalogue"),
     "/api/catalog.json": LayerRule("zone", "zone", "none", note="open-data catalogue"),

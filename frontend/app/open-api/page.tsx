@@ -79,6 +79,14 @@ export default function OpenApiPage() {
           </span>
         </li>
         <li>
+          Community ownership assets in view from the Scottish Government 2024
+          OGL dataset (PostGIS postcode centroids; ownership-context; 503 when
+          unloaded)
+          <span className="download-path">
+            GET /layers/open/community-ownership?south=&amp;west=&amp;north=&amp;east=
+          </span>
+        </li>
+        <li>
           Data Zone house prices, SIMD and population density (OGL context;
           ledger frame for row 1; polygons when boundaries are loaded — no
           modelled AGR £)

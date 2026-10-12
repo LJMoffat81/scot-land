@@ -165,6 +165,23 @@ Registry: `data/config/sources.yaml` → `ldp_allocations`. Never commit raw Spa
 
 Catalog layers: `crofting_register`, `common_grazings` (status `linked`, lists only / `boundaries: false`). Do not invent on-point croft geometry.
 
+## Community ownership (SG 2024 OGL points)
+
+| Field | Value |
+|-------|--------|
+| Publication | https://www.gov.scot/publications/community-ownership-in-scotland-2024/ |
+| Dataset docs | https://www.gov.scot/publications/community-ownership-in-scotland-2024/documents/ |
+| Licence | Open Government Licence v3.0 |
+| Geometry | postcodes.io centroid of published asset postcode — **not** a title polygon |
+| Processed | `data/processed/gis/community_ownership_assets.geojson` |
+| PostGIS | `community_ownership_assets` via `python -m etl.ingest_community_ownership` |
+| Schema / Alembic | `backend/db/schema/014_community_ownership.sql` / `20261012_0011` |
+| BBox API | `GET /layers/open/community-ownership` → **503** when unloaded |
+| Ledger | `ownership-context` (who/outline) — not a LayersPanel toggle, not a rent row |
+
+Registry: `data/config/sources.yaml` → `community_ownership`. Do not commit raw XLSX under `data/external`.
+
+
 ## Vacant and derelict land (SVDLS)
 
 | Field | Value |

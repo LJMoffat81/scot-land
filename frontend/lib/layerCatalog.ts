@@ -158,6 +158,12 @@ export const LAYER_ATTRIBUTION: Record<
       "https://www.nrscotland.gov.uk/publications/small-area-population-estimates-mid-2024-2022-data-zones/",
   },
 
+  community_ownership: {
+    source: "Community Ownership in Scotland 2024",
+    licence: "Open Government Licence v3.0",
+    sourceUrl:
+      "https://www.gov.scot/publications/community-ownership-in-scotland-2024/",
+  },
   la_holdings: {
     source: "Spatial Hub — Land Ownership Scotland",
     licence: "Not openly licensed for this portal",

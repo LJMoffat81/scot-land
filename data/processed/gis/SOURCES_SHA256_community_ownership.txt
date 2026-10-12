@@ -1,0 +1,4 @@
+ed9d107c9a033d08540c59c5f18d7a8d18dba66abb92fdd85c11ee1e40fe154f  Community_Ownership_in_Scotland_2024_-_Dataset.xlsx
+# source: https://www.gov.scot/publications/community-ownership-in-scotland-2024/documents/
+# licence: Open Government Licence v3.0
+# geocode: postcodes.io centroids; 853 of 853 assets

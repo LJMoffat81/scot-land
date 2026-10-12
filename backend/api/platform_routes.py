@@ -41,6 +41,8 @@ from layers.naturescot import LayerUnavailable as NatureScotUnavailable
 from layers.naturescot import query_designations_bbox as naturescot_designations_bbox
 from layers.naturescot import query_sssi_bbox as sssi_bbox
 from layers.vdl import query_bbox as vdl_bbox
+from layers.community_ownership import LayerUnavailable as CommunityOwnershipUnavailable
+from layers.community_ownership import query_bbox as community_ownership_bbox
 
 router = APIRouter()
 
@@ -354,6 +356,37 @@ def natural_capital_ledger() -> dict:
     Amounts are placeholders until ECONOMIC_RULES / calibration approve.
     """
     return ledger_payload()
+
+
+@router.get("/layers/open/community-ownership")
+def layer_open_community_ownership(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=200, ge=1, le=200),
+) -> JSONResponse:
+    """Community ownership asset points in the viewport (SG 2024 OGL).
+
+    Served from PostGIS ingest of the published asset dataset (postcode
+    centroids). Returns **503** when the table is missing or empty — never
+    invents holdings. An empty FeatureCollection with meta.ok=true means no
+    assets in view.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    if south >= north or west >= east:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid bbox: require south < north and west < east",
+        )
+    try:
+        payload = community_ownership_bbox(
+            south, west, north, east, max_features=max_features
+        )
+    except CommunityOwnershipUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return JSONResponse(payload)
+
 
 @router.get("/platform/place")
 def platform_place(

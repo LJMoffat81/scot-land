@@ -414,6 +414,39 @@ crofting:
     - Spatial Hub Decrofted Areas is Restricted (not an alternative)
     - Individuals CSV not ingested (personal data)
 
+community_ownership:
+  name: Community Ownership in Scotland 2024
+  role: community_owned_asset_overlay
+  geometry: points_only
+  publication: Community Ownership in Scotland 2024 (gov.scot)
+  licence: Open Government Licence v3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  attribution: >-
+    Community Ownership in Scotland 2024. Contains public sector information
+    licensed under the Open Government Licence v3.0. © Scottish Government.
+    Points are postcode centroids of published assets — not title polygons.
+  source_url: https://www.gov.scot/publications/community-ownership-in-scotland-2024/
+  dataset_url: >-
+    https://www.gov.scot/publications/community-ownership-in-scotland-2024/documents/
+  area_stats_url: >-
+    https://opendata.scot/datasets/scottish+government-community+ownership+-+area+of+land/
+  vintage: "2024-12 (as at December 2024)"
+  processed_geojson: data/processed/gis/community_ownership_assets.geojson
+  postgis_table: community_ownership_assets
+  bbox_endpoint: /layers/open/community-ownership
+  ingest: python -m etl.ingest_community_ownership
+  geometry_source: postcode_centroid
+  geocode: postcodes.io
+  ledger_role: ownership-context
+  ledger_row: null
+  ui_surface: ledger
+  gaps:
+    - Points are postcode centroids — not title extents
+    - Some assets have no published area (Sasine)
+    - Confidential assets excluded from the open dataset
+    - Spatial Hub CAT register remains login-gated for WFS (separate product)
+
+
 vdl:
   name: Scottish Vacant and Derelict Land Survey (SVDLS)
   role: vacant_and_derelict_site_overlay
@@ -690,6 +723,15 @@ map_layers:
       note: >-
         Data Zone HPI/SIMD/density surface inputs for ledger row 1 (zone grain).
         Polygons when dz_boundaries loaded. No modelled AGR £.
+    - id: community_ownership
+      source: SG Community Ownership in Scotland 2024 Dataset (OGL)
+      endpoint: /layers/open/community-ownership
+      licence: Open Government Licence v3.0
+      licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+      ledger_role: ownership-context
+      ledger_row: null
+      ui_surface: ledger
+      note: Postcode-centroid points in PostGIS — not title polygons; ownership-context (who/outline), not a rent row
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
   # SEPA flood MapServer is not allowlisted — OGL download → PostGIS only.

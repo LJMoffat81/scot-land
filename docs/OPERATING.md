@@ -1,5 +1,35 @@
 # Operating the professional tool
 
+## Mandatory post-deploy smoke
+
+After every production or preview deploy, run the smoke scripts before calling
+the release good. They must exit **non-zero** on any failure.
+
+```powershell
+# PowerShell (Windows / pwsh)
+.\scripts\smoke.ps1 -BaseUrl https://YOUR-SITE
+# or split front/API:
+.\scripts\smoke.ps1 -SiteUrl https://YOUR-SITE -ApiUrl https://YOUR-API
+```
+
+```bash
+# Bash (Linux / macOS / CI)
+./scripts/smoke.sh https://YOUR-SITE
+# or:
+SITE_URL=https://YOUR-SITE API_URL=https://YOUR-API ./scripts/smoke.sh
+```
+
+Checks (pass/fail table printed to stdout):
+
+| Check | Pass when |
+|-------|-----------|
+| Site `/` | HTTP **200** |
+| `GET /health` | HTTP **200** and `git_commit` present |
+| Each **live** catalog layer with a bbox `endpoint` | HTTP **200** with **>0** features, **or** HTTP **503** honest not-yet-loaded |
+
+Do not treat empty **200** FeatureCollections as success. Linked/gap catalog
+rows without drawable endpoints are skipped.
+
 ## Daily local loop
 
 ```powershell

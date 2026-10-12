@@ -547,6 +547,35 @@ def platform_catalog() -> dict[str, Any]:
                 "ui_surface": "ledger",
             },
             {
+                "id": "ces_aquaculture",
+                "group": "natural_capital",
+                "status": "live",
+                "label": "CES aquaculture seabed leases",
+                "description": (
+                    "Crown Estate Scotland Spatial Hub aquaculture seabed lease "
+                    "polygons (OGL). Natural capital ledger row 5 (aquaculture) — "
+                    "not a LayersPanel toggle. Natural-capital evidence "
+                    "(value_tier=market): lease attributes/status only — no £ rent "
+                    "or fee on features; overlay never adds to Surface Rent or AGR; "
+                    "not a title. SEPA biomass stays GIS HOLD."
+                ),
+                "endpoint": "/layers/open/ces-aquaculture",
+                "licence": "OGL-3.0",
+                "licence_url": OGL_V3_URL,
+                "minzoom": 5,
+                "source_url": CROWN_ESTATE_HUB,
+                "attribution": (
+                    "Contains information from the Crown Estate Scotland licensed "
+                    "under the Open Government Licence v3.0."
+                ),
+                "value_tier": "market",
+                "adds_to_surface_rent": False,
+                "publication_status": "ok",
+                "ledger_role": "ledger-row",
+                "ledger_row": "5",
+                "ui_surface": "ledger",
+            },
+            {
                 "id": "la_holdings",
                 "group": "ownership",
                 "status": "gap",

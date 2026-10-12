@@ -116,6 +116,13 @@ export default function OpenApiPage() {
             GET /layers/open/naturescot-designations?south=&amp;west=&amp;north=&amp;east=
           </span>
         </li>
+        <li>
+          CES aquaculture seabed leases in view (PostGIS; OGL Spatial Hub;
+          ledger row 5; attributes/status only — no £ rent; 503 when unloaded)
+          <span className="download-path">
+            GET /layers/open/ces-aquaculture?south=&amp;west=&amp;north=&amp;east=
+          </span>
+        </li>
       </ul>
 
       <h2>Tables</h2>

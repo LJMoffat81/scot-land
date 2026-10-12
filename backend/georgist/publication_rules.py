@@ -160,6 +160,15 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="REPD onshore wind MW/status points; ledger row 3; natural-capital evidence only, no rent",
     ),
+    "/layers/open/ces-aquaculture": LayerRule(
+        "site",
+        "site",
+        "none",
+        note=(
+            "CES aquaculture seabed lease polygons (OGL); ledger row 5; "
+            "attributes/status only — no rent or fee on features"
+        ),
+    ),
     "/layers/open/data-zones": LayerRule(
         "zone", "zone", "none", note="Data Zone outlines by bbox; code/name only, no rent"
     ),

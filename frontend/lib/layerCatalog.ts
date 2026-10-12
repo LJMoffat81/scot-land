@@ -30,6 +30,8 @@ export type CatalogLayer = {
   value_tier?: "market" | "proxy" | "shadow" | string;
   commons_class?: string;
   publication_status?: string;
+  /** When false, overlay must never feed Surface Rent / AGR totals. */
+  adds_to_surface_rent?: boolean;
   /** Natural capital ledger mapping (FRONTEND_IA) — not a LayersPanel toggle. */
   ledger_role?:
     | "ledger-row"
@@ -222,6 +224,13 @@ export const LAYER_ATTRIBUTION: Record<
     licence: "OGL-3.0",
     sourceUrl:
       "https://www.gov.uk/government/publications/renewable-energy-planning-database-quarterly-extract",
+  },
+  ces_aquaculture: {
+    source: "Crown Estate Scotland Spatial Hub — aquaculture seabed leases",
+    licence:
+      "OGL-3.0 — Contains information from the Crown Estate Scotland licensed under the Open Government Licence v3.0. No £ rent",
+    sourceUrl:
+      "https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/",
   },
   la_holdings: {
     source: "Spatial Hub — Land Ownership Scotland",

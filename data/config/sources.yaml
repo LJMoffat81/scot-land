@@ -236,6 +236,35 @@ sepa_car:
     - No £ rent — natural-capital licence inventory only
     - Full extract is not committed; load via ingest into PostGIS
 
+ces_aquaculture:
+  name: CES aquaculture seabed leases
+  role: natural_capital_aquaculture_overlay
+  publisher: Crown Estate Scotland
+  licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  ledger_role: ledger-row
+  ledger_row: "5"
+  ui_surface: ledger
+  attribution: >-
+    Contains information from the Crown Estate Scotland licensed under the
+    Open Government Licence v3.0.
+  source_url: https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/
+  feature_server: >-
+    https://services3.arcgis.com/nGV4jiurzcahJ9LV/arcgis/rest/services/Aquaculture_Crown_Estate_Scotland/FeatureServer/0
+  postgis_table: ces_aquaculture_leases
+  bbox_endpoint: /layers/open/ces-aquaculture
+  ingest: python -m etl.ingest_ces_aquaculture
+  value_tier: market
+  adds_to_surface_rent: false
+  gaps:
+    - Lease polygons as published by CES — not a Land Register title
+    - No £ rent or fee on this layer — attributes/status only (same discipline as ScotWind)
+    - Overlay never adds to Surface Rent or AGR
+    - Ledger row 5 aquaculture evidence — not a LayersPanel toggle
+    - Separate from offshore energy leases (row 4) and SEPA biomass (GIS HOLD)
+    - Distinct from context-tiles seabed-leases proxy (live ArcGIS, not PostGIS)
+    - Full extract is not committed; load via ingest into PostGIS
+
 public_land:
   name: Scottish Public and Crown Estate Land 2024
   role: public_sector_holdings_overlay
@@ -1131,6 +1160,17 @@ map_layers:
       ui_surface: ledger
       value_tier: market
       note: Ledger row 3 onshore wind MW/status — natural-capital evidence; never adds to Surface Rent
+    - id: ces_aquaculture
+      source: CES Spatial Hub aquaculture seabed leases (OGL) via PostGIS
+      endpoint: /layers/open/ces-aquaculture
+      licence: OGL-3.0
+      licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+      ledger_role: ledger-row
+      ledger_row: "5"
+      ui_surface: ledger
+      value_tier: market
+      adds_to_surface_rent: false
+      note: Ledger row 5 aquaculture — attributes/status only; no £ rent/fee on features; never adds to Surface Rent
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
   # SEPA flood MapServer is not allowlisted — OGL download → PostGIS only.

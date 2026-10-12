@@ -48,6 +48,7 @@ from layers.community_ownership import LayerUnavailable as CommunityOwnershipUna
 from layers.community_ownership import query_bbox as community_ownership_bbox
 from layers.woodland import LayerUnavailable as WoodlandUnavailable
 from layers.woodland import query_native_woodland_bbox, query_nfi_bbox
+from layers.ces_aquaculture import query_bbox as ces_aquaculture_bbox
 from layers.crown_estate_leases import query_bbox as crown_estate_leases_bbox
 from layers.repd import query_bbox as repd_bbox
 from layers.lca import LayerUnavailable as LcaUnavailable
@@ -210,6 +211,39 @@ def layer_open_repd_onshore_wind(
                 f"{meta.get('error') or 'PostGIS source not loaded'}. "
                 "Run python -m etl.ingest_repd_onshore_wind on the OGL CSV — "
                 "gaps are not filled with guesses."
+            ),
+        )
+    return JSONResponse(payload)
+
+
+@router.get("/layers/open/ces-aquaculture")
+def layer_open_ces_aquaculture(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=80, ge=1, le=80),
+) -> JSONResponse:
+    """CES aquaculture seabed leases in the viewport (OGL → PostGIS).
+
+    Natural-capital lease polygons only — attributes/status, **no £ rent**
+    or fee on features; never added to Surface Rent or AGR. Ledger row 5.
+    Served from PostGIS after `python -m etl.ingest_ces_aquaculture`.
+    **503** when unloaded.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    payload = ces_aquaculture_bbox(
+        south, west, north, east, max_features=max_features
+    )
+    meta = payload.get("meta") or {}
+    if meta.get("ok") is False:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "CES aquaculture overlay is not available: "
+                f"{meta.get('error') or 'PostGIS table missing'}. "
+                "Run python -m etl.ingest_ces_aquaculture — gaps are not "
+                "filled with guesses."
             ),
         )
     return JSONResponse(payload)

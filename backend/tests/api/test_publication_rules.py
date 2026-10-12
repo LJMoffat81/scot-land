@@ -109,7 +109,7 @@ def test_undeclared_public_route_stops_core_app_and_optional_router(monkeypatch)
 
 
 def _router_paths(module_file: Path) -> list[str]:
-    return re.findall(r'@router\.get\("([^"]+)"', module_file.read_text())
+    return re.findall(r'@(?:router|internal_router)\.get\("([^"]+)"', module_file.read_text())
 
 
 def test_cadastral_parcel_routes_declared_as_plain_shapes():
@@ -120,12 +120,14 @@ def test_cadastral_parcel_routes_declared_as_plain_shapes():
     assert all(pr.rule_for(p).geometry_level == "parcel" for p in parcel_paths)
 
 
-def test_legacy_routers_with_undeclared_routes_would_not_mount():
-    """AGR still has undeclared routes (skipped at boot). Platform is fully declared and mounts."""
-    agr_missing = pr.undeclared(_router_paths(BACKEND / "api" / "agr_routes.py"))
-    assert agr_missing
-    with pytest.raises(pr.PublicationRuleError):
-        pr.check_router("agr_routes.py", _router_paths(BACKEND / "api" / "agr_routes.py"))
+def test_legacy_routers_are_fully_declared_or_internal():
+    """AGR public paths are declared; /internal/... paths are exempt. Platform/cadastral mount."""
+    agr_paths = _router_paths(BACKEND / "api" / "agr_routes.py")
+    public_agr = [p for p in agr_paths if pr.is_public_path(p)]
+    assert public_agr
+    assert pr.undeclared(public_agr) == []
+    pr.check_router("agr_routes.py", public_agr)
+    assert any(p.startswith(pr.INTERNAL_PREFIX) for p in agr_paths)
     assert pr.undeclared(_router_paths(BACKEND / "api" / "platform_routes.py")) == []
     assert pr.undeclared(_router_paths(BACKEND / "api" / "cadastral_routes.py")) == []
 

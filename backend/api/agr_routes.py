@@ -1,10 +1,13 @@
-"""Legacy AGR (Annual Ground Rent) routes, moved verbatim out of api/main.py.
+"""AGR routes under the publication geometry rule.
 
-This router imports modules deleted in 4aa9219 (agr.valuation, agr.zone_prices,
-agr.wide_range, agr.sales_comps, agr.seabed, agr.settlement, validation.*).
-api/main.py imports it inside try/except, logs the failure and skips it, so the
-Wealth API boots without AGR. Restoring those modules brings these routes back
-unchanged. Nothing here was deleted.
+Public router: shapes, metadata, place/address/postcode search, context tiles, and
+the council multi-metric choropleth (council grain). Modelled residual AGR £ on
+plot grain (W3W grid, cell square, assessment packs, validation) and national
+fiscal / councils-agr choropleth live on `internal_router` under /internal/agr/...
+(auth; mounted only when ENABLE_INTERNAL_ENDPOINTS is on).
+
+api/main.py mounts the public router optionally (import or declaration failure
+skips it; /health.routers reports why).
 """
 
 from __future__ import annotations
@@ -18,10 +21,8 @@ import threading
 import time
 
 import httpx
-from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import JSONResponse, Response
-
-from fastapi.responses import PlainTextResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
 from agr.engine import breakdown_to_dict
 from agr.config import load_config
@@ -47,9 +48,6 @@ from layers.council_metrics import build_council_metrics_geojson
 from layers.grid_layer import build_w3w_agr_grid
 from layers.platform import platform_catalog
 from spatial.address import search_door, search_place
-
-
-
 from spatial.context_tiles import (
     fetch_context_geojson,
     fetch_context_tile,
@@ -67,8 +65,23 @@ from api.common import (  # noqa: F401  (re-exported for platform_routes)
     _load_postcode_api_url,
     _scotland_bounds_check,
 )
+from api.internal_auth import require_internal_auth
 
 router = APIRouter()
+internal_router = APIRouter(
+    tags=["internal-agr"],
+    dependencies=[Depends(require_internal_auth)],
+)
+
+INTERNAL_HEADERS = {"X-Wealth-Internal": "true", "Cache-Control": "no-store"}
+INTERNAL_PUBLICATION = {
+    "publication_status": "blocked",
+    "unpublished_reason": "yield_calibration_pending",
+    "note": (
+        "INTERNAL ONLY. Modelled residual AGR £ is blocked from the public map "
+        "until yield calibration (Data Zone publication rule)."
+    ),
+}
 
 
 def agr_health_extras() -> dict:
@@ -81,9 +94,17 @@ def agr_health_extras() -> dict:
         "economist_signoff_status": signoff.get("status", "unknown"),
         "sales_pipeline": "comps_crosscheck",
         "data_policy": "no_portal_scraping",
-        "assessment_reports": True,
+        "assessment_reports": "internal",  # /internal/agr/assessment/report
+        "publication_geometry": "public_shapes_modelled_agr_internal",
         "stamp": engine_stamp(config),
     }
+
+
+def _with_internal_block(payload: dict) -> dict:
+    body = dict(payload)
+    body["internal"] = True
+    body.update(INTERNAL_PUBLICATION)
+    return body
 
 
 def _parse_sensitivity(
@@ -232,44 +253,6 @@ def get_layer_catalog() -> dict:
     return platform_catalog()
 
 
-@router.get("/fiscal/summary")
-def get_fiscal_summary(
-    scenario: str = Query(default="replace_full_basket"),
-    dividend: bool = Query(default=True, description="Include equal-share dividend knobs"),
-    remote_credit: bool = Query(default=True, description="Include remote/island credits"),
-) -> dict:
-    """
-    National fiscal dashboard: tax basket vs AGR collection, surplus, dividend.
-    Uses Sandilands national pool for collection — not the sum of map cells.
-    """
-    try:
-        active = resolve_active_scenario(scenario)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return with_stamp(
-        fiscal_summary(
-            active,
-            dividend_enabled=dividend,
-            remote_credit_enabled=remote_credit,
-        )
-    )
-
-
-@router.get("/layers/councils-agr")
-def layer_councils_agr(
-    scenario: str = Query(default="full_agr"),
-) -> JSONResponse:
-    """Choropleth: multi-metric council layer (default paint = plot AGR)."""
-    try:
-        geo = build_councils_agr_geojson(scenario)
-    except FileNotFoundError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    # Copy so the cached layer is not given a stamp it did not have.
-    body = dict(geo)
-    body["stamp"] = engine_stamp(load_config())
-    return JSONResponse(body)
-
-
 @router.get("/layers/councils")
 def layer_councils_metrics(
     scenario: str = Query(default="full_agr"),
@@ -281,6 +264,43 @@ def layer_councils_metrics(
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     # Copy so the cached layer is not given a stamp it did not have.
     return JSONResponse(with_stamp(geo))
+
+
+@internal_router.get("/internal/agr/fiscal/summary")
+def internal_fiscal_summary(
+    scenario: str = Query(default="replace_full_basket"),
+    dividend: bool = Query(default=True, description="Include equal-share dividend knobs"),
+    remote_credit: bool = Query(default=True, description="Include remote/island credits"),
+) -> JSONResponse:
+    """INTERNAL: national fiscal dashboard (modelled Sandilands pool). Blocked until yield calibration."""
+    try:
+        active = resolve_active_scenario(scenario)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    body = _with_internal_block(
+        with_stamp(
+            fiscal_summary(
+                active,
+                dividend_enabled=dividend,
+                remote_credit_enabled=remote_credit,
+            )
+        )
+    )
+    return JSONResponse(body, headers=INTERNAL_HEADERS)
+
+
+@internal_router.get("/internal/agr/layers/councils-agr")
+def internal_layer_councils_agr(
+    scenario: str = Query(default="full_agr"),
+) -> JSONResponse:
+    """INTERNAL: council AGR choropleth (modelled residual). Blocked until yield calibration."""
+    try:
+        geo = build_councils_agr_geojson(scenario)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    body = _with_internal_block(dict(geo))
+    body["stamp"] = engine_stamp(load_config())
+    return JSONResponse(body, headers=INTERNAL_HEADERS)
 
 
 # About 60 a minute, with a short burst so a zoom still draws. 8,000 km² is
@@ -356,8 +376,8 @@ def _w3w_allowed(host: str) -> bool:
         return True
 
 
-@router.get("/layers/w3w-grid")
-def layer_w3w_grid(
+@internal_router.get("/internal/layers/w3w-grid")
+def internal_layer_w3w_grid(
     request: Request,
     south: float = Query(..., description="BBox south latitude"),
     west: float = Query(..., description="BBox west longitude"),
@@ -366,7 +386,7 @@ def layer_w3w_grid(
     scenario: str = Query(default="full_agr"),
     max_cells: int = Query(default=400, ge=10),
 ) -> JSONResponse:
-    """W3W cells with AGR for the map viewport (capped; zoom in for denser grid)."""
+    """INTERNAL: W3W cells with modelled AGR (plot grain; never public)."""
     if south >= north or west >= east:
         raise HTTPException(
             status_code=400,
@@ -384,7 +404,7 @@ def layer_w3w_grid(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return JSONResponse(with_stamp(geo))
+    return JSONResponse(_with_internal_block(with_stamp(geo)), headers=INTERNAL_HEADERS)
 
 
 # Parcel tile / bbox / at routes live on api.cadastral_routes (always mounted).
@@ -465,21 +485,24 @@ def layer_context_features(layer_id: str) -> JSONResponse:
     )
 
 
-@router.get("/validation/glasgow-ward-18")
-def validate_glasgow_ward_18(
+@internal_router.get("/internal/agr/validation/glasgow-ward-18")
+def internal_validate_glasgow_ward_18(
     samples: int = Query(default=12, ge=3, le=30),
-) -> dict:
+) -> JSONResponse:
     if not WARD_18_GEOJSON.exists():
         raise HTTPException(status_code=503, detail="Glasgow Ward 18 boundary not built yet.")
-    return with_stamp(run_validation(sample_count=samples))
+    return JSONResponse(
+        _with_internal_block(with_stamp(run_validation(sample_count=samples))),
+        headers=INTERNAL_HEADERS,
+    )
 
 
-@router.get("/validation/ratio-study")
-def validation_ratio_study(
+@internal_router.get("/internal/agr/validation/ratio-study")
+def internal_validation_ratio_study(
     samples: int = Query(default=8, ge=3, le=24),
     scenario: str = Query(default="full_agr"),
-) -> dict:
-    """Residual vs sales-comp extraction ratios (Ward 18 samples when available)."""
+) -> JSONResponse:
+    """INTERNAL: residual vs sales-comp ratios (plot samples)."""
     if not WARD_18_GEOJSON.exists():
         raise HTTPException(status_code=503, detail="Glasgow Ward 18 boundary not built yet.")
     from validation.glasgow_ward_18 import _sample_points_in_ward
@@ -490,15 +513,15 @@ def validation_ratio_study(
     study["note"] = (
         "Research structure for professional QA. Synthetic sales make production_ready=false."
     )
-    return with_stamp(study)
+    return JSONResponse(_with_internal_block(with_stamp(study)), headers=INTERNAL_HEADERS)
 
 
-@router.get("/validation/ward18-qa-pack")
-def ward18_qa_pack(
+@internal_router.get("/internal/agr/validation/ward18-qa-pack")
+def internal_ward18_qa_pack(
     samples: int = Query(default=10, ge=3, le=24),
     scenario: str = Query(default="full_agr"),
-) -> dict:
-    """Combined professional QA pack for Glasgow Ward 18 (research)."""
+) -> JSONResponse:
+    """INTERNAL: combined professional QA pack for Glasgow Ward 18."""
     if not WARD_18_GEOJSON.exists():
         raise HTTPException(status_code=503, detail="Glasgow Ward 18 boundary not built yet.")
     from validation.glasgow_ward_18 import _sample_points_in_ward
@@ -508,24 +531,29 @@ def ward18_qa_pack(
     ratios = ratio_study_points(points, scenario=scenario)
     roll_rows = assess_points(points, scenario=scenario, include_sales=True)
     meta = batch_meta(roll_rows, scenario=scenario)
-    return with_stamp({
-        "area": "glasgow_ward_18",
-        "label": "East Centre — featured validation case study",
-        "status": "research_estimate",
-        "not_statutory": True,
-        "spatial_validation": spatial,
-        "ratio_study": ratios,
-        "mini_roll": {"meta": meta, "rows": roll_rows},
-        "next_steps": [
-            "Ingest ROS/licensed sales to data/licensed/sales.jsonl",
-            "Re-run QA pack until production_ready on ratio_study",
-            "Optional OpenAVMKit pilot on the same points",
-        ],
-    })
+    return JSONResponse(
+        _with_internal_block(
+            with_stamp({
+                "area": "glasgow_ward_18",
+                "label": "East Centre — featured validation case study",
+                "status": "research_estimate",
+                "not_statutory": True,
+                "spatial_validation": spatial,
+                "ratio_study": ratios,
+                "mini_roll": {"meta": meta, "rows": roll_rows},
+                "next_steps": [
+                    "Ingest ROS/licensed sales to data/licensed/sales.jsonl",
+                    "Re-run QA pack until production_ready on ratio_study",
+                    "Optional OpenAVMKit pilot on the same points",
+                ],
+            })
+        ),
+        headers=INTERNAL_HEADERS,
+    )
 
 
-@router.get("/assessment/report")
-def assessment_report(
+@internal_router.get("/internal/agr/assessment/report")
+def internal_assessment_report(
     lat: float = Query(..., ge=-90, le=90),
     lng: float = Query(..., ge=-180, le=180),
     scenario: str = Query(default="full_agr"),
@@ -535,7 +563,7 @@ def assessment_report(
     urban_speculation: float | None = Query(default=None),
     farmland_factor: float | None = Query(default=None),
 ):
-    """Downloadable professional assessment pack for one location."""
+    """INTERNAL: downloadable assessment pack (plot grain modelled AGR)."""
     _scotland_bounds_check(lat, lng)
     config = _parse_sensitivity(yield_rate, urban_speculation, farmland_factor)
     try:
@@ -549,30 +577,30 @@ def assessment_report(
     except NotLand:
         if format.lower() in ("md", "markdown", "text"):
             return PlainTextResponse("No land here\n", media_type="text/markdown; charset=utf-8")
-        return {"reason": "not_land"}
+        return JSONResponse(_with_internal_block({"reason": "not_land"}), headers=INTERNAL_HEADERS)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    # Top-level stamp matches the config that made this export, including
-    # sensitivity overrides. Default config matches /health. Not in valuation.py.
     stamp = engine_stamp(config)
     report["stamp"] = stamp
     report["assessment"]["stamp"] = stamp
     report["markdown"] = render_report_markdown(report)
+    report = _with_internal_block(report)
 
     if format.lower() in ("md", "markdown", "text"):
         return PlainTextResponse(
             report["markdown"],
             media_type="text/markdown; charset=utf-8",
             headers={
-                "Content-Disposition": f'attachment; filename="{report["report_id"]}.md"'
+                "Content-Disposition": f'attachment; filename="{report["report_id"]}.md"',
+                **INTERNAL_HEADERS,
             },
         )
-    return report
+    return JSONResponse(report, headers=INTERNAL_HEADERS)
 
 
-@router.get("/square")
-def get_square(
+@internal_router.get("/internal/agr/square")
+def internal_get_square(
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
     words: str | None = Query(default=None, description="What3Words address e.g. filled.count.soap"),
@@ -596,7 +624,8 @@ def get_square(
         default=False,
         description="Include nearby sales from fixture/licensed store (research).",
     ),
-) -> dict:
+) -> JSONResponse:
+    """INTERNAL: W3W cell residual AGR (plot grain). Blocked from public map."""
     words_hint: str | None = None
     if words:
         try:
@@ -619,7 +648,7 @@ def get_square(
 
     config = _parse_sensitivity(yield_rate, urban_speculation, farmland_factor)
     try:
-        return _square_response(
+        payload = _square_response(
             lat,
             lng,
             scenario=scenario,
@@ -629,6 +658,7 @@ def get_square(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return JSONResponse(_with_internal_block(payload), headers=INTERNAL_HEADERS)
 
 
 @router.get("/sales/status")
@@ -650,18 +680,7 @@ def sales_status() -> dict:
     }
 
 
-@router.get("/postcode/{postcode}")
-def get_postcode_square(
-    postcode: str,
-    scenario: str | None = Query(
-        default="full_agr",
-        description="Policy scenario: full_agr, replace_income_tax, revenue_neutral",
-    ),
-    yield_rate: float | None = Query(default=None),
-    urban_speculation: float | None = Query(default=None),
-    farmland_factor: float | None = Query(default=None),
-    include_sales_context: bool = Query(default=False),
-) -> dict:
+def _lookup_postcode_result(postcode: str) -> dict:
     normalised = postcode.replace(" ", "").upper()
     if len(normalised) < 5 or len(normalised) > 7:
         raise HTTPException(status_code=400, detail="Invalid postcode format.")
@@ -682,7 +701,53 @@ def get_postcode_square(
     result = payload.get("result")
     if not result:
         raise HTTPException(status_code=404, detail="Postcode not found.")
+    return result
 
+
+@router.get("/postcode/{postcode}")
+def get_postcode_location(postcode: str) -> dict:
+    """Public postcode → centroid only. Modelled AGR is /internal/agr/postcode/{postcode}."""
+    result = _lookup_postcode_result(postcode)
+    lat = float(result["latitude"])
+    lng = float(result["longitude"])
+    try:
+        _scotland_bounds_check(lat, lng)
+    except HTTPException as exc:
+        if exc.status_code == 400:
+            raise HTTPException(
+                status_code=400,
+                detail="Postcode resolves outside Scotland.",
+            ) from exc
+        raise
+    return {
+        "postcode": {
+            "postcode": result["postcode"],
+            "parish": result.get("parish"),
+            "admin_district": result.get("admin_district"),
+            "country": result.get("country"),
+        },
+        "lat": lat,
+        "lng": lng,
+        "agr": None,
+        "status": "location_only",
+        "note": "Centroid only; modelled residual AGR is internal until yield calibration.",
+    }
+
+
+@internal_router.get("/internal/agr/postcode/{postcode}")
+def internal_get_postcode_square(
+    postcode: str,
+    scenario: str | None = Query(
+        default="full_agr",
+        description="Policy scenario: full_agr, replace_income_tax, revenue_neutral",
+    ),
+    yield_rate: float | None = Query(default=None),
+    urban_speculation: float | None = Query(default=None),
+    farmland_factor: float | None = Query(default=None),
+    include_sales_context: bool = Query(default=False),
+) -> JSONResponse:
+    """INTERNAL: postcode centroid → cell residual AGR (plot grain)."""
+    result = _lookup_postcode_result(postcode)
     lat = result["latitude"]
     lng = result["longitude"]
 
@@ -711,7 +776,7 @@ def get_postcode_square(
         "admin_district": result.get("admin_district"),
         "country": result.get("country"),
     }
-    return square_payload
+    return JSONResponse(_with_internal_block(square_payload), headers=INTERNAL_HEADERS)
 
 
 @router.get("/place")

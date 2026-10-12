@@ -15,13 +15,16 @@ GLASGOW_BBOX = {
 }
 
 
-def test_public_crown_catalog_records_ogl_licence_and_source_url():
+def test_public_crown_catalog_is_gap_unverified_not_open():
     layer = next(
         row for row in platform_catalog()["layers"] if row["id"] == "public_crown"
     )
-    assert layer["licence"] == "OGL-3.0"
+    assert layer["status"] == "gap"
+    assert layer["licence"] == "unverified/not open"
+    assert layer["licence"] != "OGL-3.0"
+    assert "OGL" not in layer["licence"]
     assert layer["source_url"] == DASHBOARD_URL
-    assert layer["endpoint"] == "/layers/open/public-land"
+    assert "endpoint" not in layer
 
 
 def test_parcels_bbox_503_when_not_loaded(client, monkeypatch):
@@ -86,17 +89,20 @@ def test_public_land_ok_empty_viewport_is_not_503(client, monkeypatch):
     assert body["type"] == "FeatureCollection"
     assert body["features"] == []
     assert body["meta"]["ok"] is True
-    assert body["meta"]["licence"] == "OGL-3.0"
+    assert body["meta"]["licence"] == "unverified/not open"
     assert body["meta"]["source_url"] == DASHBOARD_URL
 
 
-def test_downloads_list_public_land_as_ogl(client):
+def test_downloads_omit_unverified_public_land(client):
     r = client.get("/downloads")
     assert r.status_code == 200, r.text
-    items = {row["id"]: row for row in r.json()["items"]}
-    overlay = items["public_land_overlay"]
-    assert overlay["licence"] == "OGL-3.0"
-    assert overlay["url"] == DASHBOARD_URL
-    assert items["public_crown_map"]["licence"] == "OGL-3.0"
-    assert items["public_crown_map"]["url"] == DASHBOARD_URL
-
+    item_ids = {row["id"] for row in r.json()["items"]}
+    assert "public_land_overlay" not in item_ids
+    assert "public_crown_map" not in item_ids
+    for row in r.json()["items"]:
+        assert row.get("licence") != "unverified/not open"
+        label = (row.get("label") or "").lower()
+        licence = (row.get("licence") or "").lower()
+        if "public" in label and "crown" in label:
+            raise AssertionError(f"open downloads still list public/Crown: {row}")
+        assert "ogl-3.0" not in licence or row["id"].startswith("vdl")

@@ -177,13 +177,13 @@ sepa_car:
 public_land:
   name: Scottish Public and Crown Estate Land 2024
   role: public_sector_holdings_overlay
-  licence: OGL-3.0
-  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  licence: unverified/not open
+  public_map: hidden
   attribution: >-
-    Scottish Public and Crown Estate Land 2024. Contains public sector
-    information licensed under the Open Government Licence v3.0.
-    Scottish Government; landholding bodies listed on the official map.
-    Five bodies only — not exhaustive, not local-authority land, not a title.
+    Scottish Public and Crown Estate Land 2024. Scottish Government
+    dashboard only — no verified open licence. Hidden from the public map
+    until an OGL-licensed source is confirmed. Five bodies only —
+    not exhaustive, not local-authority land, not a title.
   source_url: https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897
   feature_server: >-
     https://services-eu1.arcgis.com/4QkhM5AS8YOlkb6T/arcgis/rest/services/PublicLand_2024_Update/FeatureServer/8
@@ -323,11 +323,13 @@ map_layers:
       licence: OGL-3.0
       licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
     - id: public_land
-      source: SG PublicLand_2024_Update FeatureServer
+      source: SG PublicLand_2024_Update FeatureServer (dashboard only)
       endpoint: /layers/open/public-land
-      licence: OGL-3.0
-      licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
-      note: Five national bodies only; not a title; not local-authority land
+      licence: unverified/not open
+      public_map: hidden
+      note: >-
+        Five national bodies only; not a title; not local-authority land.
+        Hidden from the public map until an OGL-licensed source is confirmed.
     - id: hydro_sites
       source: SEPA Hydropower Sites ATOM shapefile (OGL) via PostGIS
       endpoint: /layers/open/hydro

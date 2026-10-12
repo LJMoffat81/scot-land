@@ -177,8 +177,9 @@ test.describe("Data Zone catalog panel", () => {
             {
               id: "public_crown",
               group: "ownership",
-              status: "live",
+              status: "gap",
               label: "Public and Crown Estate land",
+              licence: "unverified/not open",
             },
           ],
         }),

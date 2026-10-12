@@ -1474,7 +1474,8 @@ export default function ScotlandMap() {
         minzoom: 14,
         maxzoom: 19,
         scheme: "xyz",
-        attribution: "© Crown copyright. Reproduced with the permission of Registers of Scotland. Contains OS data. © Crown copyright and database right 2026.",
+        attribution:
+          "© Crown copyright. Reproduced with the permission of Registers of Scotland. Contains OS data. © Crown copyright and database right 2026. OGL-3.0.",
       });
       map.addLayer({
         id: "parcels-wms",
@@ -1483,6 +1484,38 @@ export default function ScotlandMap() {
         minzoom: 14,
         paint: { "raster-opacity": 0.9, "raster-fade-duration": 0 },
         layout: { visibility: "none" },
+      });
+
+      // PostGIS Index Polygons bbox (same contract as public-land / VDL).
+      // When unloaded (503), stay empty and rely on live WMS tiles above.
+      map.addSource("parcels-postgis", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution:
+          "RoS INSPIRE Index Polygons (OGL-3.0). Registered extents only — not a title.",
+      });
+      map.addLayer({
+        id: "parcels-postgis-fill",
+        type: "fill",
+        source: "parcels-postgis",
+        minzoom: CADASTRAL_MIN_ZOOM,
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": "#5c4a1f",
+          "fill-opacity": 0.08,
+        },
+      });
+      map.addLayer({
+        id: "parcels-postgis-line",
+        type: "line",
+        source: "parcels-postgis",
+        minzoom: CADASTRAL_MIN_ZOOM,
+        layout: { visibility: "none" },
+        paint: {
+          "line-color": "#5c4a1f",
+          "line-width": 1.1,
+          "line-opacity": 0.85,
+        },
       });
 
       map.addSource("selected-parcel", { type: "geojson", data: emptyCollection });
@@ -2220,12 +2253,99 @@ export default function ScotlandMap() {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map?.getLayer("parcels-wms")) return;
-    map.setLayoutProperty(
-      "parcels-wms",
-      "visibility",
-      showBoundaries && agrAvailable === true ? "visible" : "none", // tiles come from the optional AGR router
-    );
-  }, [mapReady, showBoundaries, agrAvailable]);
+    // Cadastral routes are always mounted (not the optional AGR router).
+    const vis = showBoundaries ? "visible" : "none";
+    map.setLayoutProperty("parcels-wms", "visibility", vis);
+    if (map.getLayer("parcels-postgis-fill")) {
+      map.setLayoutProperty("parcels-postgis-fill", "visibility", vis);
+    }
+    if (map.getLayer("parcels-postgis-line")) {
+      map.setLayoutProperty("parcels-postgis-line", "visibility", vis);
+    }
+  }, [mapReady, showBoundaries]);
+
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map?.getSource("parcels-postgis")) return;
+
+    const setVis = (visibility: "visible" | "none") => {
+      if (map.getLayer("parcels-postgis-fill")) {
+        map.setLayoutProperty("parcels-postgis-fill", "visibility", visibility);
+      }
+      if (map.getLayer("parcels-postgis-line")) {
+        map.setLayoutProperty("parcels-postgis-line", "visibility", visibility);
+      }
+    };
+
+    if (!showBoundaries) {
+      setVis("none");
+      (map.getSource("parcels-postgis") as GeoJSONSource)?.setData(emptyCollection);
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const loadParcels = () => {
+      if (cancelled || !mapRef.current || inFlight) return;
+      const b = map.getBounds();
+      if (!b) return;
+      if (map.getZoom() < CADASTRAL_MIN_ZOOM) {
+        setVis("none");
+        return;
+      }
+      inFlight = true;
+      const path =
+        `/layers/parcels?south=${b.getSouth()}&west=${b.getWest()}` +
+        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=200`;
+      void apiJson<GeoJSON.FeatureCollection & { meta?: { fixture_scoped?: boolean } }>(
+        path,
+      )
+        .then((data) => {
+          if (cancelled) return;
+          (map.getSource("parcels-postgis") as GeoJSONSource)?.setData(data);
+          setVis("visible");
+          // Fixture-scoped CI loads are honest gaps, not national RoS titles.
+          if (data.meta?.fixture_scoped) {
+            setLayerNotice(
+              "Cadastral PostGIS load is fixture-scoped (synthetic CI polygons). Live WMS still shows registered extents where available.",
+            );
+          } else {
+            setLayerNotice(null);
+          }
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          (map.getSource("parcels-postgis") as GeoJSONSource)?.setData(
+            emptyCollection,
+          );
+          // 503 = table empty: keep WMS tiles; do not invent polygons.
+          if (err instanceof ApiError && err.status === 503) {
+            setLayerNotice(
+              "Local cadastral PostGIS table is empty. Live RoS WMS tiles still draw registered extents where the view service answers.",
+            );
+          }
+        })
+        .finally(() => {
+          inFlight = false;
+        });
+    };
+
+    const onMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadParcels, 700);
+    };
+
+    loadParcels();
+    map.on("moveend", onMove);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off("moveend", onMove);
+    };
+  }, [mapReady, showBoundaries]);
 
   useEffect(() => {
     if (!mapReady) return;
@@ -2713,8 +2833,9 @@ export default function ScotlandMap() {
                 {showBoundaries && (
                   <p className="layer-meta">
                     © Crown copyright. Reproduced with the permission of Registers
-                    of Scotland. Contains OS data. Registered extents only — not a
-                    title sheet. Zoom {CADASTRAL_MIN_ZOOM}+.
+                    of Scotland. Contains OS data. OGL-3.0. Registered extents only
+                    — not a title sheet. PostGIS bbox when loaded; live WMS tiles
+                    otherwise. Zoom {CADASTRAL_MIN_ZOOM}+.
                   </p>
                 )}
                 {showPublicLand && (
@@ -2815,10 +2936,7 @@ export default function ScotlandMap() {
                     boundariesTouched.current = true;
                     setShowBoundaries((v) => !v);
                   }}
-                  title={agrAvailable === false
-                    ? "Register outlines aren't available on this server yet."
-                    : "Register outlines of neighbouring pieces of land. Zoom in."}
-                  disabled={agrAvailable === false}
+                  title="RoS INSPIRE cadastral parcels (OGL-3.0). On by default from street zoom."
                 >
                   Register outlines
                 </button>

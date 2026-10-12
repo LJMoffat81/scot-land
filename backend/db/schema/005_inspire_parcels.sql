@@ -1,6 +1,7 @@
 -- RoS INSPIRE Index Polygons (local ingest). Raw GML stays out of git (data/external).
 -- EPSG:4326 here matches the PR #4 ingest and layers.cadastral bbox query.
 -- Map tiles still proxy the live ROS WMS (spatial.parcels).
+-- inspire_parcels_meta records load_scope (production | fixture) for honest API gaps.
 
 CREATE EXTENSION IF NOT EXISTS postgis;
 
@@ -15,3 +16,8 @@ CREATE TABLE IF NOT EXISTS inspire_parcels (
 
 CREATE INDEX IF NOT EXISTS idx_inspire_parcels_geom
     ON inspire_parcels USING GIST (geom);
+
+CREATE TABLE IF NOT EXISTS inspire_parcels_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);

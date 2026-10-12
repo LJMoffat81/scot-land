@@ -64,6 +64,8 @@ jobs:
         run: |
           alembic upgrade head
           python -m db.check_drift
+      - name: Load synthetic cadastral fixture into PostGIS
+        run: python -m etl.ingest_inspire_parcels --fixture --replace
       - name: Import api.main
         run: python -c "import api.main; print(api.main.app.title)"
       - name: Valuation surface tests

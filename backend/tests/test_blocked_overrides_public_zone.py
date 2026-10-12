@@ -43,7 +43,7 @@ def pg(monkeypatch):
         # Drop alembic_version so apply_schema (alembic upgrade head) rebuilds
         # after CI already stamped head on this throwaway DB.
         cur.execute(
-            "DROP TABLE IF EXISTS alembic_version, inspire_parcels, surface_rent_dz, "
+            "DROP TABLE IF EXISTS alembic_version, inspire_parcels_meta, inspire_parcels, surface_rent_dz, "
             "resource_wealth, eco_wealth, planning_sites, dz_spine, dz_boundaries, "
             "dz_denominators, dz_dwelling_counts, dz_population_counts CASCADE"
         )

@@ -296,8 +296,13 @@ def open_downloads() -> dict:
             {
                 "id": "inspire_parcels",
                 "label": "ROS INSPIRE cadastral parcels",
-                "licence": "ROS INSPIRE / Crown",
+                "licence": "OGL-3.0",
                 "url": "https://www.ros.gov.uk/open-data",
+                "endpoint": "/layers/parcels",
+                "note": (
+                    "PostGIS Index Polygons ingest. 503 when table empty; "
+                    "CI may load a synthetic fixture only."
+                ),
             },
             {
                 "id": "public_crown_map",

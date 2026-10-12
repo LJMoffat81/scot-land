@@ -84,13 +84,20 @@ def platform_catalog() -> dict[str, Any]:
                 "label": "ROS INSPIRE parcels",
                 "description": (
                     "Registered cadastral extents (geometry only — no owners). "
-                    "BBox from PostGIS ingest (503 when unloaded); tiles via live WMS."
+                    "BBox from PostGIS ingest (503 when unloaded; empty viewport "
+                    "is honest 200 when loaded, including fixture-scoped CI). "
+                    "Tiles via live WMS."
                 ),
                 "minzoom": 14,
                 "endpoint": "/layers/parcels",
                 "tile_endpoint": "/layers/parcels/tiles/{z}/{x}/{y}",
-                "licence": "OGL / INSPIRE (Crown)",
+                "licence": "OGL-3.0",
                 "source_url": "https://www.ros.gov.uk/open-data",
+                "gaps": [
+                    "Sasine titles without Land Register polygons",
+                    "Private owner names are not in the open INSPIRE product",
+                    "Index polygons are registered extents, not a title sheet",
+                ],
             },
             {
                 "id": "cell_grid",

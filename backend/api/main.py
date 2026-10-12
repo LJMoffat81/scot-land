@@ -42,12 +42,8 @@ from layers.council_metrics import build_council_metrics_geojson
 from layers.grid_layer import build_w3w_agr_grid
 from layers.platform import platform_catalog
 from spatial.address import search_door, search_place
-from georgist.surface_rent import calculator
-from georgist.surface_harvester import OUTPUT_FILE
-from georgist.aggregator import aggregator
+from georgist.aggregator import DatabaseUnavailable, aggregator
 from georgist.ros_sync import ros_sync_service
-
-
 
 from spatial.context_tiles import (
     fetch_context_geojson,
@@ -83,6 +79,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SOURCES_PATH = REPO_ROOT / "data" / "config" / "sources.yaml"
 COUNCILS_GEOJSON = REPO_ROOT / "data" / "processed" / "scotland_councils.geojson"
 WARD_18_GEOJSON = REPO_ROOT / "data" / "processed" / "glasgow_ward_18.geojson"
+# Wealth layer artefacts (never invent figures when absent — return 503).
+SURFACE_WEALTH_FILE = REPO_ROOT / "data" / "processed" / "surface_wealth.json"
+RESOURCE_WEALTH_FILE = REPO_ROOT / "data" / "processed" / "resource_wealth.geojson"
+ECO_WEALTH_FILE = REPO_ROOT / "data" / "processed" / "eco_wealth.geojson"
 
 
 def _load_postcode_api_url() -> str:
@@ -224,60 +224,46 @@ def _load_geojson(path: Path) -> JSONResponse:
     return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
 
 
+def _require_processed_file(path: Path, layer: str) -> Path:
+    """Public wealth layers serve real artefacts only — never harvest mocks inline."""
+    if not path.is_file():
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                f"{layer} is not available: missing {path.name}. "
+                "Load processed wealth data before publishing this layer."
+            ),
+        )
+    return path
+
+
 @app.get("/layers/georgist/surface-rent")
 def layer_georgist_surface_rent() -> JSONResponse:
-    """The Georgist Surface Rent layer based on Data Zone economic la-calc.
-    Returns a JSON map of zone_id -> calculated_rent.
-    """
-    try:
-        if not OUTPUT_FILE.exists():
-            # Trigger a quick harvest if missing
-            from georgist.surface_harvester import harvest_surface_wealth
-            harvest_surface_wealth()
-
-        data = json.loads(OUTPUT_FILE.read_text(encoding="utf-8"))
-        return JSONResponse({
+    """Surface rent layer (la-calc). 503 until a real processed artefact exists."""
+    path = _require_processed_file(SURFACE_WEALTH_FILE, "Surface rent layer")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return JSONResponse(
+        {
             "ok": True,
             "source": "Georgist Surface Rent Engine",
             "data": data,
-            "note": "Calculated based on SIMD and Population Density proxies."
-        })
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Wealth engine error: {str(exc)}")
+            "note": "Experimental research estimate — not an official valuation or tax bill.",
+        }
+    )
 
 
 @app.get("/layers/georgist/resource-rent")
 def layer_georgist_resource_rent() -> JSONResponse:
-    """The Georgist Resource Rent layer (Oil, Wind, Marine).
-    Returns a GeoJSON FeatureCollection of resource polygons with rent values.
-    """
-    from georgist.resource_harvester import OUTPUT_FILE as RES_OUTPUT_FILE
-    try:
-        if not RES_OUTPUT_FILE.exists():
-            from georgist.resource_harvester import harvest_resource_wealth
-            harvest_resource_wealth()
-
-        data = json.loads(RES_OUTPUT_FILE.read_text(encoding="utf-8"))
-        return JSONResponse(data)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Resource engine error: {str(exc)}")
+    """Resource rent layer. 503 until a real processed GeoJSON exists (no mock harvest)."""
+    path = _require_processed_file(RESOURCE_WEALTH_FILE, "Resource rent layer")
+    return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
 
 
 @app.get("/layers/georgist/eco-rent")
 def layer_georgist_eco_rent() -> JSONResponse:
-    """The Georgist Ecological Rent layer (Carbon, Peat, Woodland).
-    Returns a GeoJSON FeatureCollection of eco polygons with rent values.
-    """
-    from georgist.eco_harvester import OUTPUT_FILE as ECO_OUTPUT_FILE
-    try:
-        if not ECO_OUTPUT_FILE.exists():
-            from georgist.eco_harvester import harvest_eco_wealth
-            harvest_eco_wealth()
-
-        data = json.loads(ECO_OUTPUT_FILE.read_text(encoding="utf-8"))
-        return JSONResponse(data)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Eco engine error: {str(exc)}")
+    """Eco rent layer. 503 until a real processed GeoJSON exists (no mock harvest)."""
+    path = _require_processed_file(ECO_WEALTH_FILE, "Eco rent layer")
+    return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
 
 
 @app.post("/sync/ros")
@@ -286,56 +272,32 @@ def trigger_ros_sync():
     success = ros_sync_service.sync_data()
     if success:
         return {"status": "ok", "message": "RoS data synchronized successfully."}
-    else:
-        raise HTTPException(status_code=500, detail="Sync failed. Check backend logs.")
+    raise HTTPException(status_code=503, detail="RoS sync unavailable. Check backend logs.")
 
 
-@app.get("/layers/georgist/surface-rent")
-def layer_georgist_surface_rent() -> JSONResponse:
-    """The Georgist Surface Rent layer based on Data Zone economic la-calc.
-    Returns a JSON map of zone_id -> calculated_rent.
-    """
-    try:
-        if not OUTPUT_FILE.exists():
-            from georgist.surface_harvester import harvest_surface_wealth
-            harvest_surface_wealth()
-
-        data = json.loads(OUTPUT_FILE.read_text(encoding="utf-8"))
-        return JSONResponse({
-            "ok": True,
-            "source": "Georgist Surface Rent Engine",
-            "data": data,
-            "note": "Calculated based on SIMD and Population Density proxies."
-        })
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Wealth engine error: {str(exc)}")
+@app.get("/georgist/wealth")
 def get_georgist_wealth(
     lat: float = Query(..., ge=-90, le=90),
     lng: float = Query(..., ge=-180, le=180),
-    zone_id: str = Query(..., description="The Data Zone ID for surface rent calculation")
+    zone_id: str = Query(..., description="The Data Zone ID for surface rent calculation"),
 ) -> dict:
-    """
-    The 'Total Wealth' endpoint. Sums Surface, Resource, and Eco rents for a location.
-    """
+    """Total wealth for a point. 503 when PostGIS / wealth tables are unavailable."""
     try:
         result = aggregator.get_total_wealth(zone_id, lat, lng)
-        return {
-            "lat": lat,
-            "lng": lng,
-            "zone_id": zone_id,
-            "wealth": result
-        }
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Aggregator error: {str(exc)}")
-
-
-def _load_geojson(path: Path) -> JSONResponse:
-    if not path.exists():
+    except DatabaseUnavailable as exc:
         raise HTTPException(
             status_code=503,
-            detail=f"Missing {path.name}. Run the Phase 3 ETL scripts in backend/etl/.",
-        )
-    return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
+            detail=f"Wealth aggregation unavailable: {exc}",
+        ) from exc
+    return {
+        "lat": lat,
+        "lng": lng,
+        "zone_id": zone_id,
+        "wealth": result,
+    }
+
+
+@app.get("/health")
 def health() -> dict:
     config = load_config()
     signoff = config.get("economist_signoff", {})

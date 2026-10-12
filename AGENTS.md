@@ -37,7 +37,7 @@ Annual Ground Rent remains first: residual site value on a What3Words 3×3 m gri
 |------|------|
 | `docs/PLATFORM.md` | Product brief — build toward this |
 | `backend/agr/` | Assessment engine (Residual/Scenario) |
-| `backend/backend/georgist/` | National Wealth Engine (Aggregation, la-calc, Calibration) |
+| `backend/georgist/` | National Wealth Engine (Aggregation, la-calc, Calibration) |
 | `backend/datasources/` | Data contracts and loaders |
 | `data/config/` | Parameters and source registry |
 | `docs/PROFESSIONAL_STANDARD.md` | Build standard |

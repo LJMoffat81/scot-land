@@ -58,12 +58,15 @@ Supply **completed residential (then all-tenure) sales** for Scotland so the AGR
 | Licence | **OGL-3.0** — cite Registers of Scotland (Laurie's ruling Oct 2026) |
 | Attribution | © Crown copyright. Reproduced with the permission of Registers of Scotland |
 | Source / catalogue | https://www.ros.gov.uk/open-data |
-| Download | https://ros.locationcentre.co.uk/inspire/ |
+| Download page | https://ros.locationcentre.co.uk/inspire/ (legacy) |
+| Download API | `https://ros-inspire.themapcloud.com/maps/download/ros-cp.cadastralparcel/{CODE}` |
 | Live WMS | `https://ros-inspire.themapcloud.com/maps/wms` |
 | BBox API | `GET /layers/parcels` → **503** when PostGIS table empty; empty viewport is **200** when loaded |
-| ETL | `python -m etl.ingest_inspire_parcels` (PostGIS); CI: `--fixture` |
+| ETL pilot | `python -m etl.ingest_inspire_parcels --pilot --replace` (Edinburgh/MID + Fife) |
+| ETL all | `python -m etl.ingest_inspire_parcels --all --replace` (33 registration counties) |
+| ETL CI | `python -m etl.ingest_inspire_parcels --fixture --replace` |
 | CI fixture | `backend/tests/fixtures/cadastral_index_polygons.geojson` (`synthetic-test-only`) |
-| Raw storage | `data/external/inspire/` (gitignored — never commit) |
+| Temp downloads | Self-fetch uses temp dirs only — **never** `data/external/` |
 | Refresh | [scripts/data/README-inspire.md](../scripts/data/README-inspire.md) |
 
 ### Known gaps
@@ -142,12 +145,12 @@ data/licensed/
   ros_glasgow_sales_2024.parquet   # example — not in git
   provenance.json             # source, date, row count, hash
 
-data/external/inspire/        # gitignored — RoS Index Polygons extract
-  index_polygons.geojson
-  index_polygons.geojson.ingest.json   # local vintage stamp
+# Cadastre: prefer self-fetch (temp dir only — never required under data/external/)
+#   python -m etl.ingest_inspire_parcels --pilot --replace
+#   python -m etl.ingest_inspire_parcels --all --replace
 ```
 
-Load via:
+Load sales via:
 
 ```powershell
 cd backend

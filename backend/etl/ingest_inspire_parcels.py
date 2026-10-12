@@ -1,19 +1,23 @@
 """Ingest RoS INSPIRE Index Polygons into PostGIS (inspire_parcels).
 
-Large raw downloads stay under data/external/ (gitignored). This script
-never commits geometry — it only loads a local extract into PostGIS.
+Self-fetches per-registration-county shapefile zips from the RoS INSPIRE
+download service (MapCloud API; catalogue https://ros.locationcentre.co.uk/inspire/).
+Downloads go to a temp directory — **never** under data/external/.
 
-Expected input: GeoJSON FeatureCollection (WGS84) with properties that
-include inspireid / nationalcadastralreference / label where available.
+One-command usage (from backend/, with DATABASE_URL set):
 
-Usage (production extract):
-  export DATABASE_URL=postgresql://...
-  python -m etl.ingest_inspire_parcels \\
-    --input ../data/external/inspire/index_polygons.geojson \\
-    --replace
+  # Pilot — Edinburgh (Midlothian/MID) + Fife
+  python -m etl.ingest_inspire_parcels --pilot --replace
 
-Usage (CI / local synthetic fixture — not real RoS titles):
+  # All 33 RoS registration counties
+  python -m etl.ingest_inspire_parcels --all --replace
+
+  # CI synthetic fixture (not real RoS titles)
   python -m etl.ingest_inspire_parcels --fixture --replace
+
+Optional local GeoJSON (gitignored path; not created by this loader):
+
+  python -m etl.ingest_inspire_parcels --input /path/to/index_polygons.geojson --replace
 """
 
 from __future__ import annotations
@@ -22,18 +26,39 @@ import argparse
 import json
 import logging
 import os
+import shutil
+import tempfile
+import time
+import zipfile
 from datetime import date
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
+import httpx
 import psycopg2
+import shapefile
+import yaml
 from psycopg2 import extras
+from pyproj import Transformer
+from shapely.geometry import MultiPolygon, Polygon, mapping, shape
+from shapely.ops import transform as shp_transform
+
+from etl.inspire_counties import (
+    BY_CODE,
+    CATALOGUE_URL,
+    DOWNLOAD_BASE,
+    PILOT_CODES,
+    REGISTRATION_COUNTIES,
+    SERVICE_HOME,
+    resolve_codes,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
+SOURCES_PATH = REPO_ROOT / "data" / "config" / "sources.yaml"
 TABLE = "inspire_parcels"
 META_TABLE = "inspire_parcels_meta"
 DEFAULT_INPUT = REPO_ROOT / "data" / "external" / "inspire" / "index_polygons.geojson"
@@ -41,10 +66,11 @@ DEFAULT_FIXTURE = (
     BACKEND_ROOT / "tests" / "fixtures" / "cadastral_index_polygons.geojson"
 )
 
-# Committed registry fields (overridden for --fixture loads).
 PRODUCTION_LICENCE = "OGL-3.0"
 PRODUCTION_SOURCE_URL = "https://www.ros.gov.uk/open-data"
 PRODUCTION_PRODUCT = "ROS INSPIRE Index Polygons (CP.CadastralParcel)"
+
+_BNG_TO_WGS84 = Transformer.from_crs("EPSG:27700", "EPSG:4326", always_xy=True)
 
 
 def _db_config() -> dict[str, Any]:
@@ -112,15 +138,238 @@ def _inspire_id(props: dict[str, Any], feature: dict[str, Any], index: int) -> s
     return f"row-{index}"
 
 
+def _download_base() -> str:
+    """Prefer sources.yaml download_api; fall back to the MapCloud endpoint."""
+    try:
+        with SOURCES_PATH.open(encoding="utf-8") as handle:
+            sources = yaml.safe_load(handle) or {}
+        parcels = sources.get("parcels") or {}
+        api = (parcels.get("download_api") or "").strip().rstrip("/")
+        if api and "{code}" in api:
+            return api.replace("/{code}", "").replace("{code}", "").rstrip("/")
+        if api:
+            return api
+    except OSError:
+        pass
+    return DOWNLOAD_BASE
+
+
+def download_county_zip(
+    code: str,
+    dest: Path,
+    *,
+    attempts: int = 5,
+    base_delay: float = 1.0,
+    client: httpx.Client | None = None,
+) -> Path:
+    """Download one registration-county zip with exponential backoff."""
+    code = code.upper()
+    if code not in BY_CODE:
+        raise SystemExit(f"Unknown county code: {code}")
+    base = _download_base()
+    url = f"{base}/{code}"
+    owns_client = client is None
+    if owns_client:
+        client = httpx.Client(
+            timeout=httpx.Timeout(180.0, connect=30.0),
+            follow_redirects=True,
+            headers={"User-Agent": "scot-land/0.8 (research; inspire ingest)"},
+        )
+    assert client is not None
+    last_exc: Exception | None = None
+    try:
+        for attempt in range(1, attempts + 1):
+            try:
+                logger.info(
+                    "Downloading %s (%s) attempt %s/%s → %s",
+                    code,
+                    BY_CODE[code]["title"],
+                    attempt,
+                    attempts,
+                    url,
+                )
+                response = client.get(url)
+                if response.status_code in (429, 500, 502, 503, 504):
+                    raise httpx.HTTPStatusError(
+                        f"retryable {response.status_code}",
+                        request=response.request,
+                        response=response,
+                    )
+                response.raise_for_status()
+                if not response.content.startswith(b"PK"):
+                    raise ValueError(
+                        f"Download for {code} is not a zip "
+                        f"(content-type={response.headers.get('content-type')!r})"
+                    )
+                dest.write_bytes(response.content)
+                logger.info("Saved %s (%s bytes)", dest.name, len(response.content))
+                return dest
+            except (httpx.HTTPError, ValueError, OSError) as exc:
+                last_exc = exc
+                if attempt >= attempts:
+                    break
+                delay = base_delay * (2 ** (attempt - 1))
+                logger.warning(
+                    "Download %s failed (%s); retry in %.1fs",
+                    code,
+                    exc,
+                    delay,
+                )
+                time.sleep(delay)
+    finally:
+        if owns_client:
+            client.close()
+    raise SystemExit(f"Failed to download {code} after {attempts} attempts: {last_exc}")
+
+
+def _shape_rings_bng(shp_shape: shapefile.Shape) -> list[list[tuple[float, float]]]:
+    points = shp_shape.points or []
+    if len(points) < 4:
+        return []
+    parts = list(shp_shape.parts or [0]) + [len(points)]
+    rings: list[list[tuple[float, float]]] = []
+    for i in range(len(parts) - 1):
+        ring = [(float(x), float(y)) for x, y in points[parts[i] : parts[i + 1]]]
+        if len(ring) >= 4:
+            rings.append(ring)
+    return rings
+
+
+def _bng_rings_to_wgs84_multipolygon(
+    rings: list[list[tuple[float, float]]],
+) -> MultiPolygon | Polygon | None:
+    if not rings:
+        return None
+    polys: list[Polygon] = []
+    for ring in rings:
+        try:
+            poly = Polygon(ring)
+        except Exception:
+            continue
+        if poly.is_empty:
+            continue
+        if not poly.is_valid:
+            poly = poly.buffer(0)
+        if poly.is_empty:
+            continue
+        if isinstance(poly, MultiPolygon):
+            polys.extend(p for p in poly.geoms if not p.is_empty)
+        elif isinstance(poly, Polygon):
+            polys.append(poly)
+    if not polys:
+        return None
+    geom_bng: Polygon | MultiPolygon = (
+        polys[0] if len(polys) == 1 else MultiPolygon(polys)
+    )
+
+    def _project(x: float, y: float, z: float | None = None):
+        return _BNG_TO_WGS84.transform(x, y)
+
+    return shp_transform(_project, geom_bng)
+
+
+def _pick_shapefile(extract_dir: Path, code: str) -> Path:
+    """Prefer *_bng.shp (coordinates are OSGB36/BNG even when etrs89 is mislabelled)."""
+    preferred = extract_dir / f"{code}_bng.shp"
+    if preferred.is_file():
+        return preferred
+    matches = sorted(extract_dir.rglob("*.shp"))
+    if not matches:
+        raise FileNotFoundError(f"No .shp in extract for {code}")
+    bng = [p for p in matches if p.name.lower().endswith("_bng.shp")]
+    return bng[0] if bng else matches[0]
+
+
+def iter_county_rows(zip_path: Path, code: str) -> Iterable[tuple]:
+    """Yield DB row tuples from a county zip (BNG shapefile → WGS84)."""
+    code = code.upper()
+    with tempfile.TemporaryDirectory(prefix=f"inspire_{code}_") as tmp:
+        work = Path(tmp)
+        with zipfile.ZipFile(zip_path) as zf:
+            zf.extractall(work)
+        shp_path = _pick_shapefile(work, code)
+        reader = shapefile.Reader(str(shp_path))
+        field_names = [field[0] for field in reader.fields[1:]]
+        for index, (record, shp_shape) in enumerate(
+            zip(reader.iterRecords(), reader.iterShapes())
+        ):
+            props = dict(zip(field_names, record))
+            rings = _shape_rings_bng(shp_shape)
+            geom = _bng_rings_to_wgs84_multipolygon(rings)
+            if geom is None or geom.is_empty:
+                continue
+            # Area in m² from BNG rings (before transform).
+            area_sqm = None
+            try:
+                bng_polys = [Polygon(r) for r in rings if len(r) >= 4]
+                area_sqm = float(sum(p.area for p in bng_polys if not p.is_empty))
+            except Exception:
+                area_sqm = None
+            inspire_id = str(
+                props.get("inspireid") or props.get("INSPIREID") or f"{code}-{index}"
+            )
+            national = str(
+                props.get("nationalca")
+                or props.get("nationalcadastralreference")
+                or props.get("label")
+                or ""
+            )
+            label = str(props.get("label") or national or inspire_id)
+            county = str(props.get("county") or code)
+            # Force MultiPolygon for the PostGIS column.
+            if geom.geom_type == "Polygon":
+                geom = MultiPolygon([geom])
+            geojson = json.dumps(mapping(geom))
+            yield (
+                inspire_id,
+                national or None,
+                label,
+                area_sqm,
+                county,
+                geojson,
+            )
+
+
+def _insert_rows(conn, rows: Iterable[tuple], *, replace: bool) -> int:
+    with conn.cursor() as cur:
+        if replace:
+            cur.execute(f"TRUNCATE TABLE {TABLE};")
+        sql = f"""
+            INSERT INTO {TABLE}
+                (inspire_id, national_reference, label, area_sqm, county, geom)
+            VALUES (
+                %s, %s, %s, %s, %s,
+                ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326))
+            )
+            ON CONFLICT (inspire_id) DO UPDATE SET
+                national_reference = EXCLUDED.national_reference,
+                label = EXCLUDED.label,
+                area_sqm = EXCLUDED.area_sqm,
+                county = EXCLUDED.county,
+                geom = EXCLUDED.geom;
+        """
+        batch: list[tuple] = []
+        inserted = 0
+        for row in rows:
+            batch.append(row)
+            if len(batch) >= 500:
+                extras.execute_batch(cur, sql, batch, page_size=500)
+                inserted += len(batch)
+                batch.clear()
+        if batch:
+            extras.execute_batch(cur, sql, batch, page_size=500)
+            inserted += len(batch)
+    conn.commit()
+    return inserted
+
+
 def load_geojson(path: Path, conn, replace: bool) -> int:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("type") != "FeatureCollection":
         raise SystemExit("Input must be a GeoJSON FeatureCollection")
     features = payload.get("features") or []
-    with conn.cursor() as cur:
-        if replace:
-            cur.execute(f"TRUNCATE TABLE {TABLE};")
-        inserted = 0
+
+    def _rows() -> Iterable[tuple]:
         for index, feature in enumerate(features):
             geometry = feature.get("geometry")
             if not geometry:
@@ -136,33 +385,65 @@ def load_geojson(path: Path, conn, replace: bool) -> int:
             label = str(props.get("label") or national or inspire_id)
             area = props.get("area_sqm") or props.get("area") or props.get("AREA_SQM")
             county = props.get("county")
-            cur.execute(
-                f"""
-                INSERT INTO {TABLE}
-                    (inspire_id, national_reference, label, area_sqm, county, geom)
-                VALUES (
-                    %s, %s, %s, %s, %s,
-                    ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(%s), 4326))
-                )
-                ON CONFLICT (inspire_id) DO UPDATE SET
-                    national_reference = EXCLUDED.national_reference,
-                    label = EXCLUDED.label,
-                    area_sqm = EXCLUDED.area_sqm,
-                    county = EXCLUDED.county,
-                    geom = EXCLUDED.geom;
-                """,
-                (
-                    inspire_id,
-                    national or None,
-                    label,
-                    float(area) if area is not None else None,
-                    str(county) if county is not None else None,
-                    json.dumps(geometry),
-                ),
+            # Normalise to MultiPolygon via shapely when possible.
+            try:
+                geom = shape(geometry)
+                if geom.geom_type == "Polygon":
+                    geom = MultiPolygon([geom])
+                geojson = json.dumps(mapping(geom))
+            except Exception:
+                geojson = json.dumps(geometry)
+            yield (
+                inspire_id,
+                national or None,
+                label,
+                float(area) if area is not None else None,
+                str(county) if county is not None else None,
+                geojson,
             )
-            inserted += 1
-    conn.commit()
-    return inserted
+
+    return _insert_rows(conn, _rows(), replace=replace)
+
+
+def load_county_zips(
+    codes: list[str],
+    conn,
+    *,
+    replace: bool,
+    work_dir: Path,
+    attempts: int = 5,
+) -> int:
+    """Download and load one or more county zips. Never writes under data/external."""
+    work_dir.mkdir(parents=True, exist_ok=True)
+    # Refuse accidental data/external targets.
+    as_posix = str(work_dir.resolve()).replace("\\", "/")
+    if "/data/external" in as_posix:
+        raise SystemExit(
+            "Refuse to download into data/external/. "
+            "Self-fetch uses a temp directory only."
+        )
+
+    total = 0
+    first = True
+    with httpx.Client(
+        timeout=httpx.Timeout(180.0, connect=30.0),
+        follow_redirects=True,
+        headers={"User-Agent": "scot-land/0.8 (research; inspire ingest)"},
+    ) as client:
+        for code in codes:
+            zip_path = work_dir / f"{code}.zip"
+            download_county_zip(
+                code, zip_path, attempts=attempts, client=client
+            )
+            count = _insert_rows(
+                conn,
+                iter_county_rows(zip_path, code),
+                replace=(replace and first),
+            )
+            first = False
+            total += count
+            logger.info("Loaded %s parcels from %s", count, code)
+    return total
 
 
 def write_load_meta(
@@ -173,7 +454,8 @@ def write_load_meta(
     load_scope: str,
     licence: str,
     source_url: str,
-    input_path: Path,
+    input_path: Path | str,
+    counties: str = "",
 ) -> None:
     """Persist load provenance for the API (fixture vs production extract)."""
     rows = {
@@ -185,6 +467,9 @@ def write_load_meta(
         "row_count": str(count),
         "input": str(input_path),
         "ingested_on": date.today().isoformat(),
+        "counties": counties,
+        "catalogue_url": CATALOGUE_URL,
+        "service_home": SERVICE_HOME,
     }
     with conn.cursor() as cur:
         extras.execute_batch(
@@ -219,7 +504,8 @@ def write_local_stamp(
         "vintage": vintage,
         "ingested_on": date.today().isoformat(),
         "note": (
-            "Local stamp only — raw geometry stays out of git (data/external/). "
+            "Local stamp only — raw geometry stays out of git. "
+            "Self-fetch uses temp dirs (never data/external/). "
             "Synthetic fixtures must not be shown as real RoS titles."
         ),
     }
@@ -233,20 +519,33 @@ def _assert_allowed_input(path: Path) -> None:
     if "data/processed" in as_posix:
         raise SystemExit(
             "Refuse to read cadastral geometry from data/processed/. "
-            "Keep raw extracts under data/external/ (gitignored), or use "
-            "--fixture for the synthetic CI polygons."
+            "Use --pilot / --all (self-fetch), --fixture, or a local --input."
         )
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--input",
-        type=Path,
-        default=None,
-        help="Path to GeoJSON FeatureCollection under data/external/ (gitignored)",
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
+        "--pilot",
+        action="store_true",
+        help=(
+            "Download + load Edinburgh (Midlothian/MID) and Fife (FFE). "
+            "One command; temp download only."
+        ),
+    )
+    mode.add_argument(
+        "--all",
+        action="store_true",
+        help=(
+            f"Download + load all {len(REGISTRATION_COUNTIES)} RoS registration "
+            "counties. One command; temp download only."
+        ),
+    )
+    mode.add_argument(
         "--fixture",
         action="store_true",
         help=(
@@ -256,44 +555,132 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--input",
+        type=Path,
+        default=None,
+        help="Local GeoJSON FeatureCollection (optional; not created by this loader)",
+    )
+    parser.add_argument(
+        "--counties",
+        nargs="+",
+        default=None,
+        help="Optional subset of titles/codes (with --pilot/--all unused; standalone)",
+    )
+    parser.add_argument(
         "--vintage",
         default=date.today().isoformat(),
-        help="Dataset vintage date (YYYY-MM-DD) recorded in the local stamp",
+        help="Dataset vintage date (YYYY-MM-DD) recorded in meta",
     )
     parser.add_argument(
         "--replace",
         action="store_true",
         help="TRUNCATE inspire_parcels before load",
     )
+    parser.add_argument(
+        "--attempts",
+        type=int,
+        default=5,
+        help="Download retry attempts per county (default 5)",
+    )
     args = parser.parse_args()
 
-    if args.fixture and args.input is not None:
-        raise SystemExit("Use either --fixture or --input, not both.")
-
-    if args.fixture:
-        input_path = DEFAULT_FIXTURE
-        load_scope = "fixture"
-        licence = "synthetic-test-only"
-        source_url = str(DEFAULT_FIXTURE.relative_to(REPO_ROOT))
-    else:
-        input_path = args.input or DEFAULT_INPUT
-        load_scope = "production"
-        licence = PRODUCTION_LICENCE
-        source_url = PRODUCTION_SOURCE_URL
-
-    if not input_path.is_file():
+    mode_flags = [
+        args.pilot,
+        args.all,
+        args.fixture,
+        args.input is not None,
+        bool(args.counties),
+    ]
+    if sum(bool(x) for x in mode_flags) != 1:
         raise SystemExit(
-            f"Input not found: {input_path}\n"
-            "Download RoS INSPIRE Index Polygons to data/external/inspire/ "
-            "(gitignored) and pass --input, or use --fixture for CI. "
-            "See scripts/data/README-inspire.md."
+            "Choose exactly one: --pilot | --all | --fixture | --input PATH | "
+            "--counties …\nSee scripts/data/README-inspire.md."
         )
-    _assert_allowed_input(input_path)
 
     conn = connect()
+    tmp_root: Path | None = None
     try:
         ensure_table(conn)
-        count = load_geojson(input_path, conn, replace=args.replace)
+
+        if args.fixture:
+            input_path = DEFAULT_FIXTURE
+            if not input_path.is_file():
+                raise SystemExit(f"Fixture not found: {input_path}")
+            _assert_allowed_input(input_path)
+            count = load_geojson(input_path, conn, replace=args.replace)
+            load_scope = "fixture"
+            licence = "synthetic-test-only"
+            source_url = str(DEFAULT_FIXTURE.relative_to(REPO_ROOT))
+            counties = ""
+            stamp = write_local_stamp(
+                input_path,
+                count,
+                args.vintage,
+                load_scope=load_scope,
+                licence=licence,
+                source_url=source_url,
+            )
+        elif args.input is not None:
+            input_path = args.input
+            if not input_path.is_file():
+                raise SystemExit(f"Input not found: {input_path}")
+            _assert_allowed_input(input_path)
+            count = load_geojson(input_path, conn, replace=args.replace)
+            load_scope = "production"
+            licence = PRODUCTION_LICENCE
+            source_url = PRODUCTION_SOURCE_URL
+            counties = ""
+            stamp = write_local_stamp(
+                input_path,
+                count,
+                args.vintage,
+                load_scope=load_scope,
+                licence=licence,
+                source_url=source_url,
+            )
+        else:
+            if args.pilot:
+                codes = list(PILOT_CODES)
+                load_scope = "pilot"
+            elif args.all:
+                codes = resolve_codes(None)
+                load_scope = "production"
+            else:
+                codes = resolve_codes(args.counties)
+                load_scope = "production" if len(codes) >= len(REGISTRATION_COUNTIES) else "subset"
+            tmp_root = Path(tempfile.mkdtemp(prefix="inspire_fetch_"))
+            count = load_county_zips(
+                codes,
+                conn,
+                replace=args.replace,
+                work_dir=tmp_root,
+                attempts=max(1, int(args.attempts)),
+            )
+            licence = PRODUCTION_LICENCE
+            source_url = PRODUCTION_SOURCE_URL
+            counties = ",".join(codes)
+            stamp = tmp_root / "ingest.json"
+            stamp.write_text(
+                json.dumps(
+                    {
+                        "layer": "inspire_parcels",
+                        "load_scope": load_scope,
+                        "counties": codes,
+                        "row_count": count,
+                        "licence": licence,
+                        "catalogue_url": CATALOGUE_URL,
+                        "download_api": _download_base() + "/{code}",
+                        "vintage": args.vintage,
+                        "ingested_on": date.today().isoformat(),
+                        "note": "Temp fetch dir — deleted after load; never data/external.",
+                    },
+                    indent=2,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            input_path = stamp
+
         write_load_meta(
             conn,
             count=count,
@@ -302,23 +689,18 @@ def main() -> None:
             licence=licence,
             source_url=source_url,
             input_path=input_path,
+            counties=counties,
         )
     finally:
         conn.close()
-    stamp = write_local_stamp(
-        input_path,
-        count,
-        args.vintage,
-        load_scope=load_scope,
-        licence=licence,
-        source_url=source_url,
-    )
+        if tmp_root is not None:
+            shutil.rmtree(tmp_root, ignore_errors=True)
+
     logger.info(
-        "Loaded %s parcels into %s (scope=%s). Stamp: %s",
+        "Loaded %s parcels into %s (scope=%s). Stamp/meta written.",
         count,
         TABLE,
         load_scope,
-        stamp,
     )
 
 

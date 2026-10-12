@@ -272,6 +272,20 @@ surface_rent:
     6: [4, 5]
   class_min_zones: 150
 
+  # Land-value model fill for suppressed / absent Data Zones (Wealth Engine internal).
+  # Target count 727 = 724 RoS-2023 suppressed + 6 absent − 3 zero-dwellings (spine facts).
+  # Research estimates only — not official valuations; does not change public modelled £ publication.
+  model_fill:
+    status: research_estimate
+    delta: 1.0                    # ASSUMPTION: log(L + δ) target offset
+    drivers: []                   # optional allowed drivers (empty = class intercept / FE only)
+    null_dz_fill_target_n: 727
+    publication: internal_calibration_only
+    note: >
+      Fills null residential Data Zones via per-UR6-class log-linear prediction.
+      Never copies a neighbour. Thin classes borrow adjacent-class training rows
+      (tag borrowed_class). Leave yield.land_yield (5% placeholder) untouched.
+
   drivers:
     allowed:
       - simd_access_drive_times
@@ -476,8 +490,21 @@ surface_rent:
     on_class_fail:
       report: failed                                        # never "inconclusive"
       model_filled_band_multiplier: 1.5                     # REJECTED by the Georgist (room, 2026-10-06): never applied
-      multiplier_status: REJECTED_GEORGIST                  # surface_holdout.widen_failed_class_band refuses to widen
-      active_behaviour: fail_band_pending_holdout           # band left unwidened; model-filled rows in a failed class tagged
+      multiplier_status: REJECTED_GEORGIST                  # fixed multiplier path refuses to widen
+      # Valuation review (AGR FAIL, internal): UR6 class 2 failed the pre-registered job-access
+      # gradient. Model-filled zones in a failed class get that class's own holdout error band
+      # (5th–95th percentile of relative residual), never a fixed multiplier (ECONOMIC_RULES §12).
+      active_behaviour: holdout_error_band
+      holdout_error_band:
+        percentile_low: 5
+        percentile_high: 95
+        error_definition: relative_to_prediction            # (actual - pred) / pred
+        quality: research_estimate
+        pending_tag_when_no_errors: fail_band_pending_holdout
+        note: >
+          Class 2 (Other Urban Areas) owns its holdout error band after the access-gradient
+          fail. Applied only where wider than the existing model interval. Internal calibration
+          support — not an official uncertainty product.
     run_guard:                                              # the scored run happens ONCE per dz_access checksum
       log: "{valuation_out_dir}/run_log/gradient_v07_runs.jsonl"   # internal, never committed
       refuse_repeat_without_override: true

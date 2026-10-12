@@ -445,7 +445,8 @@ The lead can mirror these keys in the engine settings.
   - Synthetic test codes moved into range (S010134xx for 2011, S010208xx for 2022).
 - **No-price zones:** DZ2011 has 6,976 zones = 6,246 priced (2023, ≥5 sales) + 724 suppressed (<5 sales) + 6 absent from the RoS file.
   - The 6 absent zones are Data Zones `zone_spine` flag `absent_from_ros_price_file`: S01007788, S01010206, S01010226, S01010462, S01010493, S01011598.
-  - They are no-price zones: `resolve_land_value(absent_from_price_file=True)` gives `model_filled`, with land value None and tag `model_fill_pending` until the model exists. They are never zero.
+  - They are no-price zones: `resolve_land_value(absent_from_price_file=True)` gives `model_filled` when a model value exists, else land value None and tag `model_fill_pending`. They are never zero.
+  - **Null DZ model fill (Wealth Engine / internal calibration, 2026-10-12):** target **727** zones = 724 suppressed + 6 absent − 3 zero-dwellings (`surface_model.NULL_DZ_FILL_TARGET_N`). Per-UR6-class log-linear fill (`georgist.surface_model`); never neighbour copy; thin classes borrow adjacent-class training rows (`borrowed_class`). Tagged `research_estimate`. Does **not** change public publication of modelled £. Does **not** alter the 5% `yield.land_yield` placeholder.
 - **Access indicators:** Data Zones `simd2020v2_access_indicators_dz2011` (sha `49428c29…b8ce`, 6,976 rows) is verified and wired into `per_hectare_gradient_check`, using the 6 drive and 3 PT minute columns only. All 6,976 zones parse.
   - The gradient is still `pending: residential_land_missing` because GIS `dz_residential_land` has not been posted.
 - **GIS:** checksums were re-verified at about 01:45 BST and are unchanged (string vintages). The loaders accept the coming integer vintages and normalise both.
@@ -584,10 +585,10 @@ DRAFT, not approved by Laurie. This section was committed **before** GIS's `dz_a
 - **Superseded driver:** the v0.6 SIMD drive-time result is still computed and published as it came out, labelled "superseded driver, reported".
 - **A class that fails:**
   - it is reported as `failed`, not inconclusive;
-  - its model-filled zones get wider bands: (central − low) and (high − central) are each multiplied by `gradient_v07.on_class_fail.model_filled_band_multiplier`, with the low end floored at 0. Observed zones are not widened.
-  - **Update (2026-10-06):** the Georgist **rejected** the multiplier (`multiplier_status: REJECTED_GEORGIST`). It is never applied. Bands stay unwidened, and model-filled rows in a failed class are tagged `fail_band_pending_holdout`, which is the active behaviour (`on_class_fail.active_behaviour`).
+  - **Update (2026-10-06):** the Georgist **rejected** the fixed multiplier (`multiplier_status: REJECTED_GEORGIST`). It is never applied.
+  - **Update (2026-10-12, Valuation review — UR6 class 2 access-gradient fail):** active behaviour is `holdout_error_band`. Model-filled zones in a failed class get that class's **own** holdout prediction-error band: the 5th–95th percentile of relative residual `(actual − pred) / pred`, applied where wider than the existing interval (ECONOMIC_RULES §12). Until class holdout errors exist, rows are tagged `fail_band_pending_holdout` and left unwidened. Observed zones are not widened. Research estimate / internal calibration — not an official uncertainty product.
 - **Run once:** before scoring, a scored run writes the dz_access sha256 and a hash of the `gradient_v07` config section to an internal run log (`{valuation_out_dir}/run_log/gradient_v07_runs.jsonl`, outside the repo). A second scored run on the same input is refused (`RepeatScoredRunError`) unless an explicit override with a written reason is given, and the override is logged too.
-- **Tests:** synthetic fixtures only (`tests/surface/test_surface_gradient_v07.py`).
+- **Tests:** synthetic fixtures only (`tests/surface/test_surface_gradient_v07.py`, `tests/surface/test_surface_model_fill.py`).
 
 ### 12.8 One-off detached rate for the non-estate share (2026-10-06, rules sha256 prefix 23df6297)
 

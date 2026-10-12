@@ -37,7 +37,9 @@ def test_pre_registration_fixed_in_config(cfg):
     assert set(g["sample"]["exclude"]) == {"weak_match", "mask_too_big_parcel", "res_uprn_exceeds_dwellings", "zero_dwellings"}
     assert g["sample"]["min_sales"] == 5
     assert g["on_class_fail"]["multiplier_status"] == "REJECTED_GEORGIST"
-    assert g["on_class_fail"]["active_behaviour"] == "fail_band_pending_holdout"
+    assert g["on_class_fail"]["active_behaviour"] == "holdout_error_band"
+    assert g["on_class_fail"]["holdout_error_band"]["percentile_low"] == 5
+    assert g["on_class_fail"]["holdout_error_band"]["percentile_high"] == 95
     assert cfg["gradient"]["label"] == "superseded driver, reported"
 
 
@@ -123,19 +125,60 @@ def test_job_access_rows_refuse_ranks(cfg):
 
 
 def test_rejected_multiplier_never_applied(cfg):
-    """Georgist rejected the fail-band multiplier: bands are NEVER widened; model-filled rows in a failed class
-    are tagged fail_band_pending_holdout instead."""
+    """Georgist rejected the fixed fail-band multiplier: it is NEVER applied."""
     oc = cfg["on_class_fail"] if "on_class_fail" in cfg else cfg["gradient_v07"]["on_class_fail"]
-    kw = dict(failed_classes=[2], multiplier=oc["model_filled_band_multiplier"], multiplier_status=oc["multiplier_status"])
+    # Legacy pending path (no holdout errors, behaviour not holdout_error_band): tag only.
+    kw = dict(failed_classes=[2], multiplier=oc["model_filled_band_multiplier"],
+              multiplier_status=oc["multiplier_status"], active_behaviour="fail_band_pending_holdout")
     for lv, lo, hi in ((100.0, 80.0, 130.0), (10.0, 0.0, 30.0), (None, None, None)):
         assert ho.widen_failed_class_band(lv, lo, hi, fill_method="model_filled", ur6_class=2, **kw) == (lo, hi, ("fail_band_pending_holdout",))
     assert ho.widen_failed_class_band(100.0, 80.0, 130.0, fill_method="observed_pooled", ur6_class=2, **kw) == (80.0, 130.0, ())
     assert ho.widen_failed_class_band(100.0, 80.0, 130.0, fill_method="model_filled", ur6_class=1, **kw) == (80.0, 130.0, ())
     for status in ("REJECTED_GEORGIST", "rejected"):                  # any REJECTED status refuses, whatever the multiplier
         assert ho.widen_failed_class_band(100.0, 80.0, 130.0, fill_method="model_filled", ur6_class=2, failed_classes=[2],
-                                          multiplier=9.0, multiplier_status=status)[:2] == (80.0, 130.0)
+                                          multiplier=9.0, multiplier_status=status,
+                                          active_behaviour="fail_band_pending_holdout")[:2] == (80.0, 130.0)
     tags = ho.widen_failed_class_band(100.0, 80.0, 130.0, fill_method="model_filled", ur6_class=2, **kw)[2]
     assert "band_multiplier_placeholder" not in tags and not any(t.startswith("band_widened") for t in tags)
+
+
+def test_ur6_class_2_holdout_error_band(cfg):
+    """UR6 class 2 failed the access-gradient test: model-filled zones get that class's own
+    holdout error band (5th–95th percentile), never a fixed multiplier."""
+    oc = cfg["gradient_v07"]["on_class_fail"]
+    assert oc["active_behaviour"] == "holdout_error_band"
+    heb = oc["holdout_error_band"]
+    # Class-2 holdout relative residuals (actual-pred)/pred — synthetic.
+    errors = [-0.40, -0.25, -0.10, 0.0, 0.05, 0.15, 0.30, 0.45]
+    kw = dict(
+        failed_classes=[2],
+        multiplier=oc["model_filled_band_multiplier"],
+        multiplier_status=oc["multiplier_status"],
+        active_behaviour=oc["active_behaviour"],
+        holdout_errors=errors,
+        percentile_low=heb["percentile_low"],
+        percentile_high=heb["percentile_high"],
+    )
+    new_lo, new_hi, tags = ho.widen_failed_class_band(
+        100.0, 90.0, 110.0, fill_method="model_filled", ur6_class=2, **kw,
+    )
+    e_lo, e_hi = ho.holdout_error_percentiles(errors, percentile_low=5, percentile_high=95)
+    expect_lo, expect_hi = ho.apply_holdout_error_band(100.0, 90.0, 110.0, error_p_low=e_lo, error_p_high=e_hi)
+    assert (new_lo, new_hi) == (expect_lo, expect_hi)
+    assert new_lo <= 90.0 and new_hi >= 110.0  # widened where the holdout band is wider
+    assert "band_widened_holdout_error" in tags
+    assert "holdout_error_band_ur6:2" in tags
+    assert "research_estimate" in tags
+    assert "band_multiplier_placeholder" not in tags
+    # Other classes unchanged; observed fill unchanged; pending when no errors yet.
+    assert ho.widen_failed_class_band(100.0, 90.0, 110.0, fill_method="model_filled", ur6_class=1, **kw)[:2] == (90.0, 110.0)
+    assert ho.widen_failed_class_band(100.0, 90.0, 110.0, fill_method="observed_pooled", ur6_class=2, **kw)[:2] == (90.0, 110.0)
+    pending = ho.widen_failed_class_band(
+        100.0, 90.0, 110.0, fill_method="model_filled", ur6_class=2,
+        failed_classes=[2], multiplier=1.5, multiplier_status="REJECTED_GEORGIST",
+        active_behaviour="holdout_error_band", holdout_errors=[],
+    )
+    assert pending == (90.0, 110.0, ("fail_band_pending_holdout",))
 
 
 def test_run_guard_once_per_input(tmp_path, cfg):

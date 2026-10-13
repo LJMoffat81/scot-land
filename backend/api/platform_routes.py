@@ -23,6 +23,7 @@ from layers.open_stats import (
     vdl_councils_json,
     vdl_json,
 )
+from layers.ledger import ledger_payload
 from layers.platform import place_context, platform_catalog
 from layers.registers import registers_payload
 from layers.data_zones import query_bbox as data_zones_bbox
@@ -182,6 +183,16 @@ def layer_open_sepa_car(
             ),
         )
     return JSONResponse(payload)
+
+
+@router.get("/ledger")
+def natural_capital_ledger() -> dict:
+    """Natural capital ledger rows + constraints (no published AGR £).
+
+    Contract: ROWS 1–10 + nested 1a; Constraints = £0, change best use.
+    Amounts are placeholders until ECONOMIC_RULES / calibration approve.
+    """
+    return ledger_payload()
 
 
 @router.get("/platform/place")

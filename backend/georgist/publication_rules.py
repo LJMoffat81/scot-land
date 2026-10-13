@@ -141,6 +141,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="SEPA CAR licences from public-register CSV (download-only); no rent",
     ),
+    "/ledger": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="Natural capital ledger skeleton; placeholders only, no published AGR £",
+    ),
     "/platform/place": LayerRule("site", "site", "none", note="ownership/vacant/gap card; no modelled rent"),
     "/platform/gaps": LayerRule("zone", "zone", "none", note="register gap catalogue"),
     "/api/catalog.json": LayerRule("zone", "zone", "none", note="open-data catalogue"),

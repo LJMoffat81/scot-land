@@ -5,8 +5,8 @@ import { useState } from "react";
 import LayersPanel, { type LayerToggleState } from "@/components/LayersPanel";
 
 /**
- * Isolated preview for the catalog-driven LayersPanel.
- * The same component is embedded in the main map Layers tools panel.
+ * Dev/QA preview for the catalog-driven LayersPanel.
+ * Public map HUD uses the Natural capital ledger (/ledger-panel), not this checklist.
  */
 export default function LayersPanelPreviewPage() {
   const [enabled, setEnabled] = useState<LayerToggleState>({});
@@ -16,8 +16,9 @@ export default function LayersPanelPreviewPage() {
       <div className="layers-panel-page-inner">
         <h1 className="layers-panel-page-brand">Scot-LAND</h1>
         <p className="layers-panel-page-lead">
-          Layers panel preview — driven by{" "}
-          <code>/layers/catalog</code>. Also open via Layers on the main map.
+          Catalog layers preview (Dev/QA) — driven by{" "}
+          <code>/layers/catalog</code>. Public HUD:{" "}
+          <a href="/ledger-panel">Natural capital ledger</a>.
         </p>
         <LayersPanel enabled={enabled} onEnabledChange={setEnabled} />
       </div>

@@ -113,15 +113,7 @@ async function openPanel(page: Page) {
   await page.getByTestId("layers-panel").waitFor();
 }
 
-async function openPanelOnMap(page: Page) {
-  await mockCatalog(page);
-  await page.goto("/");
-  await page.locator(".maplibregl-canvas").waitFor();
-  await page.getByRole("button", { name: "Layers", exact: true }).click();
-  await page.getByTestId("layers-panel").waitFor();
-}
-
-test.describe("LayersPanel (catalog-driven)", () => {
+test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
   test.use({ viewport: { width: 1100, height: 900 } });
 
   test("every live catalog layer has a toggle with source and licence", async ({
@@ -184,17 +176,16 @@ test.describe("LayersPanel (catalog-driven)", () => {
     expect(body).not.toMatch(/£\d/);
   });
 
-  test("Layers button on the main map embeds the catalog panel", async ({
+  test("main map HUD uses ledger, not the catalog LayersPanel", async ({
     page,
   }) => {
     test.setTimeout(90_000);
-    await openPanelOnMap(page);
-
+    await page.goto("/");
+    await page.locator(".maplibregl-canvas").waitFor();
+    await page.getByRole("button", { name: "Ledger", exact: true }).click();
     const tools = page.locator("aside.hud-tools");
-    await expect(tools.getByTestId("layers-panel")).toBeVisible();
-    await expect(tools.getByTestId("layer-toggle-boundaries")).toBeVisible();
-    await expect(tools.getByTestId("layer-toggle-public_crown")).toBeVisible();
-    await expect(tools.getByTestId("layer-toggle-vdl")).toBeVisible();
+    await expect(tools.getByTestId("ledger-panel")).toBeVisible();
+    await expect(tools.getByTestId("layers-panel")).toHaveCount(0);
   });
 });
 

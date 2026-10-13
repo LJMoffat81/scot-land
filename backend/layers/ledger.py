@@ -1,0 +1,159 @@
+"""Natural capital ledger payload for GET /ledger.
+
+Authoritative ROWS / Constraints: project store georgist-ledger-accounting-rules
+and docs/FRONTEND_IA.md. Public amounts are placeholders — no AGR £ until
+ECONOMIC_RULES / calibration approve publication.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+CONSTRAINT_RULE = "£0, changes best use"
+
+_ROWS: list[dict[str, Any]] = [
+    {
+        "id": "1",
+        "label": "Surface site rent",
+        "parent_id": None,
+        "nested": False,
+        "tag": "market_or_proxy",
+        "status": "not_yet",
+        "status_note": (
+            "Best permitted use. Public £ withheld until ECONOMIC_RULES / calibration."
+        ),
+        "amount_placeholder": "—",
+    },
+    {
+        "id": "1a",
+        "label": "Planning uplift",
+        "parent_id": "1",
+        "nested": True,
+        "tag": "nested",
+        "status": "not_yet",
+        "status_note": "Nested in row 1 — never added as a sibling total.",
+        "amount_placeholder": "—",
+    },
+    {
+        "id": "2",
+        "label": "Mineral rent",
+        "parent_id": None,
+        "nested": False,
+        "tag": "proxy",
+        "status": "not_yet",
+        "status_note": "Royalty/tonne, below ground. Not yet on the public ledger.",
+        "amount_placeholder": "—",
+    },
+    {
+        "id": "3",
+        "label": "Onshore wind + hydro resource rent",
+        "parent_id": None,
+        "nested": False,
+        "tag": "proxy",
+        "status": "partial",
+        "status_note": (
+            "Site rent minus footprint surface rent. Inventory layers may paint; £ withheld."
+        ),
+        "amount_placeholder": "—",
+    },
+    {
+        "id": "4",
+        "label": "Seabed & foreshore",
+        "parent_id": None,
+        "nested": False,
+        "tag": "market",
+        "status": "not_yet",
+        "status_note": "CES offshore wind, cables, moorings, foreshore.",
+        "amount_placeholder": "—",
+    },
+    {
+        "id": "5",
+        "label": "Aquaculture licence rent",
+        "parent_id": None,
+        "nested": False,
+        "tag": "shadow",
+        "status": "not_yet",
+        "status_note": "Shadow — total minus CES seabed paid. Drawn in shadow stack later.",
+        "amount_placeholder": "—",
+    },
+    {
+        "id": "6",
+        "label": "Fisheries quota",
+        "parent_id": None,
+        "nested": False,
+        "tag": "market_or_proxy",
+        "status": "not_yet",
+        "status_note": "Market if lease prices, else shadow.",
+        "amount_placeholder": "—",
+    },
+    {
+        "id": "7",
+        "label": "Water scarcity",
+        "parent_id": None,
+        "nested": False,
+        "tag": "shadow",
+        "status": "not_yet",
+        "status_note": "Shadow, ~0 when published. Not shown as £0 while not yet.",
+        "amount_placeholder": "—",
+    },
+    {
+        "id": "8",
+        "label": "Unpriced peat/soil carbon",
+        "parent_id": None,
+        "nested": False,
+        "tag": "shadow",
+        "status": "not_yet",
+        "status_note": "Only unpriced carbon; timber/credits stay in row 1.",
+        "amount_placeholder": "—",
+    },
+    {
+        "id": "9",
+        "label": "Oil & gas",
+        "parent_id": None,
+        "nested": False,
+        "tag": "reported",
+        "status": "excluded",
+        "status_note": "UK-reserved — outside Scottish total (and both headline stacks).",
+        "amount_placeholder": "—",
+        "outside_scottish_total": True,
+    },
+    {
+        "id": "10",
+        "label": "Ecosystem services",
+        "parent_id": None,
+        "nested": False,
+        "tag": "shadow",
+        "status": "not_yet",
+        "status_note": "Shadow, later.",
+        "amount_placeholder": "—",
+    },
+]
+
+_CONSTRAINTS: list[dict[str, str]] = [
+    {"id": "designations", "label": "Designations", "rule": CONSTRAINT_RULE},
+    {"id": "flood", "label": "Flood", "rule": CONSTRAINT_RULE},
+    {
+        "id": "crofting",
+        "label": "Crofting / common grazings",
+        "rule": CONSTRAINT_RULE,
+    },
+    {
+        "id": "lca",
+        "label": "Land Capability for Agriculture (LCA)",
+        "rule": CONSTRAINT_RULE,
+    },
+]
+
+
+def ledger_payload() -> dict[str, Any]:
+    """Public ledger skeleton — rows + constraints; no published rent £."""
+    return {
+        "version": 1,
+        "brief": "Natural capital ledger — ROWS 1–10 + nested 1a; Constraints £0",
+        "publication_note": (
+            "Zone-level only. Public AGR £ withheld until ECONOMIC_RULES / "
+            "calibration. Placeholders are not £0."
+        ),
+        "rows": list(_ROWS),
+        "constraints": list(_CONSTRAINTS),
+    }

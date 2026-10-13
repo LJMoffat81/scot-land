@@ -28,6 +28,9 @@ GLASGOW_BBOX = {
 def test_catalog_lists_flood_live_with_licence_and_source():
     layer = catalog_layer()
     assert layer["id"] == "flood"
+    assert layer["ledger_role"] == "constraint"
+    assert layer["ledger_row"] is None
+    assert layer["ui_surface"] == "ledger"
     assert layer["status"] == "live"
     assert layer["licence"] == LICENCE
     assert layer["licence_url"] == LICENCE_URL
@@ -45,6 +48,9 @@ def test_catalog_lists_flood_live_with_licence_and_source():
     assert flood["licence"] == "OGL-3.0"
     assert flood["licence_url"] == LICENCE_URL
     assert flood["source_url"]
+    assert flood["ledger_role"] == "constraint"
+    assert flood.get("ledger_row") is None
+    assert flood["ui_surface"] == "ledger"
     assert "mapserver_url" not in flood
 
 

@@ -92,7 +92,9 @@ def catalog_layer() -> dict[str, Any]:
             "Medium-likelihood (200-year) river and coastal flood extents, "
             "SEPA Flood Maps v3.0 present-day. OGL download from "
             "www2.sepa.org.uk/flooddata only — ingested to PostGIS "
-            "(503 when unloaded). No MapServer, viewer, or live web services."
+            "(503 when unloaded). Natural capital Constraint (no ledger rent row, "
+            "£0) — changes best permitted use only. No LayersPanel toggle; "
+            "no MapServer, viewer, or live web services."
         ),
         "endpoint": BBOX_ENDPOINT,
         "licence": LICENCE,
@@ -100,11 +102,15 @@ def catalog_layer() -> dict[str, Any]:
         "minzoom": MINZOOM,
         "source_url": DOWNLOAD_URL,
         "attribution_url": ATTRIBUTION_PDF,
+        "ledger_role": "constraint",
+        "ledger_row": None,
+        "ui_surface": "ledger",
         "gaps": [
             "Surface-water and climate-change scenarios are in the OGL product "
-            "but not in the default public toggle (medium river + coastal only).",
+            "but not in the default public constraint paint (medium river + coastal only).",
             "Extents are indicative hazard maps — not a property-level flood quote.",
             "Must ingest the OGL download into PostGIS; live SEPA services are not used.",
+            "Constraint overlays are £0 and never a rent row (C-overlay).",
         ],
     }
 

@@ -212,6 +212,20 @@ export const CONTEXT_LAYERS: ContextLayer[] = [
     opacity: 0.45,
   },
   {
+    id: "flood",
+    label: "Flood extent",
+    group: "Place",
+    kind: "raster",
+    attribution:
+      "© SEPA. Licensed under the Open Government Licence v3.0.",
+    title:
+      "Medium-likelihood river and coastal flood extent from the SEPA OGL download (www2.sepa.org.uk/flooddata) after PostGIS ingest — not the SEPA MapServer or viewer. Later this can only reduce a rent. © SEPA. Licensed under the Open Government Licence v3.0.",
+    minzoom: 8,
+    maxzoom: 18,
+    color: "#1d4e89",
+    opacity: 0.55,
+  },
+  {
     id: "woodland",
     label: "Woodland",
     group: "Use",

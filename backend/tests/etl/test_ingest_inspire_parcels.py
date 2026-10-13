@@ -24,12 +24,20 @@ def test_fixture_geojson_exists_and_is_feature_collection():
 
     payload = json.loads(FIXTURE.read_text(encoding="utf-8"))
     assert payload["type"] == "FeatureCollection"
-    assert len(payload["features"]) >= 2
+    assert len(payload["features"]) >= 3
+    counties = set()
     for feature in payload["features"]:
         props = feature["properties"]
         assert props.get("fixture") is True
-        assert props.get("county") == "synthetic-test-only"
+        assert props.get("county")
+        counties.add(props["county"])
         assert str(props.get("inspireid", "")).startswith("SYN-")
+    assert "GLA" in counties
+    assert "STG" in counties
+    assert any(
+        "BALFRON" in str(f["properties"].get("inspireid", "")).upper()
+        for f in payload["features"]
+    )
 
 
 def test_inspire_id_prefers_inspireid_property():
@@ -62,7 +70,8 @@ def test_fixture_load_writes_rows_and_meta(monkeypatch):
             cur.execute("TRUNCATE TABLE inspire_parcels_meta;")
         conn.commit()
         count = ingest.load_geojson(FIXTURE, conn, replace=True)
-        assert count == 2
+        assert count == 3
+        county_counts = ingest._county_counts_from_table(conn)
         ingest.write_load_meta(
             conn,
             count=count,
@@ -71,13 +80,27 @@ def test_fixture_load_writes_rows_and_meta(monkeypatch):
             licence="synthetic-test-only",
             source_url=str(FIXTURE),
             input_path=FIXTURE,
+            county_counts=county_counts,
         )
         with conn.cursor() as cur:
             cur.execute("SELECT COUNT(*) FROM inspire_parcels")
-            assert cur.fetchone()[0] == 2
+            assert cur.fetchone()[0] == 3
             cur.execute(
                 "SELECT value FROM inspire_parcels_meta WHERE key = 'load_scope'"
             )
             assert cur.fetchone()[0] == "fixture"
+            cur.execute(
+                "SELECT value FROM inspire_parcels_meta WHERE key = 'county_counts'"
+            )
+            raw = cur.fetchone()[0]
+            import json
+
+            counts = json.loads(raw)
+            assert counts.get("GLA") == 2
+            assert counts.get("STG") == 1
+            cur.execute(
+                "SELECT value FROM inspire_parcels_meta WHERE key = 'harvest_year'"
+            )
+            assert cur.fetchone()[0] == "2026"
     finally:
         conn.close()

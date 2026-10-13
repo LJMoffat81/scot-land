@@ -229,6 +229,14 @@ export default function LayersPanel({
                         sourceLabel
                       )}
                     </p>
+                    {layer.attribution?.trim() ? (
+                      <p
+                        className="layer-meta"
+                        data-testid={`layer-attribution-${layer.id}`}
+                      >
+                        {layer.attribution.trim()}
+                      </p>
+                    ) : null}
                     <p
                       className="layer-meta"
                       data-testid={`layer-licence-${layer.id}`}

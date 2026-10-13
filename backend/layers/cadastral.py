@@ -6,12 +6,18 @@ missing or empty, callers must return HTTP 503 — never placeholder parcels.
 
 A fixture-scoped CI load (synthetic polygons only) still serves 200 for
 viewports with no rows; meta.fixture_scoped and gaps stay honest.
+
+Shapes only — no titles, owners or prices. Attribution is OGL v3 (Laurie
+ruling Oct 2026); never the 2017 OS INSPIRE end-user licence.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import os
+import re
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -27,6 +33,16 @@ SOURCES_PATH = REPO_ROOT / "data" / "config" / "sources.yaml"
 TABLE = "inspire_parcels"
 META_TABLE = "inspire_parcels_meta"
 MAX_FEATURES = 200
+
+OGL_V3_URL = (
+    "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+)
+OGL_V3_LICENCE_PHRASE = "Licensed under the Open Government Licence v3.0"
+# Exact map / layer-guide credit (harvest year filled at runtime).
+ROS_OS_ATTRIBUTION_TEMPLATE = (
+    "© Crown copyright. Reproduced with the permission of Registers of Scotland. "
+    "Contains OS data © Crown copyright and database right {year}."
+)
 
 
 class LayerUnavailable(Exception):
@@ -53,23 +69,50 @@ def _connect():
     return psycopg2.connect(**cfg)
 
 
+def harvest_year_from_vintage(vintage: str | None, fallback: int | None = None) -> int:
+    """Parse harvest year from a vintage stamp (YYYY or YYYY-MM-DD)."""
+    if vintage:
+        match = re.search(r"(20\d{2})", str(vintage))
+        if match:
+            return int(match.group(1))
+    if fallback is not None:
+        return int(fallback)
+    return date.today().year
+
+
+def format_ros_os_attribution(year: int) -> str:
+    """Confirmed RoS/OS map credit — shapes only; no titles, owners or prices."""
+    return ROS_OS_ATTRIBUTION_TEMPLATE.format(year=int(year))
+
+
 @lru_cache(maxsize=1)
 def parcel_source_meta() -> dict[str, Any]:
     """Licence / attribution / vintage from the committed source registry."""
     with SOURCES_PATH.open(encoding="utf-8") as handle:
         sources = yaml.safe_load(handle) or {}
     parcels = sources.get("parcels") or {}
+    configured_year = parcels.get("harvest_year")
+    year = harvest_year_from_vintage(
+        str(parcels.get("vintage") or ""),
+        fallback=int(configured_year) if configured_year is not None else None,
+    )
+    attribution = (parcels.get("attribution") or "").strip()
+    if not attribution or "{year}" in attribution:
+        attribution = format_ros_os_attribution(year)
+    else:
+        # Keep registry text when it already embeds the harvest year.
+        attribution = " ".join(attribution.split())
     return {
         "source": parcels.get("name") or "ROS INSPIRE cadastral parcels",
         "licence": parcels.get("licence") or "OGL-3.0",
-        "attribution": parcels.get("attribution")
-        or (
-            "© Crown copyright. Reproduced with the permission of "
-            "Registers of Scotland."
-        ),
+        "licence_url": parcels.get("licence_url") or OGL_V3_URL,
+        "licence_phrase": parcels.get("licence_phrase") or OGL_V3_LICENCE_PHRASE,
+        "attribution": attribution,
+        "harvest_year": year,
         "source_url": parcels.get("source_url") or "https://www.ros.gov.uk/open-data",
         "vintage": parcels.get("vintage") or "see live WMS / local ingest stamp",
         "product": parcels.get("product") or "INSPIRE Index Polygons (CP.CadastralParcel)",
+        "publication_status": parcels.get("publication_status") or "ok",
         "gaps": list(
             parcels.get("gaps")
             or [
@@ -197,6 +240,30 @@ def query_bbox(
         conn.close()
 
     fixture_scoped = scope == "fixture"
+    year = harvest_year_from_vintage(
+        db_meta.get("harvest_year") or db_meta.get("vintage") or meta.get("vintage"),
+        fallback=meta.get("harvest_year"),
+    )
+    meta["harvest_year"] = year
+    meta["attribution"] = format_ros_os_attribution(year)
+    meta["licence_url"] = meta.get("licence_url") or OGL_V3_URL
+    meta["licence_phrase"] = meta.get("licence_phrase") or OGL_V3_LICENCE_PHRASE
+    raw_counts = db_meta.get("county_counts")
+    if raw_counts:
+        try:
+            parsed = json.loads(raw_counts)
+            if isinstance(parsed, dict):
+                meta["county_counts"] = {
+                    str(k): int(v) for k, v in parsed.items()
+                }
+        except (TypeError, ValueError, json.JSONDecodeError):
+            meta["county_counts_raw"] = raw_counts
+    if db_meta.get("tagged"):
+        meta["tagged"] = db_meta["tagged"]
+    if db_meta.get("crs_source"):
+        meta["crs_source"] = db_meta["crs_source"]
+    if db_meta.get("publication_status"):
+        meta["publication_status"] = db_meta["publication_status"]
     if fixture_scoped:
         # Fixture loads must not look like a national RoS extract.
         meta["licence"] = db_meta.get("licence") or "synthetic-test-only"
@@ -214,6 +281,7 @@ def query_bbox(
         geom = row.get("geometry")
         if not geom:
             continue
+        # Shapes only — never expose titles, owners or prices on public features.
         features.append(
             {
                 "type": "Feature",

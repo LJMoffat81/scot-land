@@ -11,7 +11,7 @@
         "nationalcadastralreference": "SYN-GLA-001",
         "label": "SYN-GLA-001",
         "area_sqm": 900.0,
-        "county": "synthetic-test-only",
+        "county": "GLA",
         "fixture": true,
         "note": "Synthetic CI geometry — not a real RoS title"
       },
@@ -36,7 +36,7 @@
         "nationalcadastralreference": "SYN-GLA-002",
         "label": "SYN-GLA-002",
         "area_sqm": 1200.0,
-        "county": "synthetic-test-only",
+        "county": "GLA",
         "fixture": true,
         "note": "Synthetic CI geometry — not a real RoS title"
       },
@@ -49,6 +49,31 @@
             [-4.2575, 55.8610],
             [-4.2585, 55.8610],
             [-4.2585, 55.8602]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "SYN-STG-BALFRON-001",
+      "properties": {
+        "inspireid": "SYN-STG-BALFRON-001",
+        "nationalcadastralreference": "SYN-STG-BALFRON-001",
+        "label": "SYN-STG-BALFRON-001",
+        "area_sqm": 750.0,
+        "county": "STG",
+        "fixture": true,
+        "note": "Synthetic Balfron (Stirling) CI geometry — not a real RoS title"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-4.3395, 56.0710],
+            [-4.3385, 56.0710],
+            [-4.3385, 56.0718],
+            [-4.3395, 56.0718],
+            [-4.3395, 56.0710]
           ]
         ]
       }

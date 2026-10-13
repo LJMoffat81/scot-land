@@ -26,6 +26,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import shutil
 import tempfile
 import time
@@ -412,8 +413,12 @@ def load_county_zips(
     replace: bool,
     work_dir: Path,
     attempts: int = 5,
-) -> int:
-    """Download and load one or more county zips. Never writes under data/external."""
+) -> tuple[int, dict[str, int]]:
+    """Download and load one or more county zips. Never writes under data/external.
+
+    Returns (total_rows, per_county_counts). Source shapefiles are EPSG:27700
+    (BNG); rows are stored as WGS84 for the map bbox contract.
+    """
     work_dir.mkdir(parents=True, exist_ok=True)
     # Refuse accidental data/external targets.
     as_posix = str(work_dir.resolve()).replace("\\", "/")
@@ -424,6 +429,7 @@ def load_county_zips(
         )
 
     total = 0
+    county_counts: dict[str, int] = {}
     first = True
     with httpx.Client(
         timeout=httpx.Timeout(180.0, connect=30.0),
@@ -442,8 +448,30 @@ def load_county_zips(
             )
             first = False
             total += count
+            county_counts[code] = count
             logger.info("Loaded %s parcels from %s", count, code)
-    return total
+    return total, county_counts
+
+
+def _harvest_year(vintage: str) -> int:
+    match = re.search(r"(20\d{2})", str(vintage or ""))
+    if match:
+        return int(match.group(1))
+    return date.today().year
+
+
+def _county_counts_from_table(conn) -> dict[str, int]:
+    """Per-county row counts after a GeoJSON / county load."""
+    with conn.cursor() as cur:
+        cur.execute(
+            f"""
+            SELECT COALESCE(county, 'unknown') AS county, COUNT(*)
+            FROM {TABLE}
+            GROUP BY 1
+            ORDER BY 1
+            """
+        )
+        return {str(code): int(n) for code, n in cur.fetchall()}
 
 
 def write_load_meta(
@@ -456,21 +484,32 @@ def write_load_meta(
     source_url: str,
     input_path: Path | str,
     counties: str = "",
+    county_counts: dict[str, int] | None = None,
 ) -> None:
     """Persist load provenance for the API (fixture vs production extract)."""
+    year = _harvest_year(vintage)
     rows = {
         "load_scope": load_scope,
         "licence": licence,
         "source_url": source_url,
         "product": PRODUCTION_PRODUCT,
         "vintage": vintage,
+        "harvest_year": str(year),
         "row_count": str(count),
         "input": str(input_path),
         "ingested_on": date.today().isoformat(),
         "counties": counties,
         "catalogue_url": CATALOGUE_URL,
         "service_home": SERVICE_HOME,
+        "crs_source": "EPSG:27700",
+        "publication_status": "ok" if load_scope != "fixture" else "fixture",
+        "tagged": "live" if load_scope in ("production", "pilot", "subset") else load_scope,
     }
+    if county_counts is not None:
+        rows["county_counts"] = json.dumps(
+            {str(k): int(v) for k, v in sorted(county_counts.items())},
+            separators=(",", ":"),
+        )
     with conn.cursor() as cur:
         extras.execute_batch(
             cur,
@@ -602,6 +641,7 @@ def main() -> None:
     try:
         ensure_table(conn)
 
+        county_counts: dict[str, int] | None = None
         if args.fixture:
             input_path = DEFAULT_FIXTURE
             if not input_path.is_file():
@@ -612,6 +652,7 @@ def main() -> None:
             licence = "synthetic-test-only"
             source_url = str(DEFAULT_FIXTURE.relative_to(REPO_ROOT))
             counties = ""
+            county_counts = _county_counts_from_table(conn)
             stamp = write_local_stamp(
                 input_path,
                 count,
@@ -630,6 +671,7 @@ def main() -> None:
             licence = PRODUCTION_LICENCE
             source_url = PRODUCTION_SOURCE_URL
             counties = ""
+            county_counts = _county_counts_from_table(conn)
             stamp = write_local_stamp(
                 input_path,
                 count,
@@ -649,7 +691,7 @@ def main() -> None:
                 codes = resolve_codes(args.counties)
                 load_scope = "production" if len(codes) >= len(REGISTRATION_COUNTIES) else "subset"
             tmp_root = Path(tempfile.mkdtemp(prefix="inspire_fetch_"))
-            count = load_county_zips(
+            count, county_counts = load_county_zips(
                 codes,
                 conn,
                 replace=args.replace,
@@ -666,11 +708,15 @@ def main() -> None:
                         "layer": "inspire_parcels",
                         "load_scope": load_scope,
                         "counties": codes,
+                        "county_counts": county_counts,
                         "row_count": count,
                         "licence": licence,
                         "catalogue_url": CATALOGUE_URL,
                         "download_api": _download_base() + "/{code}",
                         "vintage": args.vintage,
+                        "harvest_year": _harvest_year(args.vintage),
+                        "crs_source": "EPSG:27700",
+                        "tagged": "live",
                         "ingested_on": date.today().isoformat(),
                         "note": "Temp fetch dir — deleted after load; never data/external.",
                     },
@@ -690,6 +736,7 @@ def main() -> None:
             source_url=source_url,
             input_path=input_path,
             counties=counties,
+            county_counts=county_counts,
         )
     finally:
         conn.close()

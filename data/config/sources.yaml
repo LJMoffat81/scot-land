@@ -174,19 +174,26 @@ parcels:
   role: parcel_geometry_lookup_and_map_layer
   # Laurie ruling Oct 2026: RoS grants Index Polygons under OGL v3 (the 2017 OS
   # INSPIRE end-user licence linked from RoS's dataset guide is an RoS error).
+  # OGL v3 only — do NOT link the old 2017 OS INSPIRE end-user licence.
   licence: OGL-3.0
   licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  licence_phrase: Licensed under the Open Government Licence v3.0
+  # Exact map + layer-guide credit (year = harvest_year). Match dz_residential_land /
+  # dz_detached_plot_bands RoS/OS wording. Shapes public; no per-plot values.
+  harvest_year: 2026
   attribution: >-
     © Crown copyright. Reproduced with the permission of Registers of Scotland.
     Contains OS data © Crown copyright and database right 2026.
   source_url: https://www.ros.gov.uk/open-data
+  publication_status: ok
   # Interactive catalogue (legacy host). Self-fetch uses download_api below.
   download_url: https://ros.locationcentre.co.uk/inspire/
   download_service: https://ros-inspire.themapcloud.com/
   download_api: https://ros-inspire.themapcloud.com/maps/download/ros-cp.cadastralparcel/{code}
   counties_module: backend/etl/inspire_counties.py
   pilot_counties: [MID, FFE]   # Edinburgh (Midlothian) + Fife
-  vintage: live-WMS; PostGIS load stamp in inspire_parcels_meta
+  crs_source: EPSG:27700
+  vintage: 2026
   wms_url: https://ros-inspire.themapcloud.com/maps/wms
   wms_layer: CP.CadastralParcel
   postgis_table: inspire_parcels
@@ -208,6 +215,7 @@ parcels:
     - Index polygons are registered extents, not a title sheet
     - RoS publishes 33 registration counties (Edinburgh = Midlothian/MID)
     - CI uses a synthetic fixture only; production self-fetches county zips
+    - Per-plot values stay off public view (shapes only)
 
 
 hydro_sites:

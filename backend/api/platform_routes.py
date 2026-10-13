@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from agr.export_stamp import current_stamp, stamp_comment, with_stamp
+from georgist.ledger import ledger_catalog
 from layers.common_good import common_good_payload
 from layers.open_stats import (
     catalog_json,
@@ -208,6 +209,16 @@ def platform_gaps() -> dict:
 @router.get("/api/catalog.json")
 def api_catalog() -> dict:
     return with_stamp(catalog_json())
+
+
+@router.get("/api/ledger.json")
+def api_ledger() -> dict:
+    """Natural capital ledger: checks, excluded list, benchmarks (not inputs).
+
+    Catalog for the Data section Checks + Excluded page. No map-panel layer
+    dump and no modelled plot £.
+    """
+    return with_stamp(ledger_catalog())
 
 
 @router.get("/api/public-land.json")

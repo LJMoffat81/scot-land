@@ -144,6 +144,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     "/platform/place": LayerRule("site", "site", "none", note="ownership/vacant/gap card; no modelled rent"),
     "/platform/gaps": LayerRule("zone", "zone", "none", note="register gap catalogue"),
     "/api/catalog.json": LayerRule("zone", "zone", "none", note="open-data catalogue"),
+    "/api/ledger.json": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="natural capital ledger checks/excluded/benchmarks; no rents",
+    ),
     "/api/public-land.json": LayerRule("zone", "zone", "none", note="public-land download meta"),
     "/api/vdl.json": LayerRule("zone", "zone", "none", note="VDL download meta"),
     "/api/vdl-councils.json": LayerRule("zone", "zone", "none", note="VDL by council meta"),

@@ -28,6 +28,7 @@ from layers.platform import place_context, platform_catalog
 from layers.registers import registers_payload
 from layers.data_zones import query_bbox as data_zones_bbox
 from layers.hydro import query_bbox as hydro_bbox
+from layers.hla import query_bbox as hla_bbox
 from layers.public_land import query_bbox as public_land_bbox
 from layers.sepa_car import query_bbox as sepa_car_bbox
 from layers.vdl import query_bbox as vdl_bbox
@@ -122,6 +123,35 @@ def layer_open_data_zones(
                 "Data Zone boundaries are not available: "
                 f"{meta.get('error') or 'upstream source failed'}. "
                 "Boundaries only — gaps are not filled with guesses."
+            ),
+        )
+    return JSONResponse(payload)
+
+
+@router.get("/layers/open/hla")
+def layer_open_hla(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=80, ge=1, le=80),
+) -> JSONResponse:
+    """Housing Land Audit / Housing Land Supply polygons in the viewport (OGL).
+
+    Serves Spatial Hub HLA sites from PostGIS ``planning_sites`` after local
+    OGL ingest. **503** when unloaded or PostGIS unavailable — never invents
+    sites. An empty FeatureCollection with meta.ok=true means no sites in view.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    payload = hla_bbox(south, west, north, east, max_features=max_features)
+    meta = payload.get("meta") or {}
+    if meta.get("ok") is False:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Housing land audit overlay is not available: "
+                f"{meta.get('error') or 'PostGIS HLA source not loaded'}. "
+                "Spatial Hub OGL extract only — gaps are not filled with guesses."
             ),
         )
     return JSONResponse(payload)

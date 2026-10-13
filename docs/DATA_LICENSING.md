@@ -69,6 +69,7 @@ Public methodology and README must list active data sources. See `data/config/so
 | Vacant & derelict | SVDLS site register + Spatial Hub VDL polygons | OGL-3.0 — cite Scottish Government and Improvement Service / local planning authorities; survey sites, not a title |
 | Hydropower sites | SEPA Hydropower Sites (ATOM shapefile) | OGL-3.0 — cite SEPA; CAR hydropower abstractions; value_tier=proxy; no £ rent |
 | SEPA CAR licences | SEPA Open/SEPA_Reference MapServer 194/195 → PostGIS | OGL-3.0 — cite SEPA (confirmed on Environmental data); ingest-time MapServer load; **never proxied to clients**; value_tier=market; no £ rent |
+| Housing land audit | Spatial Hub Housing Land Supply – Scotland (HLA amalgamation) | OGL-3.0 — cite Improvement Service / local planning authorities; audit sites, not a title. PostGIS ingest from local extract; anonymous Spatial Hub WFS is gated; national SG ArcGIS republish is PSGA/Digimap (not used) |
 | Common Good | Statutory LA registers + Fife indicative titles metadata | Linked only. No national open spatial layer. Fife under OS Public Sector End User Licence - INSPIRE — not redistributed here |
 
 ### Accepted non-OGL open licence

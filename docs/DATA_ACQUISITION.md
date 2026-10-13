@@ -146,6 +146,34 @@ Do not scrape Spatial Hub. Do not commit raw downloads under `data/external`.
 
 Registry: `data/config/sources.yaml` → `vdl`. Zone-level rollups used by the Wealth Engine live under `data/processed/gis/` (see `README_svdls_hls.md`); the public map layer uses the live OGL FeatureServer, not gitignored `data/external`. GIS will review licences / CRS / zone alignment before merge of the map-layer PR.
 
+## Housing land audit / supply (HLA)
+
+| Field | Value |
+|-------|--------|
+| Product | Spatial Hub *Housing Land Supply – Scotland* (local-authority Housing Land Audit amalgamation) |
+| Licence | OGL v3.0 (`uk-ogl`) |
+| Attribution | © Improvement Service / Scottish Government; local planning authority HLA data under OGL |
+| Spatial Hub | https://data.spatialhub.scot/dataset/housing_land_supply-is |
+| Metadata | https://spatialdata.gov.scot/geonetwork/srv/api/records/911d7102-d5bc-4de9-bbfd-6e0abd429d01 |
+| BBox API | `GET /layers/open/hla` → **503** when PostGIS has no `planning_sites` rows with `source='hla'` |
+| PostGIS | `planning_sites` (`source='hla'`, EPSG:27700) via `python -m etl.ingest_hla_sites` |
+| Raw dir | `data/external/spatialhub/hls/` (gitignored — never commit) |
+
+**Honest access notes**
+
+- Spatial Hub lists the open product under OGL, but anonymous WFS from this host returns **403** (same GeoServer gate as other Spatial Hub WFS endpoints).
+- The national SG ArcGIS FeatureServer *Housing Land Supply (Scotland)* is **PSGA / Digimap restricted** — not used here.
+- Glasgow City Region publishes an OGL FeatureServer extract — regional only; not used as a national substitute.
+- Operators download the OGL open product from Spatial Hub, convert to WGS84 GeoJSON if needed, and ingest locally:
+
+```powershell
+cd backend
+# After placing pub_hls.geojson under data/external/spatialhub/hls/
+python -m etl.ingest_hla_sites --input ../data/external/spatialhub/hls/pub_hls.geojson --replace
+```
+
+Registry: `data/config/sources.yaml` → `hla`.
+
 ## Local layout after acquisition
 
 ```text

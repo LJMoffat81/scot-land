@@ -191,6 +191,20 @@ python -m etl.ingest_hla_sites --input ../data/external/spatialhub/hls/pub_hls.g
 
 Registry: `data/config/sources.yaml` → `hla`.
 
+## SEPA Flood Maps (OGL)
+
+| Field | Value |
+|-------|--------|
+| Product | SEPA Flood Maps v3.0 — medium-likelihood river + coastal (present day) |
+| Licence | OGL v3.0 |
+| Attribution | © SEPA 2025; see SEPA flood map attribution statements |
+| Download | https://www2.sepa.org.uk/flooddata/ (**only** ingest source — never MapServer/viewer) |
+| Licence URL | https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ |
+| BBox API | `GET /layers/open/flood` (PostGIS when ingested; **503** when unloaded) |
+| Ingest | `python -m etl.ingest_sepa_flood --input ../data/external/sepa/...geojson --replace` |
+
+Registry: `data/config/sources.yaml` → `flood`. Raw geodatabases stay under gitignored `data/external/sepa/`.
+
 ## Local layout after acquisition
 
 ```text

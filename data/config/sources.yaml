@@ -275,6 +275,37 @@ ldp_allocations:
     - Allocations are planning policy extents — not a title sheet or ownership layer
     - Review polygons with the adopted LDP documents and National Planning Framework 4
 
+flood:
+  name: SEPA Flood Maps v3.0
+  role: flood_hazard_overlay
+  ledger_role: constraint
+  ledger_row: null
+  ui_surface: ledger
+  licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  attribution: >-
+    © SEPA 2025; this SEPA product is licensed under the Open Government
+    Licence v3.0. Flood Maps v3.0 — medium-likelihood river and coastal
+    extents (present day). Indicative hazard extents, not a flood
+    insurance quote or title. Natural capital Constraint — £0, no rent row.
+  source_url: https://www2.sepa.org.uk/flooddata/
+  attribution_url: >-
+    https://www.sepa.org.uk/media/5zidnja5/sepa_flood_maps_data_attribution_statements.pdf
+  vintage: "v3.0 (revision 2025-02-25)"
+  bbox_endpoint: /layers/open/flood
+  default_layers:
+    - id: 1
+      name: River Flooding Medium Likelihood
+    - id: 7
+      name: Coastal Flooding Medium Likelihood
+  ingest_module: backend/etl/ingest_sepa_flood.py
+  postgis_table: sepa_flood
+  gaps:
+    - Surface-water and climate-change scenarios not in the default constraint paint
+    - Extents are indicative — not a property-level flood quote
+    - Full geodatabase stays in data/external (gitignored); ingest OGL download only — no MapServer
+    - Constraint overlays are £0 and never a rent row (C-overlay)
+
 vdl:
   name: Scottish Vacant and Derelict Land Survey (SVDLS)
   role: vacant_and_derelict_site_overlay
@@ -400,6 +431,10 @@ map_layers:
       endpoint: /layers/open/vdl
       licence: OGL-3.0
       licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+    - id: flood
+      source: SEPA Flood Maps v3.0 (OGL) — medium river + coastal
+      endpoint: /layers/open/flood
+      licence: OGL-3.0
     - id: hla
       source: Spatial Hub Housing Land Supply / HLA (OGL) via PostGIS ingest
       endpoint: /layers/open/hla

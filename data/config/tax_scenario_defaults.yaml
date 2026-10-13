@@ -1,17 +1,21 @@
-# Tax scenario DRAFT DEFAULTS — NOT finalised. Laurie must approve before any public use.
-# Status: draft_defaults / pending_laurie. publication_status=blocked. Internal only.
+# Tax scenario approved defaults (v0.1, Oct 2026) — Laurie approved.
+# Still configurable via this file. publication_status=blocked until Valuation
+# re-passes and GIS checks the zone-to-council lookup. Internal only; no public £.
 # Per-council council_tax + business_rates (NDR) are research placeholders for S1
 # revenue-swap solve. Allocated from national agr.yaml basket mid-year placeholders
 # (£2.8bn CT + £2.8bn NDR) proportional to DZ2011 zone counts — NOT official stats.
 # National single-rate S1 is a separate scenario and is OFF by default.
 schema_version: 1
-status: draft_defaults
-approval: pending_laurie
-label: "DRAFT DEFAULTS"
+status: approved_defaults
+version: "0.1"
+approved: "2026-10"
+approval: approved_laurie_v0_1_oct_2026
+label: "approved defaults (v0.1, Oct 2026)"
 owner: Georgist
 publication_status: blocked
+configurable: true
 note: >
-  Configurable scenario settings marked DRAFT DEFAULTS. Laurie still has to approve.
+  Configurable scenario settings — approved defaults (v0.1, Oct 2026).
   No ownership-based exemptions. Shadow values are never taxed. Output £ while blocked
   is Data Zone only; council views show counts. Council/Scotland £ roll-up is built
   behind the temporary blocked setting for reconciliation only.
@@ -66,7 +70,8 @@ scenarios:
     capture_rate: 0.85
 
 fiscal_targets:
-  status: draft_defaults
+  status: approved_defaults
+  version: "0.1"
   note: "Research placeholders proportional to DZ2011 zone counts from national CT/NDR basket."
   national:
     council_tax_gbp: 2800000000

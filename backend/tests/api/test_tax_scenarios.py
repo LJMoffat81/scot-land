@@ -1,4 +1,4 @@
-"""Tax scenario tools: internal-only, blocked, £ triples at DZ; DRAFT DEFAULTS S1–S3."""
+"""Tax scenario tools: internal-only, blocked, £ triples at DZ; approved defaults v0.1."""
 
 from __future__ import annotations
 
@@ -80,11 +80,14 @@ def _internal_client(monkeypatch, *, enabled=True, token: str | None = "test-sec
 
 
 def _mini_defaults(edi_target: float, glasgow_target: float) -> dict:
-    """Minimal DRAFT DEFAULTS for two councils (S1 solve tests)."""
+    """Minimal approved defaults for two councils (S1 solve tests)."""
     return {
-        "status": "draft_defaults",
-        "label": "DRAFT DEFAULTS",
-        "approval": "pending_laurie",
+        "status": "approved_defaults",
+        "label": "approved defaults (v0.1, Oct 2026)",
+        "approval": "approved_laurie_v0_1_oct_2026",
+        "version": "0.1",
+        "approved": "2026-10",
+        "configurable": True,
         "owner": "Georgist",
         "exemptions": {"ownership_based": False, "shadow_taxed": False},
         "deferral": {"low_income_home_owners": True, "rate": 0.0262},
@@ -168,9 +171,11 @@ def test_aggregate_money_is_data_zone_only_not_council_sums():
     assert out["yield_placeholder"]["source"] == YIELD_SOURCE
     assert "PLACEHOLDER" in out["yield_placeholder"]["note"].upper() or "placeholder" in out["yield_placeholder"]["note"].lower()
     assert out["warning"] == INTERNAL_WARNING
-    assert out["policy_config"]["status"] == "draft_defaults"
-    assert out["policy_config"]["label"] == "DRAFT DEFAULTS"
-    assert out["policy_config"]["approval"] == "pending_laurie"
+    assert out["policy_config"]["status"] == "approved_defaults"
+    assert out["policy_config"]["label"] == "approved defaults (v0.1, Oct 2026)"
+    assert out["policy_config"]["approval"] == "approved_laurie_v0_1_oct_2026"
+    assert out["policy_config"]["version"] == "0.1"
+    assert out["policy_config"]["configurable"] is True
     assert out["policy_config"]["owner"] == "Georgist"
     assert out["policy_config"]["separate_from_measured_land_values"] is True
     assert out["policy_config"]["exemptions"]["ownership_based"] is False
@@ -307,8 +312,11 @@ def test_surface_yaml_has_no_land_yield_005():
 
 def test_draft_defaults_file_loads():
     cfg = load_draft_defaults()
-    assert cfg["status"] == "draft_defaults"
-    assert cfg["approval"] == "pending_laurie"
+    assert cfg["status"] == "approved_defaults"
+    assert cfg["approval"] == "approved_laurie_v0_1_oct_2026"
+    assert cfg["label"] == "approved defaults (v0.1, Oct 2026)"
+    assert cfg["version"] == "0.1"
+    assert cfg["configurable"] is True
     assert cfg["scenarios"]["S2"]["capture_rate"] == 0.5
     assert cfg["scenarios"]["S3"]["capture_rate"] == 0.85
     assert cfg["scenarios"]["S1"]["national_single_rate"]["enabled"] is False
@@ -333,9 +341,9 @@ def test_stamp_blocked_includes_yield_placeholder_and_policy_config():
     assert stamped["yield_placeholder"]["source"] == YIELD_SOURCE
     assert "yield_calibration_pending" in stamped["blocked_reason"]
     assert BLOCKED_REASON == stamped["blocked_reason"]
-    assert stamped["policy_config"]["status"] == "draft_defaults"
-    assert stamped["policy_config"]["approval"] == "pending_laurie"
-    assert "DRAFT" in CAPTURE_NOTE or "DRAFT" in stamped["policy_config"]["note"]
+    assert stamped["policy_config"]["status"] == "approved_defaults"
+    assert stamped["policy_config"]["approval"] == "approved_laurie_v0_1_oct_2026"
+    assert "v0.1" in CAPTURE_NOTE or "v0.1" in stamped["policy_config"]["note"]
 
 
 def test_tax_scenarios_does_not_hardcode_land_yield():
@@ -525,7 +533,7 @@ def test_frontend_has_no_public_tax_scenario_panel():
     assert internal_page.exists()
     text = internal_page.read_text(encoding="utf-8")
     assert "blocked" in text.lower()
-    assert "DRAFT DEFAULTS" in text
+    assert "approved defaults (v0.1, oct 2026)" in text.lower()
     view = (FRONTEND_ROOT / "components" / "InternalTaxScenarioView.tsx").read_text(encoding="utf-8")
     assert "ConfidenceTag" in view
     assert "confidence-tag" in view or 'data-testid="confidence-tag"' in view or "ConfidenceTag" in view

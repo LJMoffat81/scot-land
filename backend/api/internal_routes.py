@@ -278,7 +278,7 @@ def internal_tax_scenario(
     ),
     scenario_id: str = Query(
         default="S2",
-        description="DRAFT DEFAULTS scenario: S1 (per-council revenue swap), S2 (50%), S3 (85%)",
+        description="Approved defaults (v0.1) scenario: S1 (per-council revenue swap), S2 (50%), S3 (85%)",
     ),
     capture_rate: float = Query(
         default=1.0,
@@ -330,7 +330,7 @@ def internal_tax_scenario(
     assert yp.get("source") == YIELD_SOURCE
     assert isinstance(yp.get("land_yield"), (int, float)) and yp["land_yield"] > 0
     assert abs(float(yp["land_yield"]) - 0.05) > 1e-12  # no 0.05 left in yield config
-    assert payload.get("policy_config", {}).get("status") == "draft_defaults"
+    assert payload.get("policy_config", {}).get("status") == "approved_defaults"
     assert payload.get("policy_config", {}).get("separate_from_measured_land_values") is True
     return JSONResponse(payload, headers={**HEADERS, "X-Wealth-Publication-Status": PUBLICATION_STATUS})
 
@@ -343,7 +343,7 @@ def internal_tax_scenario_zone(
     ),
     scenario_id: str = Query(
         default="S2",
-        description="DRAFT DEFAULTS scenario: S1 / S2 / S3",
+        description="Approved defaults (v0.1) scenario: S1 / S2 / S3",
     ),
     capture_rate: float = Query(
         default=1.0,

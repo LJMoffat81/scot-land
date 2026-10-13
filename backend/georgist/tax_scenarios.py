@@ -6,10 +6,11 @@ passed through when present) — never hardcoded here. Every payload is
 ``publication_status=blocked`` and must not appear on public pages or public
 API routes. No public £.
 
-**DRAFT DEFAULTS** (``data/config/tax_scenario_defaults.yaml``): Laurie must
-approve. Scenarios S1 (per-council revenue swap), S2 (50%), S3 (85%). No
-ownership exemptions. Low-income home owners may defer at r 2.62%. Phase-in
-10 points/year. Revenue shared 50/50 councils/dividend. Shadow never taxed.
+**Approved defaults (v0.1, Oct 2026)** (``data/config/tax_scenario_defaults.yaml``):
+Laurie-approved, still configurable. Scenarios S1 (per-council revenue swap),
+S2 (50%), S3 (85%). No ownership exemptions. Low-income home owners may defer
+at r 2.62%. Phase-in 10 points/year. Revenue shared 50/50 councils/dividend.
+Shadow never taxed.
 
 **TEMP while blocked:** £ shown at Data Zone grain only; council views are
 counts. Council + Scotland £ roll-ups are *built* behind that setting for
@@ -39,8 +40,8 @@ LENS_NOTE = (
 )
 CAPTURE_NOTE = (
     "Policy illustration only: capture_rate / scenario rates scale Surface Rent "
-    "measured_rent. DRAFT DEFAULTS — Laurie must approve. Rates / exemptions / "
-    "phase-in / revenue sharing stay separate from measured land values."
+    "measured_rent. Approved defaults (v0.1, Oct 2026) — still configurable. "
+    "Rates / exemptions / phase-in / revenue sharing stay separate from measured land values."
 )
 STATUS = "experimental_research_estimate"
 PUBLICATION_STATUS = "blocked"
@@ -80,22 +81,29 @@ class TaxScenarioError(ValueError):
 
 
 def load_draft_defaults(path: Path | str = DRAFT_DEFAULTS_PATH) -> dict[str, Any]:
-    """Load DRAFT DEFAULTS scenario settings (Laurie approval pending)."""
+    """Load approved defaults (v0.1, Oct 2026); still configurable via YAML."""
     with Path(path).open(encoding="utf-8") as handle:
         data = yaml.safe_load(handle)
     if not isinstance(data, Mapping):
-        raise TaxScenarioError("invalid_draft_defaults", "tax_scenario_defaults.yaml must be a mapping")
+        raise TaxScenarioError("invalid_policy_defaults", "tax_scenario_defaults.yaml must be a mapping")
     return dict(data)
 
 
+# Alias — settings remain a configurable YAML file.
+load_policy_defaults = load_draft_defaults
+
+
 def policy_config_payload(defaults: Mapping[str, Any] | None = None) -> dict[str, Any]:
-    """DRAFT DEFAULTS stamped on every payload — not finalised until Laurie approves."""
+    """Approved defaults (v0.1, Oct 2026) stamped on every payload — still configurable."""
     cfg = defaults if defaults is not None else load_draft_defaults()
     scenarios = cfg.get("scenarios") or {}
     return {
-        "status": str(cfg.get("status") or "draft_defaults"),
-        "label": str(cfg.get("label") or "DRAFT DEFAULTS"),
-        "approval": str(cfg.get("approval") or "pending_laurie"),
+        "status": str(cfg.get("status") or "approved_defaults"),
+        "label": str(cfg.get("label") or "approved defaults (v0.1, Oct 2026)"),
+        "approval": str(cfg.get("approval") or "approved_laurie_v0_1_oct_2026"),
+        "version": str(cfg.get("version") or "0.1"),
+        "approved": str(cfg.get("approved") or "2026-10"),
+        "configurable": bool(cfg.get("configurable", True)),
         "owner": str(cfg.get("owner") or "Georgist"),
         "separate_from_measured_land_values": True,
         "publication_status": PUBLICATION_STATUS,
@@ -129,9 +137,10 @@ def policy_config_payload(defaults: Mapping[str, Any] | None = None) -> dict[str
             for sid, body in scenarios.items()
         },
         "note": (
-            "DRAFT DEFAULTS — Laurie still has to approve. No ownership-based exemptions. "
-            "Shadow values are never taxed. S1 rate is solved per council against that "
-            "council's council tax + business rates; national single-rate S1 is off by default."
+            "Approved defaults (v0.1, Oct 2026). Still configurable. No ownership-based "
+            "exemptions. Shadow values are never taxed. S1 rate is solved per council "
+            "against that council's council tax + business rates; national single-rate "
+            "S1 is off by default."
         ),
     }
 
@@ -141,13 +150,16 @@ def _default_policy_config() -> dict[str, Any]:
         return policy_config_payload()
     except Exception:  # pragma: no cover — missing file in odd test sandboxes
         return {
-            "status": "draft_defaults",
-            "label": "DRAFT DEFAULTS",
-            "approval": "pending_laurie",
+            "status": "approved_defaults",
+            "label": "approved defaults (v0.1, Oct 2026)",
+            "approval": "approved_laurie_v0_1_oct_2026",
+            "version": "0.1",
+            "approved": "2026-10",
+            "configurable": True,
             "owner": "Georgist",
             "separate_from_measured_land_values": True,
             "topics": ["rates", "exemptions", "phase_in", "revenue_sharing", "deferral", "scenarios"],
-            "note": "DRAFT DEFAULTS — Laurie still has to approve.",
+            "note": "Approved defaults (v0.1, Oct 2026). Still configurable.",
         }
 
 
@@ -205,7 +217,7 @@ def _blocked_fields(defaults: Mapping[str, Any] | None = None) -> dict[str, Any]
         "policy_config": policy_config_payload(defaults) if defaults is not None else dict(POLICY_CONFIG),
         "money_grain": MONEY_GRAIN,
         "money_grain_note": MONEY_GRAIN_NOTE,
-        "draft_defaults": True,
+        "approved_defaults": True,
     }
 
 
@@ -452,7 +464,7 @@ def solve_s1_per_council(
         if tgt is None:
             raise TaxScenarioError(
                 "missing_council_fiscal_target",
-                f"No DRAFT DEFAULTS CT+NBR target for council {la_code}.",
+                f"No approved-defaults CT+NBR target for council {la_code}.",
                 la_code=la_code,
             )
         target = float(tgt["target_gbp"])
@@ -706,16 +718,17 @@ def aggregate_by_council(
         "revenue_sharing": {
             "council_share": council_share,
             "dividend_share": dividend_share,
-            "status": "draft_defaults",
+            "status": "approved_defaults",
+            "version": "0.1",
         },
         "phase_in": dict(cfg.get("phase_in") or {"points_per_year": 10}),
         "deferral": dict(cfg.get("deferral") or {"low_income_home_owners": True, "rate": 0.0262}),
         "note": (
-            "Internal tax scenario DRAFT DEFAULTS: £ at Data Zone grain only (by_zone) as "
-            "low/central/high triples with market/proxy/shadow tags. Council/national blocks "
-            "are membership counts while blocked. Shadow never taxed. S1 is per-council "
-            "revenue-swap; national single-rate S1 is off by default. Not the Sandilands "
-            "pool, not AGR, not a tax bill. publication_status=blocked."
+            "Internal tax scenario approved defaults (v0.1, Oct 2026): £ at Data Zone grain "
+            "only (by_zone) as low/central/high triples with market/proxy/shadow tags. "
+            "Council/national blocks are membership counts while blocked. Shadow never taxed. "
+            "S1 is per-council revenue-swap; national single-rate S1 is off by default. "
+            "Not the Sandilands pool, not AGR, not a tax bill. publication_status=blocked."
         ),
     }
     if sid == "S1":
@@ -792,7 +805,7 @@ def zone_illustration(
         "note": (
             "Illustrated collection = taxable Surface Rent × scenario rate at Data Zone grain "
             "(low/central/high). Shadow never taxed. Research estimate only; not AGR and not a "
-            "tax bill. publication_status=blocked. DRAFT DEFAULTS pending Laurie approval."
+            "tax bill. publication_status=blocked. Approved defaults (v0.1, Oct 2026)."
         ),
     }, defaults=cfg)
     assert_no_aggregate_gbp(payload)

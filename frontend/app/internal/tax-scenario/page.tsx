@@ -48,7 +48,7 @@ export default function InternalTaxScenarioPage() {
     <main style={{ maxWidth: 720, margin: "2rem auto", padding: "0 1rem" }}>
       <h1>Scot-LAND</h1>
       <p>
-        HOLD draft — internal tax scenario tools. DRAFT DEFAULTS S1 / S2 / S3.
+        HOLD draft — internal tax scenario tools. Approved defaults (v0.1, Oct 2026) S1 / S2 / S3.
         Figures are blocked until Valuation re-passes. No £ rent figures go
         public.
       </p>

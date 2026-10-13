@@ -23,7 +23,7 @@ function gbpTriple(t: MoneyTriple): string {
 }
 
 /**
- * INTERNAL ONLY — blocked DRAFT DEFAULTS viewer.
+ * INTERNAL ONLY — blocked approved-defaults (v0.1) viewer.
  * Not mounted on public WealthInspector. No public £ rent figures.
  */
 export default function InternalTaxScenarioView({
@@ -38,12 +38,12 @@ export default function InternalTaxScenarioView({
       className="internal-tax-scenario"
       data-testid="internal-tax-scenario"
       data-publication-status="blocked"
-      data-draft-defaults="true"
+      data-approved-defaults="v0.1"
     >
       <p className="internal-tax-banner" role="status">
-        INTERNAL · publication_status=blocked · DRAFT DEFAULTS (pending Laurie
-        approval). No public £. Data Zone grain only while blocked; council
-        views are counts. Shadow never taxed.
+        INTERNAL · publication_status=blocked · approved defaults (v0.1, Oct
+        2026). No public £. Data Zone grain only while blocked; council views
+        are counts. Shadow never taxed.
       </p>
       <h2>Tax scenario {scenarioId}</h2>
       <p>

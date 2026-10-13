@@ -419,6 +419,8 @@ const COMMUNITY_OWNERSHIP_CIRCLE: ExpressionSpecification = [
   "Area not applicable",
   "#9a8c98",
   "#2a9d8f",
+];
+
 /** Hutton LCA class bands (capability quality → green→brown; non-ag grey/blue). */
 const LCA_CLASSES: Array<{ name: string; color: string }> = [
   { name: "Class 1–2 (wide crop range)", color: "#1a9850" },

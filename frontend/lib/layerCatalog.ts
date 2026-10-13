@@ -81,7 +81,7 @@ export const LAYER_ATTRIBUTION: Record<
   },
   boundaries: {
     source: "Registers of Scotland INSPIRE Index Polygons",
-    licence: "OGL-3.0",
+    licence: "Licensed under the Open Government Licence v3.0",
     sourceUrl: "https://www.ros.gov.uk/open-data",
   },
   cell_grid: {

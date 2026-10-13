@@ -6,11 +6,12 @@ Synthetic Index Polygon–shaped GeoJSON for PostGIS loader and `/layers/parcels
 |-------|--------|
 | File | `cadastral_index_polygons.geojson` |
 | Licence | `synthetic-test-only` |
-| Scope | Glasgow-ish bbox only (two tiny polygons) |
+| Scope | Two Glasgow-ish polygons + one Balfron (Stirling / STG) parcel |
 | Real product | RoS INSPIRE Index Polygons (OGL-3.0) — see `data/config/sources.yaml` → `parcels` |
 
 **Never** present these features as real RoS titles in the UI. Production
 self-fetch (`--pilot` / `--all`) downloads county zips to a temp dir only.
+Source CRS for live county zips is **EPSG:27700**; this fixture is WGS84.
 
 ```bash
 cd backend

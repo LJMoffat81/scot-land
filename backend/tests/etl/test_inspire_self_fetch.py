@@ -163,7 +163,7 @@ def test_pilot_load_from_mocked_download(monkeypatch, tmp_path):
             cur.execute("TRUNCATE TABLE inspire_parcels_meta;")
         conn.commit()
         work = tmp_path / "fetch"
-        count = ingest.load_county_zips(
+        count, county_counts = ingest.load_county_zips(
             list(counties.PILOT_CODES),
             conn,
             replace=True,
@@ -171,6 +171,7 @@ def test_pilot_load_from_mocked_download(monkeypatch, tmp_path):
             attempts=2,
         )
         assert count == 2  # one synthetic parcel per county
+        assert county_counts == {"MID": 1, "FFE": 1}
         ingest.write_load_meta(
             conn,
             count=count,
@@ -180,6 +181,7 @@ def test_pilot_load_from_mocked_download(monkeypatch, tmp_path):
             source_url="https://www.ros.gov.uk/open-data",
             input_path="pilot:MID,FFE",
             counties="MID,FFE",
+            county_counts=county_counts,
         )
         with conn.cursor() as cur:
             cur.execute(
@@ -191,5 +193,17 @@ def test_pilot_load_from_mocked_download(monkeypatch, tmp_path):
                 "SELECT value FROM inspire_parcels_meta WHERE key = 'load_scope'"
             )
             assert cur.fetchone()[0] == "pilot"
+            cur.execute(
+                "SELECT value FROM inspire_parcels_meta WHERE key = 'county_counts'"
+            )
+            assert json.loads(cur.fetchone()[0]) == {"FFE": 1, "MID": 1}
+            cur.execute(
+                "SELECT value FROM inspire_parcels_meta WHERE key = 'tagged'"
+            )
+            assert cur.fetchone()[0] == "live"
+            cur.execute(
+                "SELECT value FROM inspire_parcels_meta WHERE key = 'crs_source'"
+            )
+            assert cur.fetchone()[0] == "EPSG:27700"
     finally:
         conn.close()

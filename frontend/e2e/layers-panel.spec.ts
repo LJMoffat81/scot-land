@@ -18,7 +18,11 @@ const FIXTURE_CATALOG = {
       status: "live",
       label: "ROS INSPIRE parcels",
       description: "Registered cadastral extents (geometry only — no owners).",
-      licence: "OGL / INSPIRE (Crown)",
+      licence: "Licensed under the Open Government Licence v3.0",
+      licence_url:
+        "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+      attribution:
+        "© Crown copyright. Reproduced with the permission of Registers of Scotland. Contains OS data © Crown copyright and database right 2026.",
       source_url: "https://www.ros.gov.uk/open-data",
     },
     {
@@ -173,10 +177,16 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
       /ROS INSPIRE parcels/i,
     );
     await expect(page.getByTestId("layer-licence-boundaries")).toContainText(
-      "OGL",
+      "Open Government Licence v3.0",
     );
     await expect(page.getByTestId("layer-source-boundaries")).toContainText(
       "Registers of Scotland",
+    );
+    await expect(page.getByTestId("layer-attribution-boundaries")).toContainText(
+      "Reproduced with the permission of Registers of Scotland",
+    );
+    await expect(page.getByTestId("layer-attribution-boundaries")).toContainText(
+      "Contains OS data © Crown copyright and database right",
     );
     await expect(page.getByTestId("layer-toggle-public_crown")).toHaveCount(0);
     await expect(page.getByTestId("layer-licence-public_crown")).toContainText(

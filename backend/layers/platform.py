@@ -23,6 +23,9 @@ from layers.hla import SPATIAL_HUB_URL as SPATIAL_HUB_HLA
 from layers.hla import query_point as hla_at_point
 from layers.ldp import catalog_layer as ldp_catalog_layer
 from layers.registers import registers_for_council
+from layers.cadastral import OGL_V3_LICENCE_PHRASE as PARCELS_OGL_PHRASE
+from layers.cadastral import OGL_V3_URL as PARCELS_OGL_URL
+from layers.cadastral import parcel_source_meta
 from layers.scotwind import OGL_LICENCE_URL as SCOTWIND_LICENCE_URL
 from layers.scotwind import source_meta as scotwind_source_meta
 from layers.vdl import query_point as vdl_at_point
@@ -81,6 +84,34 @@ REPD_PUBLICATION = (
 )
 
 
+def _parcels_meta() -> dict[str, Any]:
+    """Catalog row for RoS INSPIRE parcels — shapes only; confirmed OGL v3 credit."""
+    meta = parcel_source_meta()
+    return {
+        "id": "boundaries",
+        "group": "spatial",
+        "status": "live",
+        "label": "ROS INSPIRE parcels",
+        "description": (
+            "Registered cadastral extents (geometry only — no owners, "
+            "titles or prices). BBox from PostGIS ingest (503 when "
+            "unloaded; empty viewport is honest 200 when loaded, "
+            "including fixture-scoped CI). Tiles via live WMS. "
+            "Source CRS EPSG:27700; shapes only on the public map."
+        ),
+        "minzoom": 14,
+        "endpoint": "/layers/parcels",
+        "tile_endpoint": "/layers/parcels/tiles/{z}/{x}/{y}",
+        "licence": PARCELS_OGL_PHRASE,
+        "licence_url": PARCELS_OGL_URL,
+        "source_url": meta["source_url"],
+        "attribution": meta["attribution"],
+        "harvest_year": meta["harvest_year"],
+        "publication_status": meta.get("publication_status", "ok"),
+        "gaps": meta["gaps"],
+    }
+
+
 def scotlis_links(lat: float, lng: float, postcode: str | None = None) -> dict[str, Any]:
     """Official title-sheet path. ScotLIS has no public coordinate deep-link API."""
     return {
@@ -117,29 +148,8 @@ def platform_catalog() -> dict[str, Any]:
                 "label": "Annual Ground Rent",
                 "description": "Residual site-value AGR on Scot-LAND squares and notional plots.",
             },
-            {
-                "id": "boundaries",
-                "group": "spatial",
-                "status": "live",
-                "label": "ROS INSPIRE parcels",
-                "description": (
-                    "Registered cadastral extents (geometry only — no owners). "
-                    "BBox from PostGIS ingest (503 when unloaded; empty viewport "
-                    "is honest 200 when loaded, including fixture-scoped CI). "
-                    "Tiles via live WMS."
-                ),
-                "minzoom": 14,
-                "endpoint": "/layers/parcels",
-                "tile_endpoint": "/layers/parcels/tiles/{z}/{x}/{y}",
-                "licence": "OGL-3.0",
-                "licence_url": OGL_V3_URL,
-                "source_url": "https://www.ros.gov.uk/open-data",
-                "gaps": [
-                    "Sasine titles without Land Register polygons",
-                    "Private owner names are not in the open INSPIRE product",
-                    "Index polygons are registered extents, not a title sheet",
-                ],
-            },
+            _parcels_meta(),
+
             {
                 "id": "cell_grid",
                 "group": "value",

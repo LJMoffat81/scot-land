@@ -64,8 +64,8 @@ Land Capability for Agriculture (Hutton) **is in scope** under the James Hutton 
 | Field | Value |
 |-------|--------|
 | Product | INSPIRE Index Polygons (`CP.CadastralParcel`) |
-| Licence | **OGL-3.0** — cite Registers of Scotland (Laurie's ruling Oct 2026) |
-| Attribution | © Crown copyright. Reproduced with the permission of Registers of Scotland |
+| Licence | **OGL-3.0** only — cite Registers of Scotland (Laurie's ruling Oct 2026); never the 2017 OS INSPIRE end-user licence |
+| Attribution | © Crown copyright. Reproduced with the permission of Registers of Scotland. Contains OS data © Crown copyright and database right *[harvest year]*. Layer guide also: Licensed under the Open Government Licence v3.0 |
 | Source / catalogue | https://www.ros.gov.uk/open-data |
 | Download page | https://ros.locationcentre.co.uk/inspire/ (legacy) |
 | Download API | `https://ros-inspire.themapcloud.com/maps/download/ros-cp.cadastralparcel/{CODE}` |

@@ -29,6 +29,11 @@ import {
   visitorFacingError,
 } from "../lib/api";
 import { CONTEXT_LAYERS } from "../lib/contextLayers";
+import {
+  INSPIRE_OGL_V3_PHRASE,
+  INSPIRE_OGL_V3_URL,
+  inspireRosOsAttribution,
+} from "../lib/inspireAttribution";
 import type { LedgerToggleState } from "../lib/ledger";
 
 type ParcelFeature = GeoJSON.Feature<
@@ -1763,8 +1768,7 @@ export default function ScotlandMap() {
         minzoom: 14,
         maxzoom: 19,
         scheme: "xyz",
-        attribution:
-          "© Crown copyright. Reproduced with the permission of Registers of Scotland. Contains OS data. © Crown copyright and database right 2026. OGL-3.0.",
+        attribution: inspireRosOsAttribution(),
       });
       map.addLayer({
         id: "parcels-wms",
@@ -1780,8 +1784,7 @@ export default function ScotlandMap() {
       map.addSource("parcels-postgis", {
         type: "geojson",
         data: emptyCollection,
-        attribution:
-          "RoS INSPIRE Index Polygons (OGL-3.0). Registered extents only — not a title.",
+        attribution: inspireRosOsAttribution(),
       });
       map.addLayer({
         id: "parcels-postgis-fill",
@@ -3544,6 +3547,20 @@ export default function ScotlandMap() {
               Shadow ledger totals stay separate and are never summed into the
               headline.
             </p>
+            {showBoundaries && (
+              <p className="layer-meta" data-testid="layer-parcels-credit">
+                {inspireRosOsAttribution()}{" "}
+                <a
+                  href={INSPIRE_OGL_V3_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {INSPIRE_OGL_V3_PHRASE}
+                </a>
+                . Registered extents only — shapes, not titles, owners or
+                prices. Zoom {CADASTRAL_MIN_ZOOM}+.
+              </p>
+            )}
             {showLdp && (
               <p className="layer-meta" data-testid="layer-ldp-credit">
                 LDP allocations (OGL v3.0) — ledger nested row 1a. Spatial Hub

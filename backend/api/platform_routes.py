@@ -17,6 +17,8 @@ from georgist.place_stack import (
     place_hectare_stack,
 )
 from layers.common_good import common_good_payload
+from layers.ldp import coverage_summary as ldp_coverage
+from layers.ldp import query_bbox as ldp_bbox
 from layers.open_stats import (
     catalog_json,
     public_land_json,
@@ -216,6 +218,36 @@ def layer_open_sepa_car(
     return JSONResponse(payload)
 
 
+@router.get("/layers/open/ldp")
+def layer_open_ldp(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=80, ge=1, le=80),
+) -> JSONResponse:
+    """LDP allocation polygons in the viewport (PostGIS, OGL ingest).
+
+    Returns **503** when ``ldp_allocations`` is not loaded — never invents
+    missing authorities. An empty FeatureCollection with meta.ok=true means
+    no allocations in view (national fragmentation stays visible).
+    Feeds ledger nested row 1a (planning) — no £ rent.
+    """
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    payload = ldp_bbox(south, west, north, east, max_features=max_features)
+    meta = payload.get("meta") or {}
+    if meta.get("ok") is False:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "LDP allocations overlay is not available: "
+                f"{meta.get('error') or 'PostGIS layer not loaded'}. "
+                "OGL Spatial Hub / authority packs only — gaps are not filled with guesses."
+            ),
+        )
+    return JSONResponse(payload)
+
+
 @router.get("/ledger")
 def natural_capital_ledger() -> dict:
     """Natural capital ledger rows + constraints (no published AGR £).
@@ -381,6 +413,12 @@ def api_vdl() -> dict:
     return with_stamp(vdl_json())
 
 
+@router.get("/api/ldp.json")
+def api_ldp() -> dict:
+    """LDP allocation coverage meta — authorities loaded into PostGIS + honest gaps."""
+    return with_stamp(ldp_coverage())
+
+
 @router.get("/api/vdl-councils.json")
 def api_vdl_councils(
     scenario: str = Query(default="full_agr"),
@@ -521,6 +559,18 @@ def open_downloads() -> dict:
                 "licence": "OGL v3.0 — Scottish Government / OS",
                 "endpoint": "/layers/open/data-zones",
                 "note": "Simplified GeoJSON by bbox. Outlines only — no AGR £.",
+            },
+            {
+                "id": "ldp_allocations",
+                "label": "LDP allocations (PostGIS / this API)",
+                "licence": "OGL-3.0",
+                "endpoint": "/layers/open/ldp",
+                "url": "https://data.spatialhub.scot/dataset/local_development_plans-is",
+                "note": (
+                    "Fragmented national Spatial Hub pack. City of Edinburgh missing. "
+                    "OGL authority FeatureServers (e.g. Highland) ingested into PostGIS. "
+                    "Planning extents, not a title."
+                ),
             },
             {
                 "id": "council_agr",

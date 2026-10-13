@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 const OPEN_API = new Set([
   "public-land.json",
   "vdl.json",
+  "ldp.json",
   "place.json",
   "place-stack.json",
   "registers.json",

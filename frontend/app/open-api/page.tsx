@@ -78,6 +78,14 @@ export default function OpenApiPage() {
             GET /layers/open/hla?south=&amp;west=&amp;north=&amp;east=
           </span>
         </li>
+        <li>
+          LDP allocations in view from PostGIS (OGL Spatial Hub / authority
+          seeds; 503 when the table is empty; national coverage is fragmented;
+          feeds ledger nested row 1a)
+          <span className="download-path">
+            GET /layers/open/ldp?south=&amp;west=&amp;north=&amp;east=
+          </span>
+        </li>
       </ul>
 
       <h2>Tables</h2>
@@ -88,6 +96,12 @@ export default function OpenApiPage() {
             Land Survey
           </a>
           <span className="download-path">/api/vdl.json</span>
+        </li>
+        <li>
+          <a href="/api/ldp.json">
+            LDP allocations — PostGIS coverage and honest national gaps
+          </a>
+          <span className="download-path">/api/ldp.json</span>
         </li>
         <li>
           <a href="/api/catalog.json">

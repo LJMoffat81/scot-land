@@ -21,6 +21,10 @@ const OPEN_JSON = [
     name: "Vacant and derelict land, from the Scottish Vacant and Derelict Land Survey",
   },
   {
+    href: "/api/ldp.json",
+    name: "LDP allocations — PostGIS coverage and honest national gaps",
+  },
+  {
     href: "/api/place.json?pc=EH1+1YZ",
     name: "One place, as an example (Edinburgh EH1 1YZ)",
   },
@@ -44,6 +48,7 @@ const OPEN_JSON = [
 
 const SOURCE_NAME: Record<string, string> = {
   vdl_register: "Scottish Vacant and Derelict Land Survey",
+  ldp_allocations: "Local Development Plan allocations (Spatial Hub / OGL)",
   inspire_parcels: "Registers of Scotland open land map",
   common_good: "Common Good registers (linked; no national open map)",
   scotlis: "ScotLIS, the official title record",

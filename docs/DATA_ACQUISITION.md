@@ -129,6 +129,23 @@ Registry: `data/config/sources.yaml` → `hydro_sites` and `sepa_car`. Do not co
 
 Do not scrape Spatial Hub. Do not commit raw downloads under `data/external`.
 
+## Local Development Plan allocations (LDP)
+
+| Field | Value |
+|-------|--------|
+| Product | Local Development Plans — Scotland (Spatial Hub amalgamated pack) + authority OGL FeatureServers |
+| Licence | OGL v3.0 |
+| Spatial Hub | https://data.spatialhub.scot/dataset/local_development_plans-is |
+| SpatialData.gov.scot metadata | https://spatialdata.gov.scot/geonetwork/srv/api/records/8e13ad58-41f2-4308-a3a8-5ffe8593e731 |
+| Example OGL seed | Highland Council LDP Allocations FeatureServer (UK OGL v3.0) |
+| PostGIS table | `ldp_allocations` |
+| Ingest | `python -m etl.ingest_ldp_allocations --from-config` (or `--input` GeoJSON under `data/external/ldp/`) |
+| BBox API | `GET /layers/open/ldp` → **503** when table empty / PostGIS down |
+| Coverage meta | `GET /api/ldp.json` |
+| Gaps | **Fragmented** national pack (per-authority ZIP or portal link). **City of Edinburgh unavailable**. Portal-only authorities not mirrored until an OGL download/FeatureServer is ingested. Planning extents, not a title — review with adopted LDP + NPF4 |
+
+Registry: `data/config/sources.yaml` → `ldp_allocations`. Never commit raw Spatial Hub ZIPs under `data/external`.
+
 ## Vacant and derelict land (SVDLS)
 
 | Field | Value |

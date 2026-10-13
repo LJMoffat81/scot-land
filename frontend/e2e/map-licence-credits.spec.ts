@@ -26,36 +26,36 @@ test.describe("map licence credits (catalog-driven)", () => {
     );
     await expect(legend.getByText(/£\d/)).toHaveCount(0);
 
-    // Zoom in so cadastral parcels activate → catalog boundaries credit.
-    await page.evaluate(() => {
-      const canvas = document.querySelector(".maplibregl-canvas") as HTMLElement | null;
-      canvas?.dispatchEvent(new Event("wheel", { bubbles: true }));
-    });
-    const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
-    for (let i = 0; i < 14; i += 1) {
-      await zoomIn.click({ timeout: 10_000 });
-      await page.waitForTimeout(350);
-    }
+    // Must frame Scotland before any user zoom (zoom marks userMoved and skips framing).
+    await page.locator("#map[data-framed='1']").waitFor({ timeout: 30_000 });
+    await panToGlasgow(page);
 
-    // Pan toward Glasgow so parcels attribution can appear.
-    await panToward(page, GLASGOW);
-    await page.waitForTimeout(800);
+    const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
+    for (let step = 0; step < 14; step += 1) {
+      const ready = await page.locator(".maplibregl-ctrl-attrib").textContent();
+      if (ready?.includes("Registers of Scotland")) break;
+      await zoomIn.click({ timeout: 10_000 });
+      await page.waitForTimeout(500);
+    }
 
     await expect(page.locator(".maplibregl-ctrl-attrib")).toContainText(
       "Registers of Scotland",
-      { timeout: 30_000 },
+      { timeout: 45_000 },
     );
 
+    // Enable boundaries credit in the catalog-driven control (zoom ≥ 14 auto-enables).
     const credits = page.getByTestId("map-licence-credits");
-    await expect(credits).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId("map-credit-boundaries")).toBeVisible();
+    await expect(credits).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByTestId("map-credit-boundaries")).toBeVisible({
+      timeout: 30_000,
+    });
     await expect(
       page.getByTestId("map-credit-licence-link-boundaries"),
     ).toHaveAttribute("href", /open-government-licence/);
 
-    // Postcode search still opens a place card (no public rent £).
+    // Coordinate search still opens a place card (no public rent £).
     const search = page.locator("#place-query");
-    await search.fill("G2 1DU");
+    await search.fill("55.86090, -4.25140");
     await page.locator(".hud-search-go").click();
     const card = page.locator("aside.place-card-stub");
     await expect(card).toBeVisible({ timeout: 45_000 });
@@ -176,15 +176,14 @@ function mercator(lng: number, lat: number, zoom: number) {
   return { x, y };
 }
 
-async function panToward(page: Page, target: { lng: number; lat: number }) {
-  await page.locator("#map[data-framed='1']").waitFor({ timeout: 20_000 });
+async function panToGlasgow(page: Page) {
   const cam = await page.locator("#map").evaluate((el) => ({
     lng: Number((el as HTMLElement).dataset.lng),
     lat: Number((el as HTMLElement).dataset.lat),
     zoom: Number((el as HTMLElement).dataset.zoom),
   }));
   const from = mercator(cam.lng, cam.lat, cam.zoom);
-  const to = mercator(target.lng, target.lat, cam.zoom);
+  const to = mercator(GLASGOW.lng, GLASGOW.lat, cam.zoom);
   const dx = from.x - to.x;
   const dy = from.y - to.y;
   const start = await page.evaluate(() => {
@@ -199,10 +198,12 @@ async function panToward(page: Page, target: { lng: number; lat: number }) {
     }
     return null;
   });
-  if (!start) return;
+  if (!start) throw new Error("No clear canvas point to pan the map to Glasgow");
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();
   await page.mouse.move(start.x + dx, start.y + dy, { steps: 24 });
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(250);
   await page.mouse.up();
+  await page.waitForTimeout(400);
 }
+

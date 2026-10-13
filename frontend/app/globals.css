@@ -243,6 +243,141 @@ input {
   line-height: 1.45;
 }
 
+.place-card,
+.place-card-standalone {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: min(80vh, 40rem);
+  overflow: auto;
+}
+
+.place-card-header {
+  padding-right: 1.5rem;
+}
+
+.place-card-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--slrg-muted);
+}
+
+.place-card-title {
+  margin: 0.2rem 0 0;
+  font-size: 1.2rem;
+  line-height: 1.25;
+  color: var(--slrg-navy);
+  font-weight: 750;
+}
+
+.place-card-meta,
+.place-card-loading,
+.place-card-error,
+.place-card-empty,
+.place-card-disclaimer,
+.place-card-rent-intro,
+.place-card-grain,
+.place-layer-note,
+.place-layer-licence {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--slrg-text);
+}
+
+.place-card-grain {
+  font-weight: 600;
+}
+
+.place-card-section {
+  margin: 0.85rem 0 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--slrg-muted);
+}
+
+.place-rent-range-list,
+.place-layer-list,
+.place-link-list {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.place-rent-range-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+}
+
+.place-rent-range-label {
+  color: var(--slrg-muted);
+}
+
+.place-layer-row {
+  padding: 0.45rem 0.5rem;
+  border: 1px solid #e4eaf1;
+  border-radius: 6px;
+  background: #fbfcfe;
+}
+
+.place-layer-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.place-layer-label {
+  font-weight: 650;
+  font-size: 0.86rem;
+  color: var(--slrg-navy);
+}
+
+.place-layer-state {
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--slrg-muted);
+  white-space: nowrap;
+}
+
+.place-layer-licence {
+  color: var(--slrg-muted);
+}
+
+.place-layer-licence a {
+  color: inherit;
+}
+
+.place-card-rent-stub {
+  margin-top: 0.35rem;
+}
+
+.place-card-preview {
+  min-height: 100vh;
+  padding: 1.5rem;
+  background: #eef2f6;
+}
+
+.place-card-preview-stage {
+  max-width: 26rem;
+}
+
+.place-card-preview-note {
+  margin-top: 1rem;
+  max-width: 36rem;
+  font-size: 0.88rem;
+  color: var(--slrg-muted);
+}
+
 .hud-search-dock > * {
   pointer-events: auto;
 }

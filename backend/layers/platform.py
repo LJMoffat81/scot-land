@@ -847,18 +847,24 @@ def _layer_row(
     intersects: bool | None,
     note: str | None = None,
     source_url: str | None = None,
+    licence: str | None = None,
+    licence_url: str | None = None,
     detail: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """One place-card layer row. Every layer carries a licence credit."""
     row: dict[str, Any] = {
         "id": layer_id,
         "label": label,
         "status": status,
         "intersects": intersects,
+        "licence": licence or "Licence not recorded",
     }
     if note:
         row["note"] = note
     if source_url:
         row["source_url"] = source_url
+    if licence_url:
+        row["licence_url"] = licence_url
     if detail:
         row["detail"] = detail
     return row
@@ -878,6 +884,8 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
                 intersects=True,
                 note=parcel.get("note"),
                 source_url="https://www.ros.gov.uk/open-data",
+                licence=PARCELS_OGL_PHRASE,
+                licence_url=PARCELS_OGL_URL,
                 detail={
                     "label": parcel.get("label"),
                     "inspire_id": parcel.get("inspire_id"),
@@ -894,6 +902,8 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
                 intersects=None,
                 note="Parcel lookup did not complete for this point.",
                 source_url="https://www.ros.gov.uk/open-data",
+                licence=PARCELS_OGL_PHRASE,
+                licence_url=PARCELS_OGL_URL,
             )
         )
     else:
@@ -906,6 +916,8 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
                 note=(outline.get("note") if outline else None)
                 or "No Land Register outline at this point.",
                 source_url="https://www.ros.gov.uk/open-data",
+                licence=PARCELS_OGL_PHRASE,
+                licence_url=PARCELS_OGL_URL,
             )
         )
 
@@ -919,6 +931,8 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
             intersects=bool(vdl.get("intersects")) if vdl_ok else None,
             note=None if vdl_ok else (vdl.get("error") or "SVDLS overlay unavailable."),
             source_url=VDL_REGISTER,
+            licence="OGL-3.0",
+            licence_url=OGL_V3_URL,
             detail={"sites": vdl.get("sites") or []} if vdl_ok else None,
         )
     )
@@ -936,6 +950,7 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
                 "Not drawn on the public map until an OGL source is confirmed."
             ),
             source_url=PUBLIC_LAND_MAP,
+            licence=public.get("licence") or "unverified/not open",
         )
     )
 
@@ -950,6 +965,11 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
             or common_good.get("reason")
             or "No national open Common Good map layer.",
             source_url=(common_good.get("register") or {}).get("url"),
+            licence=(
+                common_good.get("licence")
+                or "Linked registers; Highland licence unconfirmed; "
+                "Fife OS INSPIRE EUL linked only"
+            ),
         )
     )
 
@@ -963,6 +983,7 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
             note=la.get("reason")
             or "National LA ownership layer is not openly licensed for this portal.",
             source_url=SPATIAL_HUB_LA_OWN,
+            licence="Not openly licensed for this portal",
         )
     )
 
@@ -976,6 +997,7 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
             note=sasine.get("note")
             or "Private names and Sasine extents stay on ScotLIS / paid products.",
             source_url=SCOTLIS_PUBLIC,
+            licence="Incomplete or paid — gaps shown, names not invented",
         )
     )
     return layers

@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  PLACE_CARD_DATA_ZONE_GRAIN,
+  PLACE_CARD_RENT_RANGE_TAGS,
+} from "@/lib/placeCard";
+
 export type PlaceStub = {
   lat: number;
   lng: number;
@@ -28,8 +33,9 @@ function formatCount(value: number): string {
 }
 
 /**
- * Lightweight place card for the public Scot-LAND squares shell.
- * No modelled AGR £, Surface Rent, or tax scenarios — those stay for later phases / HOLD PRs.
+ * Lightweight place card for the public map shell.
+ * Charter: Annual Ground Rent purpose; market/proxy/shadow ranges only;
+ * Data Zone grain; no £ figures.
  */
 export default function PlaceCardStub({
   place,
@@ -54,7 +60,7 @@ export default function PlaceCardStub({
         ×
       </button>
       {error ? <p className="error-line">{error}</p> : null}
-      <p className="place-card-kicker">Place</p>
+      <p className="place-card-kicker">Annual Ground Rent</p>
       <h2 className="place-card-title">{title}</h2>
       <p className="location-line">
         {place.lat.toFixed(5)}, {place.lng.toFixed(5)}
@@ -94,11 +100,35 @@ export default function PlaceCardStub({
       ) : (
         <p className="meta">No data zone name for this point yet.</p>
       )}
-      <p className="place-card-note">
-        Ownership, vacant-land flags and research land-rent figures for this
-        place will appear here later. Modelled Annual Ground Rent and tax
-        scenarios are not shown on the public map yet.
-      </p>
+      <section
+        className="place-card-rent place-card-rent-stub"
+        aria-label="Annual Ground Rent ranges"
+        data-testid="place-stub-rent-ranges"
+      >
+        <p className="place-card-note">
+          Scot-LAND&apos;s purpose is Annual Ground Rent. Rents appear only as
+          ranges labelled market, proxy or shadow. £ figures are not published
+          yet.
+        </p>
+        <ul className="place-rent-range-list">
+          {PLACE_CARD_RENT_RANGE_TAGS.map((tag) => (
+            <li
+              key={tag}
+              className={`place-rent-range-row tone-${tag}`}
+              data-testid={`place-stub-rent-${tag}`}
+            >
+              <span className={`place-stack-tag tone-${tag}`}>{tag}</span>
+              <span className="place-rent-range-label">not yet</span>
+            </li>
+          ))}
+        </ul>
+        <p
+          className="place-card-grain"
+          data-testid="place-stub-data-zone-grain"
+        >
+          {PLACE_CARD_DATA_ZONE_GRAIN}
+        </p>
+      </section>
       <p className="meta">
         <a href="/mission">Mission</a>
         {" · "}

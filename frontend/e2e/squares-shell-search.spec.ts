@@ -32,7 +32,20 @@ test.describe("squares shell", () => {
     await expect(card.getByRole("heading", { level: 2 })).toContainText(
       /55\.8609/,
     );
-    await expect(card.getByText(/not shown on the public map yet/i)).toBeVisible();
+    await expect(card.getByText("Annual Ground Rent").first()).toBeVisible();
+    await expect(page.getByTestId("place-stub-rent-market")).toContainText(
+      "market",
+    );
+    await expect(page.getByTestId("place-stub-rent-proxy")).toContainText(
+      "proxy",
+    );
+    await expect(page.getByTestId("place-stub-rent-shadow")).toContainText(
+      "shadow",
+    );
+    await expect(page.getByTestId("place-stub-data-zone-grain")).toHaveText(
+      "For now, figures are published at Data Zone level only, not for individual parcels, plots or addresses.",
+    );
+    await expect(card.getByText(/£ figures are not published yet/i)).toBeVisible();
     await expect(card.getByText(/£\d/)).toHaveCount(0);
   });
 });

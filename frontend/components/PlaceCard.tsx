@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  PLACE_CARD_DATA_ZONE_GRAIN,
+  PLACE_CARD_RENT_RANGE_TAGS,
   sanitizePlaceCard,
   type PlaceCardPayload,
   type PlaceLayer,
@@ -29,6 +31,10 @@ function intersectsClass(layer: PlaceLayer): string {
   if (layer.intersects === true) return "place-layer-hit";
   if (layer.intersects === false) return "place-layer-miss";
   return "place-layer-unknown";
+}
+
+function layerLicence(layer: PlaceLayer): string {
+  return layer.licence?.trim() || "Licence not recorded";
 }
 
 export function PlaceCard({
@@ -82,7 +88,7 @@ export function PlaceCard({
       ) : null}
 
       <header className="place-card-header">
-        <p className="place-card-kicker">Place</p>
+        <p className="place-card-kicker">Annual Ground Rent</p>
         <h2 className="place-card-title">
           {card?.council_name || card?.postcode || "Selected spot"}
         </h2>
@@ -108,6 +114,37 @@ export function PlaceCard({
 
       {!isLoading && !error && card ? (
         <div className="place-card-body">
+          <section
+            className="place-card-rent"
+            aria-label="Annual Ground Rent ranges"
+            data-testid="place-card-rent-ranges"
+          >
+            <h3 className="place-card-section">Annual Ground Rent</h3>
+            <p className="place-card-rent-intro">
+              Scot-LAND&apos;s purpose is Annual Ground Rent at this place.
+              Rents appear only as ranges labelled market, proxy or shadow. £
+              figures are not published yet while calibration is checked.
+            </p>
+            <ul className="place-rent-range-list">
+              {PLACE_CARD_RENT_RANGE_TAGS.map((tag) => (
+                <li
+                  key={tag}
+                  className={`place-rent-range-row tone-${tag}`}
+                  data-testid={`place-card-rent-${tag}`}
+                >
+                  <span className={`place-stack-tag tone-${tag}`}>{tag}</span>
+                  <span className="place-rent-range-label">not yet</span>
+                </li>
+              ))}
+            </ul>
+            <p
+              className="place-card-grain"
+              data-testid="place-card-data-zone-grain"
+            >
+              {PLACE_CARD_DATA_ZONE_GRAIN}
+            </p>
+          </section>
+
           {card.vacant_or_derelict ? (
             <p className="place-flags">
               <span className="flag vacant">Vacant or derelict (survey)</span>
@@ -129,6 +166,23 @@ export function PlaceCard({
                       {intersectsLabel(layer)}
                     </span>
                   </div>
+                  <p
+                    className="place-layer-licence"
+                    data-testid={`place-card-licence-${layer.id}`}
+                  >
+                    Licence:{" "}
+                    {layer.licence_url ? (
+                      <a
+                        href={layer.licence_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {layerLicence(layer)}
+                      </a>
+                    ) : (
+                      layerLicence(layer)
+                    )}
+                  </p>
                   {layer.note ? (
                     <p className="place-layer-note">{layer.note}</p>
                   ) : null}
@@ -178,9 +232,9 @@ export function PlaceCard({
             </ul>
           </section>
 
-          <p className="place-card-disclaimer">
-            Ownership and survey context only. No modelled plot Annual Ground
-            Rent on this card. Research map — not a title or a rates bill.
+          <p className="place-card-disclaimer" data-testid="place-card-disclaimer">
+            Ownership and survey context only. Research map — not a title or a
+            rates bill. No £ Annual Ground Rent figures on this card.
           </p>
         </div>
       ) : null}

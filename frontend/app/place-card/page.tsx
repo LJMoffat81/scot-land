@@ -75,8 +75,9 @@ function PlaceCardPreviewInner() {
         <PlaceCard data={data} floating={false} />
       </div>
       <p className="place-card-preview-note">
-        Standalone place-card preview ({variant}). Slots into the w3w shell via{" "}
-        <code>GET /platform/place</code>. No modelled Annual Ground Rent.
+        Standalone place-card preview ({variant}). Slots into the map shell via{" "}
+        <code>GET /platform/place</code>. Annual Ground Rent purpose; ranges
+        labelled market / proxy / shadow only — no £ figures.
       </p>
     </main>
   );

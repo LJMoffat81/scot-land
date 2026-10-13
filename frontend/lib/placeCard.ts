@@ -1,9 +1,18 @@
 /**
  * Public place-card contract (place_card_v1).
- * Mirrors GET /platform/place — no modelled AGR £.
+ * Mirrors GET /platform/place — Annual Ground Rent purpose; no £ figures.
  */
 
 import { apiJson } from "./api";
+
+/** Charter grain rule — keep exact wording on the public place card. */
+export const PLACE_CARD_DATA_ZONE_GRAIN =
+  "For now, figures are published at Data Zone level only, not for individual parcels, plots or addresses.";
+
+/** Rent confidence labels — ranges only; never publish £ on the place card. */
+export const PLACE_CARD_RENT_RANGE_TAGS = ["market", "proxy", "shadow"] as const;
+
+export type PlaceRentRangeTag = (typeof PLACE_CARD_RENT_RANGE_TAGS)[number];
 
 export type PlaceLayerStatus = "live" | "linked" | "gap" | string;
 
@@ -14,6 +23,9 @@ export type PlaceLayer = {
   intersects: boolean | null;
   note?: string | null;
   source_url?: string | null;
+  /** Required charter credit — every layer gets a licence line. */
+  licence?: string | null;
+  licence_url?: string | null;
   detail?: Record<string, unknown> | null;
 };
 
@@ -149,6 +161,9 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
       intersects: true,
       note: "INSPIRE parcel is an indicative registered extent, not a title sheet.",
       source_url: "https://www.ros.gov.uk/open-data",
+      licence: "Licensed under the Open Government Licence v3.0",
+      licence_url:
+        "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
       detail: { label: "GLA12345", inspire_id: "inspire-demo", area_sqm: 240 },
     },
     {
@@ -158,6 +173,9 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
       intersects: false,
       source_url:
         "https://www.gov.scot/publications/the-scottish-vacant-and-derelict-land-survey-site-register/",
+      licence: "OGL-3.0",
+      licence_url:
+        "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
       detail: { sites: [] },
     },
     {
@@ -169,6 +187,7 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
         "SG 2024 dashboard only — licence unverified/not open. Not on the public map.",
       source_url:
         "https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897",
+      licence: "unverified/not open",
     },
     {
       id: "common_good",
@@ -177,6 +196,8 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
       intersects: null,
       note: "No national open Common Good map layer.",
       source_url: "https://www.glasgow.gov.uk/",
+      licence:
+        "Linked registers; Highland licence unconfirmed; Fife OS INSPIRE EUL linked only",
     },
     {
       id: "la_holdings",
@@ -186,6 +207,7 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
       note: "National LA ownership layer is not openly licensed for this portal.",
       source_url:
         "https://data.spatialhub.scot/dataset/land_ownership-is",
+      licence: "Not openly licensed for this portal",
     },
     {
       id: "sasine_private",
@@ -194,6 +216,7 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
       intersects: null,
       note: "Private names and Sasine extents stay on ScotLIS / paid products.",
       source_url: "https://scotlis.ros.gov.uk/",
+      licence: "Incomplete or paid — gaps shown, names not invented",
     },
   ],
   links: [

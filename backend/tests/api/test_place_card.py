@@ -104,6 +104,15 @@ def test_platform_place_contract_shape(monkeypatch):
     assert by_id["la_holdings"]["status"] == "gap"
     assert by_id["sasine_private"]["status"] == "gap"
 
+    # Charter: every place-card layer carries a licence credit.
+    for row in body["layers"]:
+        assert row.get("licence"), f"layer {row['id']} missing licence credit"
+    assert "Open Government Licence" in by_id["boundaries"]["licence"]
+    assert by_id["boundaries"]["licence_url"]
+    assert by_id["vdl"]["licence"] == "OGL-3.0"
+    assert by_id["vdl"]["licence_url"]
+    assert "unverified" in by_id["public_crown"]["licence"].lower()
+
     link_ids = {row["id"] for row in body["links"]}
     assert "scotlis" in link_ids
     assert "methodology" in link_ids
@@ -114,6 +123,7 @@ def test_platform_place_contract_shape(monkeypatch):
     blob = str(body).lower()
     assert "plot_gbp" not in blob
     assert "annual_ground_rent" not in blob
+    assert "£" not in str(body)
 
 
 def test_api_place_json_has_no_agr(monkeypatch):

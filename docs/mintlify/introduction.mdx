@@ -1,0 +1,28 @@
+---
+title: "Introduction"
+description: "Scot-LAND: an experimental Georgist commons map for Scotland."
+---
+
+Scot-LAND is an **experimental**, non-commercial research map of Scotland's commons. It follows Henry George's idea: the value of land and natural resources comes from nature and from the community, not from any one owner. Scot-LAND sets out to show where that value sits.
+
+Live site: [www.scot-land.scot](https://www.scot-land.scot)
+
+<Warning>
+Scot-LAND is **not** an official valuation, a rates bill or a tax assessment. **No modelled rent (£) figures are published yet.** The land-rent model is still being tested internally, and its figures stay blocked until they pass review.
+</Warning>
+
+## What you can use today
+
+- **Find a place**: search by postcode, place name or coordinates, or click the map. You get the Data Zone, settlement and locality for that spot.
+- **Open map layers**: official open datasets (mostly Open Government Licence v3.0), such as flood extents, protected sites, woodland, renewable energy sites and community ownership. See the [Map Layer Guide](/map-layer-guide).
+- **Public API**: the same data as JSON under `https://www.scot-land.scot/backend`. See the [API Reference](/api-reference).
+
+## Layers, not one number
+
+The commons are split into separate layers: **Surface** (land rent under homes and businesses), **Resource** (extractive rents) and **Eco** (natural capital). Each layer is tagged as *market*, *proxy* or *shadow* value, so different kinds of value aren't added together or counted twice.
+
+## Honesty rules
+
+- Every layer names its source, licence and vintage.
+- Missing data is shown as a gap (HTTP `503` "not loaded"). It is never filled with placeholders.
+- Constraint overlays such as SSSIs are context. They are not rent.

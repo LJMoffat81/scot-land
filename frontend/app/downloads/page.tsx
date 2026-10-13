@@ -56,7 +56,7 @@ const SOURCE_NAME: Record<string, string> = {
   inspire_parcels: "Registers of Scotland open land map",
   nfi_overlay: "National Forest Inventory woodland (PostGIS)",
   native_woodland_overlay: "Native Woodland Survey of Scotland (PostGIS)",
-  common_good: "Common Good registers (linked; no national open map)",
+  common_good: "Common Good registers (linked; Highland licence unconfirmed)",
   crofting_register: "Crofting Register of Crofts (OGL; map extents on RoS)",
   common_grazings: "Common grazings (OGL list; no national open polygon)",
   scotlis: "ScotLIS, the official title record",

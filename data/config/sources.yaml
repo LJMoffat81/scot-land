@@ -270,30 +270,58 @@ common_good:
   config_path: data/config/common_good.yaml
   endpoint: /api/common-good.json
   licence: >
-    Council register pages (public web). Fife indicative titles under
+    Council register pages (public web). Highland FeatureServers licence
+    unconfirmed — linked only, not ingested. Fife indicative titles under
     OS Public Sector End User Licence - INSPIRE — linked metadata only,
     not redistributed through this API.
-  licence_url: >-
-    https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  ledger_role: ownership-context
+  ledger_row: null
+  ui_surface: ledger
   attribution: >
     Common Good is a statutory LA register under the Community Empowerment
-    (Scotland) Act 2015. No national open spatial layer. Verified council
-    links only; gaps stay visible.
+    (Scotland) Act 2015. No national open spatial layer. Highland and Fife
+    FeatureServers stay link-only (Highland licence unconfirmed — not OGL;
+    Fife OS INSPIRE EUL). Verified council links only; gaps stay visible.
   guidance_url: >-
     https://www.gov.scot/publications/community-empowerment-common-good-property-guidance-local-authorities/
+  catalog_url: >-
+    https://www.highland.gov.uk/community-support-development/common-good-asset-register
   spatial_sources:
+    - id: highland_common_good_sites
+      council: Highland
+      licence: unconfirmed
+      ingest: false
+      catalog_url: >-
+        https://www.highland.gov.uk/community-support-development/common-good-asset-register
+      open_data_url: >-
+        https://www.highland.gov.uk/information-performance-statistics/open-map-data
+      feature_server: >-
+        https://services-eu1.arcgis.com/tc4hh050NPZgWq0B/arcgis/rest/services/Common_Good_Sites_(HC_Sites_subset)_-_public_view/FeatureServer/0
+      note: Link-only; licence unconfirmed — not OGL; loader skips
+    - id: highland_common_good_buildings
+      council: Highland
+      licence: unconfirmed
+      ingest: false
+      catalog_url: >-
+        https://www.highland.gov.uk/community-support-development/common-good-asset-register
+      feature_server: >-
+        https://services-eu1.arcgis.com/tc4hh050NPZgWq0B/arcgis/rest/services/Common_Good_Buildings_(HC_Buildings_subset)_-_public_view/FeatureServer/0
+      note: Link-only; licence unconfirmed — not OGL; loader skips
     - id: fife_common_good_titles
       council: Fife
+      licence: OS Public Sector End User Licence - INSPIRE
+      ingest: false
+      catalog_url: >-
+        https://www.data.gov.uk/dataset/4eb5c09c-1150-4978-b6e1-c68b980c56e0/fife-common-good-land-wfs
       metadata_url: >-
         https://spatialdata.gov.scot/geonetwork/srv/api/records/7a1bbc72-252c-4cd0-beca-ad3180875524
-      feature_server: >-
-        https://arcgis-live-as.fife.gov.uk/server/rest/services/Hosted/Fife_Council_Common_Good/FeatureServer/0
-      host_note: TLS certificate expired when checked 2026-10-12 — not proxied
+      note: Folded into Common Good; not ingested (non-OGL)
   gaps:
     - No national open Common Good polygon layer
+    - Highland FeatureServers linked only — licence unconfirmed; not ingested
+    - Fife OS INSPIRE EUL linked, not ingested
     - Most LA registers are PDF/XLSX without open WFS/GeoJSON
     - Spatial Hub amalgamated assets require login
-    - Fife extents are indicative and OS INSPIRE EUL — not mirrored here
 
 ldp_allocations:
   name: Local Development Plan allocations (Scotland)

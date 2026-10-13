@@ -80,7 +80,7 @@ Public methodology and README must list active data sources. See `data/config/so
 | Native Woodland Survey | Scottish Forestry NWSS (NatureScot OGC) | OGL v3.0 — https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ — © Scottish Forestry / Forestry Commission; ledger row 1 land-use overlay, not a title |
 | REPD renewables | DESNZ Renewable Energy Planning Database quarterly CSV | OGL-3.0 — Scotland planning-site points via PostGIS ingest; not lease polygons; ledger row 3 (onshore wind + hydro resource); no £ rent |
 | Crown Estate Scotland offshore leases | CES Spatial Hub FeatureServers (offshore wind, wave, tidal, CCS) | OGL-3.0 — offshore lease polygons only; aquaculture is a separate layer; not a title sheet; ledger row 4 (seabed & foreshore); no £ rent |
-| Common Good | Statutory LA registers + Fife indicative titles metadata | Linked only. No national open spatial layer. Fife under OS Public Sector End User Licence - INSPIRE — not redistributed here |
+| Common Good | Statutory LA registers + Highland/Fife indicative FeatureServer metadata | Linked only. No national open spatial layer. Highland licence **unconfirmed** (not OGL) — link-only, not ingested. Fife under OS Public Sector End User Licence - INSPIRE — not redistributed here. Ownership-context (who/outline); no £ rent. |
 | Crofting Register / common grazings | Crofting Commission open-data CSVs (Parishes, Holdings, Grazings) | OGL-3.0 — load into PostGIS for valuation joins. Individuals CSV not ingested (personal data). RoS Crofting Register map extents are linked, not redrawn. Spatial Hub Decrofted Areas is Restricted — not used |
 
 ### Accepted non-OGL open licence

@@ -125,7 +125,8 @@ Registry: `data/config/sources.yaml` → `hydro_sites` and `sepa_car`. Do not co
 | Status | Linked — not a live national overlay |
 | Config | `data/config/common_good.yaml` |
 | API | `GET /api/common-good.json` |
-| Spatial | No national open polygon layer. Fife publishes indicative Common Good Titles (OS INSPIRE EUL) — metadata linked only; FeatureServer TLS was expired when checked 2026-10-12 and is **not** proxied |
+| Spatial | No national open polygon layer. Highland FeatureServers are **link-only** (licence **unconfirmed** — not OGL; not loaded). Fife indicative Common Good Titles (OS INSPIRE EUL) — metadata linked only; FeatureServer TLS was expired when checked 2026-10-12 and is **not** proxied |
+| Folded | Former Fife-only catalog row → Common Good spatial_sources (OS INSPIRE EUL — **linked, not ingested**) |
 | Gaps | Most councils publish PDF/XLSX registers; Spatial Hub assets need login; on-point Common Good is never invented |
 
 Do not scrape Spatial Hub. Do not commit raw downloads under `data/external`.

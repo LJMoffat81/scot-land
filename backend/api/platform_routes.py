@@ -884,11 +884,15 @@ def open_downloads() -> dict:
             {
                 "id": "common_good",
                 "label": "Common Good registers (verified links)",
-                "licence": "council pages + Fife OS INSPIRE EUL metadata — links only",
+                "licence": (
+                    "council pages; Highland FeatureServers licence unconfirmed "
+                    "(linked only); Fife OS INSPIRE EUL metadata — links only"
+                ),
                 "endpoint": "/api/common-good.json",
                 "note": (
-                    "No national open spatial layer. Fife indicative titles are "
-                    "linked, not mirrored. Spatial Hub assets stay login-gated."
+                    "No national open spatial layer. Highland and Fife "
+                    "FeatureServers are linked only — not loaded or stored. "
+                    "Spatial Hub assets stay login-gated."
                 ),
             },
             {

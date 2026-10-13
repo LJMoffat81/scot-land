@@ -84,7 +84,15 @@ const FIXTURE_CATALOG = {
       group: "ownership",
       status: "linked",
       label: "Common Good registers",
-      description: "Linked registers. No national open spatial layer.",
+      description:
+        "Linked registers. Highland FeatureServers licence unconfirmed (link-only). Fife OS INSPIRE EUL linked only. No national open spatial layer.",
+      licence:
+        "unconfirmed (Highland linked only); OS Public Sector End User Licence - INSPIRE (Fife)",
+      source_url:
+        "https://www.highland.gov.uk/community-support-development/common-good-asset-register",
+      ledger_role: "ownership-context",
+      ledger_row: null,
+      ui_surface: "ledger",
     },
     {
       id: "crofting_register",
@@ -144,6 +152,15 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
 
     const liveIds = FIXTURE_CATALOG.layers
       .filter((layer) => layer.status === "live")
+      .filter(
+        (layer) =>
+          !(
+            "ledger_role" in layer && layer.ledger_role
+          ) &&
+          !(
+            "ui_surface" in layer && layer.ui_surface === "ledger"
+          ),
+      )
       .map((layer) => layer.id);
 
     for (const id of liveIds) {
@@ -178,9 +195,10 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
     await expect(page.getByTestId("layer-unavailable-la_holdings")).toContainText(
       /gap|unavailable|not scraped/i,
     );
+    await expect(page.getByTestId("layer-toggle-common_good")).toHaveCount(0);
     await expect(
       page.getByTestId("layer-unavailable-common_good"),
-    ).toContainText(/linked|no national/i);
+    ).toContainText(/linked|unconfirmed|Highland|no national/i);
     await expect(
       page.getByTestId("layer-unavailable-crofting_register"),
     ).toContainText(/OGL|RoS|Register|extents/i);

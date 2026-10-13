@@ -479,14 +479,6 @@ def platform_catalog() -> dict[str, Any]:
             catalog_crofting_register(),
             catalog_common_grazings(),
             {
-                "id": "fife_land_map",
-                "group": "ownership",
-                "status": "linked",
-                "label": "Fife land map",
-                "description": "This council’s ArcGIS hub. Not a national layer.",
-                "source_url": "https://fife.maps.arcgis.com/home/index.html",
-            },
-            {
                 "id": "sasine_private",
                 "group": "ownership",
                 "status": "gap",

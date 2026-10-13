@@ -221,7 +221,10 @@ export const LAYER_ATTRIBUTION: Record<
   },
   common_good: {
     source: "Council Common Good registers",
-    licence: "Linked registers; no national open map layer",
+    licence:
+      "Linked registers; Highland licence unconfirmed; Fife OS INSPIRE EUL linked only",
+    sourceUrl:
+      "https://www.highland.gov.uk/community-support-development/common-good-asset-register",
   },
   crofting_register: {
     source: "Crofting Commission Register of Crofts",

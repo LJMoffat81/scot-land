@@ -1,4 +1,8 @@
+import ConfidenceTag, {
+  type ConfidenceTagKind,
+} from "@/components/ConfidenceTag";
 import QualityTag from "@/components/QualityTag";
+import { allLayerLicenceCredits } from "@/lib/layerLicenceCredits";
 import { QUALITY_TAGS, QUALITY_TAG_GLOSS } from "@/lib/qualityTag";
 
 const MINTLIFY = {
@@ -10,131 +14,150 @@ const MINTLIFY = {
     "https://github.com/LJMoffat81/scot-land/blob/main/docs/mintlify/api-reference.mdx",
 };
 
+const CONFIDENCE: Array<{
+  kind: ConfidenceTagKind;
+  gloss: string;
+}> = [
+  {
+    kind: "market",
+    gloss: "observed rents from a public source (solid blue).",
+  },
+  {
+    kind: "proxy",
+    gloss:
+      "modelled from open evidence where a direct rent is not available (hatched amber).",
+  },
+  {
+    kind: "shadow",
+    gloss:
+      "no market price; estimated value of services or sinks that are not traded (outlined green).",
+  },
+];
+
+const LAYER_CREDITS = allLayerLicenceCredits();
+
+const LOOKUP_URL =
+  "https://statistics.gov.scot/data/data-zone-lookup-2022";
+const LOOKUP_OGL =
+  "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/";
+
 export default function MethodologyContent() {
   return (
-    <main className="methodology-page">
+    <main className="methodology-page" data-testid="methodology-page">
       <p className="meta" style={{ marginBottom: "0.5rem" }}>
         <a href="/">Map</a>
         {" · "}
         <a href="/data">Data</a>
         {" · "}
+        <a href="/mission">Mission</a>
+        {" · "}
+        <a href="/methodology" aria-current="page">
+          Methodology
+        </a>
+        {" · "}
         <a href="/downloads">Downloads</a>
         {" · "}
         <a href="/open-api">Public API</a>
       </p>
-      <h1>About</h1>
-      <p>
-        Scot-LAND&apos;s purpose is to show{" "}
-        <strong>Annual Ground Rent</strong> — the rent of land alone, at every
-        place in Scotland — so land reform and land value tax debates rest on
-        shared, honest evidence. It is an experimental, non-commercial research
-        map: not a rates bill, and not an official valuation or tax assessment.
-      </p>
+      <h1>Methodology</h1>
       <p className="downloads-note" data-testid="experimental-not-official">
-        Experimental research only. £ figures are not published yet while
-        calibration is checked. When they are, each figure will carry a
-        confidence label (market, proxy or shadow). For now, figures are
-        published at Data Zone level only, not for individual parcels, plots
-        or addresses.
+        Research estimate, not an official valuation or bill. Figures pending
+        sign-off. For now, figures are published at Data Zone level only, not
+        for individual parcels, plots or addresses. Open data only at launch;
+        paid sources may be added later, each clearly tagged; paid data never
+        republished.
       </p>
       <p>
-        A click on the public map opens a place card for location and open
-        layers. A click at sea can name a Crown Estate Scotland lease when one
-        covers that point. Method depth lives in the{" "}
-        <a href={MINTLIFY.introduction} target="_blank" rel="noreferrer">
-          Mintlify introduction
-        </a>
-        ,{" "}
-        <a href={MINTLIFY.mapLayers} target="_blank" rel="noreferrer">
-          map layer guide
-        </a>
-        , and{" "}
-        <a href={MINTLIFY.apiReference} target="_blank" rel="noreferrer">
-          API reference
-        </a>{" "}
-        under <code>docs/mintlify</code>.
+        Purpose and who the site is for: <a href="/mission">Mission</a>. Raw
+        datasets and licences: <a href="/data">Data</a>.
       </p>
       <p>
-        We never show who owns private land, what it sold for, or title plans.
-      </p>
-      <p>
-        <a href="#confidence">Confidence labels</a>
+        <a href="#agr">What AGR is</a>
         {" · "}
-        <a href="#commons">Commons inputs</a>
+        <a href="#rollup">Roll-up</a>
         {" · "}
-        <a href="#quality">Quality tags</a>
+        <a href="#tags">Three tags</a>
         {" · "}
-        <a href="#why">Why I am building this</a>
+        <a href="#rents">Rents and constraints</a>
+        {" · "}
+        <a href="#sources">Sources</a>
+        {" · "}
+        <a href="#gaps">Gaps</a>
+        {" · "}
+        <a href="#validation">Validation</a>
+        {" · "}
+        <a href="#changelog">Changelog</a>
       </p>
 
-      <section id="confidence">
-        <h2>Confidence labels</h2>
+      <section id="agr">
+        <h2>What AGR is</h2>
         <p>
-          Every Annual Ground Rent figure the engine will publish carries one of
-          three confidence labels. For now, figures are published at Data Zone
-          level only, not for individual parcels, plots or addresses.
+          <strong>Annual Ground Rent (AGR)</strong> is the yearly rental value of
+          the land itself — excluding buildings and improvements. Scot-LAND&apos;s
+          purpose is to make that figure visible for every place in Scotland as a
+          research estimate, not an official valuation or bill. Figures pending
+          sign-off; rents will appear only as ranges labelled market, proxy or
+          shadow.
         </p>
-        <ul>
-          <li>
-            <strong>market</strong> — observed rents from a public source.
-          </li>
-          <li>
-            <strong>proxy</strong> — modelled from open evidence where a direct
-            rent is not available.
-          </li>
-          <li>
-            <strong>shadow</strong> — no market price; an estimated value of
-            services or sinks that are not traded.
-          </li>
-        </ul>
         <p>
-          These labels keep different kinds of evidence from being added
-          together as if they were the same thing.
+          A click on the map uses a <strong>Scot-LAND square reference</strong>{" "}
+          for grid context. what3words lookup is a switched-off future adapter.
         </p>
       </section>
 
-      <section id="commons">
-        <h2>Commons inputs</h2>
+      <section id="rollup">
+        <h2>The roll-up</h2>
         <p>
-          The map layers and ledger feed three separate commons classes. They
-          are inputs to Annual Ground Rent and national wealth accounting — not
-          a substitute for the rent figure itself, and never mixed into one
-          headline number:
+          The Scottish Government&apos;s data zones are the unit of account.
+          Every natural capital value (surface, resource and eco) is meant to be
+          apportioned to data zones and rolled up the official way:
         </p>
-        <ul>
-          <li>
-            <strong>Surface (location)</strong> — value from where land sits:
-            access, amenity, agglomeration and permitted use (homes, business,
-            farm and forestry; idle and allocated sites).
-          </li>
-          <li>
-            <strong>Resource (extractive)</strong> — value from depletable or
-            licensed natural resources, net of extraction cost (for example
-            seabed leases, minerals, water abstraction).
-          </li>
-          <li>
-            <strong>Eco (sinks and services)</strong> — value of natural systems
-            that absorb harm or provide services (for example peatland and
-            woodland carbon, flood regulation).
-          </li>
-        </ul>
         <p>
-          Constraint overlays (designations, flood, crofting and similar)
-          change best permitted use only; they are not a commons row. Full
-          rules:{" "}
-          <a href={MINTLIFY.introduction} target="_blank" rel="noreferrer">
-            docs/mintlify/introduction.mdx
+          <strong>
+            Data Zone 2022 (S01) → Intermediate Zone (S02) → Council Area (S12) →
+            Scotland (S92)
+          </strong>
+        </p>
+        <p>
+          Roll-up uses the{" "}
+          <a href={LOOKUP_URL} target="_blank" rel="noreferrer">
+            Scottish Government Data Zone lookup 2022
+          </a>{" "}
+          under the{" "}
+          <a href={LOOKUP_OGL} target="_blank" rel="noreferrer">
+            Open Government Licence v3.0
           </a>
-          .
+          , with no double counting. Health Board and electoral wards are
+          optional extra geographies, not required for the national total.
+        </p>
+        <p className="downloads-note">
+          Roll-up figures stay unpublished. For now, figures are published at
+          Data Zone level only, not for individual parcels, plots or addresses.
         </p>
       </section>
 
-      <section id="quality">
-        <h2>Quality tags</h2>
+      <section id="tags">
+        <h2>The three tags</h2>
         <p>
-          Every input the engine holds carries a data-state quality tag. The
-          public site only exposes layers that are ready; placeholders stay off
-          public routes.
+          Every rent figure carries one confidence tag. Totals stay within one
+          tag — never across tags or across price years.
+        </p>
+        <ul className="confidence-tag-list" data-testid="confidence-tag-list">
+          {CONFIDENCE.map((row) => (
+            <li key={row.kind}>
+              <ConfidenceTag kind={row.kind} />
+              <span className="confidence-tag-gloss">{row.gloss}</span>
+            </li>
+          ))}
+        </ul>
+        <p>
+          Gaps use a grey hatch and the label <strong>No data</strong> — never
+          filled with a placeholder rent.
+        </p>
+        <h3>Data-state quality tags</h3>
+        <p>
+          Inputs also carry a data-state quality tag (separate from market /
+          proxy / shadow):
         </p>
         <ul className="quality-tag-list" data-testid="quality-tag-list">
           {QUALITY_TAGS.map((tag) => (
@@ -144,105 +167,144 @@ export default function MethodologyContent() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section id="rents">
+        <h2>Rents kept separate; constraints add no value</h2>
         <p>
-          Missing data is shown as a gap (HTTP 503), never filled with a
-          placeholder. See the{" "}
+          Surface, resource and eco (nature) rents stay on separate rows. One
+          rent per hectare per use. Planning uplift and infrastructure share
+          appear only as &ldquo;of which&rdquo; notes inside surface rent — never
+          added as sibling totals.
+        </p>
+        <p>
+          Designations, flood, crofting, land capability and similar overlays
+          are labelled{" "}
+          <strong>Constraint: changes best use, adds no value</strong>. They
+          never show a rent figure — including no £0.
+        </p>
+      </section>
+
+      <section id="sources">
+        <h2>Sources</h2>
+        <p>
+          Every layer shows its licence in the legend on the map. The table
+          below lists the catalog attribution lines. More detail and downloads
+          live under <a href="/data">Data</a>,{" "}
+          <a href="/downloads">Downloads</a> and the{" "}
+          <a href={MINTLIFY.mapLayers} target="_blank" rel="noreferrer">
+            map layer guide
+          </a>
+          .
+        </p>
+        <div className="sources-table-wrap">
+          <table className="sources-table" data-testid="sources-table">
+            <thead>
+              <tr>
+                <th scope="col">Layer / source</th>
+                <th scope="col">Licence credit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {LAYER_CREDITS.map((credit) => (
+                <tr key={credit.layerId} data-layer-id={credit.layerId}>
+                  <td>{credit.label}</td>
+                  <td>
+                    {credit.attribution}
+                    {credit.licenceUrl ? (
+                      <>
+                        {" "}
+                        <a
+                          href={credit.licenceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Link
+                        </a>
+                      </>
+                    ) : null}
+                    {credit.nonCommercial ? " (non-commercial)" : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="gaps">
+        <h2>Gaps</h2>
+        <ul>
+          <li>
+            <strong>Roll-up not built yet</strong> — the Data Zone 2022 →
+            Intermediate Zone → Council → Scotland roll-up is specified but not
+            yet implemented in the engine. Roll-up figures stay unpublished.
+          </li>
+          <li>
+            <strong>Surface rent still on Data Zone 2011</strong> — it needs a
+            2011-to-2022 crosswalk (or a move onto DZ2022) before the official
+            lookup can be applied end-to-end.
+          </li>
+          <li>
+            Resource and eco values are not yet fully apportioned to data zones
+            in the live store.
+          </li>
+          <li>
+            Sasine / private ownership names beyond public records stay as
+            visible gaps.
+          </li>
+        </ul>
+        <p>
+          Missing map cells use grey hatch and <strong>No data</strong>.
+        </p>
+      </section>
+
+      <section id="validation">
+        <h2>Validation</h2>
+        <p>
+          Figures stay internal until economic rules and yield calibration are
+          signed off. The Valuation and Georgist bots check figures; the GIS bot
+          checks every source and licence; CI must pass before merge.
+          Publication grain remains: For now, figures are published at Data Zone
+          level only, not for individual parcels, plots or addresses.
+        </p>
+        <p>
+          API honesty rules (gaps as HTTP 503, never silent placeholders):{" "}
           <a href={MINTLIFY.apiReference} target="_blank" rel="noreferrer">
-            Mintlify API reference
+            API reference
           </a>
           .
         </p>
       </section>
 
-      <section id="why">
-        <h2>Why I am building this</h2>
-        <p>I am Laurie Moffat. I am building Scot-LAND because there is not a tool for this.</p>
+      <section id="changelog">
+        <h2>Changelog</h2>
+        <ul>
+          <li>
+            <strong>2026-10-13</strong> — Mission and Methodology split from
+            About (Designer brief v3.1). Confidence tags (market / proxy /
+            shadow) with specified colours; constraint wording; sources table
+            with licence credits; roll-up described as unpublished; open-data
+            at launch line; Scot-LAND square reference naming.
+          </li>
+          <li>
+            <strong>2026-10-13</strong> — AGR restored as site purpose on public
+            About surfaces; Data Zone grain sentence fixed in charter and UI.
+          </li>
+        </ul>
         <p>
-          The catalyst was a run of official reports on how land is valued for
-          tax. They do not endorse this site. They name the gap that has stalled
-          the policy.
-        </p>
-        <p>
-          In October 2025 the Scottish Land Commission published{" "}
-          <a
-            href="https://www.landcommission.gov.scot/downloads/68f737cad6890_Approaches-to-land-valuation-in-the-tax-system.pdf"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Approaches to land valuation in the tax system
+          Deeper method notes:{" "}
+          <a href={MINTLIFY.introduction} target="_blank" rel="noreferrer">
+            Mintlify introduction
           </a>
-          . Its comparison finds that a Scottish home is still valued on 1991
-          bands, that those bands include the building, and that the system
-          ignores a valuation of the land alone.{" "}
-          <a
-            href="https://www.landcommission.gov.scot/news-events/news/global-lessons-could-help-scotland-build-a-fairer-greener-land-tax-system"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Publishing the report
-          </a>
-          , the Commission said Scotland has no national process for revaluing
-          homes, and no single database joining the map, the register, and
-          sales.
-        </p>
-        <p>
-          In March 2026 its paper{" "}
-          <a
-            href="https://www.landcommission.gov.scot/next-steps-for-land-reform/4-delivery-co-ordinated-use-of-policy-tax-and-fiscal-levers"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Next steps for land reform
-          </a>{" "}
-          said there is not currently enough data on land use, value and
-          ownership for Scotland to use its tax powers in a transformative way.
-          It said Scotland falls behind other countries in gathering land data
-          for tax decisions. The same paper records public interest in land
-          value taxation. It does not set a rate.
-        </p>
-        <p>
-          In August 2026 its{" "}
-          <a
-            href="https://www.landcommission.gov.scot/a-five-year-route-to-modernising-land-tax-administration/the-case-for-modernising-land-tax-administration"
-            target="_blank"
-            rel="noreferrer"
-          >
-            five-year route to modernising land tax administration
-          </a>{" "}
-          said Scotland does not have an up-to-date or complete picture of land
-          value, and that these practical hurdles are regularly identified in
-          debates about land value taxation.
-        </p>
-        <p>
-          This map is my answer to that gap: Annual Ground Rent for every place
-          in Scotland, fed by open commons inputs — surface, resource and eco
-          kept separate, quality-tagged, and honest about what is still
-          experimental. It is not a rates bill, and it is not an official
-          assessment.
-        </p>
-        <h3>Contact</h3>
-        <p>
-          <a href="mailto:laurie.moffat@scot-land.scot">
-            laurie.moffat@scot-land.scot
-          </a>
-          <br />
-          <a href="https://x.com/LJMoffat81" target="_blank" rel="noreferrer">
-            X: @LJMoffat81
-          </a>
-          <br />
-          <a href="https://github.com/LJMoffat81" target="_blank" rel="noreferrer">
-            GitHub: LJMoffat81
-          </a>
+          .
         </p>
       </section>
 
-      <p className="meta">
-        The mark uses the &ldquo;Land&rdquo; icon by Adrien Coquet, from{" "}
-        <a href="https://thenounproject.com/browse/icons/term/land/">Noun Project</a>{" "}
-        (CC BY 3.0).
-      </p>
       <p>
         <a href="/">Back to map</a>
+        {" · "}
+        <a href="/mission">Mission</a>
       </p>
     </main>
   );

@@ -190,12 +190,14 @@ From the accounting rules — non-negotiable:
 /place (or /place/…)  Per-ha stack (nested indent + shadow separate) + checks
 /downloads            Data — raw datasets, licence, vintage, bulk
 /open-api             Data — Public API (same catalog)
-/methodology          About / method + link to accounting rules
-/layers-panel         Dev/QA only — not the public ledger
-/place-card           Dev/QA only
+/mission              Mission — why, goal, who, what it isn't, done, get involved
+/methodology          Methodology — AGR, DZ2022 roll-up, tags, sources, gaps, validation
+/ledger-panel         Internal UI only (NEXT_PUBLIC_ENABLE_INTERNAL_UI=1)
+/layers-panel         Internal UI only (NEXT_PUBLIC_ENABLE_INTERNAL_UI=1)
+/place-card           Internal UI only (NEXT_PUBLIC_ENABLE_INTERNAL_UI=1)
 ```
 
-Primary nav: **Map · Data · About**.
+Primary nav: **Map · Data · Mission · Methodology**.
 
 ---
 

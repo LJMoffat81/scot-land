@@ -28,7 +28,7 @@ function formatCount(value: number): string {
 }
 
 /**
- * Lightweight place card for the public w3w-style shell.
+ * Lightweight place card for the public Scot-LAND squares shell.
  * No modelled AGR £, Surface Rent, or tax scenarios — those stay for later phases / HOLD PRs.
  */
 export default function PlaceCardStub({
@@ -100,7 +100,9 @@ export default function PlaceCardStub({
         scenarios are not shown on the public map yet.
       </p>
       <p className="meta">
-        <a href="/methodology">About the method</a>
+        <a href="/mission">Mission</a>
+        {" · "}
+        <a href="/methodology">Methodology</a>
       </p>
     </aside>
   );

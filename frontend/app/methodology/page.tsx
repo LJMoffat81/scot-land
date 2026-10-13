@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import MethodologyContent from "@/components/MethodologyContent";
 
 export const metadata: Metadata = {
-  title: "About | Scot-LAND",
+  title: "Methodology | Scot-LAND",
   description:
-    "Scot-LAND’s purpose is Annual Ground Rent — the rent of land at every place in Scotland. £ figures not published yet; experimental research only.",
+    "How Scot-LAND estimates Annual Ground Rent: Data Zone roll-up, market/proxy/shadow tags, sources and licences. Research estimate; figures pending sign-off.",
   openGraph: {
-    title: "About | Scot-LAND",
+    title: "Methodology | Scot-LAND",
     description:
-      "Scot-LAND’s purpose is Annual Ground Rent — the rent of land at every place in Scotland. £ figures not published yet; experimental research only.",
+      "How Scot-LAND estimates Annual Ground Rent: Data Zone roll-up, market/proxy/shadow tags, sources and licences. Research estimate; figures pending sign-off.",
   },
 };
 

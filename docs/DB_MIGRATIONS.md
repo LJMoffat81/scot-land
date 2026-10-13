@@ -65,3 +65,12 @@ After stamping, future revisions (`alembic revision` + `upgrade`) apply normally
 - SEPA flood extents: `007_sepa_flood.sql` plus Alembic revision `20261012_0004`.
 - NatureScot SSSI / SPA / SAC / NNR tables are `008_naturescot_designations.sql`
   plus Alembic revision `20261012_0005`.
+- Crofting Commission tables (`croft_parishes`, `croft_holdings`,
+  `common_grazings`) are in `013_crofting.sql` plus Alembic revision
+  `20261012_0010` (`down_revision` = `20261012_0005`). Numbering skips
+  `009`/`0006` (open PR #24 NRS), `010`/`0007` (open PR #29 NFI/Native
+  Woodland), `011`/`0008` (open PR #32 REPD/CES leases), and `012`/`0009`
+  (open PR #33 Common Good). Load with
+  `python -m etl.ingest_crofting --download` (raw CSVs under gitignored
+  `data/external/crofting/`). OGL lists only — no boundaries; never ingest
+  List of Individuals.

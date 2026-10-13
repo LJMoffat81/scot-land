@@ -17,6 +17,7 @@ from georgist.place_stack import (
     place_hectare_stack,
 )
 from layers.common_good import common_good_payload
+from layers.crofting import crofting_payload
 from layers.ldp import coverage_summary as ldp_coverage
 from layers.ldp import query_bbox as ldp_bbox
 from layers.open_stats import (
@@ -578,6 +579,12 @@ def api_common_good() -> dict:
     return with_stamp(common_good_payload())
 
 
+@router.get("/api/crofting.json")
+def api_crofting() -> dict:
+    """Crofting Commission OGL Register of Crofts + grazings; spatial gaps honest."""
+    return with_stamp(crofting_payload())
+
+
 @router.get("/downloads")
 def open_downloads() -> dict:
     """Index of freely licensed layers and official sources."""
@@ -689,6 +696,28 @@ def open_downloads() -> dict:
                 "note": (
                     "No national open spatial layer. Fife indicative titles are "
                     "linked, not mirrored. Spatial Hub assets stay login-gated."
+                ),
+            },
+            {
+                "id": "crofting_register",
+                "label": "Crofting Register of Crofts (OGL CSV → PostGIS)",
+                "licence": "OGL-3.0",
+                "endpoint": "/api/crofting.json",
+                "url": "https://www.crofting.scotland.gov.uk/open-data/",
+                "note": (
+                    "Parishes / Holdings / Grazings under OGL. Individuals not "
+                    "ingested. Map extents: RoS Crofting Register search (linked)."
+                ),
+            },
+            {
+                "id": "common_grazings",
+                "label": "Common grazings (OGL CSV → PostGIS)",
+                "licence": "OGL-3.0",
+                "endpoint": "/api/crofting.json",
+                "url": "https://www.crofting.scotland.gov.uk/open-data/",
+                "note": (
+                    "List of Grazings with extent (ha). No national OGL polygon "
+                    "overlay — Spatial Hub Decrofted Areas is Restricted."
                 ),
             },
             {

@@ -13,6 +13,7 @@ const OPEN_API = new Set([
   "place-stack.json",
   "registers.json",
   "common-good.json",
+  "crofting.json",
   "catalog.json",
   "ledger.json",
 ]);

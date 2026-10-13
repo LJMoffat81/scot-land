@@ -146,6 +146,25 @@ Do not scrape Spatial Hub. Do not commit raw downloads under `data/external`.
 
 Registry: `data/config/sources.yaml` → `ldp_allocations`. Never commit raw Spatial Hub ZIPs under `data/external`.
 
+## Crofting Register + common grazings (OGL lists only; spatial gap)
+
+| Field | Value |
+|-------|--------|
+| Status | Linked — OGL CSVs into PostGIS; national map polygons remain a gap |
+| Config | `data/config/crofting.yaml` + `sources.yaml` → `crofting` |
+| Licence | OGL-3.0 (`https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/`) |
+| Open data | https://www.crofting.scotland.gov.uk/open-data/ — Parishes, Holdings (Crofts), Grazings |
+| API | `GET /api/crofting.json` |
+| PostGIS | `croft_parishes`, `croft_holdings`, `common_grazings` via `python -m etl.ingest_crofting --download` |
+| Raw storage | `data/external/crofting/` (gitignored) |
+| Fixtures | `data/fixtures/crofting/` (small redistributable slices for tests) |
+| Map extents | https://www.crofts.ros.gov.uk/register/search — RoS Crofting Register (linked; not OGL redistributable WMS/WFS) |
+| Not ingested | Individuals CSV (names / postal addresses) |
+| Rejected | Spatial Hub Decrofted Areas (Restricted); Argyll & Bute local Land_Ownership layers (not national); Hutton research tiles |
+| Ledger | Constraint (`ledger_role=constraint`, no rent row, £0) — changes best permitted use only; no LayersPanel toggle; no national polygon paint |
+
+Catalog layers: `crofting_register`, `common_grazings` (status `linked`, lists only / `boundaries: false`). Do not invent on-point croft geometry.
+
 ## Vacant and derelict land (SVDLS)
 
 | Field | Value |

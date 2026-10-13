@@ -140,6 +140,12 @@ export default function OpenApiPage() {
           </a>
           <span className="download-path">/api/common-good.json</span>
         </li>
+        <li>
+          <a href="/api/crofting.json">
+            Crofting Register + common grazings — OGL tables; map extents on RoS
+          </a>
+          <span className="download-path">/api/crofting.json</span>
+        </li>
       </ul>
 
       <p className="downloads-note">

@@ -87,6 +87,25 @@ const FIXTURE_CATALOG = {
       description: "Linked registers. No national open spatial layer.",
     },
     {
+      id: "crofting_register",
+      group: "ownership",
+      status: "linked",
+      label: "Crofting Register (RoC)",
+      description:
+        "OGL Register of Crofts tables. Map extents on RoS Crofting Register.",
+      licence: "OGL-3.0",
+      source_url: "https://www.crofting.scotland.gov.uk/open-data/",
+    },
+    {
+      id: "common_grazings",
+      group: "ownership",
+      status: "linked",
+      label: "Common grazings",
+      description: "OGL List of Grazings. No national open polygon overlay.",
+      licence: "OGL-3.0",
+      source_url: "https://www.crofting.scotland.gov.uk/open-data/",
+    },
+    {
       id: "sasine_private",
       group: "ownership",
       status: "gap",

@@ -86,6 +86,26 @@ const FIXTURE_CATALOG = {
       label: "Common Good registers",
       description: "Linked registers. No national open spatial layer.",
     },
+    {
+      id: "crofting_register",
+      group: "ownership",
+      status: "linked",
+      label: "Crofting Register (RoC)",
+      description:
+        "OGL Register of Crofts tables. Map extents on RoS Crofting Register.",
+      licence: "OGL-3.0",
+      source_url: "https://www.crofting.scotland.gov.uk/open-data/",
+    },
+    {
+      id: "common_grazings",
+      group: "ownership",
+      status: "linked",
+      label: "Common grazings",
+      description:
+        "OGL List of Grazings. No national open polygon overlay.",
+      licence: "OGL-3.0",
+      source_url: "https://www.crofting.scotland.gov.uk/open-data/",
+    },
   ],
   tools: [],
 };
@@ -161,6 +181,18 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
     await expect(
       page.getByTestId("layer-unavailable-common_good"),
     ).toContainText(/linked|no national/i);
+    await expect(
+      page.getByTestId("layer-unavailable-crofting_register"),
+    ).toContainText(/OGL|RoS|Register|extents/i);
+    await expect(
+      page.getByTestId("layer-licence-crofting_register"),
+    ).toContainText("OGL-3.0");
+    await expect(
+      page.getByTestId("layer-unavailable-common_grazings"),
+    ).toContainText(/grazing|polygon|OGL|national/i);
+    await expect(
+      page.getByTestId("layer-licence-common_grazings"),
+    ).toContainText("OGL-3.0");
 
     await page.getByTestId("layer-toggle-agr_value").click();
     await expect(page.getByTestId("layer-unavailable-agr_value")).toContainText(

@@ -36,6 +36,10 @@ def downgrade() -> None:
     # Safe for throwaway CI DBs; do not run against production without a backup.
     op.execute("DROP TABLE IF EXISTS naturescot_designations CASCADE")
     op.execute("DROP TABLE IF EXISTS naturescot_sssi CASCADE")
+    op.execute("DROP TABLE IF EXISTS crofting_ingest_meta CASCADE")
+    op.execute("DROP TABLE IF EXISTS common_grazings CASCADE")
+    op.execute("DROP TABLE IF EXISTS croft_holdings CASCADE")
+    op.execute("DROP TABLE IF EXISTS croft_parishes CASCADE")
     op.execute("DROP TABLE IF EXISTS inspire_parcels_meta CASCADE")
     op.execute("DROP TABLE IF EXISTS inspire_parcels CASCADE")
     op.execute("DROP TABLE IF EXISTS eco_wealth CASCADE")

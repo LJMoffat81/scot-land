@@ -1,0 +1,9 @@
+HoldingID,CroftName,StatusA,StatusB,StatusC,Croft_Let,MainLocationCode,CroftFileNumber,RegisterNumber,TotalArea,ParishID,Parish,Township,CroftingRegistrationNumber,Consent_to_Be_Absent_until
+10000,5 & 18 Tarskavaig,Tenanted,Crofted,Tenant,0,462/0275,10016,I3480,9.218,1073,Sleat,"Tarskavaig, Sleat",C10363,Nov 22 2026 12:00AM
+10001,2 Heatherfield,Tenanted,Crofted,Tenant,0,461/0145,10017,I3182,2.533,1072,Portree,"Heatherfield, Portree",C2382,Jan  1 1801 12:00AM
+10002,3 Allasdale,Tenanted,Crofted,Tenant,0,443/0164,10018,I0159,8.56,1054,Barra,"Allasdale, Barra",C1096,Jan  1 1801 12:00AM
+10006,18 Elgol,Owned,Crofted,Owner-Occupier Crofter,0,464/0266,10023,I3993,3.961,1075,Strath,"Elgol, Strath",C3660,Jan  1 1801 12:00AM
+10007,16 Laide,Owned,Crofted,Owner-Occupier Crofter,0,749/0515,10024,R1619,3,1113,Gairloch,"Laide (Achnasheen), Gairloch",,Jan  1 1801 12:00AM
+10008,7 & 12 Cove,Owned,Crofted,Owner-Occupier Crofter,0,749/0259,10025,R1475,4.611,1113,Gairloch,"Cove (of Inverasdale), Gairloch",C4829,Jan  1 1801 12:00AM
+10009,Sotrigarth,Tenanted,Crofted,Tenant,0,873/0204,10026,Z0639,1.2,1150,"Sandwick, Shetland","Xyz Park & Pt Pickigarth Park, Sandwick",,Jan  1 1801 12:00AM
+1001,Balnabruich,Owned,Crofted,Owner-Occupier Crofter,0,286/0683,2,C0371,3.689,1040,Latheron,"Balnabruich, Latheron",C8484,Jan  1 1801 12:00AM

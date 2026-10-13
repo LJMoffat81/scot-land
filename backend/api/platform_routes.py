@@ -9,7 +9,8 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from agr.export_stamp import current_stamp, stamp_comment, with_stamp
-from georgist.ledger import ledger_catalog
+from georgist import db
+from georgist.ledger import ledger_catalog, ledger_zone_payload, resolve_ledger_zone
 from georgist.place_stack import (
     is_zone_code,
     lookup_zone_publication_status,
@@ -258,13 +259,70 @@ def api_catalog() -> dict:
 
 
 @router.get("/api/ledger.json")
-def api_ledger() -> dict:
-    """Natural capital ledger: checks, excluded list, benchmarks (not inputs).
+def api_ledger(
+    zone_id: str | None = Query(
+        default=None,
+        description="Optional Data Zone code (e.g. S01008677). Zone-level stack; "
+        "blocked zones return published=false with empty rows.",
+    ),
+    vintage: str | None = Query(
+        default=None,
+        description="Optional vintage 2011 or 2022 when zone_id is set.",
+    ),
+) -> dict:
+    """Natural capital ledger: rows 1–10 (+1a), checks, excluded, benchmarks.
 
-    Catalog for the Data section Checks + Excluded page. No map-panel layer
-    dump and no modelled plot £.
+    National catalog when zone_id is omitted. With zone_id, returns the
+    zone-level stack (nothing published for blocked zones). No map-panel
+    layer dump and no modelled plot £ until ECONOMIC_RULES is approved.
     """
-    return with_stamp(ledger_catalog())
+    if zone_id is None:
+        return with_stamp(ledger_catalog())
+
+    vin: int | None = None
+    if vintage is not None:
+        text = vintage.strip()
+        if text not in ("2011", "2022"):
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "invalid_vintage",
+                    "vintage": vintage,
+                    "message": "vintage must be the integer 2011 or 2022.",
+                },
+            )
+        vin = int(text)
+    try:
+        resolve_ledger_zone(zone_id, vin)
+    except ValueError as exc:
+        code = str(exc)
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": code,
+                "zone_id": zone_id,
+                "vintage": vin,
+                "message": (
+                    "zone_id must be a Scottish data zone code like S01012345; "
+                    "vintage must match the code's 2011/2022 range."
+                ),
+            },
+        ) from exc
+    try:
+        return with_stamp(ledger_zone_payload(zone_id, vin))
+    except db.DatabaseUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "wealth_database_unavailable",
+                "reason": exc.reason,
+                "detail": exc.detail,
+                "message": (
+                    "Zone ledger needs the wealth database to check publication_status; "
+                    "nothing was estimated."
+                ),
+            },
+        ) from exc
 
 
 @router.get("/api/place-stack.json")

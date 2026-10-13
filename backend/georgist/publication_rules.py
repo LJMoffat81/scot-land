@@ -157,7 +157,10 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "zone",
         "zone",
         "none",
-        note="natural capital ledger checks/excluded/benchmarks; no rents",
+        note=(
+            "natural capital ledger rows 1–10 (+1a), checks/excluded/benchmarks; "
+            "zone optional; blocked zones empty; no public modelled £ until ECONOMIC_RULES"
+        ),
     ),
     "/api/place-stack.json": LayerRule(
         "zone",

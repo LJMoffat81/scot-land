@@ -59,7 +59,11 @@ INTERNAL_WARNING = (
 )
 DRAFT_DEFAULTS_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "tax_scenario_defaults.yaml"
 VALUE_TIERS = frozenset({"market", "proxy", "shadow"})
+# TEMP default + roll-up pin (DZ2022/crosswalk roll-up later — not blocking).
 DEFAULT_DZ_VINTAGE = 2011
+# Planned DZ2022 unit of account via #71 UPRN-weighted crosswalk (address_uprn stamp).
+UPRN_DZ2022_CROSSWALK = "address_uprn"
+ALLOWED_TAX_CROSSWALK = frozenset({"none", "address_uprn", "value_weighted"})
 
 # Keys that must never appear on council/national *display* blocks while TEMP setting is on.
 _FORBIDDEN_AGGREGATE_GBP = frozenset({
@@ -439,6 +443,7 @@ class ZoneRentRow:
     uncertainty_low: float | None = None
     uncertainty_high: float | None = None
     deferral_eligible: bool = False  # low-income home owner (approved defaults)
+    crosswalk_method: str = "none"  # none | address_uprn | value_weighted
 
 
 def parse_capture_rate(raw: Any) -> float:
@@ -471,9 +476,36 @@ def _flags_tokens(flags: Any) -> set[str]:
     return set(parse_zone_flags(flags))
 
 
+def tax_scenario_input_admitted(row: Mapping[str, Any]) -> bool:
+    """Whether a surface_rent_dz (+ spine) row may feed internal tax scenarios.
+
+    - DZ2011 (TEMP default / roll-up pin): publicly served native rows only.
+    - DZ2022 planned path: UPRN-weighted crosswalk rows (``address_uprn``), which
+      stay ``publish_level=internal`` / ``publication_status=blocked`` (#71).
+    """
+    if row.get("quality") == "placeholder":
+        return False
+    try:
+        vintage = int(row.get("vintage"))
+    except (TypeError, ValueError):
+        return False
+    method = str(row.get("crosswalk_method") or "none")
+    if method not in ALLOWED_TAX_CROSSWALK:
+        return False
+    if vintage == 2022:
+        return (
+            method == UPRN_DZ2022_CROSSWALK
+            and row.get("publish_level") == "internal"
+            and str(row.get("publication_status") or "") == PUBLICATION_STATUS
+        )
+    if vintage == 2011:
+        return publicly_served(row) and method in {"none", UPRN_DZ2022_CROSSWALK, "value_weighted"}
+    return False
+
+
 def zone_row_from_db(row: Mapping[str, Any]) -> ZoneRentRow | None:
     """Accept a joined surface_rent_dz + zone_spine row, or None if not usable."""
-    if not publicly_served(row):
+    if not tax_scenario_input_admitted(row):
         return None
     if ZERO_DWELLINGS in _flags_tokens(row.get("flags") or row.get("zs_flags")):
         return None
@@ -488,6 +520,7 @@ def zone_row_from_db(row: Mapping[str, Any]) -> ZoneRentRow | None:
     tier = str(row.get("value_tier") or "proxy")
     if tier not in VALUE_TIERS:
         tier = "proxy"
+    method = str(row.get("crosswalk_method") or "none")
     try:
         ulo = row.get("uncertainty_low")
         uhi = row.get("uncertainty_high")
@@ -506,9 +539,39 @@ def zone_row_from_db(row: Mapping[str, Any]) -> ZoneRentRow | None:
             uncertainty_low=float(ulo) if ulo is not None else None,
             uncertainty_high=float(uhi) if uhi is not None else None,
             deferral_eligible=deferral_eligible,
+            crosswalk_method=method,
         )
     except (TypeError, ValueError):
         return None
+
+
+def surface_path_payload(vintage: int, rows: Sequence[ZoneRentRow]) -> dict[str, Any]:
+    """Describe which surface path fed the scenario (DZ2011 native vs UPRN DZ2022)."""
+    methods = sorted({r.crosswalk_method for r in rows}) if rows else []
+    if int(vintage) == 2022:
+        return {
+            "vintage": 2022,
+            "path": "uprn_weighted_dz2022",
+            "crosswalk_method": UPRN_DZ2022_CROSSWALK,
+            "methods_seen": methods,
+            "rollup_pin_vintage": DEFAULT_DZ_VINTAGE,
+            "note": (
+                "Planned unit of account: DZ2022 via #71 address-UPRN crosswalk "
+                f"({UPRN_DZ2022_CROSSWALK}). Tax output stays publication_status=blocked. "
+                "Council/Scotland £ roll-up remains pinned to DZ2011 for now."
+            ),
+        }
+    return {
+        "vintage": 2011,
+        "path": "native_dz2011",
+        "crosswalk_method": methods[0] if len(methods) == 1 else "none",
+        "methods_seen": methods,
+        "rollup_pin_vintage": DEFAULT_DZ_VINTAGE,
+        "note": (
+            "TEMP default / roll-up pin: native DZ2011 Surface Rent. "
+            "DZ2022 UPRN-weighted path available with vintage=2022."
+        ),
+    }
 
 
 def is_taxable(row: ZoneRentRow) -> bool:
@@ -601,6 +664,7 @@ def _zone_money_row(
         "measured_rent_gbp": rent,
         "illustrated_collection_full_gbp": full_collection,
         "illustrated_collection_gbp": collection,
+        "crosswalk_method": row.crosswalk_method,
         "phase_in": {
             "points_per_year": int(phase_in_points_per_year),
             "applied_year": applied_year,
@@ -929,6 +993,16 @@ def aggregate_by_council(
         by_zone[0]["phase_in"]["applied_year"] if by_zone else None
     )
 
+    path_info = surface_path_payload(usable[0].vintage, usable)
+    if usable[0].vintage == 2022:
+        bad_methods = sorted({r.crosswalk_method for r in usable if r.crosswalk_method != UPRN_DZ2022_CROSSWALK})
+        if bad_methods:
+            raise TaxScenarioError(
+                "invalid_dz2022_crosswalk",
+                f"DZ2022 tax scenarios require {UPRN_DZ2022_CROSSWALK}; saw {bad_methods}.",
+                methods=bad_methods,
+            )
+
     payload: dict[str, Any] = {
         "status": STATUS,
         "lens": LENS,
@@ -941,6 +1015,7 @@ def aggregate_by_council(
         "capture_note": CAPTURE_NOTE,
         "price_year": price_year,
         "vintage": usable[0].vintage,
+        "surface_path": path_info,
         "national": {
             "zone_count": len(usable),
             "price_year": price_year,
@@ -1049,6 +1124,7 @@ def zone_illustration(
         "capture_rate": None if sid == "S1" else rate,
         "capture_note": CAPTURE_NOTE,
         "zone": zone,
+        "surface_path": surface_path_payload(row.vintage, [row]),
         "revenue_sharing": sharing,
         "council": {
             "la_code": row.la_code,

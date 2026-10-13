@@ -19,15 +19,18 @@ note: >-
   Council/Scotland £ roll-up is built behind the temporary blocked setting for reconciliation only. S1
   targets from SG Local Government Finance (OGL).
 data_zone:
-  vintage: 2011
+  vintage: 2011                 # TEMP default + council/Scotland £ roll-up pin
   spine_lookup: datazones.zone_spine
+  dz2022_path: address_uprn     # planned unit via #71 UPRN-weighted crosswalk
+  rollup_pin_vintage: 2011      # DZ2022/crosswalk roll-up later — not blocking
 display_while_blocked:
   gbp_grain: data_zone_only
   council_views: counts_only
   build_council_scotland_rollup: true
   note: >
     Temporary setting switched on while figures are blocked. When unblocked, display policy may change;
-    roll-up maths already reconcile Σ councils = Scotland.
+    roll-up maths already reconcile Σ councils = Scotland. Roll-up pin stays DZ2011 for now;
+    DZ2022 UPRN-weighted scenario path is available separately (vintage=2022).
 exemptions:
   ownership_based: false
   shadow_taxed: false

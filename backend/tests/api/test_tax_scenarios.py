@@ -18,6 +18,7 @@ from georgist.tax_scenarios import (
     MONEY_GRAIN,
     POLICY_CONFIG,
     PUBLICATION_STATUS,
+    UPRN_DZ2022_CROSSWALK,
     TaxScenarioError,
     ZoneRentRow,
     aggregate_by_council,
@@ -33,6 +34,8 @@ from georgist.tax_scenarios import (
     resolve_revenue_sharing,
     solve_s1_per_council,
     stamp_blocked,
+    surface_path_payload,
+    tax_scenario_input_admitted,
     zone_illustration,
     zone_row_from_db,
 )
@@ -56,16 +59,19 @@ def _row(
     price_year: int = 2025,
     value_tier: str = "proxy",
     deferral_eligible: bool = False,
+    vintage: int = 2011,
+    crosswalk_method: str = "none",
 ) -> ZoneRentRow:
     return ZoneRentRow(
         code=code,
-        vintage=2011,
+        vintage=vintage,
         la_code=la_code,
         la_name=la_name,
         measured_rent=rent,
         price_year=price_year,
         value_tier=value_tier,
         deferral_eligible=deferral_eligible,
+        crosswalk_method=crosswalk_method,
     )
 
 
@@ -564,6 +570,7 @@ def test_zone_row_from_db_filters_unpublishable_and_zero_dwellings():
         "publish_level": "public_zone",
         "publication_status": "ok",
         "value_tier": "market",
+        "crosswalk_method": "none",
         "la_code": "S12000036",
         "la_name": "City of Edinburgh",
         "flags": "",
@@ -572,6 +579,130 @@ def test_zone_row_from_db_filters_unpublishable_and_zero_dwellings():
     assert z is not None and z.value_tier == "market"
     assert zone_row_from_db({**base, "quality": "placeholder"}) is None
     assert zone_row_from_db({**base, "flags": "zero_dwellings"}) is None
+
+
+def test_uprn_dz2022_path_admitted_and_applied_in_scenarios():
+    """Planned path: blocked/internal DZ2022 rows with address_uprn feed scenarios."""
+    dz22 = {
+        "code": "S01020870",
+        "vintage": 2022,
+        "measured_rent": 10_000.0,
+        "price_year": 2025,
+        "quality": "derived",
+        "publish_level": "internal",
+        "publication_status": "blocked",
+        "value_tier": "proxy",
+        "crosswalk_method": UPRN_DZ2022_CROSSWALK,
+        "la_code": "S12000049",
+        "la_name": "Glasgow City",
+        "flags": "",
+    }
+    assert tax_scenario_input_admitted(dz22) is True
+    z = zone_row_from_db(dz22)
+    assert z is not None
+    assert z.vintage == 2022
+    assert z.crosswalk_method == UPRN_DZ2022_CROSSWALK
+    # Public ok without UPRN stamp is not the planned 2022 path.
+    assert tax_scenario_input_admitted({
+        **dz22,
+        "publish_level": "public_zone",
+        "publication_status": "ok",
+        "crosswalk_method": "none",
+    }) is False
+    # value_weighted / forbidden methods refused for DZ2022 tax path.
+    assert tax_scenario_input_admitted({**dz22, "crosswalk_method": "value_weighted"}) is False
+    assert tax_scenario_input_admitted({**dz22, "crosswalk_method": "pop_hhres_2022"}) is False
+
+    defaults = _mini_defaults(1.0, 1.0)
+    out = aggregate_by_council(
+        [_row(
+            "S01020870",
+            la_code="S12000049",
+            la_name="Glasgow City",
+            rent=10_000.0,
+            vintage=2022,
+            crosswalk_method=UPRN_DZ2022_CROSSWALK,
+        )],
+        scenario_id="S2",
+        defaults=defaults,
+    )
+    assert out["surface_path"]["path"] == "uprn_weighted_dz2022"
+    assert out["surface_path"]["crosswalk_method"] == UPRN_DZ2022_CROSSWALK
+    assert out["surface_path"]["rollup_pin_vintage"] == 2011
+    assert out["by_zone"][0]["crosswalk_method"] == UPRN_DZ2022_CROSSWALK
+    assert out["by_zone"][0]["illustrated_collection_gbp"]["central"] == 5_000.0
+    assert out["publication_status"] == "blocked"
+
+    with pytest.raises(TaxScenarioError) as exc:
+        aggregate_by_council(
+            [_row("S01020870", vintage=2022, crosswalk_method="value_weighted")],
+            scenario_id="S2",
+            defaults=defaults,
+        )
+    assert exc.value.code == "invalid_dz2022_crosswalk"
+
+
+def test_defaults_pin_rollup_dz2011_and_name_uprn_dz2022_path():
+    cfg = load_draft_defaults()
+    assert cfg["data_zone"]["vintage"] == 2011
+    assert cfg["data_zone"]["rollup_pin_vintage"] == 2011
+    assert cfg["data_zone"]["dz2022_path"] == UPRN_DZ2022_CROSSWALK
+    path = surface_path_payload(2011, [_row()])
+    assert path["path"] == "native_dz2011"
+    assert path["rollup_pin_vintage"] == 2011
+
+
+def test_uprn_crosswalk_fixture_feeds_tax_scenario_s2():
+    """#71 fixture → crosswalk_surface_to_dz2022 → tax scenario (rebase wiring)."""
+    from georgist import surface_dz2022 as dz22
+
+    fixtures = Path(__file__).resolve().parents[1] / "fixtures" / "dz_crosswalk_uprn"
+    pairs, _ = dz22.load_uprn_weight_rows(
+        fixtures / "dz2011_dz2022_uprn_weights.csv",
+        apply_min_share=True,
+        require_full_scotland=False,
+    )
+    src = {
+        "code": "S01013401",
+        "vintage": 2011,
+        "valuation_date": "2025-04-01",
+        "price_year": 2025,
+        "measured_rent": 1_000.0,
+        "uncertainty_low": 800.0,
+        "uncertainty_high": 1_200.0,
+        "land_value_zone_total": 20_000.0,
+        "infra_share": 100.0,
+        "planning_uplift": None,
+        "policy_rent": 700.0,
+        "value_tier": "proxy",
+        "quality": "derived",
+        "fill_method": "observed_pooled",
+        "publish_level": "public_zone",
+        "publication_status": "ok",
+        "commons_class": "surface",
+        "crosswalk_method": "none",
+        "source_id": "SYNTHETIC",
+        "licence": "synthetic-test-only",
+        "method": "residual_drc_surface_v1",
+        "proxy_tags": ["pooled_3y"],
+        "dwellings": 100,
+        "measured_rent_per_dwelling": 10.0,
+    }
+    edges = [p for p in pairs if p["dz2011"] == "S01013401"]
+    crossed = dz22.crosswalk_surface_to_dz2022([src], edges)
+    assert len(crossed) == 1
+    assert crossed[0]["crosswalk_method"] == UPRN_DZ2022_CROSSWALK
+    assert crossed[0]["publication_status"] == "blocked"
+    z = zone_row_from_db({
+        **crossed[0],
+        "la_code": "S12000049",
+        "la_name": "Glasgow City",
+        "flags": "",
+    })
+    assert z is not None
+    out = aggregate_by_council([z], scenario_id="S2", defaults=_mini_defaults(1.0, 1.0))
+    assert out["surface_path"]["path"] == "uprn_weighted_dz2022"
+    assert out["by_zone"][0]["illustrated_collection_gbp"]["central"] == 500.0
 
 
 def test_public_tax_scenario_paths_absent_from_default_app():

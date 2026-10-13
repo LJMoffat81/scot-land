@@ -217,7 +217,7 @@ def internal_eco_mock() -> JSONResponse:
 _TAX_SCENARIO_SQL = (
     "SELECT DISTINCT ON (s.code) "
     "s.code, s.vintage, s.measured_rent, s.price_year, s.quality, s.publish_level, s.publication_status, "
-    "s.value_tier, s.uncertainty_low, s.uncertainty_high, "
+    "s.value_tier, s.uncertainty_low, s.uncertainty_high, s.crosswalk_method, "
     "zs.la_code, zs.la_name, zs.flags "
     "FROM surface_rent_dz s "
     "JOIN datazones.zone_spine zs ON zs.code = s.code AND zs.vintage = s.vintage "
@@ -274,7 +274,11 @@ def _load_tax_scenario_zones(vintage: int) -> list:
 def internal_tax_scenario(
     vintage: str = Query(
         default=str(DEFAULT_DZ_VINTAGE),
-        description="One Data Zone version throughout (default 2011). " + VINTAGE_QUERY_DESCRIPTION,
+        description=(
+            "One Data Zone version throughout (default 2011 TEMP / roll-up pin). "
+            "Use 2022 for the planned UPRN-weighted DZ2022 path (#71 address_uprn). "
+            + VINTAGE_QUERY_DESCRIPTION
+        ),
     ),
     scenario_id: str = Query(
         default="S2",

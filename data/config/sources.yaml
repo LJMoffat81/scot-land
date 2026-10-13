@@ -306,6 +306,59 @@ flood:
     - Full geodatabase stays in data/external (gitignored); ingest OGL download only — no MapServer
     - Constraint overlays are £0 and never a rent row (C-overlay)
 
+crofting:
+  name: Crofting Commission Register of Crofts + common grazings
+  role: ownership_linked_registers_and_valuation_tables
+  status: linked
+  config_path: data/config/crofting.yaml
+  endpoint: /api/crofting.json
+  licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  lists_only: true
+  boundaries: false
+  note: >-
+    OGL lists only (parishes / holdings / grazings). No boundary polygons.
+    Never ingest the personal List of Individuals.
+  ledger_role: constraint
+  ledger_row: null
+  ui_surface: ledger
+  attribution: >
+    Contains Crofting Commission Register of Crofts data licensed under the
+    Open Government Licence v3.0. Map extents: Registers of Scotland Crofting
+    Register (linked search — not redistributed as open polygons here).
+  open_data_url: https://www.crofting.scotland.gov.uk/open-data/
+  ros_register_url: https://www.crofts.ros.gov.uk/register/search
+  ros_about_url: https://www.ros.gov.uk/our-registers/crofting-register
+  postgis_tables:
+    - croft_parishes
+    - croft_holdings
+    - common_grazings
+  ingest: python -m etl.ingest_crofting --download
+  raw_dir: data/external/crofting  # gitignored — never commit raw downloads
+  datasets:
+    - id: parishes
+      label: List of Parishes
+    - id: holdings
+      label: List of Holdings (Crofts) — Crofting Register tabular
+    - id: grazings
+      label: List of Grazings — common grazings tabular (extent ha)
+  not_ingested:
+    - individuals  # personal names / addresses
+  map_layers:
+    - id: crofting_register
+      status: linked
+      licence: OGL-3.0
+      note: Tabular RoC in PostGIS; polygons gap → RoS map search
+    - id: common_grazings
+      status: linked
+      licence: OGL-3.0
+      note: Tabular grazings in PostGIS; polygons gap → RoS map search
+  gaps:
+    - RoS Crofting Register map polygons are not OGL redistributable
+    - No national OGL WMS/WFS for croft / common-grazing extents
+    - Spatial Hub Decrofted Areas is Restricted (not an alternative)
+    - Individuals CSV not ingested (personal data)
+
 vdl:
   name: Scottish Vacant and Derelict Land Survey (SVDLS)
   role: vacant_and_derelict_site_overlay
@@ -549,6 +602,24 @@ map_layers:
       ledger_row: null
       ui_surface: ledger
       note: Constraint — £0, no rent row; changes best use only
+    - id: crofting_register
+      source: Crofting Commission Register of Crofts (OGL CSV → PostGIS)
+      endpoint: /api/crofting.json
+      licence: OGL-3.0
+      licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+      ledger_role: constraint
+      ledger_row: null
+      ui_surface: ledger
+      note: OGL lists only; no boundaries; RoS map for extents (not redrawn)
+    - id: common_grazings
+      source: Crofting Commission List of Grazings (OGL CSV → PostGIS)
+      endpoint: /api/crofting.json
+      licence: OGL-3.0
+      licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+      ledger_role: constraint
+      ledger_row: null
+      ui_surface: ledger
+      note: Tabular extents (ha); no national OGL polygon overlay
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
   # SEPA flood MapServer is not allowlisted — OGL download → PostGIS only.

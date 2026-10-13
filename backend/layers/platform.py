@@ -13,6 +13,8 @@ import httpx
 from layers.common_good import catalog_layer as common_good_catalog_layer
 from layers.common_good import place_common_good
 from layers.council_metrics import METRIC_DEFS
+from layers.crofting import catalog_common_grazings, catalog_crofting_register
+from layers.crofting import place_crofting
 from layers.flood import catalog_layer as flood_catalog_layer
 from layers.hla import SPATIAL_HUB_URL as SPATIAL_HUB_HLA
 from layers.hla import query_point as hla_at_point
@@ -318,6 +320,8 @@ def platform_catalog() -> dict[str, Any]:
                 "also": SPATIAL_HUB_CAT,
             },
             common_good_catalog_layer(),
+            catalog_crofting_register(),
+            catalog_common_grazings(),
             {
                 "id": "fife_land_map",
                 "group": "ownership",
@@ -777,6 +781,7 @@ def place_context(
             "reason": "National LA ownership layer is not openly licensed for this portal.",
         },
         "common_good": place_common_good(council_code),
+        "crofting": place_crofting(council_code),
         "private_or_sasine": {
             "status": "gap",
             "note": "Private names and Sasine extents stay on ScotLIS / paid products.",

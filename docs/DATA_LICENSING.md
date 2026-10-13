@@ -75,6 +75,7 @@ Public methodology and README must list active data sources. See `data/config/so
 | SSSI | NatureScot Sites of Special Scientific Interest | OGL-3.0 — https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ — cite NatureScot; Constraint (£0); raw extracts stay in `data/external/` |
 | NatureScot designations | NatureScot SPA, SAC, NNR | OGL-3.0 — https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ — cite NatureScot; Constraint (£0); raw extracts stay in `data/external/` |
 | Common Good | Statutory LA registers + Fife indicative titles metadata | Linked only. No national open spatial layer. Fife under OS Public Sector End User Licence - INSPIRE — not redistributed here |
+| Crofting Register / common grazings | Crofting Commission open-data CSVs (Parishes, Holdings, Grazings) | OGL-3.0 — load into PostGIS for valuation joins. Individuals CSV not ingested (personal data). RoS Crofting Register map extents are linked, not redrawn. Spatial Hub Decrofted Areas is Restricted — not used |
 
 ### Accepted non-OGL open licence
 
@@ -88,4 +89,4 @@ Public methodology and README must list active data sources. See `data/config/so
 |---------|--------|
 | Who Owns Scotland | Paid ownership product |
 
-Missing open registers (local-authority holdings, national Common Good spatial file, Sasine) are catalogued as gaps — never invented.
+Missing open registers (local-authority holdings, national Common Good spatial file, Sasine, national OGL croft/grazing polygons) are catalogued as gaps — never invented.

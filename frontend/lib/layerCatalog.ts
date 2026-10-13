@@ -161,6 +161,16 @@ export const LAYER_ATTRIBUTION: Record<
     source: "Council Common Good registers",
     licence: "Linked registers; no national open map layer",
   },
+  crofting_register: {
+    source: "Crofting Commission Register of Crofts",
+    licence: "OGL-3.0",
+    sourceUrl: "https://www.crofting.scotland.gov.uk/open-data/",
+  },
+  common_grazings: {
+    source: "Crofting Commission List of Grazings",
+    licence: "OGL-3.0",
+    sourceUrl: "https://www.crofting.scotland.gov.uk/open-data/",
+  },
   fife_land_map: {
     source: "Fife Council ArcGIS hub",
     licence: "Council hub (not a national layer)",

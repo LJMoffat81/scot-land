@@ -1,0 +1,66 @@
+# Crofting Commission Register of Crofts + common grazings (OGL-3.0).
+# Spatial extents: RoS Crofting Register map (linked, not redistributed).
+# Never ingest Individuals (names / postal addresses).
+
+checked: "2026-10-12"
+
+national:
+  status: linked
+  open_data_url: https://www.crofting.scotland.gov.uk/open-data/
+  licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  publication_scheme_url: https://www.crofting.scotland.gov.uk/wp-content/uploads/2025/10/CC-Publication-Scheme.pdf
+  ros_register_url: https://www.crofts.ros.gov.uk/register/search
+  ros_about_url: https://www.ros.gov.uk/our-registers/crofting-register
+  attribution: >
+    Contains Crofting Commission Register of Crofts data licensed under the
+    Open Government Licence v3.0. Map extents for registered crofts and
+    common grazings: Registers of Scotland Crofting Register (linked search —
+    not redistributed as open polygons here).
+
+sources:
+  parishes:
+    id: parishes
+    label: List of Parishes
+    licence: OGL-3.0
+    source_url: https://www.crofting.scotland.gov.uk/open-data/
+    postgis_table: croft_parishes
+  holdings:
+    id: holdings
+    label: List of Holdings (Crofts)
+    licence: OGL-3.0
+    source_url: https://www.crofting.scotland.gov.uk/open-data/
+    postgis_table: croft_holdings
+    role: crofting_register_tabular
+  grazings:
+    id: grazings
+    label: List of Grazings (common grazings)
+    licence: OGL-3.0
+    source_url: https://www.crofting.scotland.gov.uk/open-data/
+    postgis_table: common_grazings
+    role: common_grazings_tabular
+
+not_ingested:
+  - individuals  # LegalName + postal address — out of scope for public PostGIS
+
+ingest: python -m etl.ingest_crofting --download
+raw_dir: data/external/crofting  # gitignored — never commit raw downloads
+fixture_dir: data/fixtures/crofting
+
+gaps:
+  - RoS Crofting Register map polygons are not published under OGL for redistribution
+  - No national OGL WMS/WFS for croft or common-grazing extents on SpatialData.gov.scot
+  - Spatial Hub Decrofted Areas — Scotland is Restricted (login), not OGL
+  - Individuals CSV is open but not ingested here (personal data)
+  - Register of Crofts is not the same as RoS Land Register / INSPIRE parcels
+
+rejected_alternatives:
+  - id: spatial_hub_decrofted
+    url: https://data.spatialhub.scot/dataset/decrofted_areas-is
+    reason: Restricted Data — not openly licensed for this portal
+  - id: argyll_bute_land_ownership
+    url: https://arcgis.argyll-bute.gov.uk/arcgis/rest/services/Land_Ownership/MapServer/7
+    reason: Local council republish (~50 grazings), not national; licence unclear for redistribute
+  - id: hutton_common_grazings_2023
+    url: https://tiles.arcgis.com/tiles/GUWZHTCSOJuIKNzF/arcgis/rest/services/Common_Grazings_2023/MapServer
+    reason: Research tiles-only service; not Crofting Commission / RoS authoritative register

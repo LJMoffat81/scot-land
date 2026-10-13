@@ -206,6 +206,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="Common Good register links and spatial gaps; no modelled rent",
     ),
+    "/api/crofting.json": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="Crofting RoC / grazings OGL tables + spatial gaps; no modelled rent",
+    ),
     "/downloads": LayerRule("zone", "zone", "none", note="download index"),
     # AGR router (optional). Shapes / metadata / search / context tiles are public.
     # Modelled residual AGR £ (plot grid, cell square, councils-agr, fiscal, validation,

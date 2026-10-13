@@ -144,6 +144,15 @@ export type PlatformContext = {
       host_note?: string | null;
     } | null;
   };
+  crofting?: {
+    status?: string;
+    reason?: string;
+    on_this_point?: boolean | null;
+    licence?: string;
+    open_data_url?: string | null;
+    ros_register_url?: string | null;
+    spatial_gap?: string;
+  };
   land_register_outline?: { status?: string; note?: string };
   private_or_sasine?: { status?: string; note?: string };
   registers?: {
@@ -480,6 +489,39 @@ export default function AgrBreakdown({
           ) : null}
           {" · "}
           no national open map layer; not a title
+        </p>
+      ) : null}
+
+      {platform?.crofting ? (
+        <p className="meta">
+          Crofting / grazings:{" "}
+          {platform.crofting.status === "linked" ? "OGL register" : "gap"}
+          {platform.crofting.open_data_url ? (
+            <>
+              {" · "}
+              <a
+                href={platform.crofting.open_data_url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Crofting Commission open data
+              </a>
+            </>
+          ) : null}
+          {platform.crofting.ros_register_url ? (
+            <>
+              {" · "}
+              <a
+                href={platform.crofting.ros_register_url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                RoS Crofting Register map
+              </a>
+            </>
+          ) : null}
+          {" · "}
+          no national OGL polygon overlay; not a title
         </p>
       ) : null}
 

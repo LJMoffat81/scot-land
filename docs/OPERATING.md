@@ -66,6 +66,7 @@ npm run dev
 | `GET /api/vdl.json` | SVDLS hectares by owner class |
 | `GET /api/place.json?pc=` | Place card (vacant / public / parcel / gaps) |
 | `GET /api/common-good.json` | Verified Common Good register links + spatial gaps |
+| `GET /api/crofting.json` | Crofting Commission OGL RoC + grazings; PostGIS load status; spatial gaps |
 | `GET /assessment/report?format=markdown\|json` | Downloadable assessment pack |
 | `GET /validation/ward18-qa-pack` | Spatial + ratio + mini-roll for Ward 18 |
 | `GET /validation/ratio-study` | Residual vs sales-comp ratios |
@@ -88,6 +89,8 @@ npm run dev
 | Click | Any cell | Layer popup (parcel id / area / owner type / SVDLS site) + residual place card |
 
 Cadastre ingest (one command each): `--pilot` (Edinburgh/MID + Fife), `--all` (33 counties), or `--fixture` (CI). Self-fetch never writes `data/external/`. See `scripts/data/README-inspire.md`. Licence **OGL-3.0**.
+
+Crofting / common grazings (OGL CSV → PostGIS): `python -m etl.ingest_crofting --download` (raw under `data/external/crofting/`, gitignored). Fixtures: `python -m etl.ingest_crofting --from-fixtures`.
 
 Full national 3 m precompute is intentionally not stored (~billions of cells).
 

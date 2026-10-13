@@ -507,6 +507,8 @@ export default function ScotlandMap() {
   const [ledgerEnabled, setLedgerEnabled] = useState<LedgerToggleState>({});
   /** LDP allocations paint when nested ledger row 1a (planning) is on. */
   const showLdp = Boolean(ledgerEnabled["1a"]);
+  /** Crofting constraint — OGL lists only; no national polygon paint. */
+  const showCroftingConstraint = Boolean(ledgerEnabled.crofting);
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
   const dataZonesTouched = useRef(false);
   const boundariesTouched = useRef(false);
@@ -2705,6 +2707,22 @@ export default function ScotlandMap() {
                 LDP allocations (OGL v3.0) — ledger nested row 1a. Spatial Hub
                 pack is fragmented; Edinburgh unavailable. Planning extents, not
                 a title. Zoom {LDP_MIN_ZOOM}+.
+              </p>
+            )}
+            {showCroftingConstraint && (
+              <p className="layer-meta" data-testid="crofting-constraint-gap">
+                Crofting / common grazings — ledger constraint (£0, no rent
+                row). Crofting Commission OGL lists (parishes / holdings /
+                grazings) → PostGIS; no national OGL polygon paint. Extents:{" "}
+                <a
+                  href="https://www.crofts.ros.gov.uk/register/search"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  RoS Crofting Register map
+                </a>
+                . Individuals CSV not ingested. Spatial Hub Decrofted Areas is
+                Restricted — not used.
               </p>
             )}
             {layerNotice && <p className="layer-meta">{layerNotice}</p>}

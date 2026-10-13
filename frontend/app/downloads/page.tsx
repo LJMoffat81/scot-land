@@ -44,6 +44,10 @@ const OPEN_JSON = [
     href: "/api/common-good.json",
     name: "Common Good registers — verified links and gaps",
   },
+  {
+    href: "/api/crofting.json",
+    name: "Crofting Register + common grazings — OGL tables and spatial gaps",
+  },
 ];
 
 const SOURCE_NAME: Record<string, string> = {
@@ -51,6 +55,8 @@ const SOURCE_NAME: Record<string, string> = {
   ldp_allocations: "Local Development Plan allocations (Spatial Hub / OGL)",
   inspire_parcels: "Registers of Scotland open land map",
   common_good: "Common Good registers (linked; no national open map)",
+  crofting_register: "Crofting Register of Crofts (OGL; map extents on RoS)",
+  common_grazings: "Common grazings (OGL list; no national open polygon)",
   scotlis: "ScotLIS, the official title record",
 };
 

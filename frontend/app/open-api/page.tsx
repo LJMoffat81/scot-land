@@ -3,11 +3,11 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Public API | Scot-LAND",
   description:
-    "Open place, ownership, and layer addresses for Scot-LAND’s experimental commons map. Not an official valuation.",
+    "Open place, ownership and layer addresses that feed Scot-LAND’s Annual Ground Rent map. £ figures not published yet.",
   openGraph: {
     title: "Public API | Scot-LAND",
     description:
-      "Open place, ownership, and layer addresses for Scot-LAND’s experimental commons map. Not an official valuation.",
+      "Open place, ownership and layer addresses that feed Scot-LAND’s Annual Ground Rent map. £ figures not published yet.",
   },
 };
 
@@ -33,19 +33,21 @@ export default function OpenApiPage() {
       <h1>Public API</h1>
       <p className="downloads-note" data-testid="experimental-not-official">
         Experimental research only — not an official valuation, rates bill or
-        tax assessment. Public routes do not publish modelled money amounts for
-        the commons engine.
+        tax assessment. Scot-LAND&apos;s purpose is Annual Ground Rent (the rent
+        of land at every place in Scotland). £ figures are not published yet
+        while calibration is checked; when they are, each will carry a market,
+        proxy or shadow confidence label. For now, figures are published at
+        Data Zone level only, not for individual parcels, plots or addresses.
       </p>
       <p>
-        These addresses return the open place and layer figures behind the map:
+        These addresses return the open place and layer inputs behind the map:
         geography, ownership context and natural-capital ledger structure for
-        the three commons (Surface, Resource, Eco). Quality tags on engine
-        figures are <code>live</code>, <code>derived</code>,{" "}
-        <code>modelled</code> and <code>placeholder</code>; placeholders are
-        never served here. The SG 2024 public/Crown land dashboard is not an
-        open layer here (licence unverified/not open). The answers are for the
-        area in view, or for one place. They are not a download of every land
-        boundary. Full reference:{" "}
+        the three commons (Surface, Resource, Eco). Input quality tags are{" "}
+        <code>live</code>, <code>derived</code>, <code>modelled</code> and{" "}
+        <code>placeholder</code>; placeholders are never served here. The SG
+        2024 public/Crown land dashboard is not an open layer here (licence
+        unverified/not open). The answers are for the area in view, or for one
+        place. They are not a download of every land boundary. Full reference:{" "}
         <a href={MINTLIFY_API} target="_blank" rel="noreferrer">
           docs/mintlify/api-reference.mdx
         </a>

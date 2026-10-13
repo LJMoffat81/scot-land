@@ -95,16 +95,19 @@ export default function DownloadsPage() {
       <h1>Downloads</h1>
       <p className="downloads-note" data-testid="experimental-not-official">
         Experimental research only — not an official valuation, rates bill or
-        tax assessment. Modelled money amounts from the commons engine are not
-        a public download.
+        tax assessment. Scot-LAND&apos;s purpose is Annual Ground Rent (the rent
+        of land at every place in Scotland). £ figures are not published yet
+        while calibration is checked; when they are, each will carry a market,
+        proxy or shadow confidence label. For now, figures are published at
+        Data Zone level only, not for individual parcels, plots or addresses.
       </p>
       <p>
         These are the open tables and links behind the map: ownership context,
         vacant land, ledger structure and catalogue metadata for the three
-        commons (Surface, Resource, Eco). Engine figures carry quality tags{" "}
+        commons inputs (Surface, Resource, Eco). Input quality tags are{" "}
         <code>live</code>, <code>derived</code>, <code>modelled</code> and{" "}
-        <code>placeholder</code>; placeholders never appear here. They are not
-        a download of every land boundary. Docs:{" "}
+        <code>placeholder</code>; placeholders never appear here. Annual Ground
+        Rent amounts are not a public download. Docs:{" "}
         <a href={MINTLIFY_INTRO} target="_blank" rel="noreferrer">
           docs/mintlify/introduction.mdx
         </a>

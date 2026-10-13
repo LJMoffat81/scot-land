@@ -1,14 +1,14 @@
 ---
 title: "Introduction"
-description: "Scot-LAND: an experimental Georgist commons map for Scotland."
+description: "Scot-LAND: Annual Ground Rent for every place in Scotland — experimental research map."
 ---
 
-Scot-LAND is an **experimental**, non-commercial research map of Scotland's commons. It follows Henry George's idea: the value of land and natural resources comes from nature and from the community, not from any one owner. Scot-LAND sets out to show where that value sits.
+Scot-LAND's purpose is to show **Annual Ground Rent** — the rent of land alone, at every place in Scotland — so land reform and land value tax debates rest on shared, honest evidence. It follows Henry George's idea: the value of land and natural resources comes from nature and from the community, not from any one owner.
 
 Live site: [www.scot-land.scot](https://www.scot-land.scot)
 
 <Warning>
-Scot-LAND is **experimental**. It is **not** an official valuation, a rates bill or a tax assessment. **No modelled money figures for the commons engine are published yet.** The model is still being tested internally, and its figures stay blocked until they pass review.
+Scot-LAND is **experimental**. It is **not** an official valuation, a rates bill or a tax assessment. **£ figures are not published yet** while calibration is checked. When they are, each figure will carry a confidence label (market, proxy or shadow). For now, figures are published at Data Zone level only, not for individual parcels, plots or addresses.
 </Warning>
 
 ## What you can use today
@@ -17,19 +17,33 @@ Scot-LAND is **experimental**. It is **not** an official valuation, a rates bill
 - **Open map layers**: official open datasets (mostly Open Government Licence v3.0), such as flood extents, protected sites, woodland, renewable energy sites and community ownership. See the [Map Layer Guide](/map-layer-guide).
 - **Public API**: the same data as JSON under `https://www.scot-land.scot/backend`. See the [API Reference](/api-reference).
 
-## Layers, not one number
+## Confidence labels
 
-The commons are split into three classes: **Surface** (location under homes and businesses), **Resource** (extractive) and **Eco** (natural capital). Each figure is also tagged as *market*, *proxy* or *shadow* value, so different kinds of evidence aren't added together or counted twice.
+Every Annual Ground Rent figure the engine will publish carries one of three confidence labels. For now, figures are published at Data Zone level only, not for individual parcels, plots or addresses.
+
+| Label | Meaning |
+|---|---|
+| **market** | Observed rents from a public source |
+| **proxy** | Modelled from open evidence where a direct rent is not available |
+| **shadow** | No market price; estimated value of services or sinks that are not traded |
+
+## Commons inputs
+
+The map layers and ledger feed three separate commons classes. They are inputs to Annual Ground Rent and national wealth accounting — not a substitute for the rent figure itself:
+
+- **Surface** (location under homes and businesses)
+- **Resource** (extractive)
+- **Eco** (natural capital sinks and services)
 
 ## Quality tags
 
-Every engine figure carries a data-state tag:
+Every input the engine holds carries a data-state tag:
 
 | Tag | Meaning |
 |---|---|
 | **live** | Observed from a public source as-is |
 | **derived** | Computed from open inputs by a stated method |
-| **modelled** | Estimated by the residual / mass model (not published as public money figures until review) |
+| **modelled** | Estimated by the residual / mass model (£ figures unpublished until calibration is checked) |
 | **placeholder** | Not ready — never served on the public API or map |
 
 ## Honesty rules

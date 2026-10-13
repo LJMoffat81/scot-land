@@ -1413,7 +1413,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "Community Ownership in Scotland 2024 © Scottish Government (OGL v3.0). Postcode centroids, not titles.",
+          "Community Ownership in Scotland 2024 © Scottish Government (OGL v3.0). Postcode centroids via postcodes.io (ONS Postcode Directory) — not titles. Contains OS data © Crown copyright and database right 2026. Contains Royal Mail data © Royal Mail copyright and database right 2026. Contains National Statistics data © Crown copyright and database right 2026.",
       });
       map.addLayer({
         id: "community-ownership-circle",
@@ -2840,8 +2840,12 @@ export default function ScotlandMap() {
             {showCommunityOwnership && (
               <p className="layer-meta" data-testid="layer-community-ownership-credit">
                 Community Ownership in Scotland 2024 (OGL v3.0) — ownership-context
-                (who/outline), not a rent row. Postcode centroids, not titles.
-                Zoom {COMMUNITY_OWNERSHIP_MIN_ZOOM}+. Enable with ?community=1.
+                (who/outline), not a rent row. Postcode centroids via postcodes.io
+                (ONS Postcode Directory), not titles. Contains OS data © Crown
+                copyright and database right 2026. Contains Royal Mail data © Royal
+                Mail copyright and database right 2026. Contains National Statistics
+                data © Crown copyright and database right 2026. Zoom{" "}
+                {COMMUNITY_OWNERSHIP_MIN_ZOOM}+. Enable with ?community=1.
               </p>
             )}
             {showCroftingConstraint && (

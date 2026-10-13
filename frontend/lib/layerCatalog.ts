@@ -159,8 +159,10 @@ export const LAYER_ATTRIBUTION: Record<
   },
 
   community_ownership: {
-    source: "Community Ownership in Scotland 2024",
-    licence: "Open Government Licence v3.0",
+    source:
+      "Community Ownership in Scotland 2024 (postcodes.io / ONS Postcode Directory centroids)",
+    licence:
+      "Open Government Licence v3.0 — Contains OS data © Crown copyright and database right 2026; Contains Royal Mail data © Royal Mail copyright and database right 2026; Contains National Statistics data © Crown copyright and database right 2026",
     sourceUrl:
       "https://www.gov.scot/publications/community-ownership-in-scotland-2024/",
   },

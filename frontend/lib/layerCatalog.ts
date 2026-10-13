@@ -275,6 +275,17 @@ export const LAYER_ATTRIBUTION: Record<
     source: "Sasine / private ownership",
     licence: "Incomplete or paid — gaps shown, names not invented",
   },
+  carbon_peatland: {
+    source: "NatureScot / James Hutton Carbon and Peatland Map 2016",
+    licence: "non-commercial",
+    sourceUrl:
+      "https://gis-downloads.nature.scot/CPM2016_SCOTLAND_GPKG_27700.zip",
+  },
+  nsta_oil_gas: {
+    source: "North Sea Transition Authority licences and fields",
+    licence: "non-commercial",
+    sourceUrl: "https://www.nstauthority.co.uk/data-and-insights/",
+  },
 };
 
 export const WITHHELD_PUBLIC_MESSAGE =

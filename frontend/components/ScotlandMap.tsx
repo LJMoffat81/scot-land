@@ -15,6 +15,8 @@ import {
 } from "./AgrBreakdown";
 import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
 import LedgerPanel from "./LedgerPanel";
+import MapLicenceCredits from "./MapLicenceCredits";
+import MapRangeLegend from "./MapRangeLegend";
 import {
   ApiError,
   SERVICE_BUSY,
@@ -34,7 +36,18 @@ import {
   INSPIRE_OGL_V3_URL,
   inspireRosOsAttribution,
 } from "../lib/inspireAttribution";
+import {
+  fetchLayerCatalog,
+  type CatalogLayer,
+} from "../lib/layerCatalog";
 import type { LedgerToggleState } from "../lib/ledger";
+import {
+  NO_DATA_HATCH_IMAGE,
+  activeMapCredits,
+  createNoDataHatchImageData,
+  paintForMetricWithNoData,
+  rangeLegendFromStops,
+} from "../lib/mapLicenceCredits";
 
 type ParcelFeature = GeoJSON.Feature<
   GeoJSON.Polygon | GeoJSON.MultiPolygon,
@@ -559,13 +572,56 @@ const CELL_AGR_COLOR: ExpressionSpecification = [
 ];
 
 function paintForMetric(metric: MetricDef): ExpressionSpecification {
-  const stops = metric.stops.flatMap(([v, c]) => [v, c]);
-  return [
-    "interpolate",
-    ["linear"],
-    ["coalesce", ["get", metric.property], 0],
-    ...stops,
-  ] as ExpressionSpecification;
+  // Missing values stay grey (no-data), never coerced to zero.
+  return paintForMetricWithNoData(
+    metric.property,
+    metric.stops,
+  ) as ExpressionSpecification;
+}
+
+/** Catalog layer ids currently painting / credited on the public map. */
+function activeCatalogLayerIds(opts: {
+  showBoundaries: boolean;
+  showDataZones: boolean;
+  showVdl: boolean;
+  showCommunityOwnership: boolean;
+  showLdp: boolean;
+  showWoodland: boolean;
+  showRepd: boolean;
+  showRepdOnshoreWind: boolean;
+  showCrownLeases: boolean;
+  showCesAquaculture: boolean;
+  showLca: boolean;
+  showCroftingConstraint: boolean;
+  ledgerEnabled: LedgerToggleState;
+  contextOn: Record<string, boolean>;
+}): string[] {
+  const ids: string[] = [];
+  if (opts.showBoundaries) ids.push("boundaries");
+  if (opts.showDataZones) ids.push("data_zones");
+  if (opts.showVdl) ids.push("vdl");
+  if (opts.showCommunityOwnership) ids.push("community_ownership");
+  if (opts.showLdp) ids.push("ldp_allocations");
+  if (opts.showWoodland) {
+    ids.push("nfi", "native_woodland");
+  }
+  if (opts.showRepd) ids.push("repd");
+  if (opts.showRepdOnshoreWind) ids.push("repd_onshore_wind");
+  if (opts.showCrownLeases) ids.push("crown_estate_leases");
+  if (opts.showCesAquaculture) ids.push("ces_aquaculture");
+  if (opts.showLca) ids.push("lca");
+  if (opts.showCroftingConstraint) {
+    ids.push("crofting_register", "common_grazings");
+  }
+  if (opts.ledgerEnabled.flood || opts.contextOn.flood) ids.push("flood");
+  if (opts.ledgerEnabled["8"]) ids.push("carbon_peatland");
+  if (opts.ledgerEnabled["9"] || opts.contextOn["oil-fields"]) {
+    ids.push("nsta_oil_gas");
+  }
+  if (opts.ledgerEnabled.designations) {
+    ids.push("sssi", "naturescot_designations");
+  }
+  return ids;
 }
 
 export default function ScotlandMap() {
@@ -652,10 +708,39 @@ export default function ScotlandMap() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
   const [legendOpen, setLegendOpen] = useState(false);
+  const [catalogLayers, setCatalogLayers] = useState<CatalogLayer[]>([]);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const parcelLabelRef = useRef<maplibregl.Marker | null>(null);
   const headerRef = useRef<HTMLElement | null>(null);
   const scotlandRef = useRef<HTMLElement | null>(null);
+
+  const mapCredits = activeMapCredits(
+    catalogLayers,
+    activeCatalogLayerIds({
+      showBoundaries,
+      showDataZones,
+      showVdl,
+      showCommunityOwnership,
+      showLdp,
+      showWoodland,
+      showRepd,
+      showRepdOnshoreWind,
+      showCrownLeases,
+      showCesAquaculture,
+      showLca,
+      showCroftingConstraint,
+      ledgerEnabled,
+      contextOn,
+    }),
+  );
+  // Public range legend: population density bands (not AGR £). Rent metrics stay band-labelled.
+  const densityMetric = METRICS.find((m) => m.id === "pop_density");
+  const densityLegend = densityMetric
+    ? rangeLegendFromStops(densityMetric.stops, {
+        metricId: densityMetric.id,
+        unit: "people/km²",
+      })
+    : null;
 
   useEffect(() => {
     const header = headerRef.current;
@@ -1338,6 +1423,19 @@ export default function ScotlandMap() {
 
     map.on("load", () => {
       frameScotland();
+      // Hatched grey pattern for missing choropleth values (honest no-data).
+      if (!map.hasImage(NO_DATA_HATCH_IMAGE)) {
+        const hatch = createNoDataHatchImageData(8);
+        map.addImage(
+          NO_DATA_HATCH_IMAGE,
+          {
+            width: hatch.width,
+            height: hatch.height,
+            data: hatch.data,
+          },
+          { pixelRatio: 1 },
+        );
+      }
       map.addSource("council-metrics", { type: "geojson", data: emptyCollection });
       map.addLayer({
         id: "council-fill",
@@ -1346,6 +1444,22 @@ export default function ScotlandMap() {
         paint: {
           "fill-color": paintForMetric(METRICS[0]),
           "fill-opacity": 0.72,
+        },
+      });
+      // Optional hatch overlay for polygons whose metric property is missing.
+      map.addLayer({
+        id: "council-nodata-hatch",
+        type: "fill",
+        source: "council-metrics",
+        layout: { visibility: "none" },
+        filter: [
+          "!=",
+          ["typeof", ["get", METRICS[0].property]],
+          "number",
+        ] as unknown as ExpressionSpecification,
+        paint: {
+          "fill-pattern": NO_DATA_HATCH_IMAGE,
+          "fill-opacity": 0.85,
         },
       });
       map.addLayer({
@@ -2129,6 +2243,21 @@ export default function ScotlandMap() {
       if (cancelled || !caps.reachable) return;
       setAgrAvailable(caps.agr);
     });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Catalog licence fields drive the map credits control in the legend.
+  useEffect(() => {
+    let cancelled = false;
+    void fetchLayerCatalog()
+      .then((payload) => {
+        if (!cancelled) setCatalogLayers(payload.layers ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setCatalogLayers([]);
+      });
     return () => {
       cancelled = true;
     };
@@ -3511,6 +3640,14 @@ export default function ScotlandMap() {
               scenarios are not shown on the public map. Ownership and place
               details follow in later updates.
             </p>
+            {densityLegend ? (
+              <MapRangeLegend
+                title="Population density (range)"
+                ranges={densityLegend.ranges}
+                showNoData
+              />
+            ) : null}
+            <MapLicenceCredits credits={mapCredits} />
             <p className="hud-scotland-foot">
               Research map, not a rates bill.{" "}
               <a href="/methodology">About</a>

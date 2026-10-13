@@ -174,6 +174,10 @@ def platform_catalog() -> dict[str, Any]:
                     "https://www.nationalarchives.gov.uk/doc/"
                     "open-government-licence/version/3/"
                 ),
+                "attribution": (
+                    "Scottish Government Data Zone boundaries 2011 (OGL). "
+                    "Outlines only — not a rent."
+                ),
                 "minzoom": 10,
                 "source_url": (
                     "https://www.spatialdata.gov.scot/geonetwork/srv/eng/catalog.search"
@@ -620,6 +624,52 @@ def platform_catalog() -> dict[str, Any]:
             common_good_catalog_layer(),
             catalog_crofting_register(),
             catalog_common_grazings(),
+            {
+                "id": "carbon_peatland",
+                "group": "natural_capital",
+                "status": "linked",
+                "label": "Carbon & Peatland 2016",
+                "description": (
+                    "NatureScot / James Hutton Carbon and Peatland Map 2016. "
+                    "Allowed while Scot-LAND is non-commercial; tagged "
+                    "licence=non-commercial. Not painted until the loader lands."
+                ),
+                "licence": "non-commercial",
+                "licence_url": (
+                    "https://gis-downloads.nature.scot/CPM2016_SCOTLAND_GPKG_27700.zip"
+                ),
+                "attribution": (
+                    "Contains NatureScot / James Hutton Institute Carbon and "
+                    "Peatland Map 2016 information. Non-commercial use only."
+                ),
+                "source_url": (
+                    "https://gis-downloads.nature.scot/CPM2016_SCOTLAND_GPKG_27700.zip"
+                ),
+                "ledger_role": "ledger-row",
+                "ledger_row": "8",
+                "ui_surface": "ledger",
+            },
+            {
+                "id": "nsta_oil_gas",
+                "group": "natural_capital",
+                "status": "linked",
+                "label": "NSTA oil and gas",
+                "description": (
+                    "North Sea Transition Authority licences and fields. "
+                    "Allowed while Scot-LAND is non-commercial; tagged "
+                    "licence=non-commercial. Outside the Scottish headline total."
+                ),
+                "licence": "non-commercial",
+                "licence_url": "https://www.nstauthority.co.uk/data-and-insights/",
+                "attribution": (
+                    "Contains information provided by the North Sea Transition "
+                    "Authority and/or other third parties. Non-commercial use only."
+                ),
+                "source_url": "https://www.nstauthority.co.uk/data-and-insights/",
+                "ledger_role": "ledger-row",
+                "ledger_row": "9",
+                "ui_surface": "ledger",
+            },
             {
                 "id": "sasine_private",
                 "group": "ownership",

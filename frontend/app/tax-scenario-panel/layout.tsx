@@ -5,8 +5,7 @@ import { internalUiEnabled } from "@/lib/internalUi";
 
 /**
  * Gate /tax-scenario-panel. Public builds (no NEXT_PUBLIC_ENABLE_INTERNAL_UI=1)
- * get 404 — same pattern as /ledger-panel. Path avoids an internal/ folder so
- * the public-repo publishability guard stays green.
+ * get 404 — same pattern as /ledger-panel.
  */
 export default function TaxScenarioPanelLayout({
   children,

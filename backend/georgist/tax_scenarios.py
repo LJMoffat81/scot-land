@@ -29,6 +29,7 @@ from typing import Any, Iterable, Mapping, Sequence
 import yaml
 
 from georgist.display_views import ZERO_DWELLINGS, parse_zone_flags
+from georgist.surface_dz2022 import combine_estimate_labels, estimate_label_for_fill
 from georgist.surface_settings import yield_placeholder
 from georgist.wealth_schema import publicly_served
 
@@ -64,6 +65,13 @@ DEFAULT_DZ_VINTAGE = 2011
 # Planned DZ2022 unit of account via #71 UPRN-weighted crosswalk (address_uprn stamp).
 UPRN_DZ2022_CROSSWALK = "address_uprn"
 ALLOWED_TAX_CROSSWALK = frozenset({"none", "address_uprn", "value_weighted"})
+# SQL path never loads an eligibility column — stamp until a later PR supplies the rule.
+DEFERRAL_NOT_LOADED = "not_applied_eligibility_not_loaded"
+DEFERRAL_NOT_LOADED_NOTE = (
+    "Deferral eligibility is not loaded from surface_rent_dz "
+    "(_TAX_SCENARIO_SQL has no eligibility column). "
+    "Real low-income home-owner eligibility rule is a later separate PR."
+)
 
 # Keys that must never appear on council/national *display* blocks while TEMP setting is on.
 _FORBIDDEN_AGGREGATE_GBP = frozenset({
@@ -71,9 +79,19 @@ _FORBIDDEN_AGGREGATE_GBP = frozenset({
     "illustrated_collection_gbp",
     "measured_rent_gbp",
     "taxable_rent_gbp",
+    "taxable_rent_central_gbp",
     "s1_revenue_gbp",
+    "s1_revenue_central_gbp",
+    "target_gbp",
+    "s1_target_gbp",
+    "council_tax_gbp",
+    "business_rates_gbp",
     "council_share_gbp",
     "dividend_share_gbp",
+})
+# Top-level keys that must never appear on the API response (built internally only).
+_FORBIDDEN_RESPONSE_TOP_LEVEL = frozenset({
+    "blocked_aggregate_rollup",
 })
 
 
@@ -326,20 +344,40 @@ def apply_deferral(
     eligible: bool,
     rate: float,
     enabled: bool = True,
+    eligibility_loaded: bool = False,
 ) -> dict[str, Any]:
-    """Model low-income home-owner deferral: deferred amount + annual accrual at ``rate``."""
+    """Model low-income home-owner deferral: deferred amount + annual accrual at ``rate``.
+
+    When ``eligibility_loaded`` is False (SQL path today), do not apply deferral —
+    stamp ``status=not_applied_eligibility_not_loaded``. Real eligibility is a later PR.
+    """
     r = float(rate)
     if r < 0.0:
         raise TaxScenarioError("invalid_deferral_rate", "deferral rate must be >= 0.", rate=rate)
+    if not eligibility_loaded:
+        cash = {k: round(float(collection[k]), 2) for k in ("low", "central", "high")}
+        return {
+            "status": DEFERRAL_NOT_LOADED,
+            "deferral_eligible": False,
+            "deferral_applied": False,
+            "deferral_rate": r,
+            "deferred_gbp": {"low": 0.0, "central": 0.0, "high": 0.0},
+            "accrual_gbp_per_year": {"low": 0.0, "central": 0.0, "high": 0.0},
+            "cash_collected_gbp": cash,
+            "note": DEFERRAL_NOT_LOADED_NOTE,
+        }
     if enabled and eligible:
         deferred = {k: round(float(collection[k]), 2) for k in ("low", "central", "high")}
         accrual = scale_triple(deferred, r)
         cash = {"low": 0.0, "central": 0.0, "high": 0.0}
+        status = "applied"
     else:
         deferred = {"low": 0.0, "central": 0.0, "high": 0.0}
         accrual = {"low": 0.0, "central": 0.0, "high": 0.0}
         cash = {k: round(float(collection[k]), 2) for k in ("low", "central", "high")}
+        status = "not_eligible" if enabled else "disabled"
     return {
+        "status": status,
         "deferral_eligible": bool(eligible),
         "deferral_applied": bool(enabled and eligible),
         "deferral_rate": r,
@@ -405,7 +443,14 @@ def stamp_blocked(payload: dict[str, Any], *, defaults: Mapping[str, Any] | None
 
 
 def assert_no_aggregate_gbp(payload: Mapping[str, Any]) -> None:
-    """Refuse council/national £ fields on display blocks (TEMP: money at Data Zone only)."""
+    """Refuse council/national £ fields and leaky top-level roll-ups (TEMP: money at DZ only)."""
+    top_bad = sorted(_FORBIDDEN_RESPONSE_TOP_LEVEL & set(payload))
+    if top_bad:
+        raise TaxScenarioError(
+            "aggregate_gbp_forbidden",
+            f"response must not carry top-level {top_bad}; build roll-up internally only.",
+            fields=top_bad,
+        )
     for block_name in ("national", "council"):
         block = payload.get(block_name)
         if not isinstance(block, dict):
@@ -427,6 +472,17 @@ def assert_no_aggregate_gbp(payload: Mapping[str, Any]) -> None:
                 f"by_council must not carry £ fields {bad}; money is Data Zone grain only while blocked.",
                 fields=bad,
             )
+    for code, body in (payload.get("s1_by_council") or {}).items():
+        if not isinstance(body, dict):
+            continue
+        bad = sorted(_FORBIDDEN_AGGREGATE_GBP & set(body))
+        if bad:
+            raise TaxScenarioError(
+                "aggregate_gbp_forbidden",
+                f"s1_by_council[{code}] must not carry £ fields {bad}; return rate + source only.",
+                fields=bad,
+                la_code=code,
+            )
 
 
 @dataclass(frozen=True)
@@ -443,7 +499,10 @@ class ZoneRentRow:
     uncertainty_low: float | None = None
     uncertainty_high: float | None = None
     deferral_eligible: bool = False  # low-income home owner (approved defaults)
+    # True only when a caller injects known eligibility; SQL path leaves this False.
+    deferral_eligibility_loaded: bool = False
     crosswalk_method: str = "none"  # none | address_uprn | value_weighted
+    estimate_label: str | None = None  # measured | partly_estimated | fully_estimated
 
 
 def parse_capture_rate(raw: Any) -> float:
@@ -503,6 +562,21 @@ def tax_scenario_input_admitted(row: Mapping[str, Any]) -> bool:
     return False
 
 
+def _estimate_label_from_row(row: Mapping[str, Any]) -> str:
+    """Read estimate_label from a 2022 surface row (or derive from fill_method / proxy_tags)."""
+    raw = row.get("estimate_label")
+    if raw:
+        return str(raw)
+    tags = row.get("proxy_tags") or ()
+    if isinstance(tags, str):
+        tags = [t for t in tags.split(";") if t]
+    for tag in tags:
+        text = str(tag)
+        if text.startswith("estimate_label="):
+            return text.split("=", 1)[1]
+    return estimate_label_for_fill(row.get("fill_method"))
+
+
 def zone_row_from_db(row: Mapping[str, Any]) -> ZoneRentRow | None:
     """Accept a joined surface_rent_dz + zone_spine row, or None if not usable."""
     if not tax_scenario_input_admitted(row):
@@ -524,10 +598,7 @@ def zone_row_from_db(row: Mapping[str, Any]) -> ZoneRentRow | None:
     try:
         ulo = row.get("uncertainty_low")
         uhi = row.get("uncertainty_high")
-        defer_raw = row.get("deferral_eligible")
-        if defer_raw is None:
-            defer_raw = row.get("low_income_home_owner")
-        deferral_eligible = bool(defer_raw) if defer_raw is not None else False
+        # SQL never selects eligibility; ignore any stray keys so DB path stays explicit.
         return ZoneRentRow(
             code=str(code),
             vintage=int(vintage),
@@ -538,8 +609,10 @@ def zone_row_from_db(row: Mapping[str, Any]) -> ZoneRentRow | None:
             value_tier=tier,
             uncertainty_low=float(ulo) if ulo is not None else None,
             uncertainty_high=float(uhi) if uhi is not None else None,
-            deferral_eligible=deferral_eligible,
+            deferral_eligible=False,
+            deferral_eligibility_loaded=False,
             crosswalk_method=method,
+            estimate_label=_estimate_label_from_row(row),
         )
     except (TypeError, ValueError):
         return None
@@ -614,10 +687,27 @@ def _rent_triple_for_row(row: ZoneRentRow, yp: Mapping[str, Any]) -> dict[str, f
     return money_triple(row.measured_rent, yield_central=c_y, band_low=lo_y, band_high=hi_y)
 
 
+def _apply_rate_triple(
+    rent: Mapping[str, float],
+    rate: float | Mapping[str, float],
+    *,
+    taxable: bool,
+) -> dict[str, float]:
+    """Scale a rent triple by a single rate or an LCH rate triple."""
+    if not taxable:
+        return {"low": 0.0, "central": 0.0, "high": 0.0}
+    if isinstance(rate, Mapping):
+        return {
+            k: round(float(rent[k]) * float(rate[k]), 2)
+            for k in ("low", "central", "high")
+        }
+    return scale_triple(rent, float(rate))
+
+
 def _zone_money_row(
     row: ZoneRentRow,
     *,
-    capture_rate: float,
+    capture_rate: float | Mapping[str, float],
     yp: Mapping[str, Any] | None = None,
     phase_in_points_per_year: int = 10,
     phase_in_year: int | None = None,
@@ -633,8 +723,7 @@ def _zone_money_row(
     yp = yp or yield_placeholder()
     rent = _rent_triple_for_row(row, yp)
     taxable = is_taxable(row)
-    rate = 0.0 if not taxable else float(capture_rate)
-    full_collection = scale_triple(rent, rate)
+    full_collection = _apply_rate_triple(rent, capture_rate, taxable=taxable)
     schedule = phase_in_schedule(full_collection, points_per_year=phase_in_points_per_year)
     # Default applied year = fully phased-in (last schedule year) unless caller selects one.
     applied_year = int(phase_in_year) if phase_in_year is not None else schedule[-1]["year"]
@@ -645,6 +734,7 @@ def _zone_money_row(
         eligible=bool(row.deferral_eligible) and taxable,
         rate=deferral_rate,
         enabled=deferral_enabled,
+        eligibility_loaded=bool(row.deferral_eligibility_loaded),
     )
     sharing = revenue_sharing or {"council_share": 0.5, "dividend_share": 0.5}
     council_share = float(sharing["council_share"])
@@ -652,7 +742,7 @@ def _zone_money_row(
     # Split the phased illustrated liability (deferral tracked separately).
     council_gbp = scale_triple(collection, council_share)
     dividend_gbp = scale_triple(collection, dividend_share)
-    return {
+    out: dict[str, Any] = {
         "code": row.code,
         "vintage": row.vintage,
         "la_code": row.la_code,
@@ -683,6 +773,9 @@ def _zone_money_row(
         "disclaimer": DISCLAIMER,
         "yield_placeholder": dict(yp),
     }
+    if row.estimate_label is not None:
+        out["estimate_label"] = row.estimate_label
+    return out
 
 
 def council_fiscal_targets(defaults: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
@@ -714,12 +807,16 @@ def solve_s1_per_council(
     rows: Sequence[ZoneRentRow],
     *,
     defaults: Mapping[str, Any] | None = None,
+    yp: Mapping[str, Any] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """Solve S1 capture rate per council so revenue equals that council's CT + business rates.
 
-    Shadow zones are excluded from the taxable base. National single-rate is not used.
+    Rates are solved as a low/central/high triple against each band of the taxable
+    Surface Rent base. Shadow zones are excluded. National single-rate is not used.
+    Any band rate above 100% is flagged (``s1_rate_above_100_pct``).
     """
     cfg = defaults if defaults is not None else load_draft_defaults()
+    yp = yp or yield_placeholder()
     targets = council_fiscal_targets(cfg)
     by_la: dict[str, list[ZoneRentRow]] = {}
     for r in rows:
@@ -727,7 +824,15 @@ def solve_s1_per_council(
 
     solved: dict[str, dict[str, Any]] = {}
     for la_code, group in by_la.items():
-        taxable_rent = sum(z.measured_rent for z in group if is_taxable(z))
+        taxable = {"low": 0.0, "central": 0.0, "high": 0.0}
+        for z in group:
+            if not is_taxable(z):
+                continue
+            triple = _rent_triple_for_row(z, yp)
+            for k in ("low", "central", "high"):
+                taxable[k] += float(triple[k])
+        for k in ("low", "central", "high"):
+            taxable[k] = round(taxable[k], 2)
         tgt = targets.get(la_code)
         if tgt is None:
             raise TaxScenarioError(
@@ -736,30 +841,39 @@ def solve_s1_per_council(
                 la_code=la_code,
             )
         target = float(tgt["target_gbp"])
-        if taxable_rent <= 0:
-            rate = 0.0
-            revenue = 0.0
-        else:
-            rate = target / taxable_rent
-            revenue = rate * taxable_rent
+        rate: dict[str, float] = {}
+        for k in ("low", "central", "high"):
+            rate[k] = 0.0 if taxable[k] <= 0 else target / taxable[k]
+        above = any(rate[k] > 1.0 for k in ("low", "central", "high"))
         solved[la_code] = {
             "la_code": la_code,
             "la_name": group[0].la_name,
             "s1_rate": rate,
-            "taxable_rent_central_gbp": taxable_rent,
-            "council_tax_gbp": tgt["council_tax_gbp"],
-            "business_rates_gbp": tgt["business_rates_gbp"],
-            "target_gbp": target,
-            "s1_revenue_central_gbp": revenue,
-            "council_tax_year": tgt.get("council_tax_year"),
-            "council_tax_source": tgt.get("council_tax_source"),
-            "business_rates_year": tgt.get("business_rates_year"),
-            "business_rates_source": tgt.get("business_rates_source"),
-            "targets_status": tgt.get("targets_status"),
+            "s1_rate_above_100_pct": above,
+            "s1_rate_source": {
+                "basis": "council_tax_plus_business_rates",
+                "council_tax_year": tgt.get("council_tax_year"),
+                "council_tax_source": tgt.get("council_tax_source"),
+                "business_rates_year": tgt.get("business_rates_year"),
+                "business_rates_source": tgt.get("business_rates_source"),
+                "targets_status": tgt.get("targets_status"),
+            },
+            # Internal reconcile fields — never copy onto the API response.
+            "_taxable_rent_gbp": taxable,
+            "_target_gbp": target,
+            "_s1_revenue_central_gbp": round(rate["central"] * taxable["central"], 2),
             "zone_count": len(group),
             "taxable_zone_count": sum(1 for z in group if is_taxable(z)),
         }
     return solved
+
+
+def _s1_rate_as_triple(solved_body: Mapping[str, Any]) -> dict[str, float]:
+    raw = solved_body.get("s1_rate") or 0.0
+    if isinstance(raw, Mapping):
+        return {k: float(raw[k]) for k in ("low", "central", "high")}
+    v = float(raw)
+    return {"low": v, "central": v, "high": v}
 
 
 def build_aggregate_rollup(
@@ -856,14 +970,14 @@ def _scenario_rate_for_zone(
     s1_by_council: Mapping[str, Mapping[str, Any]],
     defaults: Mapping[str, Any],
     capture_rate: float | None,
-) -> float:
+) -> float | dict[str, float]:
     if not is_taxable(row):
         return 0.0
     sid = scenario_id.upper()
     scenarios = defaults.get("scenarios") or {}
     if sid == "S1":
         solved = s1_by_council.get(row.la_code) or {}
-        return float(solved.get("s1_rate") or 0.0)
+        return _s1_rate_as_triple(solved)
     if sid in scenarios:
         body = scenarios[sid] or {}
         if body.get("capture_rate") is not None:
@@ -871,6 +985,12 @@ def _scenario_rate_for_zone(
     if capture_rate is not None:
         return parse_capture_rate(capture_rate)
     raise TaxScenarioError("unknown_scenario", f"Unknown scenario_id {scenario_id!r}.", scenario_id=scenario_id)
+
+
+def _central_rate(rate: float | Mapping[str, float]) -> float:
+    if isinstance(rate, Mapping):
+        return float(rate.get("central") or 0.0)
+    return float(rate)
 
 
 def aggregate_by_council(
@@ -918,7 +1038,12 @@ def aggregate_by_council(
             "preset_rates": list(DEFAULT_CAPTURE_RATES),
             "revenue_sharing": sharing,
             "phase_in": {"points_per_year": points_per_year, "applied_year": phase_in_year},
-            "deferral": {"low_income_home_owners": deferral_enabled, "rate": deferral_rate},
+            "deferral": {
+                "status": DEFERRAL_NOT_LOADED,
+                "low_income_home_owners": deferral_enabled,
+                "rate": deferral_rate,
+                "note": DEFERRAL_NOT_LOADED_NOTE,
+            },
             "note": "No publishable Surface Rent rows for this filter. Nothing was estimated.",
         }, defaults=cfg)
         assert_no_aggregate_gbp(payload)
@@ -926,9 +1051,9 @@ def aggregate_by_council(
 
     _refuse_mixed_vintage(usable, where="national")
     price_year = _refuse_mixed_price_years(usable, where="national")
-    s1_by_council = solve_s1_per_council(usable, defaults=cfg) if sid == "S1" else {}
+    s1_by_council = solve_s1_per_council(usable, defaults=cfg, yp=yp) if sid == "S1" else {}
 
-    rate_by_zone: dict[str, float] = {
+    rate_for_zone: dict[str, float | dict[str, float]] = {
         z.code: _scenario_rate_for_zone(
             z,
             scenario_id=sid,
@@ -937,6 +1062,10 @@ def aggregate_by_council(
             capture_rate=capture_rate,
         )
         for z in usable
+    }
+    # Internal roll-up uses central rates only; never attached to the response.
+    rate_by_zone_central: dict[str, float] = {
+        code: _central_rate(rate) for code, rate in rate_for_zone.items()
     }
 
     by_la: dict[str, list[ZoneRentRow]] = {}
@@ -947,6 +1076,7 @@ def aggregate_by_council(
     for code in sorted(by_la, key=lambda c: by_la[c][0].la_name):
         group = by_la[code]
         _refuse_mixed_price_years(group, where=f"council:{code}")
+        labels = [z.estimate_label for z in group if z.estimate_label]
         entry: dict[str, Any] = {
             "la_code": code,
             "la_name": group[0].la_name,
@@ -956,25 +1086,19 @@ def aggregate_by_council(
             "status": STATUS,
             "disclaimer": DISCLAIMER,
         }
+        if labels:
+            entry["estimate_label"] = combine_estimate_labels(labels)
         if sid == "S1" and code in s1_by_council:
-            # Rate metadata only — not £ totals on the display block.
-            entry["s1_rate"] = s1_by_council[code]["s1_rate"]
-            entry["s1_target_gbp"] = {
-                "council_tax_gbp": s1_by_council[code]["council_tax_gbp"],
-                "business_rates_gbp": s1_by_council[code]["business_rates_gbp"],
-                "total_gbp": s1_by_council[code]["target_gbp"],
-                "council_tax_year": s1_by_council[code].get("council_tax_year"),
-                "council_tax_source": s1_by_council[code].get("council_tax_source"),
-                "business_rates_year": s1_by_council[code].get("business_rates_year"),
-                "business_rates_source": s1_by_council[code].get("business_rates_source"),
-                "targets_status": s1_by_council[code].get("targets_status") or targets_status,
-            }
+            # Rate + source only — no £ totals on the display block.
+            entry["s1_rate"] = dict(s1_by_council[code]["s1_rate"])
+            entry["s1_rate_above_100_pct"] = bool(s1_by_council[code]["s1_rate_above_100_pct"])
+            entry["s1_rate_source"] = dict(s1_by_council[code]["s1_rate_source"])
         councils.append(entry)
 
     by_zone = [
         _zone_money_row(
             r,
-            capture_rate=rate_by_zone[r.code],
+            capture_rate=rate_for_zone[r.code],
             yp=yp,
             phase_in_points_per_year=points_per_year,
             phase_in_year=phase_in_year,
@@ -987,7 +1111,9 @@ def aggregate_by_council(
 
     display = cfg.get("display_while_blocked") or {}
     build_rollup = bool(display.get("build_council_scotland_rollup", True))
-    rollup = build_aggregate_rollup(usable, rate_by_zone=rate_by_zone, yp=yp) if build_rollup else None
+    if build_rollup:
+        # Reconcile Σ councils = Scotland internally; do not put £ roll-up on the response.
+        build_aggregate_rollup(usable, rate_by_zone=rate_by_zone_central, yp=yp)
 
     applied_year = phase_in_year if phase_in_year is not None else (
         by_zone[0]["phase_in"]["applied_year"] if by_zone else None
@@ -1003,6 +1129,16 @@ def aggregate_by_council(
                 methods=bad_methods,
             )
 
+    national_labels = [z.estimate_label for z in usable if z.estimate_label]
+    national: dict[str, Any] = {
+        "zone_count": len(usable),
+        "price_year": price_year,
+        "status": STATUS,
+        "disclaimer": DISCLAIMER,
+    }
+    if national_labels:
+        national["estimate_label"] = combine_estimate_labels(national_labels)
+
     payload: dict[str, Any] = {
         "status": STATUS,
         "lens": LENS,
@@ -1016,12 +1152,7 @@ def aggregate_by_council(
         "price_year": price_year,
         "vintage": usable[0].vintage,
         "surface_path": path_info,
-        "national": {
-            "zone_count": len(usable),
-            "price_year": price_year,
-            "status": STATUS,
-            "disclaimer": DISCLAIMER,
-        },
+        "national": national,
         "by_council": councils,
         "by_zone": by_zone,
         "preset_rates": list(DEFAULT_CAPTURE_RATES),
@@ -1032,8 +1163,14 @@ def aggregate_by_council(
             "applied_fraction": phase_in_fraction(int(applied_year), points_per_year) if applied_year else None,
         },
         "deferral": {
+            "status": DEFERRAL_NOT_LOADED
+            if not any(z.deferral_eligibility_loaded for z in usable)
+            else "eligibility_loaded",
             "low_income_home_owners": deferral_enabled,
             "rate": deferral_rate,
+            "note": DEFERRAL_NOT_LOADED_NOTE
+            if not any(z.deferral_eligibility_loaded for z in usable)
+            else "Deferral eligibility supplied by caller; not from SQL.",
         },
         "note": (
             "Internal tax scenario approved defaults (v0.1, Oct 2026): £ at Data Zone grain "
@@ -1047,13 +1184,9 @@ def aggregate_by_council(
     if sid == "S1":
         payload["s1_by_council"] = {
             code: {
-                "s1_rate": body["s1_rate"],
-                "target_gbp": body["target_gbp"],
-                "s1_revenue_central_gbp": body["s1_revenue_central_gbp"],
-                "taxable_rent_central_gbp": body["taxable_rent_central_gbp"],
-                "council_tax_year": body.get("council_tax_year"),
-                "business_rates_year": body.get("business_rates_year"),
-                "targets_status": body.get("targets_status") or targets_status,
+                "s1_rate": dict(body["s1_rate"]),
+                "s1_rate_above_100_pct": bool(body["s1_rate_above_100_pct"]),
+                "s1_rate_source": dict(body["s1_rate_source"]),
             }
             for code, body in s1_by_council.items()
         }
@@ -1068,9 +1201,6 @@ def aggregate_by_council(
             "note": "Separate scenario; off by default. Per-council S1 is the default.",
         }
         payload["s1_label"] = s1_label
-    if rollup is not None:
-        # Behind TEMP setting — not merged into by_council/national display £.
-        payload["blocked_aggregate_rollup"] = rollup
 
     stamped = stamp_blocked(payload, defaults=cfg)
     assert_no_aggregate_gbp(stamped)
@@ -1115,29 +1245,33 @@ def zone_illustration(
         deferral_rate=float(defer_cfg.get("rate", 0.0262)),
         revenue_sharing=sharing,
     )
+    council_block: dict[str, Any] = {
+        "la_code": row.la_code,
+        "la_name": row.la_name,
+        "zone_count": council_zone_count,
+        "status": STATUS,
+        "disclaimer": DISCLAIMER,
+    }
+    if sid == "S1" and row.la_code in s1_by_council:
+        council_block["s1_rate"] = dict(s1_by_council[row.la_code]["s1_rate"])
+        council_block["s1_rate_above_100_pct"] = bool(
+            s1_by_council[row.la_code]["s1_rate_above_100_pct"]
+        )
+        council_block["s1_rate_source"] = dict(s1_by_council[row.la_code]["s1_rate_source"])
+    if row.estimate_label is not None:
+        council_block["estimate_label"] = row.estimate_label
     payload = stamp_blocked({
         "status": STATUS,
         "lens": LENS,
         "lens_note": LENS_NOTE,
         "disclaimer": DISCLAIMER,
         "scenario_id": sid,
-        "capture_rate": None if sid == "S1" else rate,
+        "capture_rate": None if sid == "S1" else _central_rate(rate),
         "capture_note": CAPTURE_NOTE,
         "zone": zone,
         "surface_path": surface_path_payload(row.vintage, [row]),
         "revenue_sharing": sharing,
-        "council": {
-            "la_code": row.la_code,
-            "la_name": row.la_name,
-            "zone_count": council_zone_count,
-            "status": STATUS,
-            "disclaimer": DISCLAIMER,
-            **(
-                {"s1_rate": s1_by_council[row.la_code]["s1_rate"]}
-                if sid == "S1" and row.la_code in s1_by_council
-                else {}
-            ),
-        },
+        "council": council_block,
         "note": (
             "Illustrated collection = taxable Surface Rent × scenario rate at Data Zone grain "
             "(low/central/high), with phase-in schedule, deferral and revenue-share applied. "

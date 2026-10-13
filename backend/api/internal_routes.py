@@ -218,6 +218,7 @@ _TAX_SCENARIO_SQL = (
     "SELECT DISTINCT ON (s.code) "
     "s.code, s.vintage, s.measured_rent, s.price_year, s.quality, s.publish_level, s.publication_status, "
     "s.value_tier, s.uncertainty_low, s.uncertainty_high, s.crosswalk_method, "
+    "s.fill_method, s.proxy_tags, "
     "zs.la_code, zs.la_name, zs.flags "
     "FROM surface_rent_dz s "
     "JOIN datazones.zone_spine zs ON zs.code = s.code AND zs.vintage = s.vintage "

@@ -12,6 +12,7 @@ from georgist.surface_settings import YIELD_SOURCE, yield_placeholder
 from georgist.tax_scenarios import (
     BLOCKED_REASON,
     CAPTURE_NOTE,
+    DEFERRAL_NOT_LOADED,
     DISCLAIMER,
     INTERNAL_WARNING,
     LENS,
@@ -59,8 +60,12 @@ def _row(
     price_year: int = 2025,
     value_tier: str = "proxy",
     deferral_eligible: bool = False,
+    deferral_eligibility_loaded: bool = False,
     vintage: int = 2011,
     crosswalk_method: str = "none",
+    estimate_label: str | None = None,
+    uncertainty_low: float | None = None,
+    uncertainty_high: float | None = None,
 ) -> ZoneRentRow:
     return ZoneRentRow(
         code=code,
@@ -71,7 +76,11 @@ def _row(
         price_year=price_year,
         value_tier=value_tier,
         deferral_eligible=deferral_eligible,
+        deferral_eligibility_loaded=deferral_eligibility_loaded,
         crosswalk_method=crosswalk_method,
+        estimate_label=estimate_label,
+        uncertainty_low=uncertainty_low,
+        uncertainty_high=uncertainty_high,
     )
 
 
@@ -223,8 +232,11 @@ def test_aggregate_money_is_data_zone_only_not_council_sums():
     assert z["money_grain"] == "data_zone"
     assert_no_aggregate_gbp(out)
 
-    # Roll-up built behind TEMP setting; Σ councils = Scotland (exact to the penny)
-    rollup = out["blocked_aggregate_rollup"]
+    # Roll-up built internally for reconcile — must not leak onto the response.
+    assert "blocked_aggregate_rollup" not in out
+    assert out["deferral"]["status"] == DEFERRAL_NOT_LOADED
+    rate_by_zone = {z["code"]: 0.5 for z in out["by_zone"]}
+    rollup = build_aggregate_rollup(rows, rate_by_zone=rate_by_zone)
     sum_c = _penny(sum(c["measured_rent_gbp"]["central"] for c in rollup["by_council"]))
     assert sum_c == rollup["scotland"]["measured_rent_gbp"]["central"]
     assert rollup["zone_count"] == 3
@@ -263,31 +275,44 @@ def test_shadow_never_taxed():
 def test_s1_rate_differs_by_council_and_revenue_equals_ct_plus_nbr():
     """Done-when: S1 rate differs by council; each council S1 revenue = CT + business rates."""
     rows = [
-        _row("S01008677", la_code="S12000036", la_name="City of Edinburgh", rent=200_000.0),
-        _row("S01008678", la_code="S12000036", la_name="City of Edinburgh", rent=100_000.0),
-        _row("S01009000", la_code="S12000049", la_name="Glasgow City", rent=400_000.0),
-        _row("S01009001", la_code="S12000049", la_name="Glasgow City", rent=100_000.0, value_tier="shadow"),
+        # Pin uncertainty so LCH collapses to central for a clean rate check.
+        _row("S01008677", la_code="S12000036", la_name="City of Edinburgh", rent=200_000.0,
+             uncertainty_low=200_000.0, uncertainty_high=200_000.0),
+        _row("S01008678", la_code="S12000036", la_name="City of Edinburgh", rent=100_000.0,
+             uncertainty_low=100_000.0, uncertainty_high=100_000.0),
+        _row("S01009000", la_code="S12000049", la_name="Glasgow City", rent=400_000.0,
+             uncertainty_low=400_000.0, uncertainty_high=400_000.0),
+        _row("S01009001", la_code="S12000049", la_name="Glasgow City", rent=100_000.0, value_tier="shadow",
+             uncertainty_low=100_000.0, uncertainty_high=100_000.0),
     ]
     # Edinburgh taxable 300k → target 60k → rate 0.2
     # Glasgow taxable 400k (shadow excluded) → target 200k → rate 0.5
     defaults = _mini_defaults(edi_target=60_000.0, glasgow_target=200_000.0)
     solved = solve_s1_per_council(rows, defaults=defaults)
-    assert solved["S12000036"]["s1_rate"] == pytest.approx(0.2)
-    assert solved["S12000049"]["s1_rate"] == pytest.approx(0.5)
-    assert solved["S12000036"]["s1_rate"] != solved["S12000049"]["s1_rate"]
-    assert solved["S12000036"]["s1_revenue_central_gbp"] == pytest.approx(60_000.0)
-    assert solved["S12000049"]["s1_revenue_central_gbp"] == pytest.approx(200_000.0)
-    assert solved["S12000036"]["s1_revenue_central_gbp"] == pytest.approx(
-        solved["S12000036"]["council_tax_gbp"] + solved["S12000036"]["business_rates_gbp"]
-    )
-    assert solved["S12000049"]["s1_revenue_central_gbp"] == pytest.approx(
-        solved["S12000049"]["council_tax_gbp"] + solved["S12000049"]["business_rates_gbp"]
+    assert solved["S12000036"]["s1_rate"]["central"] == pytest.approx(0.2)
+    assert solved["S12000049"]["s1_rate"]["central"] == pytest.approx(0.5)
+    assert set(solved["S12000036"]["s1_rate"]) == {"low", "central", "high"}
+    assert solved["S12000036"]["s1_rate"]["central"] != solved["S12000049"]["s1_rate"]["central"]
+    assert solved["S12000036"]["_s1_revenue_central_gbp"] == pytest.approx(60_000.0)
+    assert solved["S12000049"]["_s1_revenue_central_gbp"] == pytest.approx(200_000.0)
+    assert solved["S12000036"]["_s1_revenue_central_gbp"] == pytest.approx(
+        solved["S12000036"]["_target_gbp"]
     )
 
     out = aggregate_by_council(rows, scenario_id="S1", defaults=defaults)
     assert out["s1_national_single_rate"]["enabled"] is False
     assert out["s1_national_single_rate"]["default"] is False
-    rates = {c["la_code"]: c["s1_rate"] for c in out["by_council"]}
+    assert "blocked_aggregate_rollup" not in out
+    for body in out["s1_by_council"].values():
+        assert "target_gbp" not in body
+        assert "s1_revenue_central_gbp" not in body
+        assert "taxable_rent_central_gbp" not in body
+        assert set(body["s1_rate"]) == {"low", "central", "high"}
+        assert "s1_rate_source" in body
+    for c in out["by_council"]:
+        assert "s1_target_gbp" not in c
+        assert "s1_rate" in c and "s1_rate_source" in c
+    rates = {c["la_code"]: c["s1_rate"]["central"] for c in out["by_council"]}
     assert rates["S12000036"] != rates["S12000049"]
     by_code = {z["code"]: z for z in out["by_zone"]}
     assert by_code["S01008677"]["illustrated_collection_gbp"]["central"] == pytest.approx(40_000.0)
@@ -346,7 +371,10 @@ def test_phase_in_year_by_year_schedule_applied_at_data_zone():
 def test_deferral_eligibility_amount_and_accrual():
     """Eligible low-income home owner: defer collection; accrue at 2.62%/year."""
     collection = {"low": 886.0, "central": 1000.0, "high": 1002.0}
-    deferred = apply_deferral(collection, eligible=True, rate=0.0262, enabled=True)
+    deferred = apply_deferral(
+        collection, eligible=True, rate=0.0262, enabled=True, eligibility_loaded=True,
+    )
+    assert deferred["status"] == "applied"
     assert deferred["deferral_eligible"] is True
     assert deferred["deferral_applied"] is True
     assert deferred["deferred_gbp"] == collection
@@ -356,14 +384,16 @@ def test_deferral_eligibility_amount_and_accrual():
         "central": _penny(1000.0 * 0.0262),
         "high": _penny(1002.0 * 0.0262),
     }
-    not_eligible = apply_deferral(collection, eligible=False, rate=0.0262, enabled=True)
+    not_eligible = apply_deferral(
+        collection, eligible=False, rate=0.0262, enabled=True, eligibility_loaded=True,
+    )
     assert not_eligible["deferral_applied"] is False
     assert not_eligible["deferred_gbp"]["central"] == 0.0
     assert not_eligible["cash_collected_gbp"] == collection
 
     defaults = _mini_defaults(1.0, 1.0)
     out = aggregate_by_council(
-        [_row(rent=10_000.0, deferral_eligible=True)],
+        [_row(rent=10_000.0, deferral_eligible=True, deferral_eligibility_loaded=True)],
         scenario_id="S2",
         defaults=defaults,
         phase_in_year=10,  # fully phased
@@ -374,6 +404,39 @@ def test_deferral_eligibility_amount_and_accrual():
     assert z["deferral"]["deferred_gbp"]["central"] == 5_000.0
     assert z["deferral"]["accrual_gbp_per_year"]["central"] == _penny(5_000.0 * 0.0262)
     assert z["deferral"]["cash_collected_gbp"]["central"] == 0.0
+
+
+def test_deferral_stamped_not_applied_when_eligibility_not_loaded():
+    """SQL path never selects eligibility — stamp not_applied_eligibility_not_loaded."""
+    collection = {"low": 100.0, "central": 100.0, "high": 100.0}
+    stamped = apply_deferral(collection, eligible=True, rate=0.0262, eligibility_loaded=False)
+    assert stamped["status"] == DEFERRAL_NOT_LOADED
+    assert stamped["deferral_applied"] is False
+    assert stamped["deferred_gbp"]["central"] == 0.0
+    assert stamped["cash_collected_gbp"] == collection
+
+    # zone_row_from_db / aggregate default path: eligibility never loaded
+    z = zone_row_from_db({
+        "code": "S01008677",
+        "vintage": 2011,
+        "measured_rent": 10_000.0,
+        "price_year": 2025,
+        "quality": "derived",
+        "publish_level": "public_zone",
+        "publication_status": "ok",
+        "value_tier": "proxy",
+        "crosswalk_method": "none",
+        "la_code": "S12000036",
+        "la_name": "City of Edinburgh",
+        "flags": "",
+        "deferral_eligible": True,  # stray key must be ignored
+    })
+    assert z is not None
+    assert z.deferral_eligibility_loaded is False
+    out = aggregate_by_council([z], scenario_id="S2", defaults=_mini_defaults(1.0, 1.0))
+    assert out["deferral"]["status"] == DEFERRAL_NOT_LOADED
+    assert out["by_zone"][0]["deferral"]["status"] == DEFERRAL_NOT_LOADED
+    assert out["by_zone"][0]["deferral"]["deferral_applied"] is False
 
 
 def test_revenue_share_override_must_sum_to_one_and_splits_per_dz():
@@ -650,6 +713,88 @@ def test_defaults_pin_rollup_dz2011_and_name_uprn_dz2022_path():
     path = surface_path_payload(2011, [_row()])
     assert path["path"] == "native_dz2011"
     assert path["rollup_pin_vintage"] == 2011
+
+
+def test_s1_rate_lch_and_flags_above_100_pct():
+    rows = [
+        _row(
+            "S01008677", rent=50_000.0,
+            uncertainty_low=40_000.0, uncertainty_high=60_000.0,
+        ),
+    ]
+    # target 60k → central rate 1.2 (>100%), low 1.5, high 1.0
+    defaults = _mini_defaults(edi_target=60_000.0, glasgow_target=1.0)
+    solved = solve_s1_per_council(rows, defaults=defaults)
+    rate = solved["S12000036"]["s1_rate"]
+    assert rate["central"] == pytest.approx(1.2)
+    assert rate["low"] == pytest.approx(1.5)
+    assert rate["high"] == pytest.approx(1.0)
+    assert solved["S12000036"]["s1_rate_above_100_pct"] is True
+    out = aggregate_by_council(rows, scenario_id="S1", defaults=defaults)
+    assert out["s1_by_council"]["S12000036"]["s1_rate_above_100_pct"] is True
+    assert "target_gbp" not in out["s1_by_council"]["S12000036"]
+
+
+def test_estimate_label_on_zones_and_combined_for_council_scotland():
+    rows = [
+        _row("S01008677", rent=10_000.0, estimate_label="measured"),
+        _row("S01008678", rent=5_000.0, estimate_label="fully_estimated"),
+        _row(
+            "S01009000", la_code="S12000049", la_name="Glasgow City",
+            rent=8_000.0, estimate_label="measured",
+        ),
+    ]
+    out = aggregate_by_council(rows, scenario_id="S2", defaults=_mini_defaults(1.0, 1.0))
+    by_code = {z["code"]: z for z in out["by_zone"]}
+    assert by_code["S01008677"]["estimate_label"] == "measured"
+    assert by_code["S01008678"]["estimate_label"] == "fully_estimated"
+    edi = next(c for c in out["by_council"] if c["la_code"] == "S12000036")
+    gla = next(c for c in out["by_council"] if c["la_code"] == "S12000049")
+    assert edi["estimate_label"] == "partly_estimated"  # measured + fully
+    assert gla["estimate_label"] == "measured"
+    assert out["national"]["estimate_label"] == "partly_estimated"
+
+
+def test_assert_no_aggregate_gbp_refuses_rollup_and_s1_money_fields():
+    with pytest.raises(TaxScenarioError) as exc:
+        assert_no_aggregate_gbp({"blocked_aggregate_rollup": {"scotland": {}}})
+    assert exc.value.code == "aggregate_gbp_forbidden"
+    with pytest.raises(TaxScenarioError):
+        assert_no_aggregate_gbp({
+            "s1_by_council": {"S12000036": {"s1_rate": {"central": 0.2}, "target_gbp": 1}},
+        })
+    with pytest.raises(TaxScenarioError):
+        assert_no_aggregate_gbp({
+            "by_council": [{"la_code": "S", "s1_target_gbp": {"total_gbp": 1}}],
+        })
+
+
+def test_zone_row_reads_estimate_label_from_2022_surface_row():
+    row = {
+        "code": "S01020870",
+        "vintage": 2022,
+        "measured_rent": 1_000.0,
+        "price_year": 2025,
+        "quality": "derived",
+        "publish_level": "internal",
+        "publication_status": "blocked",
+        "value_tier": "proxy",
+        "crosswalk_method": UPRN_DZ2022_CROSSWALK,
+        "estimate_label": "partly_estimated",
+        "la_code": "S12000049",
+        "la_name": "Glasgow City",
+        "flags": "",
+    }
+    z = zone_row_from_db(row)
+    assert z is not None
+    assert z.estimate_label == "partly_estimated"
+    # fallback via proxy_tags / fill_method
+    z2 = zone_row_from_db({
+        **row,
+        "estimate_label": None,
+        "proxy_tags": ["estimate_label=measured", "crosswalked_from_dz2011"],
+    })
+    assert z2 is not None and z2.estimate_label == "measured"
 
 
 def test_uprn_crosswalk_fixture_feeds_tax_scenario_s2():

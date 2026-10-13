@@ -217,6 +217,12 @@ export const LAYER_ATTRIBUTION: Record<
     sourceUrl:
       "https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/datasets/coregis::scotwind-offers-crown-estate-scotland/about",
   },
+  repd_onshore_wind: {
+    source: "DESNZ REPD onshore wind (Scotland)",
+    licence: "OGL-3.0",
+    sourceUrl:
+      "https://www.gov.uk/government/publications/renewable-energy-planning-database-quarterly-extract",
+  },
   la_holdings: {
     source: "Spatial Hub — Land Ownership Scotland",
     licence: "Not openly licensed for this portal",

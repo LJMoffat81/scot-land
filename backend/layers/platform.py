@@ -516,6 +516,37 @@ def platform_catalog() -> dict[str, Any]:
                 "ui_surface": "ledger",
             },
             {
+                "id": "repd_onshore_wind",
+                "group": "natural_capital",
+                "status": "live",
+                "label": "REPD onshore wind",
+                "description": (
+                    "DESNZ Renewable Energy Planning Database — Scotland onshore "
+                    "wind sites with installed capacity (MW) and development status. "
+                    "Natural capital ledger row 3 (onshore wind resource) — not a "
+                    "LayersPanel toggle. Natural-capital evidence only: no £ rent, "
+                    "never added to Surface Rent or AGR. Planning-site points, not leases."
+                ),
+                "endpoint": "/layers/open/repd-onshore-wind",
+                "minzoom": 6,
+                "licence": "OGL-3.0",
+                "licence_url": (
+                    "https://www.nationalarchives.gov.uk/doc/"
+                    "open-government-licence/version/3/"
+                ),
+                "source_url": (
+                    "https://www.gov.uk/government/publications/"
+                    "renewable-energy-planning-database-quarterly-extract"
+                ),
+                "commons_class": "extractive",
+                "value_tier": "market",
+                "publication_status": "ok",
+                "adds_to_surface_rent": False,
+                "ledger_role": "ledger-row",
+                "ledger_row": "3",
+                "ui_surface": "ledger",
+            },
+            {
                 "id": "la_holdings",
                 "group": "ownership",
                 "status": "gap",

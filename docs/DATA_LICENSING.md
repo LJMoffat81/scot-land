@@ -80,6 +80,7 @@ Public methodology and README must list active data sources. See `data/config/so
 | National Forest Inventory | Forestry Commission NFI Woodland Scotland (NatureScot OGC) | OGL v3.0 — https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ — © Forestry Commission; contains OS data © Crown copyright; ledger row 1 land-use overlay, not a rent |
 | Native Woodland Survey | Scottish Forestry NWSS (NatureScot OGC) | OGL v3.0 — https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ — © Scottish Forestry / Forestry Commission; ledger row 1 land-use overlay, not a title |
 | REPD renewables | DESNZ Renewable Energy Planning Database quarterly CSV | OGL-3.0 — Scotland planning-site points via PostGIS ingest; not lease polygons; ledger row 3 (onshore wind + hydro resource); no £ rent |
+| REPD onshore wind | DESNZ REPD quarterly CSV (Scotland + Wind Onshore filter) | OGL-3.0 — dedicated natural-capital PostGIS table (`repd_onshore_wind`); MW + development status only; ledger row 3; never adds to Surface Rent / AGR; raw CSV not committed — `python -m etl.ingest_repd_onshore_wind` |
 | Crown Estate Scotland offshore leases | CES Spatial Hub FeatureServers (offshore wind, wave, tidal, CCS) | OGL-3.0 — offshore lease polygons only; aquaculture is a separate layer; not a title sheet; ledger row 4 (seabed & foreshore); no £ rent |
 | Land capability (agriculture) | James Hutton Institute LCA 1:250k open download | **James Hutton Open Data Licence** (accepted; **not OGL-3.0**). Required attribution + share-alike / equivalent terms on redistribution and derived data. PSI clause under OGL v2.0. Raw stays in `data/external/lca/` |
 | Common Good | Statutory LA registers + Highland/Fife indicative FeatureServer metadata | Linked only. No national open spatial layer. Highland licence **unconfirmed** (not OGL) — link-only, not ingested. Fife under OS Public Sector End User Licence - INSPIRE — not redistributed here. Ownership-context (who/outline); no £ rent. |
@@ -98,4 +99,4 @@ Public methodology and README must list active data sources. See `data/config/so
 | Who Owns Scotland | Paid ownership product |
 
 Missing open registers (local-authority holdings, national Common Good spatial file, Sasine, national OGL croft/grazing polygons) are catalogued as gaps — never invented.
-Full REPD / CES extracts are not committed; load with `python -m etl.ingest_repd` and `python -m etl.ingest_crown_estate_leases`.
+Full REPD / CES extracts are not committed; load with `python -m etl.ingest_repd`, `python -m etl.ingest_repd_onshore_wind`, and `python -m etl.ingest_crown_estate_leases`.

@@ -367,6 +367,8 @@ const REPD_MIN_ZOOM = 6;
 /** REPD onshore wind planning-site points (natural capital — MW/status only). */
 const REPD_ONSHORE_WIND_MIN_ZOOM = 6;
 const CROWN_LEASES_MIN_ZOOM = 5;
+/** CES aquaculture seabed leases — coastal polygons; ledger row 5; no £ rent. */
+const CES_AQUACULTURE_MIN_ZOOM = 5;
 
 const CES_LEASE_FILL: ExpressionSpecification = [
   "match",
@@ -599,6 +601,8 @@ export default function ScotlandMap() {
   const showRepdOnshoreWind = Boolean(ledgerEnabled["3"]);
   /** CES offshore leases paint when ledger row 4 (seabed & foreshore) is on. */
   const showCrownLeases = Boolean(ledgerEnabled["4"]);
+  /** CES aquaculture seabed leases paint when ledger row 5 is on. */
+  const showCesAquaculture = Boolean(ledgerEnabled["5"]);
   /** LCA constraint — Hutton Open Data Licence; £0, changes best use. */
   const showLca = Boolean(ledgerEnabled.lca);
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
@@ -1424,6 +1428,34 @@ export default function ScotlandMap() {
           "circle-stroke-width": 1,
           "circle-stroke-color": "#ffffff",
           "circle-opacity": 0.85,
+        },
+      });
+
+      map.addSource("ces-aquaculture-overlay", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution:
+          "Contains information from the Crown Estate Scotland licensed under the Open Government Licence v3.0.",
+      });
+      map.addLayer({
+        id: "ces-aquaculture-fill",
+        type: "fill",
+        source: "ces-aquaculture-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": "#00796b",
+          "fill-opacity": 0.38,
+        },
+      });
+      map.addLayer({
+        id: "ces-aquaculture-line",
+        type: "line",
+        source: "ces-aquaculture-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "line-color": "#004d40",
+          "line-width": 1.0,
+          "line-opacity": 0.85,
         },
       });
 
@@ -2326,6 +2358,78 @@ export default function ScotlandMap() {
       map.off("moveend", onMove);
     };
   }, [mapReady, showRepdOnshoreWind]);
+
+  // CES aquaculture seabed leases (OGL Spatial Hub → PostGIS; ledger row 5; no £ rent)
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const setVis = (vis: "visible" | "none") => {
+      if (!map.getLayer("ces-aquaculture-fill")) return;
+      map.setLayoutProperty("ces-aquaculture-fill", "visibility", vis);
+      map.setLayoutProperty("ces-aquaculture-line", "visibility", vis);
+    };
+
+    if (!showCesAquaculture) {
+      setVis("none");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const loadCesAquaculture = () => {
+      if (cancelled || !mapRef.current || inFlight) return;
+      const b = map.getBounds();
+      if (!b) return;
+      if (map.getZoom() < CES_AQUACULTURE_MIN_ZOOM) {
+        setVis("none");
+        return;
+      }
+      inFlight = true;
+      setLayerBusy(true);
+      const path =
+        `/layers/open/ces-aquaculture?south=${b.getSouth()}&west=${b.getWest()}` +
+        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
+      void apiJson<GeoJSON.FeatureCollection>(path)
+        .then((data) => {
+          if (cancelled) return;
+          (map.getSource("ces-aquaculture-overlay") as GeoJSONSource)?.setData(
+            data,
+          );
+          setVis("visible");
+          setLayerNotice(null);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setVis("none");
+          if (err instanceof ApiError && err.status === 503) {
+            setLayerNotice(
+              "CES aquaculture seabed leases are not loaded yet (run python -m etl.ingest_ces_aquaculture). Gaps are not filled with guesses.",
+            );
+          }
+        })
+        .finally(() => {
+          inFlight = false;
+          if (!cancelled) setLayerBusy(false);
+        });
+    };
+
+    const onMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadCesAquaculture, 700);
+    };
+
+    loadCesAquaculture();
+    map.on("moveend", onMove);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off("moveend", onMove);
+    };
+  }, [mapReady, showCesAquaculture]);
 
   // SVDLS vacant / derelict overlay (OGL survey polygons)
   useEffect(() => {
@@ -3512,6 +3616,18 @@ export default function ScotlandMap() {
                 ledger row 4. Offshore wind, wave, tidal, CCS only —
                 aquaculture is a separate layer. Not a title sheet. Zoom{" "}
                 {CROWN_LEASES_MIN_ZOOM}+.
+              </p>
+            )}
+            {showCesAquaculture && (
+              <p
+                className="layer-meta"
+                data-testid="layer-ces-aquaculture-credit"
+              >
+                Contains information from the Crown Estate Scotland licensed
+                under the Open Government Licence v3.0. Ledger row 5 —
+                aquaculture seabed lease polygons only (attributes/status) —
+                not a title, not Surface Rent, not AGR, no £ rent or fee.
+                Zoom {CES_AQUACULTURE_MIN_ZOOM}+.
               </p>
             )}
             {layerNotice && <p className="layer-meta">{layerNotice}</p>}

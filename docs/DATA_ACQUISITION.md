@@ -205,6 +205,24 @@ Registry: `data/config/sources.yaml` → `hla`.
 
 Registry: `data/config/sources.yaml` → `flood`. Raw geodatabases stay under gitignored `data/external/sepa/`.
 
+## NatureScot SSSI and designations (OGL-3.0)
+
+| Field | Value |
+|-------|--------|
+| Products | SSSI; SPA; SAC; NNR |
+| Licence | OGL-3.0 |
+| Attribution | Contains NatureScot information licensed under the Open Government Licence v3.0 |
+| Open Data Hub | https://opendata.nature.scot/ |
+| SSSI page | https://opendata.nature.scot/maps/sites-of-special-scientific-interest |
+| Downloads | `https://gis-downloads.nature.scot/{SSSI,SPA,SAC,NNR}_SCOTLAND_GEOJSON_4326.zip` |
+| WFS | https://ogc.nature.scot/geoserver/protectedareas/wfs |
+| BBox APIs | `GET /layers/open/sssi`, `GET /layers/open/naturescot-designations` → **503** when PostGIS unloaded |
+| Ingest | `python -m etl.ingest_naturescot` |
+| Raw storage | `data/external/naturescot/` (gitignored) |
+| Gaps | Indicative boundaries (not a title); SSSI is a separate catalog layer from SPA/SAC/NNR |
+
+Registry: `data/config/sources.yaml` → `naturescot_sssi` and `naturescot_designations`. Refresh: [scripts/data/README-naturescot.md](../scripts/data/README-naturescot.md).
+
 ## Local layout after acquisition
 
 ```text

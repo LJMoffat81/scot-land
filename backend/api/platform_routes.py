@@ -35,6 +35,9 @@ from layers.hydro import query_bbox as hydro_bbox
 from layers.hla import query_bbox as hla_bbox
 from layers.public_land import query_bbox as public_land_bbox
 from layers.sepa_car import query_bbox as sepa_car_bbox
+from layers.naturescot import LayerUnavailable as NatureScotUnavailable
+from layers.naturescot import query_designations_bbox as naturescot_designations_bbox
+from layers.naturescot import query_sssi_bbox as sssi_bbox
 from layers.vdl import query_bbox as vdl_bbox
 
 router = APIRouter()
@@ -278,6 +281,42 @@ def layer_open_ldp(
     return JSONResponse(payload)
 
 
+@router.get("/layers/open/sssi")
+def layer_open_sssi(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=80, ge=1, le=80),
+) -> JSONResponse:
+    """NatureScot SSSI polygons (OGL-3.0). Constraint overlay — £0, no rent row."""
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    try:
+        payload = sssi_bbox(south, west, north, east, max_features=max_features)
+    except NatureScotUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return JSONResponse(payload)
+
+
+@router.get("/layers/open/naturescot-designations")
+def layer_open_naturescot_designations(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=80, ge=1, le=80),
+) -> JSONResponse:
+    """NatureScot SPA/SAC/NNR polygons (OGL-3.0). Constraint overlay — £0, no rent row."""
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    try:
+        payload = naturescot_designations_bbox(
+            south, west, north, east, max_features=max_features
+        )
+    except NatureScotUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return JSONResponse(payload)
+
+
 @router.get("/ledger")
 def natural_capital_ledger() -> dict:
     """Natural capital ledger rows + constraints (no published AGR £).
@@ -286,7 +325,6 @@ def natural_capital_ledger() -> dict:
     Amounts are placeholders until ECONOMIC_RULES / calibration approve.
     """
     return ledger_payload()
-
 
 @router.get("/platform/place")
 def platform_place(
@@ -582,6 +620,30 @@ def open_downloads() -> dict:
                     "MapServer 194/195 → PostGIS via python -m etl.ingest_sepa_car; "
                     "API never proxies. value_tier=market. No £ rent."
                 ),
+            },
+            {
+                "id": "sssi_overlay",
+                "label": "NatureScot SSSI overlay (this API)",
+                "licence": "OGL-3.0",
+                "licence_url": (
+                    "https://www.nationalarchives.gov.uk/doc/"
+                    "open-government-licence/version/3/"
+                ),
+                "endpoint": "/layers/open/sssi",
+                "url": "https://opendata.nature.scot/maps/sites-of-special-scientific-interest",
+                "note": "PostGIS bbox after local OGL ingest; 503 when unloaded.",
+            },
+            {
+                "id": "naturescot_designations_overlay",
+                "label": "NatureScot SPA/SAC/NNR overlay (this API)",
+                "licence": "OGL-3.0",
+                "licence_url": (
+                    "https://www.nationalarchives.gov.uk/doc/"
+                    "open-government-licence/version/3/"
+                ),
+                "endpoint": "/layers/open/naturescot-designations",
+                "url": "https://opendata.nature.scot/",
+                "note": "PostGIS bbox after local OGL ingest; 503 when unloaded.",
             },
             {
                 "id": "data_zone_boundaries",

@@ -62,3 +62,6 @@ After stamping, future revisions (`alembic revision` + `upgrade`) apply normally
   `20261012_0002` (`hydro_sites`, `sepa_car_licences`).
 - SEPA CAR MapServer ingest shape: Alembic `20261012_0003` recreates
   `sepa_car_licences` for layers 194/195 (`python -m etl.ingest_sepa_car`).
+- SEPA flood extents: `007_sepa_flood.sql` plus Alembic revision `20261012_0004`.
+- NatureScot SSSI / SPA / SAC / NNR tables are `008_naturescot_designations.sql`
+  plus Alembic revision `20261012_0005`.

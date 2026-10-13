@@ -156,6 +156,15 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="LDP allocation polygons from PostGIS; ledger nested 1a; no rent",
     ),
+    "/layers/open/sssi": LayerRule(
+        "site", "site", "none", note="NatureScot SSSI polygons (OGL-3.0); constraint; no rent"
+    ),
+    "/layers/open/naturescot-designations": LayerRule(
+        "site",
+        "site",
+        "none",
+        note="NatureScot SPA/SAC/NNR polygons (OGL-3.0); constraint; no rent",
+    ),
     "/ledger": LayerRule(
         "zone",
         "zone",

@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "NAME": "Fixture SSSI Peatland",
+        "PA_CODE": 99001,
+        "STATUS": "Current",
+        "TYPE": "BIOLOGICAL",
+        "SITE_HA": 12.5,
+        "EUROPEAN_C": "99001"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-4.295, 55.855],
+            [-4.290, 55.855],
+            [-4.290, 55.860],
+            [-4.295, 55.860],
+            [-4.295, 55.855]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "NAME": "Fixture SAC",
+        "PA_CODE": 87001,
+        "STATUS": "Classified",
+        "TYPE": "SAC",
+        "SITE_HA": 40.0,
+        "EUROPEAN_CODE": "UK0018701"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-4.285, 55.850],
+            [-4.280, 55.850],
+            [-4.280, 55.855],
+            [-4.285, 55.855],
+            [-4.285, 55.850]
+          ]
+        ]
+      }
+    }
+  ]
+}

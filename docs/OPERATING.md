@@ -62,6 +62,7 @@ npm run dev
 | `GET /layers/open/community-ownership` | SG Community Ownership 2024 points (PostGIS; **503** if unloaded; ownership-context, no £ rent) |
 | `GET /layers/open/nfi` | National Forest Inventory woodland (PostGIS bbox; **503** if unloaded; ledger row 1) |
 | `GET /layers/open/native-woodland` | Native Woodland Survey of Scotland (PostGIS bbox; **503** if unloaded; ledger row 1) |
+| `GET /layers/open/lca` | Hutton LCA 1:250k capability polygons (PostGIS; **503** if not loaded; constraint £0)
 | `GET /platform/place` | Ownership / vacant / gap card |
 | `GET /platform/gaps` | Visible register gaps |
 | `GET /downloads` | Open layer and official source index |

@@ -87,3 +87,4 @@ After stamping, future revisions (`alembic revision` + `upgrade`) apply normally
   are in `017_open_energy_leases.sql` plus Alembic revision `20261012_0014`
   (`down_revision` = `20261012_0013`).
   Ingest: `python -m etl.ingest_repd` / `python -m etl.ingest_crown_estate_leases`.
+- `lca_agriculture` (James Hutton LCA 1:250k) is in `018_lca_agriculture.sql` plus Alembic revision `20261012_0015` (`down_revision` = `20261012_0014`). Hutton Open Data Licence (not OGL). Ingest: `python -m etl.ingest_lca` (see `scripts/data/README-lca.md`). Ledger constraint — £0, not a rent.

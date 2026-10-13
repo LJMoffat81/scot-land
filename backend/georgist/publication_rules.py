@@ -214,6 +214,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="SG community ownership OGL points from PostGIS; ownership-context; no rent",
     ),
+    "/layers/open/lca": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="Hutton LCA 1:250k capability polygons; constraint (£0); no rent",
+    ),
     "/platform/place": LayerRule("site", "site", "none", note="ownership/vacant/gap card; no modelled rent"),
     "/platform/gaps": LayerRule("zone", "zone", "none", note="register gap catalogue"),
     "/api/catalog.json": LayerRule("zone", "zone", "none", note="open-data catalogue"),

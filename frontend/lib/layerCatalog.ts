@@ -17,7 +17,10 @@ export type CatalogLayer = {
   endpoint?: string;
   tile_endpoint?: string;
   licence?: string;
+  licence_note?: string;
   licence_url?: string;
+  attribution?: string;
+  share_alike?: string;
   source_url?: string;
   spatial_hub_url?: string;
   minzoom?: number;
@@ -201,6 +204,12 @@ export const LAYER_ATTRIBUTION: Record<
     licence: "Open Government Licence v3.0",
     sourceUrl:
       "https://www.data.gov.uk/dataset/da3f8548-a130-4a0d-8ddd-45019adcf1f3/native-woodland-survey-of-scotland-nwss",
+  },
+  lca: {
+    source: "James Hutton Institute — Land Capability for Agriculture 1:250k",
+    licence: "James Hutton Institute Open Data Licence",
+    sourceUrl:
+      "https://www.hutton.ac.uk/sites/default/files/files/soils/downloads/Hutton_LCA250K_OpenData.zip",
   },
   la_holdings: {
     source: "Spatial Hub — Land Ownership Scotland",

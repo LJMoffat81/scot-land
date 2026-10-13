@@ -276,6 +276,21 @@ Registry: `data/config/sources.yaml` → `naturescot_sssi` and `naturescot_desig
 
 Refresh: [scripts/data/README-woodland.md](../scripts/data/README-woodland.md). Registry: `data/config/sources.yaml` → `nfi` and `native_woodland`. Land-use context only — never presented as AGR or Surface Rent.
 
+## Land Capability for Agriculture (James Hutton LCA 1:250k)
+
+| Field | Value |
+|-------|--------|
+| Product | Land Capability for Agriculture 1:250,000 (`LCA_250K`) |
+| Licence | James Hutton Institute Open Data Licence — accepted; **not OGL-3.0**; attribution + share-alike / equivalent terms; PSI under OGL v2.0 |
+| Download | https://www.hutton.ac.uk/sites/default/files/files/soils/downloads/Hutton_LCA250K_OpenData.zip |
+| Catalogue | https://spatialdata.gov.scot/geonetwork/srv/api/records/24c6df5a-6b04-43f8-839f-0d45cc2802e3 |
+| BBox API | `GET /layers/open/lca` → **503** when PostGIS table empty |
+| Raw storage | `data/external/lca/` (gitignored) |
+| Refresh | [scripts/data/README-lca.md](../scripts/data/README-lca.md) |
+| Gaps | 1:250k scale only; 1:50k partial cover not loaded; capability ≠ rent or title |
+
+Registry: `data/config/sources.yaml` → `lca`.
+
 ## Local layout after acquisition
 
 ```text
@@ -287,6 +302,10 @@ data/licensed/
 # Cadastre: prefer self-fetch (temp dir only — never required under data/external/)
 #   python -m etl.ingest_inspire_parcels --pilot --replace
 #   python -m etl.ingest_inspire_parcels --all --replace
+
+data/external/lca/            # gitignored — Hutton LCA 1:250k shapefile
+  LCA_250K.shp (+ .dbf .shx .prj)
+  LCA_250K.shp.ingest.json             # local vintage stamp
 ```
 
 Load sales via:

@@ -444,6 +444,49 @@ def platform_catalog() -> dict[str, Any]:
                 "ui_surface": "ledger",
             },
             {
+                "id": "lca",
+                "group": "spatial",
+                "status": "live",
+                "label": "Land capability for agriculture",
+                "description": (
+                    "James Hutton Institute LCA 1:250,000 — soil and climate "
+                    "capability classes. Ledger constraint (£0) — changes best "
+                    "permitted use only; not a rent or title. BBox from PostGIS "
+                    "ingest (503 when unloaded)."
+                ),
+                "endpoint": "/layers/open/lca",
+                "licence": "James Hutton Institute Open Data Licence",
+                "licence_note": (
+                    "Not OGL-3.0. Public-sector information in the product is "
+                    "under OGL v2.0 per the Hutton attribution clause."
+                ),
+                "attribution": (
+                    "Land Capability for Agriculture 1:250,000 copyright and "
+                    "database right The James Hutton Institute. Used with the "
+                    "permission of The James Hutton Institute. All rights "
+                    "reserved. Any public sector information contained in "
+                    "these data is licensed under the Open Government Licence "
+                    "v.2.0."
+                ),
+                "share_alike": (
+                    "Redistribution and derived data must be on equivalent "
+                    "Hutton Open Data Licence terms; retain attribution and "
+                    "pass that obligation through any sublicence."
+                ),
+                "licence_url": (
+                    "https://www.hutton.ac.uk/wp-content/uploads/2024/05/"
+                    "The-James-Hutton-Institute-Open-Data-Licence-download.pdf"
+                ),
+                "minzoom": 7,
+                "source_url": (
+                    "https://www.hutton.ac.uk/sites/default/files/files/soils/"
+                    "downloads/Hutton_LCA250K_OpenData.zip"
+                ),
+                "ledger_role": "constraint",
+                "ledger_row": None,
+                "ui_surface": "ledger",
+            },
+            {
                 "id": "la_holdings",
                 "group": "ownership",
                 "status": "gap",

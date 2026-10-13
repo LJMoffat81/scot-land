@@ -7,8 +7,8 @@ are fetched, and only from the hosts named here.
 Left out on purpose:
 - SEPA Flood Maps MapServer / viewer / other web services — OGL download from
   https://www2.sepa.org.uk/flooddata only (PostGIS ingest; no live tile proxy).
-- James Hutton LCA is a separate open layer (Hutton Open Data Licence — not
-  OGL); not proxied as a context tile here.
+- James Hutton LCA is a first-class open layer (``/layers/open/lca``) under the
+  James Hutton Open Data Licence (not OGL); not proxied as a context tile here.
 - Ordnance Survey Open Zoomstack roads, rail, and airports. The data is
   Open Government Licence, but the only supply is a multi-gigabyte download
   and there is no public map service.

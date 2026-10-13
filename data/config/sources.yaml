@@ -806,6 +806,49 @@ native_woodland:
     - Survey polygons and habitat attributes — ledger row 1 land-use, not a title or rent
     - Full national extract is large; map serves PostGIS bbox after local ingest
 
+lca:
+  ledger_role: constraint
+  ledger_row: null
+  ui_surface: ledger
+  name: Land Capability for Agriculture 1:250,000 (James Hutton Institute)
+  product: LCA_250K
+  role: agricultural_land_capability_context_overlay
+  # Laurie accepted: Hutton Open Data Licence (not OGL-3.0).
+  licence: James Hutton Institute Open Data Licence
+  licence_note: >-
+    Not OGL-3.0. The Hutton EULA permits worldwide royalty-free use
+    (commercial and non-commercial). Public-sector information in the
+    product is licensed under OGL v2.0 per the required attribution clause.
+  attribution: >-
+    Land Capability for Agriculture 1:250,000 copyright and database right
+    The James Hutton Institute. Used with the permission of The James Hutton
+    Institute. All rights reserved. Any public sector information contained
+    in these data is licensed under the Open Government Licence v.2.0.
+  share_alike: >-
+    Redistribution to third parties and derived data (excluding mere
+    replication) must be on licence terms equivalent to the James Hutton
+    Institute Open Data Licence. Retain the required attribution; pass the
+    attribution obligation through any sublicence.
+  source_url: >-
+    https://www.hutton.ac.uk/sites/default/files/files/soils/downloads/Hutton_LCA250K_OpenData.zip
+  catalogue_url: >-
+    https://spatialdata.gov.scot/geonetwork/srv/api/records/24c6df5a-6b04-43f8-839f-0d45cc2802e3
+  licence_url: >-
+    https://www.hutton.ac.uk/wp-content/uploads/2024/05/The-James-Hutton-Institute-Open-Data-Licence-download.pdf
+  view_url: https://soils.environment.gov.scot
+  sha256: 3028de37a45f2fa8e7b9a528f86d097d6f3c9642187c3525b463da3c209329cf
+  vintage: "1:250k national open release (Hutton_LCA250K_OpenData.zip)"
+  postgis_table: lca_agriculture
+  bbox_endpoint: /layers/open/lca
+  ingest: python -m etl.ingest_lca
+  refresh_doc: scripts/data/README-lca.md
+  raw_dir: data/external/lca   # gitignored — never commit raw downloads
+  source_epsg: 27700
+  out_sr: 4326
+  gaps:
+    - 1:250,000 national scale — not a field-boundary survey
+    - 1:50,000 partial-cover product is a separate download (not loaded here)
+    - Capability class is soil/climate potential, not a rent or title
 
 sales:
   status: scaffolded
@@ -984,6 +1027,13 @@ map_layers:
       ledger_row: "4"
       ui_surface: ledger
       note: Ledger row 4 seabed — offshore wind/wave/tidal/CCS only; no £ rent
+    - id: lca
+      source: James Hutton LCA 1:250k (PostGIS ingest)
+      endpoint: /layers/open/lca
+      licence: James Hutton Institute Open Data Licence
+      note: >-
+        Accepted; not OGL-3.0. Attribution + share-alike / equivalent terms.
+        Ledger constraint (£0) — does not change parcel AGR or Surface Rent
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
   # SEPA flood MapServer is not allowlisted — OGL download → PostGIS only.

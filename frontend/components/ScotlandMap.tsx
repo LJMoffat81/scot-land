@@ -359,6 +359,8 @@ const VDL_MIN_ZOOM = 8;
 /** Data Zone outlines are readable from neighbourhood zoom. */
 const DATA_ZONE_MIN_ZOOM = 10;
 const LDP_MIN_ZOOM = 8;
+/** Community ownership points — postcode centroids, not titles. */
+const COMMUNITY_OWNERSHIP_MIN_ZOOM = 6;
 
 const VDL_SITE_TYPES: Array<{ name: string; color: string }> = [
   { name: "Vacant Land", color: "#e8a317" },
@@ -379,6 +381,24 @@ const VDL_FILL: ExpressionSpecification = [
 ];
 
 const LDP_FILL = "#5b8c5a";
+
+const COMMUNITY_OWNERSHIP_CIRCLE: ExpressionSpecification = [
+  "match",
+  ["coalesce", ["get", "asset_type"], ""],
+  "Land only",
+  "#2a9d8f",
+  "Building only",
+  "#e9c46a",
+  "Land and Building",
+  "#264653",
+  "Other",
+  "#e76f51",
+  "Structure on land not owned",
+  "#8abab5",
+  "Area not applicable",
+  "#9a8c98",
+  "#2a9d8f",
+];
 
 function escapeHtml(value: string): string {
   return value
@@ -509,6 +529,8 @@ export default function ScotlandMap() {
   const showLdp = Boolean(ledgerEnabled["1a"]);
   /** Crofting constraint — OGL lists only; no national polygon paint. */
   const showCroftingConstraint = Boolean(ledgerEnabled.crofting);
+  /** Ownership-context community ownership paint (URL ?community=1; not a LayersPanel toggle). */
+  const [showCommunityOwnership, setShowCommunityOwnership] = useState(false);
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
   const dataZonesTouched = useRef(false);
   const boundariesTouched = useRef(false);
@@ -1387,6 +1409,36 @@ export default function ScotlandMap() {
         paint: { "line-color": "#2f5d2e", "line-width": 1.0, "line-opacity": 0.85 },
       });
 
+      map.addSource("community-ownership-overlay", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution:
+          "Community Ownership in Scotland 2024 © Scottish Government (OGL v3.0). Postcode centroids, not titles.",
+      });
+      map.addLayer({
+        id: "community-ownership-circle",
+        type: "circle",
+        source: "community-ownership-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "circle-radius": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            6,
+            3,
+            12,
+            7,
+            16,
+            10,
+          ],
+          "circle-color": COMMUNITY_OWNERSHIP_CIRCLE,
+          "circle-opacity": 0.85,
+          "circle-stroke-color": "#12353a",
+          "circle-stroke-width": 0.8,
+        },
+      });
+
       for (const layer of CONTEXT_LAYERS) {
         if (layer.kind === "raster") {
           map.addSource(layer.id, {
@@ -1568,6 +1620,9 @@ export default function ScotlandMap() {
       // Council AGR £ / rent £/m² / band choropleth: scrubbed from public shell
       if (params.get("vacant") === "1") {
         setShowVdl(true);
+      }
+      if (params.get("community") === "1") {
+        setShowCommunityOwnership(true);
       }
       if (qWords) {
         setQuery(qWords);
@@ -1832,10 +1887,12 @@ export default function ScotlandMap() {
     const url = new URL(window.location.href);
     if (showVdl) url.searchParams.set("vacant", "1");
     else url.searchParams.delete("vacant");
+    if (showCommunityOwnership) url.searchParams.set("community", "1");
+    else url.searchParams.delete("community");
     url.searchParams.delete("public");
     url.searchParams.delete("band");
     window.history.replaceState({}, "", url.toString());
-  }, [showVdl]);
+  }, [showVdl, showCommunityOwnership]);
 
   // Scot-LAND squares grid
   useEffect(() => {
@@ -2110,6 +2167,77 @@ export default function ScotlandMap() {
       map.off("moveend", onMove);
     };
   }, [mapReady, showLdp]);
+
+  // Community ownership points (SG 2024 OGL → PostGIS postcode centroids; ownership-context)
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const setVis = (vis: "visible" | "none") => {
+      if (!map.getLayer("community-ownership-circle")) return;
+      map.setLayoutProperty("community-ownership-circle", "visibility", vis);
+    };
+
+    if (!showCommunityOwnership) {
+      setVis("none");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const loadCommunity = () => {
+      if (cancelled || !mapRef.current || inFlight) return;
+      const b = map.getBounds();
+      if (!b) return;
+      if (map.getZoom() < COMMUNITY_OWNERSHIP_MIN_ZOOM) {
+        setVis("none");
+        return;
+      }
+      inFlight = true;
+      setLayerBusy(true);
+      const path =
+        `/layers/open/community-ownership?south=${b.getSouth()}&west=${b.getWest()}` +
+        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=200`;
+      void apiJson<GeoJSON.FeatureCollection>(path)
+        .then((data) => {
+          if (cancelled) return;
+          (
+            map.getSource("community-ownership-overlay") as GeoJSONSource
+          )?.setData(data);
+          setVis("visible");
+          setLayerNotice(null);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setVis("none");
+          if (err instanceof ApiError && err.status === 503) {
+            setLayerNotice(
+              "Community ownership overlay is not available right now (PostGIS ingest unloaded). Gaps are not filled with guesses.",
+            );
+          }
+        })
+        .finally(() => {
+          inFlight = false;
+          if (!cancelled) setLayerBusy(false);
+        });
+    };
+
+    const onMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadCommunity, 700);
+    };
+
+    loadCommunity();
+    map.on("moveend", onMove);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off("moveend", onMove);
+    };
+  }, [mapReady, showCommunityOwnership]);
 
   // SG public / Crown Estate overlay (five national bodies)
   useEffect(() => {
@@ -2707,6 +2835,13 @@ export default function ScotlandMap() {
                 LDP allocations (OGL v3.0) — ledger nested row 1a. Spatial Hub
                 pack is fragmented; Edinburgh unavailable. Planning extents, not
                 a title. Zoom {LDP_MIN_ZOOM}+.
+              </p>
+            )}
+            {showCommunityOwnership && (
+              <p className="layer-meta" data-testid="layer-community-ownership-credit">
+                Community Ownership in Scotland 2024 (OGL v3.0) — ownership-context
+                (who/outline), not a rent row. Postcode centroids, not titles.
+                Zoom {COMMUNITY_OWNERSHIP_MIN_ZOOM}+. Enable with ?community=1.
               </p>
             )}
             {showCroftingConstraint && (

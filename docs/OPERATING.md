@@ -57,6 +57,7 @@ npm run dev
 | `GET /layers/parcels/at?lat=&lng=` | Parcel under a point (live WMS GetFeatureInfo) |
 | `GET /layers/open/vdl` | SVDLS vacant/derelict sites (bbox; **503** if upstream down) |
 | `GET /layers/open/public-land` | Public / Crown Estate overlay (**licence unverified/not open** — hidden from public map; **503** if upstream down) |
+| `GET /layers/open/community-ownership` | SG Community Ownership 2024 points (PostGIS; **503** if unloaded; ownership-context, no £ rent) |
 | `GET /platform/place` | Ownership / vacant / gap card |
 | `GET /platform/gaps` | Visible register gaps |
 | `GET /downloads` | Open layer and official source index |
@@ -83,6 +84,7 @@ npm run dev
 | Council AGR | All Scotland | Overview choropleth (Annual Ground Rent — not Surface Rent) |
 | Scot-LAND squares | Current map view | Zoom ≥ 12; every cell up to cap (then sampled) |
 | **Vacant and derelict** | SVDLS site-level survey polygons | Ownership and cadastre; site-type legend + credits; zoom ≥ 8; click popup; each site tagged `geometry_source` (Spatial Hub survey > RoS title outline > point) |
+| **Community ownership** | SG 2024 OGL asset points | Ownership and cadastre; asset-type legend + OGL credits; zoom ≥ 6; PostGIS postcode centroids (not titles); **503** when unloaded |
 | Coverage | Live vs linked/gap | Sidebar **Coverage** list; live rows toggle overlays |
 | Vacant residual story | Council choropleth + overlay | `/?story=vacant_land` |
 | Filters | Vacant / public overlays, rent band | `/?vacant=1&public=1&band=high` |

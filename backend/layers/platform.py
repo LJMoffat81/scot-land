@@ -12,6 +12,8 @@ import httpx
 
 from layers.common_good import catalog_layer as common_good_catalog_layer
 from layers.common_good import place_common_good
+from layers.community_ownership import catalog_layer as community_ownership_catalog_layer
+from layers.community_ownership import query_point as community_ownership_at_point
 from layers.council_metrics import METRIC_DEFS
 from layers.crofting import catalog_common_grazings, catalog_crofting_register
 from layers.crofting import place_crofting
@@ -59,6 +61,9 @@ CROWN_ESTATE_HUB = "https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis
 NATURESCOT_OPEN_DATA = "https://opendata.nature.scot/"
 NATURESCOT_SSSI = (
     "https://opendata.nature.scot/maps/sites-of-special-scientific-interest"
+)
+COMMUNITY_OWNERSHIP_PUB = (
+    "https://www.gov.scot/publications/community-ownership-in-scotland-2024/"
 )
 
 
@@ -207,6 +212,7 @@ def platform_catalog() -> dict[str, Any]:
                 "licence": "unverified/not open",
                 "source_url": PUBLIC_LAND_MAP,
             },
+            community_ownership_catalog_layer(),
             {
                 "id": "hydro_sites",
                 "group": "spatial",
@@ -732,14 +738,18 @@ def place_context(
 
     vdl = vdl_at_point(lat, lng)
     hla = hla_at_point(lat, lng)
+    community = community_ownership_at_point(lat, lng)
     vacant = bool(vdl.get("intersects"))
     housing_land = bool(hla.get("intersects"))
+    community_holding = bool(community.get("intersects"))
 
     ownership_flags: list[str] = []
     if vacant:
         ownership_flags.append("vacant_or_derelict_survey")
     if housing_land:
         ownership_flags.append("housing_land_audit")
+    if community_holding:
+        ownership_flags.append("community_ownership")
     if parcel_feature:
         ownership_flags.append("registered_cadastre")
     else:
@@ -784,6 +794,19 @@ def place_context(
         },
         "common_good": place_common_good(council_code),
         "crofting": place_crofting(council_code),
+        "community_ownership": {
+            "status": "live" if community.get("ok") else "unavailable",
+            "on_this_point": community_holding if community.get("ok") else None,
+            "assets": community.get("assets") or [],
+            "note": community.get("note")
+            or (
+                "SG Community Ownership in Scotland 2024 (OGL). "
+                "Postcode centroids — not a title. Confirm on ScotLIS."
+            ),
+            "source_url": COMMUNITY_OWNERSHIP_PUB,
+            "licence": community.get("licence"),
+            "source": community.get("source"),
+        },
         "private_or_sasine": {
             "status": "gap",
             "note": "Private names and Sasine extents stay on ScotLIS / paid products.",

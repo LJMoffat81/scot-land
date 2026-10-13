@@ -28,3 +28,9 @@ QA for the team-rule rebuild: `qa_team_rules_gis.json` (script `scripts/qa_team_
 | dz_svdls_rollup.csv | 14,368 | SVDLS 2025 register sites by zone (footprint_area), OGL geometry only; see README_svdls_hls.md |
 | dz_hls_rollup.csv | 14,368 | Spatial Hub housing land supply footprints by zone, with SVDLS overlap flags |
 | svdls_sites.gpkg, hls_sites.gpkg, internal/dz_svdls_rollup_with_inspire.csv | – | internal only, kept in out/ and not staged |
+
+## Community ownership (added 12 Oct 2026)
+| File | Rows | Notes |
+|---|---|---|
+| community_ownership_assets.geojson | 853 | SG Community Ownership in Scotland 2024 Dataset (OGL v3.0); postcodes.io centroids; see README_community_ownership.md |
+| SOURCES_SHA256_community_ownership.txt | – | SHA-256 of the SG Dataset XLSX |

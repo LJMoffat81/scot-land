@@ -71,8 +71,9 @@ Next development prioritises:
 2. Vacant & derelict land — **in progress**: SVDLS site-level overlay (OGL) in Ownership and cadastre with site-type legend, attribution/credits, click popup, and **503** when the upstream FeatureServer is down. Geometry precedence: Spatial Hub survey > RoS title outline > point (each site tagged `geometry_source`). Local-authority holdings remain a flagged gap.
 3. Common Good — **linked registers**: verified council register / metadata links via `/api/common-good.json`; no national open spatial layer. Fife indicative titles (OS INSPIRE EUL) are linked, not mirrored.
 4. Crofting Register + common grazings — **OGL lists only / spatial gap**: Crofting Commission Parishes, Holdings and Grazings CSVs (OGL-3.0) load into PostGIS via `python -m etl.ingest_crofting`; catalog layers `crofting_register` and `common_grazings` as ledger **constraints** (£0, no rent row; no LayersPanel toggle; no boundary polygons; never List of Individuals). RoS Crofting Register map holds definitive extents but is not an OGL redistributable polygon feed — gap stays visible. Spatial Hub Decrofted Areas is Restricted (rejected).
-5. Improving national statistics and data-gap indicators
-6. Keeping the AGR calculation engine and scenario tools as the analytical centre
+5. Community ownership — **in progress**: SG Community Ownership in Scotland 2024 OGL dataset as PostGIS postcode-centroid points (`/layers/open/community-ownership`); ownership-context (who/outline), not title polygons, no public £ rent.
+6. Improving national statistics and data-gap indicators
+7. Keeping the AGR calculation engine and scenario tools as the analytical centre
 
 The project remains aligned with SLRG principles and is intended as a permanent free public resource.
 

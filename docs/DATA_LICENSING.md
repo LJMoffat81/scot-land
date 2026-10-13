@@ -74,6 +74,7 @@ Public methodology and README must list active data sources. See `data/config/so
 | LDP allocations | Spatial Hub Local Development Plans pack + authority OGL FeatureServers → PostGIS | OGL-3.0 — cite Improvement Service / planning authorities; fragmented national coverage (Edinburgh missing); planning extents, not a title; ledger nested row 1a |
 | SSSI | NatureScot Sites of Special Scientific Interest | OGL-3.0 — https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ — cite NatureScot; Constraint (£0); raw extracts stay in `data/external/` |
 | NatureScot designations | NatureScot SPA, SAC, NNR | OGL-3.0 — https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ — cite NatureScot; Constraint (£0); raw extracts stay in `data/external/` |
+| Community ownership | SG Community Ownership in Scotland 2024 Dataset | OGL v3.0 — cite Scottish Government; map points are postcode centroids, not title polygons; ownership-context (no public £ rent) |
 | Common Good | Statutory LA registers + Fife indicative titles metadata | Linked only. No national open spatial layer. Fife under OS Public Sector End User Licence - INSPIRE — not redistributed here |
 | Crofting Register / common grazings | Crofting Commission open-data CSVs (Parishes, Holdings, Grazings) | OGL-3.0 — load into PostGIS for valuation joins. Individuals CSV not ingested (personal data). RoS Crofting Register map extents are linked, not redrawn. Spatial Hub Decrofted Areas is Restricted — not used |
 

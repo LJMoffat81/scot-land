@@ -41,6 +41,7 @@ def downgrade() -> None:
     op.execute("DROP TABLE IF EXISTS croft_holdings CASCADE")
     op.execute("DROP TABLE IF EXISTS croft_parishes CASCADE")
     op.execute("DROP TABLE IF EXISTS inspire_parcels_meta CASCADE")
+    # community_ownership_assets is owned by revision 20261012_0011.
     op.execute("DROP TABLE IF EXISTS inspire_parcels CASCADE")
     op.execute("DROP TABLE IF EXISTS eco_wealth CASCADE")
     op.execute("DROP TABLE IF EXISTS resource_wealth CASCADE")

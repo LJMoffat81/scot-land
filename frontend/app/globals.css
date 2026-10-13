@@ -748,6 +748,205 @@ input {
   font-style: italic;
 }
 
+/* Place view — per-hectare stack (Natural capital ledger) */
+.place-stack-page {
+  max-width: 44rem;
+}
+
+.place-hectare-stack {
+  margin-top: 0.25rem;
+}
+
+.place-stack-kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--slrg-muted);
+}
+
+.place-stack-title {
+  font-size: 1.55rem;
+  margin: 0 0 0.35rem;
+}
+
+.place-stack-meta {
+  margin: 0 0 0.5rem;
+  font-size: 0.92rem;
+  color: var(--slrg-muted);
+}
+
+.place-stack-section {
+  margin: 1.35rem 0 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line, #d8dee6);
+}
+
+.place-stack-section-title {
+  font-size: 1.05rem;
+  margin: 0 0 0.35rem;
+}
+
+.place-stack-subhead {
+  font-size: 0.95rem;
+  margin: 0.9rem 0 0.25rem;
+}
+
+.place-stack-unit,
+.place-stack-note {
+  margin: 0.2rem 0 0.55rem;
+  font-size: 0.85rem;
+  color: var(--slrg-muted);
+  line-height: 1.4;
+}
+
+.place-stack-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.place-stack-row {
+  position: relative;
+  margin: 0.35rem 0;
+  padding: 0.45rem 0.55rem 0.45rem 0.7rem;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 118, 211, 0.08) 0%,
+    rgba(242, 245, 248, 0.9) 55%,
+    #fff 100%
+  );
+  border-left: 3px solid var(--rugby-sky, #0076d3);
+}
+
+.place-stack-row-nested {
+  margin-left: 1.35rem;
+  border-left-color: #8aa4b8;
+  background: linear-gradient(
+    90deg,
+    rgba(95, 101, 108, 0.06) 0%,
+    rgba(242, 245, 248, 0.7) 60%,
+    #fff 100%
+  );
+}
+
+.place-stack-outside .place-stack-row {
+  border-left-color: #9b2c2c;
+  background: linear-gradient(
+    90deg,
+    rgba(155, 44, 44, 0.07) 0%,
+    rgba(242, 245, 248, 0.85) 55%,
+    #fff 100%
+  );
+}
+
+.place-stack-shadow .place-stack-row,
+[data-testid="place-stack-shadow"] .place-stack-row {
+  border-left-color: #5f656c;
+  background: linear-gradient(
+    90deg,
+    rgba(95, 101, 108, 0.12) 0%,
+    rgba(242, 245, 248, 0.9) 55%,
+    #fff 100%
+  );
+}
+
+.place-stack-row-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem 0.65rem;
+}
+
+.place-stack-row-id {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  min-width: 1.5rem;
+}
+
+.place-stack-row-label {
+  flex: 1 1 10rem;
+}
+
+.place-stack-tag {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--slrg-muted);
+}
+
+.place-stack-amount {
+  margin-left: auto;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  min-width: 1.5rem;
+  text-align: right;
+}
+
+.place-stack-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-top: 0.55rem;
+  padding: 0.55rem 0.65rem;
+  border-top: 2px solid var(--rugby-navy, #0b1e3a);
+  font-weight: 650;
+}
+
+.place-stack-total-label {
+  font-size: 0.9rem;
+}
+
+.place-stack-nested-note,
+.place-stack-outside-note {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: var(--slrg-muted);
+  font-style: italic;
+}
+
+.place-stack-benchmarks {
+  padding-left: 1.1rem;
+  margin: 0.35rem 0;
+}
+
+.place-stack-benchmarks li {
+  margin: 0.35rem 0;
+}
+
+.place-stack-constraint {
+  border-left-color: var(--line, #d8dee6);
+  background: #f7f9fc;
+}
+
+.place-stack-disclaimer {
+  margin: 1.5rem 0 0;
+  font-size: 0.82rem;
+  color: var(--slrg-muted);
+  line-height: 1.45;
+}
+
+.place-stack-blocked h1 {
+  font-size: 1.4rem;
+  margin: 0 0 0.5rem;
+}
+
+.place-stack-error {
+  color: var(--danger, #9b1c1c);
+}
+
+@media (max-width: 560px) {
+  .place-stack-row-nested {
+    margin-left: 0.75rem;
+  }
+
+  .place-stack-total {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 .fiscal-place {
   background: #f7f9fc;
   border: 1px solid var(--line);

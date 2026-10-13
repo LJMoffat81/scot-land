@@ -9,6 +9,7 @@ const OPEN_API = new Set([
   "public-land.json",
   "vdl.json",
   "place.json",
+  "place-stack.json",
   "registers.json",
   "common-good.json",
   "catalog.json",

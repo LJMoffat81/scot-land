@@ -5,6 +5,7 @@
  */
 
 import {
+  LAYER_ATTRIBUTION,
   layerLicence,
   type CatalogLayer,
 } from "@/lib/layerCatalog";
@@ -77,9 +78,23 @@ export function activeMapCredits(
   const out: MapCreditEntry[] = [];
   for (const id of wanted) {
     const layer = byId.get(id);
-    if (!layer) continue;
-    const entry = creditEntryFromCatalog(layer);
-    if (entry) out.push(entry);
+    if (layer) {
+      const entry = creditEntryFromCatalog(layer);
+      if (entry) out.push(entry);
+      continue;
+    }
+    // Catalog fetch can fail in smoke (no API) — fall back to known licence lines.
+    const fallback = LAYER_ATTRIBUTION[id];
+    if (!fallback) continue;
+    const attribution = `${fallback.source} — ${fallback.licence}`;
+    out.push({
+      layerId: id,
+      label: fallback.source,
+      licence: fallback.licence,
+      licenceUrl: fallback.sourceUrl,
+      attribution,
+      nonCommercial: isNonCommercialLicence(fallback.licence),
+    });
   }
   return out;
 }

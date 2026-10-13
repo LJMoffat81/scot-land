@@ -16,6 +16,39 @@ test.describe("map licence credits (catalog-driven)", () => {
     page,
   }) => {
     test.setTimeout(120_000);
+
+    const catalogBody = {
+      version: 2,
+      layers: [
+        {
+          id: "boundaries",
+          group: "spatial",
+          status: "live",
+          label: "ROS INSPIRE parcels",
+          licence: "OGL-3.0",
+          licence_url:
+            "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+          attribution:
+            "© Crown copyright. Reproduced with the permission of Registers of Scotland. Contains OS data © Crown copyright and database right 2026. OGL-3.0.",
+          source_url: "https://www.ros.gov.uk/open-data",
+        },
+      ],
+    };
+    await page.route("**/layers/catalog**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(catalogBody),
+      });
+    });
+    await page.route("**/backend/layers/catalog**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(catalogBody),
+      });
+    });
+
     await openMap(page);
 
     // Range legend (population density bands) + hatched/grey no-data — no rent £.
@@ -43,7 +76,7 @@ test.describe("map licence credits (catalog-driven)", () => {
       { timeout: 45_000 },
     );
 
-    // Enable boundaries credit in the catalog-driven control (zoom ≥ 14 auto-enables).
+    // Catalog-driven boundaries credit once parcels are on (zoom ≥ 14).
     const credits = page.getByTestId("map-licence-credits");
     await expect(credits).toBeVisible({ timeout: 45_000 });
     await expect(page.getByTestId("map-credit-boundaries")).toBeVisible({

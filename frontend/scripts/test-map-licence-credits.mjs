@@ -37,14 +37,34 @@ function creditEntryFromCatalog(layer) {
   };
 }
 
+const LAYER_ATTRIBUTION = {
+  boundaries: {
+    source: "Registers of Scotland INSPIRE Index Polygons",
+    licence: "OGL-3.0",
+    sourceUrl: "https://www.ros.gov.uk/open-data",
+  },
+};
+
 function activeMapCredits(catalogLayers, activeLayerIds) {
   const wanted = new Set([...activeLayerIds].map((id) => id.trim()).filter(Boolean));
   const byId = new Map(catalogLayers.map((layer) => [layer.id, layer]));
   const out = [];
   for (const id of wanted) {
     const layer = byId.get(id);
-    if (!layer) continue;
-    out.push(creditEntryFromCatalog(layer));
+    if (layer) {
+      out.push(creditEntryFromCatalog(layer));
+      continue;
+    }
+    const fallback = LAYER_ATTRIBUTION[id];
+    if (!fallback) continue;
+    out.push({
+      layerId: id,
+      label: fallback.source,
+      licence: fallback.licence,
+      licenceUrl: fallback.sourceUrl,
+      attribution: `${fallback.source} — ${fallback.licence}`,
+      nonCommercial: isNonCommercialLicence(fallback.licence),
+    });
   }
   return out;
 }
@@ -110,6 +130,11 @@ assert.equal(credits[0].licenceUrl?.includes("open-government-licence"), true);
 assert.equal(credits[1].nonCommercial, true);
 assert.equal(isNonCommercialLicence("OGL-3.0"), false);
 assert.equal(isNonCommercialLicence("non-commercial"), true);
+
+const fallbackCredits = activeMapCredits([], ["boundaries"]);
+assert.equal(fallbackCredits.length, 1);
+assert.equal(fallbackCredits[0].licence, "OGL-3.0");
+assert.match(fallbackCredits[0].attribution, /Registers of Scotland/);
 
 const rentLegend = rangeLegendFromStops(
   [

@@ -127,6 +127,47 @@ boundaries:
     ward_name: East Centre
     validation_label: "Glasgow Ward 18 — East Centre (Wightman validation case study)"
 
+# Scottish Government Data Zone polygons (Georgist / valuation zone frame).
+# Self-fetch never writes data/external/. No £ rent on this layer.
+data_zone_boundaries:
+  name: Scottish Government Data Zone Boundaries
+  role: data_zone_polygons_for_point_lookup_and_map
+  ledger_role: ledger-frame
+  ledger_row: "1"
+  ui_surface: ledger
+  licence: OGL-3.0
+  licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
+  attribution: >-
+    Contains public sector information licensed under the Open Government
+    Licence v3.0. © Scottish Government, contains OS data © Crown copyright
+    and database right.
+  catalogue_url: >-
+    https://www.spatialdata.gov.scot/geonetwork/srv/eng/catalog.search#/metadata/7d564e13-a967-495a-ae2f-048ffdfa4b03
+  ingest: python -m etl.ingest_dz_boundaries --fetch --replace
+  fixture_ingest: python -m etl.ingest_dz_boundaries --fixture --replace
+  postgis_table: dz_boundaries
+  provenance_table: dz_boundaries_meta
+  epsg: 27700
+  refresh_doc: scripts/data/README-dz-boundaries.md
+  bbox_endpoint: /layers/open/data-zones
+  point_endpoint: /layers/context/data-zones/at
+  vintages:
+    2011:
+      url: https://maps.gov.scot/ATOM/shapefiles/SG_DataZoneBdry_2011.zip
+      expected_count: 6976
+      product: DataZoneBdry2011
+      # From data/processed/gis/SOURCES_SHA256.txt (pinned national zip)
+      sha256: 846950b7dc74fdedc8a6c5c3d9fd9c5afeca3477a103505b590613bc9704bed8
+    2022:
+      url: https://maps.gov.scot/ATOM/shapefiles/SG_DataZoneBdry_2022.zip
+      expected_count: 7392
+      product: DataZoneBdry2022
+      sha256: 421c648480c7d51e32934de9f1b9f6cbbf86c6d8d382aab30a7bb4d2049ef0ec
+  gaps:
+    - Sasine / private titles are outside this zone frame
+    - Zone codes alone are not ownership or rent
+    - Synthetic CI fixture must never be labelled as real SG polygons
+
 parcels:
   name: ROS INSPIRE Index Polygons (cadastral parcels)
   product: INSPIRE Index Polygons (CP.CadastralParcel)

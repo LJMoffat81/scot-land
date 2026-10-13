@@ -55,6 +55,8 @@ npm run dev
 | `GET /layers/parcels?...` | RoS INSPIRE Index Polygons bbox (PostGIS; **503** if table empty; empty viewport **200** when loaded; CI may use `--fixture`) |
 | `GET /layers/parcels/tiles/{z}/{x}/{y}` | Live RoS INSPIRE WMS proxy (soft-fail tiles) |
 | `GET /layers/parcels/at?lat=&lng=` | Parcel under a point (live WMS GetFeatureInfo) |
+| `GET /layers/open/data-zones?...` | SG Data Zone boundaries bbox (PostGIS `dz_boundaries`; **503** if not loaded) |
+| `GET /layers/context/data-zones/at?lat=&lon=` | Point → real `(code, vintage)` from PostGIS (**503** if unloaded; Balfron → `S01013010` when loaded) |
 | `GET /layers/open/settlements?...` | NRS Census 2022 settlements bbox (PostGIS; **503** if not loaded) |
 | `GET /layers/open/localities?...` | NRS Census 2022 localities bbox (PostGIS; **503** if not loaded) |
 | `GET /layers/open/vdl` | SVDLS vacant/derelict sites (bbox; **503** if upstream down) |
@@ -97,6 +99,9 @@ npm run dev
 
 Cadastre ingest (one command each): `--pilot` (Edinburgh/MID + Fife), `--all` (33 counties), or `--fixture` (CI). Self-fetch never writes `data/external/`. See `scripts/data/README-inspire.md`. Licence **OGL-3.0**.  
 Woodland ingest: `python -m etl.ingest_woodland_layers` — see `scripts/data/README-woodland.md`.
+
+Data Zone boundaries (SG ATOM shapefiles → PostGIS EPSG:27700, provenance URL/vintage/sha256):  
+`python -m etl.ingest_dz_boundaries --fetch --replace` (expects **6,976** zones for 2011 and **7,392** for 2022). CI: `--fixture`. Self-fetch never writes `data/external/`. See `scripts/data/README-dz-boundaries.md`. Licence **OGL-3.0**. No £ rent.
 
 Crofting / common grazings (OGL CSV → PostGIS): `python -m etl.ingest_crofting --download` (raw under `data/external/crofting/`, gitignored). Fixtures: `python -m etl.ingest_crofting --from-fixtures`.
 

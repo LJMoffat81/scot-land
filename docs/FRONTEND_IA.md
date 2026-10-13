@@ -1,12 +1,13 @@
 # Frontend information architecture — Natural capital ledger
 
-Status: **finalised for agreement** — Georgist accounting rules received 2026-10-13 (verbatim spec in project store `docs/georgist-ledger-accounting-rules.md`).  
-Scope: product IA only (no application code).  
+Status: **agreed** — Laurie approved the Natural capital ledger plan (Georgist rules) 2026-10-13. Authoritative ROWS / CHECKS / SCEPTIC NEEDS: project store `docs/georgist-ledger-accounting-rules.md`.  
+Scope: product IA only (no application code on this PR).  
 Related: [PLATFORM.md](PLATFORM.md), [CHARTER.md](CHARTER.md), [ECONOMIC_RULES.md](ECONOMIC_RULES.md), `GET /layers/catalog`.
 
-**Pause:** do not merge new map-panel / layers-pop-out UI until this ledger IA is agreed and implemented deliberately.  
+**Implement against this doc.** New map-panel UI must follow the ledger (no layers-pop-out / theme checklist).  
 **Continue:** backend loaders, PostGIS ingest, catalog entries, place APIs, Data-section content.  
-**Publication:** zone-level only, never plots; nothing published for blocked zones. Public £ still gated by ECONOMIC_RULES / calibration where those hold.
+**Publication:** zone-level only, never plots; nothing published for blocked zones. Public £ still gated by ECONOMIC_RULES / calibration where those hold.  
+This PR stays **draft / do not merge** until Laurie (or Grok Bot per charter) squash-merges the docs.
 
 ---
 
@@ -200,7 +201,13 @@ Primary nav: **Map · Data · About**.
 
 ## Agreement checklist
 
+### Plan (agreed)
+
 - [x] Accounting rules received (ROWS, CHECKS, SCEPTIC NEEDS)  
+- [x] Natural capital ledger IA **agreed** by Laurie (this document)  
+
+### Implementation (follow-on UI PRs — not this docs PR)
+
 - [ ] Ledger UI replaces layers-pop-out  
 - [ ] Rows 1–10 (+ 1a nested) exactly as specified  
 - [ ] Constraints = no rent row, £0  

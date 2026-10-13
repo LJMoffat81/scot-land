@@ -169,6 +169,18 @@ export const LAYER_ATTRIBUTION: Record<
     sourceUrl:
       "https://www.nrscotland.gov.uk/publications/small-area-population-estimates-mid-2024-2022-data-zones/",
   },
+  repd: {
+    source: "DESNZ Renewable Energy Planning Database (REPD)",
+    licence: "OGL-3.0",
+    sourceUrl:
+      "https://www.gov.uk/government/publications/renewable-energy-planning-database-quarterly-extract",
+  },
+  crown_estate_leases: {
+    source: "Crown Estate Scotland Spatial Hub offshore leases",
+    licence: "OGL-3.0",
+    sourceUrl:
+      "https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/",
+  },
 
   community_ownership: {
     source:

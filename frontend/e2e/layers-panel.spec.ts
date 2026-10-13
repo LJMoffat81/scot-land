@@ -182,6 +182,9 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
     test.setTimeout(90_000);
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor();
+    await expect(
+      page.getByRole("button", { name: "Layers", exact: true }),
+    ).toHaveCount(0);
     await page.getByRole("button", { name: "Ledger", exact: true }).click();
     const tools = page.locator("aside.hud-tools");
     await expect(tools.getByTestId("ledger-panel")).toBeVisible();

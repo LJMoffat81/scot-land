@@ -54,9 +54,11 @@ const FIXTURE_CATALOG = {
     {
       id: "public_crown",
       group: "ownership",
-      status: "live",
+      status: "gap",
       label: "Public and Crown Estate land",
-      licence: "OGL-3.0",
+      description:
+        "SG 2024 dashboard only — licence unverified/not open. Hidden from the public map.",
+      licence: "unverified/not open",
       source_url:
         "https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897",
     },

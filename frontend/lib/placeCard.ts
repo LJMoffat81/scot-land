@@ -163,12 +163,12 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
     {
       id: "public_crown",
       label: "Public and Crown Estate land",
-      status: "live",
-      intersects: false,
-      note: "Five national bodies only. Not local-authority land.",
+      status: "gap",
+      intersects: null,
+      note:
+        "SG 2024 dashboard only — licence unverified/not open. Not on the public map.",
       source_url:
         "https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897",
-      detail: { holdings: [] },
     },
     {
       id: "common_good",

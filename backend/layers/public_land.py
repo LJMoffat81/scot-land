@@ -33,13 +33,13 @@ DASHBOARD_URL = (
 )
 NEWS_URL = "https://www.gov.scot/news/interactive-map/"
 
-LICENCE = "OGL-3.0"
+LICENCE = "unverified/not open"
 
 ATTRIBUTION = (
     "Scottish Public and Crown Estate Land 2024. "
-    "Contains public sector information licensed under the Open Government "
-    "Licence v3.0. Scottish Government; landholding bodies listed on the "
-    "official map. Non-exhaustive — five bodies only, not a legal title."
+    "Scottish Government dashboard overlay — licence unverified/not open. "
+    "Not redistributed on the public map until an OGL-licensed source is "
+    "confirmed. Non-exhaustive — five bodies only, not a legal title."
 )
 
 

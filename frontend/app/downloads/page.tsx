@@ -25,10 +25,6 @@ const OPEN_JSON = [
     name: "The same council figures as a spreadsheet",
   },
   {
-    href: "/api/public-land.json",
-    name: "Public and Crown land, by the five national bodies",
-  },
-  {
     href: "/api/vdl.json",
     name: "Vacant and derelict land, from the Scottish Vacant and Derelict Land Survey",
   },
@@ -57,7 +53,6 @@ const OPEN_JSON = [
 const SOURCE_NAME: Record<string, string> = {
   vdl_register: "Scottish Vacant and Derelict Land Survey",
   inspire_parcels: "Registers of Scotland open land map",
-  public_crown_map: "Public and Crown land, five national bodies",
   common_good: "Common Good registers (linked; no national open map)",
   scotlis: "ScotLIS, the official title record",
 };

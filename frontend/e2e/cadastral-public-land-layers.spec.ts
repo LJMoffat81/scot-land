@@ -13,7 +13,7 @@ const FIXTURE_CATALOG = {
     },
     {
       id: "boundaries",
-      group: "spatial",
+      group: "ownership",
       status: "live",
       label: "ROS INSPIRE parcels",
       licence: "OGL / INSPIRE (Crown)",
@@ -35,8 +35,9 @@ const FIXTURE_CATALOG = {
     {
       id: "public_crown",
       group: "ownership",
-      status: "live",
+      status: "gap",
       label: "Public and Crown Estate land",
+      licence: "unverified/not open",
       source_url: "https://www.arcgis.com/apps/dashboards/example",
     },
   ],
@@ -78,7 +79,9 @@ test.describe("cadastral and public land layers", () => {
     await expect(panel.getByTestId("layers-panel")).toBeVisible();
     await expect(panel.getByTestId("layers-group-ownership")).toBeVisible();
     await expect(panel.getByTestId("layer-toggle-boundaries")).toBeVisible();
-    await expect(panel.getByTestId("layer-toggle-public_crown")).toBeVisible();
+    // SG 2024 public/Crown dashboard: licence unverified/not open — no public toggle
+    await expect(panel.getByTestId("layer-toggle-public_crown")).toHaveCount(0);
+    await expect(panel.getByTestId("layer-public-land")).toHaveCount(0);
 
     // Catalog panel precedes the charge controls
     const catalogBeforeCharge = await panel.evaluate((el) => {
@@ -95,11 +98,6 @@ test.describe("cadastral and public land layers", () => {
     });
     expect(catalogBeforeCharge).toBe(true);
 
-    await panel.getByTestId("layer-toggle-public_crown").click();
-    await expect(panel.getByLabel("Public land legend")).toBeVisible();
-    await expect(panel.getByText("Forestry and Land Scotland")).toBeVisible();
-    await expect(
-      panel.getByText(/Registers of Scotland|Scottish Public and Crown/i).first(),
-    ).toBeVisible();
+    await expect(panel.getByText(/Registers of Scotland/i).first()).toBeVisible();
   });
 });

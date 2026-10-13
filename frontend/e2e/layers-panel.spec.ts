@@ -39,9 +39,11 @@ const FIXTURE_CATALOG = {
     {
       id: "public_crown",
       group: "ownership",
-      status: "live",
+      status: "gap",
       label: "Public and Crown Estate land",
-      licence: "OGL-3.0",
+      description:
+        "SG 2024 dashboard only — licence unverified/not open. Hidden from the public map.",
+      licence: "unverified/not open",
       source_url: "https://www.arcgis.com/apps/dashboards/example",
     },
     {
@@ -147,8 +149,9 @@ test.describe("LayersPanel (catalog-driven)", () => {
     await expect(page.getByTestId("layer-source-boundaries")).toContainText(
       "Registers of Scotland",
     );
+    await expect(page.getByTestId("layer-toggle-public_crown")).toHaveCount(0);
     await expect(page.getByTestId("layer-licence-public_crown")).toContainText(
-      "OGL-3.0",
+      "unverified/not open",
     );
   });
 
@@ -158,6 +161,7 @@ test.describe("LayersPanel (catalog-driven)", () => {
     test.setTimeout(90_000);
     await openPanel(page);
 
+    await expect(page.getByTestId("layer-toggle-public_crown")).toHaveCount(0);
     await expect(page.getByTestId("layer-toggle-la_holdings")).toHaveCount(0);
     await expect(page.getByTestId("layer-unavailable-la_holdings")).toContainText(
       /gap|unavailable|not scraped/i,

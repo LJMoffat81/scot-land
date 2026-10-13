@@ -13,7 +13,6 @@ import httpx
 from layers.common_good import catalog_layer as common_good_catalog_layer
 from layers.common_good import place_common_good
 from layers.council_metrics import METRIC_DEFS
-from layers.public_land import query_point as public_land_at_point
 from layers.registers import registers_for_council
 from layers.vdl import query_point as vdl_at_point
 from spatial.parcels import lookup_parcel, lookup_parcel_geojson
@@ -157,15 +156,14 @@ def platform_catalog() -> dict[str, Any]:
             {
                 "id": "public_crown",
                 "group": "ownership",
-                "status": "live",
+                "status": "gap",
                 "label": "Public and Crown Estate land",
                 "description": (
-                    "SG 2024 map of five national bodies and Crown Estate Scotland. "
-                    "Indicative holdings, not a title, not local-authority land."
+                    "SG 2024 dashboard of five national bodies — dashboard only, "
+                    "no verified open licence. Hidden from the public map until an "
+                    "OGL-licensed source is confirmed. Not a title, not local-authority land."
                 ),
-                "endpoint": "/layers/open/public-land",
-                "minzoom": 6,
-                "licence": "OGL-3.0",
+                "licence": "unverified/not open",
                 "source_url": PUBLIC_LAND_MAP,
             },
             {
@@ -505,16 +503,18 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
     )
 
     public = card.get("public_or_crown") or {}
-    public_ok = public.get("on_this_point") is not None
     layers.append(
         _layer_row(
             layer_id="public_crown",
             label="Public and Crown Estate land",
-            status="live",
-            intersects=public.get("on_this_point") if public_ok else None,
-            note=public.get("note"),
+            status="gap",
+            intersects=None,
+            note=public.get("note")
+            or (
+                "SG 2024 dashboard only — licence unverified/not open. "
+                "Not drawn on the public map until an OGL source is confirmed."
+            ),
             source_url=PUBLIC_LAND_MAP,
-            detail={"holdings": public.get("holdings") or []} if public_ok else None,
         )
     )
 
@@ -648,15 +648,11 @@ def place_context(
     parcel_props = (parcel_feature or {}).get("properties") or {}
 
     vdl = vdl_at_point(lat, lng)
-    public = public_land_at_point(lat, lng)
     vacant = bool(vdl.get("intersects"))
-    public_holding = bool(public.get("intersects"))
 
     ownership_flags: list[str] = []
     if vacant:
         ownership_flags.append("vacant_or_derelict_survey")
-    if public_holding:
-        ownership_flags.append("public_or_crown")
     if parcel_feature:
         ownership_flags.append("registered_cadastre")
     else:
@@ -680,17 +676,17 @@ def place_context(
             "note": "INSPIRE parcel is an indicative registered extent, not a title sheet.",
         },
         "public_or_crown": {
-            "status": "live",
-            "on_this_point": public_holding if public.get("ok") else None,
-            "holdings": public.get("holdings") or [],
-            "note": public.get("note")
-            or (
-                "Five national bodies only. Not local-authority land. "
+            "status": "gap",
+            "on_this_point": None,
+            "holdings": [],
+            "note": (
+                "SG 2024 public/Crown land dashboard has no verified open licence. "
+                "Hidden from the public map until an OGL-licensed source is confirmed. "
                 "Not a legal title — confirm on ScotLIS."
             ),
             "map_url": PUBLIC_LAND_MAP,
             "crown_hub": CROWN_ESTATE_HUB,
-            "source": public.get("source"),
+            "licence": "unverified/not open",
         },
         "local_authority_holding": {
             "status": "gap",
@@ -707,7 +703,8 @@ def place_context(
         "scotlis": scotlis_links(lat, lng, postcode),
         "filters": {
             "vacant": vacant,
-            "public_private": "public" if public_holding else "unknown",
+            # public/Crown map licence unverified — do not classify from that overlay
+            "public_private": "unknown",
             "value_band": None,
         },
     }

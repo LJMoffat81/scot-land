@@ -348,14 +348,6 @@ const STORIES: Array<{ id: StoryId; label: string; metric: MetricId; blurb: stri
   },
 ];
 
-const PUBLIC_LAND_BODIES: Array<{ name: string; color: string }> = [
-  { name: "Forestry and Land Scotland", color: "#66c2a5" },
-  { name: "NatureScot", color: "#8da0cb" },
-  { name: "Scottish Crown Estate", color: "#e78ac3" },
-  { name: "Scottish Water", color: "#a6d854" },
-  { name: "Crofting Agricultural Holdings", color: "#fc8d62" },
-];
-
 const PUBLIC_LAND_FILL: ExpressionSpecification = [
   "match",
   ["coalesce", ["get", "organisation"], ""],
@@ -516,14 +508,14 @@ export default function ScotlandMap() {
   const [showBoundaries, setShowBoundaries] = useState(false);
   const [showCellGrid] = useState(false);
   const [showVdl, setShowVdl] = useState(false);
-  const [showPublicLand, setShowPublicLand] = useState(false);
+  // SG 2024 public/Crown dashboard: licence unverified/not open — never paint
+  const showPublicLand = false;
   const [showDataZones, setShowDataZones] = useState(false);
   /** Catalog toggles for withheld public layers (honest unavailable; no map paint). */
   const [withheldCatalogOn, setWithheldCatalogOn] = useState<LayerToggleState>(
     {},
   );
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
-  const publicLandTouched = useRef(false);
   const dataZonesTouched = useRef(false);
   const boundariesTouched = useRef(false);
   const layerPopupRef = useRef<maplibregl.Popup | null>(null);
@@ -544,10 +536,7 @@ export default function ScotlandMap() {
       boundariesTouched.current = true;
       setShowBoundaries(Boolean(next.boundaries));
     }
-    if (Boolean(next.public_crown) !== showPublicLand) {
-      publicLandTouched.current = true;
-      setShowPublicLand(Boolean(next.public_crown));
-    }
+    // public_crown is gap (unverified/not open) — never enable from catalog toggles
     if (Boolean(next.vdl) !== showVdl) {
       setShowVdl(Boolean(next.vdl));
     }
@@ -1386,7 +1375,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "Scottish Public and Crown Estate Land 2024. Five bodies only; not a title.",
+          "Scottish Public and Crown Estate Land 2024 — licence unverified/not open; not drawn on the public map.",
       });
       map.addLayer({
         id: "public-land-fill",
@@ -1611,13 +1600,7 @@ export default function ScotlandMap() {
       if (qBand === "low" || qBand === "mid" || qBand === "high") {
         setBand(qBand);
       }
-      if (params.get("public") === "1") {
-        publicLandTouched.current = true;
-        setShowPublicLand(true);
-      } else if (params.get("public") === "0") {
-        publicLandTouched.current = true;
-        setShowPublicLand(false);
-      }
+      // public/Crown 2024 dashboard: licence unverified/not open — never paint on public map
       if (params.get("vacant") === "1") {
         setShowVdl(true);
       }
@@ -1977,12 +1960,11 @@ export default function ScotlandMap() {
     const url = new URL(window.location.href);
     if (showVdl) url.searchParams.set("vacant", "1");
     else url.searchParams.delete("vacant");
-    if (showPublicLand) url.searchParams.set("public", "1");
-    else url.searchParams.delete("public");
+    url.searchParams.delete("public");
     if (band) url.searchParams.set("band", band);
     else url.searchParams.delete("band");
     window.history.replaceState({}, "", url.toString());
-  }, [showVdl, showPublicLand, band]);
+  }, [showVdl, band]);
 
   // Scot-LAND squares grid
   useEffect(() => {
@@ -2270,9 +2252,7 @@ export default function ScotlandMap() {
       if (!boundariesTouched.current) {
         setShowBoundaries(close);
       }
-      if (!publicLandTouched.current) {
-        setShowPublicLand(zoom >= PUBLIC_LAND_MIN_ZOOM);
-      }
+      // public_crown stays off: SG 2024 dashboard licence is unverified/not open
       if (!dataZonesTouched.current) {
         setShowDataZones(zoom >= DATA_ZONE_MIN_ZOOM);
       }
@@ -2828,27 +2808,6 @@ export default function ScotlandMap() {
                     — not a title sheet. PostGIS bbox when loaded; live WMS tiles
                     otherwise. Zoom {CADASTRAL_MIN_ZOOM}+.
                   </p>
-                )}
-                {showPublicLand && (
-                  <>
-                    <ul className="layer-legend" aria-label="Public land legend">
-                      {PUBLIC_LAND_BODIES.map((body) => (
-                        <li key={body.name}>
-                          <span
-                            className="layer-legend-swatch"
-                            style={{ background: body.color }}
-                            aria-hidden="true"
-                          />
-                          {body.name}
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="layer-meta">
-                      Scottish Public and Crown Estate Land 2024. Five bodies
-                      only — not local-authority land, not a title. Gaps are
-                      flagged, never guessed. Zoom {PUBLIC_LAND_MIN_ZOOM}+.
-                    </p>
-                  </>
                 )}
                 {showVdl && (
                   <>

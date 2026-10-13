@@ -87,11 +87,12 @@ Land Capability for Agriculture (Hutton) **is in scope** under the James Hutton 
 
 | Field | Value |
 |-------|--------|
-| Source | Scottish Public and Crown Estate Land 2024 FeatureServer |
-| Licence | OGL-3.0 |
+| Source | Scottish Public and Crown Estate Land 2024 FeatureServer (behind official dashboard) |
+| Licence | unverified/not open — dashboard only; do **not** present as OGL-3.0 |
+| Public map | **Hidden** until a verified OGL-licensed source is found |
 | Source URL | https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897 |
 | Bodies | Forestry and Land Scotland, NatureScot, Scottish Crown Estate, Scottish Water, Crofting Agricultural Holdings |
-| BBox API | `GET /layers/open/public-land` → **503** when upstream unavailable |
+| BBox API | `GET /layers/open/public-land` exists for internal/research use; not toggled on the public map |
 | Gaps | Local-authority land, Common Good, and bodies outside the five are not shown — never guessed |
 
 Registry: `data/config/sources.yaml` → `parcels` and `public_land`.

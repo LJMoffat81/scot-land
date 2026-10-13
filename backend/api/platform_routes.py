@@ -333,14 +333,6 @@ def open_downloads() -> dict:
                 "endpoint": "/layers/open/vdl",
             },
             {
-                "id": "public_land_overlay",
-                "label": "Public / Crown land overlay (this API)",
-                "licence": "OGL-3.0",
-                "endpoint": "/layers/open/public-land",
-                "url": "https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897",
-                "note": "Viewport query of the official map. Five bodies only.",
-            },
-            {
                 "id": "hydro_sites",
                 "label": "SEPA hydropower sites (this API)",
                 "licence": "OGL-3.0",
@@ -385,12 +377,6 @@ def open_downloads() -> dict:
                     "PostGIS Index Polygons ingest. 503 when table empty; "
                     "CI may load a synthetic fixture only."
                 ),
-            },
-            {
-                "id": "public_crown_map",
-                "label": "Scottish public and Crown Estate land map",
-                "licence": "OGL-3.0",
-                "url": "https://www.arcgis.com/apps/dashboards/a10668ccd4784209bf22e3adcef6b897",
             },
             {
                 "id": "common_good",

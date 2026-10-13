@@ -78,8 +78,10 @@ def public_land_json() -> dict[str, Any]:
         "ok": True,
         "note": (
             "Five national bodies only, non-exhaustive. Not local-authority land. "
-            "Not a legal title."
+            "Not a legal title. Licence unverified/not open — not on the public map "
+            "until an OGL-licensed source is confirmed."
         ),
+        "licence": "unverified/not open",
         "bodiesExpected": list(BODIES),
         "bodies": bodies,
         "totalHectares": round(total_ha, 1),

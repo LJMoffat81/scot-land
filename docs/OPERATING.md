@@ -56,13 +56,13 @@ npm run dev
 | `GET /layers/parcels/tiles/{z}/{x}/{y}` | Live RoS INSPIRE WMS proxy (soft-fail tiles) |
 | `GET /layers/parcels/at?lat=&lng=` | Parcel under a point (live WMS GetFeatureInfo) |
 | `GET /layers/open/vdl` | SVDLS vacant/derelict sites (bbox; **503** if upstream down) |
-| `GET /layers/open/public-land` | Public / Crown Estate overlay (bbox, five bodies; **503** if upstream down) |
+| `GET /layers/open/public-land` | Public / Crown Estate overlay (**licence unverified/not open** — hidden from public map; **503** if upstream down) |
 | `GET /platform/place` | Ownership / vacant / gap card |
 | `GET /platform/gaps` | Visible register gaps |
 | `GET /downloads` | Open layer and official source index |
 | `GET /api/catalog.json` | Live / linked / gap register |
 | `GET /api/roll.json?scenario=` | 32-council AGR roll with SVDLS vacant ha |
-| `GET /api/public-land.json` | Hectares by the five published bodies |
+| `GET /api/public-land.json` | Hectares by the five published bodies (licence unverified/not open; not listed on open downloads) |
 | `GET /api/vdl.json` | SVDLS hectares by owner class |
 | `GET /api/place.json?pc=` | Place card (vacant / public / parcel / gaps) |
 | `GET /api/common-good.json` | Verified Common Good register links + spatial gaps |

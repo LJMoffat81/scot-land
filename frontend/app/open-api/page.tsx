@@ -44,10 +44,10 @@ export default async function OpenApiPage() {
       <h1>Public API</h1>
       <p>
         These addresses return the open figures behind the map. They are a
-        research estimate, not a rates bill. Public and Crown land here is the
-        five national bodies, not a title and not council land. The answers are
-        for the area in view, or for one place. They are not a download of
-        every land boundary.
+        research estimate, not a rates bill. The answers are for the area in
+        view, or for one place. They are not a download of every land boundary.
+        The SG 2024 public/Crown land dashboard is not an open layer here
+        (licence unverified/not open).
       </p>
 
       <h2>One place</h2>
@@ -85,13 +85,6 @@ export default async function OpenApiPage() {
           </span>
         </li>
         <li>
-          Public and Crown land in view, for the five national bodies (503 when
-          the overlay source is down)
-          <span className="download-path">
-            GET /layers/open/public-land?south=&amp;west=&amp;north=&amp;east=
-          </span>
-        </li>
-        <li>
           Vacant and derelict land in view, site-level from the Scottish
           Vacant and Derelict Land Survey (503 when the overlay source is down)
           <span className="download-path">
@@ -115,12 +108,6 @@ export default async function OpenApiPage() {
         <li>
           <a href={rollCsv}>The same figures as a spreadsheet</a>
           <span className="download-path">{rollCsv}</span>
-        </li>
-        <li>
-          <a href="/api/public-land.json">
-            Public and Crown land, by the five national bodies
-          </a>
-          <span className="download-path">/api/public-land.json</span>
         </li>
         <li>
           <a href="/api/vdl.json">

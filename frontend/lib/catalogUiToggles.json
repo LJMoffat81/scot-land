@@ -5,9 +5,8 @@
     "cell_grid",
     "data_zones",
     "vdl",
-    "public_crown",
     "hydro_sites",
     "sepa_car"
   ],
-  "note": "Every GET /layers/catalog layer with status=live must appear here and in LayersPanel. Withheld public AGR £ layers still need a toggle row (honest unavailable)."
+  "note": "Every GET /layers/catalog layer with status=live must appear here and in LayersPanel. Withheld public AGR £ layers still need a toggle row (honest unavailable). public_crown is gap (unverified/not open) — no public map toggle."
 }

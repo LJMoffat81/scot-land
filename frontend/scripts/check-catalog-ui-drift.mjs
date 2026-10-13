@@ -35,7 +35,6 @@ const FIXTURE_LIVE_IDS = [
   "cell_grid",
   "data_zones",
   "vdl",
-  "public_crown",
   "hydro_sites",
   "sepa_car",
 ];

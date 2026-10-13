@@ -46,16 +46,6 @@ def _stub_place_seams(monkeypatch):
         },
     )
     monkeypatch.setattr(
-        "layers.platform.public_land_at_point",
-        lambda lat, lng: {
-            "ok": True,
-            "intersects": False,
-            "holdings": [],
-            "note": "Five national bodies only.",
-            "source": "test",
-        },
-    )
-    monkeypatch.setattr(
         "layers.platform._data_zone_at",
         lambda lat, lng: {
             "status": "ok",
@@ -108,7 +98,8 @@ def test_platform_place_contract_shape(monkeypatch):
     by_id = {row["id"]: row for row in body["layers"]}
     assert by_id["boundaries"]["intersects"] is True
     assert by_id["vdl"]["intersects"] is True
-    assert by_id["public_crown"]["intersects"] is False
+    assert by_id["public_crown"]["status"] == "gap"
+    assert by_id["public_crown"]["intersects"] is None
     assert by_id["common_good"]["intersects"] is None
     assert by_id["la_holdings"]["status"] == "gap"
     assert by_id["sasine_private"]["status"] == "gap"

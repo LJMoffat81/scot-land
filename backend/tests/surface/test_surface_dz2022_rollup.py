@@ -127,10 +127,27 @@ def test_crosswalk_one_to_one_forces_internal_unpublished(make_valuation_row):
     row = out[0]
     assert row["code"] == "S01020870" and row["vintage"] == 2022
     assert row["publish_level"] == "internal"
+    assert row["publication_status"] == "blocked"
     assert row["crosswalk_method"] == "value_weighted"
     assert row["measured_rent"] == pytest.approx(src["measured_rent"])
     assert "unpublished_pending_economic_rules" in row["proxy_tags"]
     assert "crosswalked_from_dz2011" in row["proxy_tags"]
+
+
+def test_crosswalk_publication_status_blocked_wins_over_source_ok():
+    """Every new DZ2022 row is blocked; source ok / missing status never unblocks."""
+    pairs = [{"dz2011": "S01013401", "dz2022": "S01020870", "weight": 1.0}]
+    sources = [
+        _src(publication_status="ok"),
+        _src(publication_status="blocked"),
+        {k: v for k, v in _src().items() if k != "publication_status"},
+    ]
+    for src in sources:
+        out = dz22.crosswalk_surface_to_dz2022(
+            [src], pairs, dwellings_by_code={"S01020870": 500}
+        )
+        assert out[0]["publication_status"] == dz22.PUBLICATION_STATUS == "blocked"
+        assert out[0]["publish_level"] == "internal"
 
 
 def test_crosswalk_split_scales_rent_and_recomputes_per_dwelling():

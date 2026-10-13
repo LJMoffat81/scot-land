@@ -1,0 +1,51 @@
+---
+title: "Postcode Search API"
+description: "Turn a Scottish postcode into a point on the map."
+---
+
+`GET https://www.scot-land.scot/backend/geocode/postcode`
+
+This endpoint returns the **centroid** (centre point) of a postcode. It's what the map's search box uses. The response has no values or rent attached.
+
+## Parameters
+
+| Name | In | Required | Description |
+|---|---|---|---|
+| `q` | query | yes | A full UK postcode, with or without a space, in any case (e.g. `G63 0AA`, `g630aa`). |
+
+## Example
+
+```bash
+curl "https://www.scot-land.scot/backend/geocode/postcode?q=G63%200AA"
+```
+
+```json
+{
+  "postcode": "G63 0AA",
+  "lat": 56.069191,
+  "lng": -4.435195,
+  "kind": "postcode_centroid",
+  "source": "postcodes.io (ONS Postcode Directory)",
+  "licence": "Source: Office for National Statistics licensed under the Open Government Licence v3.0; contains OS data (c) Crown copyright and database right; contains Royal Mail data (c) Royal Mail copyright and database right"
+}
+```
+
+## Next step: the Data Zone at that point
+
+Pass the coordinates to the Data Zone lookup:
+
+```bash
+curl "https://www.scot-land.scot/backend/layers/context/data-zones/at?lat=56.069191&lng=-4.435195"
+```
+
+This returns `S01013010`, "Balfron and Drymen - 02" (2011), and the matching 2022 zone.
+
+## Errors
+
+| Status | Meaning |
+|---|---|
+| `422` | `q` is missing, isn't a full UK postcode (e.g. a place name: use `/place?q=` for those), or is outside Scotland. |
+| `404` | The postcode wasn't found or has no map location. |
+| `503` | The upstream postcode service (postcodes.io) is unavailable. |
+
+<Note>A postcode centroid is a single representative point. It is not a property boundary or a title.</Note>

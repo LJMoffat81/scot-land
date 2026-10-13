@@ -1,0 +1,69 @@
+---
+title: "Map Layer Guide"
+description: "Every open layer on the live map: source, licence, rows loaded and quality."
+---
+
+These are the layers that were live on 13 October 2026. Row counts are what was loaded into the site's database on that date. They change when sources are refreshed.
+
+**Quality tags**
+
+- `official`: loaded as published by the source body.
+- `converted`: reprojected or reshaped from the official download (e.g. geodatabase → GeoJSON). Geometry may be lightly simplified.
+- `partial`: covers only part of Scotland.
+- `context`: shown for information only. Never a rent.
+- `point-proxy`: a representative point, not a boundary.
+
+<Note>
+Every layer listed here is under the **Open Government Licence v3.0**, and **none** of them is non-commercial. Any layer added later with a non-commercial licence will be marked **NC** in this table.
+</Note>
+
+## Places and boundaries
+
+| Layer | API path | Source | Licence | Rows loaded | Quality |
+|---|---|---|---|---|---|
+| Data Zone boundaries | `/layers/open/data-zones` | Scottish Government, 2011 and 2022 | OGL v3.0 | 2011 + 2022 sets | `official`, `context` |
+| NRS Settlements | `/layers/open/settlements` | National Records of Scotland, Census 2022 | OGL v3.0 | 503 | `official`, `context` |
+| NRS Localities | `/layers/open/localities` | National Records of Scotland, Census 2022 | OGL v3.0 | 656 | `official`, `context` |
+| Data Zone house prices, SIMD, population density | `/layers/open/dz-context` | Scottish Government / NRS | OGL v3.0 | per Data Zone | `official`, `context` |
+
+## Planning and land use
+
+| Layer | API path | Source | Licence | Rows loaded | Quality |
+|---|---|---|---|---|---|
+| LDP allocations | `/layers/open/ldp` | Highland Council Local Development Plan | OGL v3.0 | 652 | `official`, `partial` (Highland only) |
+| Vacant and derelict land | `/layers/open/vdl` | Scottish Vacant and Derelict Land Survey | OGL v3.0 | loaded | `official`, `context` |
+| Housing land audit | `/layers/open/hla` | Spatial Hub Scotland | OGL v3.0 | **not loaded** (returns 503) | — |
+
+## Ownership and tenure
+
+| Layer | API path | Source | Licence | Rows loaded | Quality |
+|---|---|---|---|---|---|
+| Community ownership | `/layers/open/community-ownership` | Scottish Government, Community Ownership in Scotland 2024 | OGL v3.0 | 853 | `official`, `point-proxy` (postcode centroid) |
+| Crofting Register and common grazings | `/api/crofting.json` | Crofting Commission | OGL v3.0 | 224 parishes, 26,230 holdings, 1,083 grazings | `official` |
+
+## Environment and natural capital
+
+| Layer | API path | Source | Licence | Rows loaded | Quality |
+|---|---|---|---|---|---|
+| SEPA flood extent (medium likelihood) | `/layers/open/flood` | SEPA Flood Maps v3.0, river and coastal | OGL v3.0 | 47,093 river + 16 coastal | `converted` (simplified ~2 m), `context` |
+| Sites of Special Scientific Interest | `/layers/open/sssi` | NatureScot | OGL v3.0 | about 15,877 | `official`, `context` |
+| NatureScot designations (SPA, SAC, NNR) | `/layers/open/naturescot-designations` | NatureScot | OGL v3.0 | 2,477 SPA, 2,593 SAC, 748 NNR | `official`, `context` |
+| National Forest Inventory | `/layers/open/nfi` | Forestry Commission, NFI Scotland 2025 | OGL v3.0 | 207,640 | `converted` (via WFS) |
+| Native Woodland Survey | `/layers/open/native-woodland` | Scottish Forestry, NWSS | OGL v3.0 | 95,814 | `converted` (via WFS) |
+
+## Energy and resources
+
+| Layer | API path | Source | Licence | Rows loaded | Quality |
+|---|---|---|---|---|---|
+| Renewable energy planning (REPD) | `/layers/open/repd` | DESNZ Renewable Energy Planning Database, Scotland | OGL v3.0 | 2,688 | `official`, `point-proxy` |
+| Crown Estate Scotland offshore leases | `/layers/open/crown-estate-leases` | Crown Estate Scotland | OGL v3.0 | 72 (58 wind, 10 tidal, 3 wave, 1 CCS) | `official` |
+| SEPA CAR licences | `/layers/open/sepa-car` | SEPA | OGL v3.0 | loaded | `official` |
+| Hydropower sites | `/layers/open/hydro` | SEPA CAR | OGL v3.0 | loaded | `official` |
+
+## Not shown
+
+- **Modelled land rent (£)**: blocked until the model passes review.
+- **Public and Crown land holdings**: the licence is unverified, so this layer is hidden.
+- **Private ownership / Sasine**: not open data.
+
+Each layer's endpoint returns `503` with an explanation when it isn't loaded. It never returns made-up data.

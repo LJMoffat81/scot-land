@@ -1,0 +1,14 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Scot-LAND",
+  "colors": { "primary": "#1F5C4A", "light": "#3E8E73", "dark": "#1F5C4A" },
+  "navigation": {
+    "groups": [
+      { "group": "Get started", "pages": ["introduction"] },
+      { "group": "Guides", "pages": ["postcode-search", "map-layer-guide"] },
+      { "group": "Reference", "pages": ["api-reference"] }
+    ]
+  },
+  "footer": { "socials": { "github": "https://github.com/LJMoffat81/scot-land" } }
+}

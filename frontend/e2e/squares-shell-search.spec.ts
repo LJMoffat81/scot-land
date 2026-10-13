@@ -29,24 +29,21 @@ test.describe("squares shell", () => {
     await page.locator(".hud-search-go").click();
     const card = page.locator("aside.place-card-stub");
     await expect(card).toBeVisible({ timeout: 30_000 });
-    await expect(card.getByRole("heading", { level: 2 })).toContainText(
-      /55\.8609/,
+    await expect(page.getByTestId("place-card")).toBeVisible();
+    await expect(page.getByTestId("place-card-square-reference")).toContainText(
+      /Scot-LAND square reference/i,
     );
-    await expect(card.getByText("Annual Ground Rent").first()).toBeVisible();
-    await expect(page.getByTestId("place-stub-rent-market")).toContainText(
-      "market",
+    await expect(page.getByTestId("place-card-agr-surface")).toContainText(
+      /figures pending sign-off/i,
     );
-    await expect(page.getByTestId("place-stub-rent-proxy")).toContainText(
-      "proxy",
-    );
-    await expect(page.getByTestId("place-stub-rent-shadow")).toContainText(
-      "shadow",
-    );
-    await expect(page.getByTestId("place-stub-data-zone-grain")).toHaveText(
+    await expect(page.getByTestId("place-card-data-zone-grain")).toHaveText(
       "For now, figures are published at Data Zone level only, not for individual parcels, plots or addresses.",
     );
-    await expect(card.getByText(/£ figures are not published yet/i)).toBeVisible();
+    await expect(page.getByTestId("place-card-constraints")).toContainText(
+      /Constraint: changes best use, adds no value/i,
+    );
     await expect(card.getByText(/£\d/)).toHaveCount(0);
+    await expect(card).not.toContainText(/what3words/i);
   });
 });
 

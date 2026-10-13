@@ -16,9 +16,15 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npx next start -p 3100",
+    // Rebuild so NEXT_PUBLIC_INTERNAL_PREVIEWS is inlined for /place-card e2e.
+    command:
+      "NEXT_PUBLIC_INTERNAL_PREVIEWS=1 npx next build && NEXT_PUBLIC_INTERNAL_PREVIEWS=1 npx next start -p 3100",
     url: baseURL,
     reuseExistingServer: false,
-    timeout: 120_000,
+    timeout: 300_000,
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_INTERNAL_PREVIEWS: "1",
+    },
   },
 });

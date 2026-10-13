@@ -14,6 +14,7 @@ import {
   type ScenarioId,
 } from "./AgrBreakdown";
 import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
+import { fetchPlaceCard } from "@/lib/placeCard";
 import LedgerPanel from "./LedgerPanel";
 import MapLicenceCredits from "./MapLicenceCredits";
 import MapRangeLegend from "./MapRangeLegend";
@@ -809,41 +810,65 @@ export default function ScotlandMap() {
         popYear: opts.popYear ?? null,
         dwellings: opts.dwellings ?? null,
         dwYear: opts.dwYear ?? null,
+        card: null,
       });
       if (window.matchMedia("(max-width: 640px)").matches) {
         setLegendOpen(false);
       }
-      // Polygon click already supplies code/name (+ optional rollups).
-      if (knownCode) {
-        setPlaceLoading(false);
-        return;
-      }
       setPlaceLoading(true);
       try {
-        const data = await apiJson<{
-          code?: string;
-          name?: string;
-          vintage?: number;
-        }>(
-          `/layers/context/data-zones/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
-          { cache: "no-store" },
-        );
+        if (!knownCode) {
+          const data = await apiJson<{
+            code?: string;
+            name?: string;
+            vintage?: number;
+          }>(
+            `/layers/context/data-zones/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+            { cache: "no-store" },
+          );
+          if (gen !== lookupGen.current) return;
+          const code = data.code?.trim() || null;
+          const name = data.name?.trim() || null;
+          setPlaceStub((prev) =>
+            prev && prev.lat === lat && prev.lng === lng
+              ? {
+                  ...prev,
+                  dataZoneCode: code,
+                  dataZoneName: name,
+                  dataZoneVintage:
+                    typeof data.vintage === "number" ? data.vintage : null,
+                }
+              : prev,
+          );
+        }
+        // Designer place card (place_card_v1) — ownership / sources; no £.
+        const card = await fetchPlaceCard({
+          lat,
+          lng,
+          postcode: opts.postcode,
+        });
         if (gen !== lookupGen.current) return;
-        const code = data.code?.trim() || null;
-        const name = data.name?.trim() || null;
         setPlaceStub((prev) =>
           prev && prev.lat === lat && prev.lng === lng
             ? {
                 ...prev,
-                dataZoneCode: code,
-                dataZoneName: name,
+                card,
+                dataZoneCode:
+                  prev.dataZoneCode || card.data_zone?.code || null,
+                dataZoneName:
+                  prev.dataZoneName || card.data_zone?.name || null,
                 dataZoneVintage:
-                  typeof data.vintage === "number" ? data.vintage : null,
+                  prev.dataZoneVintage ??
+                  (typeof card.data_zone?.vintage === "number"
+                    ? card.data_zone.vintage
+                    : null),
+                laName: prev.laName || card.council_name || null,
+                label: prev.label || card.place_label || null,
               }
             : prev,
         );
       } catch {
-        /* zone label is best-effort; card still shows coordinates */
+        /* zone / place card are best-effort; stub still shows coordinates */
       } finally {
         if (gen === lookupGen.current) setPlaceLoading(false);
       }

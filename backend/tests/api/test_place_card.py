@@ -113,6 +113,25 @@ def test_platform_place_contract_shape(monkeypatch):
     assert by_id["vdl"]["licence_url"]
     assert "unverified" in by_id["public_crown"]["licence"].lower()
 
+    # Designer v3.1 fields
+    assert body["square_reference"].startswith("Scot-LAND square reference")
+    assert "what3words" not in body["square_reference"].lower()
+    assert "agr_rows" in body
+    assert [r["id"] for r in body["agr_rows"]] == ["surface", "resource", "nature"]
+    for row in body["agr_rows"]:
+        assert row["amount_label"] == "figures pending sign-off"
+        assert row["tag"] in {"market", "proxy", "shadow"}
+    surface = body["agr_rows"][0]
+    assert {n["id"] for n in surface["of_which"]} == {
+        "planning_uplift",
+        "infrastructure_share",
+    }
+    assert body["holder"]["label"]
+    assert body["constraints"]
+    assert body["intermediate_zone"]["note"] == "No data" or body["intermediate_zone"].get(
+        "name"
+    )
+
     link_ids = {row["id"] for row in body["links"]}
     assert "scotlis" in link_ids
     assert "methodology" in link_ids
@@ -124,6 +143,7 @@ def test_platform_place_contract_shape(monkeypatch):
     assert "plot_gbp" not in blob
     assert "annual_ground_rent" not in blob
     assert "£" not in str(body)
+    assert "what3words" not in blob
 
 
 def test_api_place_json_has_no_agr(monkeypatch):

@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  PLACE_CARD_CONSTRAINT_LABEL,
   PLACE_CARD_DATA_ZONE_GRAIN,
-  PLACE_CARD_RENT_RANGE_TAGS,
+  PLACE_CARD_RESEARCH_DISCLAIMER,
   sanitizePlaceCard,
   type PlaceCardPayload,
   type PlaceLayer,
+  type PlaceRentTag,
 } from "../lib/placeCard";
 
 export type PlaceCardProps = {
@@ -15,59 +17,61 @@ export type PlaceCardProps = {
   onClose?: () => void;
   /** When true, render as a floating HUD card (map shell). Default: true. */
   floating?: boolean;
+  /** Extra class on the aside (e.g. place-card-stub for map HUD selectors). */
+  className?: string;
 };
 
-function intersectsLabel(layer: PlaceLayer): string {
-  if (layer.status === "gap") return "Gap";
-  if (layer.status === "linked") return "Linked";
-  if (layer.intersects === true) return "Intersects";
-  if (layer.intersects === false) return "No hit";
-  return "Unknown";
-}
-
-function intersectsClass(layer: PlaceLayer): string {
-  if (layer.status === "gap") return "place-layer-gap";
-  if (layer.status === "linked") return "place-layer-linked";
-  if (layer.intersects === true) return "place-layer-hit";
-  if (layer.intersects === false) return "place-layer-miss";
-  return "place-layer-unknown";
+function TagChip({ tag }: { tag: PlaceRentTag }) {
+  const label =
+    tag === "market" ? "Market" : tag === "proxy" ? "Proxy" : "Shadow";
+  return (
+    <span className={`place-tag tone-${tag}`} data-testid={`place-tag-${tag}`}>
+      {label}
+    </span>
+  );
 }
 
 function layerLicence(layer: PlaceLayer): string {
   return layer.licence?.trim() || "Licence not recorded";
 }
 
+/**
+ * Designer brief v3.1 place card — field order fixed.
+ * Lives on the map; no £ figures.
+ */
 export function PlaceCard({
   data,
   isLoading = false,
   error = null,
   onClose,
   floating = true,
+  className,
 }: PlaceCardProps) {
   const card = data ? sanitizePlaceCard(data) : null;
-  const shellClass = floating
-    ? "hud-card hud-place place-card"
-    : "place-card place-card-standalone";
-
-  const placeLine = [
-    card?.postcode,
-    card?.council_name,
-    card ? `${card.lat.toFixed(5)}, ${card.lng.toFixed(5)}` : null,
+  const shellClass = [
+    floating ? "hud-card hud-place place-card" : "place-card place-card-standalone",
+    className,
   ]
     .filter(Boolean)
-    .join(" · ");
+    .join(" ");
 
   const zone = card?.data_zone;
-  const zoneLine =
+  const dzCode =
     zone?.status === "ok" && zone.code
-      ? `Data zone ${zone.code}${zone.name ? `, ${zone.name}` : ""}${
-          zone.vintage != null ? ` (${zone.vintage})` : ""
-        }`
+      ? zone.code
       : zone?.status === "miss"
-        ? zone.note || "No data zone at this point."
-        : zone?.status === "unavailable"
-          ? zone.note || "Data zone lookup unavailable."
-          : null;
+        ? null
+        : null;
+  const iz = card?.intermediate_zone;
+  const izDisplay =
+    iz?.status === "ok" && iz.name
+      ? iz.name
+      : iz?.note || "No data";
+  const placeName =
+    card?.place_label?.trim() ||
+    card?.postcode?.trim() ||
+    zone?.name?.trim() ||
+    "This place";
 
   return (
     <aside
@@ -87,19 +91,6 @@ export function PlaceCard({
         </button>
       ) : null}
 
-      <header className="place-card-header">
-        <p className="place-card-kicker">Annual Ground Rent</p>
-        <h2 className="place-card-title">
-          {card?.council_name || card?.postcode || "Selected spot"}
-        </h2>
-        {placeLine ? <p className="place-card-meta">{placeLine}</p> : null}
-        {zoneLine ? (
-          <p className="place-card-meta" data-testid="place-card-data-zone">
-            {zoneLine}
-          </p>
-        ) : null}
-      </header>
-
       {isLoading ? (
         <div className="place-card-loading" aria-busy="true">
           Looking up this spot…
@@ -114,26 +105,112 @@ export function PlaceCard({
 
       {!isLoading && !error && card ? (
         <div className="place-card-body">
+          {/* 1. Place */}
+          <header className="place-card-header">
+            <p className="place-card-kicker">Place</p>
+            <h2 className="place-card-title" data-testid="place-card-place">
+              {placeName}
+            </h2>
+            {card.postcode ? (
+              <p className="place-card-meta">Postcode {card.postcode}</p>
+            ) : null}
+          </header>
+
+          <dl className="place-card-fields">
+            {/* 2. Data zone code (S01) */}
+            <div className="place-card-field">
+              <dt>Data zone</dt>
+              <dd data-testid="place-card-data-zone">
+                {dzCode ? (
+                  <>
+                    <span className="place-card-dz-code">{dzCode}</span>
+                    {zone?.name ? (
+                      <span className="place-card-meta-inline">
+                        {" "}
+                        · {zone.name}
+                      </span>
+                    ) : null}
+                  </>
+                ) : zone?.status === "miss" ? (
+                  <span className="place-card-no-data">No data</span>
+                ) : (
+                  <span className="place-card-no-data">
+                    {zone?.note || "No data"}
+                  </span>
+                )}
+              </dd>
+            </div>
+
+            {/* 3. Intermediate Zone name */}
+            <div className="place-card-field">
+              <dt>Intermediate Zone</dt>
+              <dd data-testid="place-card-intermediate-zone">
+                {iz?.status === "ok" && iz.name ? (
+                  iz.name
+                ) : (
+                  <span className="place-card-no-data">{izDisplay}</span>
+                )}
+                {iz?.code && iz.status !== "ok" ? (
+                  <span className="place-card-meta-inline"> · {iz.code}</span>
+                ) : null}
+              </dd>
+            </div>
+
+            {/* 4. Council */}
+            <div className="place-card-field">
+              <dt>Council</dt>
+              <dd data-testid="place-card-council">
+                {card.council_name || (
+                  <span className="place-card-no-data">No data</span>
+                )}
+              </dd>
+            </div>
+
+            {/* 5. Square reference */}
+            <div className="place-card-field">
+              <dt>Square reference</dt>
+              <dd data-testid="place-card-square-reference">
+                {card.square_reference}
+              </dd>
+            </div>
+          </dl>
+
+          {/* 6–7. AGR surface / resource / nature + of which notes */}
           <section
-            className="place-card-rent"
-            aria-label="Annual Ground Rent ranges"
-            data-testid="place-card-rent-ranges"
+            className="place-card-agr"
+            aria-label="Annual Ground Rent"
+            data-testid="place-card-agr"
           >
             <h3 className="place-card-section">Annual Ground Rent</h3>
-            <p className="place-card-rent-intro">
-              Scot-LAND&apos;s purpose is Annual Ground Rent at this place.
-              Rents appear only as ranges labelled market, proxy or shadow. £
-              figures are not published yet while calibration is checked.
-            </p>
-            <ul className="place-rent-range-list">
-              {PLACE_CARD_RENT_RANGE_TAGS.map((tag) => (
+            <ul className="place-agr-list">
+              {(card.agr_rows || []).map((row) => (
                 <li
-                  key={tag}
-                  className={`place-rent-range-row tone-${tag}`}
-                  data-testid={`place-card-rent-${tag}`}
+                  key={row.id}
+                  className="place-agr-row"
+                  data-testid={`place-card-agr-${row.id}`}
                 >
-                  <span className={`place-stack-tag tone-${tag}`}>{tag}</span>
-                  <span className="place-rent-range-label">not yet</span>
+                  <div className="place-agr-row-main">
+                    <span className="place-agr-label">{row.label}</span>
+                    <TagChip tag={row.tag} />
+                    <span
+                      className="place-agr-amount"
+                      data-testid={`place-card-agr-amount-${row.id}`}
+                    >
+                      {row.amount_label}
+                    </span>
+                  </div>
+                  {row.of_which?.length ? (
+                    <ul className="place-agr-of-which">
+                      {row.of_which.map((note) => (
+                        <li
+                          key={note.id}
+                          data-testid={`place-card-of-which-${note.id}`}
+                        >
+                          {note.label}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -145,25 +222,77 @@ export function PlaceCard({
             </p>
           </section>
 
-          {card.vacant_or_derelict ? (
-            <p className="place-flags">
-              <span className="flag vacant">Vacant or derelict (survey)</span>
+          {/* 8. Constraints (no £) */}
+          <section
+            className="place-card-constraints"
+            aria-label="Constraints"
+            data-testid="place-card-constraints"
+          >
+            <h3 className="place-card-section">Constraints</h3>
+            <p className="place-card-constraint-banner">
+              {PLACE_CARD_CONSTRAINT_LABEL}
             </p>
-          ) : null}
+            <ul className="place-constraint-list">
+              {(card.constraints || []).map((row) => (
+                <li
+                  key={row.id}
+                  className="place-constraint-row"
+                  data-testid={`place-card-constraint-${row.id}`}
+                >
+                  <span className="place-constraint-label">{row.label}</span>
+                  <span className="place-constraint-state">
+                    {row.applies === true
+                      ? "Applies"
+                      : row.applies === false
+                        ? "Does not apply"
+                        : row.note || "No data"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
 
-          <section aria-label="Layers at this spot">
-            <h3 className="place-card-section">Layers at this spot</h3>
+          {/* 9. Holder */}
+          <section
+            className="place-card-holder"
+            aria-label="Holder"
+            data-testid="place-card-holder"
+          >
+            <h3 className="place-card-section">Holder</h3>
+            <p className="place-card-holder-label">
+              {card.holder?.label || "private, not shown"}
+            </p>
+            {card.holder?.note ? (
+              <p className="place-card-meta">{card.holder.note}</p>
+            ) : null}
+          </section>
+
+          {/* 10. Sources and licences */}
+          <section
+            className="place-card-sources"
+            aria-label="Sources and licences"
+            data-testid="place-card-sources"
+          >
+            <h3 className="place-card-section">Sources and licences</h3>
             <ul className="place-layer-list" data-testid="place-card-layers">
               {card.layers.map((layer) => (
                 <li
                   key={layer.id}
-                  className={`place-layer-row ${intersectsClass(layer)}`}
+                  className="place-layer-row"
                   data-layer-id={layer.id}
                 >
                   <div className="place-layer-top">
                     <span className="place-layer-label">{layer.label}</span>
                     <span className="place-layer-state">
-                      {intersectsLabel(layer)}
+                      {layer.status === "gap"
+                        ? "Gap"
+                        : layer.status === "linked"
+                          ? "Linked"
+                          : layer.intersects === true
+                            ? "Intersects"
+                            : layer.intersects === false
+                              ? "No hit"
+                              : layer.status}
                     </span>
                   </div>
                   <p
@@ -186,55 +315,53 @@ export function PlaceCard({
                   {layer.note ? (
                     <p className="place-layer-note">{layer.note}</p>
                   ) : null}
-                  {layer.id === "boundaries" &&
-                  layer.intersects &&
-                  card.parcel?.label ? (
-                    <p className="place-layer-note">
-                      Parcel {card.parcel.label}
-                      {card.parcel.area_sqm != null
-                        ? ` · ${Math.round(card.parcel.area_sqm).toLocaleString("en-GB")} m²`
-                        : ""}
-                    </p>
-                  ) : null}
                 </li>
               ))}
             </ul>
+            {card.data_zone?.status === "ok" && card.data_zone.code ? (
+              <p className="place-card-meta">
+                <a
+                  href={`/place?zone=${encodeURIComponent(card.data_zone.code)}`}
+                  data-testid="place-card-hectare-stack-link"
+                >
+                  Per-hectare ledger stack
+                </a>
+              </p>
+            ) : null}
+            {card.links?.length ? (
+              <ul className="place-link-list" data-testid="place-card-links">
+                {card.links.map((link) => {
+                  const external = /^https?:\/\//i.test(link.url);
+                  return (
+                    <li key={link.id}>
+                      <a
+                        href={link.url}
+                        {...(external
+                          ? { target: "_blank", rel: "noreferrer" }
+                          : {})}
+                      >
+                        {link.label}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className="place-card-meta">
+                <a href="/mission">Mission</a>
+                {" · "}
+                <a href="/methodology">Methodology</a>
+              </p>
+            )}
           </section>
 
-          <section aria-label="Links">
-            <h3 className="place-card-section">Links</h3>
-            <ul className="place-link-list" data-testid="place-card-links">
-              {card.data_zone?.status === "ok" && card.data_zone.code ? (
-                <li>
-                  <a
-                    href={`/place?zone=${encodeURIComponent(card.data_zone.code)}`}
-                    data-testid="place-card-hectare-stack-link"
-                  >
-                    Per-hectare ledger stack
-                  </a>
-                </li>
-              ) : null}
-              {card.links.map((link) => {
-                const external = /^https?:\/\//i.test(link.url);
-                return (
-                  <li key={link.id}>
-                    <a
-                      href={link.url}
-                      {...(external
-                        ? { target: "_blank", rel: "noreferrer" }
-                        : {})}
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-
-          <p className="place-card-disclaimer" data-testid="place-card-disclaimer">
-            Ownership and survey context only. Research map — not a title or a
-            rates bill. No £ Annual Ground Rent figures on this card.
+          <p
+            className="place-card-disclaimer"
+            data-testid="place-card-disclaimer"
+          >
+            {PLACE_CARD_RESEARCH_DISCLAIMER.charAt(0).toUpperCase() +
+              PLACE_CARD_RESEARCH_DISCLAIMER.slice(1)}
+            .
           </p>
         </div>
       ) : null}

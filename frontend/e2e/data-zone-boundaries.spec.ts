@@ -91,6 +91,9 @@ test.describe("Data Zone boundaries layer", () => {
     await page.goto("/?lat=55.8609&lng=-4.2514");
     await page.locator(".maplibregl-canvas").waitFor();
 
+    await expect(
+      page.getByRole("button", { name: "Layers", exact: true }),
+    ).toHaveCount(0);
     await page.getByRole("button", { name: "Ledger", exact: true }).click();
     const panel = page.locator("aside.hud-tools");
     await expect(panel).toBeVisible();

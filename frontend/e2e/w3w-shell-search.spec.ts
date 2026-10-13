@@ -29,8 +29,9 @@ test.describe("w3w-style shell", () => {
     await page.locator(".hud-search-go").click();
     const card = page.locator("aside.place-card-stub");
     await expect(card).toBeVisible({ timeout: 30_000 });
-    await expect(card.getByRole("heading", { level: 2 })).toBeVisible();
-    await expect(card.getByText(/55\.8609/)).toBeVisible();
+    await expect(card.getByRole("heading", { level: 2 })).toContainText(
+      /55\.8609/,
+    );
     await expect(card.getByText(/not shown on the public map yet/i)).toBeVisible();
     await expect(card.getByText(/£\d/)).toHaveCount(0);
   });
@@ -47,6 +48,9 @@ test.describe("w3w-style shell mobile", () => {
     const box = await search.boundingBox();
     expect(box).toBeTruthy();
     expect(box!.width).toBeGreaterThan(200);
-    await expect(page.locator(".hud-layers-btn").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Satellite" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Layers", exact: true }),
+    ).toHaveCount(0);
   });
 });

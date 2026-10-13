@@ -15,6 +15,9 @@ test.describe("SVDLS vacant and derelict layer", () => {
     test.setTimeout(90_000);
     await openMap(page);
 
+    await expect(
+      page.getByRole("button", { name: "Layers", exact: true }),
+    ).toHaveCount(0);
     await page.getByRole("button", { name: "Ledger", exact: true }).click();
     const panel = page.locator("aside.hud-tools");
     await expect(panel).toBeVisible();

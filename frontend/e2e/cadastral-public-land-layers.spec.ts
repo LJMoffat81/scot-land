@@ -15,6 +15,10 @@ test.describe("cadastral and public land layers", () => {
     test.setTimeout(90_000);
     await openMap(page);
 
+    // Old Layers GIS pop-out must stay gone (#52); HUD is Natural capital ledger (#53).
+    await expect(
+      page.getByRole("button", { name: "Layers", exact: true }),
+    ).toHaveCount(0);
     await page.getByRole("button", { name: "Ledger", exact: true }).click();
     const panel = page.locator("aside.hud-tools");
     await expect(panel).toBeVisible();

@@ -31,6 +31,7 @@ from alembic import command
 from alembic.config import Config
 
 from georgist import db
+from georgist.surface_rollup import ROLLUP_DB_COLUMNS
 from georgist.wealth_schema import SURFACE_DB_COLUMNS
 from paths import PROCESSED_DIR
 
@@ -127,6 +128,29 @@ def upsert_surface_rent(conn, rows: Iterable[Mapping]) -> int:
                 for c, v in row.items()
             ]
             cur.execute(sql, values)
+            n += 1
+    conn.commit()
+    return n
+
+
+def upsert_surface_rent_rollup(conn, rows: Iterable[Mapping]) -> int:
+    """Upsert internal SG roll-up rows (IZ / council / Scotland). Never public."""
+    cols = ROLLUP_DB_COLUMNS
+    pk = ("geo_level", "code", "vintage", "valuation_date")
+    sql = (
+        f"INSERT INTO surface_rent_rollup ({', '.join(cols)}) VALUES ({', '.join(['%s'] * len(cols))}) "
+        f"ON CONFLICT ({', '.join(pk)}) DO UPDATE SET "
+        + ", ".join(f"{c} = EXCLUDED.{c}" for c in cols if c not in pk)
+        + ", updated_at = now()"
+    )
+    n = 0
+    with conn.cursor() as cur:
+        for row in rows:
+            if row.get("publish_level") != "internal":
+                raise ValueError("surface_rent_rollup rows must be publish_level=internal")
+            if tuple(row) != cols:
+                raise ValueError("row does not match ROLLUP_DB_COLUMNS; use surface_rollup.rollup_db_rows")
+            cur.execute(sql, [row[c] for c in cols])
             n += 1
     conn.commit()
     return n

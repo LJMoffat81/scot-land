@@ -10,6 +10,7 @@ PATHS = [
     "/internal/layers/georgist/resource-rent",
     "/internal/layers/georgist/eco-rent",
     "/internal/georgist/surface-rent/S01008677",
+    "/internal/georgist/surface-rent-rollup",
 ]
 
 

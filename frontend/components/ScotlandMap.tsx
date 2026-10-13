@@ -1322,11 +1322,11 @@ export default function ScotlandMap() {
         },
       });
 
-      map.addSource("w3w-agr-grid", { type: "geojson", data: emptyCollection });
+      map.addSource("squares-agr-grid", { type: "geojson", data: emptyCollection });
       map.addLayer({
-        id: "w3w-agr-fill",
+        id: "squares-agr-fill",
         type: "fill",
-        source: "w3w-agr-grid",
+        source: "squares-agr-grid",
         layout: { visibility: "none" },
         paint: {
           "fill-color": CELL_AGR_COLOR,
@@ -1334,9 +1334,9 @@ export default function ScotlandMap() {
         },
       });
       map.addLayer({
-        id: "w3w-agr-line",
+        id: "squares-agr-line",
         type: "line",
-        source: "w3w-agr-grid",
+        source: "squares-agr-grid",
         layout: { visibility: "none" },
         paint: { "line-color": "#7f0000", "line-width": 0.4, "line-opacity": 0.4 },
       });
@@ -2143,9 +2143,9 @@ export default function ScotlandMap() {
     if (!map) return;
 
     const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("w3w-agr-fill")) return;
-      map.setLayoutProperty("w3w-agr-fill", "visibility", vis);
-      map.setLayoutProperty("w3w-agr-line", "visibility", vis);
+      if (!map.getLayer("squares-agr-fill")) return;
+      map.setLayoutProperty("squares-agr-fill", "visibility", vis);
+      map.setLayoutProperty("squares-agr-line", "visibility", vis);
     };
 
     if (!showCellGrid) {
@@ -2173,7 +2173,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("w3w-agr-grid") as GeoJSONSource)?.setData(data);
+          (map.getSource("squares-agr-grid") as GeoJSONSource)?.setData(data);
           setVis("visible");
         })
         .catch(() => {
@@ -3294,11 +3294,11 @@ export default function ScotlandMap() {
       className={
         toolsOpen
           ? placeOpen
-            ? "app-shell w3w-shell tools-open place-open"
-            : "app-shell w3w-shell tools-open"
+            ? "app-shell squares-shell tools-open place-open"
+            : "app-shell squares-shell tools-open"
           : placeOpen
-            ? "app-shell w3w-shell place-open"
-            : "app-shell w3w-shell"
+            ? "app-shell squares-shell place-open"
+            : "app-shell squares-shell"
       }
     >
       <div className="map-stage">
@@ -3460,7 +3460,8 @@ export default function ScotlandMap() {
         )}
         </div>
         <nav className="hud-nav">
-          <a href="/methodology">About</a>
+          <a href="/mission">Mission</a>
+          <a href="/methodology">Methodology</a>
         </nav>
       </header>
 
@@ -3498,7 +3499,9 @@ export default function ScotlandMap() {
             <MapLicenceCredits credits={mapCredits} />
             <p className="hud-scotland-foot">
               Research map, not a rates bill.{" "}
-              <a href="/methodology">About</a>
+              <a href="/mission">Mission</a>
+              {" · "}
+              <a href="/methodology">Methodology</a>
             </p>
           </div>
         </div>

@@ -30,7 +30,9 @@ export default function OpenApiPage() {
         {" · "}
         <a href="/downloads">Downloads</a>
         {" · "}
-        <a href="/methodology">About</a>
+        <a href="/mission">Mission</a>
+        {" · "}
+        <a href="/methodology">Methodology</a>
       </p>
       <h1>Public API</h1>
       <p className="downloads-note" data-testid="experimental-not-official">

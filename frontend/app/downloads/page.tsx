@@ -92,7 +92,9 @@ export default function DownloadsPage() {
         {" · "}
         <a href="/open-api">Public API</a>
         {" · "}
-        <a href="/methodology">About</a>
+        <a href="/mission">Mission</a>
+        {" · "}
+        <a href="/methodology">Methodology</a>
       </p>
       <h1>Downloads</h1>
       <p className="downloads-note" data-testid="experimental-not-official">

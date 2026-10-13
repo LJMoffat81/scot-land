@@ -399,20 +399,20 @@ export default function AgrBreakdown({
       {versionLine ? <p className="engine-stamp">{versionLine}</p> : null}
 
       {w3wParts.length === 3 && (
-        <div className="w3w-hero-row">
-          <p className="w3w-hero" aria-label={`Scot-LAND square ${w3wClean}`}>
-            <span className="w3w-slash">{"///"}</span>
+        <div className="squares-hero-row">
+          <p className="squares-hero" aria-label={`Scot-LAND square ${w3wClean}`}>
+            <span className="squares-slash">{"///"}</span>
             {w3wParts.map((word, i) => (
               <span key={word + i}>
-                {i > 0 && <span className="w3w-dot">.</span>}
-                <span className="w3w-word">{word}</span>
+                {i > 0 && <span className="squares-dot">.</span>}
+                <span className="squares-word">{word}</span>
               </span>
             ))}
           </p>
-          <div className="w3w-actions">
+          <div className="squares-actions">
             <button
               type="button"
-              className="w3w-copy"
+              className="squares-copy"
               title="Copy Scot-LAND square address"
               onClick={() => {
                 void navigator.clipboard?.writeText(`///${w3wClean}`).then(() => {
@@ -425,7 +425,7 @@ export default function AgrBreakdown({
             </button>
             <button
               type="button"
-              className="w3w-copy"
+              className="squares-copy"
               title="Copy a link to this place"
               onClick={() => {
                 void navigator.clipboard?.writeText(window.location.href).then(

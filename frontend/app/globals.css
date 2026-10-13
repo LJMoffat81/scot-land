@@ -19,6 +19,11 @@
   --quality-derived: #0076d3;
   --quality-modelled: #8a5a00;
   --quality-placeholder: #5f656c;
+  /* Confidence tags — Designer brief v3.1 */
+  --confidence-market: #1a5f9e;
+  --confidence-proxy: #c47a00;
+  --confidence-shadow: #1f7a4a;
+  --no-data-hatch: #bdbdbd;
 }
 
 * {
@@ -184,31 +189,31 @@ input {
   left: 50%;
   top: 1rem;
   transform: translateX(-50%);
-  /* w3w-style: one big search, not squeezed by side chrome */
+  /* Scot-LAND squares shell: one big search, not squeezed by side chrome */
   width: min(42rem, calc(100vw - 10rem));
   pointer-events: none;
 }
 
-.w3w-shell .hud-search-dock {
+.squares-shell .hud-search-dock {
   top: 1.15rem;
 }
 
-.w3w-shell .hud-search {
+.squares-shell .hud-search {
   border-radius: 999px;
   box-shadow: 0 12px 36px rgba(11, 30, 58, 0.18);
 }
 
-.w3w-shell .hud-search input {
+.squares-shell .hud-search input {
   font-size: 1.05rem;
   padding: 0.78rem 1.15rem;
 }
 
-.w3w-shell .hud-search-go {
+.squares-shell .hud-search-go {
   padding: 0.62rem 1.15rem;
   font-size: 0.95rem;
 }
 
-.w3w-shell .hud-wordmark img {
+.squares-shell .hud-wordmark img {
   width: 72px;
   height: 72px;
 }
@@ -1292,7 +1297,7 @@ button.primary:disabled {
   color: var(--slrg-muted);
 }
 
-.w3w-hero-row {
+.squares-hero-row {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -1300,7 +1305,7 @@ button.primary:disabled {
   margin: 0 0 0.35rem;
 }
 
-.w3w-hero {
+.squares-hero {
   margin: 0;
   font-size: 1.55rem;
   font-weight: 700;
@@ -1310,19 +1315,19 @@ button.primary:disabled {
   word-break: break-word;
 }
 
-.w3w-slash,
-.w3w-dot {
+.squares-slash,
+.squares-dot {
   color: var(--rugby-sky);
   font-weight: 700;
 }
 
-.w3w-actions {
+.squares-actions {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
 }
 
-.w3w-copy {
+.squares-copy {
   flex-shrink: 0;
   border: 0;
   background: #f3f5f7;
@@ -1668,7 +1673,7 @@ button.primary:disabled {
   text-align: left;
 }
 
-.w3w-address {
+.squares-address {
   margin: 0 0 0.65rem;
   font-size: 0.9rem;
   font-weight: 600;
@@ -1861,10 +1866,100 @@ button.linkish:disabled {
   margin-bottom: 0.35rem;
 }
 
-.methodology-page h3 {
-  font-size: 1rem;
+.layer-licence-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+}
+
+.layer-licence-list li {
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #e6ebe8;
+}
+
+.layer-licence-list li:last-child {
+  border-bottom: none;
+}
+
+/* Market solid blue · Proxy hatched amber · Shadow outlined green */
+.confidence-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.18rem 0.55rem;
+  border-radius: 3px;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+.confidence-tag.tone-market {
+  background: var(--confidence-market);
+  color: #fff;
+  border: 1px solid var(--confidence-market);
+}
+
+.confidence-tag.tone-proxy {
+  color: var(--confidence-proxy);
+  border: 1px solid var(--confidence-proxy);
+  background: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--confidence-proxy) 22%, white),
+    color-mix(in srgb, var(--confidence-proxy) 22%, white) 3px,
+    color-mix(in srgb, var(--confidence-proxy) 8%, white) 3px,
+    color-mix(in srgb, var(--confidence-proxy) 8%, white) 6px
+  );
+}
+
+.confidence-tag.tone-shadow {
+  background: transparent;
+  color: var(--confidence-shadow);
+  border: 2px solid var(--confidence-shadow);
+}
+
+.confidence-tag-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+}
+
+.confidence-tag-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin-bottom: 0.65rem;
+}
+
+.confidence-tag-gloss {
+  color: var(--slrg-muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.sources-table-wrap {
+  overflow-x: auto;
+  margin-top: 0.75rem;
+}
+
+.sources-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.sources-table th,
+.sources-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.55rem 0.65rem;
+  border-bottom: 1px solid #e6ebe8;
+}
+
+.sources-table th {
   color: var(--slrg-navy);
-  margin-top: 1.25rem;
+  font-weight: 650;
 }
 
 .lineage-list {
@@ -1942,7 +2037,7 @@ button.linkish:disabled {
   }
 
   .hud-search-dock,
-  .w3w-shell .hud-search-dock {
+  .squares-shell .hud-search-dock {
     position: relative;
     left: auto;
     top: auto;
@@ -1953,7 +2048,7 @@ button.linkish:disabled {
     max-width: none;
   }
 
-  .w3w-shell .hud-search input {
+  .squares-shell .hud-search input {
     font-size: 1rem;
     padding: 0.7rem 1rem;
   }

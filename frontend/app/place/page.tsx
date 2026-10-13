@@ -19,7 +19,9 @@ function PlaceNav() {
       {" · "}
       <a href="/data">Data</a>
       {" · "}
-      <a href="/methodology">About</a>
+      <a href="/mission">Mission</a>
+      {" · "}
+      <a href="/methodology">Methodology</a>
       {" · "}
       <a href="/place" aria-current="page">
         Place

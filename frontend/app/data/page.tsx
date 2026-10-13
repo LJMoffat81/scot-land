@@ -20,7 +20,9 @@ function DataNav() {
       {" · "}
       <a href="/open-api">Public API</a>
       {" · "}
-      <a href="/methodology">About</a>
+      <a href="/mission">Mission</a>
+      {" · "}
+      <a href="/methodology">Methodology</a>
     </p>
   );
 }
@@ -49,11 +51,13 @@ export default function DataChecksPage() {
   return (
     <main className="downloads-page data-ledger-page">
       <DataNav />
-      <h1>Data — Checks &amp; excluded</h1>
+      <h1>Data — licences, checks &amp; excluded</h1>
       <p>
-        Natural capital ledger accounting checks and the excluded list. Driven
-        by the catalog API (<code>/api/ledger.json</code>), not a map-panel
-        layer dump. Research estimate rules — not a rates bill.
+        Natural capital ledger accounting checks, the excluded list, and links
+        to layer licences. Driven by the catalog API (
+        <code>/api/ledger.json</code>), not a map-panel layer dump. Research
+        estimate, not an official valuation or bill. Figures pending sign-off.
+        Full sources table: <a href="/methodology#sources">Methodology</a>.
       </p>
       {data?.grain && <p className="downloads-note">{data.grain}</p>}
       {error && <p className="downloads-note">{error}</p>}

@@ -42,7 +42,7 @@ def test_fallback_chain(cfg):
     thin = _cell(cfg, 0.05, 0.04, prs_n=3)
     assert thin.source == "brma_wide" and thin.y_land == 0.04
     none = _cell(cfg, None, None)
-    assert none.source == "config_fallback" and none.y_land == cfg["yield"]["land_yield"]
+    assert none.source == "config_fallback" and none.y_land == sr.configured_land_yield(cfg["yield"])
 
 
 def test_blend_weights_sum_to_one():
@@ -65,22 +65,26 @@ def test_rent_route_equals_sales_route_when_same_cell(cfg):
 
 
 def test_land_yield_is_single_config_figure(cfg):
-    assert sr.configured_land_yield(cfg["yield"]) == cfg["yield"]["land_yield"]
+    y = sr.configured_land_yield(cfg["yield"])
+    assert y == pytest.approx(cfg["yield"]["central"])
+    assert abs(y - 0.05) > 1e-12
     for k in ("r", "g"):
         bad = dict(cfg["yield"], **{k: 0.07})
         with pytest.raises(sr.YieldIdentityError):
             sr.configured_land_yield(bad)
-    missing = {k: v for k, v in cfg["yield"].items() if k != "land_yield"}
+    missing = {k: v for k, v in cfg["yield"].items() if k not in ("central", "land_yield")}
     with pytest.raises(sr.PendingSourceError):
         sr.configured_land_yield(missing)
+    # Legacy land_yield key still accepted when central absent.
+    assert sr.configured_land_yield({"land_yield": 0.04}) == pytest.approx(0.04)
 
 
 def test_scenario_r_g_must_equal_land_yield(cfg):
-    y = cfg["yield"]["land_yield"]
-    assert sr.scenario_r_g(cfg["scenarios"]["illustrative_r_g"], y) == (0.07, 0.02)
+    y = sr.configured_land_yield(cfg["yield"])
+    assert sr.scenario_r_g(cfg["scenarios"]["illustrative_r_g"], y) == (0.06499, 0.02)
     with pytest.raises(sr.YieldIdentityError):
         sr.scenario_r_g({"r": 0.08, "g": 0.02}, y)
-    assert sr.capital_value(500.0, y) == pytest.approx(10_000.0)
-    assert sr.capital_value(500.0, y, scenario={"r": 0.07, "g": 0.02}) == pytest.approx(10_000.0)
+    assert sr.capital_value(500.0, y) == pytest.approx(500.0 / y)
+    assert sr.capital_value(500.0, y, scenario={"r": 0.06499, "g": 0.02}) == pytest.approx(500.0 / y)
     with pytest.raises(sr.YieldIdentityError):
         sr.capital_value(500.0, y, scenario={"r": 0.06, "g": 0.02})

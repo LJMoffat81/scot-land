@@ -36,8 +36,10 @@ def test_null_dz_fill_target_documented(cfg):
     assert cfg["model_fill"]["null_dz_fill_target_n"] == 727
     assert cfg["model_fill"]["publication"] == "internal_calibration_only"
     assert cfg["model_fill"]["status"] == "research_estimate"
-    # Valuation owns r−g; this work must not rewrite the 5% yield placeholder.
-    assert cfg["yield"]["land_yield"] == pytest.approx(0.05)
+    # Valuation owns r−g; model-fill must not rewrite the calibrated central yield.
+    assert "land_yield" not in cfg["yield"]
+    assert cfg["yield"]["central"] == pytest.approx(0.04499)
+    assert abs(cfg["yield"]["central"] - 0.05) > 1e-12
 
 
 def test_fill_null_zones_never_copies_neighbour(cfg):

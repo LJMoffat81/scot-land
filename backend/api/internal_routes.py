@@ -36,7 +36,9 @@ from api.wealth_routes import (
 from georgist import db
 from georgist.aggregator import MixedPriceYearError, aggregator
 from georgist.attribution import AttributionMissing
+from georgist.surface_settings import YIELD_SOURCE
 from georgist.tax_scenarios import (
+    DEFAULT_DZ_VINTAGE,
     INTERNAL_WARNING,
     PUBLICATION_STATUS,
     TaxScenarioError,
@@ -211,9 +213,11 @@ def internal_eco_mock() -> JSONResponse:
 
 
 # Latest surface_rent_dz row per zone, joined to council codes on the Data Zones spine.
+# One Data Zone vintage throughout; la_code/la_name from the spine (e.g. S01010117 → Glasgow City).
 _TAX_SCENARIO_SQL = (
     "SELECT DISTINCT ON (s.code) "
     "s.code, s.vintage, s.measured_rent, s.price_year, s.quality, s.publish_level, s.publication_status, "
+    "s.value_tier, s.uncertainty_low, s.uncertainty_high, "
     "zs.la_code, zs.la_name, zs.flags "
     "FROM surface_rent_dz s "
     "JOIN datazones.zone_spine zs ON zs.code = s.code AND zs.vintage = s.vintage "
@@ -268,17 +272,24 @@ def _load_tax_scenario_zones(vintage: int) -> list:
 
 @router.get("/internal/georgist/tax-scenario")
 def internal_tax_scenario(
-    vintage: str = Query(default="2011", description=VINTAGE_QUERY_DESCRIPTION),
+    vintage: str = Query(
+        default=str(DEFAULT_DZ_VINTAGE),
+        description="One Data Zone version throughout (default 2011). " + VINTAGE_QUERY_DESCRIPTION,
+    ),
+    scenario_id: str = Query(
+        default="S2",
+        description="DRAFT DEFAULTS scenario: S1 (per-council revenue swap), S2 (50%), S3 (85%)",
+    ),
     capture_rate: float = Query(
         default=1.0,
-        description="Policy illustration rate in [0, 1]; scales Surface Rent measured_rent",
+        description="Optional override for fixed-rate scenarios; ignored for S1 solved rates",
     ),
     la_code: str | None = Query(
         default=None,
         description="Optional council area code (S12…); filter by_council and national to that LA",
     ),
 ) -> JSONResponse:
-    """INTERNAL: Surface Rent × capture rate by council. publication_status=blocked until yield calibration."""
+    """INTERNAL: Surface Rent scenarios. publication_status=blocked. No public £."""
     vin = parse_vintage(vintage, required=True)
     try:
         rate = parse_capture_rate(capture_rate)
@@ -298,7 +309,12 @@ def internal_tax_scenario(
         la_code = code
     zones = _load_tax_scenario_zones(vin)
     try:
-        payload = aggregate_by_council(zones, capture_rate=rate, la_code=la_code)
+        payload = aggregate_by_council(
+            zones,
+            capture_rate=rate,
+            la_code=la_code,
+            scenario_id=scenario_id,
+        )
     except TaxScenarioError as exc:
         raise _tax_scenario_error(exc) from exc
     payload["ok"] = True
@@ -311,9 +327,10 @@ def internal_tax_scenario(
     yp = payload.get("yield_placeholder") or {}
     assert yp.get("status") == "placeholder"
     assert yp.get("owner") == "Valuation"
-    assert yp.get("source") == "data/config/surface.yaml yield.land_yield"
+    assert yp.get("source") == YIELD_SOURCE
     assert isinstance(yp.get("land_yield"), (int, float)) and yp["land_yield"] > 0
-    assert payload.get("policy_config", {}).get("status") == "not_finalised"
+    assert abs(float(yp["land_yield"]) - 0.05) > 1e-12  # no 0.05 left in yield config
+    assert payload.get("policy_config", {}).get("status") == "draft_defaults"
     assert payload.get("policy_config", {}).get("separate_from_measured_land_values") is True
     return JSONResponse(payload, headers={**HEADERS, "X-Wealth-Publication-Status": PUBLICATION_STATUS})
 
@@ -324,12 +341,16 @@ def internal_tax_scenario_zone(
     vintage: str | None = Query(
         default=None, description="Optional; must match the code's vintage. " + VINTAGE_QUERY_DESCRIPTION
     ),
+    scenario_id: str = Query(
+        default="S2",
+        description="DRAFT DEFAULTS scenario: S1 / S2 / S3",
+    ),
     capture_rate: float = Query(
         default=1.0,
-        description="Policy illustration rate in [0, 1]; scales Surface Rent measured_rent",
+        description="Optional override for fixed-rate scenarios; ignored for S1 solved rates",
     ),
 ) -> JSONResponse:
-    """INTERNAL: who-pays illustration for one Data Zone. publication_status=blocked until yield calibration."""
+    """INTERNAL: who-pays illustration for one Data Zone. publication_status=blocked. No public £."""
     code, vin, vin_source = resolve_zone(zone_id, parse_vintage(vintage))
     try:
         rate = parse_capture_rate(capture_rate)
@@ -353,11 +374,13 @@ def internal_tax_scenario_zone(
     council_rows = [z for z in zones if z.la_code == match.la_code]
     try:
         # Mixed-year guard on council membership (counts only; £ stays on the zone).
-        aggregate_by_council(council_rows, capture_rate=rate)
+        aggregate_by_council(council_rows, capture_rate=rate, scenario_id=scenario_id)
         payload = zone_illustration(
             match,
             capture_rate=rate,
             council_zone_count=len(council_rows),
+            scenario_id=scenario_id,
+            council_rows=council_rows,
         )
     except TaxScenarioError as exc:
         raise _tax_scenario_error(exc) from exc
@@ -370,4 +393,9 @@ def internal_tax_scenario_zone(
     assert payload.get("money_grain") == "data_zone"
     assert payload.get("yield_placeholder", {}).get("status") == "placeholder"
     assert INTERNAL_WARNING in (payload.get("warning") or "")
+    zone = payload.get("zone") or {}
+    assert isinstance(zone.get("measured_rent_gbp"), dict)
+    assert set(zone["measured_rent_gbp"]) >= {"low", "central", "high"}
+    assert zone.get("value_tier") in {"market", "proxy", "shadow"}
+    assert zone.get("tag") == zone.get("value_tier")
     return JSONResponse(payload, headers={**HEADERS, "X-Wealth-Publication-Status": PUBLICATION_STATUS})

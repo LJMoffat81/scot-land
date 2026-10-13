@@ -1,4 +1,4 @@
-"""Tax scenario tools: internal-only, blocked, £ at Data Zone only; yield from shared config."""
+"""Tax scenario tools: internal-only, blocked, £ triples at DZ; DRAFT DEFAULTS S1–S3."""
 
 from __future__ import annotations
 
@@ -6,8 +6,9 @@ import ast
 from pathlib import Path
 
 import pytest
+import yaml
 
-from georgist.surface_settings import yield_placeholder
+from georgist.surface_settings import YIELD_SOURCE, yield_placeholder
 from georgist.tax_scenarios import (
     BLOCKED_REASON,
     CAPTURE_NOTE,
@@ -21,8 +22,12 @@ from georgist.tax_scenarios import (
     ZoneRentRow,
     aggregate_by_council,
     assert_no_aggregate_gbp,
+    build_aggregate_rollup,
     illustrated_collection,
+    load_draft_defaults,
+    money_triple,
     parse_capture_rate,
+    solve_s1_per_council,
     stamp_blocked,
     zone_illustration,
     zone_row_from_db,
@@ -35,6 +40,7 @@ INTERNAL_TAX_PATHS = (
     "/internal/georgist/tax-scenario/zone",
 )
 FRONTEND_ROOT = Path(__file__).resolve().parents[3] / "frontend"
+CONFIG_ROOT = Path(__file__).resolve().parents[3] / "data" / "config"
 GBP_KEYS = ("measured_rent_total_gbp", "illustrated_collection_gbp", "measured_rent_gbp")
 
 
@@ -44,6 +50,7 @@ def _row(
     la_name: str = "City of Edinburgh",
     rent: float = 100_000.0,
     price_year: int = 2025,
+    value_tier: str = "proxy",
 ) -> ZoneRentRow:
     return ZoneRentRow(
         code=code,
@@ -52,6 +59,7 @@ def _row(
         la_name=la_name,
         measured_rent=rent,
         price_year=price_year,
+        value_tier=value_tier,
     )
 
 
@@ -71,6 +79,51 @@ def _internal_client(monkeypatch, *, enabled=True, token: str | None = "test-sec
     return TestClient(create_app())
 
 
+def _mini_defaults(edi_target: float, glasgow_target: float) -> dict:
+    """Minimal DRAFT DEFAULTS for two councils (S1 solve tests)."""
+    return {
+        "status": "draft_defaults",
+        "label": "DRAFT DEFAULTS",
+        "approval": "pending_laurie",
+        "owner": "Georgist",
+        "exemptions": {"ownership_based": False, "shadow_taxed": False},
+        "deferral": {"low_income_home_owners": True, "rate": 0.0262},
+        "phase_in": {"points_per_year": 10},
+        "revenue_sharing": {"council_share": 0.5, "dividend_share": 0.5},
+        "display_while_blocked": {
+            "gbp_grain": "data_zone_only",
+            "council_views": "counts_only",
+            "build_council_scotland_rollup": True,
+        },
+        "scenarios": {
+            "S1": {
+                "id": "S1",
+                "mode": "revenue_swap_solved_rate",
+                "scope": "per_council",
+                "national_single_rate": {"enabled": False, "id": "S1_national"},
+            },
+            "S2": {"id": "S2", "mode": "fixed_capture_rate", "capture_rate": 0.50},
+            "S3": {"id": "S3", "mode": "fixed_capture_rate", "capture_rate": 0.85},
+        },
+        "fiscal_targets": {
+            "by_council": [
+                {
+                    "la_code": "S12000036",
+                    "la_name": "City of Edinburgh",
+                    "council_tax_gbp": edi_target / 2,
+                    "business_rates_gbp": edi_target / 2,
+                },
+                {
+                    "la_code": "S12000049",
+                    "la_name": "Glasgow City",
+                    "council_tax_gbp": glasgow_target / 2,
+                    "business_rates_gbp": glasgow_target / 2,
+                },
+            ],
+        },
+    }
+
+
 def test_parse_capture_rate_bounds():
     assert parse_capture_rate(0) == 0.0
     assert parse_capture_rate("0.5") == 0.5
@@ -84,13 +137,21 @@ def test_illustrated_collection_is_product():
     assert illustrated_collection(100_000.0, 0.25) == 25_000.0
 
 
+def test_money_triple_scales_with_yield_band():
+    t = money_triple(100.0, yield_central=0.04499, band_low=0.0398, band_high=0.0450)
+    assert t["central"] == 100.0
+    assert t["low"] == round(100.0 * 0.0398 / 0.04499, 2)
+    assert t["high"] == round(100.0 * 0.0450 / 0.04499, 2)
+
+
 def test_aggregate_money_is_data_zone_only_not_council_sums():
     rows = [
         _row("S01008677", rent=100_000.0),
         _row("S01008678", rent=50_000.0),
         _row("S01009000", la_code="S12000049", la_name="Glasgow City", rent=200_000.0),
     ]
-    out = aggregate_by_council(rows, capture_rate=0.5)
+    defaults = _mini_defaults(edi_target=75_000.0, glasgow_target=100_000.0)
+    out = aggregate_by_council(rows, capture_rate=0.5, scenario_id="S2", defaults=defaults)
     assert out["lens"] == LENS
     assert out["disclaimer"] == DISCLAIMER
     assert out["capture_note"] == CAPTURE_NOTE
@@ -102,20 +163,22 @@ def test_aggregate_money_is_data_zone_only_not_council_sums():
     shared = yield_placeholder()
     assert out["yield_placeholder"]["status"] == "placeholder"
     assert out["yield_placeholder"]["land_yield"] == shared["land_yield"]
+    assert out["yield_placeholder"]["central"] == shared["central"]
     assert out["yield_placeholder"]["owner"] == "Valuation"
-    assert out["yield_placeholder"]["source"] == "data/config/surface.yaml yield.land_yield"
-    assert "PLACEHOLDER" in out["yield_placeholder"]["note"]
+    assert out["yield_placeholder"]["source"] == YIELD_SOURCE
+    assert "PLACEHOLDER" in out["yield_placeholder"]["note"].upper() or "placeholder" in out["yield_placeholder"]["note"].lower()
     assert out["warning"] == INTERNAL_WARNING
-    assert out["policy_config"]["status"] == "not_finalised"
+    assert out["policy_config"]["status"] == "draft_defaults"
+    assert out["policy_config"]["label"] == "DRAFT DEFAULTS"
+    assert out["policy_config"]["approval"] == "pending_laurie"
     assert out["policy_config"]["owner"] == "Georgist"
     assert out["policy_config"]["separate_from_measured_land_values"] is True
-    assert set(out["policy_config"]["topics"]) == {
-        "rates", "exemptions", "phase_in", "revenue_sharing",
-    }
-    # Policy knobs must not be folded into measured rent fields
-    assert "exemptions" not in out["by_zone"][0]
-    assert "phase_in" not in out["by_zone"][0]
-    assert "revenue_sharing" not in out["by_zone"][0]
+    assert out["policy_config"]["exemptions"]["ownership_based"] is False
+    assert out["policy_config"]["exemptions"]["shadow_taxed"] is False
+    assert out["policy_config"]["deferral"]["rate"] == pytest.approx(0.0262)
+    assert out["policy_config"]["phase_in"]["points_per_year"] == 10
+    assert out["revenue_sharing"]["council_share"] == 0.5
+    assert out["revenue_sharing"]["dividend_share"] == 0.5
 
     # National / council: counts only — no £
     assert out["national"]["zone_count"] == 3
@@ -127,28 +190,135 @@ def test_aggregate_money_is_data_zone_only_not_council_sums():
         assert c["zone_count"] >= 1
         assert c["zone_codes"]
 
-    # £ only on by_zone (Data Zone grain)
+    # £ only on by_zone as low/central/high triples + tags
     by_code = {z["code"]: z for z in out["by_zone"]}
-    assert by_code["S01008677"]["illustrated_collection_gbp"] == 50_000.0
-    assert by_code["S01008677"]["measured_rent_gbp"] == 100_000.0
-    assert by_code["S01008677"]["money_grain"] == "data_zone"
-    assert by_code["S01008677"]["yield_placeholder"]["land_yield"] == shared["land_yield"]
+    z = by_code["S01008677"]
+    assert set(z["measured_rent_gbp"]) == {"low", "central", "high"}
+    assert z["measured_rent_gbp"]["central"] == 100_000.0
+    assert set(z["illustrated_collection_gbp"]) == {"low", "central", "high"}
+    assert z["illustrated_collection_gbp"]["central"] == 50_000.0  # S2 = 50%
+    assert z["value_tier"] == "proxy"
+    assert z["tag"] == "proxy"
+    assert z["money_grain"] == "data_zone"
     assert_no_aggregate_gbp(out)
+
+    # Roll-up built behind TEMP setting; Σ councils = Scotland
+    rollup = out["blocked_aggregate_rollup"]
+    sum_c = sum(c["measured_rent_gbp"]["central"] for c in rollup["by_council"])
+    assert sum_c == pytest.approx(rollup["scotland"]["measured_rent_gbp"]["central"])
+    assert rollup["zone_count"] == 3
 
 
 def test_zone_illustration_gbp_on_zone_only():
     z = _row(rent=25_000.0)
-    out = zone_illustration(z, capture_rate=0.2, council_zone_count=4)
-    assert out["zone"]["illustrated_collection_gbp"] == 5_000.0
-    assert out["zone"]["measured_rent_gbp"] == 25_000.0
+    defaults = _mini_defaults(12_500.0, 1.0)
+    out = zone_illustration(z, capture_rate=0.2, council_zone_count=4, scenario_id="S2", defaults=defaults)
+    assert out["zone"]["illustrated_collection_gbp"]["central"] == 12_500.0  # S2 forces 50%
+    assert out["zone"]["measured_rent_gbp"]["central"] == 25_000.0
+    assert out["zone"]["tag"] == "proxy"
     assert out["publication_status"] == "blocked"
     assert out["money_grain"] == "data_zone"
-    assert out["yield_placeholder"] == yield_placeholder()
+    assert out["yield_placeholder"]["source"] == YIELD_SOURCE
     for key in GBP_KEYS:
         assert key not in out["council"]
     assert out["council"]["zone_count"] == 4
-    assert "share_of_council_measured_rent" not in out["zone"]
     assert_no_aggregate_gbp(out)
+
+
+def test_shadow_never_taxed():
+    rows = [
+        _row("S01008677", rent=100_000.0, value_tier="proxy"),
+        _row("S01008678", rent=80_000.0, value_tier="shadow"),
+    ]
+    defaults = _mini_defaults(50_000.0, 1.0)
+    out = aggregate_by_council(rows, scenario_id="S2", defaults=defaults)
+    by_code = {z["code"]: z for z in out["by_zone"]}
+    assert by_code["S01008677"]["illustrated_collection_gbp"]["central"] == 50_000.0
+    assert by_code["S01008678"]["taxable"] is False
+    assert by_code["S01008678"]["tag"] == "shadow"
+    assert by_code["S01008678"]["illustrated_collection_gbp"]["central"] == 0.0
+
+
+def test_s1_rate_differs_by_council_and_revenue_equals_ct_plus_nbr():
+    """Done-when: S1 rate differs by council; each council S1 revenue = CT + business rates."""
+    rows = [
+        _row("S01008677", la_code="S12000036", la_name="City of Edinburgh", rent=200_000.0),
+        _row("S01008678", la_code="S12000036", la_name="City of Edinburgh", rent=100_000.0),
+        _row("S01009000", la_code="S12000049", la_name="Glasgow City", rent=400_000.0),
+        _row("S01009001", la_code="S12000049", la_name="Glasgow City", rent=100_000.0, value_tier="shadow"),
+    ]
+    # Edinburgh taxable 300k → target 60k → rate 0.2
+    # Glasgow taxable 400k (shadow excluded) → target 200k → rate 0.5
+    defaults = _mini_defaults(edi_target=60_000.0, glasgow_target=200_000.0)
+    solved = solve_s1_per_council(rows, defaults=defaults)
+    assert solved["S12000036"]["s1_rate"] == pytest.approx(0.2)
+    assert solved["S12000049"]["s1_rate"] == pytest.approx(0.5)
+    assert solved["S12000036"]["s1_rate"] != solved["S12000049"]["s1_rate"]
+    assert solved["S12000036"]["s1_revenue_central_gbp"] == pytest.approx(60_000.0)
+    assert solved["S12000049"]["s1_revenue_central_gbp"] == pytest.approx(200_000.0)
+    assert solved["S12000036"]["s1_revenue_central_gbp"] == pytest.approx(
+        solved["S12000036"]["council_tax_gbp"] + solved["S12000036"]["business_rates_gbp"]
+    )
+    assert solved["S12000049"]["s1_revenue_central_gbp"] == pytest.approx(
+        solved["S12000049"]["council_tax_gbp"] + solved["S12000049"]["business_rates_gbp"]
+    )
+
+    out = aggregate_by_council(rows, scenario_id="S1", defaults=defaults)
+    assert out["s1_national_single_rate"]["enabled"] is False
+    assert out["s1_national_single_rate"]["default"] is False
+    rates = {c["la_code"]: c["s1_rate"] for c in out["by_council"]}
+    assert rates["S12000036"] != rates["S12000049"]
+    by_code = {z["code"]: z for z in out["by_zone"]}
+    assert by_code["S01008677"]["illustrated_collection_gbp"]["central"] == pytest.approx(40_000.0)
+    assert by_code["S01009001"]["illustrated_collection_gbp"]["central"] == 0.0  # shadow
+
+
+def test_rollup_councils_sum_to_scotland_each_zone_once():
+    rows = [
+        _row("S01010117", la_code="S12000049", la_name="Glasgow City", rent=10_000.0),  # spine example
+        _row("S01008677", rent=20_000.0),
+        _row("S01008678", rent=5_000.0),
+    ]
+    rate_by_zone = {r.code: 0.5 for r in rows}
+    rollup = build_aggregate_rollup(rows, rate_by_zone=rate_by_zone)
+    sum_c = sum(c["measured_rent_gbp"]["central"] for c in rollup["by_council"])
+    assert sum_c == pytest.approx(rollup["scotland"]["measured_rent_gbp"]["central"])
+    assert sum_c == pytest.approx(35_000.0)
+    all_codes = [code for c in rollup["by_council"] for code in c["zone_codes"]]
+    assert len(all_codes) == len(set(all_codes)) == 3
+    glasgow = next(c for c in rollup["by_council"] if c["la_code"] == "S12000049")
+    assert "S01010117" in glasgow["zone_codes"]
+
+
+def test_surface_yaml_has_no_land_yield_005():
+    raw = (CONFIG_ROOT / "surface.yaml").read_text(encoding="utf-8")
+    cfg = yaml.safe_load(raw)["surface_rent"]["yield"]
+    assert "land_yield" not in cfg
+    assert "land_yield: 0.05" not in yaml.dump(cfg)
+    assert cfg["central"] == pytest.approx(0.04499)
+    assert cfg["band"]["low"] == pytest.approx(0.0398)
+    assert cfg["band"]["high"] == pytest.approx(0.0450)
+    assert 0.05 not in (cfg["central"], cfg["band"]["low"], cfg["band"]["high"])
+    assert cfg["central_at_cap"] is True
+    assert cfg["band_clipped_outer"] is True
+    assert cfg["bed_mapping_sensitive"] is True
+    assert cfg["result_hash"] == "4654e513"
+
+
+def test_draft_defaults_file_loads():
+    cfg = load_draft_defaults()
+    assert cfg["status"] == "draft_defaults"
+    assert cfg["approval"] == "pending_laurie"
+    assert cfg["scenarios"]["S2"]["capture_rate"] == 0.5
+    assert cfg["scenarios"]["S3"]["capture_rate"] == 0.85
+    assert cfg["scenarios"]["S1"]["national_single_rate"]["enabled"] is False
+    assert cfg["deferral"]["rate"] == pytest.approx(0.0262)
+    assert cfg["phase_in"]["points_per_year"] == 10
+    assert len(cfg["fiscal_targets"]["by_council"]) == 32
+    ct = sum(r["council_tax_gbp"] for r in cfg["fiscal_targets"]["by_council"])
+    nbr = sum(r["business_rates_gbp"] for r in cfg["fiscal_targets"]["by_council"])
+    assert ct == 2_800_000_000
+    assert nbr == 2_800_000_000
 
 
 def test_assert_no_aggregate_gbp_refuses_council_money():
@@ -160,12 +330,12 @@ def test_assert_no_aggregate_gbp_refuses_council_money():
 def test_stamp_blocked_includes_yield_placeholder_and_policy_config():
     stamped = stamp_blocked({"national": {}, "by_council": [{"la_code": "S"}]})
     assert stamped["publication_status"] == "blocked"
-    assert stamped["yield_placeholder"] == yield_placeholder()
+    assert stamped["yield_placeholder"]["source"] == YIELD_SOURCE
     assert "yield_calibration_pending" in stamped["blocked_reason"]
     assert BLOCKED_REASON == stamped["blocked_reason"]
-    assert stamped["policy_config"] == POLICY_CONFIG
-    assert stamped["policy_config"]["status"] == "not_finalised"
-    assert "not finalised" in CAPTURE_NOTE.lower() or "not finalised" in POLICY_CONFIG["note"].lower()
+    assert stamped["policy_config"]["status"] == "draft_defaults"
+    assert stamped["policy_config"]["approval"] == "pending_laurie"
+    assert "DRAFT" in CAPTURE_NOTE or "DRAFT" in stamped["policy_config"]["note"]
 
 
 def test_tax_scenarios_does_not_hardcode_land_yield():
@@ -183,13 +353,15 @@ def test_yield_placeholder_reads_shared_config_and_v3_passthrough():
 
     base = yp_fn()
     assert base["status"] == "placeholder" and base["owner"] == "Valuation"
-    assert isinstance(base["land_yield"], float) and base["land_yield"] > 0
-    # Live shared config may still be pre-v3 until Valuation publishes; never invent here.
-    assert "result_hash" not in base or isinstance(base.get("result_hash"), str)
-    # Georgist yield calibration v3: pass through when published in surface.yaml.
+    assert base["central"] == pytest.approx(0.04499)
+    assert base["land_yield"] == pytest.approx(0.04499)
+    assert base["land_yield_band"] == [0.0398, 0.0450]
+    assert base["result_hash"] == "4654e513"
+    assert base["central_at_cap"] is True
+    assert abs(base["land_yield"] - 0.05) > 1e-12
     with_v3 = yp_fn({
         "yield": {
-            "land_yield": 0.04499,
+            "central": 0.04499,
             "land_yield_band": [0.0398, 0.0450],
             "result_hash": "4654e513",
             "calibration_version": 3,
@@ -207,13 +379,12 @@ def test_yield_placeholder_reads_shared_config_and_v3_passthrough():
     assert set(with_v3["flags"]) == {
         "central_at_cap", "band_clipped_outer", "bed_mapping_sensitive",
     }
-    assert with_v3["status"] == "placeholder"
 
 
 def test_aggregate_refuses_mixed_price_years():
     rows = [_row(price_year=2025), _row("S01008678", price_year=2024)]
     with pytest.raises(TaxScenarioError) as exc:
-        aggregate_by_council(rows, capture_rate=1.0)
+        aggregate_by_council(rows, capture_rate=1.0, defaults=_mini_defaults(1.0, 1.0))
     assert exc.value.code == "mixed_price_years"
 
 
@@ -222,10 +393,14 @@ def test_aggregate_la_filter():
         _row(rent=10_000.0),
         _row("S01009000", la_code="S12000049", la_name="Glasgow City", rent=99_000.0),
     ]
-    out = aggregate_by_council(rows, capture_rate=1.0, la_code="S12000036")
+    out = aggregate_by_council(
+        rows, capture_rate=1.0, la_code="S12000036", scenario_id="S3",
+        defaults=_mini_defaults(1.0, 1.0),
+    )
     assert out["national"]["zone_count"] == 1
     assert len(out["by_zone"]) == 1
-    assert out["by_zone"][0]["measured_rent_gbp"] == 10_000.0
+    assert out["by_zone"][0]["measured_rent_gbp"]["central"] == 10_000.0
+    assert out["by_zone"][0]["illustrated_collection_gbp"]["central"] == 8_500.0  # S3 85%
 
 
 def test_zone_row_from_db_filters_unpublishable_and_zero_dwellings():
@@ -237,11 +412,13 @@ def test_zone_row_from_db_filters_unpublishable_and_zero_dwellings():
         "quality": "derived",
         "publish_level": "public_zone",
         "publication_status": "ok",
+        "value_tier": "market",
         "la_code": "S12000036",
         "la_name": "City of Edinburgh",
         "flags": "",
     }
-    assert zone_row_from_db(base) is not None
+    z = zone_row_from_db(base)
+    assert z is not None and z.value_tier == "market"
     assert zone_row_from_db({**base, "quality": "placeholder"}) is None
     assert zone_row_from_db({**base, "flags": "zero_dwellings"}) is None
 
@@ -320,7 +497,7 @@ def test_internal_tax_scenario_503_without_db(monkeypatch):
     assert bad.status_code == 422
     r = c.get(
         "/internal/georgist/tax-scenario",
-        params={"vintage": "2011", "capture_rate": 0.5},
+        params={"vintage": "2011", "capture_rate": 0.5, "scenario_id": "S2"},
         headers={"Authorization": "Bearer correct"},
     )
     assert r.status_code == 503
@@ -343,3 +520,12 @@ def test_frontend_has_no_public_tax_scenario_panel():
     wealth_api = (FRONTEND_ROOT / "lib" / "useWealthApi.ts").read_text(encoding="utf-8")
     assert "/georgist/tax-scenario" not in wealth_api
     assert "fetchTaxScenario" not in wealth_api
+    # Internal-only page may exist; must stay under /internal and say blocked.
+    internal_page = FRONTEND_ROOT / "app" / "internal" / "tax-scenario" / "page.tsx"
+    assert internal_page.exists()
+    text = internal_page.read_text(encoding="utf-8")
+    assert "blocked" in text.lower()
+    assert "DRAFT DEFAULTS" in text
+    view = (FRONTEND_ROOT / "components" / "InternalTaxScenarioView.tsx").read_text(encoding="utf-8")
+    assert "ConfidenceTag" in view
+    assert "confidence-tag" in view or 'data-testid="confidence-tag"' in view or "ConfidenceTag" in view

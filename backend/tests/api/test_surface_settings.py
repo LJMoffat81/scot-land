@@ -25,15 +25,18 @@ def test_missing_keys_refused():
 def test_yield_placeholder_from_surface_yaml():
     raw = yaml.safe_load(Path(sr.CONFIG_PATH).read_text())["surface_rent"]["yield"]
     yp = yield_placeholder()
-    assert yp["land_yield"] == pytest.approx(float(raw["land_yield"]))
+    central = float(raw.get("central", raw.get("land_yield")))
+    assert yp["central"] == pytest.approx(central)
+    assert yp["land_yield"] == pytest.approx(central)
     assert yp["status"] == "placeholder" and yp["owner"] == "Valuation"
-    assert yp["source"] == "data/config/surface.yaml yield.land_yield"
-    if "land_yield_band" not in raw:
-        assert "land_yield_band" not in yp
+    assert yp["source"] == "data/config/surface.yaml yield.central"
+    assert "land_yield" not in raw  # bare land_yield: 0.05 removed
+    assert abs(central - 0.05) > 1e-12
+    assert yp["land_yield_band"] == [float(raw["band"]["low"]), float(raw["band"]["high"])]
 
 
 def test_yield_placeholder_passes_band_when_configured():
-    yp = yield_placeholder({"yield": {"land_yield": 0.0399, "land_yield_band": [0.035, 0.045]}})
+    yp = yield_placeholder({"yield": {"central": 0.0399, "land_yield_band": [0.035, 0.045]}})
     assert yp["land_yield"] == pytest.approx(0.0399)
     assert yp["land_yield_band"] == [0.035, 0.045]
 
@@ -42,8 +45,8 @@ def test_yield_placeholder_passes_georgist_v3_signoff_when_configured():
     """Pass-through only — v3 values come from shared config when Valuation publishes them."""
     yp = yield_placeholder({
         "yield": {
-            "land_yield": 0.04499,
-            "land_yield_band": [0.0398, 0.0450],
+            "central": 0.04499,
+            "band": {"low": 0.0398, "high": 0.0450, "high_clipped_at_cap": True},
             "result_hash": "4654e513",
             "calibration_version": 3,
             "central_at_cap": True,
@@ -53,6 +56,7 @@ def test_yield_placeholder_passes_georgist_v3_signoff_when_configured():
         },
     })
     assert yp["land_yield"] == pytest.approx(0.04499)
+    assert yp["central"] == pytest.approx(0.04499)
     assert yp["land_yield_band"] == [0.0398, 0.0450]
     assert yp["result_hash"] == "4654e513"
     assert yp["calibration_version"] == 3

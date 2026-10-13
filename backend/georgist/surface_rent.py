@@ -1251,13 +1251,19 @@ def resolve_land_value(
 
 
 def configured_land_yield(yield_cfg: Mapping) -> float:
-    """Rules 1: config stores ONE figure, the land yield (= r - g). No r or g outside scenarios."""
+    """Rules 1: config stores ONE central figure, the land yield (= r − g).
+
+    Prefer ``yield.central`` (Georgist v3). Legacy ``yield.land_yield`` is accepted
+    until callers migrate. No r or g outside scenarios.
+    """
     stray = {"r", "g", "discount_rate", "growth_rate"} & set(yield_cfg)
     if stray:
         raise YieldIdentityError(f"yield config must not set {sorted(stray)}; r and g belong in scenario runs only")
-    if "land_yield" not in yield_cfg:
-        raise PendingSourceError("yield.land_yield must be configured")
-    return float(yield_cfg["land_yield"])
+    if "central" in yield_cfg and yield_cfg["central"] is not None:
+        return float(yield_cfg["central"])
+    if "land_yield" in yield_cfg and yield_cfg["land_yield"] is not None:
+        return float(yield_cfg["land_yield"])
+    raise PendingSourceError("yield.central (or legacy yield.land_yield) must be configured")
 
 
 def scenario_r_g(scenario: Mapping, land_yield_value: float, *, tol: float = 1e-9) -> tuple[float, float]:

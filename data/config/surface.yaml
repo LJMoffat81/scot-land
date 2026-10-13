@@ -247,9 +247,17 @@ surface_rent:
 
   yield:
     table: brma_x_ur6             # team lock 2026-10-06
-    land_yield: 0.05              # rules 1: THE land yield = r - g (single figure; used as the fallback where cell
-                                  # evidence is thin). ASSUMPTION: matches agr.yaml valuer_roll.yield_rate.
-                                  # No r or g here: the code refuses them outside `scenarios`.
+    # Georgist yield calibration v3 (result_hash 4654e513). Rules 1: THE land yield is the
+    # central figure (= r − g / r+p−g). Bare five-percent land_yield key removed. No r or g
+    # here: the code refuses them outside `scenarios`.
+    central: 0.04499              # central_at_cap (4.5% cap)
+    band: {low: 0.0398, high: 0.0450, high_clipped_at_cap: true}   # band_clipped_outer
+    land_yield_band: [0.0398, 0.0450]   # list form for yield_placeholder pass-through
+    result_hash: "4654e513"
+    calibration_version: 3
+    central_at_cap: true
+    band_clipped_outer: true
+    bed_mapping_sensitive: true
     deductions:                   # gross -> land yield. ASSUMPTION pending sign-off
       void: 0.04                  # share of gross rent lost to voids
       running_costs: 0.25         # management, repairs, insurance, compliance (share of gross)
@@ -284,7 +292,7 @@ surface_rent:
     note: >
       Fills null residential Data Zones via per-UR6-class log-linear prediction.
       Never copies a neighbour. Thin classes borrow adjacent-class training rows
-      (tag borrowed_class). Leave yield.land_yield (5% placeholder) untouched.
+      (tag borrowed_class). Leave yield.central / yield.band (v3 calibration) untouched.
 
   drivers:
     allowed:
@@ -376,8 +384,8 @@ surface_rent:
       urban: 0.70                 # Pickard, agr.yaml despeculation.urban_speculation_discount
       farm: 0.20                  # Pickard, agr.yaml despeculation.farmland_market_to_productive (not used by residential surface)
 
-  scenarios:                      # rules 1: the ONLY place r and g may appear; code asserts r - g == land_yield
-    illustrative_r_g: {r: 0.07, g: 0.02}   # ILLUSTRATIVE only (0.07 - 0.02 = 0.05 = yield.land_yield)
+  scenarios:                      # rules 1: the ONLY place r and g may appear; code asserts r - g == yield.central
+    illustrative_r_g: {r: 0.06499, g: 0.02}   # ILLUSTRATIVE only (0.06499 - 0.02 = 0.04499 = yield.central)
 
   reconciliation:                 # rules 4.2
     rent_ceiling: mean_price_x_dwellings_x_gross_yield   # rules 4.2 v0.3 formula

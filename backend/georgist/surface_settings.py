@@ -1,10 +1,10 @@
 """Engine view of Valuation's surface settings, READ from data/config/surface.yaml (never copied).
 
-Keys (Valuation fd03c4b, rules v0.6/v0.7):
+Keys (Valuation / Georgist yield calibration v3):
   surface_rent.depreciation.life_years.{low,central,high}
   surface_rent.depreciation.remaining_min.{low,central,high}
   surface_rent.depreciation.band_combination.rule
-  surface_rent.yield.land_yield (+ optional band / v3 flags / result_hash)
+  surface_rent.yield.central (+ band / v3 flags / result_hash)
 """
 
 from __future__ import annotations
@@ -42,15 +42,34 @@ YIELD_V3_FLAG_KEYS: tuple[str, ...] = (
     "bed_mapping_sensitive",
 )
 
+YIELD_SOURCE = "data/config/surface.yaml yield.central"
+
+
+def _band_from_yield_cfg(ycfg: Mapping[str, Any]) -> list[float] | None:
+    """Accept ``band: {low, high}`` or legacy ``land_yield_band: [low, high]``."""
+    nested = ycfg.get("band")
+    if isinstance(nested, Mapping) and "low" in nested and "high" in nested:
+        lo, hi = float(nested["low"]), float(nested["high"])
+        if lo > hi:
+            raise SettingsError("surface_rent.yield.band must have low <= high")
+        return [lo, hi]
+    raw_band = ycfg.get("land_yield_band")
+    if isinstance(raw_band, (list, tuple)) and len(raw_band) == 2:
+        lo, hi = float(raw_band[0]), float(raw_band[1])
+        if lo > hi:
+            raise SettingsError("surface_rent.yield.land_yield_band must be [low, high]")
+        return [lo, hi]
+    return None
+
 
 def yield_placeholder(config: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Configured land yield from shared surface.yaml — always tagged placeholder until calibrated.
 
     Tax scenarios and other consumers must call this (or ``configured_land_yield``) rather than
-    hardcoding a rate. Valuation owns r−g / land_yield. Optional Georgist calibration v3
+    hardcoding a rate. Valuation owns r−g / central. Optional Georgist calibration v3
     metadata is passed through only when present in shared config — never invented here:
 
-    * ``land_yield`` / ``land_yield_band`` / ``result_hash``
+    * ``central`` / ``land_yield`` (alias) / ``land_yield_band`` / ``result_hash``
     * flags ``central_at_cap``, ``band_clipped_outer``, ``bed_mapping_sensitive``
     * optional ``components`` {r, p, g} and legacy ``clipped_at_cap``
     """
@@ -61,23 +80,21 @@ def yield_placeholder(config: Mapping[str, Any] | None = None) -> dict[str, Any]
     land = sr.configured_land_yield(ycfg)
     out: dict[str, Any] = {
         "status": "placeholder",
-        "land_yield": land,
-        "source": "data/config/surface.yaml yield.land_yield",
+        "central": land,
+        "land_yield": land,  # alias for callers that still read land_yield
+        "source": YIELD_SOURCE,
         "owner": "Valuation",
         "note": (
-            f"Configured land yield {land:.2%} (= r − g / r+p−g) is a PLACEHOLDER from shared "
-            "surface.yaml (Valuation owns calibration; Georgist sign-off metadata passed "
-            "through when present). Consumers defer to this config; do not hardcode a yield "
-            "rate in tax-scenario code."
+            f"PLACEHOLDER: configured land yield central {land:.2%} (= r − g / r+p−g) from "
+            "shared surface.yaml (Valuation owns calibration; Georgist sign-off metadata "
+            "passed through when present). Consumers defer to this config; do not hardcode "
+            "a yield rate in tax-scenario code. Bare land_yield 5% key removed."
         ),
     }
-    # Optional band when Valuation publishes it; never invent.
-    raw_band = ycfg.get("land_yield_band")
-    if isinstance(raw_band, (list, tuple)) and len(raw_band) == 2:
-        lo, hi = float(raw_band[0]), float(raw_band[1])
-        if lo > hi:
-            raise SettingsError("surface_rent.yield.land_yield_band must be [low, high]")
-        out["land_yield_band"] = [lo, hi]
+    band = _band_from_yield_cfg(ycfg)
+    if band is not None:
+        out["land_yield_band"] = band
+        out["band"] = {"low": band[0], "central": land, "high": band[1]}
     if ycfg.get("result_hash"):
         out["result_hash"] = str(ycfg["result_hash"])
     if ycfg.get("calibration_version") is not None:
@@ -91,6 +108,9 @@ def yield_placeholder(config: Mapping[str, Any] | None = None) -> dict[str, Any]
                 flags_present.append(key)
     if "clipped_at_cap" in ycfg:
         out["clipped_at_cap"] = bool(ycfg["clipped_at_cap"])
+    nested_band = ycfg.get("band")
+    if isinstance(nested_band, Mapping) and nested_band.get("high_clipped_at_cap") is not None:
+        out["high_clipped_at_cap"] = bool(nested_band["high_clipped_at_cap"])
     # Optional explicit flags list from config (union with boolean keys above).
     raw_flags = ycfg.get("flags")
     if isinstance(raw_flags, (list, tuple)):
@@ -104,6 +124,5 @@ def yield_placeholder(config: Mapping[str, Any] | None = None) -> dict[str, Any]
         out["flags"] = flags_present
     components = ycfg.get("components")
     if isinstance(components, Mapping) and components:
-        # e.g. {r, p, g} when Valuation records the central identity; never invent.
         out["components"] = {str(k): float(v) for k, v in components.items()}
     return out

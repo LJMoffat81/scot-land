@@ -191,7 +191,6 @@ python -m etl.ingest_hla_sites --input ../data/external/spatialhub/hls/pub_hls.g
 
 Registry: `data/config/sources.yaml` → `hla`.
 
-<<<<<<< HEAD
 ## SEPA Flood Maps (OGL)
 
 | Field | Value |
@@ -205,7 +204,7 @@ Registry: `data/config/sources.yaml` → `hla`.
 | Ingest | `python -m etl.ingest_sepa_flood --input ../data/external/sepa/...geojson --replace` |
 
 Registry: `data/config/sources.yaml` → `flood`. Raw geodatabases stay under gitignored `data/external/sepa/`.
-=======
+
 ## NatureScot SSSI and designations (OGL-3.0)
 
 | Field | Value |
@@ -223,7 +222,6 @@ Registry: `data/config/sources.yaml` → `flood`. Raw geodatabases stay under gi
 | Gaps | Indicative boundaries (not a title); SSSI is a separate catalog layer from SPA/SAC/NNR |
 
 Registry: `data/config/sources.yaml` → `naturescot_sssi` and `naturescot_designations`. Refresh: [scripts/data/README-naturescot.md](../scripts/data/README-naturescot.md).
->>>>>>> b0abba5 (Add NatureScot SSSI and designations layers (OGL-3.0))
 
 ## Local layout after acquisition
 

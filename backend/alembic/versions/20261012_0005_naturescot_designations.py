@@ -1,10 +1,10 @@
 """NatureScot SSSI + SPA/SAC/NNR designation tables.
 
 Adds PostGIS tables for OGL NatureScot protected-area overlays.
-DDL source: backend/db/schema/007_naturescot_designations.sql.
+DDL source: backend/db/schema/008_naturescot_designations.sql.
 
-Revision ID: 20261012_0004
-Revises: 20261012_0003
+Revision ID: 20261012_0005
+Revises: 20261012_0004
 Create Date: 2026-10-12
 """
 
@@ -15,8 +15,8 @@ from typing import Sequence, Union
 
 from alembic import op
 
-revision: str = "20261012_0004"
-down_revision: Union[str, None] = "20261012_0003"
+revision: str = "20261012_0005"
+down_revision: Union[str, None] = "20261012_0004"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -24,12 +24,12 @@ SCHEMA_FILE = (
     Path(__file__).resolve().parents[2]
     / "db"
     / "schema"
-    / "007_naturescot_designations.sql"
+    / "008_naturescot_designations.sql"
 )
 
 
 def upgrade() -> None:
-    # Idempotent: baseline on a fresh DB may already have applied 006 via glob.
+    # Idempotent: baseline on a fresh DB may already have applied 008 via glob.
     op.get_bind().exec_driver_sql(SCHEMA_FILE.read_text(encoding="utf-8"))
 
 

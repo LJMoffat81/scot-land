@@ -67,7 +67,7 @@ def ensure_tables(conn) -> None:
         Path(__file__).resolve().parents[1]
         / "db"
         / "schema"
-        / "007_naturescot_designations.sql"
+        / "008_naturescot_designations.sql"
     )
     with conn.cursor() as cur:
         cur.execute(schema.read_text(encoding="utf-8"))

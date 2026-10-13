@@ -1,9 +1,9 @@
-"""Common Good land — OGL PostGIS overlay + linked registers.
+"""Common Good land — linked open registers and honest national gap.
 
-OGL council open layers (Highland sites/buildings) load into PostGIS via
-``etl.ingest_common_good``. Non-OGL sources (Fife OS INSPIRE EUL) stay linked
-only — the former Fife-only catalog row is folded into this layer. Place cards
-report on-point hits only from PostGIS, never invented.
+There is no single open national Common Good spatial layer. This module
+surfaces verified council register landing pages and documents indicative
+spatial sources (Highland licence unconfirmed; Fife OS INSPIRE EUL) without
+loading or storing outlines. Place cards never invent an on-point hit.
 """
 
 from __future__ import annotations
@@ -14,14 +14,10 @@ from typing import Any
 
 import yaml
 
-from layers.common_good_spatial import is_loaded, query_point, row_count, source_meta
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = REPO_ROOT / "data" / "config" / "common_good.yaml"
 
-NATIONAL_GAP = (
-    "No single national Common Good polygon layer — coverage is council-by-council."
-)
+NATIONAL_GAP = "No single open national Common Good spatial layer."
 
 
 @lru_cache(maxsize=1)
@@ -70,7 +66,7 @@ def _spatial_sources_for(code: str | None = None) -> list[dict[str, Any]]:
                 "open_data_url": source.get("open_data_url"),
                 "feature_server": source.get("feature_server"),
                 "licence": source.get("licence"),
-                "ingest": source.get("ingest", True),
+                "ingest": source.get("ingest", False),
                 "vintage_note": source.get("vintage_note"),
                 "host_note": source.get("host_note"),
                 "feature_count_observed": source.get("feature_count_observed"),
@@ -85,32 +81,18 @@ def _spatial_for(code: str | None) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
-def place_common_good(
-    council_code: str | None = None,
-    *,
-    lat: float | None = None,
-    lng: float | None = None,
-) -> dict[str, Any]:
-    """Place-card block: PostGIS hit when loaded; else linked register / gap."""
+def place_common_good(council_code: str | None = None) -> dict[str, Any]:
+    """Place-card block: link register when known; never claim a spatial hit."""
     register = _register_for(council_code)
     spatial_sources = _spatial_sources_for(council_code)
     spatial = spatial_sources[0] if spatial_sources else None
-    point: dict[str, Any] | None = None
-    if lat is not None and lng is not None:
-        point = query_point(lat, lng)
-
-    on_point = bool(point and point.get("ok") and point.get("intersects"))
-    loaded = is_loaded()
-    if on_point or loaded or register or spatial:
-        status = "live" if loaded else "linked"
+    if register or spatial:
+        status = "linked"
         reason = (
-            "OGL Common Good polygons loaded in PostGIS (partial council coverage)."
-            if loaded
-            else (
-                "Statutory Common Good register / spatial metadata linked for this "
-                "council. PostGIS overlay not loaded yet — on-point geometry is not "
-                "claimed without ingest."
-            )
+            "Statutory Common Good register / spatial metadata linked for this "
+            "council. No national open spatial layer — on-point geometry is not "
+            "claimed here. Highland FeatureServers are link-only (licence "
+            "unconfirmed); Fife is OS INSPIRE EUL linked only."
         )
     else:
         status = "gap"
@@ -120,20 +102,17 @@ def place_common_good(
         )
     return {
         "status": status,
-        "on_this_point": on_point if point and point.get("ok") else None,
-        "sites": (point or {}).get("sites") or [],
+        "on_this_point": None,
         "reason": reason,
         "register": register,
         "spatial": spatial,
         "spatial_sources": spatial_sources,
         "national_gap": NATIONAL_GAP,
-        "postgis_loaded": loaded,
-        "source": (point or {}).get("source") or source_meta().get("attribution"),
     }
 
 
 def common_good_payload() -> dict[str, Any]:
-    """Public JSON: registers, OGL spatial sources, PostGIS load status."""
+    """Public JSON describing what is openly linkable and what remains a gap."""
     data = load_common_good()
     national = data.get("national") or {}
     registers = []
@@ -151,22 +130,19 @@ def common_good_payload() -> dict[str, Any]:
             }
         )
     spatial_sources = _spatial_sources_for()
-    ogl_sources = [
-        s for s in spatial_sources if str(s.get("licence") or "").upper().startswith("OGL")
-    ]
     guidance = national.get("guidance") or {}
-    meta = source_meta()
-    loaded = is_loaded()
     return {
         "ok": True,
         "checked": data.get("checked"),
-        "status": "live" if loaded else (national.get("status") or "linked"),
+        "status": national.get("status") or "linked",
         "national_gap": national.get("gap") or NATIONAL_GAP,
         "note": (
             f"{len(registers)} of 32 councils have a verified open Common Good "
-            "register or spatial-metadata link. OGL Highland sites/buildings load "
-            "into PostGIS; Fife OS INSPIRE EUL titles are linked only (former "
-            "Fife-only catalog row folded in). Spatial Hub assets stay login-gated."
+            "register or spatial-metadata link in this file. There is no national "
+            "open polygon layer. Highland FeatureServers are link-only (licence "
+            "unconfirmed — not OGL). Fife indicative titles are linked under OS "
+            "INSPIRE EUL and are not mirrored here. Spatial Hub assets stay "
+            "login-gated."
         ),
         "guidance": {
             "url": guidance.get("url"),
@@ -177,23 +153,14 @@ def common_good_payload() -> dict[str, Any]:
         "register_count": len(registers),
         "council_count": 32,
         "spatial_sources": spatial_sources,
-        "ogl_spatial_source_count": len(ogl_sources),
         "gaps": list(data.get("gaps") or []),
         "map_overlay": {
-            "status": "live" if loaded else "linked",
-            "endpoint": "/layers/open/common-good",
-            "postgis_table": "common_good_sites",
-            "postgis_rows": row_count() if loaded else 0,
-            "licence": meta.get("licence"),
-            "source_url": meta.get("source_url"),
+            "status": "gap",
             "reason": (
-                None
-                if loaded
-                else (
-                    "PostGIS common_good_sites empty — run "
-                    "`python -m etl.ingest_common_good --from-config` "
-                    "(OGL sources only). API returns 503 until loaded."
-                )
+                "No national open Common Good WMS/WFS under a confirmed "
+                "redistributable open licence. Highland FeatureServers are "
+                "link-only (licence unconfirmed); Fife FeatureServer is linked "
+                "only under OS INSPIRE EUL — geometries are not loaded or stored."
             ),
         },
     }
@@ -201,33 +168,46 @@ def common_good_payload() -> dict[str, Any]:
 
 def catalog_layer() -> dict[str, Any]:
     payload = common_good_payload()
-    meta = source_meta()
-    ogl = [
-        s
-        for s in payload.get("spatial_sources") or []
-        if str(s.get("licence") or "").upper().startswith("OGL")
-    ]
-    catalog_url = (ogl[0].get("catalog_url") if ogl else None) or meta.get("source_url")
+    highland = next(
+        (
+            s
+            for s in payload.get("spatial_sources") or []
+            if s.get("council_code") == "S12000017"
+        ),
+        None,
+    )
+    fife = next(
+        (
+            s
+            for s in payload.get("spatial_sources") or []
+            if s.get("council_code") == "S12000047"
+        ),
+        None,
+    )
+    source_url = (
+        (highland or {}).get("catalog_url")
+        or (fife or {}).get("metadata_url")
+        or (fife or {}).get("catalog_url")
+        or (payload.get("guidance") or {}).get("url")
+    )
     return {
         "id": "common_good",
         "group": "ownership",
-        "status": "live",
-        "label": "Common Good land",
+        "status": "linked",
+        "label": "Common Good registers",
         "description": (
-            "OGL council open layers in PostGIS (Highland sites/buildings). "
-            f"{payload['register_count']} verified register links. "
-            "Fife indicative titles folded in as linked OS INSPIRE EUL — not ingested. "
-            "Ownership-context (who/outline) — not a LayersPanel toggle, not a rent row. "
-            "Partial coverage; bbox API returns 503 when PostGIS unloaded."
+            f"{payload['register_count']} verified council register / metadata "
+            "links. No national open spatial layer. Highland FeatureServers are "
+            "link-only (licence unconfirmed — not OGL). Fife indicative titles "
+            "under OS INSPIRE EUL — linked, not mirrored. Ownership-context "
+            "(who/outline) — not a LayersPanel toggle, not a rent row."
         ),
-        "endpoint": "/layers/open/common-good",
-        "stats_endpoint": "/api/common-good.json",
-        "licence": meta.get("licence"),
-        "licence_url": (
-            "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
+        "endpoint": "/api/common-good.json",
+        "licence": (
+            "unconfirmed (Highland FeatureServers linked only); "
+            "OS Public Sector End User Licence - INSPIRE (Fife linked only)"
         ),
-        "source_url": catalog_url,
-        "minzoom": 8,
+        "source_url": source_url,
         "gaps": payload.get("gaps") or [],
         "ledger_role": "ownership-context",
         "ledger_row": None,

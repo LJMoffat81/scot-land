@@ -463,13 +463,7 @@ export default function AgrBreakdown({
       {platform?.common_good ? (
         <p className="meta">
           Common Good:{" "}
-          {platform.common_good.status === "live"
-            ? platform.common_good.on_this_point
-              ? "on this point (OGL overlay)"
-              : "OGL overlay live (partial coverage)"
-            : platform.common_good.status === "linked"
-              ? "linked register"
-              : "gap"}
+          {platform.common_good.status === "linked" ? "linked register" : "gap"}
           {platform.common_good.register?.url ? (
             <>
               {" · "}
@@ -500,7 +494,7 @@ export default function AgrBreakdown({
             </>
           ) : null}
           {" · "}
-          partial coverage; not a title
+          no national open map layer; not a title
         </p>
       ) : null}
 

@@ -202,12 +202,6 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="Crown Estate Scotland OGL offshore lease polygons; ledger row 4; no modelled rent",
     ),
-    "/layers/open/common-good": LayerRule(
-        "site",
-        "site",
-        "none",
-        note="Common Good OGL polygons from PostGIS; ownership-context; no rent",
-    ),
     "/ledger": LayerRule(
         "zone",
         "zone",

@@ -17,8 +17,6 @@ from georgist.place_stack import (
     place_hectare_stack,
 )
 from layers.common_good import common_good_payload
-from layers.common_good_spatial import LayerUnavailable as CommonGoodUnavailable
-from layers.common_good_spatial import query_bbox as common_good_bbox
 from layers.crofting import crofting_payload
 from layers.dz_context import build_metrics_payload
 from layers.ldp import coverage_summary as ldp_coverage
@@ -112,35 +110,6 @@ def layer_open_dz_context(
             ),
         )
     return JSONResponse(payload)
-
-
-@router.get("/layers/open/common-good")
-def layer_open_common_good(
-    south: float = Query(..., description="BBox south latitude"),
-    west: float = Query(..., description="BBox west longitude"),
-    north: float = Query(..., description="BBox north latitude"),
-    east: float = Query(..., description="BBox east longitude"),
-    max_features: int = Query(default=80, ge=1, le=80),
-) -> JSONResponse:
-    """Common Good polygons in the viewport (OGL council open layers in PostGIS).
-
-    Returns **503** when ``common_good_sites`` is missing or empty — never invents
-    extents. Empty FeatureCollection with meta.ok=true means no sites in view.
-    Fife OS INSPIRE EUL titles are linked only, not loaded here.
-    """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
-    try:
-        return JSONResponse(
-            common_good_bbox(south, west, north, east, max_features=max_features)
-        )
-    except CommonGoodUnavailable as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=(
-                f"Common Good overlay is not available: {exc}. "
-                "OGL council open layers only — gaps are not filled with guesses."
-            ),
-        ) from exc
 
 
 @router.get("/layers/open/public-land")
@@ -914,13 +883,16 @@ def open_downloads() -> dict:
             },
             {
                 "id": "common_good",
-                "label": "Common Good land (OGL PostGIS + register links)",
-                "licence": "OGL-3.0 (Highland open map data); Fife OS INSPIRE EUL linked only",
-                "endpoint": "/layers/open/common-good",
-                "url": "https://www.highland.gov.uk/community-support-development/common-good-asset-register",
+                "label": "Common Good registers (verified links)",
+                "licence": (
+                    "council pages; Highland FeatureServers licence unconfirmed "
+                    "(linked only); Fife OS INSPIRE EUL metadata — links only"
+                ),
+                "endpoint": "/api/common-good.json",
                 "note": (
-                    "Partial coverage. PostGIS holds OGL council layers. "
-                    "Former Fife-only catalog row folded in as linked, not ingested."
+                    "No national open spatial layer. Highland and Fife "
+                    "FeatureServers are linked only — not loaded or stored. "
+                    "Spatial Hub assets stay login-gated."
                 ),
             },
             {

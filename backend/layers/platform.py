@@ -895,10 +895,6 @@ def place_context(
     else:
         ownership_flags.append("no_inspire_parcel")
 
-    common_good = place_common_good(council_code, lat=lat, lng=lng)
-    if common_good.get("on_this_point"):
-        ownership_flags.append("common_good")
-
     card: dict[str, Any] = {
         "contract": "place_card_v1",
         "lat": lat,
@@ -936,7 +932,7 @@ def place_context(
             "on_this_point": None,
             "reason": "National LA ownership layer is not openly licensed for this portal.",
         },
-        "common_good": common_good,
+        "common_good": place_common_good(council_code),
         "crofting": place_crofting(council_code),
         "community_ownership": {
             "status": "live" if community.get("ok") else "unavailable",

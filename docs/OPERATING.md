@@ -70,8 +70,7 @@ npm run dev
 | `GET /api/public-land.json` | Hectares by the five published bodies (licence unverified/not open; not listed on open downloads) |
 | `GET /api/vdl.json` | SVDLS hectares by owner class |
 | `GET /api/place.json?pc=` | Place card (vacant / public / parcel / gaps) |
-| `GET /layers/open/common-good` | Common Good OGL polygons from PostGIS (**503** if unloaded) |
-| `GET /api/common-good.json` | Common Good register links + spatial source catalogue |
+| `GET /api/common-good.json` | Verified Common Good register links + spatial gaps |
 | `GET /api/crofting.json` | Crofting Commission OGL RoC + grazings; PostGIS load status; spatial gaps |
 | `GET /assessment/report?format=markdown\|json` | Downloadable assessment pack |
 | `GET /validation/ward18-qa-pack` | Spatial + ratio + mini-roll for Ward 18 |
@@ -90,18 +89,15 @@ npm run dev
 | Scot-LAND squares | Current map view | Zoom ≥ 12; every cell up to cap (then sampled) |
 | **Vacant and derelict** | SVDLS site-level survey polygons | Ownership and cadastre; site-type legend + credits; zoom ≥ 8; click popup; each site tagged `geometry_source` (Spatial Hub survey > RoS title outline > point) |
 | **Community ownership** | SG 2024 OGL asset points | Ownership and cadastre; asset-type legend + OGL credits; zoom ≥ 6; PostGIS postcode centroids (not titles); **503** when unloaded |
-| **Common Good** | OGL council open layers in PostGIS (Highland sites/buildings) | Ownership-context (ledger / `?commongood=1`); zoom ≥ 8; click popup; **503** until `python -m etl.ingest_common_good`; Fife OS INSPIRE EUL linked only; no LayersPanel toggle |
 | Coverage | Live vs linked/gap | Sidebar **Coverage** list; live rows toggle overlays |
 | Vacant residual story | Council choropleth + overlay | `/?story=vacant_land` |
-| Filters | Vacant / public / Common Good overlays, rent band | `/?vacant=1&public=1&commongood=1&band=high` |
-| Click | Any cell | Layer popup (parcel id / area / owner type / SVDLS / Common Good) + residual place card |
+| Filters | Vacant / public overlays, rent band | `/?vacant=1&public=1&band=high` |
+| Click | Any cell | Layer popup (parcel id / area / owner type / SVDLS site) + residual place card |
 
 Cadastre ingest (one command each): `--pilot` (Edinburgh/MID + Fife), `--all` (33 counties), or `--fixture` (CI). Self-fetch never writes `data/external/`. See `scripts/data/README-inspire.md`. Licence **OGL-3.0**.  
 Woodland ingest: `python -m etl.ingest_woodland_layers` — see `scripts/data/README-woodland.md`.
 
 Crofting / common grazings (OGL CSV → PostGIS): `python -m etl.ingest_crofting --download` (raw under `data/external/crofting/`, gitignored). Fixtures: `python -m etl.ingest_crofting --from-fixtures`.
-
-Common Good ingest: `python -m etl.ingest_common_good --from-config` (OGL sources from `data/config/common_good.yaml` only).
 
 Full national 3 m precompute is intentionally not stored (~billions of cells).
 

@@ -82,25 +82,17 @@ const FIXTURE_CATALOG = {
     {
       id: "common_good",
       group: "ownership",
-      status: "live",
-      label: "Common Good land",
+      status: "linked",
+      label: "Common Good registers",
       description:
-        "OGL council open layers in PostGIS (Highland). Ownership-context (who/outline); partial coverage; Fife OS INSPIRE EUL linked only.",
-      licence: "OGL-3.0",
-      licence_url:
-        "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+        "Linked registers. Highland FeatureServers licence unconfirmed (link-only). Fife OS INSPIRE EUL linked only. No national open spatial layer.",
+      licence:
+        "unconfirmed (Highland linked only); OS Public Sector End User Licence - INSPIRE (Fife)",
       source_url:
         "https://www.highland.gov.uk/community-support-development/common-good-asset-register",
       ledger_role: "ownership-context",
       ledger_row: null,
       ui_surface: "ledger",
-    },
-    {
-      id: "planning",
-      group: "spatial",
-      status: "linked",
-      label: "Planning applications",
-      description: "Verified official view pages; no national drawable WMS.",
     },
     {
       id: "crofting_register",
@@ -206,7 +198,7 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
     await expect(page.getByTestId("layer-toggle-common_good")).toHaveCount(0);
     await expect(
       page.getByTestId("layer-unavailable-common_good"),
-    ).toContainText(/ownership-context|OGL|Highland|who\/outline/i);
+    ).toContainText(/linked|unconfirmed|Highland|no national/i);
     await expect(
       page.getByTestId("layer-unavailable-crofting_register"),
     ).toContainText(/OGL|RoS|Register|extents/i);
@@ -219,9 +211,6 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
     await expect(
       page.getByTestId("layer-licence-common_grazings"),
     ).toContainText("OGL-3.0");
-    await expect(page.getByTestId("layer-unavailable-planning")).toContainText(
-      /linked|official|no national/i,
-    );
 
     await page.getByTestId("layer-toggle-agr_value").click();
     await expect(page.getByTestId("layer-unavailable-agr_value")).toContainText(

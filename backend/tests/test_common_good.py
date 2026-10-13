@@ -1,4 +1,4 @@
-"""Common Good — OGL PostGIS overlay + linked registers; honest gaps."""
+"""Common Good linked registers — honest gaps, no invented spatial hits."""
 
 from __future__ import annotations
 
@@ -8,18 +8,10 @@ from layers.common_good import (
     load_common_good,
     place_common_good,
 )
-from layers.common_good_spatial import LayerUnavailable
 from layers.platform import place_context, platform_catalog
 
-HIGHLAND_BBOX = {
-    "south": 57.4,
-    "west": -4.3,
-    "north": 57.9,
-    "east": -4.1,
-}
 
-
-def test_config_lists_ogl_spatial_and_verified_registers():
+def test_config_lists_verified_registers_and_linked_spatial():
     data = load_common_good()
     registers = data.get("registers") or {}
     assert len(registers) >= 5
@@ -32,38 +24,46 @@ def test_config_lists_ogl_spatial_and_verified_registers():
 
     spatial = data.get("spatial_sources") or []
     assert len(spatial) >= 3
-    ogl = [
-        s
-        for s in spatial
-        if str(s.get("licence") or "").upper().startswith("OGL")
-    ]
-    assert len(ogl) >= 2
-    for source in ogl:
+
+    # No source may claim OGL or request ingest — loader would skip all.
+    for source in spatial:
+        licence = str(source.get("licence") or "")
+        assert not licence.upper().startswith("OGL"), source.get("id")
+        assert source.get("ingest") is False
+        assert source.get("status") == "linked"
         assert source.get("feature_server")
+
+    highland = [s for s in spatial if s.get("council_code") == "S12000017"]
+    assert len(highland) == 2
+    for source in highland:
+        assert source.get("licence") == "unconfirmed"
         assert source.get("catalog_url") or source.get("open_data_url")
-        assert source.get("ingest", True) is not False
 
     fife = [s for s in spatial if s.get("council_code") == "S12000047"]
     assert len(fife) == 1
-    assert fife[0].get("ingest") is False
     assert "INSPIRE" in (fife[0].get("licence") or "")
     assert fife[0].get("catalog_url") or fife[0].get("metadata_url")
 
 
-def test_payload_exposes_ogl_overlay_and_fife_linked():
+def test_payload_states_national_spatial_gap():
     payload = common_good_payload()
     assert payload["ok"] is True
+    assert payload["status"] == "linked"
     assert "national" in payload["national_gap"].lower()
+    assert "spatial" in payload["national_gap"].lower()
+    assert payload["map_overlay"]["status"] == "gap"
     assert payload["register_count"] == len(payload["registers"])
     assert payload["council_count"] == 32
-    assert payload["ogl_spatial_source_count"] >= 2
-    assert payload["map_overlay"]["endpoint"] == "/layers/open/common-good"
-    assert payload["map_overlay"]["postgis_table"] == "common_good_sites"
-    # Unloaded CI / local without ingest stays linked + reason, never invents rows.
-    assert payload["map_overlay"]["status"] in {"live", "linked"}
-    if payload["map_overlay"]["status"] == "linked":
-        assert payload["map_overlay"]["reason"]
-        assert payload["map_overlay"]["postgis_rows"] == 0
+    assert "unconfirmed" in (payload["note"] or "").lower()
+
+    highland = [
+        s
+        for s in payload["spatial_sources"]
+        if s.get("council_code") == "S12000017"
+    ]
+    assert len(highland) == 2
+    assert all(s.get("licence") == "unconfirmed" for s in highland)
+    assert all(s.get("ingest") is False for s in highland)
 
     fife = [
         s
@@ -75,34 +75,41 @@ def test_payload_exposes_ogl_overlay_and_fife_linked():
     assert fife[0].get("metadata_url") or fife[0].get("catalog_url")
 
 
-def test_place_card_without_coords_never_claims_on_point():
+def test_place_card_never_claims_on_point_hit():
     edinburgh = place_common_good("S12000036")
-    assert edinburgh["status"] in {"linked", "live"}
+    assert edinburgh["status"] == "linked"
     assert edinburgh["on_this_point"] is None
     assert edinburgh["register"]["url"]
 
+    highland = place_common_good("S12000017")
+    assert highland["status"] == "linked"
+    assert highland["on_this_point"] is None
+    assert highland["spatial"]["licence"] == "unconfirmed"
+    assert highland["spatial"]["ingest"] is False
+    assert highland["register"]["url"]
+
     unknown = place_common_good("S12000005")
-    # Unloaded PostGIS + no register → gap; loaded → live with no on-point claim.
-    assert unknown["status"] in {"gap", "live"}
+    assert unknown["status"] == "gap"
     assert unknown["on_this_point"] is None
     assert unknown["register"] is None
 
 
 def test_fife_links_spatial_metadata_without_proxy():
     fife = place_common_good("S12000047")
-    assert fife["status"] in {"linked", "live"}
+    assert fife["status"] == "linked"
     assert fife["spatial"]["metadata_url"] or fife["spatial"]["catalog_url"]
     assert fife["on_this_point"] is None
+    assert fife["spatial"]["ingest"] is False
     assert "expired" in (fife["spatial"].get("host_note") or "").lower()
 
 
-def test_catalog_is_live_and_wires_common_good():
+def test_catalog_and_place_context_wire_common_good():
     layer = catalog_layer()
     assert layer["id"] == "common_good"
-    assert layer["status"] == "live"
-    assert layer["endpoint"] == "/layers/open/common-good"
-    assert layer["stats_endpoint"] == "/api/common-good.json"
-    assert "OGL" in (layer.get("licence") or "")
+    assert layer["status"] == "linked"
+    assert layer["endpoint"] == "/api/common-good.json"
+    assert "unconfirmed" in (layer.get("licence") or "").lower()
+    assert "OGL" not in (layer.get("licence") or "")
     assert layer.get("source_url")
     assert layer.get("ledger_role") == "ownership-context"
     assert layer.get("ui_surface") == "ledger"
@@ -112,16 +119,15 @@ def test_catalog_is_live_and_wires_common_good():
     assert "common_good" in ids
     assert "fife_land_map" not in ids
     cg = next(row for row in catalog["layers"] if row["id"] == "common_good")
-    assert cg["status"] == "live"
-    assert cg["endpoint"] == "/layers/open/common-good"
+    assert cg["status"] == "linked"
+    assert cg["endpoint"] == "/api/common-good.json"
     assert cg.get("ledger_role") == "ownership-context"
     assert cg.get("ui_surface") == "ledger"
-    assert cg.get("licence_url")
+    assert "unconfirmed" in (cg.get("licence") or "").lower()
 
     card = place_context(55.95, -3.19, council_code="S12000036")
-    assert card["common_good"]["status"] in {"linked", "live"}
-    # Edinburgh is outside Highland OGL coverage — no invented hit.
-    assert card["common_good"]["on_this_point"] in {None, False}
+    assert card["common_good"]["status"] == "linked"
+    assert card["common_good"]["on_this_point"] is None
 
 
 def test_api_common_good_json(client):
@@ -129,12 +135,15 @@ def test_api_common_good_json(client):
     assert response.status_code == 200
     body = response.json()
     assert body["ok"] is True
-    assert body["map_overlay"]["endpoint"] == "/layers/open/common-good"
+    assert body["map_overlay"]["status"] == "gap"
     assert body["register_count"] >= 5
     assert any(
         row.get("council_code") == "S12000036" for row in body["registers"]
     )
     assert any(
+        s.get("licence") == "unconfirmed" for s in body["spatial_sources"]
+    )
+    assert not any(
         str(s.get("licence") or "").upper().startswith("OGL")
         for s in body["spatial_sources"]
     )
@@ -144,89 +153,6 @@ def test_downloads_lists_common_good(client):
     response = client.get("/downloads")
     assert response.status_code == 200
     items = response.json().get("items") or []
-    assert any(item.get("id") == "common_good" for item in items)
-
-
-def test_common_good_503_when_unloaded(client, monkeypatch):
-    def _down(*_a, **_k):
-        raise LayerUnavailable("common_good_sites empty")
-
-    monkeypatch.setattr("api.platform_routes.common_good_bbox", _down)
-    r = client.get("/layers/open/common-good", params=HIGHLAND_BBOX)
-    assert r.status_code == 503, r.text
-    detail = r.json().get("detail", "").lower()
-    assert "not available" in detail or "common good" in detail
-    assert "features" not in r.json()
-
-
-def test_common_good_ok_empty_viewport(client, monkeypatch):
-    def _empty(*_a, **_k):
-        return {
-            "type": "FeatureCollection",
-            "features": [],
-            "meta": {
-                "ok": True,
-                "layer": "common_good",
-                "count": 0,
-                "licence": "OGL-3.0",
-            },
-        }
-
-    monkeypatch.setattr("api.platform_routes.common_good_bbox", _empty)
-    r = client.get("/layers/open/common-good", params=HIGHLAND_BBOX)
-    assert r.status_code == 200, r.text
-    body = r.json()
-    assert body["type"] == "FeatureCollection"
-    assert body["features"] == []
-    assert body["meta"]["ok"] is True
-    assert body["meta"]["licence"] == "OGL-3.0"
-
-
-def test_common_good_ok_returns_site_properties(client, monkeypatch):
-    def _sites(*_a, **_k):
-        return {
-            "type": "FeatureCollection",
-            "features": [
-                {
-                    "type": "Feature",
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [
-                            [
-                                [-4.16, 57.81],
-                                [-4.15, 57.81],
-                                [-4.15, 57.82],
-                                [-4.16, 57.82],
-                                [-4.16, 57.81],
-                            ]
-                        ],
-                    },
-                    "properties": {
-                        "site_id": "test-tain",
-                        "name": "TEST COMMON GOOD",
-                        "site_kind": "site",
-                        "council_code": "S12000017",
-                        "council_name": "Highland",
-                        "area_ha": 0.5,
-                        "layer": "common_good",
-                        "licence": "OGL-3.0",
-                        "source_id": "highland_common_good_sites",
-                    },
-                }
-            ],
-            "meta": {
-                "ok": True,
-                "layer": "common_good",
-                "count": 1,
-                "licence": "OGL-3.0",
-            },
-        }
-
-    monkeypatch.setattr("api.platform_routes.common_good_bbox", _sites)
-    r = client.get("/layers/open/common-good", params=HIGHLAND_BBOX)
-    assert r.status_code == 200, r.text
-    props = r.json()["features"][0]["properties"]
-    assert props["name"] == "TEST COMMON GOOD"
-    assert props["licence"] == "OGL-3.0"
-    assert props["layer"] == "common_good"
-    assert props["council_name"] == "Highland"
+    cg = next(item for item in items if item.get("id") == "common_good")
+    assert "/api/common-good.json" in (cg.get("endpoint") or "")
+    assert "OGL" not in (cg.get("licence") or "")

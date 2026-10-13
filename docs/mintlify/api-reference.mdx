@@ -7,7 +7,7 @@ description: "Public HTTP endpoints, read from the FastAPI routes in backend/api
 
 All endpoints are `GET`, need no key and return JSON unless noted. Viewport layers take a WGS84 bounding box: `south`, `west`, `north` and `east` are required, and `max_features` is optional (the server caps it). An unloaded layer returns `503` with an explanation.
 
-<Warning>No endpoint listed here returns modelled money figures from the commons engine. Tax-scenario and modelled valuation endpoints are withheld: see "Not public" at the bottom of this page.</Warning>
+<Warning>Scot-LAND's purpose is Annual Ground Rent, but **£ figures are not published yet** while calibration is checked. No endpoint listed here returns Annual Ground Rent amounts. Tax-scenario and modelled valuation endpoints are withheld: see "Not public" at the bottom of this page.</Warning>
 
 
 ## Health and catalogue
@@ -25,7 +25,7 @@ All endpoints are `GET`, need no key and return JSON unless noted. Viewport laye
 | Method | Path | Params (* required) | Description |
 |---|---|---|---|
 | `GET` | `/api/place-stack.json` | `zone`, `lat`, `lng` | Place view per-hectare stack (Natural capital ledger). |
-| `GET` | `/api/place.json` | `pc`, `lat`, `lng` | Place card download (place_card_v1). No modelled money figures. |
+| `GET` | `/api/place.json` | `pc`, `lat`, `lng` | Place card download (place_card_v1). No Annual Ground Rent £ figures. |
 | `GET` | `/geocode/postcode` | `q`* | Geocode Postcode |
 | `GET` | `/place` | `q`* | Find where to open the map. A title miss is not a rent and not a ScotLIS call. |
 | `GET` | `/platform/place` | `lat`*, `lng`*, `postcode` | Public place card for one clicked spot (place_card_v1). |
@@ -87,7 +87,7 @@ All endpoints are `GET`, need no key and return JSON unless noted. Viewport laye
 | `GET` | `/api/public-land.json` | — | Api Public Land |
 | `GET` | `/api/registers.json` | — | Api Registers |
 | `GET` | `/api/vdl.json` | — | Api Vdl |
-| `GET` | `/ledger` | — | Natural capital ledger rows + constraints (no published modelled money figures). |
+| `GET` | `/ledger` | — | Natural capital ledger rows + constraints (no published Annual Ground Rent £ figures). |
 
 ## Not public
 

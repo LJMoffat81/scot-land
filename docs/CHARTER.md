@@ -11,7 +11,7 @@ The public, researchers, journalists, policy people and community groups who wan
 - **Surface land rent:** AGR for every Data Zone, with RoS INSPIRE parcels, Data Zone boundaries, public land, vacant/derelict land, Housing Land Audit, Common Good and community ownership.
 - **Resource rents:** offshore wind seabed (Crown Estate Scotland), onshore wind, aquaculture, hydro, water abstraction, minerals (BritPits quarry index only), forestry, peat and soil carbon, fisheries, oil and gas (Scottish-waters share), foreshore and moorings, and cables.
 - **Eco module (later):** biodiversity and ecosystem services, as shadow rent.
-- **Rules:** one rent per hectare per use. Surface, resource and eco rents stay separate. Overlays (designations, crofting, flood) change the best permitted use and never add value. Every figure is tagged **market** (observed rents), **proxy** (modelled) or **shadow** (no market price).
+- **Rules:** one rent per hectare per use. Surface, resource and eco rents stay separate. Overlays (designations, crofting, flood) change the best permitted use and never add value. Every figure is tagged **market** (observed rents), **proxy** (modelled) or **shadow** (no market price). For now, figures are published at Data Zone level only, not for individual parcels, plots or addresses.
 - Out of scope at launch *(Decided by Laurie, 13 Oct)*: paid data and what3words (future add-ons only); republishing paid data in any form; map layers without a clear open licence; using the "what3words" name or brand for the Scot-LAND grid (called "Scot-LAND squares").
 - Further out of scope: **LAURIE TO CONFIRM** (e.g. private owner names beyond public records, England/Wales, official valuations).
 
@@ -41,6 +41,7 @@ One full-screen map with a single search box, place cards and a layers panel. Th
 
 ## 8. Quality gates
 - AGR £ figures are internal only (Data Zone-level band with proxy tag) until Laurie approves `docs/ECONOMIC_RULES.md`. Held valuation PRs: **#6, #9, #10, #16, #17 and #19**.
+- For now, figures are published at Data Zone level only, not for individual parcels, plots or addresses.
 - The Valuation and Georgist bots check figures; the GIS bot checks every source and licence; CI must pass before merge.
 
 ## 9. Decision rights
@@ -61,3 +62,4 @@ Site down when the PC is off; PC exposed via tunnel (move host before launch). E
 - 12 Oct 2026: original charter; restructured; vision approved.
 - 13 Oct 2026: scope widened to full natural-capital rent; data licence rule; w3w-style front end and "Scot-LAND squares"; trunk-based workflow and smoke test; quality gates; PM bot retired; open decisions updated.
 - 13 Oct 2026: paid data and what3words off at launch (future add-ons); six held valuation PRs listed (#6, #9, #10, #16, #17, #19); front end no longer described as what3words-style at launch.
+- 13 Oct 2026: for now, figures are published at Data Zone level only, not for individual parcels, plots or addresses.

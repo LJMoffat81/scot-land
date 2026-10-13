@@ -21,16 +21,18 @@ export default function MethodologyContent() {
       </p>
       <h1>About</h1>
       <p>
-        Scot-LAND is an experimental, non-commercial research map of Scotland&apos;s
-        commons. It is building an open land information platform so people can
-        see where value from land and natural resources sits — not as a rates
-        bill, and not as an official valuation or tax assessment.
+        Scot-LAND&apos;s purpose is to show{" "}
+        <strong>Annual Ground Rent</strong> — the rent of land alone, at every
+        place in Scotland — so land reform and land value tax debates rest on
+        shared, honest evidence. It is an experimental, non-commercial research
+        map: not a rates bill, and not an official valuation or tax assessment.
       </p>
       <p className="downloads-note" data-testid="experimental-not-official">
-        Experimental research only. Figures on this site are not official
-        valuations, rates bills or tax assessments. Modelled money amounts for
-        land and resource value are not published on the public map or downloads
-        until the commons engine passes review.
+        Experimental research only. £ figures are not published yet while
+        calibration is checked. When they are, each figure will carry a
+        confidence label (market, proxy or shadow). For now, figures are
+        published at Data Zone level only, not for individual parcels, plots
+        or addresses.
       </p>
       <p>
         A click on the public map opens a place card for location and open
@@ -53,18 +55,48 @@ export default function MethodologyContent() {
         We never show who owns private land, what it sold for, or title plans.
       </p>
       <p>
-        <a href="#commons">The three commons</a>
+        <a href="#confidence">Confidence labels</a>
+        {" · "}
+        <a href="#commons">Commons inputs</a>
         {" · "}
         <a href="#quality">Quality tags</a>
         {" · "}
         <a href="#why">Why I am building this</a>
       </p>
 
-      <section id="commons">
-        <h2>The three commons</h2>
+      <section id="confidence">
+        <h2>Confidence labels</h2>
         <p>
-          The commons engine splits value into three separate classes so they are
-          never mixed into one headline number:
+          Every Annual Ground Rent figure the engine will publish carries one of
+          three confidence labels. For now, figures are published at Data Zone
+          level only, not for individual parcels, plots or addresses.
+        </p>
+        <ul>
+          <li>
+            <strong>market</strong> — observed rents from a public source.
+          </li>
+          <li>
+            <strong>proxy</strong> — modelled from open evidence where a direct
+            rent is not available.
+          </li>
+          <li>
+            <strong>shadow</strong> — no market price; an estimated value of
+            services or sinks that are not traded.
+          </li>
+        </ul>
+        <p>
+          These labels keep different kinds of evidence from being added
+          together as if they were the same thing.
+        </p>
+      </section>
+
+      <section id="commons">
+        <h2>Commons inputs</h2>
+        <p>
+          The map layers and ledger feed three separate commons classes. They
+          are inputs to Annual Ground Rent and national wealth accounting — not
+          a substitute for the rent figure itself, and never mixed into one
+          headline number:
         </p>
         <ul>
           <li>
@@ -84,10 +116,9 @@ export default function MethodologyContent() {
           </li>
         </ul>
         <p>
-          Each class is also tagged as market, proxy or shadow so different
-          kinds of evidence are not added together. Constraint overlays
-          (designations, flood, crofting and similar) change best permitted use
-          only; they are not a commons row. Full rules:{" "}
+          Constraint overlays (designations, flood, crofting and similar)
+          change best permitted use only; they are not a commons row. Full
+          rules:{" "}
           <a href={MINTLIFY.introduction} target="_blank" rel="noreferrer">
             docs/mintlify/introduction.mdx
           </a>
@@ -98,7 +129,7 @@ export default function MethodologyContent() {
       <section id="quality">
         <h2>Quality tags</h2>
         <p>
-          Every figure the engine holds carries a data-state quality tag. The
+          Every input the engine holds carries a data-state quality tag. The
           public site only exposes layers that are ready; placeholders stay off
           public routes.
         </p>
@@ -112,7 +143,7 @@ export default function MethodologyContent() {
           </li>
           <li>
             <strong>modelled</strong> — estimated by the residual / mass model;
-            not published as public money figures until review.
+            £ figures stay unpublished until calibration is checked.
           </li>
           <li>
             <strong>placeholder</strong> — not ready; never served on the public
@@ -189,10 +220,11 @@ export default function MethodologyContent() {
           debates about land value taxation.
         </p>
         <p>
-          This map is my answer to that gap: an open commons ledger for Scotland
-          — surface, resource and eco kept separate, quality-tagged, and honest
-          about what is still experimental. It is not a rates bill, and it is
-          not an official assessment.
+          This map is my answer to that gap: Annual Ground Rent for every place
+          in Scotland, fed by open commons inputs — surface, resource and eco
+          kept separate, quality-tagged, and honest about what is still
+          experimental. It is not a rates bill, and it is not an official
+          assessment.
         </p>
         <h3>Contact</h3>
         <p>

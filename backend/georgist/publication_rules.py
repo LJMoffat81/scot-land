@@ -150,6 +150,15 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="natural capital ledger checks/excluded/benchmarks; no rents",
     ),
+    "/api/place-stack.json": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note=(
+            "place per-hectare ledger stack (placeholders only); "
+            "no modelled AGR £; nothing for blocked zones"
+        ),
+    ),
     "/api/public-land.json": LayerRule("zone", "zone", "none", note="public-land download meta"),
     "/api/vdl.json": LayerRule("zone", "zone", "none", note="VDL download meta"),
     "/api/vdl-councils.json": LayerRule("zone", "zone", "none", note="VDL by council meta"),

@@ -12,9 +12,11 @@ const OPEN_API = new Set([
   "vdl.json",
   "vdl-councils.json",
   "place.json",
+  "place-stack.json",
   "registers.json",
   "common-good.json",
   "catalog.json",
+  "ledger.json",
 ]);
 
 function apiOrigin(): string {

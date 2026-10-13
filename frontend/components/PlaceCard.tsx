@@ -150,6 +150,16 @@ export function PlaceCard({
           <section aria-label="Links">
             <h3 className="place-card-section">Links</h3>
             <ul className="place-link-list" data-testid="place-card-links">
+              {card.data_zone?.status === "ok" && card.data_zone.code ? (
+                <li>
+                  <a
+                    href={`/place?zone=${encodeURIComponent(card.data_zone.code)}`}
+                    data-testid="place-card-hectare-stack-link"
+                  >
+                    Per-hectare ledger stack
+                  </a>
+                </li>
+              ) : null}
               {card.links.map((link) => {
                 const external = /^https?:\/\//i.test(link.url);
                 return (

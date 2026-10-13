@@ -10,6 +10,11 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 
 from agr.export_stamp import current_stamp, stamp_comment, with_stamp
 from georgist.ledger import ledger_catalog
+from georgist.place_stack import (
+    is_zone_code,
+    lookup_zone_publication_status,
+    place_hectare_stack,
+)
 from layers.common_good import common_good_payload
 from layers.open_stats import (
     catalog_json,
@@ -219,6 +224,52 @@ def api_ledger() -> dict:
     dump and no modelled plot £.
     """
     return with_stamp(ledger_catalog())
+
+
+@router.get("/api/place-stack.json")
+def api_place_stack(
+    zone: str | None = Query(default=None, description="Data Zone code (S01…)"),
+    lat: float | None = Query(default=None, ge=-90, le=90),
+    lng: float | None = Query(default=None, ge=-180, le=180),
+) -> dict:
+    """Place view per-hectare stack (Natural capital ledger).
+
+    Zone grain only. Nested 1a indented (never added). Shadow stack separate.
+    Oil & gas + benchmarks outside. Nothing for blocked zones. Public amounts
+    are placeholders — no modelled AGR £ until ECONOMIC_RULES / calibration.
+    """
+    zone_code = (zone or "").strip().upper() or None
+    zone_name: str | None = None
+    if not zone_code:
+        if lat is None or lng is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Provide zone= (Data Zone) or lat= and lng=.",
+            )
+        _scotland_bounds_check(lat, lng)
+        from layers.platform import _data_zone_at
+
+        dz = _data_zone_at(lat, lng)
+        if dz.get("status") != "ok" or not dz.get("code"):
+            raise HTTPException(
+                status_code=404,
+                detail=dz.get("note") or "No Data Zone at this point.",
+            )
+        zone_code = str(dz["code"]).strip().upper()
+        zone_name = dz.get("name")
+    if not is_zone_code(zone_code):
+        raise HTTPException(
+            status_code=422,
+            detail=f"zone {zone_code!r} is not a Data Zone code.",
+        )
+    status = lookup_zone_publication_status(zone_code)
+    return with_stamp(
+        place_hectare_stack(
+            zone_code,
+            zone_name=zone_name,
+            publication_status=status,
+        )
+    )
 
 
 @router.get("/api/public-land.json")

@@ -20,6 +20,10 @@ DEFAULTS = {
     "gis": "data/external/gis",               # Scot-LAND GIS processed outputs
     "raw": "data/external/raw",               # downloaded public sources (RoS, NRS, HPI, SGUR)
     "valuation_out": "data/external/out",     # internal illustrative outputs (never committed)
+    # Full OS Open UPRN DZ2011→DZ2022 weights (GIS handoff; not committed).
+    # Env: SCOT_LAND_DZ_UPRN_CROSSWALK_DIR. Files: dz2011_dz2022_uprn_weights.csv,
+    # dz_crosswalk_zero_uprn.csv (column names dz2011/dz2022 or *_code).
+    "dz_uprn_crosswalk": "data/external/dz_crosswalk_uprn",
 }
 
 

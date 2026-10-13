@@ -1,4 +1,4 @@
-"""DZ2022 address-UPRN crosswalk (PR B). Uses committed weights + SYNTHETIC rents."""
+"""DZ2022 address-UPRN crosswalk (PR B). Synthetic fixtures + zero-overlap file."""
 
 from __future__ import annotations
 
@@ -7,10 +7,11 @@ from pathlib import Path
 import pytest
 
 from georgist import surface_dz2022 as dz22
+from georgist import surface_rollup as roll
 
-DATAZONES = Path(__file__).resolve().parents[3] / "data" / "processed" / "datazones"
-WEIGHTS = DATAZONES / "dz2011_dz2022_uprn_weights.csv"
-ZERO = DATAZONES / "dz_crosswalk_zero_uprn.csv"
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "dz_crosswalk_uprn"
+WEIGHTS = FIXTURES / "dz2011_dz2022_uprn_weights.csv"
+ZERO = FIXTURES / "dz_crosswalk_zero_uprn.csv"
 
 
 def _src(
@@ -54,13 +55,17 @@ def _src(
 
 @pytest.fixture(scope="module")
 def uprn_pairs_filtered():
-    pairs, stats = dz22.load_uprn_weight_rows(WEIGHTS, apply_min_share=True)
+    pairs, stats = dz22.load_uprn_weight_rows(
+        WEIGHTS, apply_min_share=True, require_full_scotland=False
+    )
     return pairs, stats
 
 
 @pytest.fixture(scope="module")
 def uprn_pairs_raw():
-    pairs, stats = dz22.load_uprn_weight_rows(WEIGHTS, apply_min_share=False)
+    pairs, stats = dz22.load_uprn_weight_rows(
+        WEIGHTS, apply_min_share=False, require_full_scotland=False
+    )
     return pairs, stats
 
 
@@ -70,6 +75,11 @@ def test_os_ogl_attribution_on_load(uprn_pairs_filtered):
     assert "Open Government Licence v3.0" in stats["attribution"]
     assert "National Records of Scotland" in stats["attribution"]
     assert "Scottish Government" in stats["attribution"]
+
+
+def test_fixture_readme_credits():
+    text = (FIXTURES / "README.md").read_text(encoding="utf-8")
+    assert "Contains OS data © Crown copyright and database right 2026" in text
 
 
 def test_uprn_method_stamped_not_value_weighted():
@@ -103,56 +113,57 @@ def test_area_and_population_weighting_refused():
             )
 
 
-def test_min_share_defaults_on_expected_drops(uprn_pairs_filtered):
+def test_min_share_defaults_on_drops_and_redistributes(uprn_pairs_filtered, uprn_pairs_raw):
+    raw, raw_stats = uprn_pairs_raw
     pairs, stats = uprn_pairs_filtered
     assert stats["apply_min_share"] is True
-    assert stats["raw_pairs"] == dz22.EXPECTED_RAW_PAIRS == 14458
-    assert stats["dropped_pairs"] == dz22.EXPECTED_MIN_SHARE_DROPPED_PAIRS == 2848
-    assert stats["dropped_uprns"] == dz22.EXPECTED_MIN_SHARE_DROPPED_UPRNS == 5197
-    assert stats["kept_pairs"] == 14458 - 2848
-    assert stats["dz2011"] == dz22.EXPECTED_DZ2011 == 6976
-    assert stats["dz2022"] == dz22.EXPECTED_DZ2022 == 7392
-    # Shares still sum to 1 per 2011 zone.
+    assert stats["dropped_pairs"] >= 1
+    assert stats["dropped_uprns"] >= 1
+    assert stats["kept_pairs"] == len(raw) - stats["dropped_pairs"]
+    # Synthetic: S01013402 drops the 1-UPRN sliver; S01013404 drops the 1-UPRN sliver.
+    assert stats["dropped_pairs"] == 2
+    assert stats["dropped_uprns"] == 2
     by = dz22.validate_value_crosswalk(pairs)
-    assert len(by) == 6976
     for src, edges in by.items():
         assert sum(w for _, w in edges) == pytest.approx(1.0, abs=dz22.WEIGHT_TOL)
+    # Dropped destinations must not appear.
+    kept_keys = {(p["dz2011"], p["dz2022"]) for p in pairs}
+    assert ("S01013402", "S01020872") not in kept_keys
+    assert ("S01013404", "S01020873") not in kept_keys
+    assert raw_stats["dropped_pairs"] == 0
 
 
-def test_min_share_can_be_disabled(uprn_pairs_raw):
-    pairs, stats = uprn_pairs_raw
-    assert stats["dropped_pairs"] == 0
-    assert len(pairs) == 14458
-
-
-def test_zero_overlap_pairs_get_no_rent(uprn_pairs_filtered):
-    pairs, _ = uprn_pairs_filtered
+def test_zero_overlap_pairs_all_1069_get_zero_rent_no_error(uprn_pairs_raw):
+    """Every overlap_pair gets £0 and raises nothing — no skip."""
+    pairs, _ = uprn_pairs_raw
     zero = dz22.load_zero_uprn_overlap_pairs(ZERO)
-    assert zero
+    assert len(zero) == 1069
     assert all(z["kind"] == "overlap_pair" for z in zero)
-    main = {(p["dz2011"], p["dz2022"]) for p in pairs}
-    # Also check against raw file contents via loader without filter.
-    raw, _ = dz22.load_uprn_weight_rows(WEIGHTS, apply_min_share=False)
-    raw_pairs = {(p["dz2011"], p["dz2022"]) for p in raw}
+    weight_keys = {(p["dz2011"], p["dz2022"]) for p in pairs}
     for z in zero:
-        key = (z["dz2011"], z["dz2022"])
-        assert key not in raw_pairs
-        assert key not in main
-    # Synthetic rent on a 2011 zone: zero-overlap 2022 targets receive nothing.
-    sample = zero[0]
-    # Find any weight edges for that 2011 zone (if present).
-    edges = [p for p in pairs if p["dz2011"] == sample["dz2011"]]
-    if not edges:
-        pytest.skip("sample zero-pair 2011 zone not in filtered weights")
-    src_rent = 1000.0
-    out = dz22.crosswalk_surface_to_dz2022(
-        [_src(code=sample["dz2011"], rent=src_rent)],
-        edges,
-        uprn_totals_2022=dz22.uprn_totals_by_dz2022(edges),
-    )
-    by = {r["code"]: r for r in out}
-    assert sample["dz2022"] not in by
-    assert sum(r["measured_rent"] for r in out) == pytest.approx(src_rent)
+        assert (z["dz2011"], z["dz2022"]) not in weight_keys
+
+    alt = "S01020870"
+    for z in zero:
+        dst = alt if z["dz2022"] != alt else "S01020871"
+        edges = [
+            {
+                "dz2011": z["dz2011"],
+                "dz2022": dst,
+                "weight": 1.0,
+                "method": "address_uprn",
+                "uprn_count": 10,
+            }
+        ]
+        out = dz22.crosswalk_surface_to_dz2022(
+            [_src(code=z["dz2011"], rent=100.0)],
+            edges,
+            uprn_totals_2022={dst: 10},
+        )
+        by = {r["code"]: r["measured_rent"] for r in out}
+        assert z["dz2022"] not in by
+        assert by.get(z["dz2022"], 0.0) == 0.0
+        assert sum(by.values()) == pytest.approx(100.0)
 
 
 def test_zero_address_dz2022_errors_with_fixture():
@@ -174,19 +185,32 @@ def test_zero_address_dz2022_errors_with_fixture():
         )
 
 
-def test_no_zero_uprn_dz2022_in_committed_weights(uprn_pairs_raw):
-    pairs, _ = uprn_pairs_raw
-    totals = dz22.uprn_totals_by_dz2022(pairs)
-    assert all(v > 0 for v in totals.values())
-    assert len(totals) == 7392
+def test_zero_dwellings_raises_not_blank():
+    pairs = [
+        {"dz2011": "S01013401", "dz2022": "S01020870", "weight": 1.0, "method": "address_uprn"}
+    ]
+    with pytest.raises(dz22.CrosswalkError, match="zero dwellings"):
+        dz22.crosswalk_surface_to_dz2022(
+            [_src()], pairs, dwellings_by_code={"S01020870": 0}
+        )
+
+
+def test_rent_zone_missing_from_crosswalk_raises():
+    pairs = [
+        {"dz2011": "S01013401", "dz2022": "S01020870", "weight": 1.0, "method": "address_uprn"}
+    ]
+    with pytest.raises(dz22.CrosswalkError, match="missing from crosswalk"):
+        dz22.crosswalk_surface_to_dz2022(
+            [_src(code="S01013401"), _src(code="S01013402", rent=50.0)],
+            pairs,
+        )
 
 
 def test_census_disagree_flags_passthrough(uprn_pairs_raw):
     pairs, stats = uprn_pairs_raw
-    assert stats["flagged_pairs"] == 379
+    assert stats["flagged_pairs"] == 1  # synthetic sample
     flagged = [p for p in pairs if p["share_diff_flag"]]
-    assert len(flagged) == 379
-    # Keep address-point shares; flags do not break conversion.
+    assert flagged
     sample = flagged[0]
     out = dz22.crosswalk_surface_to_dz2022(
         [_src(code=sample["dz2011"], rent=100.0)],
@@ -196,23 +220,17 @@ def test_census_disagree_flags_passthrough(uprn_pairs_raw):
     assert all(r["publication_status"] == "blocked" for r in out)
 
 
-def test_five_no_household_share_rows_ok(uprn_pairs_raw):
+def test_no_household_share_row_ok(uprn_pairs_raw):
     pairs, stats = uprn_pairs_raw
-    assert stats["hh_share_missing_rows"] == 5
+    assert stats["hh_share_missing_rows"] >= 1
     no_hh = [p for p in pairs if p["hh2022_share"] is None]
-    assert len(no_hh) == 5
-    codes = sorted({p["dz2011"] for p in no_hh})
-    assert codes == ["S01010206", "S01010226", "S01010227", "S01011598"]
-    # Conversion still works (zero-dwelling / mismatch zones may have null rent elsewhere).
-    for src in codes:
-        edges = [p for p in pairs if p["dz2011"] == src]
-        out = dz22.crosswalk_surface_to_dz2022([_src(code=src, rent=50.0)], edges)
-        assert out
-        assert all(r["crosswalk_method"] == "address_uprn" for r in out)
+    assert any(p["dz2011"] == "S01010206" for p in no_hh)
+    edges = [p for p in pairs if p["dz2011"] == "S01010206"]
+    out = dz22.crosswalk_surface_to_dz2022([_src(code="S01010206", rent=50.0)], edges)
+    assert out and all(r["crosswalk_method"] == "address_uprn" for r in out)
 
 
 def test_estimate_labels_measured_partly_fully():
-    # measured → measured
     pairs = [
         {"dz2011": "S01013401", "dz2022": "S01020870", "weight": 1.0, "method": "address_uprn"}
     ]
@@ -221,13 +239,11 @@ def test_estimate_labels_measured_partly_fully():
     )
     assert out[0]["estimate_label"] == "measured"
 
-    # fully estimated source → fully estimated
     out = dz22.crosswalk_surface_to_dz2022(
         [_src(fill_method="model_filled")], pairs
     )
     assert out[0]["estimate_label"] == "fully_estimated"
 
-    # mix → partly estimated; estimated 2011 part keeps estimated on 2022
     mix_pairs = [
         {"dz2011": "S01013401", "dz2022": "S01020870", "weight": 1.0, "method": "address_uprn"},
         {"dz2011": "S01013402", "dz2022": "S01020870", "weight": 1.0, "method": "address_uprn"},
@@ -240,37 +256,62 @@ def test_estimate_labels_measured_partly_fully():
         mix_pairs,
     )
     assert out[0]["estimate_label"] == "partly_estimated"
-    assert "estimate_label=partly_estimated" in out[0]["proxy_tags"]
+
+
+def test_estimate_label_carried_through_rollup_to_scotland():
+    pairs = [
+        {"dz2011": "S01013401", "dz2022": "S01020870", "weight": 1.0, "method": "address_uprn"},
+        {"dz2011": "S01013402", "dz2022": "S01020871", "weight": 1.0, "method": "address_uprn"},
+    ]
+    dz = dz22.crosswalk_surface_to_dz2022(
+        [
+            _src(code="S01013401", fill_method="observed_pooled", rent=100.0),
+            _src(code="S01013402", fill_method="model_filled", rent=200.0),
+        ],
+        pairs,
+        dwellings_by_code={"S01020870": 10, "S01020871": 20},
+    )
+    spine = [
+        {
+            "code": "S01020870",
+            "vintage": 2022,
+            "name": "SYNTHETIC",
+            "iz_code": "S02000001",
+            "la_code": "S12000036",
+            "la_name": "SYNTHETIC",
+        },
+        {
+            "code": "S01020871",
+            "vintage": 2022,
+            "name": "SYNTHETIC",
+            "iz_code": "S02000001",
+            "la_code": "S12000036",
+            "la_name": "SYNTHETIC",
+        },
+    ]
+    rolled = roll.rollup_surface_rent_dz2022(dz, spine)
+    scotland = next(r for r in rolled if r["geo_level"] == "scotland")
+    council = next(r for r in rolled if r["geo_level"] == "council")
+    assert scotland["estimate_label"] == "partly_estimated"
+    assert council["estimate_label"] == "partly_estimated"
 
 
 def test_scotland_total_exact_to_penny(uprn_pairs_filtered):
     pairs, _ = uprn_pairs_filtered
-    # Unit rent on every 2011 zone covered by the filtered weights.
     sources = sorted({p["dz2011"] for p in pairs})
-    rows = [_src(code=c, rent=1.0) for c in sources]
-    # Use a thin subset for speed: first 50 zones + assert helper on full synthetic.
-    subset_src = sources[:80]
-    subset_pairs = [p for p in pairs if p["dz2011"] in set(subset_src)]
-    subset_rows = [_src(code=c, rent=12.34) for c in subset_src]
-    out = dz22.crosswalk_surface_to_dz2022(subset_rows, subset_pairs)
-    dz22.assert_scotland_total_conserved(subset_rows, out)
-    # Full Scotland pin: every 2011 zone, £1 — exact conservation.
-    out_all = dz22.crosswalk_surface_to_dz2022(rows, pairs)
-    assert len(out_all) == 7392
-    dz22.assert_scotland_total_conserved(rows, out_all)
-    assert abs(sum(r["measured_rent"] for r in out_all) - 6976.0) <= dz22.PENNY
+    rows = [_src(code=c, rent=12.34) for c in sources]
+    out = dz22.crosswalk_surface_to_dz2022(rows, pairs)
+    dz22.assert_scotland_total_conserved(rows, out)
 
 
 def test_missing_2011_zone_from_weights_raises(uprn_pairs_filtered):
     pairs, _ = uprn_pairs_filtered
-    # Drop one source that the crosswalk lists.
     src = pairs[0]["dz2011"]
     edges = [p for p in pairs if p["dz2011"] == src]
     with pytest.raises(dz22.CrosswalkError, match="missing"):
         dz22.crosswalk_surface_to_dz2022([], edges)
 
 
-def test_readme_credits_present():
-    text = (DATAZONES / "README_dz_crosswalk_uprn.md").read_text(encoding="utf-8")
-    assert "Contains OS data © Crown copyright and database right 2026" in text
-    assert "Open Government Licence v3.0" in text
+def test_configured_path_helpers():
+    assert dz22.WEIGHTS_FILENAME in str(dz22.default_uprn_weights_path())
+    assert dz22.ZERO_FILENAME in str(dz22.default_zero_uprn_path())

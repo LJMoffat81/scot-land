@@ -102,10 +102,5 @@ data/**/*inspire*
 data/**/*address*
 data/**/*postcode*
 data/**/*uprn*
-# Aggregate DZ2011→DZ2022 UPRN *counts/shares* (no address identifiers) — allowed.
-!data/processed/datazones/dz2011_dz2022_uprn_weights.csv
-!data/processed/datazones/dz_crosswalk_zero_uprn.csv
-!data/processed/datazones/qa_dz_crosswalk_uprn.json
-!data/processed/datazones/README_dz_crosswalk_uprn.md
 data/**/*udprn*
 *.ingest.json

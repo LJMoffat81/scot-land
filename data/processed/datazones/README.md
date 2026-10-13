@@ -61,12 +61,12 @@ python3 scripts/stage.py                                                        
   * build.py asserts both lists, so any change in the source data stops the build.
   * `flags` is always a string, and an empty value means no flags; it is never NULL in build.py. A CSV can't tell an empty string from a missing value, so read it as text: in pandas use `pd.read_csv(path, converters={"flags": str})`, which gives "" rather than NaN (avoid `keep_default_na=False`, which turns empty numeric cells into strings); in Postgres use `\copy ... CSV HEADER FORCE_NOT_NULL (flags)`. This also removes the pandas DtypeWarning on `dwellings_by_year.csv`, whose `flags` column is mostly empty.
 
-### 2a. `dz2011_dz2022_uprn_weights` (14,458 rows)
-Address-point (OS Open UPRN) crosswalk for surface-rent vintage conversion. See `README_dz_crosswalk_uprn.md`.
-`dz2011, dz2022, uprn_count, weight, hh2022_share, share_diff_flag, method` with `method=uprn_point_in_polygon`.
+### 2a. Address-UPRN crosswalk (not committed here)
+Full OS Open UPRN DZ2011→DZ2022 weights live outside the repo (GIS handoff). Point
+`SCOT_LAND_DZ_UPRN_CROSSWALK_DIR` or `paths.dz_uprn_crosswalk` in `surface.local.yaml`
+at that folder. Typed table DDL remains in `schema.sql` for local loads.
 **Attribution:** Contains OS data © Crown copyright and database right 2026; NRS and Scottish Government data under OGL v3.
-Companion files (not in the load manifest): `dz_crosswalk_zero_uprn.csv`, `qa_dz_crosswalk_uprn.json`.
-Runtime min-share filter (default ON) is applied in `georgist.surface_dz2022`, not in this CSV.
+Runtime min-share filter (default ON) is applied in `georgist.surface_dz2022`.
 
 ### 2. `dz_crosswalk_people` (10,473 rows)
 `dz2011, dz2022, weight, reverse_weight, method, basis_count`. Many-to-many, built from codes only (no geometry).

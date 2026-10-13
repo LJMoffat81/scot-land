@@ -2,15 +2,15 @@
 
 Designer brief v3.1 / CHARTER: surface rent is still computed on DZ2011 (RoS
 native) and needs a 2011→2022 crosswalk before the SG roll-up. DZ2022 is the
-unit of account. Preferred path is address-point (UPRN) shares from
-``data/processed/datazones/dz2011_dz2022_uprn_weights.csv`` (economic rules §11 —
-never population or area). Value-weighted shares remain allowed where addresses
-are unavailable. Results stay ``publish_level=internal`` and
-``publication_status=blocked`` until ECONOMIC_RULES / publishability clearance;
-source ``ok`` does not unblock. Public layers already filter that level out.
+unit of account. Preferred path is address-point (UPRN) shares from a configured
+local GIS handoff folder (economic rules §11 — never population or area).
+Value-weighted shares remain allowed where addresses are unavailable. Results
+stay ``publish_level=internal`` and ``publication_status=blocked`` until
+ECONOMIC_RULES / publishability clearance; source ``ok`` does not unblock.
 
-Fail loudly: missing sources, weights that do not sum to 1, forbidden methods,
-mixed price years / valuation dates, codes outside the official ranges, or rent
+Fail loudly: missing sources, rent zones absent from the crosswalk, weights that
+do not sum to 1, forbidden methods, mixed price years / valuation dates, zero
+dwellings on a 2022 destination, codes outside the official ranges, or rent
 landing on a DZ2022 zone with no address points at all.
 """
 
@@ -21,6 +21,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Iterable, Mapping, MutableMapping, Sequence
 
+from georgist.surface_paths import data_dir
 from georgist.surface_zones import CODE_RANGES, validate_code, vintage_int
 
 WEIGHT_TOL = 1e-6
@@ -78,13 +79,8 @@ SUMMABLE_FIELDS = (
     "policy_rent",
 )
 
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_UPRN_WEIGHTS_PATH = (
-    _REPO_ROOT / "data" / "processed" / "datazones" / "dz2011_dz2022_uprn_weights.csv"
-)
-DEFAULT_ZERO_UPRN_PATH = (
-    _REPO_ROOT / "data" / "processed" / "datazones" / "dz_crosswalk_zero_uprn.csv"
-)
+WEIGHTS_FILENAME = "dz2011_dz2022_uprn_weights.csv"
+ZERO_FILENAME = "dz_crosswalk_zero_uprn.csv"
 
 OS_OGL_ATTRIBUTION = (
     "Contains OS data © Crown copyright and database right 2026. "
@@ -92,6 +88,19 @@ OS_OGL_ATTRIBUTION = (
     "licensed under the Open Government Licence v3.0. "
     "Contains Scottish Government data © Crown copyright 2026 (OGL)."
 )
+
+
+def uprn_crosswalk_dir() -> Path:
+    """Configured local folder for the full GIS UPRN crosswalk (not in git)."""
+    return data_dir("dz_uprn_crosswalk")
+
+
+def default_uprn_weights_path() -> Path:
+    return uprn_crosswalk_dir() / WEIGHTS_FILENAME
+
+
+def default_zero_uprn_path() -> Path:
+    return uprn_crosswalk_dir() / ZERO_FILENAME
 
 
 class CrosswalkError(ValueError):
@@ -264,31 +273,45 @@ def apply_min_share_filter(
     return kept, stats
 
 
+def _row_codes(row: Mapping) -> tuple[str, str]:
+    """Accept GIS ``dz2011_code``/``dz2022_code`` or staged ``dz2011``/``dz2022``."""
+    try:
+        src = str(row.get("dz2011") or row["dz2011_code"]).strip()
+        dst = str(row.get("dz2022") or row["dz2022_code"]).strip()
+    except KeyError as exc:
+        raise CrosswalkError(f"row missing dz2011/dz2022: {exc}") from exc
+    return src, dst
+
+
 def load_uprn_weight_rows(
     path: Path | str | None = None,
     *,
     apply_min_share: bool = True,
     min_share: float = MIN_SHARE_DEFAULT,
     min_uprn_count: int = MIN_UPRN_COUNT_DEFAULT,
+    require_full_scotland: bool | None = None,
 ) -> tuple[list[dict], dict]:
-    """Load the committed UPRN weight table; optionally apply the min-share filter.
+    """Load a UPRN weight table; optionally apply the min-share filter.
 
-    Returns (pairs suitable for ``crosswalk_surface_to_dz2022``, load stats).
-    Each pair keeps ``share_diff_flag``, ``uprn_count``, ``hh2022_share``, and GIS
-    ``method=uprn_point_in_polygon`` (stamped ``address_uprn`` on conversion).
+    Default path is ``{dz_uprn_crosswalk_dir}/dz2011_dz2022_uprn_weights.csv``
+    (configured local GIS handoff — not committed). Synthetic fixtures may be
+    passed explicitly. When ``require_full_scotland`` is True (default if the
+    file has the full Scotland row count), pin expected zone/pair counts.
     """
-    p = Path(path) if path is not None else DEFAULT_UPRN_WEIGHTS_PATH
+    p = Path(path) if path is not None else default_uprn_weights_path()
     if not p.is_file():
-        raise CrosswalkError(f"UPRN weight file missing: {p}")
+        raise CrosswalkError(
+            f"UPRN weight file missing: {p} "
+            "(set SCOT_LAND_DZ_UPRN_CROSSWALK_DIR or paths.dz_uprn_crosswalk)"
+        )
     raw: list[dict] = []
     with p.open(encoding="utf-8-sig", newline="") as fh:
         for i, row in enumerate(csv.DictReader(fh)):
             try:
-                src = str(row["dz2011"]).strip()
-                dst = str(row["dz2022"]).strip()
-                weight = float(row["weight"])
+                src, dst = _row_codes(row)
+                weight = float(row["weight"] if "weight" in row else row["share_of_dz2011"])
                 uprn_count = int(row["uprn_count"])
-            except (KeyError, TypeError, ValueError) as exc:
+            except (KeyError, TypeError, ValueError, CrosswalkError) as exc:
                 raise CrosswalkError(f"{p.name} row {i}: {exc}") from exc
             method = _normalize_pair_method(row.get("method"), default=GIS_UPRN_METHOD)
             if METHOD_STAMP[method] != ADDRESS_CROSSWALK_METHOD:
@@ -307,12 +330,16 @@ def load_uprn_weight_rows(
                     "method": method,
                 }
             )
-    if len(raw) != EXPECTED_RAW_PAIRS:
+    if not raw:
+        raise CrosswalkError(f"UPRN weight file empty: {p}")
+    full = len(raw) == EXPECTED_RAW_PAIRS
+    if require_full_scotland is None:
+        require_full_scotland = full
+    if require_full_scotland and len(raw) != EXPECTED_RAW_PAIRS:
         raise CrosswalkError(
             f"UPRN weights have {len(raw)} rows, expected {EXPECTED_RAW_PAIRS}"
         )
-    # Recompute weights from integer uprn_count — CSV shares are rounded to 6 dp
-    # and can sum to 0.999999 per zone (GIS in-memory max error was ~2e-16).
+    # Recompute weights from integer uprn_count — CSV shares are rounded to 6 dp.
     by_src_counts: dict[str, list[dict]] = defaultdict(list)
     for r in raw:
         by_src_counts[r["dz2011"]].append(r)
@@ -325,7 +352,9 @@ def load_uprn_weight_rows(
     validate_value_crosswalk(raw)
     dz2011 = {r["dz2011"] for r in raw}
     dz2022 = {r["dz2022"] for r in raw}
-    if len(dz2011) != EXPECTED_DZ2011 or len(dz2022) != EXPECTED_DZ2022:
+    if require_full_scotland and (
+        len(dz2011) != EXPECTED_DZ2011 or len(dz2022) != EXPECTED_DZ2022
+    ):
         raise CrosswalkError(
             f"UPRN weights cover {len(dz2011)} DZ2011 / {len(dz2022)} DZ2022; "
             f"expected {EXPECTED_DZ2011}/{EXPECTED_DZ2022}"
@@ -339,6 +368,7 @@ def load_uprn_weight_rows(
         "dz2011": len(dz2011),
         "dz2022": len(dz2022),
         "apply_min_share": apply_min_share,
+        "full_scotland": require_full_scotland,
     }
     if not apply_min_share:
         stats.update(kept_pairs=len(raw), dropped_pairs=0, dropped_uprns=0)
@@ -347,24 +377,39 @@ def load_uprn_weight_rows(
         raw, min_share=min_share, min_uprn_count=min_uprn_count
     )
     stats.update(filt)
+    if require_full_scotland:
+        if filt["dropped_pairs"] != EXPECTED_MIN_SHARE_DROPPED_PAIRS:
+            raise CrosswalkError(
+                f"min-share dropped {filt['dropped_pairs']} pairs, "
+                f"expected {EXPECTED_MIN_SHARE_DROPPED_PAIRS}"
+            )
+        if filt["dropped_uprns"] != EXPECTED_MIN_SHARE_DROPPED_UPRNS:
+            raise CrosswalkError(
+                f"min-share dropped {filt['dropped_uprns']} UPRNs, "
+                f"expected {EXPECTED_MIN_SHARE_DROPPED_UPRNS}"
+            )
     return kept, stats
 
 
 def load_zero_uprn_overlap_pairs(path: Path | str | None = None) -> list[dict]:
     """Load ``kind == overlap_pair`` rows from the zero-UPRN companion CSV."""
-    p = Path(path) if path is not None else DEFAULT_ZERO_UPRN_PATH
+    p = Path(path) if path is not None else default_zero_uprn_path()
     if not p.is_file():
-        raise CrosswalkError(f"zero-UPRN file missing: {p}")
+        raise CrosswalkError(
+            f"zero-UPRN file missing: {p} "
+            "(set SCOT_LAND_DZ_UPRN_CROSSWALK_DIR or paths.dz_uprn_crosswalk)"
+        )
     out: list[dict] = []
     with p.open(encoding="utf-8-sig", newline="") as fh:
         for row in csv.DictReader(fh):
             if str(row.get("kind", "")).strip() != "overlap_pair":
                 continue
+            src, dst = _row_codes(row)
             out.append(
                 {
                     "kind": "overlap_pair",
-                    "dz2011": str(row["dz2011"]).strip(),
-                    "dz2022": str(row["dz2022"]).strip(),
+                    "dz2011": src,
+                    "dz2022": dst,
                     "area_ha": _num(row.get("area_ha")),
                     "pct_of_dz2011": _num(row.get("pct_of_dz2011")),
                     "pct_of_dz2022": _num(row.get("pct_of_dz2022")),
@@ -533,14 +578,19 @@ def crosswalk_surface_to_dz2022(
             raise CrosswalkError(f"duplicate DZ2011 source row for {code}")
         sources[code] = row
 
-    # All sources that appear in the crosswalk must be present; extras are ignored
-    # only when the caller passes a partial crosswalk for a subset run — but then
-    # every listed source must exist.
-    missing = sorted(s for s in by_src if s not in sources)
-    if missing:
+    # Every crosswalk source needs a rent row; every rent row must appear in the
+    # crosswalk (no silent skip of orphan 2011 zones).
+    missing_rent = sorted(s for s in by_src if s not in sources)
+    if missing_rent:
         raise CrosswalkError(
-            f"DZ2011 surface rows missing for {len(missing)} crosswalk sources "
-            f"(e.g. {missing[:3]})"
+            f"DZ2011 surface rows missing for {len(missing_rent)} crosswalk sources "
+            f"(e.g. {missing_rent[:3]})"
+        )
+    missing_xw = sorted(s for s in sources if s not in by_src)
+    if missing_xw:
+        raise CrosswalkError(
+            f"DZ2011 surface rows missing from crosswalk for {len(missing_xw)} zones "
+            f"(e.g. {missing_xw[:3]})"
         )
 
     price_years = {sources[s]["price_year"] for s in by_src}
@@ -625,15 +675,13 @@ def crosswalk_surface_to_dz2022(
             if dwellings < 0:
                 raise CrosswalkError(f"negative dwellings for {dst}")
         row["dwellings"] = dwellings
+        if dwellings == 0:
+            raise CrosswalkError(
+                f"DZ2022 {dst} has zero dwellings; refuse blanking rent "
+                "(derelict / best-permitted-use under v0.7 is a separate path)"
+            )
         if dwellings is not None and dwellings > 0 and row.get("measured_rent") is not None:
             row["measured_rent_per_dwelling"] = round(float(row["measured_rent"]) / dwellings, 2)
-        elif dwellings == 0:
-            row["measured_rent"] = None
-            row["measured_rent_per_dwelling"] = None
-            row["uncertainty_low"] = None
-            row["uncertainty_high"] = None
-            row["fill_method"] = "not_applicable"
-            row["quality"] = "placeholder"
         labels = [str(p["_estimate_label"]) for p in parts]
         # Multi-part merge from measured sources is still measured; estimated
         # 2011 parts force partly/fully estimated on the 2022 zone.

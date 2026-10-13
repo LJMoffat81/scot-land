@@ -17,20 +17,8 @@ type Downloads = { note?: string; items?: DownloadItem[] };
 
 const OPEN_JSON = [
   {
-    href: "/api/roll.json",
-    name: "Annual Ground Rent for each of the 32 councils",
-  },
-  {
-    href: "/api/roll.csv",
-    name: "The same council figures as a spreadsheet",
-  },
-  {
     href: "/api/vdl.json",
     name: "Vacant and derelict land, from the Scottish Vacant and Derelict Land Survey",
-  },
-  {
-    href: "/api/vdl-councils.json",
-    name: "Vacant hectares with an illustrative Annual Ground Rent",
   },
   {
     href: "/api/place.json?pc=EH1+1YZ",
@@ -87,11 +75,11 @@ export default function DownloadsPage() {
       </p>
       <h1>Downloads</h1>
       <p>
-        These are the open figures behind the map. They are a research
-        estimate, not a rates bill. The council files colour the map with each
-        council&apos;s town home plot. A click can be a register parcel, or one
-        countryside hectare. The files are tables and links. They are not a
-        download of every land boundary.
+        These are the open tables and links behind the map. Modelled Annual
+        Ground Rent for councils (including rent per square metre) is not a
+        public download — AGR £ stays internal at Data Zone band level until
+        yield calibration. The files here are ownership, vacant land, and
+        catalogue metadata. They are not a download of every land boundary.
       </p>
       {data?.note && <p className="downloads-note">{data.note}</p>}
 
@@ -106,14 +94,6 @@ export default function DownloadsPage() {
             </li>
           );
         })}
-        <li>
-          <a href={`${getApiBaseUrl()}/layers/councils?scenario=full_agr`}>
-            Annual Ground Rent for each council, as a map file
-          </a>
-          <span className="download-path">
-            /layers/councils?scenario=full_agr — research estimate, not a title
-          </span>
-        </li>
       </ul>
       <p className="downloads-note">
         A technical description of these addresses is on the{" "}

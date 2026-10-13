@@ -1,37 +1,19 @@
 import type { Metadata } from "next";
-import { withExportVersion } from "../../lib/exportUrl";
 
 export const metadata: Metadata = {
   title: "Public API | Scot-LAND",
   description:
-    "Addresses that return the open Annual Ground Rent figures for one place or the area in view. Research estimate, not a bill.",
+    "Open place, ownership, and layer addresses for the Scot-LAND map. Modelled Annual Ground Rent £ is not published on public routes.",
   openGraph: {
     title: "Public API | Scot-LAND",
     description:
-      "Addresses that return the open Annual Ground Rent figures for one place or the area in view. Research estimate, not a bill.",
+      "Open place, ownership, and layer addresses for the Scot-LAND map. Modelled Annual Ground Rent £ is not published on public routes.",
   },
 };
 
 export const dynamic = "force-dynamic";
 
-async function liveCommit(): Promise<string | null> {
-  const base = (
-    process.env.API_PROXY_TARGET ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    "http://127.0.0.1:8000"
-  ).replace(/\/$/, "");
-  try {
-    const response = await fetch(`${base}/health`, { cache: "no-store" });
-    if (!response.ok) return null;
-    const body = (await response.json()) as { stamp?: { commit?: string } };
-    return body.stamp?.commit || null;
-  } catch {
-    return null;
-  }
-}
-
-export default async function OpenApiPage() {
-  const rollCsv = withExportVersion("/api/roll.csv", await liveCommit());
+export default function OpenApiPage() {
   return (
     <main className="downloads-page">
       <p className="downloads-nav">
@@ -45,11 +27,13 @@ export default async function OpenApiPage() {
       </p>
       <h1>Public API</h1>
       <p>
-        These addresses return the open figures behind the map. They are a
-        research estimate, not a rates bill. The answers are for the area in
-        view, or for one place. They are not a download of every land boundary.
-        The SG 2024 public/Crown land dashboard is not an open layer here
-        (licence unverified/not open).
+        These addresses return the open place and layer figures behind the map.
+        Modelled Annual Ground Rent for councils (including rent per square
+        metre) is not on these public routes — AGR £ stays internal at Data Zone
+        band level until yield calibration. The SG 2024 public/Crown land
+        dashboard is not an open layer here (licence unverified/not open). The
+        answers are for the area in view, or for one place. They are not a
+        download of every land boundary.
       </p>
 
       <h2>One place</h2>
@@ -60,12 +44,6 @@ export default async function OpenApiPage() {
             <a href="/api/place.json?pc=EH1+1YZ">
               GET /api/place.json?pc=EH1+1YZ
             </a>
-          </span>
-        </li>
-        <li>
-          A written assessment you can download
-          <span className="download-path">
-            GET /assessment/report?lat=&amp;lng=&amp;format=markdown
           </span>
         </li>
       </ul>
@@ -93,24 +71,10 @@ export default async function OpenApiPage() {
             GET /layers/open/vdl?south=&amp;west=&amp;north=&amp;east=
           </span>
         </li>
-        <li>
-          Annual Ground Rent for each council, as a map file
-          <span className="download-path">
-            GET /layers/councils?scenario=full_agr
-          </span>
-        </li>
       </ul>
 
       <h2>Tables</h2>
       <ul>
-        <li>
-          <a href="/api/roll.json">Annual Ground Rent for each council</a>
-          <span className="download-path">/api/roll.json</span>
-        </li>
-        <li>
-          <a href={rollCsv}>The same figures as a spreadsheet</a>
-          <span className="download-path">{rollCsv}</span>
-        </li>
         <li>
           <a href="/api/vdl.json">
             Vacant and derelict land, from the Scottish Vacant and Derelict

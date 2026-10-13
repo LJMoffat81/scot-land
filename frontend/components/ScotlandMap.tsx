@@ -2338,7 +2338,7 @@ export default function ScotlandMap() {
           `/layers/open/nfi?south=${b.getSouth()}&west=${b.getWest()}` +
           `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
         tasks.push(
-          apiJson<FeatureCollection>(nfiUrl)
+          apiJson<GeoJSON.FeatureCollection>(nfiUrl)
             .then((data) => {
               if (cancelled || !mapRef.current) return;
               (map.getSource("nfi-overlay") as GeoJSONSource)?.setData(data);
@@ -2363,7 +2363,7 @@ export default function ScotlandMap() {
           `/layers/open/native-woodland?south=${b.getSouth()}&west=${b.getWest()}` +
           `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
         tasks.push(
-          apiJson<FeatureCollection>(nativeUrl)
+          apiJson<GeoJSON.FeatureCollection>(nativeUrl)
             .then((data) => {
               if (cancelled || !mapRef.current) return;
               (map.getSource("native-woodland-overlay") as GeoJSONSource)?.setData(

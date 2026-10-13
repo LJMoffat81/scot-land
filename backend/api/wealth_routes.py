@@ -172,6 +172,8 @@ def data_zone_at(
                     "vintages_checked": found.vintages_loaded,
                     "message": "No data zone contains this point."},
         )
+    # Context metrics (HPI/SIMD/density) stay on platform /layers/open/dz-context —
+    # wealth_routes must not import layers/agr (see test_wealth_router_does_not_import_agr).
     return {"lat": lat, "lon": lon, **found.to_dict()}
 
 

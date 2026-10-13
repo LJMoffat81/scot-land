@@ -139,6 +139,24 @@ export const LAYER_ATTRIBUTION: Record<
     licence: "OGL-3.0",
     sourceUrl: "https://opendata.nature.scot/",
   },
+  dz_house_price: {
+    source: "RoS residential sales (DZ) + UK HPI council averages",
+    licence: "OGL v3.0",
+    sourceUrl:
+      "https://data.gov.scot/dataset/house_prices___residential_properties_sales_and_price",
+  },
+  dz_simd: {
+    source: "SIMD 2020v2 (Scottish Government)",
+    licence: "OGL v3.0",
+    sourceUrl:
+      "https://www.gov.scot/publications/scottish-index-of-multiple-deprivation-2020v2-data-zone-look-up/",
+  },
+  dz_pop_density: {
+    source: "NRS small area population estimates ÷ zone area",
+    licence: "OGL v3.0",
+    sourceUrl:
+      "https://www.nrscotland.gov.uk/publications/small-area-population-estimates-mid-2024-2022-data-zones/",
+  },
 
   la_holdings: {
     source: "Spatial Hub — Land Ownership Scotland",

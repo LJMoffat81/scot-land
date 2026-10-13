@@ -397,7 +397,8 @@ def test_repo_gis_dataset_loads_into_postgis(pgconn):
 
 # --------------------------------------------------------------------------- Data Zones (real, committed)
 
-DZ_FILES = {"zone_spine.csv", "dz_crosswalk_people.csv", "simd2020v2_dz2011.csv",
+DZ_FILES = {"zone_spine.csv", "dz_crosswalk_people.csv", "dz2011_dz2022_uprn_weights.csv",
+            "simd2020v2_dz2011.csv",
             "simd2020v2_access_indicators_dz2011.csv", "simd2020v2_on_dz2022.csv", "dwellings_ct_band.csv",
             "dwellings_by_year.csv", "dwellings_by_year_coverage.csv", "nrs_dwelling_mix_2011_fallback.csv",
             "dz_planning_authority.csv"}
@@ -409,12 +410,16 @@ def _need_datazones():
 
 
 def test_repo_datazones_manifest_validates(datazones_root):
-    """Data Zones' 10 CSVs: checksums, rows, integer vintages, attribution, key types incl. the
-    (dz2011, dz2022) crosswalk. The committed manifest validates as is."""
+    """Data Zones' CSVs: checksums, rows, integer vintages, attribution, key types incl. the
+    (dz2011, dz2022) people and UPRN crosswalks. The committed manifest validates as is."""
     _need_datazones()
     entries = {e.file: e for e in lp.validate(datazones_root, "datazones")}
     assert set(entries) == DZ_FILES and all(e.attribution for e in entries.values())
     assert entries["dz_crosswalk_people.csv"].key_type == "crosswalk"
+    assert entries["dz2011_dz2022_uprn_weights.csv"].key_type == "crosswalk"
+    assert "OS data © Crown copyright and database right 2026" in (
+        entries["dz2011_dz2022_uprn_weights.csv"].attribution
+    )
     assert entries["dwellings_by_year_coverage.csv"].key_type == "vintage"
     assert entries["dwellings_by_year.csv"].key == ("code", "vintage", "count_year")
     assert all(e.typed_schema == "datazones" for e in entries.values())
@@ -428,7 +433,7 @@ def test_repo_datazones_loads_into_owner_typed_tables(pgconn, datazones_root):
     entries = lp.validate(datazones_root, "datazones")
     for _ in range(2):  # re-runnable: one TRUNCATE + COPY per run
         loaded = lp.load(pgconn, entries)
-    assert len(loaded) == 10
+    assert len(loaded) == len(DZ_FILES)
     with pgconn.cursor() as cur:
         cur.execute("SELECT vintage, count(*) FROM datazones.zone_spine GROUP BY 1 ORDER BY 1")
         assert cur.fetchall() == [(2011, 6976), (2022, 7392)]
@@ -440,6 +445,13 @@ def test_repo_datazones_loads_into_owner_typed_tables(pgconn, datazones_root):
         assert cur.fetchone() == (2024, 2025)
         cur.execute("SELECT key_type, table_name FROM processed.manifest_loads WHERE file = 'dz_crosswalk_people.csv'")
         assert cur.fetchone() == ("crosswalk", "datazones.dz_crosswalk_people")
+        cur.execute(
+            "SELECT key_type, table_name FROM processed.manifest_loads "
+            "WHERE file = 'dz2011_dz2022_uprn_weights.csv'"
+        )
+        assert cur.fetchone() == ("crosswalk", "datazones.dz2011_dz2022_uprn_weights")
+        cur.execute("SELECT count(*), sum(weight) IS NOT NULL FROM datazones.dz2011_dz2022_uprn_weights")
+        assert cur.fetchone()[0] == 14458
         # flags is one ';'-separated text column; '' (no flags) stays '' (FORCE_NOT_NULL), never NULL.
         cur.execute("SELECT count(*), count(flags), count(*) FILTER (WHERE flags = '') FROM datazones.zone_spine")
         assert cur.fetchone() == (14368, 14368, 14368 - 7)

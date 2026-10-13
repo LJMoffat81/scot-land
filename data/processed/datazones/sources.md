@@ -38,6 +38,7 @@ Checked but not used:
 Per-table source map:
 * zone_spine: S1, S4, S5, S6, S7, S8, S11, S14
 * dz_crosswalk_people: S1, S2, S4 (QA: S3, S20)
+* dz2011_dz2022_uprn_weights: OS Open UPRN 202609 + SG DZ2011/DZ2022 boundaries + NRS Census 2022 OA household centroids (see `README_dz_crosswalk_uprn.md`); attribution includes OS © 2026
 * simd2020v2_dz2011: S11 (QA: S12)
 * simd2020v2_access_indicators_dz2011: S13
 * simd2020v2_on_dz2022: S11 + dz_crosswalk_people

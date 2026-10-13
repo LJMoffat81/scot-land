@@ -21,7 +21,7 @@ def test_vendored_tables_match_owner_schema_exactly():
     if not OWNER.is_file():
         pytest.skip("data/processed/datazones/schema.sql not present")
     owner, vendored = _tables(OWNER.read_text()), _tables(VENDORED.read_text())
-    assert len(owner) == 10 and owner.keys() == vendored.keys()
+    assert len(owner) == 11 and owner.keys() == vendored.keys()
     for name in owner:
         assert vendored[name] == owner[name], f"datazones.{name} drifted from Data Zones' schema.sql"
 

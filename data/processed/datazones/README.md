@@ -61,6 +61,13 @@ python3 scripts/stage.py                                                        
   * build.py asserts both lists, so any change in the source data stops the build.
   * `flags` is always a string, and an empty value means no flags; it is never NULL in build.py. A CSV can't tell an empty string from a missing value, so read it as text: in pandas use `pd.read_csv(path, converters={"flags": str})`, which gives "" rather than NaN (avoid `keep_default_na=False`, which turns empty numeric cells into strings); in Postgres use `\copy ... CSV HEADER FORCE_NOT_NULL (flags)`. This also removes the pandas DtypeWarning on `dwellings_by_year.csv`, whose `flags` column is mostly empty.
 
+### 2a. `dz2011_dz2022_uprn_weights` (14,458 rows)
+Address-point (OS Open UPRN) crosswalk for surface-rent vintage conversion. See `README_dz_crosswalk_uprn.md`.
+`dz2011, dz2022, uprn_count, weight, hh2022_share, share_diff_flag, method` with `method=uprn_point_in_polygon`.
+**Attribution:** Contains OS data © Crown copyright and database right 2026; NRS and Scottish Government data under OGL v3.
+Companion files (not in the load manifest): `dz_crosswalk_zero_uprn.csv`, `qa_dz_crosswalk_uprn.json`.
+Runtime min-share filter (default ON) is applied in `georgist.surface_dz2022`, not in this CSV.
+
 ### 2. `dz_crosswalk_people` (10,473 rows)
 `dz2011, dz2022, weight, reverse_weight, method, basis_count`. Many-to-many, built from codes only (no geometry).
 * **Basis.** Census 2022 **household population** at postcode level, from the NRS Census 2022 index `Postcode_To_OA.csv` (`PopulationCount` = "2022 Census household population count at postcode level"; 153,192 frozen census postcodes; total 5,330,984). Each postcode gets its **DZ2022** through its frozen OA2022 and the NRS OA22→DZ22 lookup (OAs nest in DZ2022). It gets its **DZ2011** from the SPD 2026/2 record that carries the Census 2022 counts (one record per postcode). `basis_count` is the household population in each (dz2011, dz2022) intersection.

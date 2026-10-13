@@ -48,33 +48,44 @@ export default function InternalTaxScenarioView({
       <h2>Tax scenario {scenarioId}</h2>
       <p>
         Every £ field is low / central / high. Tags are market / proxy / shadow.
+        No hard-coded demo amounts on this page — load zones from the internal
+        API when available.
       </p>
-      <ul className="internal-tax-zone-list">
-        {zones.map((z) => (
-          <li key={z.code} data-zone={z.code} data-value-tier={z.value_tier}>
-            <div className="internal-tax-zone-head">
-              <strong>{z.code}</strong>
-              <span>{z.la_name}</span>
-              <ConfidenceTag kind={z.tag} />
-              {!z.taxable ? <span data-testid="not-taxed">not taxed</span> : null}
-            </div>
-            <dl>
-              <div>
-                <dt>Measured rent (low / central / high)</dt>
-                <dd data-testid="measured-rent-triple">
-                  {gbpTriple(z.measured_rent_gbp)}
-                </dd>
+      {zones.length === 0 ? (
+        <p data-testid="internal-tax-empty" className="internal-tax-empty">
+          No zone figures loaded (blocked / empty). Open via internal API once
+          Valuation re-passes.
+        </p>
+      ) : (
+        <ul className="internal-tax-zone-list">
+          {zones.map((z) => (
+            <li key={z.code} data-zone={z.code} data-value-tier={z.value_tier}>
+              <div className="internal-tax-zone-head">
+                <strong>{z.code}</strong>
+                <span>{z.la_name}</span>
+                <ConfidenceTag kind={z.tag} />
+                {!z.taxable ? (
+                  <span data-testid="not-taxed">not taxed</span>
+                ) : null}
               </div>
-              <div>
-                <dt>Illustrated collection (low / central / high)</dt>
-                <dd data-testid="collection-triple">
-                  {gbpTriple(z.illustrated_collection_gbp)}
-                </dd>
-              </div>
-            </dl>
-          </li>
-        ))}
-      </ul>
+              <dl>
+                <div>
+                  <dt>Measured rent (low / central / high)</dt>
+                  <dd data-testid="measured-rent-triple">
+                    {gbpTriple(z.measured_rent_gbp)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Illustrated collection (low / central / high)</dt>
+                  <dd data-testid="collection-triple">
+                    {gbpTriple(z.illustrated_collection_gbp)}
+                  </dd>
+                </div>
+              </dl>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

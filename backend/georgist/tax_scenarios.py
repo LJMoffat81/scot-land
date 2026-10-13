@@ -32,6 +32,9 @@ from georgist.display_views import ZERO_DWELLINGS, parse_zone_flags
 from georgist.surface_settings import yield_placeholder
 from georgist.wealth_schema import publicly_served
 
+_SHARE_SUM_TOLERANCE = 1e-9
+_PHASE_IN_FULL_POINTS = 100
+
 DISCLAIMER = "Experimental research estimate. Not an official valuation or tax bill."
 LENS = "surface_rent"
 LENS_NOTE = (
@@ -116,7 +119,7 @@ def policy_config_payload(defaults: Mapping[str, Any] | None = None) -> dict[str
         "scenarios": {
             sid: {
                 "id": (body or {}).get("id", sid),
-                "label": (body or {}).get("label"),
+                "label": _s1_label(sid, body or {}, cfg),
                 "mode": (body or {}).get("mode"),
                 **(
                     {"capture_rate": (body or {}).get("capture_rate")}
@@ -133,16 +136,47 @@ def policy_config_payload(defaults: Mapping[str, Any] | None = None) -> dict[str
                     if sid == "S1" and isinstance((body or {}).get("national_single_rate"), Mapping)
                     else {}
                 ),
+                **(
+                    {"targets_status": _fiscal_targets_status(cfg)}
+                    if sid == "S1"
+                    else {}
+                ),
             }
             for sid, body in scenarios.items()
         },
+        "fiscal_targets_status": _fiscal_targets_status(cfg),
         "note": (
             "Approved defaults (v0.1, Oct 2026). Still configurable. No ownership-based "
             "exemptions. Shadow values are never taxed. S1 rate is solved per council "
             "against that council's council tax + business rates; national single-rate "
             "S1 is off by default."
+            + (
+                " S1 uses placeholder targets until SG Local Government Finance CT+NDR are loaded."
+                if _fiscal_targets_status(cfg) == "placeholder_targets"
+                else " S1 targets from SG Local Government Finance (OGL)."
+            )
         ),
     }
+
+
+def _fiscal_targets_status(defaults: Mapping[str, Any]) -> str:
+    fiscal = defaults.get("fiscal_targets") or {}
+    raw = str(fiscal.get("targets_status") or fiscal.get("status") or "placeholder_targets")
+    if raw in {"placeholder", "placeholders", "research_placeholders", "approved_defaults"}:
+        return "placeholder_targets"
+    if raw in {"loaded", "sg_local_government_finance", "sg_lgf"}:
+        return "sg_local_government_finance"
+    return raw
+
+
+def _s1_label(sid: str, body: Mapping[str, Any], defaults: Mapping[str, Any]) -> str:
+    base = str(body.get("label") or sid)
+    if sid != "S1":
+        return base
+    if _fiscal_targets_status(defaults) == "placeholder_targets":
+        if "placeholder targets" not in base.lower():
+            return f"{base} (placeholder targets)"
+    return base
 
 
 def _default_policy_config() -> dict[str, Any]:
@@ -192,6 +226,123 @@ def money_triple(central: float, *, yield_central: float, band_low: float, band_
 def scale_triple(triple: Mapping[str, float], rate: float) -> dict[str, float]:
     r = float(rate)
     return {k: round(float(triple[k]) * r, 2) for k in ("low", "central", "high")}
+
+
+def phase_in_fraction(year: int, points_per_year: int = 10) -> float:
+    """Applied fraction at policy year ``year`` (1-indexed). 10 pts/year → yr1=0.10 … yr10=1.0."""
+    try:
+        y = int(year)
+        pts = int(points_per_year)
+    except (TypeError, ValueError) as exc:
+        raise TaxScenarioError(
+            "invalid_phase_in",
+            "phase_in year and points_per_year must be positive integers.",
+            year=year,
+            points_per_year=points_per_year,
+        ) from exc
+    if y < 1 or pts < 1:
+        raise TaxScenarioError(
+            "invalid_phase_in",
+            "phase_in year and points_per_year must be >= 1.",
+            year=year,
+            points_per_year=points_per_year,
+        )
+    return min(1.0, (y * pts) / float(_PHASE_IN_FULL_POINTS))
+
+
+def phase_in_schedule(
+    full_collection: Mapping[str, float],
+    *,
+    points_per_year: int = 10,
+    years: int | None = None,
+) -> list[dict[str, Any]]:
+    """Year-by-year LCH schedule at Data Zone grain (10 percentage points per year)."""
+    pts = int(points_per_year)
+    n_years = int(years) if years is not None else max(1, (_PHASE_IN_FULL_POINTS + pts - 1) // pts)
+    schedule: list[dict[str, Any]] = []
+    for year in range(1, n_years + 1):
+        frac = phase_in_fraction(year, pts)
+        schedule.append({
+            "year": year,
+            "points": min(_PHASE_IN_FULL_POINTS, year * pts),
+            "applied_fraction": frac,
+            "illustrated_collection_gbp": scale_triple(full_collection, frac),
+        })
+    return schedule
+
+
+def resolve_revenue_sharing(
+    defaults: Mapping[str, Any],
+    override: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Council/dividend shares from defaults or per-request override; must sum to 1."""
+    if override is not None:
+        try:
+            council = float(override["council_share"])
+            dividend = float(override["dividend_share"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise TaxScenarioError(
+                "invalid_revenue_share",
+                "revenue_sharing override requires council_share and dividend_share numbers that sum to 1.",
+                override=dict(override),
+            ) from exc
+        source = "request"
+    else:
+        sharing = defaults.get("revenue_sharing") or {}
+        council = float(sharing.get("council_share", 0.5))
+        dividend = float(sharing.get("dividend_share", 0.5))
+        source = "defaults"
+    if council < 0.0 or dividend < 0.0 or council > 1.0 or dividend > 1.0:
+        raise TaxScenarioError(
+            "invalid_revenue_share",
+            "council_share and dividend_share must each be in [0, 1] and sum to 1.",
+            council_share=council,
+            dividend_share=dividend,
+        )
+    if abs((council + dividend) - 1.0) > _SHARE_SUM_TOLERANCE:
+        raise TaxScenarioError(
+            "invalid_revenue_share",
+            "council_share and dividend_share must sum to 1.",
+            council_share=council,
+            dividend_share=dividend,
+            sum=council + dividend,
+        )
+    return {
+        "council_share": council,
+        "dividend_share": dividend,
+        "source": source,
+        "status": "approved_defaults",
+        "version": "0.1",
+    }
+
+
+def apply_deferral(
+    collection: Mapping[str, float],
+    *,
+    eligible: bool,
+    rate: float,
+    enabled: bool = True,
+) -> dict[str, Any]:
+    """Model low-income home-owner deferral: deferred amount + annual accrual at ``rate``."""
+    r = float(rate)
+    if r < 0.0:
+        raise TaxScenarioError("invalid_deferral_rate", "deferral rate must be >= 0.", rate=rate)
+    if enabled and eligible:
+        deferred = {k: round(float(collection[k]), 2) for k in ("low", "central", "high")}
+        accrual = scale_triple(deferred, r)
+        cash = {"low": 0.0, "central": 0.0, "high": 0.0}
+    else:
+        deferred = {"low": 0.0, "central": 0.0, "high": 0.0}
+        accrual = {"low": 0.0, "central": 0.0, "high": 0.0}
+        cash = {k: round(float(collection[k]), 2) for k in ("low", "central", "high")}
+    return {
+        "deferral_eligible": bool(eligible),
+        "deferral_applied": bool(enabled and eligible),
+        "deferral_rate": r,
+        "deferred_gbp": deferred,
+        "accrual_gbp_per_year": accrual,
+        "cash_collected_gbp": cash,
+    }
 
 
 def _yield_band_parts(yp: Mapping[str, Any]) -> tuple[float, float, float]:
@@ -287,6 +438,7 @@ class ZoneRentRow:
     value_tier: str = "proxy"
     uncertainty_low: float | None = None
     uncertainty_high: float | None = None
+    deferral_eligible: bool = False  # low-income home owner (approved defaults)
 
 
 def parse_capture_rate(raw: Any) -> float:
@@ -339,6 +491,10 @@ def zone_row_from_db(row: Mapping[str, Any]) -> ZoneRentRow | None:
     try:
         ulo = row.get("uncertainty_low")
         uhi = row.get("uncertainty_high")
+        defer_raw = row.get("deferral_eligible")
+        if defer_raw is None:
+            defer_raw = row.get("low_income_home_owner")
+        deferral_eligible = bool(defer_raw) if defer_raw is not None else False
         return ZoneRentRow(
             code=str(code),
             vintage=int(vintage),
@@ -349,6 +505,7 @@ def zone_row_from_db(row: Mapping[str, Any]) -> ZoneRentRow | None:
             value_tier=tier,
             uncertainty_low=float(ulo) if ulo is not None else None,
             uncertainty_high=float(uhi) if uhi is not None else None,
+            deferral_eligible=deferral_eligible,
         )
     except (TypeError, ValueError):
         return None
@@ -399,13 +556,39 @@ def _zone_money_row(
     *,
     capture_rate: float,
     yp: Mapping[str, Any] | None = None,
+    phase_in_points_per_year: int = 10,
+    phase_in_year: int | None = None,
+    deferral_enabled: bool = True,
+    deferral_rate: float = 0.0262,
+    revenue_sharing: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """£ fields for one Data Zone only — every £ field is a low/central/high triple."""
+    """£ fields for one Data Zone only — every £ field is a low/central/high triple.
+
+    Applies phase-in schedule (10 pts/year), deferral (eligible low-income home owners),
+    and council/dividend revenue split at Data Zone grain.
+    """
     yp = yp or yield_placeholder()
     rent = _rent_triple_for_row(row, yp)
     taxable = is_taxable(row)
     rate = 0.0 if not taxable else float(capture_rate)
-    collection = scale_triple(rent, rate)
+    full_collection = scale_triple(rent, rate)
+    schedule = phase_in_schedule(full_collection, points_per_year=phase_in_points_per_year)
+    # Default applied year = fully phased-in (last schedule year) unless caller selects one.
+    applied_year = int(phase_in_year) if phase_in_year is not None else schedule[-1]["year"]
+    frac = phase_in_fraction(applied_year, phase_in_points_per_year)
+    collection = scale_triple(full_collection, frac)
+    deferral = apply_deferral(
+        collection,
+        eligible=bool(row.deferral_eligible) and taxable,
+        rate=deferral_rate,
+        enabled=deferral_enabled,
+    )
+    sharing = revenue_sharing or {"council_share": 0.5, "dividend_share": 0.5}
+    council_share = float(sharing["council_share"])
+    dividend_share = float(sharing["dividend_share"])
+    # Split the phased illustrated liability (deferral tracked separately).
+    council_gbp = scale_triple(collection, council_share)
+    dividend_gbp = scale_triple(collection, dividend_share)
     return {
         "code": row.code,
         "vintage": row.vintage,
@@ -416,7 +599,21 @@ def _zone_money_row(
         "tag": row.value_tier,  # market | proxy | shadow
         "taxable": taxable,
         "measured_rent_gbp": rent,
+        "illustrated_collection_full_gbp": full_collection,
         "illustrated_collection_gbp": collection,
+        "phase_in": {
+            "points_per_year": int(phase_in_points_per_year),
+            "applied_year": applied_year,
+            "applied_fraction": frac,
+            "schedule": schedule,
+        },
+        "deferral": deferral,
+        "revenue_sharing": {
+            "council_share": council_share,
+            "dividend_share": dividend_share,
+            "council_share_gbp": council_gbp,
+            "dividend_share_gbp": dividend_gbp,
+        },
         "money_grain": MONEY_GRAIN,
         "status": STATUS,
         "disclaimer": DISCLAIMER,
@@ -425,8 +622,10 @@ def _zone_money_row(
 
 
 def council_fiscal_targets(defaults: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
-    """la_code → {council_tax_gbp, business_rates_gbp, la_name, ...}."""
+    """la_code → {council_tax_gbp, business_rates_gbp, la_name, year/source, ...}."""
     fiscal = defaults.get("fiscal_targets") or {}
+    ct_meta = fiscal.get("council_tax") or {}
+    nbr_meta = fiscal.get("business_rates") or {}
     out: dict[str, dict[str, Any]] = {}
     for row in fiscal.get("by_council") or []:
         if not isinstance(row, Mapping):
@@ -438,6 +637,11 @@ def council_fiscal_targets(defaults: Mapping[str, Any]) -> dict[str, dict[str, A
             "council_tax_gbp": float(row["council_tax_gbp"]),
             "business_rates_gbp": float(row["business_rates_gbp"]),
             "target_gbp": float(row["council_tax_gbp"]) + float(row["business_rates_gbp"]),
+            "council_tax_year": row.get("council_tax_year") or ct_meta.get("year"),
+            "council_tax_source": row.get("council_tax_source") or ct_meta.get("source"),
+            "business_rates_year": row.get("business_rates_year") or nbr_meta.get("year"),
+            "business_rates_source": row.get("business_rates_source") or nbr_meta.get("source"),
+            "targets_status": _fiscal_targets_status(defaults),
         }
     return out
 
@@ -483,6 +687,11 @@ def solve_s1_per_council(
             "business_rates_gbp": tgt["business_rates_gbp"],
             "target_gbp": target,
             "s1_revenue_central_gbp": revenue,
+            "council_tax_year": tgt.get("council_tax_year"),
+            "council_tax_source": tgt.get("council_tax_source"),
+            "business_rates_year": tgt.get("business_rates_year"),
+            "business_rates_source": tgt.get("business_rates_source"),
+            "targets_status": tgt.get("targets_status"),
             "zone_count": len(group),
             "taxable_zone_count": sum(1 for z in group if is_taxable(z)),
         }
@@ -608,6 +817,8 @@ def aggregate_by_council(
     scenario_id: str = "S2",
     defaults: Mapping[str, Any] | None = None,
     include_national_s1: bool = False,
+    phase_in_year: int | None = None,
+    revenue_sharing: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Council membership + per-zone £ triples (no council/national £ on display blocks)."""
     cfg = dict(defaults) if defaults is not None else load_draft_defaults()
@@ -619,6 +830,13 @@ def aggregate_by_council(
     if la_code:
         usable = [r for r in usable if r.la_code == la_code]
     yp = yield_placeholder()
+    sharing = resolve_revenue_sharing(cfg, revenue_sharing)
+    phase_cfg = cfg.get("phase_in") or {"points_per_year": 10}
+    points_per_year = int(phase_cfg.get("points_per_year") or 10)
+    defer_cfg = cfg.get("deferral") or {"low_income_home_owners": True, "rate": 0.0262}
+    deferral_enabled = bool(defer_cfg.get("low_income_home_owners", True))
+    deferral_rate = float(defer_cfg.get("rate", 0.0262))
+    targets_status = _fiscal_targets_status(cfg)
 
     if not usable:
         payload = stamp_blocked({
@@ -634,6 +852,9 @@ def aggregate_by_council(
             "by_council": [],
             "by_zone": [],
             "preset_rates": list(DEFAULT_CAPTURE_RATES),
+            "revenue_sharing": sharing,
+            "phase_in": {"points_per_year": points_per_year, "applied_year": phase_in_year},
+            "deferral": {"low_income_home_owners": deferral_enabled, "rate": deferral_rate},
             "note": "No publishable Surface Rent rows for this filter. Nothing was estimated.",
         }, defaults=cfg)
         assert_no_aggregate_gbp(payload)
@@ -678,11 +899,25 @@ def aggregate_by_council(
                 "council_tax_gbp": s1_by_council[code]["council_tax_gbp"],
                 "business_rates_gbp": s1_by_council[code]["business_rates_gbp"],
                 "total_gbp": s1_by_council[code]["target_gbp"],
+                "council_tax_year": s1_by_council[code].get("council_tax_year"),
+                "council_tax_source": s1_by_council[code].get("council_tax_source"),
+                "business_rates_year": s1_by_council[code].get("business_rates_year"),
+                "business_rates_source": s1_by_council[code].get("business_rates_source"),
+                "targets_status": s1_by_council[code].get("targets_status") or targets_status,
             }
         councils.append(entry)
 
     by_zone = [
-        _zone_money_row(r, capture_rate=rate_by_zone[r.code], yp=yp)
+        _zone_money_row(
+            r,
+            capture_rate=rate_by_zone[r.code],
+            yp=yp,
+            phase_in_points_per_year=points_per_year,
+            phase_in_year=phase_in_year,
+            deferral_enabled=deferral_enabled,
+            deferral_rate=deferral_rate,
+            revenue_sharing=sharing,
+        )
         for r in sorted(usable, key=lambda z: z.code)
     ]
 
@@ -690,9 +925,9 @@ def aggregate_by_council(
     build_rollup = bool(display.get("build_council_scotland_rollup", True))
     rollup = build_aggregate_rollup(usable, rate_by_zone=rate_by_zone, yp=yp) if build_rollup else None
 
-    sharing = cfg.get("revenue_sharing") or {}
-    council_share = float(sharing.get("council_share", 0.5))
-    dividend_share = float(sharing.get("dividend_share", 0.5))
+    applied_year = phase_in_year if phase_in_year is not None else (
+        by_zone[0]["phase_in"]["applied_year"] if by_zone else None
+    )
 
     payload: dict[str, Any] = {
         "status": STATUS,
@@ -715,19 +950,22 @@ def aggregate_by_council(
         "by_council": councils,
         "by_zone": by_zone,
         "preset_rates": list(DEFAULT_CAPTURE_RATES),
-        "revenue_sharing": {
-            "council_share": council_share,
-            "dividend_share": dividend_share,
-            "status": "approved_defaults",
-            "version": "0.1",
+        "revenue_sharing": sharing,
+        "phase_in": {
+            "points_per_year": points_per_year,
+            "applied_year": applied_year,
+            "applied_fraction": phase_in_fraction(int(applied_year), points_per_year) if applied_year else None,
         },
-        "phase_in": dict(cfg.get("phase_in") or {"points_per_year": 10}),
-        "deferral": dict(cfg.get("deferral") or {"low_income_home_owners": True, "rate": 0.0262}),
+        "deferral": {
+            "low_income_home_owners": deferral_enabled,
+            "rate": deferral_rate,
+        },
         "note": (
             "Internal tax scenario approved defaults (v0.1, Oct 2026): £ at Data Zone grain "
             "only (by_zone) as low/central/high triples with market/proxy/shadow tags. "
             "Council/national blocks are membership counts while blocked. Shadow never taxed. "
             "S1 is per-council revenue-swap; national single-rate S1 is off by default. "
+            "Phase-in, deferral and revenue-share applied at Data Zone grain. "
             "Not the Sandilands pool, not AGR, not a tax bill. publication_status=blocked."
         ),
     }
@@ -738,10 +976,15 @@ def aggregate_by_council(
                 "target_gbp": body["target_gbp"],
                 "s1_revenue_central_gbp": body["s1_revenue_central_gbp"],
                 "taxable_rent_central_gbp": body["taxable_rent_central_gbp"],
+                "council_tax_year": body.get("council_tax_year"),
+                "business_rates_year": body.get("business_rates_year"),
+                "targets_status": body.get("targets_status") or targets_status,
             }
             for code, body in s1_by_council.items()
         }
+        payload["s1_targets_status"] = targets_status
         nat_cfg = ((cfg.get("scenarios") or {}).get("S1") or {}).get("national_single_rate") or {}
+        s1_label = _s1_label("S1", (cfg.get("scenarios") or {}).get("S1") or {}, cfg)
         payload["s1_national_single_rate"] = {
             "enabled": bool(include_national_s1 or nat_cfg.get("enabled")),
             "id": nat_cfg.get("id", "S1_national"),
@@ -749,6 +992,7 @@ def aggregate_by_council(
             "default": False,
             "note": "Separate scenario; off by default. Per-council S1 is the default.",
         }
+        payload["s1_label"] = s1_label
     if rollup is not None:
         # Behind TEMP setting — not merged into by_council/national display £.
         payload["blocked_aggregate_rollup"] = rollup
@@ -766,6 +1010,8 @@ def zone_illustration(
     scenario_id: str = "S2",
     defaults: Mapping[str, Any] | None = None,
     council_rows: Sequence[ZoneRentRow] | None = None,
+    phase_in_year: int | None = None,
+    revenue_sharing: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Who-pays illustration for one Data Zone (£ triples + tag on the zone only)."""
     cfg = dict(defaults) if defaults is not None else load_draft_defaults()
@@ -780,7 +1026,20 @@ def zone_illustration(
         capture_rate=capture_rate,
     )
     yp = yield_placeholder()
-    zone = _zone_money_row(row, capture_rate=rate, yp=yp)
+    sharing = resolve_revenue_sharing(cfg, revenue_sharing)
+    phase_cfg = cfg.get("phase_in") or {"points_per_year": 10}
+    points_per_year = int(phase_cfg.get("points_per_year") or 10)
+    defer_cfg = cfg.get("deferral") or {"low_income_home_owners": True, "rate": 0.0262}
+    zone = _zone_money_row(
+        row,
+        capture_rate=rate,
+        yp=yp,
+        phase_in_points_per_year=points_per_year,
+        phase_in_year=phase_in_year,
+        deferral_enabled=bool(defer_cfg.get("low_income_home_owners", True)),
+        deferral_rate=float(defer_cfg.get("rate", 0.0262)),
+        revenue_sharing=sharing,
+    )
     payload = stamp_blocked({
         "status": STATUS,
         "lens": LENS,
@@ -790,6 +1049,7 @@ def zone_illustration(
         "capture_rate": None if sid == "S1" else rate,
         "capture_note": CAPTURE_NOTE,
         "zone": zone,
+        "revenue_sharing": sharing,
         "council": {
             "la_code": row.la_code,
             "la_name": row.la_name,
@@ -804,7 +1064,8 @@ def zone_illustration(
         },
         "note": (
             "Illustrated collection = taxable Surface Rent × scenario rate at Data Zone grain "
-            "(low/central/high). Shadow never taxed. Research estimate only; not AGR and not a "
+            "(low/central/high), with phase-in schedule, deferral and revenue-share applied. "
+            "Shadow never taxed. Research estimate only; not AGR and not a "
             "tax bill. publication_status=blocked. Approved defaults (v0.1, Oct 2026)."
         ),
     }, defaults=cfg)

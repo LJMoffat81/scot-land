@@ -21,12 +21,16 @@ from georgist.tax_scenarios import (
     TaxScenarioError,
     ZoneRentRow,
     aggregate_by_council,
+    apply_deferral,
     assert_no_aggregate_gbp,
     build_aggregate_rollup,
     illustrated_collection,
     load_draft_defaults,
     money_triple,
     parse_capture_rate,
+    phase_in_fraction,
+    phase_in_schedule,
+    resolve_revenue_sharing,
     solve_s1_per_council,
     stamp_blocked,
     zone_illustration,
@@ -51,6 +55,7 @@ def _row(
     rent: float = 100_000.0,
     price_year: int = 2025,
     value_tier: str = "proxy",
+    deferral_eligible: bool = False,
 ) -> ZoneRentRow:
     return ZoneRentRow(
         code=code,
@@ -60,7 +65,12 @@ def _row(
         measured_rent=rent,
         price_year=price_year,
         value_tier=value_tier,
+        deferral_eligible=deferral_eligible,
     )
+
+
+def _penny(n: float) -> float:
+    return round(float(n), 2)
 
 
 def _internal_client(monkeypatch, *, enabled=True, token: str | None = "test-secret-token"):
@@ -207,10 +217,10 @@ def test_aggregate_money_is_data_zone_only_not_council_sums():
     assert z["money_grain"] == "data_zone"
     assert_no_aggregate_gbp(out)
 
-    # Roll-up built behind TEMP setting; Σ councils = Scotland
+    # Roll-up built behind TEMP setting; Σ councils = Scotland (exact to the penny)
     rollup = out["blocked_aggregate_rollup"]
-    sum_c = sum(c["measured_rent_gbp"]["central"] for c in rollup["by_council"])
-    assert sum_c == pytest.approx(rollup["scotland"]["measured_rent_gbp"]["central"])
+    sum_c = _penny(sum(c["measured_rent_gbp"]["central"] for c in rollup["by_council"]))
+    assert sum_c == rollup["scotland"]["measured_rent_gbp"]["central"]
     assert rollup["zone_count"] == 3
 
 
@@ -286,13 +296,108 @@ def test_rollup_councils_sum_to_scotland_each_zone_once():
     ]
     rate_by_zone = {r.code: 0.5 for r in rows}
     rollup = build_aggregate_rollup(rows, rate_by_zone=rate_by_zone)
-    sum_c = sum(c["measured_rent_gbp"]["central"] for c in rollup["by_council"])
-    assert sum_c == pytest.approx(rollup["scotland"]["measured_rent_gbp"]["central"])
-    assert sum_c == pytest.approx(35_000.0)
+    sum_c = _penny(sum(c["measured_rent_gbp"]["central"] for c in rollup["by_council"]))
+    assert sum_c == rollup["scotland"]["measured_rent_gbp"]["central"]
+    assert sum_c == 35_000.0
     all_codes = [code for c in rollup["by_council"] for code in c["zone_codes"]]
     assert len(all_codes) == len(set(all_codes)) == 3
     glasgow = next(c for c in rollup["by_council"] if c["la_code"] == "S12000049")
     assert "S01010117" in glasgow["zone_codes"]
+
+
+def test_phase_in_year_by_year_schedule_applied_at_data_zone():
+    """10 pts/year schedule produces LCH triples; year 3 applies 30% of full collection."""
+    assert phase_in_fraction(1, 10) == 0.1
+    assert phase_in_fraction(10, 10) == 1.0
+    assert phase_in_fraction(11, 10) == 1.0
+    full = {"low": 886.0, "central": 1000.0, "high": 1002.0}
+    schedule = phase_in_schedule(full, points_per_year=10)
+    assert len(schedule) == 10
+    assert schedule[0]["year"] == 1 and schedule[0]["points"] == 10
+    assert schedule[0]["illustrated_collection_gbp"] == {"low": 88.6, "central": 100.0, "high": 100.2}
+    assert schedule[2]["year"] == 3 and schedule[2]["applied_fraction"] == 0.3
+    assert schedule[2]["illustrated_collection_gbp"]["central"] == 300.0
+    assert schedule[-1]["illustrated_collection_gbp"] == full
+
+    defaults = _mini_defaults(1.0, 1.0)
+    out = aggregate_by_council(
+        [_row(rent=10_000.0)],
+        scenario_id="S2",
+        defaults=defaults,
+        phase_in_year=3,
+    )
+    z = out["by_zone"][0]
+    # S2 = 50% → full collection 5000; year 3 = 30% → 1500
+    assert z["illustrated_collection_full_gbp"]["central"] == 5_000.0
+    assert z["illustrated_collection_gbp"]["central"] == 1_500.0
+    assert z["phase_in"]["applied_year"] == 3
+    assert z["phase_in"]["applied_fraction"] == 0.3
+    assert len(z["phase_in"]["schedule"]) == 10
+    assert z["phase_in"]["schedule"][0]["illustrated_collection_gbp"]["central"] == 500.0
+    assert out["phase_in"]["applied_year"] == 3
+
+
+def test_deferral_eligibility_amount_and_accrual():
+    """Eligible low-income home owner: defer collection; accrue at 2.62%/year."""
+    collection = {"low": 886.0, "central": 1000.0, "high": 1002.0}
+    deferred = apply_deferral(collection, eligible=True, rate=0.0262, enabled=True)
+    assert deferred["deferral_eligible"] is True
+    assert deferred["deferral_applied"] is True
+    assert deferred["deferred_gbp"] == collection
+    assert deferred["cash_collected_gbp"] == {"low": 0.0, "central": 0.0, "high": 0.0}
+    assert deferred["accrual_gbp_per_year"] == {
+        "low": _penny(886.0 * 0.0262),
+        "central": _penny(1000.0 * 0.0262),
+        "high": _penny(1002.0 * 0.0262),
+    }
+    not_eligible = apply_deferral(collection, eligible=False, rate=0.0262, enabled=True)
+    assert not_eligible["deferral_applied"] is False
+    assert not_eligible["deferred_gbp"]["central"] == 0.0
+    assert not_eligible["cash_collected_gbp"] == collection
+
+    defaults = _mini_defaults(1.0, 1.0)
+    out = aggregate_by_council(
+        [_row(rent=10_000.0, deferral_eligible=True)],
+        scenario_id="S2",
+        defaults=defaults,
+        phase_in_year=10,  # fully phased
+    )
+    z = out["by_zone"][0]
+    # S2 50% of 10k = 5000 deferred
+    assert z["deferral"]["deferral_eligible"] is True
+    assert z["deferral"]["deferred_gbp"]["central"] == 5_000.0
+    assert z["deferral"]["accrual_gbp_per_year"]["central"] == _penny(5_000.0 * 0.0262)
+    assert z["deferral"]["cash_collected_gbp"]["central"] == 0.0
+
+
+def test_revenue_share_override_must_sum_to_one_and_splits_per_dz():
+    defaults = _mini_defaults(1.0, 1.0)
+    with pytest.raises(TaxScenarioError) as exc:
+        resolve_revenue_sharing(defaults, {"council_share": 0.6, "dividend_share": 0.5})
+    assert exc.value.code == "invalid_revenue_share"
+
+    sharing = resolve_revenue_sharing(defaults, {"council_share": 0.6, "dividend_share": 0.4})
+    assert sharing["council_share"] == 0.6
+    assert sharing["dividend_share"] == 0.4
+    assert sharing["source"] == "request"
+
+    out = aggregate_by_council(
+        [_row(rent=10_000.0)],
+        scenario_id="S2",
+        defaults=defaults,
+        revenue_sharing={"council_share": 0.6, "dividend_share": 0.4},
+    )
+    assert out["revenue_sharing"]["council_share"] == 0.6
+    assert out["revenue_sharing"]["source"] == "request"
+    z = out["by_zone"][0]
+    # S2 → 5000 collection; 60/40 split
+    assert z["revenue_sharing"]["council_share_gbp"]["central"] == 3_000.0
+    assert z["revenue_sharing"]["dividend_share_gbp"]["central"] == 2_000.0
+    assert (
+        z["revenue_sharing"]["council_share_gbp"]["central"]
+        + z["revenue_sharing"]["dividend_share_gbp"]["central"]
+        == z["illustrated_collection_gbp"]["central"]
+    )
 
 
 def test_surface_yaml_has_no_land_yield_005():
@@ -322,11 +427,49 @@ def test_draft_defaults_file_loads():
     assert cfg["scenarios"]["S1"]["national_single_rate"]["enabled"] is False
     assert cfg["deferral"]["rate"] == pytest.approx(0.0262)
     assert cfg["phase_in"]["points_per_year"] == 10
-    assert len(cfg["fiscal_targets"]["by_council"]) == 32
-    ct = sum(r["council_tax_gbp"] for r in cfg["fiscal_targets"]["by_council"])
-    nbr = sum(r["business_rates_gbp"] for r in cfg["fiscal_targets"]["by_council"])
-    assert ct == 2_800_000_000
-    assert nbr == 2_800_000_000
+    fiscal = cfg["fiscal_targets"]
+    assert fiscal["targets_status"] == "loaded"
+    assert fiscal["status"] == "sg_local_government_finance"
+    assert fiscal["council_tax"]["year"] == "2024-25"
+    assert "OGL" in fiscal["council_tax"]["source"]
+    assert "SLGFS" in fiscal["council_tax"]["source"] or "Table I" in fiscal["council_tax"]["source"]
+    assert "OGL" in fiscal["business_rates"]["source"]
+    assert len(fiscal["by_council"]) == 32
+    for row in fiscal["by_council"]:
+        assert row["council_tax_gbp"] > 0
+        assert row["business_rates_gbp"] > 0
+        assert row["council_tax_year"]
+        assert row["business_rates_year"]
+        assert row["council_tax_source"]
+        assert row["business_rates_source"]
+    ct = sum(r["council_tax_gbp"] for r in fiscal["by_council"])
+    nbr = sum(r["business_rates_gbp"] for r in fiscal["by_council"])
+    assert ct == fiscal["national"]["council_tax_gbp"] == 2_996_849_000
+    assert nbr == fiscal["national"]["business_rates_gbp"] == 3_079_138_735
+    # S1 must not carry the placeholder-targets label once SG figures are loaded
+    from georgist.tax_scenarios import policy_config_payload
+
+    pc = policy_config_payload(cfg)
+    assert pc["fiscal_targets_status"] == "sg_local_government_finance"
+    assert "placeholder targets" not in pc["scenarios"]["S1"]["label"].lower()
+    assert "placeholder targets" not in pc["note"].lower()
+
+
+def test_s1_placeholder_targets_label_when_fiscal_not_loaded():
+    defaults = _mini_defaults(60_000.0, 200_000.0)
+    # mini defaults omit SG status → placeholder_targets
+    from georgist.tax_scenarios import policy_config_payload
+
+    pc = policy_config_payload(defaults)
+    assert pc["fiscal_targets_status"] == "placeholder_targets"
+    assert "placeholder targets" in pc["scenarios"]["S1"]["label"].lower()
+    out = aggregate_by_council(
+        [_row(rent=300_000.0)],
+        scenario_id="S1",
+        defaults=defaults,
+    )
+    assert out["s1_targets_status"] == "placeholder_targets"
+    assert "placeholder targets" in out["s1_label"].lower()
 
 
 def test_assert_no_aggregate_gbp_refuses_council_money():
@@ -537,3 +680,22 @@ def test_frontend_has_no_public_tax_scenario_panel():
     view = (FRONTEND_ROOT / "components" / "InternalTaxScenarioView.tsx").read_text(encoding="utf-8")
     assert "ConfidenceTag" in view
     assert "confidence-tag" in view or 'data-testid="confidence-tag"' in view or "ConfidenceTag" in view
+
+
+def test_internal_frontend_gated_and_no_hardcoded_demo_gbp():
+    """BLOCKS DEPLOY: /internal/* gated; tax-scenario page must not hard-code demo £."""
+    layout = FRONTEND_ROOT / "app" / "internal" / "layout.tsx"
+    assert layout.exists()
+    layout_text = layout.read_text(encoding="utf-8")
+    assert "internalUiEnabled" in layout_text
+    assert "notFound" in layout_text
+
+    page = (FRONTEND_ROOT / "app" / "internal" / "tax-scenario" / "page.tsx").read_text(encoding="utf-8")
+    for banned in ("8860", "10000", "10022", "17720", "20000", "20045", "4430", "5000", "5011"):
+        assert banned not in page, f"hard-coded demo amount {banned} must not appear on /internal/tax-scenario"
+    assert "DEMO_ZONES" not in page
+    assert "measured_rent_gbp" not in page  # no inline demo triples
+    # Public site cannot reach /internal without the flag (gate is the layout).
+    ui = (FRONTEND_ROOT / "lib" / "internalUi.ts").read_text(encoding="utf-8")
+    assert "NEXT_PUBLIC_ENABLE_INTERNAL_UI" in ui
+    assert "=== \"1\"" in ui or "=== '1'" in ui

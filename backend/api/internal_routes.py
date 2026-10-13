@@ -288,6 +288,19 @@ def internal_tax_scenario(
         default=None,
         description="Optional council area code (S12…); filter by_council and national to that LA",
     ),
+    phase_in_year: int | None = Query(
+        default=None,
+        ge=1,
+        description="Optional phase-in policy year (1-indexed); default = fully phased in",
+    ),
+    council_share: float | None = Query(
+        default=None,
+        description="Optional revenue-share override (with dividend_share); must sum to 1",
+    ),
+    dividend_share: float | None = Query(
+        default=None,
+        description="Optional revenue-share override (with council_share); must sum to 1",
+    ),
 ) -> JSONResponse:
     """INTERNAL: Surface Rent scenarios. publication_status=blocked. No public £."""
     vin = parse_vintage(vintage, required=True)
@@ -307,6 +320,17 @@ def internal_tax_scenario(
                 },
             )
         la_code = code
+    share_override = None
+    if council_share is not None or dividend_share is not None:
+        if council_share is None or dividend_share is None:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "invalid_revenue_share",
+                    "message": "council_share and dividend_share must both be supplied and sum to 1.",
+                },
+            )
+        share_override = {"council_share": council_share, "dividend_share": dividend_share}
     zones = _load_tax_scenario_zones(vin)
     try:
         payload = aggregate_by_council(
@@ -314,6 +338,8 @@ def internal_tax_scenario(
             capture_rate=rate,
             la_code=la_code,
             scenario_id=scenario_id,
+            phase_in_year=phase_in_year,
+            revenue_sharing=share_override,
         )
     except TaxScenarioError as exc:
         raise _tax_scenario_error(exc) from exc
@@ -349,6 +375,19 @@ def internal_tax_scenario_zone(
         default=1.0,
         description="Optional override for fixed-rate scenarios; ignored for S1 solved rates",
     ),
+    phase_in_year: int | None = Query(
+        default=None,
+        ge=1,
+        description="Optional phase-in policy year (1-indexed); default = fully phased in",
+    ),
+    council_share: float | None = Query(
+        default=None,
+        description="Optional revenue-share override (with dividend_share); must sum to 1",
+    ),
+    dividend_share: float | None = Query(
+        default=None,
+        description="Optional revenue-share override (with council_share); must sum to 1",
+    ),
 ) -> JSONResponse:
     """INTERNAL: who-pays illustration for one Data Zone. publication_status=blocked. No public £."""
     code, vin, vin_source = resolve_zone(zone_id, parse_vintage(vintage))
@@ -356,6 +395,17 @@ def internal_tax_scenario_zone(
         rate = parse_capture_rate(capture_rate)
     except TaxScenarioError as exc:
         raise _tax_scenario_error(exc) from exc
+    share_override = None
+    if council_share is not None or dividend_share is not None:
+        if council_share is None or dividend_share is None:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "invalid_revenue_share",
+                    "message": "council_share and dividend_share must both be supplied and sum to 1.",
+                },
+            )
+        share_override = {"council_share": council_share, "dividend_share": dividend_share}
     zones = _load_tax_scenario_zones(vin)
     match = next((z for z in zones if z.code == code), None)
     if match is None:
@@ -374,13 +424,21 @@ def internal_tax_scenario_zone(
     council_rows = [z for z in zones if z.la_code == match.la_code]
     try:
         # Mixed-year guard on council membership (counts only; £ stays on the zone).
-        aggregate_by_council(council_rows, capture_rate=rate, scenario_id=scenario_id)
+        aggregate_by_council(
+            council_rows,
+            capture_rate=rate,
+            scenario_id=scenario_id,
+            phase_in_year=phase_in_year,
+            revenue_sharing=share_override,
+        )
         payload = zone_illustration(
             match,
             capture_rate=rate,
             council_zone_count=len(council_rows),
             scenario_id=scenario_id,
             council_rows=council_rows,
+            phase_in_year=phase_in_year,
+            revenue_sharing=share_override,
         )
     except TaxScenarioError as exc:
         raise _tax_scenario_error(exc) from exc

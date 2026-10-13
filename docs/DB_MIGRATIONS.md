@@ -63,6 +63,8 @@ After stamping, future revisions (`alembic revision` + `upgrade`) apply normally
 - SEPA CAR MapServer ingest shape: Alembic `20261012_0003` recreates
   `sepa_car_licences` for layers 194/195 (`python -m etl.ingest_sepa_car`).
 - SEPA flood extents: `007_sepa_flood.sql` plus Alembic revision `20261012_0004`.
+  Ingest: `python -m etl.ingest_sepa_flood --from-gdb --replace` (see
+  `scripts/data/README-sepa.md`; vintage **2025-02-25** from SEPA v3.0 release notes).
 - NatureScot SSSI / SPA / SAC / NNR tables are `008_naturescot_designations.sql`
   plus Alembic revision `20261012_0005`.
 - Crofting Commission tables (`croft_parishes`, `croft_holdings`,
@@ -81,8 +83,8 @@ After stamping, future revisions (`alembic revision` + `upgrade`) apply normally
   `scripts/data/README-nrs-settlements.md`).
 - NFI + Native Woodland Survey tables are `016_woodland_layers.sql` plus
   Alembic revision `20261012_0013` (`down_revision` = `20261012_0012`).
-  Ingest: `python -m etl.ingest_woodland_layers` (see
-  `scripts/data/README-woodland.md`).
+  Ingest: `python -m etl.ingest_woodland_layers --layer nfi --from-wfs --replace`
+  (and `--layer native_woodland`; see `scripts/data/README-woodland.md`).
 - `repd_sites` and `crown_estate_leases` (DESNZ REPD + CES OGL offshore leases)
   are in `017_open_energy_leases.sql` plus Alembic revision `20261012_0014`
   (`down_revision` = `20261012_0013`).

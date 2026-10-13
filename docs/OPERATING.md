@@ -98,7 +98,8 @@ npm run dev
 | Click | Any cell | Layer popup (parcel id / area / owner type / SVDLS site) + residual place card |
 
 Cadastre ingest (one command each): `--pilot` (Edinburgh/MID + Fife), `--all` (33 counties), or `--fixture` (CI). Self-fetch never writes `data/external/`. See `scripts/data/README-inspire.md`. Licence **OGL-3.0**.  
-Woodland ingest: `python -m etl.ingest_woodland_layers` — see `scripts/data/README-woodland.md`.
+Woodland ingest: `python -m etl.ingest_woodland_layers --layer nfi --from-wfs --replace` (and `native_woodland`) — see `scripts/data/README-woodland.md`.
+SEPA flood ingest: `python -m etl.ingest_sepa_flood --from-gdb --replace --check-counts` — see `scripts/data/README-sepa.md` (vintage 2025-02-25 from v3.0 release notes).
 
 Data Zone boundaries (SG ATOM shapefiles → PostGIS EPSG:27700, provenance URL/vintage/sha256):  
 `python -m etl.ingest_dz_boundaries --fetch --replace` (expects **6,976** zones for 2011 and **7,392** for 2022). CI: `--fixture`. Self-fetch never writes `data/external/`. See `scripts/data/README-dz-boundaries.md`. Licence **OGL-3.0**. No £ rent.

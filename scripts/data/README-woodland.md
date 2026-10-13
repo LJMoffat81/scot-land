@@ -14,20 +14,40 @@ OGC host (NatureScot Scottish Forestry workspace):
 
 Registry: `data/config/sources.yaml` → `nfi` and `native_woodland`.
 
-## Load into PostGIS
+## Load into PostGIS (repeatable)
 
-Raw national extracts stay under `data/external/woodland/` (gitignored).
+Raw national extracts stay under `data/external/woodland/` (gitignored). Prefer the
+writable download mount from `docker-compose.home.yml` (PR #57).
+
+### One command — WFS conversion in the loader
+
+Pages NatureScot WFS GeoJSON, keeps **polygon** parts from mixed geometries,
+loads PostGIS. Optional `--save-fetch` writes the extract under `data/external/woodland/`.
 
 ```bash
 cd backend
 export DATABASE_URL=postgresql://...
 alembic upgrade head
 
+python -m etl.ingest_woodland_layers --layer nfi --from-wfs --replace --check-counts
+python -m etl.ingest_woodland_layers --layer native_woodland --from-wfs --replace --check-counts
+```
+
+`--check-counts` accepts within ~0.1% of the #57 / WFS baseline:
+
+| Layer | Expected rows |
+|-------|---------------|
+| NFI | 207,640 |
+| Native Woodland Survey | 95,814 |
+
+### Fixture / local GeoJSON
+
+```bash
 # Smoke / CI-sized fixture (committed under data/fixtures/gis/)
 python -m etl.ingest_woodland_layers --layer nfi --fixture --replace
 python -m etl.ingest_woodland_layers --layer native_woodland --fixture --replace
 
-# Full local extract (download via WFS or Forestry Commission open data, then):
+# Pre-saved extract
 python -m etl.ingest_woodland_layers --layer nfi \
   --input ../data/external/woodland/nfi_woodland.geojson --replace
 python -m etl.ingest_woodland_layers --layer native_woodland \
@@ -35,6 +55,12 @@ python -m etl.ingest_woodland_layers --layer native_woodland \
 ```
 
 Empty tables → API **503** (honest gap). Never invent woodland polygons.
+
+## Mintlify row counts
+
+```bash
+python scripts/data/regen_layer_guide_counts.py
+```
 
 ## Attribution (public UI)
 

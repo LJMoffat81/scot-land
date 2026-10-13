@@ -30,7 +30,7 @@ const OPEN_JSON = [
   },
   {
     href: "/api/ledger.json",
-    name: "Natural capital ledger — checks, excluded, benchmarks (not inputs)",
+    name: "Natural capital ledger — rows 1–10 (+1a), checks, excluded, benchmarks (not inputs)",
   },
   {
     href: "/api/registers.json",

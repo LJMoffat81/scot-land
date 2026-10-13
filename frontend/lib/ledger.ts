@@ -1,6 +1,6 @@
 /**
  * Natural capital ledger contracts:
- * - GET /api/ledger.json — Checks + Excluded + benchmarks (Data section, #51)
+ * - GET /api/ledger.json — rows 1–10 (+1a), checks, excluded, benchmarks (Data / API)
  * - GET /ledger — ROWS 1–10 + nested 1a + Constraints (map HUD panel)
  *
  * Public payload carries no AGR £; amounts stay placeholders until ECONOMIC_RULES.
@@ -38,16 +38,83 @@ export type LedgerBenchmark = {
   note: string;
 };
 
+/** Sceptic row from GET /api/ledger.json (not the HUD LedgerRow shape). */
+export type LedgerCatalogRow = {
+  id: string;
+  label: string;
+  tag: "market" | "proxy" | "shadow" | "reported";
+  status: "counted" | "partial" | "not_yet" | "excluded";
+  source: string;
+  licence: string;
+  licence_url?: string | null;
+  vintage: string | number | null;
+  coverage_pct: number | null;
+  /** Range band — null when status is not_yet (never shown as £0). */
+  range: {
+    low_gbp_per_ha_yr?: number | null;
+    high_gbp_per_ha_yr?: number | null;
+    unit?: string;
+  } | null;
+  stack: "headline" | "shadow" | "outside";
+  note?: string;
+  nested_under?: string;
+  never_added?: boolean;
+  outside_scottish_total?: boolean;
+};
+
+export type LedgerTotals = {
+  headline: {
+    tiers: string[];
+    row_ids: string[];
+    status: string;
+    range: null | { low?: number | null; high?: number | null };
+    note?: string;
+  };
+  shadow: {
+    row_ids: string[];
+    status: string;
+    range: null | { low?: number | null; high?: number | null };
+    never_summed_into_headline: boolean;
+    note?: string;
+  };
+  outside: {
+    oil_gas: {
+      row_ids: string[];
+      status: string;
+      range: null | { low?: number | null; high?: number | null };
+      note?: string;
+    };
+    benchmarks: string;
+  };
+};
+
 export type LedgerCatalog = {
   version: number;
   kind: string;
   brief?: string;
   spec?: string;
   grain?: string;
+  rows?: LedgerCatalogRow[];
+  totals?: LedgerTotals | null;
   checks: LedgerCheck[];
   excluded: LedgerExcluded[];
   benchmarks: LedgerBenchmark[];
   benchmark_label: string;
+  economic_rules?: {
+    approved: boolean;
+    document?: string;
+    modelled_agr_gbp_public: boolean;
+    note?: string;
+  };
+  published?: boolean;
+  zone?: {
+    code: string;
+    vintage: number;
+    publication_status: string;
+    publish_level?: string | null;
+    quality?: string | null;
+  };
+  reason?: string;
   stamp?: { commit?: string };
 };
 
@@ -62,6 +129,20 @@ export const LEDGER_CHECK_ORDER = [
   "C-overlap",
   "C-totals",
   "C-cap",
+] as const;
+
+export const LEDGER_ROW_ORDER = [
+  "1",
+  "1a",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
 ] as const;
 
 /* ---- Map HUD rows + constraints (GET /ledger) ---- */

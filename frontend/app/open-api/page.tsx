@@ -37,6 +37,8 @@ export default async function OpenApiPage() {
       <p className="downloads-nav">
         <a href="/">Map</a>
         {" · "}
+        <a href="/data">Data</a>
+        {" · "}
         <a href="/downloads">Downloads</a>
         {" · "}
         <a href="/methodology">About</a>
@@ -134,6 +136,13 @@ export default async function OpenApiPage() {
             What is on the map, what is only linked, and what is missing
           </a>
           <span className="download-path">/api/catalog.json</span>
+        </li>
+        <li>
+          <a href="/api/ledger.json">
+            Natural capital ledger — checks, excluded list, benchmarks (not
+            inputs)
+          </a>
+          <span className="download-path">/api/ledger.json</span>
         </li>
         <li>
           <a href="/api/registers.json">Official register pages</a>

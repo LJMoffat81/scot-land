@@ -45,6 +45,10 @@ const OPEN_JSON = [
     name: "What is on the map, what is only linked, and what is missing",
   },
   {
+    href: "/api/ledger.json",
+    name: "Natural capital ledger — checks, excluded, benchmarks (not inputs)",
+  },
+  {
     href: "/api/registers.json",
     name: "Official register pages",
   },
@@ -79,6 +83,8 @@ export default function DownloadsPage() {
     <main className="downloads-page">
       <p className="downloads-nav">
         <a href="/">Map</a>
+        {" · "}
+        <a href="/data">Data</a>
         {" · "}
         <a href="/open-api">Public API</a>
         {" · "}

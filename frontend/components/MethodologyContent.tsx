@@ -4,6 +4,8 @@ export default function MethodologyContent() {
       <p className="meta" style={{ marginBottom: "0.5rem" }}>
         <a href="/">Map</a>
         {" · "}
+        <a href="/data">Data</a>
+        {" · "}
         <a href="/downloads">Downloads</a>
         {" · "}
         <a href="/open-api">Public API</a>

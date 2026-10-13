@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 
+import QualityTag from "./QualityTag";
 import type {
   ApiFailure,
   DataZoneLookup,
@@ -10,6 +11,7 @@ import type {
   WealthComponent,
   WealthResponse,
 } from "../lib/useWealthApi";
+import { isQualityTag } from "../lib/qualityTag";
 
 export interface WealthInspectorData {
   zone: DataZoneLookup;
@@ -165,7 +167,13 @@ function ComponentRow({ c }: { c: WealthComponent }) {
         <div className="text-slate-500">Range {band(c.uncertainty_low, c.uncertainty_high)}</div>
       )}
       <div className="text-slate-500">
-        {c.value_tier ?? "?"} tier · quality {c.quality ?? "?"} · {c.publish_level ?? "?"}
+        {c.value_tier ?? "?"} tier · quality{" "}
+        {isQualityTag(c.quality) ? (
+          <QualityTag quality={c.quality} />
+        ) : (
+          (c.quality ?? "?")
+        )}{" "}
+        · {c.publish_level ?? "?"}
         {c.price_year ? ` · ${c.price_year} prices` : ""}
         {c.evidence_year && c.evidence_year !== c.price_year ? ` (evidence ${c.evidence_year})` : ""}
         {c.model_filled ? " · model-filled" : ""}

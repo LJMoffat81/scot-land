@@ -162,7 +162,10 @@ export function isRentMetricId(metricId: string): boolean {
     id.includes("liability") ||
     id.includes("charge") ||
     id.includes("site_capital") ||
-    id.includes("gross_")
+    id.includes("gross_") ||
+    id.includes("vacant_residual") ||
+    id.includes("net_contribution") ||
+    id.endsWith("_gbp")
   );
 }
 
@@ -173,18 +176,20 @@ function bandLabel(index: number, total: number): string {
   return `Band ${index + 1}`;
 }
 
+/**
+ * Format a legend stop. Unit belongs in the legend title except for £ context
+ * house prices (market context, not AGR rent). Never publish rent £ figures —
+ * callers must pass rent metrics through `isRentMetricId` band labels instead.
+ */
 function formatStopValue(value: number, unit?: string): string {
   const n = Number.isFinite(value) ? value : 0;
   const formatted =
     Math.abs(n) >= 1000
       ? n.toLocaleString("en-GB", { maximumFractionDigits: 0 })
       : String(n);
-  if (!unit || unit === "£" || unit.startsWith("£")) {
-    // Context house-price metrics may use £ — that is market context, not AGR rent.
-    if (unit === "£" || unit?.startsWith("£")) return `£${formatted}`;
-    return formatted;
-  }
-  return `${formatted} ${unit}`;
+  // Context house-price metrics may use £ — that is market context, not AGR rent.
+  if (unit === "£" || unit?.startsWith("£")) return `£${formatted}`;
+  return formatted;
 }
 
 /**

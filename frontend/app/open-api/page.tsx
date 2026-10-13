@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import QualityTag from "@/components/QualityTag";
+import { QUALITY_TAGS } from "@/lib/qualityTag";
 
 export const metadata: Metadata = {
   title: "Public API | Scot-LAND",
@@ -43,11 +45,19 @@ export default function OpenApiPage() {
         These addresses return the open place and layer inputs behind the map:
         geography, ownership context and natural-capital ledger structure for
         the three commons (Surface, Resource, Eco). Input quality tags are{" "}
-        <code>live</code>, <code>derived</code>, <code>modelled</code> and{" "}
-        <code>placeholder</code>; placeholders are never served here. The SG
-        2024 public/Crown land dashboard is not an open layer here (licence
-        unverified/not open). The answers are for the area in view, or for one
-        place. They are not a download of every land boundary. Full reference:{" "}
+        <span className="quality-tag-inline" data-testid="quality-tag-inline">
+          {QUALITY_TAGS.map((tag, i) => (
+            <span key={tag}>
+              <QualityTag quality={tag} />
+              {i < QUALITY_TAGS.length - 2 ? ", " : null}
+              {i === QUALITY_TAGS.length - 2 ? " and " : null}
+            </span>
+          ))}
+        </span>
+        ; placeholders are never served here. The SG 2024 public/Crown land
+        dashboard is not an open layer here (licence unverified/not open). The
+        answers are for the area in view, or for one place. They are not a
+        download of every land boundary. Full reference:{" "}
         <a href={MINTLIFY_API} target="_blank" rel="noreferrer">
           docs/mintlify/api-reference.mdx
         </a>

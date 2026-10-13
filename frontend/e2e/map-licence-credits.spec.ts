@@ -51,9 +51,10 @@ test.describe("map licence credits (catalog-driven)", () => {
 
     await openMap(page);
 
-    // Range legend (population density bands) + hatched/grey no-data — no rent £.
+    // Range legend (public context density ramp) + hatched/grey no-data — no rent £.
     const legend = page.getByTestId("map-range-legend");
     await expect(legend).toBeVisible();
+    await expect(legend).toContainText(/population density/i);
     await expect(legend.getByTestId("map-range-legend-no-data")).toContainText(
       /no data/i,
     );

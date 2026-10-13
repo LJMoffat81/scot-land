@@ -10,7 +10,9 @@
     "test:e2e": "playwright test",
     "check:catalog-ui-drift": "node scripts/check-catalog-ui-drift.mjs",
     "test:catalog-ui-drift": "node scripts/test-catalog-ui-drift.mjs",
-    "test:map-licence-credits": "node scripts/test-map-licence-credits.mjs"
+    "test:map-licence-credits": "node scripts/test-map-licence-credits.mjs",
+    "test:map-colour-ramps": "node scripts/test-map-colour-ramps.mjs",
+    "test:quality-tags": "node scripts/test-quality-tags.mjs"
   },
   "dependencies": {
     "@fontsource-variable/mona-sans": "^5.3.0",

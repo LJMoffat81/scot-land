@@ -42,6 +42,14 @@ import {
 } from "../lib/layerCatalog";
 import type { LedgerToggleState } from "../lib/ledger";
 import {
+  DEFAULT_PUBLIC_CONTEXT_METRIC_ID,
+  type MetricDef,
+  type MetricId,
+  paintMetricForChoropleth,
+  publicContextMetric,
+  rangeLegendTitle,
+} from "../lib/mapColourRamps";
+import {
   NO_DATA_HATCH_IMAGE,
   activeMapCredits,
   createNoDataHatchImageData,
@@ -172,180 +180,10 @@ function suggestionsFromLookup(
   };
 }
 
-type MetricId =
-  | "agr_plot"
-  | "rent_per_sqm"
-  | "house_price"
-  | "agr_price_pct"
-  | "land_share"
-  | "site_capital"
-  | "simd"
-  | "pop_density"
-  | "net_contribution"
-  | "gross_liability"
-  | "vacant_residual";
-
-type MetricDef = {
-  id: MetricId;
-  property: string;
-  label: string;
-  group: "value" | "context" | "fiscal";
-  stops: [number, string][];
-};
-
 const emptyCollection: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
   features: [],
 };
-
-/** Colour ramps tuned to each metric’s typical Scotland range. */
-const METRICS: MetricDef[] = [
-  {
-    id: "agr_plot",
-    property: "annual_ground_rent_plot_gbp",
-    label: "Typical plot rent",
-    group: "value",
-    stops: [
-      [0, "#ffffcc"],
-      [500, "#c7e9b4"],
-      [1500, "#7fcdbb"],
-      [3000, "#41b6c4"],
-      [4500, "#2c7fb8"],
-      [6500, "#253494"],
-    ],
-  },
-  {
-    id: "rent_per_sqm",
-    property: "site_rental_per_sqm_gbp",
-    label: "Rent per square metre",
-    group: "value",
-    stops: [
-      [0, "#f7fcf5"],
-      [5, "#c7e9c0"],
-      [12, "#74c476"],
-      [20, "#31a354"],
-      [30, "#006d2c"],
-    ],
-  },
-  {
-    id: "house_price",
-    property: "average_price_gbp",
-    label: "House prices",
-    group: "value",
-    stops: [
-      [100000, "#fff5f0"],
-      [140000, "#fcbba1"],
-      [180000, "#fc9272"],
-      [220000, "#ef3b2c"],
-      [280000, "#a50f15"],
-    ],
-  },
-  {
-    id: "agr_price_pct",
-    property: "agr_as_pct_of_price",
-    label: "Rent as a share of price",
-    group: "value",
-    stops: [
-      [0.5, "#f7fbff"],
-      [1.5, "#c6dbef"],
-      [2.5, "#6baed6"],
-      [3.5, "#2171b5"],
-      [5, "#08306b"],
-    ],
-  },
-  {
-    id: "land_share",
-    property: "site_share_pct",
-    label: "Land share %",
-    group: "value",
-    stops: [
-      [30, "#f7fcfd"],
-      [45, "#ccece6"],
-      [55, "#66c2a4"],
-      [65, "#238b45"],
-      [75, "#00441b"],
-    ],
-  },
-  {
-    id: "site_capital",
-    property: "site_capital_per_sqm_gbp",
-    label: "Land value per square metre",
-    group: "value",
-    stops: [
-      [50, "#fcfbfd"],
-      [150, "#dadaeb"],
-      [300, "#9e9ac8"],
-      [450, "#6a51a3"],
-      [600, "#3f007d"],
-    ],
-  },
-  {
-    id: "simd",
-    property: "simd_pct_20most_deprived",
-    label: "Deprivation",
-    group: "context",
-    stops: [
-      [0, "#ffffd4"],
-      [8, "#fed98e"],
-      [16, "#fe9929"],
-      [28, "#d95f0e"],
-      [40, "#993404"],
-    ],
-  },
-  {
-    id: "pop_density",
-    property: "population_density_per_km2",
-    label: "People per square kilometre",
-    group: "context",
-    stops: [
-      [10, "#f7fcf0"],
-      [100, "#ccebc5"],
-      [500, "#7bccc4"],
-      [1500, "#2b8cbe"],
-      [3000, "#084081"],
-    ],
-  },
-  {
-    id: "gross_liability",
-    property: "gross_plot_liability_gbp",
-    label: "Annual Ground Rent",
-    group: "fiscal",
-    stops: [
-      [0, "#ffffcc"],
-      [1500, "#c7e9b4"],
-      [3500, "#41b6c4"],
-      [5500, "#2c7fb8"],
-      [8000, "#253494"],
-    ],
-  },
-  {
-    id: "net_contribution",
-    property: "net_contribution_plot_gbp",
-    label: "Against one person's share",
-    group: "fiscal",
-    // Teal is below one person's share. Orange is above it.
-    stops: [
-      [-18000, "#01665e"],
-      [-5000, "#80cdc1"],
-      [0, "#f5f5f5"],
-      [2000, "#fdb863"],
-      [6000, "#b35806"],
-    ],
-  },
-  {
-    id: "vacant_residual",
-    property: "vacant_full_agr_gbp",
-    label: "Vacant land",
-    group: "context",
-    stops: [
-      [0, "#fff5eb"],
-      [2_000_000, "#fdd0a2"],
-      [8_000_000, "#fd8d3c"],
-      [20_000_000, "#e6550d"],
-      [40_000_000, "#a63603"],
-    ],
-  },
-];
 
 const PUBLIC_LAND_BODIES: Array<{ name: string; color: string }> = [
   { name: "Forestry and Land Scotland", color: "#66c2a5" },
@@ -733,14 +571,12 @@ export default function ScotlandMap() {
       contextOn,
     }),
   );
-  // Public range legend: population density bands (not AGR £). Rent metrics stay band-labelled.
-  const densityMetric = METRICS.find((m) => m.id === "pop_density");
-  const densityLegend = densityMetric
-    ? rangeLegendFromStops(densityMetric.stops, {
-        metricId: densityMetric.id,
-        unit: "people/km²",
-      })
-    : null;
+  // Public range legend: context colour ramp (not AGR £). Rent metrics stay band-labelled.
+  const contextMetric = publicContextMetric(DEFAULT_PUBLIC_CONTEXT_METRIC_ID);
+  const contextLegend = rangeLegendFromStops(contextMetric.stops, {
+    metricId: contextMetric.id,
+    unit: contextMetric.unit,
+  });
 
   useEffect(() => {
     const header = headerRef.current;
@@ -1437,12 +1273,15 @@ export default function ScotlandMap() {
         );
       }
       map.addSource("council-metrics", { type: "geojson", data: emptyCollection });
+      // Bind paint to the public context ramp (never leave an AGR £ expression on the layer).
+      const initialPaintMetric = paintMetricForChoropleth("off");
       map.addLayer({
         id: "council-fill",
         type: "fill",
         source: "council-metrics",
+        layout: { visibility: "none" },
         paint: {
-          "fill-color": paintForMetric(METRICS[0]),
+          "fill-color": paintForMetric(initialPaintMetric),
           "fill-opacity": 0.72,
         },
       });
@@ -1454,7 +1293,7 @@ export default function ScotlandMap() {
         layout: { visibility: "none" },
         filter: [
           "!=",
-          ["typeof", ["get", METRICS[0].property]],
+          ["typeof", ["get", initialPaintMetric.property]],
           "number",
         ] as unknown as ExpressionSpecification,
         paint: {
@@ -2264,10 +2103,21 @@ export default function ScotlandMap() {
   }, []);
 
   // Public shell: never fetch /layers/councils (council AGR £ and rent £/m² stay internal).
+  // Keep fill/hatch expressions on a public context ramp so hidden paint is never AGR £.
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map?.getLayer("council-fill")) return;
+    const metric = paintMetricForChoropleth(choropleth);
+    map.setPaintProperty("council-fill", "fill-color", paintForMetric(metric));
+    if (map.getLayer("council-nodata-hatch")) {
+      map.setFilter("council-nodata-hatch", [
+        "!=",
+        ["typeof", ["get", metric.property]],
+        "number",
+      ] as unknown as ExpressionSpecification);
+      map.setLayoutProperty("council-nodata-hatch", "visibility", "none");
+    }
     map.setLayoutProperty("council-fill", "visibility", "none");
     map.setLayoutProperty("council-line", "visibility", "none");
     map.setFilter("council-fill", null);
@@ -3640,13 +3490,11 @@ export default function ScotlandMap() {
               scenarios are not shown on the public map. Ownership and place
               details follow in later updates.
             </p>
-            {densityLegend ? (
-              <MapRangeLegend
-                title="Population density (range)"
-                ranges={densityLegend.ranges}
-                showNoData
-              />
-            ) : null}
+            <MapRangeLegend
+              title={rangeLegendTitle(contextMetric)}
+              ranges={contextLegend.ranges}
+              showNoData
+            />
             <MapLicenceCredits credits={mapCredits} />
             <p className="hud-scotland-foot">
               Research map, not a rates bill.{" "}

@@ -77,19 +77,34 @@ function isRentMetricId(metricId) {
     id.includes("liability") ||
     id.includes("charge") ||
     id.includes("site_capital") ||
-    id.includes("gross_")
+    id.includes("gross_") ||
+    id.includes("vacant_residual") ||
+    id.includes("net_contribution") ||
+    id.endsWith("_gbp")
   );
+}
+
+function formatStopValue(value, unit) {
+  const n = Number.isFinite(value) ? value : 0;
+  const formatted =
+    Math.abs(n) >= 1000
+      ? n.toLocaleString("en-GB", { maximumFractionDigits: 0 })
+      : String(n);
+  if (unit === "£" || unit?.startsWith("£")) return `£${formatted}`;
+  return formatted;
 }
 
 function rangeLegendFromStops(stops, opts = {}) {
   const withholdPounds = isRentMetricId(opts.metricId ?? "");
   const ranges = stops.map(([value, color], i) => {
     const next = stops[i + 1];
-    const from = withholdPounds ? `Band ${String.fromCharCode(65 + i)}` : String(value);
+    const from = withholdPounds
+      ? `Band ${String.fromCharCode(65 + i)}`
+      : formatStopValue(value, opts.unit);
     const to = next
       ? withholdPounds
         ? `Band ${String.fromCharCode(65 + i + 1)}`
-        : String(next[0])
+        : formatStopValue(next[0], opts.unit)
       : "and above";
     return { from, to, color };
   });
@@ -145,6 +160,16 @@ const rentLegend = rangeLegendFromStops(
 );
 assert.equal(rentLegend.ranges[0].from.startsWith("Band"), true);
 assert.equal(rentLegend.noData.label, "No data");
+
+const vacantLegend = rangeLegendFromStops(
+  [
+    [0, "#fff5eb"],
+    [2_000_000, "#fdd0a2"],
+  ],
+  { metricId: "vacant_residual", unit: "£" },
+);
+assert.equal(vacantLegend.ranges[0].from.startsWith("Band"), true);
+assert.doesNotMatch(JSON.stringify(vacantLegend), /£\d/);
 
 const densityLegend = rangeLegendFromStops(
   [

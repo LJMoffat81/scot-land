@@ -43,6 +43,9 @@ def test_scotwind_catalog_ogl_credit_and_evidence_tag():
     assert "the Crown Estate Scotland" in layer["attribution"]
     assert layer["evidence_tag"] == EVIDENCE_TAG == "market"
     assert layer["publication_status"] == PUBLICATION_STATUS_OK == "ok"
+    assert layer["ledger_role"] == "ledger-row"
+    assert layer["ledger_row"] == "4"
+    assert layer["ui_surface"] == "ledger"
     assert "surface rent" in layer["description"].lower()
     assert "HOLD" in layer["description"] or "hold" in layer["description"].lower()
 

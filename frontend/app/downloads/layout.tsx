@@ -3,11 +3,11 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Downloads | Scot-LAND",
   description:
-    "Open tables of the Annual Ground Rent figures behind the map. Research estimate, not a bill.",
+    "Open tables and source links behind Scot-LAND’s experimental commons map. Not an official valuation.",
   openGraph: {
     title: "Downloads | Scot-LAND",
     description:
-      "Open tables of the Annual Ground Rent figures behind the map. Research estimate, not a bill.",
+      "Open tables and source links behind Scot-LAND’s experimental commons map. Not an official valuation.",
   },
 };
 

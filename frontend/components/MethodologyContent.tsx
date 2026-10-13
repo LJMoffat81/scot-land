@@ -1,3 +1,12 @@
+const MINTLIFY = {
+  introduction:
+    "https://github.com/LJMoffat81/scot-land/blob/main/docs/mintlify/introduction.mdx",
+  mapLayers:
+    "https://github.com/LJMoffat81/scot-land/blob/main/docs/mintlify/map-layer-guide.mdx",
+  apiReference:
+    "https://github.com/LJMoffat81/scot-land/blob/main/docs/mintlify/api-reference.mdx",
+};
+
 export default function MethodologyContent() {
   return (
     <main className="methodology-page">
@@ -12,46 +21,111 @@ export default function MethodologyContent() {
       </p>
       <h1>About</h1>
       <p>
-        Scot-LAND is building an open land information map for Scotland, with
-        Annual Ground Rent as the analytical centre: what the land alone would
-        be worth to use each year, leaving out any buildings on it.
+        Scot-LAND is an experimental, non-commercial research map of Scotland&apos;s
+        commons. It is building an open land information platform so people can
+        see where value from land and natural resources sits — not as a rates
+        bill, and not as an official valuation or tax assessment.
       </p>
-      <p>
-        Modelled AGR £ is a research estimate, not a rates bill. Nobody owes
-        this amount, and it isn&apos;t a proposal for what anyone should pay.
-        Until yield calibration, the public map does not show council-area AGR
-        charges or rent per square metre — those figures stay internal at Data
-        Zone band level.
+      <p className="downloads-note" data-testid="experimental-not-official">
+        Experimental research only. Figures on this site are not official
+        valuations, rates bills or tax assessments. Modelled money amounts for
+        land and resource value are not published on the public map or downloads
+        until the commons engine passes review.
       </p>
       <p>
         A click on the public map opens a place card for location and open
         layers. A click at sea can name a Crown Estate Scotland lease when one
-        covers that point. Minerals and water are not on the map yet.
-      </p>
-      <p>
-        Method notes below describe how a place is valued when figures are
-        published. They come from public data and may change as the work
-        improves.
+        covers that point. Method depth lives in the{" "}
+        <a href={MINTLIFY.introduction} target="_blank" rel="noreferrer">
+          Mintlify introduction
+        </a>
+        ,{" "}
+        <a href={MINTLIFY.mapLayers} target="_blank" rel="noreferrer">
+          map layer guide
+        </a>
+        , and{" "}
+        <a href={MINTLIFY.apiReference} target="_blank" rel="noreferrer">
+          API reference
+        </a>{" "}
+        under <code>docs/mintlify</code>.
       </p>
       <p>
         We never show who owns private land, what it sold for, or title plans.
       </p>
       <p>
-        <a href="#calculation">How a place is valued</a>
+        <a href="#commons">The three commons</a>
+        {" · "}
+        <a href="#quality">Quality tags</a>
         {" · "}
         <a href="#why">Why I am building this</a>
       </p>
 
-      <section id="calculation">
-        <h2>How a place is valued</h2>
+      <section id="commons">
+        <h2>The three commons</h2>
         <p>
-          Each point on land is classed as town or countryside. In a town, the
-          modelled rent is the land rent for each square metre, times the area
-          of this piece. The land rent is what remains after the building and
-          the speculative part are taken off, and a yield is applied. In the
-          countryside the rate is one farmland rate for Scotland, times the
-          area. Those modelled £ figures are not painted on the public map or
-          listed as council charges until yield calibration.
+          The commons engine splits value into three separate classes so they are
+          never mixed into one headline number:
+        </p>
+        <ul>
+          <li>
+            <strong>Surface (location)</strong> — value from where land sits:
+            access, amenity, agglomeration and permitted use (homes, business,
+            farm and forestry; idle and allocated sites).
+          </li>
+          <li>
+            <strong>Resource (extractive)</strong> — value from depletable or
+            licensed natural resources, net of extraction cost (for example
+            seabed leases, minerals, water abstraction).
+          </li>
+          <li>
+            <strong>Eco (sinks and services)</strong> — value of natural systems
+            that absorb harm or provide services (for example peatland and
+            woodland carbon, flood regulation).
+          </li>
+        </ul>
+        <p>
+          Each class is also tagged as market, proxy or shadow so different
+          kinds of evidence are not added together. Constraint overlays
+          (designations, flood, crofting and similar) change best permitted use
+          only; they are not a commons row. Full rules:{" "}
+          <a href={MINTLIFY.introduction} target="_blank" rel="noreferrer">
+            docs/mintlify/introduction.mdx
+          </a>
+          .
+        </p>
+      </section>
+
+      <section id="quality">
+        <h2>Quality tags</h2>
+        <p>
+          Every figure the engine holds carries a data-state quality tag. The
+          public site only exposes layers that are ready; placeholders stay off
+          public routes.
+        </p>
+        <ul>
+          <li>
+            <strong>live</strong> — observed from a public source as-is.
+          </li>
+          <li>
+            <strong>derived</strong> — computed from open inputs by a stated
+            method.
+          </li>
+          <li>
+            <strong>modelled</strong> — estimated by the residual / mass model;
+            not published as public money figures until review.
+          </li>
+          <li>
+            <strong>placeholder</strong> — not ready; never served on the public
+            API or map.
+          </li>
+        </ul>
+        <p>
+          Missing data is shown as a gap (HTTP 503), never filled with a
+          placeholder. See the{" "}
+          <a href={MINTLIFY.apiReference} target="_blank" rel="noreferrer">
+            Mintlify API reference
+          </a>
+          .
         </p>
       </section>
 
@@ -115,10 +189,10 @@ export default function MethodologyContent() {
           debates about land value taxation.
         </p>
         <p>
-          This map is my answer to that gap. A person can look at one piece of
-          land and see a research estimate of its Annual Ground Rent. The
-          building stays with the person who made it. The figure is not a rates
-          bill, and it is not an official assessment.
+          This map is my answer to that gap: an open commons ledger for Scotland
+          — surface, resource and eco kept separate, quality-tagged, and honest
+          about what is still experimental. It is not a rates bill, and it is
+          not an official assessment.
         </p>
         <h3>Contact</h3>
         <p>
@@ -133,29 +207,6 @@ export default function MethodologyContent() {
           <a href="https://github.com/LJMoffat81" target="_blank" rel="noreferrer">
             GitHub: LJMoffat81
           </a>
-        </p>
-      </section>
-
-      <section id="what-is-agr">
-        <h2>What is Annual Ground Rent?</h2>
-        <p>
-          Where the land register shows an outline, it is that piece of land. In a town with no outline, it is one home&apos;s land rent from that neighbourhood&apos;s house price. In the countryside with no outline, it is one farmland rate for one hectare. The building is not included.
-        </p>
-      </section>
-
-      <section id="how-sure">
-        <h2>How sure are these numbers?</h2>
-        <p>
-          They&apos;re research estimates, and some of what goes into them
-          can&apos;t be pinned down exactly. With different reasonable
-          assumptions, the estimate for a typical home plot in most councils
-          could be anywhere from about half to 1.3 times the internal figure.
-          Where house prices are low compared with what homes cost to rebuild,
-          the range is wider, from about half to about double. This range
-          covers home plots only, not the farmland figures. It does not cover
-          the bigger simplifications. Public visitors do not see those modelled
-          £ amounts on the map today; the work stays internal at Data Zone band
-          level until calibration.
         </p>
       </section>
 

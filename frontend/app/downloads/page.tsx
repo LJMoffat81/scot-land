@@ -63,6 +63,11 @@ const SOURCE_NAME: Record<string, string> = {
   scotlis: "ScotLIS, the official title record",
 };
 
+const MINTLIFY_INTRO =
+  "https://github.com/LJMoffat81/scot-land/blob/main/docs/mintlify/introduction.mdx";
+const MINTLIFY_API =
+  "https://github.com/LJMoffat81/scot-land/blob/main/docs/mintlify/api-reference.mdx";
+
 export default function DownloadsPage() {
   const [data, setData] = useState<Downloads | null>(null);
   const [commit, setCommit] = useState<string | null>(null);
@@ -88,12 +93,26 @@ export default function DownloadsPage() {
         <a href="/methodology">About</a>
       </p>
       <h1>Downloads</h1>
+      <p className="downloads-note" data-testid="experimental-not-official">
+        Experimental research only — not an official valuation, rates bill or
+        tax assessment. Modelled money amounts from the commons engine are not
+        a public download.
+      </p>
       <p>
-        These are the open tables and links behind the map. Modelled Annual
-        Ground Rent for councils (including rent per square metre) is not a
-        public download — AGR £ stays internal at Data Zone band level until
-        yield calibration. The files here are ownership, vacant land, and
-        catalogue metadata. They are not a download of every land boundary.
+        These are the open tables and links behind the map: ownership context,
+        vacant land, ledger structure and catalogue metadata for the three
+        commons (Surface, Resource, Eco). Engine figures carry quality tags{" "}
+        <code>live</code>, <code>derived</code>, <code>modelled</code> and{" "}
+        <code>placeholder</code>; placeholders never appear here. They are not
+        a download of every land boundary. Docs:{" "}
+        <a href={MINTLIFY_INTRO} target="_blank" rel="noreferrer">
+          docs/mintlify/introduction.mdx
+        </a>
+        {" · "}
+        <a href={MINTLIFY_API} target="_blank" rel="noreferrer">
+          docs/mintlify/api-reference.mdx
+        </a>
+        .
       </p>
       {data?.note && <p className="downloads-note">{data.note}</p>}
 
@@ -111,7 +130,11 @@ export default function DownloadsPage() {
       </ul>
       <p className="downloads-note">
         A technical description of these addresses is on the{" "}
-        <a href={`${getApiBaseUrl()}/docs`}>API docs</a>.
+        <a href={`${getApiBaseUrl()}/docs`}>API docs</a> and in{" "}
+        <a href={MINTLIFY_API} target="_blank" rel="noreferrer">
+          docs/mintlify
+        </a>
+        .
       </p>
 
       <h2>Official sources</h2>

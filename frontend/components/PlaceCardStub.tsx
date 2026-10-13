@@ -1,5 +1,13 @@
 "use client";
 
+import PlaceCard from "@/components/PlaceCard";
+import {
+  defaultAgrRows,
+  defaultConstraints,
+  scotLandSquareReference,
+  type PlaceCardPayload,
+} from "@/lib/placeCard";
+
 export type PlaceStub = {
   lat: number;
   lng: number;
@@ -14,6 +22,8 @@ export type PlaceStub = {
   popYear?: number | null;
   dwellings?: number | null;
   dwYear?: number | null;
+  /** When set, full place_card_v1 from GET /platform/place. */
+  card?: PlaceCardPayload | null;
 };
 
 type PlaceCardStubProps = {
@@ -23,87 +33,53 @@ type PlaceCardStubProps = {
   onClose: () => void;
 };
 
-function formatCount(value: number): string {
-  return value.toLocaleString("en-GB");
-}
-
-/**
- * Lightweight place card for the public Scot-LAND squares shell.
- * No modelled AGR £, Surface Rent, or tax scenarios — those stay for later phases / HOLD PRs.
- */
+/** Map HUD place card — Designer v3.1 fields; thin wrapper over PlaceCard. */
 export default function PlaceCardStub({
   place,
   loading = false,
   error = null,
   onClose,
 }: PlaceCardStubProps) {
-  const title =
-    place.label?.trim() ||
-    place.postcode?.trim() ||
-    place.dataZoneName?.trim() ||
-    "This place";
+  const data: PlaceCardPayload =
+    place.card ??
+    ({
+      contract: "place_card_v1",
+      lat: place.lat,
+      lng: place.lng,
+      place_label: place.label ?? place.dataZoneName ?? null,
+      postcode: place.postcode ?? null,
+      council_name: place.laName ?? null,
+      data_zone: place.dataZoneCode
+        ? {
+            status: "ok",
+            code: place.dataZoneCode,
+            name: place.dataZoneName ?? null,
+            vintage: place.dataZoneVintage ?? null,
+          }
+        : { status: "miss", note: "No data" },
+      intermediate_zone: { status: "no_data", name: null, note: "No data" },
+      square_reference: scotLandSquareReference(place.lat, place.lng),
+      agr_rows: defaultAgrRows(),
+      constraints: defaultConstraints(false),
+      holder: {
+        status: "private_not_shown",
+        label: "private, not shown",
+      },
+      layers: [],
+      links: [
+        { id: "mission", label: "Mission", url: "/mission" },
+        { id: "methodology", label: "Methodology", url: "/methodology" },
+      ],
+    } satisfies PlaceCardPayload);
 
   return (
-    <aside className="hud-card hud-place place-card-stub" aria-label="Place">
-      <button
-        type="button"
-        className="hud-close"
-        title="Close place (Esc)"
-        onClick={onClose}
-      >
-        ×
-      </button>
-      {error ? <p className="error-line">{error}</p> : null}
-      <p className="place-card-kicker">Place</p>
-      <h2 className="place-card-title">{title}</h2>
-      <p className="location-line">
-        {place.lat.toFixed(5)}, {place.lng.toFixed(5)}
-      </p>
-      {place.postcode ? (
-        <p className="meta">Postcode: {place.postcode}</p>
-      ) : null}
-      {place.dataZoneCode ? (
-        <>
-          <p className="meta" data-testid="place-data-zone">
-            Data zone: {place.dataZoneName || place.dataZoneCode}
-            {place.dataZoneName && place.dataZoneCode
-              ? ` (${place.dataZoneCode})`
-              : null}
-            {place.dataZoneVintage ? ` · ${place.dataZoneVintage}` : null}
-          </p>
-          {place.laName ? (
-            <p className="meta" data-testid="place-la-name">
-              Council: {place.laName}
-            </p>
-          ) : null}
-          {place.population != null ? (
-            <p className="meta" data-testid="place-population">
-              Population: {formatCount(place.population)}
-              {place.popYear ? ` (${place.popYear})` : null}
-            </p>
-          ) : null}
-          {place.dwellings != null ? (
-            <p className="meta" data-testid="place-dwellings">
-              Dwellings: {formatCount(place.dwellings)}
-              {place.dwYear ? ` (${place.dwYear})` : null}
-            </p>
-          ) : null}
-        </>
-      ) : loading ? (
-        <p className="meta">Looking up this place…</p>
-      ) : (
-        <p className="meta">No data zone name for this point yet.</p>
-      )}
-      <p className="place-card-note">
-        Ownership, vacant-land flags and research land-rent figures for this
-        place will appear here later. Modelled Annual Ground Rent and tax
-        scenarios are not shown on the public map yet.
-      </p>
-      <p className="meta">
-        <a href="/mission">Mission</a>
-        {" · "}
-        <a href="/methodology">Methodology</a>
-      </p>
-    </aside>
+    <PlaceCard
+      data={data}
+      isLoading={loading}
+      error={error}
+      onClose={onClose}
+      floating
+      className="place-card-stub"
+    />
   );
 }

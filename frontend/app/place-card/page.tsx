@@ -7,13 +7,33 @@ import { Suspense } from "react";
 import PlaceCard from "@/components/PlaceCard";
 import { PLACE_CARD_FIXTURE } from "@/lib/placeCard";
 
+const INTERNAL_PREVIEWS =
+  process.env.NEXT_PUBLIC_INTERNAL_PREVIEWS === "1" ||
+  process.env.NEXT_PUBLIC_ENABLE_INTERNAL_PREVIEWS === "1";
+
 /**
- * Standalone place-card preview for demos, e2e, and screenshots.
- * Not the w3w map shell — that wires PlaceCard later via /platform/place.
+ * Internal-only place-card preview (Designer brief v3.1).
+ * Public place card lives on the map (`/`). Enable with
+ * NEXT_PUBLIC_INTERNAL_PREVIEWS=1 for Dev/QA / e2e.
  */
 function PlaceCardPreviewInner() {
   const params = useSearchParams();
   const variant = params.get("variant") || "hit";
+
+  if (!INTERNAL_PREVIEWS) {
+    return (
+      <main className="place-card-preview" data-testid="place-card-internal-only">
+        <h1>Internal preview</h1>
+        <p>
+          The place card lives on the map. This standalone route is not part of
+          the public build.
+        </p>
+        <p>
+          <a href="/">Open the map</a>
+        </p>
+      </main>
+    );
+  }
 
   const data = useMemo(() => {
     if (variant === "gap") {
@@ -30,9 +50,6 @@ function PlaceCardPreviewInner() {
               detail: undefined,
             };
           }
-          if (layer.id === "la_holdings" || layer.id === "sasine_private") {
-            return layer;
-          }
           return layer;
         }),
         land_register_outline: {
@@ -46,6 +63,9 @@ function PlaceCardPreviewInner() {
       return {
         ...PLACE_CARD_FIXTURE,
         vacant_or_derelict: true,
+        constraints: (PLACE_CARD_FIXTURE.constraints || []).map((row) =>
+          row.id === "vdl" ? { ...row, applies: true } : row,
+        ),
         layers: PLACE_CARD_FIXTURE.layers.map((layer) =>
           layer.id === "vdl"
             ? {
@@ -75,8 +95,8 @@ function PlaceCardPreviewInner() {
         <PlaceCard data={data} floating={false} />
       </div>
       <p className="place-card-preview-note">
-        Standalone place-card preview ({variant}). Slots into the w3w shell via{" "}
-        <code>GET /platform/place</code>. No modelled Annual Ground Rent.
+        Internal place-card preview ({variant}). Public card is on the map.
+        Designer brief v3.1 field order; figures pending sign-off — no £.
       </p>
     </main>
   );

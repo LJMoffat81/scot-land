@@ -6,6 +6,7 @@ shown from open sources and makes remaining registers visible as gaps.
 
 from __future__ import annotations
 
+import math
 from typing import Any
 
 import httpx
@@ -839,6 +840,153 @@ def _data_zone_at(lat: float, lng: float) -> dict[str, Any]:
     }
 
 
+_FIGURES_PENDING = "figures pending sign-off"
+_CONSTRAINT_LABEL = "Constraint: changes best use, adds no value"
+_W3W_SQUARE_SIZE_M = 3.0
+_METERS_PER_DEGREE_LAT = 111_320.0
+
+
+def _square_reference(lat: float, lng: float) -> str:
+    """Scot-LAND square reference (3×3 m grid). Never a what3words brand string."""
+    lat_rad = math.radians(lat)
+    meters_per_degree_lng = _METERS_PER_DEGREE_LAT * math.cos(lat_rad)
+    lat_index = round(lat * _METERS_PER_DEGREE_LAT / _W3W_SQUARE_SIZE_M)
+    lng_index = round(lng * meters_per_degree_lng / _W3W_SQUARE_SIZE_M)
+    return f"Scot-LAND square reference {lat_index},{lng_index}"
+
+
+def _intermediate_zone_for(data_zone: dict[str, Any]) -> dict[str, Any]:
+    """Intermediate Zone name for a Data Zone. Honest No data when name unknown."""
+    code = data_zone.get("code")
+    vintage = data_zone.get("vintage")
+    if not code or vintage is None:
+        return {"status": "no_data", "code": None, "name": None, "note": "No data"}
+    try:
+        from georgist import db
+    except Exception:
+        return {"status": "no_data", "code": None, "name": None, "note": "No data"}
+    try:
+        with db.cursor() as cur:
+            cur.execute(
+                "SELECT iz_code FROM datazones.zone_spine "
+                "WHERE code = %s AND vintage = %s LIMIT 1",
+                (code, int(vintage)),
+            )
+            row = cur.fetchone()
+    except Exception:
+        return {"status": "no_data", "code": None, "name": None, "note": "No data"}
+    if not row:
+        return {"status": "no_data", "code": None, "name": None, "note": "No data"}
+    iz_code = row.get("iz_code") if isinstance(row, dict) else row[0]
+    # IZ names are not yet loaded (roll-up gap) — show code under No data.
+    return {
+        "status": "no_data",
+        "code": iz_code,
+        "name": None,
+        "note": "No data",
+    }
+
+
+def _agr_rows() -> list[dict[str, Any]]:
+    """Designer AGR rows: surface / resource / nature — ranges pending, no £."""
+    return [
+        {
+            "id": "surface",
+            "label": "Surface",
+            "tag": "proxy",
+            "amount_label": _FIGURES_PENDING,
+            "of_which": [
+                {"id": "planning_uplift", "label": "of which: planning uplift"},
+                {
+                    "id": "infrastructure_share",
+                    "label": "of which: infrastructure share",
+                },
+            ],
+        },
+        {
+            "id": "resource",
+            "label": "Resource",
+            "tag": "market",
+            "amount_label": _FIGURES_PENDING,
+        },
+        {
+            "id": "nature",
+            "label": "Nature",
+            "tag": "shadow",
+            "amount_label": _FIGURES_PENDING,
+        },
+    ]
+
+
+def _constraints_for(card: dict[str, Any]) -> list[dict[str, Any]]:
+    """Constraint rows — never show £ / £0."""
+    vacant = bool(card.get("vacant_or_derelict"))
+    crofting = card.get("crofting") or {}
+    croft_applies = None
+    if crofting.get("status") in {"live", "linked"}:
+        croft_applies = bool(crofting.get("on_this_point")) if "on_this_point" in crofting else None
+    return [
+        {
+            "id": "vdl",
+            "label": "Vacant and derelict land",
+            "applies": vacant,
+            "banner": _CONSTRAINT_LABEL,
+        },
+        {
+            "id": "designations",
+            "label": "Designations (e.g. SSSI)",
+            "applies": None,
+            "note": "No data",
+            "banner": _CONSTRAINT_LABEL,
+        },
+        {
+            "id": "flood",
+            "label": "Flood",
+            "applies": None,
+            "note": "No data",
+            "banner": _CONSTRAINT_LABEL,
+        },
+        {
+            "id": "crofting",
+            "label": "Crofting / common grazings",
+            "applies": croft_applies,
+            "note": None if croft_applies is not None else "No data",
+            "banner": _CONSTRAINT_LABEL,
+        },
+    ]
+
+
+def _holder_for(card: dict[str, Any]) -> dict[str, Any]:
+    """Public-records holder only, else private, not shown."""
+    community = card.get("community_ownership") or {}
+    if community.get("on_this_point"):
+        assets = community.get("assets") or []
+        name = None
+        if assets and isinstance(assets[0], dict):
+            name = (assets[0].get("name") or "").strip() or None
+        return {
+            "status": "public_record",
+            "label": name or "Community ownership (public record)",
+            "note": community.get("note"),
+        }
+    public = card.get("public_or_crown") or {}
+    if public.get("on_this_point"):
+        holdings = public.get("holdings") or []
+        org = None
+        if holdings and isinstance(holdings[0], dict):
+            org = (holdings[0].get("organisation") or "").strip() or None
+        return {
+            "status": "public_record",
+            "label": org or "Public / Crown holding (public record)",
+            "note": public.get("note"),
+        }
+    return {
+        "status": "private_not_shown",
+        "label": "private, not shown",
+        "note": "Owner details from public records only.",
+    }
+
+
 def _layer_row(
     *,
     layer_id: str,
@@ -847,18 +995,24 @@ def _layer_row(
     intersects: bool | None,
     note: str | None = None,
     source_url: str | None = None,
+    licence: str | None = None,
+    licence_url: str | None = None,
     detail: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """One place-card layer row. Every layer carries a licence credit."""
     row: dict[str, Any] = {
         "id": layer_id,
         "label": label,
         "status": status,
         "intersects": intersects,
+        "licence": licence or "Licence not recorded",
     }
     if note:
         row["note"] = note
     if source_url:
         row["source_url"] = source_url
+    if licence_url:
+        row["licence_url"] = licence_url
     if detail:
         row["detail"] = detail
     return row
@@ -878,6 +1032,8 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
                 intersects=True,
                 note=parcel.get("note"),
                 source_url="https://www.ros.gov.uk/open-data",
+                licence=PARCELS_OGL_PHRASE,
+                licence_url=PARCELS_OGL_URL,
                 detail={
                     "label": parcel.get("label"),
                     "inspire_id": parcel.get("inspire_id"),
@@ -894,6 +1050,8 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
                 intersects=None,
                 note="Parcel lookup did not complete for this point.",
                 source_url="https://www.ros.gov.uk/open-data",
+                licence=PARCELS_OGL_PHRASE,
+                licence_url=PARCELS_OGL_URL,
             )
         )
     else:
@@ -906,6 +1064,8 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
                 note=(outline.get("note") if outline else None)
                 or "No Land Register outline at this point.",
                 source_url="https://www.ros.gov.uk/open-data",
+                licence=PARCELS_OGL_PHRASE,
+                licence_url=PARCELS_OGL_URL,
             )
         )
 
@@ -919,6 +1079,8 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
             intersects=bool(vdl.get("intersects")) if vdl_ok else None,
             note=None if vdl_ok else (vdl.get("error") or "SVDLS overlay unavailable."),
             source_url=VDL_REGISTER,
+            licence="OGL-3.0",
+            licence_url=OGL_V3_URL,
             detail={"sites": vdl.get("sites") or []} if vdl_ok else None,
         )
     )
@@ -936,6 +1098,7 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
                 "Not drawn on the public map until an OGL source is confirmed."
             ),
             source_url=PUBLIC_LAND_MAP,
+            licence=public.get("licence") or "unverified/not open",
         )
     )
 
@@ -950,6 +1113,11 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
             or common_good.get("reason")
             or "No national open Common Good map layer.",
             source_url=(common_good.get("register") or {}).get("url"),
+            licence=(
+                common_good.get("licence")
+                or "Linked registers; Highland licence unconfirmed; "
+                "Fife OS INSPIRE EUL linked only"
+            ),
         )
     )
 
@@ -963,6 +1131,7 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
             note=la.get("reason")
             or "National LA ownership layer is not openly licensed for this portal.",
             source_url=SPATIAL_HUB_LA_OWN,
+            licence="Not openly licensed for this portal",
         )
     )
 
@@ -976,6 +1145,7 @@ def _layers_at_point(card: dict[str, Any]) -> list[dict[str, Any]]:
             note=sasine.get("note")
             or "Private names and Sasine extents stay on ScotLIS / paid products.",
             source_url=SCOTLIS_PUBLIC,
+            licence="Incomplete or paid — gaps shown, names not invented",
         )
     )
     return layers
@@ -1156,6 +1326,12 @@ def place_context(
     outline = _land_register_outline(lat, lng)
     if outline is not None:
         card["land_register_outline"] = outline
+    card["place_label"] = council_name or postcode
+    card["square_reference"] = _square_reference(lat, lng)
+    card["intermediate_zone"] = _intermediate_zone_for(card["data_zone"])
+    card["agr_rows"] = _agr_rows()
+    card["constraints"] = _constraints_for(card)
+    card["holder"] = _holder_for(card)
     card["layers"] = _layers_at_point(card)
     card["links"] = _place_links(card)
     return card

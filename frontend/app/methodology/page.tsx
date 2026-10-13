@@ -4,11 +4,11 @@ import MethodologyContent from "@/components/MethodologyContent";
 export const metadata: Metadata = {
   title: "About | Scot-LAND",
   description:
-    "How Scot-LAND estimates Annual Ground Rent for a place, on land value only. Research estimate, not a bill.",
+    "How Scot-LAND’s experimental commons engine works: Surface, Resource and Eco — quality-tagged, not an official valuation.",
   openGraph: {
     title: "About | Scot-LAND",
     description:
-      "How Scot-LAND estimates Annual Ground Rent for a place, on land value only. Research estimate, not a bill.",
+      "How Scot-LAND’s experimental commons engine works: Surface, Resource and Eco — quality-tagged, not an official valuation.",
   },
 };
 

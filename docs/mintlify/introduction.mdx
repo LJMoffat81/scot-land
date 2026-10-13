@@ -8,7 +8,7 @@ Scot-LAND is an **experimental**, non-commercial research map of Scotland's comm
 Live site: [www.scot-land.scot](https://www.scot-land.scot)
 
 <Warning>
-Scot-LAND is **not** an official valuation, a rates bill or a tax assessment. **No modelled rent (£) figures are published yet.** The land-rent model is still being tested internally, and its figures stay blocked until they pass review.
+Scot-LAND is **not** an official valuation, a rates bill or a tax assessment. **No modelled money figures for the commons engine are published yet.** The model is still being tested internally, and its figures stay blocked until they pass review.
 </Warning>
 
 ## What you can use today
@@ -19,10 +19,21 @@ Scot-LAND is **not** an official valuation, a rates bill or a tax assessment. **
 
 ## Layers, not one number
 
-The commons are split into separate layers: **Surface** (land rent under homes and businesses), **Resource** (extractive rents) and **Eco** (natural capital). Each layer is tagged as *market*, *proxy* or *shadow* value, so different kinds of value aren't added together or counted twice.
+The commons are split into three classes: **Surface** (location under homes and businesses), **Resource** (extractive) and **Eco** (natural capital). Each figure is also tagged as *market*, *proxy* or *shadow* value, so different kinds of evidence aren't added together or counted twice.
+
+## Quality tags
+
+Every engine figure carries a data-state tag:
+
+| Tag | Meaning |
+|---|---|
+| **live** | Observed from a public source as-is |
+| **derived** | Computed from open inputs by a stated method |
+| **modelled** | Estimated by the residual / mass model (not published as public money figures until review) |
+| **placeholder** | Not ready — never served on the public API or map |
 
 ## Honesty rules
 
 - Every layer names its source, licence and vintage.
 - Missing data is shown as a gap (HTTP `503` "not loaded"). It is never filled with placeholders.
-- Constraint overlays such as SSSIs are context. They are not rent.
+- Constraint overlays such as SSSIs are context. They change best permitted use only; they are not a commons row.

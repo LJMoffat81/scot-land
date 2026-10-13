@@ -3,15 +3,20 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Public API | Scot-LAND",
   description:
-    "Open place, ownership, and layer addresses for the Scot-LAND map. Modelled Annual Ground Rent £ is not published on public routes.",
+    "Open place, ownership, and layer addresses for Scot-LAND’s experimental commons map. Not an official valuation.",
   openGraph: {
     title: "Public API | Scot-LAND",
     description:
-      "Open place, ownership, and layer addresses for the Scot-LAND map. Modelled Annual Ground Rent £ is not published on public routes.",
+      "Open place, ownership, and layer addresses for Scot-LAND’s experimental commons map. Not an official valuation.",
   },
 };
 
 export const dynamic = "force-dynamic";
+
+const MINTLIFY_API =
+  "https://github.com/LJMoffat81/scot-land/blob/main/docs/mintlify/api-reference.mdx";
+const MINTLIFY_INTRO =
+  "https://github.com/LJMoffat81/scot-land/blob/main/docs/mintlify/introduction.mdx";
 
 export default function OpenApiPage() {
   return (
@@ -26,14 +31,29 @@ export default function OpenApiPage() {
         <a href="/methodology">About</a>
       </p>
       <h1>Public API</h1>
+      <p className="downloads-note" data-testid="experimental-not-official">
+        Experimental research only — not an official valuation, rates bill or
+        tax assessment. Public routes do not publish modelled money amounts for
+        the commons engine.
+      </p>
       <p>
-        These addresses return the open place and layer figures behind the map.
-        Modelled Annual Ground Rent for councils (including rent per square
-        metre) is not on these public routes — AGR £ stays internal at Data Zone
-        band level until yield calibration. The SG 2024 public/Crown land
-        dashboard is not an open layer here (licence unverified/not open). The
-        answers are for the area in view, or for one place. They are not a
-        download of every land boundary.
+        These addresses return the open place and layer figures behind the map:
+        geography, ownership context and natural-capital ledger structure for
+        the three commons (Surface, Resource, Eco). Quality tags on engine
+        figures are <code>live</code>, <code>derived</code>,{" "}
+        <code>modelled</code> and <code>placeholder</code>; placeholders are
+        never served here. The SG 2024 public/Crown land dashboard is not an
+        open layer here (licence unverified/not open). The answers are for the
+        area in view, or for one place. They are not a download of every land
+        boundary. Full reference:{" "}
+        <a href={MINTLIFY_API} target="_blank" rel="noreferrer">
+          docs/mintlify/api-reference.mdx
+        </a>
+        ; framing:{" "}
+        <a href={MINTLIFY_INTRO} target="_blank" rel="noreferrer">
+          docs/mintlify/introduction.mdx
+        </a>
+        .
       </p>
 
       <h2>One place</h2>
@@ -59,7 +79,7 @@ export default function OpenApiPage() {
         </li>
         <li>
           Data Zone boundaries in view (2011 outlines; simplified GeoJSON by
-          bbox; code and name only — no AGR £)
+          bbox; code and name only)
           <span className="download-path">
             GET /layers/open/data-zones?south=&amp;west=&amp;north=&amp;east=
           </span>
@@ -88,8 +108,7 @@ export default function OpenApiPage() {
         </li>
         <li>
           Data Zone house prices, SIMD and population density (OGL context;
-          ledger frame for row 1; polygons when boundaries are loaded — no
-          modelled AGR £)
+          ledger frame for row 1; polygons when boundaries are loaded)
           <span className="download-path">
             GET /layers/open/dz-context?vintage=2011
           </span>
@@ -104,21 +123,23 @@ export default function OpenApiPage() {
         </li>
         <li>
           NatureScot SSSI in view (OGL PostGIS ingest; 503 when unloaded).
-          Constraint (£0, no rent row).
+          Constraint overlay — changes best permitted use only; not a commons
+          row.
           <span className="download-path">
             GET /layers/open/sssi?south=&amp;west=&amp;north=&amp;east=
           </span>
         </li>
         <li>
           NatureScot SPA / SAC / NNR in view (OGL PostGIS ingest; 503 when
-          unloaded). Constraint (£0, no rent row).
+          unloaded). Constraint overlay — changes best permitted use only; not
+          a commons row.
           <span className="download-path">
             GET /layers/open/naturescot-designations?south=&amp;west=&amp;north=&amp;east=
           </span>
         </li>
         <li>
           CES aquaculture seabed leases in view (PostGIS; OGL Spatial Hub;
-          ledger row 5; attributes/status only — no £ rent; 503 when unloaded)
+          ledger row 5; attributes and status only; 503 when unloaded)
           <span className="download-path">
             GET /layers/open/ces-aquaculture?south=&amp;west=&amp;north=&amp;east=
           </span>
@@ -174,7 +195,11 @@ export default function OpenApiPage() {
       <p className="downloads-note">
         Council ownership is not in these files. ScotLIS remains the official
         title record. A technical description is at <code>/docs</code> on the
-        API.
+        API, and in{" "}
+        <a href={MINTLIFY_API} target="_blank" rel="noreferrer">
+          docs/mintlify
+        </a>
+        .
       </p>
     </main>
   );

@@ -7,7 +7,7 @@ description: "Public HTTP endpoints, read from the FastAPI routes in backend/api
 
 All endpoints are `GET`, need no key and return JSON unless noted. Viewport layers take a WGS84 bounding box: `south`, `west`, `north` and `east` are required, and `max_features` is optional (the server caps it). An unloaded layer returns `503` with an explanation.
 
-<Warning>No endpoint listed here returns modelled rent (£). The rent and tax-scenario endpoints are withheld: see "Not public" at the bottom of this page.</Warning>
+<Warning>No endpoint listed here returns modelled money figures from the commons engine. Tax-scenario and modelled valuation endpoints are withheld: see "Not public" at the bottom of this page.</Warning>
 
 
 ## Health and catalogue
@@ -25,11 +25,11 @@ All endpoints are `GET`, need no key and return JSON unless noted. Viewport laye
 | Method | Path | Params (* required) | Description |
 |---|---|---|---|
 | `GET` | `/api/place-stack.json` | `zone`, `lat`, `lng` | Place view per-hectare stack (Natural capital ledger). |
-| `GET` | `/api/place.json` | `pc`, `lat`, `lng` | Place card download (place_card_v1). No modelled AGR £. |
+| `GET` | `/api/place.json` | `pc`, `lat`, `lng` | Place card download (place_card_v1). No modelled money figures. |
 | `GET` | `/geocode/postcode` | `q`* | Geocode Postcode |
 | `GET` | `/place` | `q`* | Find where to open the map. A title miss is not a rent and not a ScotLIS call. |
 | `GET` | `/platform/place` | `lat`*, `lng`*, `postcode` | Public place card for one clicked spot (place_card_v1). |
-| `GET` | `/postcode/{postcode}` | `postcode`* | Public postcode → centroid only. Modelled AGR is /internal/agr/postcode/{postcode}. |
+| `GET` | `/postcode/{postcode}` | `postcode`* | Public postcode → centroid only. Modelled valuation routes stay under `/internal/`. |
 
 ## Point lookups
 
@@ -56,13 +56,13 @@ All endpoints are `GET`, need no key and return JSON unless noted. Viewport laye
 | `GET` | `/layers/open/ldp` | `south`*, `west`*, `north`*, `east`*, `max_features` | LDP allocation polygons in the viewport (PostGIS, OGL ingest). |
 | `GET` | `/layers/open/localities` | `south`*, `west`*, `north`*, `east`*, `max_features` | NRS Census 2022 Localities in the viewport (PostGIS). 503 when unloaded. |
 | `GET` | `/layers/open/native-woodland` | `south`*, `west`*, `north`*, `east`*, `max_features` | Native Woodland Survey of Scotland polygons (PostGIS ingest). |
-| `GET` | `/layers/open/naturescot-designations` | `south`*, `west`*, `north`*, `east`*, `max_features` | NatureScot SPA/SAC/NNR polygons (OGL-3.0). Constraint overlay — £0, no rent row. |
+| `GET` | `/layers/open/naturescot-designations` | `south`*, `west`*, `north`*, `east`*, `max_features` | NatureScot SPA/SAC/NNR polygons (OGL-3.0). Constraint overlay — changes best use only; not a commons row. |
 | `GET` | `/layers/open/nfi` | `south`*, `west`*, `north`*, `east`*, `max_features` | National Forest Inventory woodland polygons (PostGIS ingest). |
 | `GET` | `/layers/open/public-land` | `south`*, `west`*, `north`*, `east`*, `max_features` | Public and Crown Estate holdings in the viewport (SG 2024 overlay). |
 | `GET` | `/layers/open/repd` | `south`*, `west`*, `north`*, `east`*, `max_features` | DESNZ REPD Scotland planning-site points in the viewport (OGL). |
 | `GET` | `/layers/open/sepa-car` | `south`*, `west`*, `north`*, `east`*, `max_features` | SEPA CAR licences in the viewport (MapServer 194/195 → PostGIS). |
 | `GET` | `/layers/open/settlements` | `south`*, `west`*, `north`*, `east`*, `max_features` | NRS Census 2022 Settlements in the viewport (PostGIS). 503 when unloaded. |
-| `GET` | `/layers/open/sssi` | `south`*, `west`*, `north`*, `east`*, `max_features` | NatureScot SSSI polygons (OGL-3.0). Constraint overlay — £0, no rent row. |
+| `GET` | `/layers/open/sssi` | `south`*, `west`*, `north`*, `east`*, `max_features` | NatureScot SSSI polygons (OGL-3.0). Constraint overlay — changes best use only; not a commons row. |
 | `GET` | `/layers/open/vdl` | `south`*, `west`*, `north`*, `east`*, `max_features` | Vacant and derelict land polygons in the viewport (OGL survey overlay). |
 | `GET` | `/layers/parcels` | `south`*, `west`*, `north`*, `east`*, `max_features` | RoS INSPIRE Index Polygons in the viewport (PostGIS ingest). |
 
@@ -87,7 +87,7 @@ All endpoints are `GET`, need no key and return JSON unless noted. Viewport laye
 | `GET` | `/api/public-land.json` | — | Api Public Land |
 | `GET` | `/api/registers.json` | — | Api Registers |
 | `GET` | `/api/vdl.json` | — | Api Vdl |
-| `GET` | `/ledger` | — | Natural capital ledger rows + constraints (no published AGR £). |
+| `GET` | `/ledger` | — | Natural capital ledger rows + constraints (no published modelled money figures). |
 
 ## Not public
 

@@ -1,7 +1,8 @@
--- Data zone boundaries for point -> (code, vintage) lookup (DRAFT stub, lead SE, 2026-10-06).
--- Polygons are owned by Scot-LAND GIS; codes/vintages by Scot-LAND Data Zones.
--- Load with `python -m etl.load_processed` (manifest-listed dz2011_/dz2022_boundaries.geojson).
--- Source: Scottish Government data zone boundaries 2011 / 2022 (OGL, (c) Crown copyright / OS).
+-- Data zone boundaries for point -> (code, vintage) lookup.
+-- Preferred load: `python -m etl.ingest_dz_boundaries --fetch` (SG ATOM shapefiles →
+-- EPSG:27700; provenance in dz_boundaries_meta). CI: `--fixture`.
+-- Also: `python -m etl.load_processed` for manifest-listed GeoJSON.
+-- Source: Scottish Government data zone boundaries 2011 / 2022 (OGL v3.0).
 CREATE TABLE IF NOT EXISTS dz_boundaries (
   code        TEXT NOT NULL CHECK (code ~ '^S01[0-9]{6}$'),
   vintage     SMALLINT NOT NULL CHECK (vintage IN (2011, 2022)),

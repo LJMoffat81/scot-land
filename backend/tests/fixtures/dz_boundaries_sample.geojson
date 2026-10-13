@@ -1,0 +1,75 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": { "name": "urn:ogc:def:crs:EPSG::27700" }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "code": "S01013010",
+        "name": "Balfron and Drymen - 02",
+        "vintage": 2011,
+        "fixture": true,
+        "note": "synthetic-test-only — covers Balfron centre for CI lookup"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [254000, 688400],
+            [255200, 688400],
+            [255200, 689500],
+            [254000, 689500],
+            [254000, 688400]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "code": "S01020380",
+        "name": "Balfron and Drymen - 02",
+        "vintage": 2022,
+        "fixture": true,
+        "note": "synthetic-test-only — 2022 partner polygon for Balfron"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [254000, 688400],
+            [255200, 688400],
+            [255200, 689500],
+            [254000, 689500],
+            [254000, 688400]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "code": "S01008677",
+        "name": "Synthetic Edinburgh fixture",
+        "vintage": 2011,
+        "fixture": true,
+        "note": "synthetic-test-only — second 2011 zone for count checks"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [325000, 673000],
+            [326000, 673000],
+            [326000, 674000],
+            [325000, 674000],
+            [325000, 673000]
+          ]
+        ]
+      }
+    }
+  ]
+}

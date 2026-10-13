@@ -65,6 +65,7 @@ Public methodology and README must list active data sources. See `data/config/so
 | Layer | Source | Licence note |
 |-------|--------|----------------|
 | Cadastral parcels | Registers of Scotland INSPIRE Index Polygons | OGL-3.0 — cite RoS; raw extracts stay in `data/external/`; CI uses a synthetic fixture only |
+| Data Zone boundaries | Scottish Government DataZoneBdry 2011 / 2022 (ATOM shapefiles) | OGL-3.0 — cite SG / OS; load via `python -m etl.ingest_dz_boundaries`; PostGIS EPSG:27700; provenance (URL, vintage, sha256) in `dz_boundaries_meta`; CI synthetic fixture only; no £ rent |
 | Public land | Scottish Government Public and Crown Estate Land 2024 | unverified/not open — dashboard only; hidden from the public map until an OGL source is confirmed |
 | Settlements / localities | NRS Census 2022 (`CEN2022:Settlement2022`, `CEN2022:Locality2022`) | OGL-3.0 — cite NRS; contains OS data © Crown copyright |
 | ScotWind / INTOG options | Crown Estate Scotland Spatial Hub (ScotWind Offers + INTOG Application Areas) | **OGL-3.0** (GIS GO 2026-10-12). Credit: *Contains information from the Crown Estate Scotland licensed under the Open Government Licence v3.0*. `publication_status=ok`. Polygons only; option-fee £ HOLD in `data/config/scotwind_option_fees.yaml` (press release) — not layer attributes. Ledger row 4; overlay does not add to surface rent |

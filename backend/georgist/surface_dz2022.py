@@ -3,8 +3,9 @@
 Designer brief v3.1 / CHARTER: surface rent is still computed on DZ2011 (RoS
 native) and needs a 2011→2022 crosswalk before the SG roll-up. DZ2022 is the
 unit of account. Crosswalk is value-weighted (economic rules §11 — never
-population or area). Results stay ``publish_level=internal`` until
-ECONOMIC_RULES approval; public layers already filter that level out.
+population or area). Results stay ``publish_level=internal`` and ``publication_status=blocked``
+until ECONOMIC_RULES / publishability clearance; source ``ok`` does not
+unblock. Public layers already filter that level out.
 
 Fail loudly: missing sources, weights that do not sum to 1, forbidden methods,
 mixed price years / valuation dates, or codes outside the official ranges.
@@ -20,6 +21,9 @@ from georgist.surface_zones import CODE_RANGES, validate_code, vintage_int
 WEIGHT_TOL = 1e-6
 CROSSWALK_METHOD = "value_weighted"
 PUBLISH_LEVEL = "internal"
+# Blocked always wins: new DZ2022 rows stay blocked unless explicitly cleared
+# later via the publishability path (never by inheriting source ``ok``).
+PUBLICATION_STATUS = "blocked"
 PROXY_TAGS = (
     "crosswalked_from_dz2011",
     "research_estimate",
@@ -207,9 +211,10 @@ def crosswalk_surface_to_dz2022(
     """Push DZ2011 surface rows onto DZ2022 via a validated value-weighted crosswalk.
 
     Every output row is vintage 2022, ``crosswalk_method=value_weighted``,
-    ``publish_level=internal``. When ``dwellings_by_code`` supplies the DZ2022
-    dwelling count, per-dwelling rent is recomputed; otherwise dwellings and
-    per-dwelling figures are left null (never invented).
+    ``publish_level=internal``, ``publication_status=blocked``. When
+    ``dwellings_by_code`` supplies the DZ2022 dwelling count, per-dwelling rent
+    is recomputed; otherwise dwellings and per-dwelling figures are left null
+    (never invented).
     """
     by_src = validate_value_crosswalk(crosswalk)
     sources: dict[str, Mapping] = {}
@@ -260,7 +265,8 @@ def crosswalk_surface_to_dz2022(
         row["vintage"] = 2022
         row["crosswalk_method"] = CROSSWALK_METHOD
         row["publish_level"] = PUBLISH_LEVEL
-        row["publication_status"] = head.get("publication_status") or "ok"
+        # Ignore source publication_status: blocked always wins on conversion.
+        row["publication_status"] = PUBLICATION_STATUS
         for key in SUMMABLE_FIELDS:
             row[key] = _merge_numeric(parts, key)
         # Per-dwelling / price diagnostics do not add across splits/merges.

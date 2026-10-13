@@ -12,31 +12,29 @@ export default function MethodologyContent() {
       </p>
       <h1>About</h1>
       <p>
-        Scot-LAND estimates an Annual Ground Rent for land across Scotland: what
-        the land alone would be worth to use each year, leaving out any
-        buildings on it.
+        Scot-LAND is building an open land information map for Scotland, with
+        Annual Ground Rent as the analytical centre: what the land alone would
+        be worth to use each year, leaving out any buildings on it.
       </p>
       <p>
-        It&apos;s a research estimate, not a rates bill. Nobody owes this amount, and
-        it isn&apos;t a proposal for what anyone should pay.
+        Modelled AGR £ is a research estimate, not a rates bill. Nobody owes
+        this amount, and it isn&apos;t a proposal for what anyone should pay.
+        Until yield calibration, the public map does not show council-area AGR
+        charges or rent per square metre — those figures stay internal at Data
+        Zone band level.
       </p>
       <p>
-        A click on land estimates the surface rent. A click at sea says the
-        seabed is land, and names a Crown Estate Scotland lease when one covers
-        that point. The note is the published rent rule. Where the open file
-        has no yearly total, the map does not invent one. Minerals and water
-        are not on the map yet, and woodland shows &quot;Not yet estimated&quot;.
+        A click on the public map opens a place card for location and open
+        layers. A click at sea can name a Crown Estate Scotland lease when one
+        covers that point. Minerals and water are not on the map yet.
       </p>
       <p>
-        Figures come from public data, and the method is published in full.
-        They&apos;re in development and may change as the work improves, and
-        each result shows the version it came from.
+        Method notes below describe how a place is valued when figures are
+        published. They come from public data and may change as the work
+        improves.
       </p>
       <p>
-        We never show who owns land, what it sold for, or title plans.
-      </p>
-      <p>
-        Where a register outline exists, the figure is that piece of land. Where it does not, a town click is one home plot and a countryside click is one hectare of farmland.
+        We never show who owns private land, what it sold for, or title plans.
       </p>
       <p>
         <a href="#calculation">How a place is valued</a>
@@ -48,13 +46,12 @@ export default function MethodologyContent() {
         <h2>How a place is valued</h2>
         <p>
           Each point on land is classed as town or countryside. In a town, the
-          rent is that council&apos;s land rent for each square metre, times the
-          area of this piece. The land rent is what remains after the building
-          and the speculative part are taken off, and a 5% yield is applied.
-          In the countryside the rate is one farmland rate for Scotland, times
-          the area. The map colour is one town home-plot rate for each council.
-          A click can differ from that colour when the point is countryside, or
-          when the outline is not a home plot.
+          modelled rent is the land rent for each square metre, times the area
+          of this piece. The land rent is what remains after the building and
+          the speculative part are taken off, and a yield is applied. In the
+          countryside the rate is one farmland rate for Scotland, times the
+          area. Those modelled £ figures are not painted on the public map or
+          listed as council charges until yield calibration.
         </p>
       </section>
 
@@ -149,7 +146,16 @@ export default function MethodologyContent() {
       <section id="how-sure">
         <h2>How sure are these numbers?</h2>
         <p>
-          They&apos;re research estimates, and some of what goes into them can&apos;t be pinned down exactly. With different reasonable assumptions, the estimate for a typical home plot in most councils could be anywhere from about half to 1.3 times the figure shown. Where house prices are low compared with what homes cost to rebuild, the range is wider, from about half to about double. This range covers home plots only, not the farmland figures. It does not cover the bigger simplifications. The map colour is still one town rate for a whole council. A click follows town or countryside at that point, and where an outline exists the number is that piece of land, not the home plot. A town click uses that data zone&apos;s median house price, which is still the price of an improved dwelling. A larger piece of land follows a diminishing area rule. The council median stays the comparison and the fallback. In most councils, the home-plot figures are slightly more likely to be too high than too low.
+          They&apos;re research estimates, and some of what goes into them
+          can&apos;t be pinned down exactly. With different reasonable
+          assumptions, the estimate for a typical home plot in most councils
+          could be anywhere from about half to 1.3 times the internal figure.
+          Where house prices are low compared with what homes cost to rebuild,
+          the range is wider, from about half to about double. This range
+          covers home plots only, not the farmland figures. It does not cover
+          the bigger simplifications. Public visitors do not see those modelled
+          £ amounts on the map today; the work stays internal at Data Zone band
+          level until calibration.
         </p>
       </section>
 

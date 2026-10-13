@@ -5,7 +5,6 @@ import maplibregl, {
   Map,
   GeoJSONSource,
   ExpressionSpecification,
-  FilterSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
@@ -175,10 +174,6 @@ type MetricDef = {
   stops: [number, string][];
 };
 
-type StoryId = "who_pays" | "rent_intensity";
-
-type RentBand = "low" | "mid" | "high";
-
 const emptyCollection: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
   features: [],
@@ -333,19 +328,12 @@ const METRICS: MetricDef[] = [
   },
 ];
 
-const STORIES: Array<{ id: StoryId; label: string; metric: MetricId; blurb: string }> = [
-  {
-    id: "who_pays",
-    label: "Annual Ground Rent",
-    metric: "gross_liability",
-    blurb: "The yearly rent of the land alone.",
-  },
-  {
-    id: "rent_intensity",
-    label: "Rent per square metre",
-    metric: "rent_per_sqm",
-    blurb: "The rent for each square metre of land.",
-  },
+const PUBLIC_LAND_BODIES: Array<{ name: string; color: string }> = [
+  { name: "Forestry and Land Scotland", color: "#66c2a5" },
+  { name: "NatureScot", color: "#8da0cb" },
+  { name: "Scottish Crown Estate", color: "#e78ac3" },
+  { name: "Scottish Water", color: "#a6d854" },
+  { name: "Crofting Agricultural Holdings", color: "#fc8d62" },
 ];
 
 const PUBLIC_LAND_FILL: ExpressionSpecification = [
@@ -503,8 +491,8 @@ export default function ScotlandMap() {
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [addressLine, setAddressLine] = useState<string | null>(null);
   const [scenario, setScenario] = useState<ScenarioId>("full_agr");
-  // Public shell: no modelled rent choropleth until later phases / yield calibration.
-  const [choropleth, setChoropleth] = useState<MetricId | "off">("off");
+  // Public shell: never paint council-area AGR £ / rent £/m² (internal-only until calibration).
+  const choropleth: MetricId | "off" = "off";
   const [showBoundaries, setShowBoundaries] = useState(false);
   const [showCellGrid] = useState(false);
   const [showVdl, setShowVdl] = useState(false);
@@ -570,17 +558,13 @@ export default function ScotlandMap() {
   const [contextNote, setContextNote] = useState<string | null>(null);
   const contextLoaded = useRef<Set<string>>(new Set());
   const contextFlight = useRef<Set<string>>(new Set());
-  const [layerBusy, setLayerBusy] = useState(false);
+  const [, setLayerBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SquareResponse | null>(null);
   const [apiOk, setApiOk] = useState<boolean | null>(null);
   // Legacy ground-rent router mounted? null = not known yet. Its endpoints are never called when false.
   const [agrAvailable, setAgrAvailable] = useState<boolean | null>(null);
-  const [metricNote, setMetricNote] = useState<string | null>(null);
-  const [activeStory, setActiveStory] = useState<StoryId>("who_pays");
-  const [band, setBand] = useState<RentBand | null>(null);
-  const [streetScale, setStreetScale] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
   const [legendOpen, setLegendOpen] = useState(false);
@@ -623,25 +607,9 @@ export default function ScotlandMap() {
       markerRef.current = new maplibregl.Marker({ color: "#0076d3" })
         .setLngLat([payload.square.lng, payload.square.lat])
         .addTo(map);
+      // Public shell: never label parcels with modelled AGR £ / year.
       parcelLabelRef.current?.remove();
       parcelLabelRef.current = null;
-      const labelAt = payload.parcel?.geometry
-        ? polygonLabelPoint(payload.parcel.geometry)
-        : null;
-      const area = payload.agr?.parcel_area_sqm;
-      const yearly = payload.agr ? parcelYearlyRent(payload) : null;
-      if (labelAt && area != null && yearly != null) {
-        const el = document.createElement("div");
-        el.className = "parcel-map-label";
-        el.textContent = `${Math.round(area).toLocaleString("en-GB")} m² · ${formatRent(yearly)}/year`;
-        parcelLabelRef.current = new maplibregl.Marker({
-          element: el,
-          anchor: "top",
-          offset: [0, 14],
-        })
-          .setLngLat(labelAt)
-          .addTo(map);
-      }
     }
     if (map?.getSource("selected-square")) {
       const source = map.getSource("selected-square") as GeoJSONSource;
@@ -1216,19 +1184,12 @@ export default function ScotlandMap() {
     };
   }, []);
 
-  // Re-assess selection when scenario changes so the place rent stays current
+  // Re-assess selection when scenario changes (legacy square path; no public £ display).
   useEffect(() => {
     if (!result) return;
     void fetchSquare(result.square.lat, result.square.lng, scenario, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scenario]);
-
-  const applyStory = (storyId: StoryId) => {
-    const story = STORIES.find((s) => s.id === storyId);
-    if (!story) return;
-    setActiveStory(storyId);
-    setChoropleth(story.metric);
-  };
 
   useEffect(() => {
     const container = mapContainer.current;
@@ -1596,11 +1557,8 @@ export default function ScotlandMap() {
       const qWords = params.get("words");
       const qLat = params.get("lat");
       const qLng = params.get("lng");
-      const qBand = params.get("band");
-      if (qBand === "low" || qBand === "mid" || qBand === "high") {
-        setBand(qBand);
-      }
-      // public/Crown 2024 dashboard: licence unverified/not open — never paint on public map
+      // public/Crown 2024 dashboard: licence unverified/not open — never paint
+      // Council AGR £ / rent £/m² / band choropleth: scrubbed from public shell
       if (params.get("vacant") === "1") {
         setShowVdl(true);
       }
@@ -1845,115 +1803,22 @@ export default function ScotlandMap() {
     void fetchCapabilities().then((caps) => {
       if (cancelled || !caps.reachable) return;
       setAgrAvailable(caps.agr);
-      if (!caps.agr) setMetricNote("Council ground-rent layers aren't available on this server yet.");
     });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Load multi-metric council data once per scenario
-  const metricsMetaRef = useRef<
-    Record<string, { label?: string; unit?: string; min?: number; max?: number }> | null
-  >(null);
-
-  useEffect(() => {
-    if (!mapReady || agrAvailable !== true) return; // council layer is part of the optional AGR router
-    const map = mapRef.current;
-    if (!map) return;
-
-    let cancelled = false;
-    setLayerBusy(true);
-    void apiJson<
-      GeoJSON.FeatureCollection & {
-        meta?: {
-          metrics?: Record<
-            string,
-            { label?: string; unit?: string; min?: number; max?: number }
-          >;
-        };
-      }
-    >(`/layers/councils?scenario=${scenario}`)
-      .then((data) => {
-        if (cancelled) return;
-        const src = map.getSource("council-metrics") as GeoJSONSource | undefined;
-        if (!src) throw new Error("Map source missing — refresh the page");
-        src.setData(data);
-        metricsMetaRef.current = data.meta?.metrics ?? null;
-        setApiOk(true);
-        // Trigger paint via choropleth effect
-        setMetricNote((prev) => prev ?? "Councils loaded");
-      })
-      .catch((err: unknown) => {
-        setError(visitorFacingError(err));
-        if (isServiceFailure(err)) {
-          void pingApi().then((s) => {
-            if (!cancelled) setApiOk(s.ok);
-          });
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLayerBusy(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [mapReady, scenario, agrAvailable]);
-
-  // Paint / visibility when metric selection changes
+  // Public shell: never fetch /layers/councils (council AGR £ and rent £/m² stay internal).
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map?.getLayer("council-fill")) return;
-
-    if (choropleth === "off") {
-      map.setLayoutProperty("council-fill", "visibility", "none");
-      map.setLayoutProperty("council-line", "visibility", "none");
-      map.setFilter("council-fill", null);
-      map.setFilter("council-line", null);
-      setMetricNote(null);
-      return;
-    }
-
-    const councilVisible = !streetScale;
-    map.setLayoutProperty(
-      "council-fill",
-      "visibility",
-      councilVisible ? "visible" : "none",
-    );
-    map.setLayoutProperty(
-      "council-line",
-      "visibility",
-      councilVisible ? "visible" : "none",
-    );
-    const def = METRICS.find((m) => m.id === choropleth) ?? METRICS[0];
-    map.setPaintProperty("council-fill", "fill-color", paintForMetric(def));
-    const rent: FilterSpecification = [
-      "coalesce",
-      ["get", "annual_ground_rent_plot_gbp"],
-      0,
-    ];
-    const bandFilter: FilterSpecification | null =
-      band === "low"
-        ? ["<", rent, 1500]
-        : band === "mid"
-          ? ["all", [">=", rent, 1500], ["<", rent, 4500]]
-          : band === "high"
-            ? [">=", rent, 4500]
-            : null;
-    map.setFilter("council-fill", bandFilter);
-    map.setFilter("council-line", bandFilter);
-
-    const meta = metricsMetaRef.current?.[choropleth];
-    if (meta?.min != null && meta?.max != null) {
-      setMetricNote(
-        `${def.label}: ${formatRange(meta.min, meta.max, meta.unit ?? "")}`,
-      );
-    } else {
-      setMetricNote(def.label);
-    }
-  }, [mapReady, choropleth, layerBusy, band, streetScale]);
+    map.setLayoutProperty("council-fill", "visibility", "none");
+    map.setLayoutProperty("council-line", "visibility", "none");
+    map.setFilter("council-fill", null);
+    map.setFilter("council-line", null);
+  }, [mapReady, choropleth]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -1961,10 +1826,9 @@ export default function ScotlandMap() {
     if (showVdl) url.searchParams.set("vacant", "1");
     else url.searchParams.delete("vacant");
     url.searchParams.delete("public");
-    if (band) url.searchParams.set("band", band);
-    else url.searchParams.delete("band");
+    url.searchParams.delete("band");
     window.history.replaceState({}, "", url.toString());
-  }, [showVdl, band]);
+  }, [showVdl]);
 
   // Scot-LAND squares grid
   useEffect(() => {
@@ -2247,7 +2111,6 @@ export default function ScotlandMap() {
     const sync = () => {
       const zoom = map.getZoom();
       const close = zoom >= CADASTRAL_MIN_ZOOM;
-      setStreetScale(close);
       if (map.isMoving()) return;
       if (!boundariesTouched.current) {
         setShowBoundaries(close);
@@ -2523,11 +2386,6 @@ export default function ScotlandMap() {
     };
   }, [result]);
 
-  const legendMetric =
-    choropleth === "off"
-      ? null
-      : (METRICS.find((m) => m.id === choropleth) ?? null);
-
   const placeOpen = Boolean(placeStub || result || error);
 
   return (
@@ -2721,45 +2579,15 @@ export default function ScotlandMap() {
             <span className="hud-scotland-fold-hide">Hide legend</span>
           </button>
           <div className="hud-scotland-body" id="hud-scotland-body">
-            {legendMetric ? (
-              <>
-                <p className="hud-scotland-job">{legendMetric.label}</p>
-                <p className="hud-scotland-lead">
-                  Optional research layer — not a tax bill.
-                </p>
-                <div className="map-legend">
-                  <div
-                    className="map-legend-bar"
-                    style={{ background: legendGradient(legendMetric.stops) }}
-                    aria-hidden="true"
-                  />
-                  <div className="map-legend-stops">
-                    <span>
-                      {formatLegendStop(legendMetric.stops[0][0], legendMetric.id)}
-                    </span>
-                    <span>
-                      {formatLegendStop(
-                        legendMetric.stops[legendMetric.stops.length - 1][0],
-                        legendMetric.id,
-                      )}
-                    </span>
-                  </div>
-                  <p className="hud-scotland-note">{legendCaption(legendMetric.id)}</p>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="hud-scotland-job">Find a place</p>
-                <p className="hud-scotland-lead">
-                  Search a postcode, place or coordinates — or click the map.
-                </p>
-                <p className="hud-scotland-note">
-                  Modelled Annual Ground Rent and tax scenarios are not shown on
-                  the public map yet. Ownership and place details follow in later
-                  updates.
-                </p>
-              </>
-            )}
+            <p className="hud-scotland-job">Find a place</p>
+            <p className="hud-scotland-lead">
+              Search a postcode, place or coordinates — or click the map.
+            </p>
+            <p className="hud-scotland-note">
+              Modelled Annual Ground Rent (council charges and rent £/m²) and tax
+              scenarios are not shown on the public map. Ownership and place
+              details follow in later updates.
+            </p>
             <p className="hud-scotland-foot">
               Research map, not a rates bill.{" "}
               <a href="/methodology">About</a>
@@ -2837,45 +2665,11 @@ export default function ScotlandMap() {
                 {layerNotice && <p className="layer-meta">{layerNotice}</p>}
               </section>
 
-              <label className="layer-select-label">The charge</label>
-              <div className="layer-chips story-chips">
-                {STORIES.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    className={activeStory === s.id ? "chip active" : "chip"}
-                    onClick={() => applyStory(s.id)}
-                    title={s.blurb}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-              <p className="layer-meta">
-                Filters the charge colour. Low is under £1,500 a year. High is £4,500 or more.
-                Annual Ground Rent (residual) is not Surface Rent (la-calc).
+              <p className="layer-meta" data-testid="public-agr-withheld">
+                Modelled Annual Ground Rent (including council-area charges and
+                rent per square metre) is not shown on the public map. AGR £
+                stays internal at Data Zone band level until yield calibration.
               </p>
-              <div className="layer-chips">
-                {(["low", "mid", "high"] as RentBand[]).map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    className={band === id ? "chip active" : "chip"}
-                    onClick={() => setBand((cur) => (cur === id ? null : id))}
-                    title="Filters the charge colour."
-                  >
-                    {id} rent
-                  </button>
-                ))}
-              </div>
-              {band && (
-                <p className="layer-meta">Showing the {band} band of this charge.</p>
-              )}
-              {metricNote && choropleth !== "off" && (
-                <p className="layer-meta">
-                  {layerBusy ? "Loading…" : metricNote}
-                </p>
-              )}
 
               <label className="layer-select-label">The piece of land</label>
               <div className="layer-chips">
@@ -2911,7 +2705,7 @@ export default function ScotlandMap() {
 
               <details className="layer-fold">
                 <summary>Around the land</summary>
-                <p className="layer-meta">Context, not the charge.</p>
+                <p className="layer-meta">Context layers only.</p>
                 <div className="layer-chips">
                   {["settlements", "woodland"].map((id) => {
                     const layer = CONTEXT_LAYERS.find((item) => item.id === id);
@@ -2948,7 +2742,7 @@ export default function ScotlandMap() {
 
               <details className="layer-fold">
                 <summary>Sea and energy</summary>
-                <p className="layer-meta">Context, not the charge.</p>
+                <p className="layer-meta">Context layers only.</p>
                 <div className="layer-chips">
                   {CONTEXT_LAYERS.filter(
                     (layer) => layer.group === "Sea" || layer.group === "Energy",
@@ -3013,115 +2807,4 @@ export default function ScotlandMap() {
     </div>
   );
 }
-
-function legendGradient(stops: [number, string][]): string {
-  const min = stops[0][0];
-  const max = stops[stops.length - 1][0];
-  const span = max - min || 1;
-  const parts = stops.map(([value, color]) => {
-    const pct = ((value - min) / span) * 100;
-    return `${color} ${pct}%`;
-  });
-  return `linear-gradient(to right, ${parts.join(", ")})`;
-}
-
-function formatLegendStop(value: number, id: MetricId): string {
-  if (id === "agr_price_pct" || id === "land_share" || id === "simd") {
-    return `${value}%`;
-  }
-  if (id === "pop_density") {
-    return value >= 1000 ? `${value / 1000}k` : String(value);
-  }
-  const sign = value < 0 ? "\u2212" : "";
-  const abs = Math.abs(value);
-  if (id === "vacant_residual" && abs >= 1_000_000) {
-    return `${sign}\u00a3${Math.round(abs / 1_000_000)}m`;
-  }
-  if (abs >= 1000) {
-    return `${sign}\u00a3${Math.round(abs / 1000).toLocaleString("en-GB")}k`;
-  }
-  return `${sign}\u00a3${Math.round(abs)}`;
-}
-
-function parcelYearlyRent(payload: SquareResponse): number | null {
-  if (!payload.agr) return null;
-  const area = payload.agr.parcel_area_sqm;
-  if (area == null || area <= 0 || !payload.parcel?.geometry) return null;
-  const gross = payload.fiscal?.gross_plot_gbp;
-  if (gross != null && gross > 0) return gross;
-  const cell = payload.agr.economic_annual_rent_gbp;
-  const active = payload.agr.scenarios.full_agr.annual_charge_gbp;
-  const scale = cell > 0 ? active / cell : 1;
-  const parcel = payload.agr.site_rental_per_sqm_gbp * area * scale;
-  return parcel > 0 ? parcel : null;
-}
-
-function formatRent(value: number): string {
-  if (value >= 100) return `£${Math.round(value).toLocaleString("en-GB")}`;
-  return `£${value.toFixed(2)}`;
-}
-
-function polygonLabelPoint(
-  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon,
-): [number, number] | null {
-  const ring =
-    geometry.type === "Polygon"
-      ? geometry.coordinates[0]
-      : geometry.coordinates[0]?.[0];
-  if (!ring || ring.length === 0) return null;
-  const last = ring.length - 1;
-  const closed =
-    ring[0][0] === ring[last][0] && ring[0][1] === ring[last][1] && last > 0;
-  const count = closed ? last : ring.length;
-  let x = 0;
-  let y = 0;
-  for (let i = 0; i < count; i += 1) {
-    x += ring[i][0];
-    y += ring[i][1];
-  }
-  return [x / count, y / count];
-}
-
-function legendCaption(id: MetricId): string {
-  switch (id) {
-    case "gross_liability":
-    case "agr_plot":
-      return "The colour is each council's town home plot. A click uses town or countryside at that point.";
-    case "rent_per_sqm":
-      return "Annual Ground Rent per square metre of land.";
-    case "net_contribution":
-      return "A typical plot set against one person's share. Teal is below that share. Orange is above it.";
-    case "vacant_residual":
-      return "Illustrative rent on surveyed vacant land in the council.";
-    case "house_price":
-      return "Average house price in the council, building and land together.";
-    case "agr_price_pct":
-      return "The plot's Annual Ground Rent as a share of the average house price.";
-    case "land_share":
-      return "The land share used in that council's calculation.";
-    case "site_capital":
-      return "Economic land value per square metre, after the speculative cut.";
-    case "simd":
-      return "Share of data zones in the most deprived fifth. Context only, not the charge.";
-    case "pop_density":
-      return "People per square kilometre. Context only, not the charge.";
-    default:
-      return "Research estimate, not a rates bill.";
-  }
-}
-
-function formatRange(min: number, max: number, unit: string): string {
-  const fmt = (n: number) => {
-    if (unit.includes("%")) return `${n.toFixed(1)}%`;
-    if (unit.includes("£") || unit.startsWith("£")) {
-      if (Math.abs(n) >= 1000) return `£${Math.round(n).toLocaleString("en-GB")}`;
-      return `£${n.toFixed(n >= 10 ? 0 : 2)}`;
-    }
-    if (Math.abs(n) >= 100) return Math.round(n).toLocaleString("en-GB");
-    return n.toFixed(1);
-  };
-  const u = unit.includes("%") || unit.includes("£") ? "" : ` ${unit}`;
-  return `${fmt(min)}–${fmt(max)}${u}`;
-}
-
 

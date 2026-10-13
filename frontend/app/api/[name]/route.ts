@@ -1,20 +1,18 @@
 /**
- * Public preview aliases documented in docs/OPEN_LAYERS.md
- * (/api/roll.json, /api/catalog.json, …). Proxy to the FastAPI platform app.
+ * Public preview aliases for open place / ownership tables.
+ * Council AGR roll and rent £/m² proxies are withheld (AGR £ internal-only).
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const OPEN_API = new Set([
-  "roll.json",
-  "roll.csv",
   "public-land.json",
   "vdl.json",
-  "vdl-councils.json",
   "place.json",
   "registers.json",
   "common-good.json",
   "catalog.json",
+  "ledger.json",
 ]);
 
 function apiOrigin(): string {

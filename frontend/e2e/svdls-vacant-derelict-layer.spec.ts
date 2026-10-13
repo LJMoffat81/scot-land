@@ -77,20 +77,9 @@ test.describe("SVDLS vacant and derelict layer", () => {
     await expect(panel.getByTestId("layers-panel")).toBeVisible();
     await expect(panel.getByTestId("layer-toggle-vdl")).toBeVisible();
 
-    // Catalog panel precedes the charge controls; VDL is not under Around the land
-    const catalogBeforeCharge = await panel.evaluate((el) => {
-      const catalog = el.querySelector("[data-testid='layers-panel']");
-      const labels = Array.from(el.querySelectorAll(".layer-select-label"));
-      const charge = labels.find((node) =>
-        node.textContent?.includes("The charge"),
-      );
-      if (!catalog || !charge) return false;
-      return Boolean(
-        catalog.compareDocumentPosition(charge) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      );
-    });
-    expect(catalogBeforeCharge).toBe(true);
+    // Public shell withholds council AGR charge controls; VDL is not under Around the land
+    await expect(panel.getByTestId("public-agr-withheld")).toBeVisible();
+    await expect(panel.getByText("The charge")).toHaveCount(0);
 
     const aroundFold = panel.locator("details.layer-fold").filter({
       hasText: "Around the land",

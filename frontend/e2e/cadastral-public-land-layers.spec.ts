@@ -83,20 +83,10 @@ test.describe("cadastral and public land layers", () => {
     await expect(panel.getByTestId("layer-toggle-public_crown")).toHaveCount(0);
     await expect(panel.getByTestId("layer-public-land")).toHaveCount(0);
 
-    // Catalog panel precedes the charge controls
-    const catalogBeforeCharge = await panel.evaluate((el) => {
-      const catalog = el.querySelector("[data-testid='layers-panel']");
-      const labels = Array.from(el.querySelectorAll(".layer-select-label"));
-      const charge = labels.find((node) =>
-        node.textContent?.includes("The charge"),
-      );
-      if (!catalog || !charge) return false;
-      return Boolean(
-        catalog.compareDocumentPosition(charge) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      );
-    });
-    expect(catalogBeforeCharge).toBe(true);
+    // Public shell withholds council AGR charge / rent £/m² controls
+    await expect(panel.getByTestId("public-agr-withheld")).toBeVisible();
+    await expect(panel.getByText("The charge")).toHaveCount(0);
+    await expect(panel.getByText("Rent per square metre")).toHaveCount(0);
 
     await expect(panel.getByText(/Registers of Scotland/i).first()).toBeVisible();
   });

@@ -947,7 +947,7 @@ def test_frontend_has_no_public_tax_scenario_panel():
     wealth_api = (FRONTEND_ROOT / "lib" / "useWealthApi.ts").read_text(encoding="utf-8")
     assert "/georgist/tax-scenario" not in wealth_api
     assert "fetchTaxScenario" not in wealth_api
-    # Internal-only panel (gated like ledger-panel; not under app/internal/ — public repo).
+    # Internal-only panel (gated like ledger-panel).
     panel_page = FRONTEND_ROOT / "app" / "tax-scenario-panel" / "page.tsx"
     assert panel_page.exists()
     text = panel_page.read_text(encoding="utf-8")

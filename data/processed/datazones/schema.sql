@@ -40,7 +40,7 @@ CREATE INDEX ON dz_crosswalk_people (dz2022);
 
 -- Many-to-many address-point (UPRN) crosswalk DZ2011 <-> DZ2022 (OS Open UPRN point-in-polygon)
 -- weight = share of DZ2011 UPRNs in DZ2022; sums to 1 per DZ2011. hh2022_share may be NULL (5 rows).
--- Runtime min-share filter (default ON) may drop sub-1% & <5 UPRN pairs before surface conversion.
+-- Runtime min-share filter (default ON) may drop sub-1pct and under-5 UPRN pairs before surface conversion.
 CREATE TABLE dz2011_dz2022_uprn_weights (
     dz2011          char(9) NOT NULL CHECK (dz2011 BETWEEN 'S01006506' AND 'S01013481'),
     dz2022          char(9) NOT NULL CHECK (dz2022 BETWEEN 'S01013482' AND 'S01020873'),

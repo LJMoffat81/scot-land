@@ -123,6 +123,19 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     "/layers/parcels/at": LayerRule("parcel", "zone", "none", note="plain parcel shape under a point"),
     "/layers/parcels/tiles/{z}/{x}/{y}.png": LayerRule("parcel", "zone", "none", note="plain parcel shapes"),
     "/layers/parcels/tiles/{z}/{x}/{y}": LayerRule("parcel", "zone", "none", note="plain parcel shapes"),
+    # NRS Census 2022 Settlements / Localities (always mounted): place polygons, no rent.
+    "/layers/open/settlements": LayerRule(
+        "site", "site", "none", note="NRS Census 2022 settlement polygons (OGL); no rent",
+    ),
+    "/layers/open/localities": LayerRule(
+        "site", "site", "none", note="NRS Census 2022 locality polygons (OGL); no rent",
+    ),
+    "/layers/open/settlements/at": LayerRule(
+        "site", "site", "none", note="settlement containing a point; no rent",
+    ),
+    "/layers/open/localities/at": LayerRule(
+        "site", "site", "none", note="locality containing a point; no rent",
+    ),
     # Open-land platform router (mounted when imports + declarations succeed).
     "/layers/open/vdl": LayerRule("site", "site", "none", note="vacant/derelict survey polygons; no rent"),
     "/layers/open/hla": LayerRule(

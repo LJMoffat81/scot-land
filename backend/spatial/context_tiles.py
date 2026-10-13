@@ -207,6 +207,14 @@ RASTER: dict[str, RasterSpec] = {
         6,
         18,
     ),
+    "localities": RasterSpec(
+        "localities",
+        "export",
+        "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer/export",
+        "6",
+        7,
+        18,
+    ),
     # 2011 zones, the geography of the house-sale table already in the repo.
     # Outline only. Hidden until zoom 11 so the opening council colour stays clear.
     "data-zones": RasterSpec(

@@ -68,9 +68,15 @@ After stamping, future revisions (`alembic revision` + `upgrade`) apply normally
 - Crofting Commission tables (`croft_parishes`, `croft_holdings`,
   `common_grazings`) are in `013_crofting.sql` plus Alembic revision
   `20261012_0010` (`down_revision` = `20261012_0005`). Numbering skips
-  `009`/`0006` (open PR #24 NRS), `010`/`0007` (open PR #29 NFI/Native
-  Woodland), `011`/`0008` (open PR #32 REPD/CES leases), and `012`/`0009`
-  (open PR #33 Common Good). Load with
+  `009`/`0006`–`012`/`0009` (open tips #29 NFI/Native Woodland, #32
+  REPD/CES leases, #33 Common Good). Load with
   `python -m etl.ingest_crofting --download` (raw CSVs under gitignored
   `data/external/crofting/`). OGL lists only — no boundaries; never ingest
   List of Individuals.
+- Community ownership assets are in `014_community_ownership.sql` plus
+  Alembic revision `20261012_0011` (`down_revision` = `20261012_0010`).
+- `nrs_settlements` / `nrs_localities` (NRS Census 2022, OGL) are in
+  `015_nrs_settlements_localities.sql` and Alembic revision `20261012_0012`
+  (`down_revision` = `20261012_0011`). Ingest:
+  `python -m etl.ingest_nrs_settlements --fetch` (see
+  `scripts/data/README-nrs-settlements.md`).

@@ -90,6 +90,18 @@ export const LAYER_ATTRIBUTION: Record<
     sourceUrl:
       "https://www.spatialdata.gov.scot/geonetwork/srv/eng/catalog.search#/metadata/7d564e13-a967-495a-ae2f-048ffdfa4b03",
   },
+  settlements: {
+    source: "National Records of Scotland — Census 2022 Settlements",
+    licence: "OGL-3.0",
+    sourceUrl:
+      "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer",
+  },
+  localities: {
+    source: "National Records of Scotland — Census 2022 Localities",
+    licence: "OGL-3.0",
+    sourceUrl:
+      "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer",
+  },
   vdl: {
     source: "Scottish Vacant and Derelict Land Survey",
     licence: "OGL-3.0",

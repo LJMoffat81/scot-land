@@ -157,6 +157,54 @@ def platform_catalog() -> dict[str, Any]:
                 ),
             },
             {
+                "id": "settlements",
+                "group": "spatial",
+                "status": "live",
+                "label": "NRS Settlements",
+                "description": (
+                    "Census 2022 settlements (places of 500 people or more). "
+                    "PostGIS bbox (503 when unloaded). Ledger frame for surface site rent "
+                    "(row 1 zone/settlement grain) — not a LayersPanel toggle, not a title."
+                ),
+                "endpoint": "/layers/open/settlements",
+                "licence": "OGL-3.0",
+                "licence_url": (
+                    "https://www.nationalarchives.gov.uk/doc/"
+                    "open-government-licence/version/3/"
+                ),
+                "minzoom": 6,
+                "source_url": (
+                    "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer"
+                ),
+                "ledger_role": "ledger-frame",
+                "ledger_row": "1",
+                "ui_surface": "ledger",
+            },
+            {
+                "id": "localities",
+                "group": "spatial",
+                "status": "live",
+                "label": "NRS Localities",
+                "description": (
+                    "Census 2022 localities (built-up localities). "
+                    "PostGIS bbox (503 when unloaded). Ledger frame for surface site rent "
+                    "(row 1) — not a LayersPanel toggle, not ownership."
+                ),
+                "endpoint": "/layers/open/localities",
+                "licence": "OGL-3.0",
+                "licence_url": (
+                    "https://www.nationalarchives.gov.uk/doc/"
+                    "open-government-licence/version/3/"
+                ),
+                "minzoom": 7,
+                "source_url": (
+                    "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer"
+                ),
+                "ledger_role": "ledger-frame",
+                "ledger_row": "1",
+                "ui_surface": "ledger",
+            },
+            {
                 "id": "vdl",
                 "group": "spatial",
                 "status": "live",

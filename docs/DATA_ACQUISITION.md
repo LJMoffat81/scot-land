@@ -257,11 +257,12 @@ Registry: `data/config/sources.yaml` → `hla`.
 | Licence | OGL v3.0 |
 | Attribution | © SEPA 2025; see SEPA flood map attribution statements |
 | Download | https://www2.sepa.org.uk/flooddata/ (**only** ingest source — never MapServer/viewer) |
+| Release notes / vintage | https://www.sepa.org.uk/media/htpldzvk/flood-map-version-3_0-release-notes.pdf — **2025-02-25** (not a 2025-01-01 placeholder) |
 | Licence URL | https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ |
 | BBox API | `GET /layers/open/flood` (PostGIS when ingested; **503** when unloaded) |
-| Ingest | `python -m etl.ingest_sepa_flood --input ../data/external/sepa/...geojson --replace` |
+| Ingest | `python -m etl.ingest_sepa_flood --from-gdb --replace --check-counts` (FileGDB → GeoJSON ~2 m simplify, keep polygons; or `--input …geojson`) |
 
-Registry: `data/config/sources.yaml` → `flood`. Raw geodatabases stay under gitignored `data/external/sepa/`.
+Registry: `data/config/sources.yaml` → `flood`. Raw geodatabases stay under gitignored `data/external/sepa/`. Refresh: [scripts/data/README-sepa.md](../scripts/data/README-sepa.md).
 
 ## NatureScot SSSI and designations (OGL-3.0)
 
@@ -292,9 +293,10 @@ Registry: `data/config/sources.yaml` → `naturescot_sssi` and `naturescot_desig
 | OGC | NatureScot `scottishforestry` WFS/WMS | NatureScot `scottishforestry` WFS/WMS |
 | PostGIS | `nfi_woodland` | `native_woodland` |
 | BBox API | `GET /layers/open/nfi` → **503** when unloaded | `GET /layers/open/native-woodland` → **503** when unloaded |
-| Ingest | `python -m etl.ingest_woodland_layers --layer nfi` | `python -m etl.ingest_woodland_layers --layer native_woodland` |
+| Ingest | `python -m etl.ingest_woodland_layers --layer nfi --from-wfs --replace --check-counts` | `python -m etl.ingest_woodland_layers --layer native_woodland --from-wfs --replace --check-counts` |
+| Baseline rows (#57) | 207,640 (±0.1%) | 95,814 (±0.1%) |
 
-Refresh: [scripts/data/README-woodland.md](../scripts/data/README-woodland.md). Registry: `data/config/sources.yaml` → `nfi` and `native_woodland`. Land-use context only — never presented as AGR or Surface Rent.
+WFS conversion (paged GeoJSON, keep polygons from mixed geometries) lives in the loader. Refresh: [scripts/data/README-woodland.md](../scripts/data/README-woodland.md). Registry: `data/config/sources.yaml` → `nfi` and `native_woodland`. Land-use context only — never presented as AGR or Surface Rent.
 
 ## Land Capability for Agriculture (James Hutton LCA 1:250k)
 

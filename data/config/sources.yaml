@@ -459,7 +459,8 @@ flood:
   source_url: https://www2.sepa.org.uk/flooddata/
   attribution_url: >-
     https://www.sepa.org.uk/media/5zidnja5/sepa_flood_maps_data_attribution_statements.pdf
-  vintage: "v3.0 (revision 2025-02-25)"
+  vintage: "v3.0 (revision 2025-02-25)"  # SEPA Flood Map Version 3.0 Release Notes date — not 2025-01-01
+  release_notes_url: https://www.sepa.org.uk/media/htpldzvk/flood-map-version-3_0-release-notes.pdf
   bbox_endpoint: /layers/open/flood
   default_layers:
     - id: 1
@@ -467,7 +468,12 @@ flood:
     - id: 7
       name: Coastal Flooding Medium Likelihood
   ingest_module: backend/etl/ingest_sepa_flood.py
+  ingest: python -m etl.ingest_sepa_flood --from-gdb --replace --check-counts
+  refresh_doc: scripts/data/README-sepa.md
   postgis_table: sepa_flood
+  expected_rows:
+    river: 47093
+    coastal: 16
   gaps:
     - Surface-water and climate-change scenarios not in the default constraint paint
     - Extents are indicative — not a property-level flood quote
@@ -921,9 +927,10 @@ nfi:
   vintage: NFI Scotland open product (see data.gov.uk year)
   postgis_table: nfi_woodland
   bbox_endpoint: /layers/open/nfi
-  ingest: python -m etl.ingest_woodland_layers --layer nfi
+  ingest: python -m etl.ingest_woodland_layers --layer nfi --from-wfs --replace --check-counts
   refresh_doc: scripts/data/README-woodland.md
   raw_dir: data/external/woodland
+  expected_rows: 207640
   gaps:
     - Woodland ≥ 0.5 ha inventory polygons — ledger row 1 land-use, not a rent
     - Full national extract is large; map serves PostGIS bbox after local ingest
@@ -953,9 +960,10 @@ native_woodland:
   vintage: NWSS national survey (see data.gov.uk / Scottish Forestry Open Data)
   postgis_table: native_woodland
   bbox_endpoint: /layers/open/native-woodland
-  ingest: python -m etl.ingest_woodland_layers --layer native_woodland
+  ingest: python -m etl.ingest_woodland_layers --layer native_woodland --from-wfs --replace --check-counts
   refresh_doc: scripts/data/README-woodland.md
   raw_dir: data/external/woodland
+  expected_rows: 95814
   gaps:
     - Survey polygons and habitat attributes — ledger row 1 land-use, not a title or rent
     - Full national extract is large; map serves PostGIS bbox after local ingest

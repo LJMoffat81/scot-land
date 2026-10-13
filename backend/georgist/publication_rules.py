@@ -148,6 +148,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="SEPA flood hazard extents (OGL); no rent",
     ),
+    "/layers/open/scotwind-intog": LayerRule(
+        "site",
+        "site",
+        "none",
+        note="CES ScotWind/INTOG option polygons; ledger row 4; no rent; fees absent from open attributes",
+    ),
     "/layers/open/data-zones": LayerRule(
         "zone", "zone", "none", note="Data Zone outlines by bbox; code/name only, no rent"
     ),

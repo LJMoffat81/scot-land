@@ -67,6 +67,7 @@ Public methodology and README must list active data sources. See `data/config/so
 | Cadastral parcels | Registers of Scotland INSPIRE Index Polygons | OGL-3.0 — cite RoS; raw extracts stay in `data/external/`; CI uses a synthetic fixture only |
 | Public land | Scottish Government Public and Crown Estate Land 2024 | unverified/not open — dashboard only; hidden from the public map until an OGL source is confirmed |
 | Settlements / localities | NRS Census 2022 (`CEN2022:Settlement2022`, `CEN2022:Locality2022`) | OGL-3.0 — cite NRS; contains OS data © Crown copyright |
+| ScotWind / INTOG options | Crown Estate Scotland Spatial Hub (ScotWind Offers + INTOG Application Areas) | **OGL-3.0** (GIS GO 2026-10-12). Credit: *Contains information from the Crown Estate Scotland licensed under the Open Government Licence v3.0*. `publication_status=ok`. Polygons only; option-fee £ HOLD in `data/config/scotwind_option_fees.yaml` (press release) — not layer attributes. Ledger row 4; overlay does not add to surface rent |
 | Vacant & derelict | SVDLS site register + Spatial Hub VDL polygons | OGL-3.0 — cite Scottish Government and Improvement Service / local planning authorities; survey sites, not a title |
 | Hydropower sites | SEPA Hydropower Sites (ATOM shapefile) | OGL-3.0 — cite SEPA; CAR hydropower abstractions; value_tier=proxy; no £ rent |
 | SEPA CAR licences | SEPA Open/SEPA_Reference MapServer 194/195 → PostGIS | OGL-3.0 — cite SEPA (confirmed on Environmental data); ingest-time MapServer load; **never proxied to clients**; value_tier=market; no £ rent |

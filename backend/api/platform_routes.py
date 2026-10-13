@@ -40,6 +40,8 @@ from layers.sepa_car import query_bbox as sepa_car_bbox
 from layers.naturescot import LayerUnavailable as NatureScotUnavailable
 from layers.naturescot import query_designations_bbox as naturescot_designations_bbox
 from layers.naturescot import query_sssi_bbox as sssi_bbox
+from layers.scotwind import LayerUnavailable as ScotwindUnavailable
+from layers.scotwind import query_bbox as scotwind_bbox
 from layers.vdl import query_bbox as vdl_bbox
 from layers.community_ownership import LayerUnavailable as CommunityOwnershipUnavailable
 from layers.community_ownership import query_bbox as community_ownership_bbox
@@ -141,6 +143,43 @@ def layer_open_public_land(
             ),
         )
     return JSONResponse(payload)
+
+
+def _scottish_waters_bounds_check(lat: float, lng: float) -> None:
+    """BBox centres for ScotWind/INTOG may sit east of mainland Scotland."""
+    if lat < 54.0 or lat > 62.0 or lng < -9.5 or lng > 2.0:
+        raise HTTPException(
+            status_code=400,
+            detail="Coordinates appear to be outside Scottish waters.",
+        )
+
+
+@router.get("/layers/open/scotwind-intog")
+def layer_open_scotwind_intog(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=80, ge=1, le=80),
+) -> JSONResponse:
+    """ScotWind / INTOG option polygons from PostGIS (CES Spatial Hub ingest).
+
+    Geometry + award descriptors only. **No surface rent / la-calc £.** Option-fee
+    £ are HOLD (``data/config/scotwind_option_fees.yaml``) — not layer attributes.
+    Returns **503** when ``ces_scotwind_intog`` is missing or empty.
+    """
+    _scottish_waters_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    if south >= north or west >= east:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid bbox: require south < north and west < east",
+        )
+    try:
+        return JSONResponse(
+            scotwind_bbox(south, west, north, east, max_features=max_features)
+        )
+    except ScotwindUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.get("/layers/open/data-zones")
@@ -935,6 +974,29 @@ def open_downloads() -> dict:
                 "note": (
                     "PostGIS Index Polygons ingest. 503 when table empty; "
                     "CI may load a synthetic fixture only."
+                ),
+            },
+            {
+                "id": "scotwind_intog",
+                "label": "ScotWind / INTOG option polygons (this API)",
+                "licence": "OGL-3.0",
+                "licence_url": (
+                    "https://www.nationalarchives.gov.uk/doc/"
+                    "open-government-licence/version/3/"
+                ),
+                "attribution": (
+                    "Contains information from the Crown Estate Scotland licensed "
+                    "under the Open Government Licence v3.0"
+                ),
+                "endpoint": "/layers/open/scotwind-intog",
+                "url": (
+                    "https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/"
+                    "datasets/coregis::scotwind-offers-crown-estate-scotland/about"
+                ),
+                "note": (
+                    "PostGIS ingest of CES ScotWind Offers + INTOG Application Areas. "
+                    "Polygons only. Option-fee £ HOLD in data/config/scotwind_option_fees.yaml. "
+                    "Does not add to surface rent."
                 ),
             },
             {

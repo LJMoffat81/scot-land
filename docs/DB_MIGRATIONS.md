@@ -88,3 +88,4 @@ After stamping, future revisions (`alembic revision` + `upgrade`) apply normally
   (`down_revision` = `20261012_0013`).
   Ingest: `python -m etl.ingest_repd` / `python -m etl.ingest_crown_estate_leases`.
 - `lca_agriculture` (James Hutton LCA 1:250k) is in `018_lca_agriculture.sql` plus Alembic revision `20261012_0015` (`down_revision` = `20261012_0014`). Hutton Open Data Licence (not OGL). Ingest: `python -m etl.ingest_lca` (see `scripts/data/README-lca.md`). Ledger constraint — £0, not a rent.
+- `ces_scotwind_intog` (CES Spatial Hub ScotWind Offers + INTOG Application Areas, OGL) is in `019_ces_scotwind_intog.sql` plus Alembic revision `20261012_0016` (`down_revision` = `20261012_0015`). Credit: Contains information from the Crown Estate Scotland licensed under the Open Government Licence v3.0. Polygons only; fees HOLD off-layer. Ingest: `python -m etl.ingest_scotwind_intog --from-api`. Ledger row 4 — no £ rent.

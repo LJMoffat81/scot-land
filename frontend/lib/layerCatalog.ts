@@ -211,6 +211,12 @@ export const LAYER_ATTRIBUTION: Record<
     sourceUrl:
       "https://www.hutton.ac.uk/sites/default/files/files/soils/downloads/Hutton_LCA250K_OpenData.zip",
   },
+  scotwind_intog: {
+    source: "Crown Estate Scotland ScotWind / INTOG option areas",
+    licence: "OGL-3.0",
+    sourceUrl:
+      "https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/datasets/coregis::scotwind-offers-crown-estate-scotland/about",
+  },
   la_holdings: {
     source: "Spatial Hub — Land Ownership Scotland",
     licence: "Not openly licensed for this portal",

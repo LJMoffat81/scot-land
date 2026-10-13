@@ -10,9 +10,9 @@ export const metadata: Metadata = {
 /**
  * Internal blocked page — structure only. No hard-coded demo £ amounts.
  * Live figures come from the internal API when Valuation unblocks.
- * Route is gated by app/internal/layout.tsx (NEXT_PUBLIC_ENABLE_INTERNAL_UI=1).
+ * Route is gated by layout.tsx (NEXT_PUBLIC_ENABLE_INTERNAL_UI=1).
  */
-export default function InternalTaxScenarioPage() {
+export default function TaxScenarioPanelPage() {
   return (
     <main style={{ maxWidth: 720, margin: "2rem auto", padding: "0 1rem" }}>
       <h1>Scot-LAND</h1>

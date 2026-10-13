@@ -671,31 +671,35 @@ def test_frontend_has_no_public_tax_scenario_panel():
     wealth_api = (FRONTEND_ROOT / "lib" / "useWealthApi.ts").read_text(encoding="utf-8")
     assert "/georgist/tax-scenario" not in wealth_api
     assert "fetchTaxScenario" not in wealth_api
-    # Internal-only page may exist; must stay under /internal and say blocked.
-    internal_page = FRONTEND_ROOT / "app" / "internal" / "tax-scenario" / "page.tsx"
-    assert internal_page.exists()
-    text = internal_page.read_text(encoding="utf-8")
+    # Internal-only panel (gated like ledger-panel; not under app/internal/ — public repo).
+    panel_page = FRONTEND_ROOT / "app" / "tax-scenario-panel" / "page.tsx"
+    assert panel_page.exists()
+    text = panel_page.read_text(encoding="utf-8")
     assert "blocked" in text.lower()
     assert "approved defaults (v0.1, oct 2026)" in text.lower()
     view = (FRONTEND_ROOT / "components" / "InternalTaxScenarioView.tsx").read_text(encoding="utf-8")
     assert "ConfidenceTag" in view
     assert "confidence-tag" in view or 'data-testid="confidence-tag"' in view or "ConfidenceTag" in view
+    # No tracked frontend path may use an internal/ folder (publishability).
+    assert not (FRONTEND_ROOT / "app" / "internal").exists()
 
 
 def test_internal_frontend_gated_and_no_hardcoded_demo_gbp():
-    """BLOCKS DEPLOY: /internal/* gated; tax-scenario page must not hard-code demo £."""
-    layout = FRONTEND_ROOT / "app" / "internal" / "layout.tsx"
+    """BLOCKS DEPLOY: tax-scenario panel gated; must not hard-code demo £."""
+    layout = FRONTEND_ROOT / "app" / "tax-scenario-panel" / "layout.tsx"
     assert layout.exists()
     layout_text = layout.read_text(encoding="utf-8")
     assert "internalUiEnabled" in layout_text
     assert "notFound" in layout_text
 
-    page = (FRONTEND_ROOT / "app" / "internal" / "tax-scenario" / "page.tsx").read_text(encoding="utf-8")
+    page = (FRONTEND_ROOT / "app" / "tax-scenario-panel" / "page.tsx").read_text(encoding="utf-8")
     for banned in ("8860", "10000", "10022", "17720", "20000", "20045", "4430", "5000", "5011"):
-        assert banned not in page, f"hard-coded demo amount {banned} must not appear on /internal/tax-scenario"
+        assert banned not in page, f"hard-coded demo amount {banned} must not appear on /tax-scenario-panel"
     assert "DEMO_ZONES" not in page
     assert "measured_rent_gbp" not in page  # no inline demo triples
-    # Public site cannot reach /internal without the flag (gate is the layout).
+    # Public site cannot reach the panel without the flag (gate is the layout).
     ui = (FRONTEND_ROOT / "lib" / "internalUi.ts").read_text(encoding="utf-8")
     assert "NEXT_PUBLIC_ENABLE_INTERNAL_UI" in ui
     assert "=== \"1\"" in ui or "=== '1'" in ui
+    # Publishability: no tracked file under an internal/ folder.
+    assert not (FRONTEND_ROOT / "app" / "internal").exists()

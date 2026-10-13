@@ -54,7 +54,11 @@ def test_catalog_lists_nfi_and_native_woodland_live_with_source_and_licence():
         assert row["status"] == "live"
         assert row["endpoint"] == endpoint
         assert "Open Government Licence" in (row.get("licence") or "")
+        assert row.get("licence_url", "").endswith("/open-government-licence/version/3/")
         assert row.get("source_url", "").startswith("https://www.data.gov.uk/")
+        assert row.get("ledger_role") == "ledger-row"
+        assert row.get("ledger_row") == "1"
+        assert row.get("ui_surface") == "ledger"
 
 
 def test_nfi_503_when_not_loaded(client, monkeypatch):

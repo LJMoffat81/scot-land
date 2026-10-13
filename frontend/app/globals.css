@@ -1169,7 +1169,152 @@ button.primary:disabled {
   border-bottom: 1px solid color-mix(in srgb, var(--slrg-navy) 12%, transparent);
 }
 
-/* LayersPanel: standalone preview page + embedded in w3w shell tools */
+/* LedgerPanel: standalone preview + map HUD (replaces layers pop-out) */
+.ledger-panel-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 1.25rem 1rem 2.5rem;
+  background:
+    radial-gradient(ellipse 80% 50% at 10% 0%, rgba(0, 118, 211, 0.08), transparent 55%),
+    linear-gradient(180deg, #e8eef4 0%, var(--slrg-bg) 40%, #eef2f6 100%);
+}
+
+.ledger-panel-page-inner {
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+.ledger-panel-page-brand {
+  margin: 0 0 0.35rem;
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--rugby-navy);
+}
+
+.ledger-panel-page-lead {
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--slrg-muted);
+}
+
+.ledger-panel {
+  background: var(--slrg-panel);
+  border: 1px solid color-mix(in srgb, var(--slrg-navy) 12%, transparent);
+  border-radius: var(--hud-radius);
+  box-shadow: var(--hud-shadow);
+  padding: 1rem 1.05rem 1.15rem;
+  max-height: min(85dvh, 44rem);
+  overflow: auto;
+}
+
+.hud-tools .ledger-panel,
+.ledger-panel-in-shell {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+.ledger-panel-group {
+  margin-top: 0.55rem;
+}
+
+.ledger-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.ledger-panel-row {
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--slrg-navy) 8%, transparent);
+}
+
+.ledger-panel-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.ledger-panel-row-nested {
+  margin-left: 1rem;
+  padding-left: 0.35rem;
+  border-left: 2px solid color-mix(in srgb, var(--slrg-navy) 18%, transparent);
+}
+
+.ledger-panel-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.ledger-row-id {
+  display: inline-block;
+  min-width: 1.4rem;
+  margin-right: 0.35rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.ledger-panel-tag,
+.ledger-panel-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: #eef1f4;
+  color: var(--slrg-muted);
+}
+
+.ledger-panel-tag.tone-shadow,
+.ledger-panel-status.tone-not_yet {
+  background: #eef1f4;
+  color: var(--slrg-muted);
+}
+
+.ledger-panel-tag.tone-market,
+.ledger-panel-tag.tone-proxy,
+.ledger-panel-tag.tone-market_or_proxy,
+.ledger-panel-status.tone-partial,
+.ledger-panel-status.tone-counted {
+  background: color-mix(in srgb, var(--rugby-sky) 18%, white);
+  color: var(--rugby-navy);
+}
+
+.ledger-panel-status.tone-excluded,
+.ledger-panel-status.tone-constraint {
+  background: color-mix(in srgb, var(--danger) 10%, white);
+  color: var(--danger);
+}
+
+.ledger-panel-amount {
+  margin-left: auto;
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--slrg-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ledger-panel-note {
+  margin: 0.25rem 0 0;
+  font-size: 0.72rem;
+  color: var(--slrg-muted);
+}
+
+.ledger-constraints .layer-select-label {
+  margin-bottom: 0.15rem;
+}
+
+/* LayersPanel: standalone preview page (Dev/QA — not the public ledger) */
 .layers-panel-page {
   min-height: 100vh;
   min-height: 100dvh;

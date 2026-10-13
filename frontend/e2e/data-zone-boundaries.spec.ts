@@ -83,7 +83,7 @@ async function mockDzRoutes(page: Page) {
 test.describe("Data Zone boundaries layer", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("toggle in layers panel; place card shows zone identity without £", async ({
+  test("place card shows zone identity without £; HUD is ledger not GIS checklist", async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -91,22 +91,11 @@ test.describe("Data Zone boundaries layer", () => {
     await page.goto("/?lat=55.8609&lng=-4.2514");
     await page.locator(".maplibregl-canvas").waitFor();
 
-    await page.getByRole("button", { name: "Layers", exact: true }).click();
+    await page.getByRole("button", { name: "Ledger", exact: true }).click();
     const panel = page.locator("aside.hud-tools");
     await expect(panel).toBeVisible();
-    const toggle = panel.getByTestId("layer-data-zones");
-    await expect(toggle).toBeVisible();
-    await expect(toggle).toHaveText(/Data zone boundaries/i);
-    if ((await toggle.getAttribute("class"))?.includes("active") !== true) {
-      await toggle.click();
-    }
-    await expect(toggle).toHaveClass(/active/);
-    await expect(panel.getByTestId("layer-data-zones-credit")).toContainText(
-      /Boundaries only|no Annual Ground Rent/i,
-    );
-    await expect(panel.getByTestId("layer-data-zones-credit")).not.toContainText(
-      /£\d/,
-    );
+    await expect(panel.getByTestId("ledger-panel")).toBeVisible();
+    await expect(panel.getByTestId("layer-data-zones")).toHaveCount(0);
 
     // URL-driven inspect + mocked /at → place card with code/name (no £).
     const card = page.locator("aside.place-card-stub");
@@ -114,8 +103,8 @@ test.describe("Data Zone boundaries layer", () => {
     await expect(card.getByTestId("place-data-zone")).toContainText(/S01009859|Ibrox/i);
     await expect(card.getByText(/£\d/)).toHaveCount(0);
 
-    // Click on fixture polygon should keep zone card (and may add rollups).
-    await page.getByRole("button", { name: "Layers", exact: true }).click();
+    // Close ledger; click map should keep zone card (and may add rollups).
+    await page.getByRole("button", { name: "Ledger", exact: true }).click();
     await page.waitForTimeout(800);
     await page.locator("#map").click({ position: { x: 720, y: 420 } });
     await expect(card.getByTestId("place-data-zone")).toContainText(/S01009859|Ibrox/i, {

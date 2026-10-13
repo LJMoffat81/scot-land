@@ -14,7 +14,7 @@ import {
   type ScenarioId,
 } from "./AgrBreakdown";
 import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
-import LayersPanel, { type LayerToggleState } from "./LayersPanel";
+import LedgerPanel from "./LedgerPanel";
 import {
   ApiError,
   SERVICE_BUSY,
@@ -29,6 +29,7 @@ import {
   visitorFacingError,
 } from "../lib/api";
 import { CONTEXT_LAYERS } from "../lib/contextLayers";
+import type { LedgerToggleState } from "../lib/ledger";
 
 type ParcelFeature = GeoJSON.Feature<
   GeoJSON.Polygon | GeoJSON.MultiPolygon,
@@ -499,43 +500,18 @@ export default function ScotlandMap() {
   // SG 2024 public/Crown dashboard: licence unverified/not open — never paint
   const showPublicLand = false;
   const [showDataZones, setShowDataZones] = useState(false);
-  /** Catalog toggles for withheld public layers (honest unavailable; no map paint). */
-  const [withheldCatalogOn, setWithheldCatalogOn] = useState<LayerToggleState>(
-    {},
-  );
+  /** Ledger row + constraint toggles (paint where the rent class / constraint applies). */
+  const [ledgerEnabled, setLedgerEnabled] = useState<LedgerToggleState>({});
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
   const dataZonesTouched = useRef(false);
   const boundariesTouched = useRef(false);
   const layerPopupRef = useRef<maplibregl.Popup | null>(null);
   const dzHoverPopupRef = useRef<maplibregl.Popup | null>(null);
 
-  const catalogLayerEnabled: LayerToggleState = {
-    ...withheldCatalogOn,
-    boundaries: showBoundaries,
-    public_crown: showPublicLand,
-    vdl: showVdl,
-    data_zones: showDataZones,
-    // cell_grid stays internal (showCellGrid is fixed off on the public shell).
-    cell_grid: Boolean(withheldCatalogOn.cell_grid),
-  };
-
-  const onCatalogLayerEnabledChange = (next: LayerToggleState) => {
-    if (Boolean(next.boundaries) !== showBoundaries) {
-      boundariesTouched.current = true;
-      setShowBoundaries(Boolean(next.boundaries));
-    }
-    // public_crown is gap (unverified/not open) — never enable from catalog toggles
-    if (Boolean(next.vdl) !== showVdl) {
-      setShowVdl(Boolean(next.vdl));
-    }
-    if (Boolean(next.data_zones) !== showDataZones) {
-      dataZonesTouched.current = true;
-      setShowDataZones(Boolean(next.data_zones));
-    }
-    setWithheldCatalogOn({
-      agr_value: Boolean(next.agr_value),
-      cell_grid: Boolean(next.cell_grid),
-    });
+  const onLedgerEnabledChange = (next: LedgerToggleState) => {
+    setLedgerEnabled(next);
+    // Constraint flood paints the existing flood context overlay when available.
+    setContextOn((cur) => ({ ...cur, flood: Boolean(next.flood) }));
   };
 
   // Public place card (stub). Modelled AGR £ / Wealth / tax stay off the public shell.
@@ -2416,8 +2392,9 @@ export default function ScotlandMap() {
           className={toolsOpen ? "hud-layers-btn on" : "hud-layers-btn"}
           aria-pressed={toolsOpen}
           onClick={() => setToolsOpen((v) => !v)}
+          data-testid="hud-ledger-btn"
         >
-          Layers
+          Ledger
         </button>
         <button
           type="button"
@@ -2610,174 +2587,29 @@ export default function ScotlandMap() {
       )}
 
       {toolsOpen && (
-      <aside className="hud-card hud-tools" aria-label="Map layers">
-        <div className="layer-panel">
-              <LayersPanel
-                className="layers-panel-in-shell"
-                enabled={catalogLayerEnabled}
-                onEnabledChange={onCatalogLayerEnabledChange}
-              />
-
-              <section
-                className="layer-ownership-legends"
-                aria-label="Active layer legends"
-              >
-                {showDataZones && (
-                  <p className="layer-meta" data-testid="layer-data-zones-credit">
-                    Scottish Government Data Zone boundaries 2011 (OGL). Hover
-                    or click for code and name. Boundaries only — no Annual
-                    Ground Rent. Zoom {DATA_ZONE_MIN_ZOOM}+.
-                  </p>
-                )}
-                {showBoundaries && (
-                  <p className="layer-meta" data-testid="layer-cadastral-credit">
-                    © Crown copyright. Reproduced with the permission of Registers
-                    of Scotland. Contains OS data. OGL-3.0. Registered extents only
-                    — not a title sheet. PostGIS bbox when loaded; live WMS tiles
-                    otherwise. Zoom {CADASTRAL_MIN_ZOOM}+.
-                  </p>
-                )}
-                {showVdl && (
-                  <>
-                    <ul className="layer-legend" aria-label="Vacant and derelict legend">
-                      {VDL_SITE_TYPES.map((site) => (
-                        <li key={site.name}>
-                          <span
-                            className="layer-legend-swatch"
-                            style={{ background: site.color }}
-                            aria-hidden="true"
-                          />
-                          {site.name}
-                        </li>
-                      ))}
-                    </ul>
-                    <p className="layer-meta">
-                      Scottish Vacant and Derelict Land Survey. Site-level as
-                      published (OGL v3.0). Contains data from Improvement
-                      Service under OGL, supplied by Scotland&apos;s local
-                      planning authorities and Loch Lomond &amp; The Trossachs
-                      National Park Authority. © Scottish Government. Survey
-                      polygons, not a title. Owner class is a survey field.
-                      Zoom {VDL_MIN_ZOOM}+.
-                    </p>
-                  </>
-                )}
-                {layerNotice && <p className="layer-meta">{layerNotice}</p>}
-              </section>
-
-              <p className="layer-meta" data-testid="public-agr-withheld">
-                Modelled Annual Ground Rent (including council-area charges and
-                rent per square metre) is not shown on the public map. AGR £
-                stays internal at Data Zone band level until yield calibration.
+        <aside className="hud-card hud-tools" aria-label="Natural capital ledger">
+          <div className="layer-panel">
+            <LedgerPanel
+              className="ledger-panel-in-shell"
+              enabled={ledgerEnabled}
+              onEnabledChange={onLedgerEnabledChange}
+            />
+            <p className="layer-meta" data-testid="public-agr-withheld">
+              Modelled Annual Ground Rent (including council-area charges and
+              rent per square metre) is not shown on the public map. AGR £
+              stays internal at Data Zone band level until yield calibration.
+              Shadow ledger totals stay separate and are never summed into the
+              headline.
+            </p>
+            {layerNotice && <p className="layer-meta">{layerNotice}</p>}
+            {contextNote && <p className="layer-meta">{contextNote}</p>}
+            {CONTEXT_LAYERS.filter((layer) => contextOn[layer.id]).map((layer) => (
+              <p key={layer.id} className="layer-meta">
+                {layer.attribution}
               </p>
-
-              <label className="layer-select-label">The piece of land</label>
-              <div className="layer-chips">
-                <button
-                  type="button"
-                  className={showBoundaries ? "chip active" : "chip"}
-                  onClick={() => {
-                    boundariesTouched.current = true;
-                    setShowBoundaries((v) => !v);
-                  }}
-                  title="RoS INSPIRE cadastral parcels (OGL-3.0). On by default from street zoom."
-                >
-                  Register outlines
-                </button>
-                {["urban-rural"].map((id) => {
-                  const layer = CONTEXT_LAYERS.find((item) => item.id === id);
-                  if (!layer) return null;
-                  return (
-                    <button
-                      key={layer.id}
-                      type="button"
-                      className={contextOn[layer.id] ? "chip active" : "chip"}
-                      title={layer.title}
-                      onClick={() =>
-                        setContextOn((cur) => ({ ...cur, [layer.id]: !cur[layer.id] }))
-                      }
-                    >
-                      Town or countryside
-                    </button>
-                  );
-                })}
-              </div>
-
-              <details className="layer-fold">
-                <summary>Around the land</summary>
-                <p className="layer-meta">Context layers only.</p>
-                <div className="layer-chips">
-                  {["settlements", "woodland"].map((id) => {
-                    const layer = CONTEXT_LAYERS.find((item) => item.id === id);
-                    if (!layer) return null;
-                    return (
-                      <button
-                        key={layer.id}
-                        type="button"
-                        className={contextOn[layer.id] ? "chip active" : "chip"}
-                        title={layer.title}
-                        onClick={() =>
-                          setContextOn((cur) => ({ ...cur, [layer.id]: !cur[layer.id] }))
-                        }
-                      >
-                        {layer.label}
-                      </button>
-                    );
-                  })}
-                  {CONTEXT_LAYERS.filter((layer) => layer.id === "flood").map((layer) => (
-                    <button
-                      key={layer.id}
-                      type="button"
-                      className={contextOn[layer.id] ? "chip active" : "chip"}
-                      title={layer.title}
-                      onClick={() =>
-                        setContextOn((cur) => ({ ...cur, [layer.id]: !cur[layer.id] }))
-                      }
-                    >
-                      Flood
-                    </button>
-                  ))}
-                </div>
-              </details>
-
-              <details className="layer-fold">
-                <summary>Sea and energy</summary>
-                <p className="layer-meta">Context layers only.</p>
-                <div className="layer-chips">
-                  {CONTEXT_LAYERS.filter(
-                    (layer) => layer.group === "Sea" || layer.group === "Energy",
-                  ).map((layer) => (
-                    <button
-                      key={layer.id}
-                      type="button"
-                      className={contextOn[layer.id] ? "chip active" : "chip"}
-                      title={layer.title}
-                      onClick={() =>
-                        setContextOn((cur) => ({ ...cur, [layer.id]: !cur[layer.id] }))
-                      }
-                    >
-                      {layer.label}
-                    </button>
-                  ))}
-                </div>
-              </details>
-              {CONTEXT_LAYERS.filter((layer) => contextOn[layer.id]).map((layer) => (
-                <p key={layer.id} className="layer-meta">
-                  {layer.attribution}
-                </p>
-              ))}
-              {contextNote && <p className="layer-meta">{contextNote}</p>}
-              <p className="layer-meta">
-                Not drawn: land capability (James Hutton, all rights reserved).
-                Small-area population, jobs, and Ordnance Survey roads, rail,
-                airports and greenspace are not on this map yet. Wires, mains
-                and broadband are
-                not an open national map. Local development plan sites are not
-                on this map: the national file is for public bodies and
-                universities.
-              </p>
-            </div>
-          </aside>
+            ))}
+          </div>
+        </aside>
       )}
           {placeStub ? (
             <PlaceCardStub

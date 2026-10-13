@@ -163,8 +163,8 @@ def platform_catalog() -> dict[str, Any]:
                 "label": "NRS Settlements",
                 "description": (
                     "Census 2022 settlements (places of 500 people or more). "
-                    "PostGIS bbox (503 when unloaded); also available as a context raster. "
-                    "Used for Georgist residential-land / rural-mask context — not a title."
+                    "PostGIS bbox (503 when unloaded). Ledger frame for surface site rent "
+                    "(row 1 zone/settlement grain) — not a LayersPanel toggle, not a title."
                 ),
                 "endpoint": "/layers/open/settlements",
                 "licence": "OGL-3.0",
@@ -176,6 +176,9 @@ def platform_catalog() -> dict[str, Any]:
                 "source_url": (
                     "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer"
                 ),
+                "ledger_role": "ledger-frame",
+                "ledger_row": "1",
+                "ui_surface": "ledger",
             },
             {
                 "id": "localities",
@@ -184,7 +187,8 @@ def platform_catalog() -> dict[str, Any]:
                 "label": "NRS Localities",
                 "description": (
                     "Census 2022 localities (built-up localities). "
-                    "PostGIS bbox (503 when unloaded). Place geography only — not ownership."
+                    "PostGIS bbox (503 when unloaded). Ledger frame for surface site rent "
+                    "(row 1) — not a LayersPanel toggle, not ownership."
                 ),
                 "endpoint": "/layers/open/localities",
                 "licence": "OGL-3.0",
@@ -196,6 +200,9 @@ def platform_catalog() -> dict[str, Any]:
                 "source_url": (
                     "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer"
                 ),
+                "ledger_role": "ledger-frame",
+                "ledger_row": "1",
+                "ui_surface": "ledger",
             },
             {
                 "id": "vdl",

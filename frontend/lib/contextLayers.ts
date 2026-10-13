@@ -198,20 +198,6 @@ export const CONTEXT_LAYERS: ContextLayer[] = [
     opacity: 0.65,
   },
   {
-    id: "localities",
-    label: "Localities",
-    group: "Place",
-    kind: "raster",
-    attribution:
-      "Contains National Records of Scotland data © Crown copyright and database right. Contains Ordnance Survey data © Crown copyright and database right. OGL-3.0.",
-    title:
-      "Census 2022 localities (NRS, OGL). Built-up localities — place geography, not ownership. Contains National Records of Scotland data. Contains Ordnance Survey data © Crown copyright and database right.",
-    minzoom: 7,
-    maxzoom: 18,
-    color: "#1d4e89",
-    opacity: 0.55,
-  },
-  {
     id: "urban-rural",
     label: "Urban and rural",
     group: "Place",

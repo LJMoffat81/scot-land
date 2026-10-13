@@ -460,6 +460,9 @@ community_ownership:
 nrs_settlements_localities:
   name: NRS Census 2022 Settlements and Localities
   role: settlement_and_locality_polygons_for_map_and_valuation_mask
+  ledger_role: ledger-frame
+  ledger_row: "1"
+  ui_surface: ledger
   licence: OGL-3.0
   attribution: >-
     Contains National Records of Scotland data © Crown copyright and database

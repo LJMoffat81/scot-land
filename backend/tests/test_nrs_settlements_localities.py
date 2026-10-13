@@ -52,8 +52,13 @@ def test_catalog_lists_nrs_layers_live():
     assert layers["settlements"]["status"] == "live"
     assert layers["settlements"]["endpoint"] == "/layers/open/settlements"
     assert layers["settlements"]["licence"] == "OGL-3.0"
+    assert layers["settlements"]["ledger_role"] == "ledger-frame"
+    assert layers["settlements"]["ledger_row"] == "1"
+    assert layers["settlements"]["ui_surface"] == "ledger"
     assert layers["localities"]["status"] == "live"
     assert layers["localities"]["endpoint"] == "/layers/open/localities"
+    assert layers["localities"]["ledger_role"] == "ledger-frame"
+    assert layers["localities"]["ledger_row"] == "1"
     assert "Census2022" in (layers["settlements"].get("source_url") or "")
 
 

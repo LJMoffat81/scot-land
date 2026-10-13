@@ -45,6 +45,16 @@ services:
       - ./data:/app/data:ro
       # Machine-local datasets that are not in the repo (e.g. Data Zone boundaries), read-only.
       - ${SCOT_LAND_LOCAL_DIR:-../scot-land-local}:/app/local:ro
+      # Raw open-data downloads for the etl.ingest_* loaders (gitignored data/external/<source>/).
+      # Separate writable host folder per source; the rest of ./data stays read-only.
+      # First run: create the empty mountpoints data/external/{nrs,crofting,sepa,naturescot,woodland,spatialhub}
+      # (gitignored) and ../scot-land-downloads/<same names>, since ./data is mounted read-only.
+      - ${SCOT_LAND_DOWNLOADS_DIR:-../scot-land-downloads}/nrs:/app/data/external/nrs
+      - ${SCOT_LAND_DOWNLOADS_DIR:-../scot-land-downloads}/crofting:/app/data/external/crofting
+      - ${SCOT_LAND_DOWNLOADS_DIR:-../scot-land-downloads}/sepa:/app/data/external/sepa
+      - ${SCOT_LAND_DOWNLOADS_DIR:-../scot-land-downloads}/naturescot:/app/data/external/naturescot
+      - ${SCOT_LAND_DOWNLOADS_DIR:-../scot-land-downloads}/woodland:/app/data/external/woodland
+      - ${SCOT_LAND_DOWNLOADS_DIR:-../scot-land-downloads}/spatialhub:/app/data/external/spatialhub
     environment:
       W3W_API_KEY: ${W3W_API_KEY:-}
       ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://192.168.0.171:3000,http://100.94.77.68:3000

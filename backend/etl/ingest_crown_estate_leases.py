@@ -95,7 +95,7 @@ def _themes() -> list[dict[str, str]]:
 
 
 def _ensure_table(conn) -> None:
-    sql_path = REPO_ROOT / "backend" / "db" / "schema" / "011_open_energy_leases.sql"
+    sql_path = REPO_ROOT / "backend" / "db" / "schema" / "017_open_energy_leases.sql"
     with conn.cursor() as cur:
         cur.execute(sql_path.read_text(encoding="utf-8"))
     conn.commit()

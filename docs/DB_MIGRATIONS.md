@@ -68,8 +68,7 @@ After stamping, future revisions (`alembic revision` + `upgrade`) apply normally
 - Crofting Commission tables (`croft_parishes`, `croft_holdings`,
   `common_grazings`) are in `013_crofting.sql` plus Alembic revision
   `20261012_0010` (`down_revision` = `20261012_0005`). Numbering skips
-  `009`/`0006`–`012`/`0009` (open tips #29 NFI/Native Woodland, #32
-  REPD/CES leases, #33 Common Good). Load with
+  `009`/`0006`–`012`/`0009` (historical open-tip reservations). Load with
   `python -m etl.ingest_crofting --download` (raw CSVs under gitignored
   `data/external/crofting/`). OGL lists only — no boundaries; never ingest
   List of Individuals.
@@ -80,3 +79,7 @@ After stamping, future revisions (`alembic revision` + `upgrade`) apply normally
   (`down_revision` = `20261012_0011`). Ingest:
   `python -m etl.ingest_nrs_settlements --fetch` (see
   `scripts/data/README-nrs-settlements.md`).
+- NFI + Native Woodland Survey tables are `016_woodland_layers.sql` plus
+  Alembic revision `20261012_0013` (`down_revision` = `20261012_0012`).
+  Ingest: `python -m etl.ingest_woodland_layers` (see
+  `scripts/data/README-woodland.md`).

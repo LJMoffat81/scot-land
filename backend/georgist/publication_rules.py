@@ -184,6 +184,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="NatureScot SPA/SAC/NNR polygons (OGL-3.0); constraint; no rent",
     ),
+    "/layers/open/native-woodland": LayerRule(
+        "site", "site", "none", note="Native Woodland Survey polygons from PostGIS; ledger row 1; no rent"
+    ),
+    "/layers/open/nfi": LayerRule(
+        "site", "site", "none", note="NFI woodland polygons from PostGIS; ledger row 1; no rent"
+    ),
     "/ledger": LayerRule(
         "zone",
         "zone",

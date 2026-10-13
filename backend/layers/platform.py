@@ -65,6 +65,14 @@ NATURESCOT_SSSI = (
 COMMUNITY_OWNERSHIP_PUB = (
     "https://www.gov.scot/publications/community-ownership-in-scotland-2024/"
 )
+NFI_CATALOGUE = (
+    "https://www.data.gov.uk/dataset/c50cddf4-cdf0-42fb-8ac1-eae0cb6ef5ad/"
+    "national-forest-inventory-scotland-2025"
+)
+NATIVE_WOODLAND_CATALOGUE = (
+    "https://www.data.gov.uk/dataset/da3f8548-a130-4a0d-8ddd-45019adcf1f3/"
+    "native-woodland-survey-of-scotland-nwss"
+)
 
 
 def scotlis_links(lat: float, lng: float, postcode: str | None = None) -> dict[str, Any]:
@@ -343,6 +351,47 @@ def platform_catalog() -> dict[str, Any]:
                 "ui_surface": "ledger",
             },
 
+            {
+                "id": "nfi",
+                "group": "spatial",
+                "status": "live",
+                "label": "National Forest Inventory",
+                "description": (
+                    "NFI woodland Scotland (≥ 0.5 ha). PostGIS ingest of the open "
+                    "Forestry Commission / NatureScot product. Natural capital ledger "
+                    "row 1 (surface site rent land-use) — not a LayersPanel toggle, "
+                    "not a rent and not a title. 503 when unloaded."
+                ),
+                "endpoint": "/layers/open/nfi",
+                "licence": "Open Government Licence v3.0",
+                "licence_url": OGL_V3_URL,
+                "minzoom": 7,
+                "source_url": NFI_CATALOGUE,
+                "ledger_role": "ledger-row",
+                "ledger_row": "1",
+                "ui_surface": "ledger",
+            },
+            {
+                "id": "native_woodland",
+                "group": "spatial",
+                "status": "live",
+                "label": "Native Woodland Survey",
+                "description": (
+                    "Native Woodland Survey of Scotland polygons and habitat "
+                    "attributes. PostGIS ingest of the open Scottish Forestry / "
+                    "NatureScot product. Natural capital ledger row 1 (surface site "
+                    "rent land-use) — not a LayersPanel toggle, not a rent or title. "
+                    "503 when unloaded."
+                ),
+                "endpoint": "/layers/open/native-woodland",
+                "licence": "Open Government Licence v3.0",
+                "licence_url": OGL_V3_URL,
+                "minzoom": 8,
+                "source_url": NATIVE_WOODLAND_CATALOGUE,
+                "ledger_role": "ledger-row",
+                "ledger_row": "1",
+                "ui_surface": "ledger",
+            },
             {
                 "id": "la_holdings",
                 "group": "ownership",

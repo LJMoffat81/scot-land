@@ -178,6 +178,18 @@ export const LAYER_ATTRIBUTION: Record<
     sourceUrl:
       "https://www.gov.scot/publications/community-ownership-in-scotland-2024/",
   },
+  nfi: {
+    source: "National Forest Inventory Woodland Scotland",
+    licence: "Open Government Licence v3.0",
+    sourceUrl:
+      "https://www.data.gov.uk/dataset/c50cddf4-cdf0-42fb-8ac1-eae0cb6ef5ad/national-forest-inventory-scotland-2025",
+  },
+  native_woodland: {
+    source: "Native Woodland Survey of Scotland",
+    licence: "Open Government Licence v3.0",
+    sourceUrl:
+      "https://www.data.gov.uk/dataset/da3f8548-a130-4a0d-8ddd-45019adcf1f3/native-woodland-survey-of-scotland-nwss",
+  },
   la_holdings: {
     source: "Spatial Hub — Land Ownership Scotland",
     licence: "Not openly licensed for this portal",

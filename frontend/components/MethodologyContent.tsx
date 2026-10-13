@@ -1,3 +1,6 @@
+import QualityTag from "@/components/QualityTag";
+import { QUALITY_TAGS, QUALITY_TAG_GLOSS } from "@/lib/qualityTag";
+
 const MINTLIFY = {
   introduction:
     "https://github.com/LJMoffat81/scot-land/blob/main/docs/mintlify/introduction.mdx",
@@ -133,22 +136,13 @@ export default function MethodologyContent() {
           public site only exposes layers that are ready; placeholders stay off
           public routes.
         </p>
-        <ul>
-          <li>
-            <strong>live</strong> — observed from a public source as-is.
-          </li>
-          <li>
-            <strong>derived</strong> — computed from open inputs by a stated
-            method.
-          </li>
-          <li>
-            <strong>modelled</strong> — estimated by the residual / mass model;
-            £ figures stay unpublished until calibration is checked.
-          </li>
-          <li>
-            <strong>placeholder</strong> — not ready; never served on the public
-            API or map.
-          </li>
+        <ul className="quality-tag-list" data-testid="quality-tag-list">
+          {QUALITY_TAGS.map((tag) => (
+            <li key={tag}>
+              <QualityTag quality={tag} />
+              <span className="quality-tag-gloss">{QUALITY_TAG_GLOSS[tag]}</span>
+            </li>
+          ))}
         </ul>
         <p>
           Missing data is shown as a gap (HTTP 503), never filled with a

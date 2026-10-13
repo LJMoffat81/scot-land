@@ -6,7 +6,7 @@ async function openMap(page: Page) {
   await page.locator("#place-query").waitFor();
 }
 
-test.describe("w3w-style shell", () => {
+test.describe("squares shell", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
   test("full-screen map with prominent search and stub place card", async ({
@@ -15,7 +15,7 @@ test.describe("w3w-style shell", () => {
     test.setTimeout(90_000);
     await openMap(page);
 
-    await expect(page.locator(".app-shell.w3w-shell")).toBeVisible();
+    await expect(page.locator(".app-shell")).toBeVisible();
     await expect(page.locator("#map")).toBeVisible();
     const search = page.locator("#place-query");
     await expect(search).toBeVisible();
@@ -37,7 +37,7 @@ test.describe("w3w-style shell", () => {
   });
 });
 
-test.describe("w3w-style shell mobile", () => {
+test.describe("squares shell mobile", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test("search stays usable on a phone-sized viewport", async ({ page }) => {

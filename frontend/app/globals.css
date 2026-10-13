@@ -14,6 +14,11 @@
   --danger: #9b1c1c;
   --hud-shadow: 0 10px 40px rgba(11, 30, 58, 0.14);
   --hud-radius: 18px;
+  /* Data-state quality tags (not catalog status, not market/proxy/shadow). */
+  --quality-live: #0b6e4f;
+  --quality-derived: #0076d3;
+  --quality-modelled: #8a5a00;
+  --quality-placeholder: #5f656c;
 }
 
 * {
@@ -508,6 +513,179 @@ input {
   color: var(--slrg-muted);
   font-size: 0.75rem;
   line-height: 1.35;
+}
+
+/* Catalog-driven map licence credits + range legend (no public rent £). */
+.map-licence-credits {
+  margin: 0.65rem 0 0;
+  padding-top: 0.55rem;
+  border-top: 1px solid var(--line);
+}
+
+.map-licence-credits-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--slrg-navy);
+}
+
+.map-licence-nc-badge {
+  display: inline-block;
+  margin: 0.35rem 0 0;
+  padding: 0.15rem 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--slrg-navy) 35%, transparent);
+  background: color-mix(in srgb, var(--slrg-navy) 8%, white);
+  color: var(--slrg-navy);
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.map-licence-credits-list {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.map-licence-credits-list li {
+  display: grid;
+  gap: 0.1rem;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  color: var(--slrg-muted);
+}
+
+.map-licence-credits-label {
+  font-weight: 650;
+  color: var(--slrg-text);
+}
+
+.map-licence-credits-licence a {
+  color: var(--slrg-navy);
+  text-underline-offset: 0.12em;
+}
+
+.map-licence-credits-attribution {
+  color: var(--slrg-muted);
+}
+
+.map-range-legend {
+  margin: 0.55rem 0 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.map-range-legend-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--slrg-navy);
+}
+
+.map-range-legend-list {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.22rem;
+}
+
+.map-range-legend-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  color: var(--slrg-muted);
+}
+
+.map-range-legend-swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex: 0 0 auto;
+  border-radius: 2px;
+  border: 1px solid color-mix(in srgb, var(--slrg-navy) 18%, transparent);
+}
+
+.map-range-legend-swatch-nodata {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #bdbdbd,
+    #bdbdbd 2px,
+    #787878 2px,
+    #787878 3px
+  );
+}
+
+/* Quality tags: namespaced so .tone-live never collides with LayersPanel status. */
+.quality-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.12rem 0.45rem;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  line-height: 1.2;
+  vertical-align: middle;
+}
+
+.quality-tag.tone-live {
+  background: color-mix(in srgb, var(--quality-live) 14%, white);
+  color: var(--quality-live);
+  border-color: color-mix(in srgb, var(--quality-live) 28%, transparent);
+}
+
+.quality-tag.tone-derived {
+  background: color-mix(in srgb, var(--quality-derived) 14%, white);
+  color: var(--quality-derived);
+  border-color: color-mix(in srgb, var(--quality-derived) 28%, transparent);
+}
+
+.quality-tag.tone-modelled {
+  background: color-mix(in srgb, var(--quality-modelled) 14%, white);
+  color: var(--quality-modelled);
+  border-color: color-mix(in srgb, var(--quality-modelled) 28%, transparent);
+}
+
+.quality-tag.tone-placeholder {
+  background: color-mix(in srgb, var(--quality-placeholder) 12%, white);
+  color: var(--quality-placeholder);
+  border-color: color-mix(in srgb, var(--quality-placeholder) 22%, transparent);
+}
+
+.quality-tag-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.quality-tag-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.45rem 0.65rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.quality-tag-list .quality-tag-gloss {
+  flex: 1 1 12rem;
+  color: var(--slrg-text);
+}
+
+.quality-tag-inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .hud-scotland-foot a {

@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import QualityTag from "../../components/QualityTag";
 import { apiJson, getApiBaseUrl } from "../../lib/api";
 import { withExportVersion } from "../../lib/exportUrl";
+import { QUALITY_TAGS } from "../../lib/qualityTag";
 
 type DownloadItem = {
   id: string;
@@ -105,9 +107,17 @@ export default function DownloadsPage() {
         These are the open tables and links behind the map: ownership context,
         vacant land, ledger structure and catalogue metadata for the three
         commons inputs (Surface, Resource, Eco). Input quality tags are{" "}
-        <code>live</code>, <code>derived</code>, <code>modelled</code> and{" "}
-        <code>placeholder</code>; placeholders never appear here. Annual Ground
-        Rent amounts are not a public download. Docs:{" "}
+        <span className="quality-tag-inline" data-testid="quality-tag-inline">
+          {QUALITY_TAGS.map((tag, i) => (
+            <span key={tag}>
+              <QualityTag quality={tag} />
+              {i < QUALITY_TAGS.length - 2 ? ", " : null}
+              {i === QUALITY_TAGS.length - 2 ? " and " : null}
+            </span>
+          ))}
+        </span>
+        ; placeholders never appear here. Annual Ground Rent amounts are not a
+        public download. Docs:{" "}
         <a href={MINTLIFY_INTRO} target="_blank" rel="noreferrer">
           docs/mintlify/introduction.mdx
         </a>

@@ -394,6 +394,7 @@ def catalog_layers() -> list[dict[str, Any]]:
             "https://www.nationalarchives.gov.uk/doc/"
             "open-government-licence/version/3/"
         ),
+        "attribution": ATTRIBUTION,
         "minzoom": 8,
         "ledger_role": "ledger-frame",
         "ledger_row": "1",

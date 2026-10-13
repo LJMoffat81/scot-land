@@ -91,5 +91,8 @@ jobs:
       - run: npm ci
       - run: npm run check:catalog-ui-drift
       - run: npm run test:catalog-ui-drift
+      - run: npm run test:map-licence-credits
+      - run: npm run test:map-colour-ramps
+      - run: npm run test:quality-tags
       - run: npx tsc --noEmit
       - run: npm run build

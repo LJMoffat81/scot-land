@@ -97,8 +97,8 @@ export default function OpenApiPage() {
         </li>
         <li>
           <a href="/api/ledger.json">
-            Natural capital ledger — checks, excluded list, benchmarks (not
-            inputs)
+            Natural capital ledger — rows 1–10 (+1a), checks, excluded list,
+            benchmarks (not inputs); optional zone_id
           </a>
           <span className="download-path">/api/ledger.json</span>
         </li>

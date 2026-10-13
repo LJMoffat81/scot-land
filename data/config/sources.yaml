@@ -85,6 +85,13 @@ postcodes:
   licence_url: https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
   role: geocoding
   api_url: https://api.postcodes.io/postcodes
+  # ONS Postcode Directory under OGL — required OS / Royal Mail / National Statistics credits.
+  attribution: >-
+    Contains OS data © Crown copyright and database right 2026.
+    Contains Royal Mail data © Royal Mail copyright and database right 2026.
+    Contains National Statistics data © Crown copyright and database right 2026.
+    Source: Office for National Statistics licensed under the Open Government
+    Licence v.3.0 (ONS Postcode Directory via postcodes.io).
   note: >-
     Service wraps OS Open Data / ONS postcodes; cite OGL for underlying data.
 
@@ -424,7 +431,11 @@ community_ownership:
   attribution: >-
     Community Ownership in Scotland 2024. Contains public sector information
     licensed under the Open Government Licence v3.0. © Scottish Government.
-    Points are postcode centroids of published assets — not title polygons.
+    Points are postcode centroids of published assets — not title polygons
+    (ONS Postcode Directory via postcodes.io). Contains OS data © Crown
+    copyright and database right 2026. Contains Royal Mail data © Royal Mail
+    copyright and database right 2026. Contains National Statistics data
+    © Crown copyright and database right 2026.
   source_url: https://www.gov.scot/publications/community-ownership-in-scotland-2024/
   dataset_url: >-
     https://www.gov.scot/publications/community-ownership-in-scotland-2024/documents/

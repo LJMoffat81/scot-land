@@ -44,7 +44,11 @@ LICENCE = "Open Government Licence v3.0"
 ATTRIBUTION = (
     "Community Ownership in Scotland 2024. Contains public sector information "
     "licensed under the Open Government Licence v3.0. © Scottish Government. "
-    "Points are postcode centroids of published assets — not title polygons."
+    "Points are postcode centroids of published assets — not title polygons "
+    "(ONS Postcode Directory via postcodes.io). Contains OS data © Crown "
+    "copyright and database right 2026. Contains Royal Mail data © Royal Mail "
+    "copyright and database right 2026. Contains National Statistics data "
+    "© Crown copyright and database right 2026."
 )
 
 

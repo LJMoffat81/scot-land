@@ -143,6 +143,19 @@ def test_plot_level_spreading_is_internal_only(monkeypatch):
     assert pr.undeclared(internal) == pr.undeclared(public) == []  # /internal is exempt, never public
 
 
+def test_dz2022_surface_rent_rollup_is_internal_never_public(monkeypatch):
+    """Designer brief v3.1: roll-up £ figures stay unpublished (no public route)."""
+    from api.main import registered_routes
+
+    path = "/internal/georgist/surface-rent-rollup"
+    public = {p for _, p in registered_routes(_app(monkeypatch))}
+    assert path not in public
+    assert not any("surface-rent-rollup" in p for p in public)
+    internal = {p for _, p in registered_routes(_app(monkeypatch, internal=True))}
+    assert path in internal
+    assert not pr.is_public_path(path)
+
+
 @pytest.mark.parametrize("bad", [
     {"value_tier": "proxy"}, {"value_tier": "shadow"}, {"quality": "modelled"},
     {"source_id": None}, {"source_id": "ros_dz2011"}, {"source_id": "home_valuation_model"},

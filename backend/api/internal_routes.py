@@ -94,6 +94,70 @@ def internal_surface_row(
                         headers=HEADERS)
 
 
+@router.get("/internal/georgist/surface-rent-rollup")
+def internal_surface_rent_rollup(
+    level: str | None = Query(
+        default=None,
+        description="Optional filter: intermediate_zone | council | scotland",
+    ),
+) -> JSONResponse:
+    """INTERNAL SG roll-up (DZ2022 → IZ → Council → Scotland). Never public; £ figures unpublished."""
+    from georgist.surface_rollup import GEO_LEVELS
+
+    allowed = ("intermediate_zone", "council", "scotland")
+    if level is not None and level not in allowed:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "invalid_rollup_level",
+                "level": level,
+                "allowed": list(allowed),
+                "hierarchy": list(GEO_LEVELS),
+            },
+        )
+    try:
+        with db.cursor() as cur:
+            if level is None:
+                cur.execute(
+                    "SELECT * FROM surface_rent_rollup WHERE publish_level = 'internal' "
+                    "ORDER BY geo_level, code, valuation_date DESC"
+                )
+            else:
+                cur.execute(
+                    "SELECT * FROM surface_rent_rollup WHERE publish_level = 'internal' "
+                    "AND geo_level = %s ORDER BY code, valuation_date DESC",
+                    (level,),
+                )
+            rows = cur.fetchall()
+    except db.DatabaseUnavailable as exc:
+        raise _unavailable(exc) from exc
+    if not rows:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "surface_rent_rollup_not_built",
+                "level": level,
+                "message": "No internal DZ2022 SG roll-up rows yet.",
+            },
+        )
+    data = [
+        {k: _plain(v) if not hasattr(v, "isoformat") else v.isoformat() for k, v in r.items()}
+        for r in rows
+    ]
+    return JSONResponse(
+        {
+            "internal": True,
+            "warning": WARNING,
+            "hierarchy": list(GEO_LEVELS),
+            "level": level,
+            "count": len(data),
+            "rows": data,
+            "note": "INTERNAL / UNPUBLISHED. DZ2022 → IZ → Council → Scotland. Not official valuations.",
+        },
+        headers=HEADERS,
+    )
+
+
 def _mock_layer(module_name: str) -> JSONResponse:
     """The mock resource/eco harvest, clearly tagged. Never writes files on GET."""
     if module_name == "resource":

@@ -34,7 +34,7 @@ The app refuses to start if any (method, path) is registered twice.
 | `GET /geocode/postcode?q=` | 503 `geocoder_unavailable` (4 s timeout) | Full UK postcode → its centroid `lat`/`lng` via postcodes.io (ONS Postcode Directory, OGL v3; OS and Royal Mail attributions). Point only: no value, rent or address. 422 not a postcode (free text is not geocoded) or outside Scotland; 404 unknown postcode or no location. The map then runs the data-zone lookup as for a click. Postcodes are not logged. |
 | `GET /layers/georgist/surface-rent?vintage=2011` | 503 | Latest row per zone from `surface_rent_dz`, served only if `publish_level` is public_zone/public_site, `publication_status = ok` and not a placeholder; `withheld` / `withheld_by_reason` count the rest. **Allowlisted columns only** plus per-zone `status` (`ok` or `not_applicable`) and the three display views (`rent_per_residential_ha[_status]`, `rent_per_dwelling[_status]`, `rent_per_resident[_status]`, `second_home_share`). Also `zero_dwellings` (codes shown as not applicable), `method_settings` (depreciation settings read from `data/config/surface.yaml`) and `attributions`. `vintage` defaults to 2011; 422 `invalid_vintage` otherwise. 503 `surface_rent_not_built` if none; 503 `attribution_missing` if a dataset behind a shown view has no manifest attribution. |
 | `GET /layers/georgist/resource-rent`, `/eco-rent` | 503 | Real, publishable (`public_site`, status ok, not placeholder) rows from `resource_wealth` / `eco_wealth` only, as GeoJSON. Site geometry, so every row must be a measured figure from a site-public source (publication geometry rule, below); otherwise 500 `publication_rule_violation`. Today there are none, so 503 `<layer>_layer_not_built`. **Mock features are never served here.** |
-| `GET /internal/georgist/wealth`, `/internal/georgist/surface-rent/{zone}`, `/internal/layers/georgist/resource-rent`, `/internal/layers/georgist/eco-rent` | — | Only with `ENABLE_INTERNAL_ENDPOINTS` (otherwise 404). Always requires `INTERNAL_API_TOKEN` auth when mounted. Placeholders and withheld rows with numbers, Valuation diagnostics, mock harvests. Header `X-Wealth-Internal: true`. Totals are computed by the same function as the public route. |
+| `GET /internal/georgist/wealth`, `/internal/georgist/surface-rent/{zone}`, `/internal/georgist/surface-rent-rollup`, `/internal/layers/georgist/resource-rent`, `/internal/layers/georgist/eco-rent` | — | Only with `ENABLE_INTERNAL_ENDPOINTS` (otherwise 404). Always requires `INTERNAL_API_TOKEN` auth when mounted. Placeholders and withheld rows with numbers, Valuation diagnostics, mock harvests, and the **unpublished** DZ2022 → IZ → Council → Scotland surface-rent roll-up (`surface_rent_rollup`, `publish_level=internal` only). Header `X-Wealth-Internal: true`. Totals are computed by the same function as the public route. **No public route serves roll-up £ figures.** |
 | `GET /layers/parcels`, `/layers/parcels/at`, `/layers/parcels/tiles/...` | 503 / empty / PNG | RoS INSPIRE cadastral shapes (always mounted). BBox returns 503 when `inspire_parcels` is missing or empty — never placeholders. |
 | `POST /sync/ros` | — | Removed from the API: the CKAN package id and columns were unverified and the target table is not in the schema. Superseded by `georgist/surface_harvester.py`. |
 
@@ -195,6 +195,15 @@ Applied by the postgis container on first start and by
   none|address_uprn|value_weighted (surface subset of the team enum);
   publish_level public_site|public_zone|internal; publication_status ok|blocked; net_of ⊆
   {extractive, eco_externality}. No per-area rent or SIMD columns.
+- `surface_rent_rollup` (`023`) — **internal only** SG hierarchy aggregates for DZ2022
+  surface rent: Intermediate Zone (S02) → Council (S12) → Scotland (`S92000003`).
+  Hierarchy parents come from `datazones.zone_spine` (official SG 2022 Data Zone
+  lookup, OGL v3.0). Built by `georgist.surface_dz2022` (value-weighted 2011→2022
+  crosswalk; population weights refused) then `georgist.surface_rollup` (sums
+  `measured_rent` once per DZ; refuses mixed `price_year`). `publish_level` is
+  constrained to `internal` in SQL. Served only on
+  `/internal/georgist/surface-rent-rollup`. Leaves stay on `surface_rent_dz`.
+  **Roll-up £ figures stay unpublished** (designer brief v3.1).
 - `planning_sites` — PK `(source, site_id)`; source hla|svdls|planning_app,
   geom_source surveyed|ros_title|point (a point must be a POINT), MultiPolygon or
   Point 27700, both DZ codes, plan-making vs deciding authority, publish_level

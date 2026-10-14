@@ -1344,6 +1344,14 @@ export default function ScotlandMap() {
     };
     map.on("dragstart", noteUserMove);
     map.on("zoomstart", noteUserMove);
+    const syncCameraDataset = () => {
+      const center = map.getCenter();
+      container.dataset.lng = center.lng.toFixed(5);
+      container.dataset.lat = center.lat.toFixed(5);
+      container.dataset.zoom = map.getZoom().toFixed(3);
+    };
+    map.on("moveend", syncCameraDataset);
+    map.on("zoomend", syncCameraDataset);
     const frameScotland = () => {
       if (userMoved) return;
       if (container.clientWidth < 40 || container.clientHeight < 40) return;
@@ -1361,10 +1369,7 @@ export default function ScotlandMap() {
           maxZoom: 7.4,
         },
       );
-      const center = map.getCenter();
-      container.dataset.lng = center.lng.toFixed(5);
-      container.dataset.lat = center.lat.toFixed(5);
-      container.dataset.zoom = map.getZoom().toFixed(3);
+      syncCameraDataset();
       container.dataset.framed = "1";
     };
 

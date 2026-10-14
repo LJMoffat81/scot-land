@@ -397,7 +397,7 @@ def _public_config_view(config: dict) -> dict:
 
 @router.get("/config")
 def get_config() -> dict:
-    """Public config mirror without rent / £ figures."""
+    """Public config mirror without rent / money figures."""
     return _public_config_view(load_config())
 
 
@@ -421,7 +421,7 @@ def get_layer_catalog() -> dict:
 def layer_councils_metrics(
     scenario: str = Query(default="full_agr"),
 ) -> JSONResponse:
-    """Council FeatureCollection with open context metrics only (no modelled AGR £)."""
+    """Council FeatureCollection with open context metrics only (no modelled money figures)."""
     try:
         geo = build_council_metrics_geojson(scenario)
     except FileNotFoundError as exc:

@@ -351,7 +351,7 @@ def build_metrics_payload(*, vintage: int = 2011, include_geometry: bool = True)
             "metrics": metrics_meta,
             "note": (
                 "Data Zone house prices (RoS median / council UK HPI), SIMD 2020v2, "
-                "and NRS population density. Context only — no modelled AGR £. "
+                "and NRS population density. Context only — no modelled money figures. "
                 + (
                     "Zone polygons pending Data Zone boundaries load."
                     if geometry_status == "pending_boundaries"

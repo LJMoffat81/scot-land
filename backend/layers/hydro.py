@@ -210,7 +210,7 @@ def query_bbox(
             "count": len(features),
             "max_features": cap,
             "as_of": date.today().isoformat(),
-            "note": "Natural-capital site inventory only — no £ rent; not surface rent",
+            "note": "Resource site inventory only — no money figures; not surface rent",
             **{k: meta[k] for k in tier_keys},
         },
     }

@@ -150,7 +150,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "blocked",
                 "label": "Annual Ground Rent",
                 "description": "Annual Ground Rent figures are withheld from the public catalogue until publication is approved.",
-                "developer_note": "Residual site-value AGR withheld from the public catalogue until ECONOMIC_RULES approval — no public £.",
+                "developer_note": "Residual site-value AGR withheld from the public catalogue until ECONOMIC_RULES approval — no public money figures.",
             },
             _parcels_meta(),
 
@@ -168,8 +168,8 @@ def platform_catalog() -> dict[str, Any]:
                 "label": "Data Zone boundaries",
                 "description": (
                     "Small-area Data Zone boundaries (2022). Hover or click for the zone "
-                    "code, name, council, population and dwellings. Not a rent figure — "
-                    "no AGR £ on the map."
+                    "code, name, council, population and dwellings. Not a rent figure; "
+                    "no Annual Ground Rent figures on the map."
                 ),
                 "developer_note": (
                     "Data Zone boundaries 2022 outlines from PostGIS dz_boundaries when "
@@ -197,7 +197,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "NRS Settlements",
                 "description": "Places of 500 people or more from the Census 2022 settlements map. Helps name a place on the card — not ownership.",
-                "developer_note": "Census 2022 settlements (places of 500 people or more). PostGIS bbox (503 when unloaded). Ledger frame for surface site rent (row 1 zone/settlement grain) — not a LayersPanel toggle, not a title.",
+                "developer_note": "Census 2022 settlements (places of 500 people or more). PostGIS bbox (503 when unloaded). Annual Ground Rent breakdown frame for surface site rent (row 1 zone/settlement grain) — not a LayersPanel toggle, not a title.",
                 "endpoint": "/layers/open/settlements",
                 "licence": "OGL-3.0",
                 "licence_url": (
@@ -218,7 +218,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "NRS Localities",
                 "description": "Built-up localities from the Census 2022 localities map. Helps name a place on the card — not ownership.",
-                "developer_note": "Census 2022 localities (built-up localities). PostGIS bbox (503 when unloaded). Ledger frame for surface site rent (row 1) — not a LayersPanel toggle, not ownership.",
+                "developer_note": "Census 2022 localities (built-up localities). PostGIS bbox (503 when unloaded). Annual Ground Rent breakdown frame for surface site rent (row 1) — not a LayersPanel toggle, not ownership.",
                 "endpoint": "/layers/open/localities",
                 "licence": "OGL-3.0",
                 "licence_url": (
@@ -258,7 +258,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "Housing land audit",
                 "description": "Housing land audit / housing land supply sites. Planning: of which figure inside the land part — never added again.",
-                "developer_note": "Spatial Hub Housing Land Supply (Housing Land Audit sites). PostGIS ingest of the OGL open product (503 when unloaded). Annual Ground Rent breakdown row 1a (planning uplift, already included in surface) — not a LayersPanel toggle. Audit polygons, not a title. No public AGR £.",
+                "developer_note": "Spatial Hub Housing Land Supply (Housing Land Audit sites). PostGIS ingest of the OGL open product (503 when unloaded). Annual Ground Rent breakdown row 1a (planning uplift, already included in surface) — not a LayersPanel toggle. Audit polygons, not a title. No public money figures.",
                 "endpoint": "/layers/open/hla",
                 "licence": "OGL-3.0",
                 "minzoom": 8,
@@ -286,7 +286,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "Hydropower sites (SEPA CAR)",
                 "description": "Hydropower sites licensed by SEPA. Inventory of water use for power — not a rent figure and not surface land rent.",
-                "developer_note": "SEPA OGL hydropower sites — CAR-licensed water abstractions for hydropower (PostGIS). Extractive inventory (value_tier=proxy). No £ rent; separate from surface rent.",
+                "developer_note": "SEPA OGL hydropower sites — CAR-licensed water abstractions for hydropower (PostGIS). Extractive inventory (value_tier=proxy). No money figures; separate from surface rent.",
                 "endpoint": "/layers/open/hydro",
                 "licence": "OGL-3.0",
                 "licence_url": OGL_V3_URL,
@@ -304,7 +304,7 @@ def platform_catalog() -> dict[str, Any]:
                 "description": (
                     "SEPA Controlled Activities Regulations licences for water use "
                     "(Simple 194 and Registration 195). Inventory only — never proxies "
-                    "live map services. No £ rent; not surface rent."
+                    "live map services. No money figures; not surface rent."
                 ),
                 "developer_note": (
                     "Ingested from Open/SEPA_Reference MapServer layers 194/195 "
@@ -426,7 +426,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "Crown Estate Scotland offshore leases",
                 "description": "Crown Estate Scotland seabed and foreshore leases (cables, moorings, offshore energy). Inventory for seabed rent — not a title sheet.",
-                "developer_note": "CES Spatial Hub offshore lease polygons (offshore wind, wave, tidal, CCS) under OGL — PostGIS ingest. Offshore only — not onshore estate, not aquaculture (separate layer). Annual Ground Rent breakdown row 4 (seabed & foreshore) — not a LayersPanel toggle, not a title sheet, no £ rent. 503 when unloaded.",
+                "developer_note": "CES Spatial Hub offshore lease polygons (offshore wind, wave, tidal, CCS) under OGL — PostGIS ingest. Offshore only — not onshore estate, not aquaculture (separate layer). Annual Ground Rent breakdown row 4 (seabed & foreshore) — not a LayersPanel toggle, not a title sheet, no money figures. 503 when unloaded.",
                 "endpoint": "/layers/open/crown-estate-leases",
                 "licence": "OGL-3.0",
                 "licence_url": OGL_V3_URL,
@@ -520,7 +520,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "REPD onshore wind",
                 "description": "Onshore wind sites from the Renewable Energy Planning Database. Planning evidence — not lease shapes or a title.",
-                "developer_note": "DESNZ Renewable Energy Planning Database — Scotland onshore wind sites with installed capacity (MW) and development status. Annual Ground Rent breakdown row 3 (onshore wind resource) — not a LayersPanel toggle. Resource-rent evidence only: no £ rent, never added to Surface Rent or AGR. Planning-site points, not leases.",
+                "developer_note": "DESNZ Renewable Energy Planning Database — Scotland onshore wind sites with installed capacity (MW) and development status. Annual Ground Rent breakdown row 3 (onshore wind resource) — not a LayersPanel toggle. Resource-rent evidence only: no money figures, never added to Surface Rent or AGR. Planning-site points, not leases.",
                 "endpoint": "/layers/open/repd-onshore-wind",
                 "minzoom": 6,
                 "licence": "OGL-3.0",
@@ -547,7 +547,7 @@ def platform_catalog() -> dict[str, Any]:
                 "label": "CES aquaculture seabed leases",
                 "description": (
                     "Aquaculture seabed leases from Crown Estate Scotland. Licence rent "
-                    "evidence — not a title. No £ rent; never added to surface rent "
+                    "evidence — not a title. No money figures; never added to surface rent "
                     "(Annual Ground Rent breakdown row 5)."
                 ),
                 "developer_note": (

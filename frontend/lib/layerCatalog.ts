@@ -91,7 +91,7 @@ export const LAYER_ATTRIBUTION: Record<
   data_zones: {
     source: "Scottish Government Data Zone boundaries 2022",
     licence:
-      "Open Government Licence v3.0 — outlines + open rollups; no AGR £",
+      "Open Government Licence v3.0 — outlines + open rollups; no money figures",
     sourceUrl:
       "https://www.spatialdata.gov.scot/geonetwork/srv/eng/catalog.search#/metadata/7d564e13-a967-495a-ae2f-048ffdfa4b03",
   },
@@ -228,7 +228,7 @@ export const LAYER_ATTRIBUTION: Record<
   ces_aquaculture: {
     source: "Crown Estate Scotland Spatial Hub — aquaculture seabed leases",
     licence:
-      "OGL-3.0 — Contains information from the Crown Estate Scotland licensed under the Open Government Licence v3.0. No £ rent",
+      "OGL-3.0 — Contains information from the Crown Estate Scotland licensed under the Open Government Licence v3.0. No money figures",
     sourceUrl:
       "https://crown-estate-scotland-spatial-hub-coregis.hub.arcgis.com/",
   },

@@ -61,7 +61,8 @@ def test_catalog_lists_hydro_and_sepa_car_ogl_with_tiers():
     desc = car.get("description") or ""
     assert "194" in desc and "195" in desc
     assert "never prox" in desc.lower() or "PostGIS only" in desc
-    assert "No £" in desc or "no £" in desc
+    assert "no money figures" in desc.lower()
+    assert "£" not in desc
     assert "surface rent" in desc.lower()
 
 

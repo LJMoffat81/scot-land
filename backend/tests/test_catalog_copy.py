@@ -54,3 +54,18 @@ def test_apply_visitor_catalog_copy_moves_technical_to_developer_note():
 def test_visitor_description_known_ids():
     assert "Data Zone" in visitor_description({"id": "data_zones"})
     assert "2022" in visitor_description({"id": "data_zones"})
+
+
+def test_data_zones_description_exact_no_pound_clause():
+    """SW-032: Data Zone boundaries use the signed no-money-figures clause."""
+    text = visitor_description({"id": "data_zones"})
+    assert "Not a rent figure; no Annual Ground Rent figures on the map." in text
+    assert "£" not in text
+    assert "AGR £" not in text
+
+
+def test_plain_descriptions_have_no_pound_or_ledger_words():
+    """SW-031/032: visitor catalogue copy has no £ / ledger / natural capital."""
+    banned = re.compile(r"£|\bledger\b|natural\s+capital", re.IGNORECASE)
+    for layer_id, text in PLAIN_DESCRIPTIONS.items():
+        assert not banned.search(text), (layer_id, text)

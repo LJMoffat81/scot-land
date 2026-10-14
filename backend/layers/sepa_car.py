@@ -83,7 +83,7 @@ def source_meta() -> dict[str, Any]:
         or [
             "Served from PostGIS after ingest — MapServer is never proxied to clients",
             "Layers 194 (simple) and 195 (registration) only",
-            "No £ rent — natural-capital licence inventory only",
+            "No money figures — licence inventory only",
             "Load with: python -m etl.ingest_sepa_car",
         ],
     }
@@ -231,7 +231,7 @@ def query_bbox(
             "as_of": date.today().isoformat(),
             "note": (
                 "Natural-capital CAR inventory from PostGIS only — "
-                "no MapServer proxy; no £ rent; not surface rent"
+                "no MapServer proxy; no money figures; not surface rent"
             ),
             **{k: meta[k] for k in tier_keys},
         },

@@ -39,7 +39,7 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "tag": "market_or_proxy",
         "status": "not_yet",
         "status_note": (
-            "Best permitted use. Public £ withheld until ECONOMIC_RULES / calibration."
+            "Best permitted use. Public money figures withheld until ECONOMIC_RULES / calibration."
         ),
         "parent_id": None,
         "nested": False,
@@ -73,7 +73,7 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "tag": "proxy",
         "status": "partial",
         "status_note": (
-            "Site rent minus footprint surface rent. Inventory may paint; £ withheld."
+            "Site rent minus footprint surface rent. Inventory may paint; money figures withheld."
         ),
         "parent_id": None,
         "nested": False,
@@ -222,7 +222,7 @@ def _blocked_payload(zone_code: str, *, zone_name: str | None = None) -> dict[st
         "outside": None,
         "constraints": None,
         "publication_note": (
-            "Blocked zone — no per-hectare stack and no modelled AGR £."
+            "Blocked zone — no per-hectare stack and no modelled money figures."
         ),
     }
 
@@ -262,7 +262,7 @@ def place_hectare_stack(
         },
         "publication_note": (
             "Per-hectare stack (Annual Ground Rent breakdown). "
-            "Public AGR £ withheld until ECONOMIC_RULES / calibration. "
+            "Public money figures withheld until ECONOMIC_RULES / calibration. "
             "Placeholders are not a money value. Row 1a is already included "
             "in Surface site rent (indented, never added). "
             "Estimate total is separate and never summed into the Scottish totals. "

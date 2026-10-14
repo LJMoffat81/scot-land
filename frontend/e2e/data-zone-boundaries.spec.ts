@@ -157,7 +157,7 @@ test.describe("Data Zone catalog panel", () => {
               status: "live",
               label: "Data Zone boundaries",
               description:
-                "2011 outlines. Boundaries and open rollups — no AGR £.",
+                "2011 outlines. Boundaries and open rollups — no money figures.",
               licence: "Open Government Licence v3.0",
               licence_url:
                 "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",

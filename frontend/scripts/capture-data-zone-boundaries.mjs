@@ -50,7 +50,7 @@ const FIXTURE_CATALOG = {
       group: "spatial",
       status: "live",
       label: "Data Zone boundaries",
-      description: "2011 outlines. Boundaries only — no AGR £.",
+      description: "2011 outlines. Boundaries only — no money figures.",
       licence: "OGL v3.0",
       source_url: "https://www.spatialdata.gov.scot/",
     },

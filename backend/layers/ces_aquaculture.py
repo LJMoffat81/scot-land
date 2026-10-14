@@ -79,7 +79,7 @@ def source_meta() -> dict[str, Any]:
         "gaps": row.get("gaps")
         or [
             "Lease polygons as published by CES — not a Land Register title",
-            "No £ rent on this layer — natural-capital evidence only",
+            "No money figures on this layer — resource evidence only",
             "Separate from offshore energy leases and context-tiles seabed proxy",
             "Full extract is not committed; load via ingest into PostGIS",
         ],
@@ -244,7 +244,7 @@ def query_bbox(
             "as_of": date.today().isoformat(),
             "adds_to_surface_rent": False,
             "note": (
-                "CES aquaculture seabed lease polygons only — no £ rent; "
+                "CES aquaculture seabed lease polygons only — no money figures; "
                 "never added to Surface Rent or AGR; not a title."
             ),
             **{k: meta[k] for k in tier_keys},

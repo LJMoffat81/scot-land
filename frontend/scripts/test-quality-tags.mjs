@@ -10,7 +10,7 @@ const QUALITY_TAG_GLOSS = {
   live: "observed from a public source as-is",
   derived: "computed from open inputs by a stated method",
   modelled:
-    "estimated by the residual / mass model; £ figures stay unpublished until calibration is checked",
+    "estimated by the residual / mass model; money figures stay unpublished until calibration is checked",
   placeholder: "not ready; never served on the public API or map",
 };
 

@@ -423,7 +423,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             range_band=None,
             note=(
                 "Best permitted use; idle/derelict = best use minus remediation. "
-                "Public modelled £ withheld until ECONOMIC_RULES approved."
+                "Public modelled money figures withheld until ECONOMIC_RULES approved."
             ),
             stack="headline",
         ),
@@ -472,7 +472,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             range_band=None,
             note=(
                 "Site rent minus footprint surface rent (C-turbine). Spatial inventory "
-                "partial; resource rent £ not yet published."
+                "partial; resource rent money figures not yet published."
             ),
             stack="headline",
         ),

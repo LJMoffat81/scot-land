@@ -90,7 +90,7 @@ def source_meta() -> dict[str, Any]:
         or "data/config/scotwind_option_fees.yaml",
         "gaps": block.get("gaps")
         or [
-            "Option-fee £ held in data/config/scotwind_option_fees.yaml (press release) — not on features",
+            "Option-fee figures held in data/config/scotwind_option_fees.yaml (press release) — not on features",
             "Overlay never adds value to surface rent (la-calc)",
         ],
     }

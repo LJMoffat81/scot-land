@@ -31,7 +31,7 @@ export default function MethodologyContent() {
           yield. That is the surface residual — not a single-property figure.
         </p>
         <p>
-          Internally, Georgist yield calibration <strong>v3</strong> (central
+          Internally, the signed-off land yield <strong>v3</strong> (central
           4.499%, band 3.98–4.50%, hash <code>4654e513</code>) is applied from
           shared surface config. Public figures stay blocked pending the rules
           document; visitors do not see money amounts here.

@@ -172,7 +172,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     ],
   },
   shadow: {
-    label: "Estimate (separate — never summed into Scottish totals)",
+    label: "Services of nature (separate — never summed into Scottish totals)",
     unit: "per hectare per year",
     sum_row_ids: ["5", "6", "7", "8", "10"],
     total_placeholder: "—",

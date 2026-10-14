@@ -58,7 +58,6 @@ _SKIP_KEYS = frozenset(
         "ledger_role",
         "ledger_row",
         "ui_surface",
-        "brief",
     }
 )
 

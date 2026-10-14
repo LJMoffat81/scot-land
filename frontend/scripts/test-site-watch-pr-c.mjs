@@ -97,6 +97,9 @@ if (existsSync(nextHtml)) {
     { name: "natural capital", re: /natural capital/i },
     { name: "ledger", re: /\bledger\b/i },
     { name: "headline/shadow", re: /headline\s*\/\s*shadow/i },
+    // SW-015: ban each word alone in visitor prose (CSS box-shadow is in <style>).
+    { name: "headline", re: /\bheadline\b/i },
+    { name: "shadow", re: /\bshadow\b/i },
     { name: "rates bill", re: /rates bill/i },
     { name: "tax proposal", re: /tax proposal/i },
     { name: "£", re: /£/ },
@@ -108,6 +111,7 @@ if (existsSync(nextHtml)) {
     const rel = relative(frontendRoot, file);
     const html = readFileSync(file, "utf8");
     // Strip scripts/styles, then code samples (keep scanning /developers prose).
+    // Styles removed first so CSS box-shadow never hits the shadow word ban.
     const prose = html
       .replace(/<script[\s\S]*?<\/script>/gi, " ")
       .replace(/<style[\s\S]*?<\/style>/gi, " ")

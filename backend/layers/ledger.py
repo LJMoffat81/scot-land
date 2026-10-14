@@ -76,7 +76,7 @@ _ROWS: list[dict[str, Any]] = [
         "nested": False,
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Shadow — total minus CES seabed paid. Drawn in shadow stack later.",
+        "status_note": "Estimate — total minus CES seabed paid. Drawn in Estimate stack later.",
         "amount_placeholder": "—",
     },
     {
@@ -86,7 +86,7 @@ _ROWS: list[dict[str, Any]] = [
         "nested": False,
         "tag": "market_or_proxy",
         "status": "not_yet",
-        "status_note": "Market if lease prices, else shadow.",
+        "status_note": "Market if lease prices, else Estimate.",
         "amount_placeholder": "—",
     },
     {
@@ -97,7 +97,7 @@ _ROWS: list[dict[str, Any]] = [
         "tag": "shadow",
         "status": "not_yet",
         "status_note": (
-            "Shadow, ~0 when published. Not shown as a money value while not yet."
+            "Estimate, ~0 when published. Not shown as a money value while not yet."
         ),
         "amount_placeholder": "—",
     },
@@ -118,7 +118,7 @@ _ROWS: list[dict[str, Any]] = [
         "nested": False,
         "tag": "reported",
         "status": "excluded",
-        "status_note": "UK-reserved — outside Scottish total (and both headline stacks).",
+        "status_note": "UK-reserved — outside the Scottish totals.",
         "amount_placeholder": "—",
         "outside_scottish_total": True,
     },
@@ -129,7 +129,7 @@ _ROWS: list[dict[str, Any]] = [
         "nested": False,
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Shadow, later.",
+        "status_note": "Estimate, later.",
         "amount_placeholder": "—",
     },
 ]

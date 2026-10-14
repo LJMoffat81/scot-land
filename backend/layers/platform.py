@@ -132,7 +132,7 @@ def platform_catalog() -> dict[str, Any]:
         "brief": "docs/PLATFORM.md",
         "principle": (
             "Annual Ground Rent for every place in Scotland; every figure labelled "
-            "market/proxy/shadow; £ figures not published yet"
+            "Market, Modelled, or Estimate; figures not published yet"
         ),
         "choropleth_metrics": [
             {
@@ -633,7 +633,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "linked",
                 "label": "NSTA oil and gas",
                 "description": "UK oil and gas fields shown for comparison only. Outside Scotland’s land totals.",
-                "developer_note": "North Sea Transition Authority licences and fields. Allowed while Scot-LAND is non-commercial; tagged licence=non-commercial. Outside the Scottish headline total.",
+                "developer_note": "North Sea Transition Authority licences and fields. Allowed while Scot-LAND is non-commercial; tagged licence=non-commercial. Outside the Scottish totals.",
                 "licence": "non-commercial",
                 "licence_url": "https://www.nstauthority.co.uk/data-and-insights/",
                 "attribution": (

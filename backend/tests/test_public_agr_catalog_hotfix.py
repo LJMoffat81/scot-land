@@ -29,7 +29,7 @@ WITHHELD_METRIC_IDS = frozenset({
 
 CHARTER_PRINCIPLE = (
     "Annual Ground Rent for every place in Scotland; every figure labelled "
-    "market/proxy/shadow; £ figures not published yet"
+    "Market, Modelled, or Estimate; figures not published yet"
 )
 
 

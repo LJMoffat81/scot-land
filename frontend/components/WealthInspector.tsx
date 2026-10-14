@@ -29,7 +29,7 @@ interface WealthInspectorProps {
 const TIER_LABEL: Record<ValueTier, string> = {
   market: "Market (observed rents)",
   proxy: "Proxy (derived from prices)",
-  shadow: "Shadow (non-market values)",
+  shadow: "Estimate (no market price)",
 };
 const LAYER_LABEL: Record<WealthComponent["layer"], string> = {
   surface: "Surface (residential land)",

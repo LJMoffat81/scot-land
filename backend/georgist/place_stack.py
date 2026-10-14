@@ -104,7 +104,7 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "label": "Fisheries quota",
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Market if lease prices, else shadow (default: shadow stack).",
+        "status_note": "Market if lease prices, else Estimate (default: Estimate stack).",
         "parent_id": None,
         "nested": False,
         "in_total": True,
@@ -136,7 +136,7 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "label": "Oil & gas",
         "tag": "reported",
         "status": "excluded",
-        "status_note": "UK-reserved — outside Scottish total (headline and shadow).",
+        "status_note": "UK-reserved — outside the Scottish totals.",
         "parent_id": None,
         "nested": False,
         "in_total": False,
@@ -265,11 +265,11 @@ def place_hectare_stack(
             "Public AGR £ withheld until ECONOMIC_RULES / calibration. "
             "Placeholders are not a money value. Row 1a is already included "
             "in Surface site rent (indented, never added). "
-            "Estimate total is separate and never summed into the headline. "
+            "Estimate total is separate and never summed into the Scottish totals. "
             "Oil & gas and benchmarks sit outside both."
         ),
         "headline": {
-            "label": "Headline (market and proxy totals)",
+            "label": "Scottish totals (market and proxy)",
             "unit": "£/ha/year",
             "rows": headline_rows,
             "sum_row_ids": headline_sum_row_ids(headline_rows),
@@ -281,13 +281,13 @@ def place_hectare_stack(
             ),
         },
         "shadow": {
-            "label": "Estimate (separate — never summed into headline)",
+            "label": "Estimate (separate — never summed into Scottish totals)",
             "unit": "£/ha/year",
             "rows": shadow_rows,
             "sum_row_ids": shadow_sum_row_ids(shadow_rows),
             "total_placeholder": AMOUNT_PH,
             "total_note": (
-                "Estimate stack total is separate from the headline "
+                "Estimate stack total is separate from the Scottish totals "
                 "(C-totals). Never added into market or proxy totals."
             ),
         },

@@ -43,11 +43,12 @@ export default function InternalTaxScenarioView({
       <p className="internal-tax-banner" role="status">
         INTERNAL · publication_status=blocked · approved defaults (v0.1, Oct
         2026). No public £. Data Zone grain only while blocked; council views
-        are counts. Shadow never taxed.
+        are counts. Estimate values are never taxed.
       </p>
       <h2>Tax scenario {scenarioId}</h2>
       <p>
-        Every £ field is low / central / high. Tags are market / proxy / shadow.
+        Every money field is low / central / high. Tags stay market / proxy /
+        Estimate (API value remains the machine tag).
         No hard-coded demo amounts on this page — load zones from the internal
         API when available.
       </p>

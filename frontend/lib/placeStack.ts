@@ -93,7 +93,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
   publication_note:
     "Per-hectare stack. Figures are being checked and aren't published yet. Planning uplift sits under land. Services of nature stay separate from market and proxy rows. Oil and gas sit outside the Scottish land total.",
   headline: {
-    label: "Headline (market + proxy)",
+    label: "Scottish totals (market and proxy)",
     unit: "per hectare per year",
     sum_row_ids: ["1", "2", "3", "4"],
     total_placeholder: "—",
@@ -172,12 +172,12 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     ],
   },
   shadow: {
-    label: "Services of nature (separate — never summed into headline)",
+    label: "Estimate (separate — never summed into Scottish totals)",
     unit: "per hectare per year",
     sum_row_ids: ["5", "6", "7", "8", "10"],
     total_placeholder: "—",
     total_note:
-      "Estimate stack total is separate from the headline. Totals per chip only, never across chips or price years.",
+      "Estimate stack total is separate from the Scottish totals. Totals per chip only, never across chips or price years.",
     rows: [
       {
         id: "5",
@@ -198,7 +198,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
         tag: "shadow",
         status: "not_yet",
         status_note:
-          "Market if lease prices, else shadow (default: shadow stack).",
+          "Market if lease prices, else Estimate (default: Estimate stack).",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -383,7 +383,7 @@ export function tagLabel(tag: string): string {
     case "proxy":
       return "proxy";
     case "shadow":
-      return "shadow";
+      return "Estimate";
     case "market_or_proxy":
       return "market / proxy";
     case "reported":

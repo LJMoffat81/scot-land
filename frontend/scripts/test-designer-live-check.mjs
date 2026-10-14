@@ -89,6 +89,8 @@ assert.match(nextConfig, /\/developers\?moved=1#api/);
 const developers = readSrc("app/developers/page.tsx");
 assert.match(developers, /Downloads has moved here/);
 assert.match(developers, /developers-moved-note/);
+assert.match(developers, /The API page has moved here/);
+assert.match(developers, /developers-api-moved-note/);
 assert.match(developers, /searchParams\.get\("moved"\) === "1"/);
 assert.match(
   developers,

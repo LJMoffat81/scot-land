@@ -76,7 +76,10 @@ function DevelopersPageInner() {
   // useSearchParams alone misses ?moved=1 on hard loads after deploy.
   const movedFromHook = searchParams.get("moved") === "1";
   const [movedFromUrl, setMovedFromUrl] = useState(false);
+  const [hashTarget, setHashTarget] = useState("");
   const showMovedNote = movedFromHook || movedFromUrl;
+  const showDownloadsMovedNote = showMovedNote && hashTarget === "downloads";
+  const showApiMovedNote = showMovedNote && hashTarget === "api";
   const [manifest, setManifest] = useState<DownloadManifest | null>(null);
   const [manifestError, setManifestError] = useState<string | null>(null);
 
@@ -84,6 +87,7 @@ function DevelopersPageInner() {
     setMovedFromUrl(
       new URLSearchParams(window.location.search).get("moved") === "1",
     );
+    setHashTarget(window.location.hash.replace(/^#/, ""));
   }, []);
 
   useEffect(() => {
@@ -129,7 +133,7 @@ function DevelopersPageInner() {
 
       <section id="downloads" data-testid="developers-downloads">
         {/* Inside #downloads so ?moved=1#downloads keeps the note in view after hash scroll. */}
-        {showMovedNote ? (
+        {showDownloadsMovedNote ? (
           <p className="downloads-note" data-testid="developers-moved-note">
             Downloads has moved here.
           </p>
@@ -224,6 +228,12 @@ function DevelopersPageInner() {
       </section>
 
       <section id="api" data-testid="developers-api">
+        {/* Inside #api so ?moved=1#api keeps the note in view after hash scroll. */}
+        {showApiMovedNote ? (
+          <p className="downloads-note" data-testid="developers-api-moved-note">
+            The API page has moved here.
+          </p>
+        ) : null}
         <h2>API (for developers)</h2>
         <p>
           Ask for data about one place, or the area on screen. Answers come back

@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "updated": "2026",
-  "note": "Open downloads only. Missing files show as JSON (for developers) on /developers#downloads. Each CSV carries estimate_label and licence_attribution columns inside the file.",
+  "updated": "2025",
+  "note": "Open downloads only. Missing files show as JSON (for developers) on /developers#downloads. Each CSV carries estimate_label and licence_attribution columns inside the file. VDL bundles use updated for the survey year and zone_set for the Data Zone vintage (2022/2011).",
   "bundles": [
     {
       "id": "vdl-dz2022",
@@ -9,7 +9,8 @@
       "whats_in_it": "Data Zone 2022 rollup of vacant and derelict land hectares (SVDLS 2025 / OGL inputs). Zone level only — not single sites as a title plan. Main download (DZ2022).",
       "format": "CSV",
       "licence": "OGL v3.0",
-      "updated": "2022",
+      "updated": "2025",
+      "zone_set": "2022",
       "file": "vacant-derelict-land-dz2022.csv",
       "bytes": 4104150,
       "api_anchor": "api-vdl",
@@ -21,7 +22,8 @@
       "whats_in_it": "Data Zone 2011 rollup of vacant and derelict land hectares (SVDLS 2025 / OGL inputs). Zone level only — not single sites as a title plan.",
       "format": "CSV",
       "licence": "OGL v3.0",
-      "updated": "2011",
+      "updated": "2025",
+      "zone_set": "2011",
       "file": "vacant-derelict-land-dz2011.csv",
       "bytes": 3873257,
       "api_anchor": "api-vdl",
@@ -71,7 +73,7 @@
       "licence": "OGL v3.0",
       "updated": "2026",
       "file": "source-catalogue.csv",
-      "bytes": 3553,
+      "bytes": 3371,
       "api_anchor": "api-catalog",
       "href": "/downloads/source-catalogue.csv"
     }

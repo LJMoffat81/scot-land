@@ -24,7 +24,7 @@ const FORBIDDEN = [
   { name: "yield calibration", re: /yield\s+calibration/i },
   { name: "band level", re: /band\s+level/i },
   { name: "value_tier", re: /value_tier/i },
-  { name: "bbox", re: /\bbox\b/i },
+  { name: "bbox", re: /\bbbox\b/i },
 ];
 
 const PUBLIC_ROOTS = ["app", "components", "lib"];

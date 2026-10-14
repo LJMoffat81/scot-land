@@ -51,10 +51,15 @@ export default function MapRangeLegend({
     <div
       className={["map-range-legend", className].filter(Boolean).join(" ")}
       data-testid="map-range-legend"
-      aria-label={title}
+      role="group"
+      aria-labelledby="map-range-legend-title"
       data-mode={mode}
     >
-      <p className="map-range-legend-title" data-testid="map-range-legend-title">
+      <p
+        className="map-range-legend-title"
+        id="map-range-legend-title"
+        data-testid="map-range-legend-title"
+      >
         {title}
       </p>
       {blurb ? (

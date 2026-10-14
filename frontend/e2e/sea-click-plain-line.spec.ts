@@ -3,6 +3,16 @@ import { expect, test, type Page } from "@playwright/test";
 const OUT_OF_SCOTLAND_LINE =
   "This spot is outside Scotland's land map. Tap on land to see a place.";
 
+const HEALTH_OK = {
+  status: "ok",
+  routers: {
+    "api.agr_routes": { loaded: true },
+    "api.platform_routes": { loaded: true },
+  },
+};
+
+const EMPTY_FC = { type: "FeatureCollection", features: [] };
+
 async function openMap(page: Page) {
   await page.goto("/");
   await page.locator(".maplibregl-canvas").waitFor();
@@ -18,6 +28,7 @@ test.describe("site-watch D3 sea click", () => {
     test.setTimeout(90_000);
 
     const consoleErrors: string[] = [];
+    const resourceFails: Array<{ url: string; status: number }> = [];
     page.on("console", (msg) => {
       if (msg.type() === "error") {
         consoleErrors.push(msg.text());
@@ -25,6 +36,50 @@ test.describe("site-watch D3 sea click", () => {
     });
     page.on("pageerror", (err) => {
       consoleErrors.push(String(err));
+    });
+    page.on("response", (response) => {
+      const status = response.status();
+      if (status === 404 || status === 503) {
+        resourceFails.push({ url: response.url(), status });
+      }
+    });
+
+    // Stub map chrome deps (same pattern as site-nav-banner) so CI e2e
+    // fails on real console/page errors, not missing-API noise.
+    await page.route("**/backend/health**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(HEALTH_OK),
+      });
+    });
+    await page.route("**/backend/layers/catalog**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ layers: [] }),
+      });
+    });
+    await page.route("**/backend/place**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ kind: "places", matches: [] }),
+      });
+    });
+    await page.route("**/backend/layers/open/data-zones**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(EMPTY_FC),
+      });
+    });
+    await page.route("**/api/catalog.json", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ layers: [] }),
+      });
     });
 
     // North Sea point — no Scottish data zone.
@@ -96,9 +151,41 @@ test.describe("site-watch D3 sea click", () => {
     await expect(card.getByText("No data")).toHaveCount(0);
     await expect(card.locator(".place-card-field")).toHaveCount(0);
 
+    // Intentional sea miss is the only allowed 404; nothing may 503.
+    const unexpectedResourceFails = resourceFails.filter((fail) => {
+      if (fail.status === 404 && /data-zones\/at/i.test(fail.url)) {
+        return false;
+      }
+      return true;
+    });
     expect(
-      consoleErrors,
-      `console errors on sea click:\n${consoleErrors.join("\n")}`,
+      unexpectedResourceFails,
+      `unexpected HTTP 404/503:\n${unexpectedResourceFails
+        .map((f) => `${f.status} ${f.url}`)
+        .join("\n")}`,
+    ).toEqual([]);
+
+    const meaningful = consoleErrors.filter((text) => {
+      if (/\bAbortError\b|The user aborted|The operation was aborted/i.test(text)) {
+        return false;
+      }
+      if (
+        /Failed to load resource: the server responded with a status of (404|503)/i.test(
+          text,
+        )
+      ) {
+        // Chromium's URL-less resource line is OK only when every recorded
+        // 404/503 was the intentional sea DZ miss.
+        if (!/https?:\/\//i.test(text) && unexpectedResourceFails.length === 0) {
+          return false;
+        }
+        return true;
+      }
+      return true;
+    });
+    expect(
+      meaningful,
+      `console errors on sea click:\n${meaningful.join("\n")}`,
     ).toEqual([]);
   });
 });

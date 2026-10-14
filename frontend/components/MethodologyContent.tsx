@@ -77,6 +77,9 @@ export default function MethodologyContent() {
           valuation step before anything is published. That check is part of
           the Scot-LAND model.
         </p>
+        <p>
+          <a href="/developers/checks">Technical checks for developers</a>
+        </p>
       </section>
 
       <section id="gaps">

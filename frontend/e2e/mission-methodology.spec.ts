@@ -65,6 +65,14 @@ test.describe("about and how-it-works pages", () => {
     await expect(root).not.toContainText(/£\s*[\d,]+/);
     await expect(root).not.toContainText(/PostGIS|ECONOMIC_RULES|503 when/i);
     await expect(page).toHaveTitle(/How it works \| Scot-LAND/);
+
+    const howSure = page.locator("#how-sure");
+    const technicalChecks = howSure.getByRole("link", {
+      name: "Technical checks for developers",
+    });
+    await expect(technicalChecks).toBeVisible();
+    await expect(technicalChecks).toHaveAttribute("href", "/developers/checks");
+
     expect(consoleErrors, `console errors: ${consoleErrors.join("; ")}`).toEqual(
       [],
     );

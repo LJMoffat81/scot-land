@@ -5,16 +5,66 @@ import { RESEARCH_BANNER_STRIP_COLLAPSED } from "../lib/siteNav";
 /**
  * SW-016 — ≤768px research banner is a one-line strip under the header;
  * tap expands. Must not cover burger, search, or place card.
- * Also: open menu keeps Map + About on top; no console errors.
+ * Also: open menu keeps Map + About on top; no console errors
+ * (same stub + console gate as site-nav-banner.spec.ts).
  */
+
+const consoleErrors: string[] = [];
+const resourceFails: Array<{ url: string; status: number }> = [];
+
+const HEALTH_OK = {
+  status: "ok",
+  routers: {
+    "api.agr_routes": { loaded: true },
+    "api.platform_routes": { loaded: true },
+  },
+};
+
+const EMPTY_FC = { type: "FeatureCollection", features: [] };
+
+const PLACE_CARD_FIXTURE = {
+  contract: "place_card_v1",
+  lat: 55.8609,
+  lng: -4.2514,
+  place_label: "Glasgow",
+  council_name: "Glasgow City",
+  data_zone: {
+    status: "ok",
+    code: "S01014567",
+    name: "City Centre South",
+    vintage: 2022,
+  },
+  intermediate_zone: { status: "ok", name: "City Centre" },
+  agr_rows: [
+    {
+      id: "surface",
+      label: "Land",
+      tag: "proxy",
+      status: "in_progress",
+      applies: true,
+    },
+  ],
+  constraints: [],
+  layers: [],
+  links: [],
+};
+
+/** Optional static assets whose 404/503 may be ignored (must match URL). */
+const KNOWN_OPTIONAL_FAIL_URL = [
+  /\/favicon\.ico(?:\?|$)/i,
+  /\/apple-touch-icon/i,
+];
+
+function isKnownOptionalFailUrl(url: string): boolean {
+  return KNOWN_OPTIONAL_FAIL_URL.some((re) => re.test(url));
+}
+
 test.describe("SW-016 research banner strip 390x844", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("collapsed strip expands and clears burger, search, and place card", async ({
-    page,
-  }) => {
-    test.setTimeout(90_000);
-    const consoleErrors: string[] = [];
+  test.beforeEach(async ({ page }) => {
+    consoleErrors.length = 0;
+    resourceFails.length = 0;
     page.on("console", (msg) => {
       if (msg.type() === "error") {
         consoleErrors.push(msg.text());
@@ -23,7 +73,129 @@ test.describe("SW-016 research banner strip 390x844", () => {
     page.on("pageerror", (err) => {
       consoleErrors.push(String(err));
     });
+    page.on("response", (response) => {
+      const status = response.status();
+      if (status === 404 || status === 503) {
+        resourceFails.push({ url: response.url(), status });
+      }
+    });
 
+    // Catch-all first (Playwright is LIFO — later routes win).
+    await page.route("**/backend/**", async (route) => {
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({
+          detail: `e2e stub: unhandled ${route.request().method()} ${route.request().url()}`,
+        }),
+      });
+    });
+
+    await page.route("**/backend/health**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(HEALTH_OK),
+      });
+    });
+    await page.route("**/backend/layers/catalog**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ layers: [] }),
+      });
+    });
+    await page.route("**/backend/place**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ kind: "places", matches: [] }),
+      });
+    });
+    await page.route("**/backend/layers/open/data-zones**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(EMPTY_FC),
+      });
+    });
+    await page.route(
+      "**/backend/layers/context/data-zones/at**",
+      async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            code: null,
+            name: null,
+            vintage: null,
+          }),
+        });
+      },
+    );
+    await page.route("**/backend/platform/place**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(PLACE_CARD_FIXTURE),
+      });
+    });
+    await page.route("**/platform/place**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(PLACE_CARD_FIXTURE),
+      });
+    });
+    await page.route("**/api/catalog.json", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ layers: [] }),
+      });
+    });
+  });
+
+  test.afterEach(() => {
+    const unknownResourceFails = resourceFails.filter(
+      (fail) => !isKnownOptionalFailUrl(fail.url),
+    );
+    expect(
+      unknownResourceFails,
+      `unexpected HTTP 404/503:\n${unknownResourceFails
+        .map((f) => `${f.status} ${f.url}`)
+        .join("\n")}`,
+    ).toEqual([]);
+
+    const meaningful = consoleErrors.filter((text) => {
+      if (
+        /\bAbortError\b|The user aborted|The operation was aborted/i.test(text)
+      ) {
+        return false;
+      }
+      if (
+        /Failed to load resource: the server responded with a status of (404|503)/i.test(
+          text,
+        )
+      ) {
+        if (KNOWN_OPTIONAL_FAIL_URL.some((re) => re.test(text))) return false;
+        if (!/https?:\/\//i.test(text) && unknownResourceFails.length === 0) {
+          return false;
+        }
+        return true;
+      }
+      return true;
+    });
+    expect(
+      meaningful,
+      `console errors on map strip e2e:\n${meaningful.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  test("collapsed strip expands and clears burger, search, and place card", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
     await openMap(page);
 
     const banner = page.getByTestId("research-banner");
@@ -62,7 +234,9 @@ test.describe("SW-016 research banner strip 390x844", () => {
     expect(mapBox, "Map link box").toBeTruthy();
     expect(aboutBox, "About link box").toBeTruthy();
     expect(mapBox!.y, "Map should be near the top").toBeLessThan(200);
-    expect(aboutBox!.y, "About should sit under Map").toBeGreaterThan(mapBox!.y);
+    expect(aboutBox!.y, "About should sit under Map").toBeGreaterThan(
+      mapBox!.y,
+    );
     expect(aboutBox!.y, "About should stay near the top").toBeLessThan(280);
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
@@ -70,9 +244,10 @@ test.describe("SW-016 research banner strip 390x844", () => {
     // One-line strip: height stays compact while collapsed.
     const collapsedBox = await banner.boundingBox();
     expect(collapsedBox).toBeTruthy();
-    expect(collapsedBox!.height, "collapsed strip should be one line").toBeLessThan(
-      52,
-    );
+    expect(
+      collapsedBox!.height,
+      "collapsed strip should be one line",
+    ).toBeLessThan(52);
 
     // Expand / collapse while the place card is closed (card stacks above the strip).
     await toggle.click();
@@ -93,7 +268,6 @@ test.describe("SW-016 research banner strip 390x844", () => {
       RESEARCH_BANNER_STRIP_COLLAPSED,
     );
 
-    await mockPlaceCard(page);
     await search.fill("55.86090, -4.25140");
     await page.locator(".hud-search-go").click();
     const card = page.getByTestId("place-card");
@@ -106,11 +280,6 @@ test.describe("SW-016 research banner strip 390x844", () => {
     await assertCenterTappable(cardClose, "place card close");
     await assertBannerClears(banner, burger, "burger with place card open");
     await assertBannerClears(banner, search, "search with place card open");
-
-    expect(
-      consoleErrors,
-      `console errors on map strip e2e:\n${consoleErrors.join("\n")}`,
-    ).toEqual([]);
   });
 });
 
@@ -118,41 +287,6 @@ async function openMap(page: Page) {
   await page.goto("/");
   await page.locator(".maplibregl-canvas").waitFor();
   await page.locator("#place-query").waitFor();
-}
-
-async function mockPlaceCard(page: Page) {
-  await page.route("**/platform/place**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        contract: "place_card_v1",
-        lat: 55.8609,
-        lng: -4.2514,
-        place_label: "Glasgow",
-        council_name: "Glasgow City",
-        data_zone: {
-          status: "ok",
-          code: "S01014567",
-          name: "City Centre South",
-          vintage: 2022,
-        },
-        intermediate_zone: { status: "ok", name: "City Centre" },
-        agr_rows: [
-          {
-            id: "surface",
-            label: "Land",
-            tag: "proxy",
-            status: "in_progress",
-            applies: true,
-          },
-        ],
-        constraints: [],
-        layers: [],
-        links: [],
-      }),
-    });
-  });
 }
 
 type Box = { x: number; y: number; width: number; height: number };

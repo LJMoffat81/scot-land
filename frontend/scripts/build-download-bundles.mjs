@@ -317,7 +317,7 @@ const bundles = [];
       bundles.push({
         id: pack.id,
         name: pack.name,
-        whats_in_it: `One row per Data Zone, ${pack.vintage} set. Pack not published yet.`,
+        whats_in_it: `One row per Data Zone, ${pack.vintage} set.`,
         format: "CSV",
         licence: OGL,
         updated: VDL_SURVEY_YEAR,
@@ -336,8 +336,7 @@ bundles.push(
   {
     id: "ldp",
     name: "Planned land use (Local Development Plans)",
-    whats_in_it:
-      "One feature per planned site allocation. Pack not published yet.",
+    whats_in_it: "One feature per planned site allocation.",
     format: "GeoJSON",
     licence: OGL,
     updated: "2024",
@@ -349,7 +348,7 @@ bundles.push(
   {
     id: "dz2022",
     name: "Data Zone boundaries (2022)",
-    whats_in_it: "One polygon per Data Zone, 2022 set. Pack not published yet.",
+    whats_in_it: "One polygon per Data Zone, 2022 set.",
     format: "GeoJSON",
     licence: OGL,
     updated: "2022",
@@ -361,8 +360,7 @@ bundles.push(
   {
     id: "crofting",
     name: "Crofting and common grazings lists",
-    whats_in_it:
-      "One row per croft or common grazing. Pack not published yet.",
+    whats_in_it: "One row per croft or common grazing.",
     format: "CSV",
     licence: OGL,
     updated: "2024",

@@ -176,6 +176,18 @@ assert.match(developers, /\/layers\/…\?south=&west=&north=&east=/);
 assert.match(developers, /Full API reference/);
 assert.match(developers, /Technical checks/);
 assert.match(developers, /Source code/);
+// Suggestion 26: unpackaged cards show exact "Not packaged yet" (not bare Size —).
+assert.match(developers, /"Not packaged yet"/);
+assert.match(developers, /download-not-packaged-\$\{bundle\.id\}/);
+assert.doesNotMatch(developers, /Pack not published yet/);
+assert.doesNotMatch(
+  readFileSync(join(downloadsDir, "manifest.json"), "utf8"),
+  /Pack not published yet/,
+);
+assert.doesNotMatch(
+  readSrc("scripts/build-download-bundles.mjs"),
+  /Pack not published yet/,
+);
 
 // Each packaged bundle has bytes + a one-line grain note (e.g. One row per Data Zone).
 for (const bundle of manifest.bundles) {

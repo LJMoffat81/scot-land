@@ -163,9 +163,15 @@ function DevelopersPageInner() {
                 >
                   <span
                     className="download-card-size"
-                    data-testid={`download-size-${bundle.id}`}
+                    data-testid={
+                      hasFile
+                        ? `download-size-${bundle.id}`
+                        : `download-not-packaged-${bundle.id}`
+                    }
                   >
-                    {formatDownloadBytes(bundle.bytes)}
+                    {hasFile
+                      ? formatDownloadBytes(bundle.bytes)
+                      : "Not packaged yet"}
                   </span>
                   <span className="download-card-summary-sep" aria-hidden="true">
                     ·

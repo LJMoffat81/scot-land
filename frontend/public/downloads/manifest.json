@@ -32,7 +32,7 @@
     {
       "id": "ldp",
       "name": "Planned land use (Local Development Plans)",
-      "whats_in_it": "One feature per planned site allocation. Pack not published yet.",
+      "whats_in_it": "One feature per planned site allocation.",
       "format": "GeoJSON",
       "licence": "OGL v3.0",
       "updated": "2024",
@@ -44,7 +44,7 @@
     {
       "id": "dz2022",
       "name": "Data Zone boundaries (2022)",
-      "whats_in_it": "One polygon per Data Zone, 2022 set. Pack not published yet.",
+      "whats_in_it": "One polygon per Data Zone, 2022 set.",
       "format": "GeoJSON",
       "licence": "OGL v3.0",
       "updated": "2022",
@@ -56,7 +56,7 @@
     {
       "id": "crofting",
       "name": "Crofting and common grazings lists",
-      "whats_in_it": "One row per croft or common grazing. Pack not published yet.",
+      "whats_in_it": "One row per croft or common grazing.",
       "format": "CSV",
       "licence": "OGL v3.0",
       "updated": "2024",

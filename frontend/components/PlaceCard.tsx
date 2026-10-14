@@ -29,7 +29,11 @@ export type PlaceCardProps = {
 
 function TagChip({ tag }: { tag: PlaceRentTag }) {
   const label =
-    tag === "market" ? "Market" : tag === "proxy" ? "Proxy" : "Shadow";
+    tag === "market"
+      ? "Market"
+      : tag === "proxy"
+        ? "Modelled"
+        : "Estimate (no market price)";
   return (
     <span className={`place-tag tone-${tag}`} data-testid={`place-tag-${tag}`}>
       {label}
@@ -88,19 +92,41 @@ export function PlaceCard({
       : zone?.status === "miss"
         ? null
         : null;
+  const dz2011Secondary = (zone?.zones ?? []).find((z) => z.vintage === 2011);
   const iz = card?.intermediate_zone;
-  const izDisplay =
-    iz?.status === "ok" && iz.name
-      ? iz.name
-      : iz?.note || "No data";
+  // Never show "No data" when the IZ code is known.
+  const izName = iz?.name?.trim() || null;
+  const izCode = iz?.code ? String(iz.code) : null;
+  const izNote = iz?.note?.trim() || null;
+  const izPending = Boolean(izCode && !izName);
+  // Code known but name/note missing → "name not loaded yet" (never "No data").
+  const izDisplay = izName
+    ? izName
+    : izCode
+      ? izNote || "name not loaded yet"
+      : izNote || "No data";
   const placeName =
     card?.place_label?.trim() ||
+    card?.council_name?.trim() ||
     card?.postcode?.trim() ||
     zone?.name?.trim() ||
     "This place";
   const valueRows = (card?.agr_rows || []).filter((row) => row.applies !== false);
   // Show every constraint row (applies true / false / unknown).
   const limitRows = card?.constraints ?? [];
+  const landOutline = card?.land_outline ?? null;
+  const outlineStatus = landOutline?.status || card?.land_register_outline?.status;
+  const outlineNote =
+    landOutline?.note ||
+    card?.land_register_outline?.note ||
+    null;
+  const outlineArea =
+    typeof landOutline?.area_sqm === "number" && Number.isFinite(landOutline.area_sqm)
+      ? landOutline.area_sqm
+      : typeof card?.parcel?.area_sqm === "number" &&
+          Number.isFinite(card.parcel.area_sqm)
+        ? card.parcel.area_sqm
+        : null;
 
   return (
     <aside
@@ -147,25 +173,34 @@ export function PlaceCard({
           <dl className="place-card-fields">
             <div className="place-card-field">
               <dt data-testid="place-card-data-zone-label">
-                {dataZoneFieldLabel(zone?.vintage)}
+                {dataZoneFieldLabel(zone?.vintage === 2011 ? 2011 : 2022)}
               </dt>
               <dd data-testid="place-card-data-zone">
                 {dzCode ? (
                   <>
                     <span className="place-card-dz-code">{dzCode}</span>
-                    {zone?.vintage ? (
-                      <span
-                        className="place-card-meta-inline"
-                        data-testid="place-card-dz-vintage"
-                      >
-                        {" "}
-                        · DZ{zone.vintage}
-                      </span>
-                    ) : null}
+                    <span
+                      className="place-card-meta-inline"
+                      data-testid="place-card-dz-vintage"
+                    >
+                      {" "}
+                      · {zone?.vintage === 2011 ? "2011" : "2022"}
+                    </span>
                     {zone?.name ? (
                       <span className="place-card-meta-inline">
                         {" "}
                         · {zone.name}
+                      </span>
+                    ) : null}
+                    {zone?.vintage !== 2011 && dz2011Secondary?.code ? (
+                      <span
+                        className="place-card-dz-secondary"
+                        data-testid="place-card-dz-2011"
+                      >
+                        Also on 2011 map: {dz2011Secondary.code}
+                        {dz2011Secondary.name
+                          ? ` · ${dz2011Secondary.name}`
+                          : ""}
                       </span>
                     ) : null}
                   </>
@@ -182,14 +217,21 @@ export function PlaceCard({
             <div className="place-card-field">
               <dt>Intermediate Zone</dt>
               <dd data-testid="place-card-intermediate-zone">
-                {iz?.status === "ok" && iz.name ? (
-                  iz.name
+                {izCode || izName ? (
+                  <>
+                    <span
+                      data-testid="place-card-iz-name"
+                      className={izPending ? "place-card-no-data" : undefined}
+                    >
+                      {izDisplay}
+                    </span>
+                    {izCode ? (
+                      <span className="place-card-meta-inline"> · {izCode}</span>
+                    ) : null}
+                  </>
                 ) : (
                   <span className="place-card-no-data">{izDisplay}</span>
                 )}
-                {iz?.code && iz.status !== "ok" ? (
-                  <span className="place-card-meta-inline"> · {iz.code}</span>
-                ) : null}
               </dd>
             </div>
 
@@ -209,6 +251,33 @@ export function PlaceCard({
               </dd>
             </div>
           </dl>
+
+          {(outlineStatus || outlineArea != null || outlineNote) && (
+            <section
+              className="place-card-land-outline"
+              aria-label="Land outline"
+              data-testid="place-card-land-outline"
+            >
+              <h3 className="place-card-section">Land outline</h3>
+              {outlineStatus ? (
+                <p className="place-card-meta" data-testid="place-card-outline-status">
+                  {outlineStatus === "inside_outline"
+                    ? "Inside a registered land outline"
+                    : outlineStatus === "no_outline"
+                      ? "No registered outline at this point"
+                      : outlineStatus}
+                </p>
+              ) : null}
+              {outlineArea != null ? (
+                <p className="place-card-meta" data-testid="place-card-outline-area">
+                  About {Math.round(outlineArea).toLocaleString("en-GB")} m²
+                </p>
+              ) : null}
+              {outlineNote ? (
+                <p className="place-card-meta">{outlineNote}</p>
+              ) : null}
+            </section>
+          )}
 
           <EvidenceTagLegend compact />
 

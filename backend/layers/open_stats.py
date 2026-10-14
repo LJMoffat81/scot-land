@@ -11,6 +11,7 @@ from typing import Any
 
 import httpx
 
+from layers.catalog_copy import apply_visitor_catalog_copy
 from layers.council_metrics import build_council_metrics_geojson
 from layers.platform import platform_catalog
 from layers.public_land import ATTRIBUTION as PUBLIC_ATTRIBUTION
@@ -180,4 +181,5 @@ def roll_json(scenario: str = "full_agr") -> dict[str, Any]:
 
 
 def catalog_json() -> dict[str, Any]:
-    return platform_catalog()
+    """Public catalogue — plain-English descriptions; technical notes separate."""
+    return apply_visitor_catalog_copy(platform_catalog())

@@ -1,5 +1,5 @@
 /**
- * Natural capital ledger contracts:
+ * Annual Ground Rent breakdown contracts:
  * - GET /api/ledger.json — rows 1–10 (+1a), checks, excluded, benchmarks (Data / API)
  * - GET /ledger — ROWS 1–10 + nested 1a + Constraints (map HUD panel)
  *
@@ -159,6 +159,7 @@ export type LedgerTag =
   | "shadow"
   | "market_or_proxy"
   | "reported"
+  | "already_included"
   | "nested";
 
 export type LedgerRow = {
@@ -199,7 +200,7 @@ export type LedgerToggleState = Record<string, boolean>;
 export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
   {
     id: "1",
-    label: "Surface site rent",
+    label: "Land",
     parent_id: null,
     nested: false,
     tag: "market_or_proxy",
@@ -213,9 +214,10 @@ export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
     label: "Planning uplift",
     parent_id: "1",
     nested: true,
-    tag: "nested",
+    tag: "already_included",
     status: "not_yet",
-    status_note: "Of which under surface land — never added as a sibling total.",
+    status_note:
+      "Planning uplift: an 'of which' figure inside the land part, never added again",
     amount_placeholder: "—",
   },
   {
@@ -225,7 +227,7 @@ export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
     nested: false,
     tag: "proxy",
     status: "not_yet",
-    status_note: "Royalty/tonne, below ground. Not yet on the public ledger.",
+    status_note: "Royalty/tonne, below ground. Not yet on the public breakdown.",
     amount_placeholder: "—",
   },
   {
@@ -337,7 +339,7 @@ export const LEDGER_FIXTURE_CONSTRAINTS: LedgerConstraint[] = [
 
 export const LEDGER_FIXTURE: LedgerPayload = {
   version: 1,
-  brief: "Natural capital ledger — rows 1–10 + planning uplift under surface",
+  brief: "Annual Ground Rent breakdown: where the value comes from",
   publication_note:
     "Figures are being checked and aren't published yet.",
   rows: LEDGER_FIXTURE_ROWS,
@@ -395,8 +397,10 @@ export function tagLabel(tag: LedgerTag): string {
       return "market / proxy";
     case "reported":
       return "outside";
+    case "already_included":
+      return "already included";
     case "nested":
-      return "of which";
+      return "already included";
     default: {
       const _exhaustive: never = tag;
       return _exhaustive;

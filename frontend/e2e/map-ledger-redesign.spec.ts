@@ -64,7 +64,7 @@ test.describe("map ledger redesign", () => {
           agr_rows: [
             {
               id: "surface",
-              label: "Surface land",
+              label: "Land",
               tag: "proxy",
               status: "in_progress",
               applies: true,

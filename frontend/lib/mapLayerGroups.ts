@@ -1,6 +1,6 @@
 /**
- * Map layers drawer groups (Land / Resources / Nature / Limits / Boundaries).
- * Each row reuses an existing paint toggle (ledger id or catalog layer id).
+ * Map layers drawer groups (Land / Natural resource rents / Services of nature /
+ * Limits / Boundaries). Each row reuses an existing paint toggle (catalog id).
  */
 
 export type MapLayerGroupKey =
@@ -39,9 +39,9 @@ export function mapLayerGroupLabel(group: MapLayerGroupKey): string {
     case "land":
       return "Land";
     case "resources":
-      return "Resources";
+      return "Natural resource rents";
     case "nature":
-      return "Nature";
+      return "Services of nature";
     case "limits":
       return "Limits on use";
     case "boundaries":
@@ -61,7 +61,7 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
   {
     id: "1",
     group: "land",
-    label: "Surface land",
+    label: "Land",
     description: "Best permitted use of the land surface.",
     tag: "proxy",
     licence: "Research estimate — figures not published yet",
@@ -70,7 +70,7 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
     id: "1a",
     group: "land",
     label: "Planning uplift",
-    description: "Of which under surface land — planning permission effect.",
+    description: "Planning uplift: an 'of which' figure inside the land part.",
     tag: "proxy",
     comingSoon: true,
     licence: "Research estimate — figures not published yet",
@@ -208,11 +208,12 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
     id: "data_zones",
     group: "boundaries",
     label: "Data zones",
-    description: "Scottish Government Data Zone boundaries (2022).",
+    description: "Data Zone boundaries 2022.",
     licence: "Open Government Licence v3.0",
     licenceUrl: OGL_V3,
   },
 ];
+
 
 export function mapDrawerLayersByGroup(): Array<{
   key: MapLayerGroupKey;

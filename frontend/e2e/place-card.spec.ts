@@ -32,7 +32,7 @@ test.describe("place card (internal preview)", () => {
       /What gives this land value/i,
     );
     await expect(page.getByTestId("place-card-agr-surface")).toContainText(
-      /Surface land/i,
+      /Land/i,
     );
     await expect(page.getByTestId("place-card-of-which-planning_uplift")).toContainText(
       /of which: planning uplift/i,

@@ -193,8 +193,17 @@ def test_query_bbox_arcgis_maps_props(monkeypatch):
             return FakeResp()
 
     monkeypatch.setattr("layers.data_zones._client", FakeClient)
-    payload = query_bbox_arcgis(55.84, -4.30, 55.88, -4.22, max_features=10)
-    assert payload["meta"]["ok"] is True
-    assert payload["meta"]["licence_url"] == OGL_V3_URL
-    assert payload["features"][0]["properties"]["code"] == "S01009859"
-    assert payload["features"][0]["properties"]["vintage"] == 2011
+    # Default ArcGIS fallback is 2022 (dzcode/dzname). Explicit 2011 still works.
+    payload_2022 = query_bbox_arcgis(
+        55.84, -4.30, 55.88, -4.22, max_features=10, vintage=2022
+    )
+    assert payload_2022["meta"]["ok"] is True
+    assert payload_2022["meta"]["licence_url"] == OGL_V3_URL
+    # Fake returns datazone=…; mapper also accepts that alias for the code.
+    assert payload_2022["features"][0]["properties"]["code"] == "S01009859"
+    assert payload_2022["features"][0]["properties"]["vintage"] == 2022
+
+    payload_2011 = query_bbox_arcgis(
+        55.84, -4.30, 55.88, -4.22, max_features=10, vintage=2011
+    )
+    assert payload_2011["features"][0]["properties"]["vintage"] == 2011

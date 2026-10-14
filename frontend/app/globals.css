@@ -1565,7 +1565,7 @@ input {
   font-style: italic;
 }
 
-/* Place view — per-hectare stack (Natural capital ledger) */
+/* Place view — per-hectare stack (resource rent ledger) */
 .place-stack-page {
   max-width: 44rem;
 }
@@ -2902,4 +2902,12 @@ button.linkish:disabled {
   .hud-scotland.legend-open .hud-scotland-fold-show {
     display: none;
   }
+}
+
+.place-card-dz-secondary {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--slrg-muted);
+  font-weight: 500;
 }

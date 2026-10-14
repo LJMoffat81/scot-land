@@ -22,17 +22,30 @@ from georgist import db
 
 logger = logging.getLogger(__name__)
 
-# Layer 2 = DataZoneBdry2011 on ScotGov/StatisticalUnits (display fallback).
-FEATURE_URL = (
-    "https://maps.gov.scot/server/rest/services/ScotGov/"
-    "StatisticalUnits/MapServer/2/query"
-)
+# Layer 10 = DataZoneBdry2022 on ScotGov/StatisticalUnits (display fallback).
+# Layer 2 remains available when vintage=2011 is requested explicitly.
+FEATURE_URL_BY_VINTAGE = {
+    2022: (
+        "https://maps.gov.scot/server/rest/services/ScotGov/"
+        "StatisticalUnits/MapServer/10/query"
+    ),
+    2011: (
+        "https://maps.gov.scot/server/rest/services/ScotGov/"
+        "StatisticalUnits/MapServer/2/query"
+    ),
+}
+FEATURE_URL = FEATURE_URL_BY_VINTAGE[2022]
 TIMEOUT = 12.0
 MAX_FEATURES = 120
-OUT_FIELDS = "datazone,name"
-DEFAULT_VINTAGE = 2011
+# 2022 fields are dzcode/dzname; 2011 fields are datazone/name.
+OUT_FIELDS_BY_VINTAGE = {
+    2022: "dzcode,dzname",
+    2011: "datazone,name",
+}
+OUT_FIELDS = OUT_FIELDS_BY_VINTAGE[2022]
+DEFAULT_VINTAGE = 2022
 
-# Official geometry metadata (SG Data Zone boundaries 2011).
+# Official geometry metadata (SG Data Zone boundaries 2022 by default).
 SOURCE_PAGE = (
     "https://www.spatialdata.gov.scot/geonetwork/srv/eng/catalog.search"
     "#/metadata/7d564e13-a967-495a-ae2f-048ffdfa4b03"
@@ -42,7 +55,7 @@ OGL_V3_URL = (
 )
 LICENCE = "Open Government Licence v3.0"
 ATTRIBUTION = (
-    "Scottish Government Data Zone boundaries 2011. "
+    "Scottish Government Data Zone boundaries 2022. "
     "Contains Ordnance Survey data © Crown copyright and database right. "
     "Licensed under the Open Government Licence v3.0. "
     "Outlines and open rollups only — not a rent."
@@ -255,33 +268,42 @@ def query_bbox_arcgis(
     north: float,
     east: float,
     max_features: int = MAX_FEATURES,
+    vintage: int = DEFAULT_VINTAGE,
 ) -> dict[str, Any]:
     """Viewport from SG StatisticalUnits MapServer (display fallback)."""
+    vin = 2022 if int(vintage) != 2011 else 2011
     cap = max(1, min(int(max_features), MAX_FEATURES))
     envelope = f"{west},{south},{east},{north}"
+    code_field = "dzcode" if vin == 2022 else "datazone"
+    name_field = "dzname" if vin == 2022 else "name"
     params = {
         "geometry": envelope,
         "geometryType": "esriGeometryEnvelope",
         "inSR": 4326,
         "spatialRel": "esriSpatialRelIntersects",
-        "outFields": OUT_FIELDS,
+        "outFields": OUT_FIELDS_BY_VINTAGE[vin],
         "returnGeometry": "true",
         "outSR": 4326,
         "resultRecordCount": cap,
-        "orderByFields": "datazone ASC",
+        "orderByFields": f"{code_field} ASC",
         "maxAllowableOffset": _simplify_offset_deg(south, west, north, east),
         "f": "geojson",
     }
     try:
         with _client() as client:
-            response = client.get(FEATURE_URL, params=params)
+            response = client.get(FEATURE_URL_BY_VINTAGE[vin], params=params)
             response.raise_for_status()
             payload = response.json()
     except (httpx.HTTPError, ValueError) as exc:
         return {
             "type": "FeatureCollection",
             "features": [],
-            "meta": _meta(ok=False, source="arcgis:StatisticalUnits", error=str(exc)),
+            "meta": _meta(
+                ok=False,
+                source="arcgis:StatisticalUnits",
+                vintage=vin,
+                error=str(exc),
+            ),
         }
 
     if payload.get("type") != "FeatureCollection":
@@ -291,6 +313,7 @@ def query_bbox_arcgis(
             "meta": _meta(
                 ok=False,
                 source="arcgis:StatisticalUnits",
+                vintage=vin,
                 error="Unexpected data-zone response",
             ),
         }
@@ -298,15 +321,17 @@ def query_bbox_arcgis(
     features = []
     for feat in (payload.get("features") or [])[:cap]:
         props = dict(feat.get("properties") or {})
-        code = str(props.get("datazone") or "").strip()
-        name = str(props.get("name") or "").strip() or None
+        code = str(props.get(code_field) or props.get("datazone") or "").strip()
+        name = (
+            str(props.get(name_field) or props.get("name") or "").strip() or None
+        )
         if not code:
             continue
         features.append(
             _feature(
                 code=code,
                 name=name,
-                vintage=DEFAULT_VINTAGE,
+                vintage=vin,
                 geometry=feat.get("geometry"),
             )
         )
@@ -319,7 +344,7 @@ def query_bbox_arcgis(
             capped=len(features) >= cap
             or bool(payload.get("exceededTransferLimit")),
             source="arcgis:StatisticalUnits",
-            vintage=DEFAULT_VINTAGE,
+            vintage=vin,
         ),
     }
 
@@ -343,4 +368,6 @@ def query_bbox(
     )
     if postgis is not None:
         return postgis
-    return query_bbox_arcgis(south, west, north, east, max_features=max_features)
+    return query_bbox_arcgis(
+        south, west, north, east, max_features=max_features, vintage=vintage
+    )

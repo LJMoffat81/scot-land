@@ -39,7 +39,7 @@ assert.match(
 const dataPage = readSrc("app/data/page.tsx");
 assert.match(dataPage, /groupCatalogSources/);
 assert.match(dataPage, /data-sources-group/);
-assert.match(dataPage, /Land|Resources|Nature|Limits/);
+assert.match(dataPage, /Land|Natural resource rents|Services of nature|Limits/);
 
 const {
   DATA_SOURCE_GROUP_ORDER,

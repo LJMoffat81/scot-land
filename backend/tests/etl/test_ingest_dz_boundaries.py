@@ -99,7 +99,10 @@ def test_fixture_load_writes_rows_meta_and_balfron_lookup(monkeypatch):
 
         hit = lookup_postgis(BALFRON_LAT, BALFRON_LON)
         assert hit.source == "postgis:dz_boundaries"
-        assert hit.to_dict()["code"] == "S01013010"
+        # Default public grain is DZ2022 when both vintages hit.
+        assert hit.to_dict()["code"] == "S01020380"
+        assert hit.to_dict()["vintage"] == 2022
+        assert hit.to_dict()["dz2022"]["code"] == "S01020380"
         assert hit.to_dict()["dz2011"]["code"] == "S01013010"
         assert hit.to_dict()["dz2011"]["name"] == "Balfron and Drymen - 02"
     finally:

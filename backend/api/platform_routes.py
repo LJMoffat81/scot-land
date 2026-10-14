@@ -252,7 +252,7 @@ def layer_open_data_zones(
     east: float = Query(..., description="BBox east longitude"),
     max_features: int = Query(default=120, ge=1, le=120),
 ) -> JSONResponse:
-    """2011 Data Zone boundaries in the viewport (simplified GeoJSON).
+    """Data Zone boundaries (2022 by default) in the viewport (simplified GeoJSON).
 
     Outlines only — code and name, no AGR £ / Surface Rent. Returns **503**
     when the upstream SG StatisticalUnits service is unavailable. An empty
@@ -457,10 +457,11 @@ def layer_open_naturescot_designations(
 
 @router.get("/ledger")
 def natural_capital_ledger() -> dict:
-    """Natural capital ledger rows + constraints (no published AGR £).
+    """Annual Ground Rent breakdown rows + constraints (no published AGR £).
 
-    Contract: ROWS 1–10 + nested 1a; Constraints = £0, change best use.
-    Amounts are placeholders until ECONOMIC_RULES / calibration approve.
+    Contract: ROWS 1–10 + 1a already included in surface; Constraints =
+    Limits use (not a money value). Amounts are placeholders until
+    ECONOMIC_RULES / calibration approve.
     """
     return ledger_payload()
 
@@ -692,7 +693,7 @@ def api_ledger(
         description="Optional vintage 2011 or 2022 when zone_id is set.",
     ),
 ) -> dict:
-    """Natural capital ledger: rows 1–10 (+1a), checks, excluded, benchmarks.
+    """Annual Ground Rent breakdown: rows 1–10 (+1a), checks, excluded, benchmarks.
 
     National catalog when zone_id is omitted. With zone_id, returns the
     zone-level stack (nothing published for blocked zones). No map-panel
@@ -753,7 +754,7 @@ def api_place_stack(
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
 ) -> dict:
-    """Place view per-hectare stack (Natural capital ledger).
+    """Place view per-hectare stack (Annual Ground Rent breakdown).
 
     Zone grain only. Nested 1a indented (never added). Shadow stack separate.
     Oil & gas + benchmarks outside. Nothing for blocked zones. Public amounts
@@ -999,9 +1000,10 @@ def open_downloads() -> dict:
                     "downloads/Hutton_LCA250K_OpenData.zip"
                 ),
                 "note": (
-                    "PostGIS ingest of Hutton LCA 1:250k. Ledger constraint (£0) — "
-                    "not a rent or title. Redistribution / derived data on equivalent "
-                    "Hutton terms with required attribution. 503 when unloaded."
+                    "PostGIS ingest of Hutton LCA 1:250k. Ledger constraint "
+                    "(Limits use (not a money value)) — not a rent or title. "
+                    "Redistribution / derived data on equivalent Hutton terms "
+                    "with required attribution. 503 when unloaded."
                 ),
             },
                         {
@@ -1009,7 +1011,10 @@ def open_downloads() -> dict:
                 "label": "Data Zone boundaries overlay (this API)",
                 "licence": "OGL v3.0 — Scottish Government / OS",
                 "endpoint": "/layers/open/data-zones",
-                "note": "Simplified GeoJSON by bbox. Outlines only — no AGR £.",
+                "note": (
+                    "Data Zone boundaries 2022 (default). Simplified GeoJSON "
+                    "by bbox. Outlines only — no AGR £."
+                ),
             },
             {
                 "id": "dz_context",

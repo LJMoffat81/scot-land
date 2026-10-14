@@ -11,6 +11,7 @@ export type PlaceStackTag =
   | "shadow"
   | "market_or_proxy"
   | "reported"
+  | "already_included"
   | "nested";
 
 export type PlaceStackRowStatus =
@@ -90,7 +91,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     publication_status: "ok",
   },
   publication_note:
-    "Per-hectare stack. Figures are being checked and aren't published yet. Planning uplift sits under surface land. Nature values stay separate from market and proxy rows. Oil and gas sit outside the Scottish land total.",
+    "Per-hectare stack. Figures are being checked and aren't published yet. Planning uplift sits under land. Services of nature stay separate from market and proxy rows. Oil and gas sit outside the Scottish land total.",
   headline: {
     label: "Headline (market + proxy)",
     unit: "per hectare per year",
@@ -101,7 +102,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     rows: [
       {
         id: "1",
-        label: "Surface site rent",
+        label: "Land",
         tag: "market_or_proxy",
         status: "not_yet",
         status_note:
@@ -116,9 +117,10 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
       {
         id: "1a",
         label: "Planning uplift",
-        tag: "nested",
+        tag: "already_included",
         status: "not_yet",
-        status_note: "Of which under surface land — never added as a sibling total.",
+        status_note:
+          "Planning uplift: an 'of which' figure inside the land part, never added again",
         parent_id: "1",
         nested: true,
         in_total: false,
@@ -170,19 +172,19 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     ],
   },
   shadow: {
-    label: "Nature values (separate — never summed into headline)",
+    label: "Services of nature (separate — never summed into headline)",
     unit: "per hectare per year",
     sum_row_ids: ["5", "6", "7", "8", "10"],
     total_placeholder: "—",
     total_note:
-      "Shadow stack total is separate from the headline (C-totals). Never added into market+proxy.",
+      "Estimate stack total is separate from the headline. Totals per chip only, never across chips or price years.",
     rows: [
       {
         id: "5",
         label: "Aquaculture licence rent",
         tag: "shadow",
         status: "not_yet",
-        status_note: "Shadow — total minus CES seabed paid. Separate stack.",
+        status_note: "Estimate — total minus CES seabed paid. Separate stack.",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -236,7 +238,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
         label: "Ecosystem services",
         tag: "shadow",
         status: "not_yet",
-        status_note: "Shadow, later.",
+        status_note: "Estimate, later.",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -249,7 +251,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
   outside: {
     label: "Outside Scottish total",
     note:
-      "Oil and gas (row 9) — offshore, outside the Scottish land total. Benchmarks are beside the ledger and never inputs.",
+      "Oil and gas (row 9) — offshore, outside the Scottish land total. Benchmarks are shown alongside the breakdown and are never inputs.",
     benchmark_label: "benchmark only, not inputs",
     rows: [
       {
@@ -386,8 +388,10 @@ export function tagLabel(tag: string): string {
       return "market / proxy";
     case "reported":
       return "outside";
+    case "already_included":
+      return "already included";
     case "nested":
-      return "of which";
+      return "already included";
     default: {
       const _exhaustive: string = tag;
       return _exhaustive;

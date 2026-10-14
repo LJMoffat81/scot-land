@@ -5,8 +5,8 @@ Authoritative ROWS / CHECKS / SCEPTIC NEEDS:
 ``docs/FRONTEND_IA.md`` §4 Place view.
 
 Public payload proves one rent per use via stack structure:
-- Headline rows (market + proxy) visibly compose toward a total.
-- Nested 1a (planning uplift) indented under surface — never added.
+- Headline rows (market and proxy) visibly compose toward a total.
+- Row 1a (planning uplift) already included in surface — never added.
 - Shadow rows in a separate stack — never summed into the headline.
 - Oil & gas + benchmarks outside both, labelled.
 - Zone-level only; nothing published for blocked zones.
@@ -21,13 +21,13 @@ from typing import Any, Mapping
 from georgist.ledger import ledger_benchmarks
 from georgist.publication_rules import ZONE_CODE_RE
 
-CONSTRAINT_RULE = "£0, changes best use"
+CONSTRAINT_RULE = "Constraint: changes best use, adds no value"
 
 # Placeholder until ECONOMIC_RULES approval — never a modelled AGR £ figure.
 AMOUNT_PH = "—"
 
-# Rows that belong in the market+proxy headline stack (and may sum).
-# 1a is nested under 1 and is listed for indent drawing only (in_total=False).
+# Rows that belong in the market and proxy headline stack (and may sum).
+# 1a is already included in 1 and is listed for indent drawing only (in_total=False).
 # Row 6 is market_or_shadow: default shadow until lease prices exist.
 HEADLINE_ROW_IDS = ("1", "2", "3", "4")
 SHADOW_ROW_IDS = ("5", "6", "7", "8", "10")
@@ -48,9 +48,11 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
     },
     "1a": {
         "label": "Planning uplift",
-        "tag": "nested",
+        "tag": "already_included",
         "status": "not_yet",
-        "status_note": "Nested in row 1 — never added as a sibling total.",
+        "status_note": (
+            "Already included in Surface site rent — never added as a sibling total."
+        ),
         "parent_id": "1",
         "nested": True,
         "in_total": False,
@@ -92,7 +94,7 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "label": "Aquaculture licence rent",
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Shadow — total minus CES seabed paid. Separate stack.",
+        "status_note": "Estimate — total minus CES seabed paid. Separate stack.",
         "parent_id": None,
         "nested": False,
         "in_total": True,
@@ -112,7 +114,9 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "label": "Water scarcity",
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Shadow, ~0 when published. Not shown as £0 while not yet.",
+        "status_note": (
+            "Estimate, ~0 when published. Not shown as a money value while not yet."
+        ),
         "parent_id": None,
         "nested": False,
         "in_total": True,
@@ -143,7 +147,7 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "label": "Ecosystem services",
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Shadow, later.",
+        "status_note": "Estimate, later.",
         "parent_id": None,
         "nested": False,
         "in_total": True,
@@ -189,7 +193,7 @@ def _row(row_id: str) -> dict[str, Any]:
 
 
 def headline_sum_row_ids(rows: list[Mapping[str, Any]]) -> list[str]:
-    """Ids that compose the headline total (excludes nested 1a)."""
+    """Ids that compose the headline total (excludes 1a already included in surface)."""
     return [str(r["id"]) for r in rows if r.get("in_total") and not r.get("nested")]
 
 
@@ -257,14 +261,15 @@ def place_hectare_stack(
             "publication_status": status if status else "ok",
         },
         "publication_note": (
-            "Per-hectare stack (Natural capital ledger). "
+            "Per-hectare stack (Annual Ground Rent breakdown). "
             "Public AGR £ withheld until ECONOMIC_RULES / calibration. "
-            "Placeholders are not £0. Nested 1a is indented and never added. "
-            "Shadow total is separate and never summed into the headline. "
+            "Placeholders are not a money value. Row 1a is already included "
+            "in Surface site rent (indented, never added). "
+            "Estimate total is separate and never summed into the headline. "
             "Oil & gas and benchmarks sit outside both."
         ),
         "headline": {
-            "label": "Headline (market + proxy)",
+            "label": "Headline (market and proxy totals)",
             "unit": "£/ha/year",
             "rows": headline_rows,
             "sum_row_ids": headline_sum_row_ids(headline_rows),
@@ -272,18 +277,18 @@ def place_hectare_stack(
             "total_note": (
                 "Visually stacked rows that add to this total: "
                 + ", ".join(headline_sum_row_ids(headline_rows))
-                + ". Nested 1a excluded from the sum."
+                + ". Row 1a already included in Surface site rent — excluded from the sum."
             ),
         },
         "shadow": {
-            "label": "Shadow (separate — never summed into headline)",
+            "label": "Estimate (separate — never summed into headline)",
             "unit": "£/ha/year",
             "rows": shadow_rows,
             "sum_row_ids": shadow_sum_row_ids(shadow_rows),
             "total_placeholder": AMOUNT_PH,
             "total_note": (
-                "Shadow stack total is separate from the headline "
-                "(C-totals). Never added into market+proxy."
+                "Estimate stack total is separate from the headline "
+                "(C-totals). Never added into market or proxy totals."
             ),
         },
         "outside": {
@@ -293,8 +298,8 @@ def place_hectare_stack(
             "benchmark_label": "benchmark only, not inputs",
             "note": (
                 "Oil & gas (row 9) is reported UK-reserved and sits outside "
-                "headline and shadow Scottish totals. Benchmarks are beside "
-                "the ledger and never inputs."
+                "headline and shadow Scottish totals. Benchmarks are shown "
+                "alongside the breakdown and are never inputs."
             ),
         },
         "constraints": list(_CONSTRAINTS),

@@ -288,7 +288,7 @@ export function WealthInspector({ isOpen, onClose, data, failure, isLoading }: W
           )}
 
           <section>
-            <h3 className="text-sm font-bold text-slate-900 mb-1">Of which (already inside surface rent; not added)</h3>
+            <h3 className="text-sm font-bold text-slate-900 mb-1">Planning uplift: an &apos;of which&apos; figure inside the land part, never added again</h3>
             <div className="text-xs space-y-1 text-slate-600">
               <div className="flex justify-between">
                 <span>Infrastructure share</span>

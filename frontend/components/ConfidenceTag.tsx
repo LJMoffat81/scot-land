@@ -2,8 +2,8 @@ export type ConfidenceTagKind = "market" | "proxy" | "shadow";
 
 const LABEL: Record<ConfidenceTagKind, string> = {
   market: "Market",
-  proxy: "Proxy",
-  shadow: "Shadow",
+  proxy: "Modelled",
+  shadow: "Estimate (no market price)",
 };
 
 export default function ConfidenceTag({

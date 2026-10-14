@@ -225,7 +225,7 @@ const NFI_FILL = "#1f6b3a";
 const NATIVE_WOODLAND_FILL = "#2d8f4e";
 const LDP_MIN_ZOOM = 8;
 const REPD_MIN_ZOOM = 6;
-/** REPD onshore wind planning-site points (natural capital — MW/status only). */
+/** REPD onshore wind planning-site points (MW/status only). */
 const REPD_ONSHORE_WIND_MIN_ZOOM = 6;
 const CROWN_LEASES_MIN_ZOOM = 5;
 /** CES aquaculture seabed leases — coastal polygons; ledger row 5; no £ rent. */
@@ -335,12 +335,9 @@ function layerPopupHtml(parts: {
   source?: string | null;
 }): string | null {
   const rows: string[] = [];
-  if (parts.parcelId) {
-    rows.push(
-      `<strong>Cadastral parcel</strong><br/>ID: ${escapeHtml(parts.parcelId)}`,
-    );
-  }
-  if (parts.areaSqm != null && Number.isFinite(parts.areaSqm)) {
+  // Public map click: no separate "Cadastral parcel" popup. Parcel detail
+  // lives in the place card under "Land outline" (without parcel ID).
+  if (parts.areaSqm != null && Number.isFinite(parts.areaSqm) && !parts.parcelId) {
     rows.push(`Area: ${Math.round(parts.areaSqm).toLocaleString("en-GB")} m²`);
   }
   if (parts.ownerType) {
@@ -669,7 +666,7 @@ export default function ScotlandMap() {
         : z < 6.5
           ? 7
           : Math.min(Math.max(z, 15), 18);
-      if (targetZoom >= 14 && !boundariesTouched.current) setShowBoundaries(true);
+      // Parcels stay a toggleable outline layer (off by default) — do not auto-enable.
       map.flyTo({
         center: [payload.square.lng, payload.square.lat],
         zoom: Math.min(targetZoom, 18),
@@ -1401,7 +1398,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "Scottish Government Data Zone boundaries 2011 (OGL). Outlines only — not a rent.",
+          "Scottish Government Data Zone boundaries 2022 (OGL). Outlines only — not a rent.",
       });
       map.addLayer({
         id: "data-zones-fill",
@@ -1501,7 +1498,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "© Forestry Commission copyright. Contains OS data © Crown copyright. OGL v3.0. NFI woodland — ledger row 1 land-use, not a rent.",
+          "© Forestry Commission copyright. Contains OS data © Crown copyright. OGL v3.0. NFI woodland — Annual Ground Rent breakdown row 1 land-use, not a rent.",
       });
       map.addLayer({
         id: "nfi-fill",
@@ -1525,7 +1522,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "Native Woodland Survey of Scotland. © Scottish Forestry. OGL v3.0. Ledger row 1 land-use, not a title.",
+          "Native Woodland Survey of Scotland. © Scottish Forestry. OGL v3.0. Annual Ground Rent breakdown row 1 land-use, not a title.",
       });
       map.addLayer({
         id: "native-woodland-fill",
@@ -1553,7 +1550,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "REPD © DESNZ / Crown copyright (OGL v3.0). Planning-site points — ledger row 3, not a rent.",
+          "REPD © DESNZ / Crown copyright (OGL v3.0). Planning-site points — Annual Ground Rent breakdown row 3, not a rent.",
       });
       map.addLayer({
         id: "repd-circle",
@@ -1573,7 +1570,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "Contains public sector information, licensed under the Open Government Licence v3.0, from Crown Estate Scotland. Offshore leases — ledger row 4, not a title.",
+          "Contains public sector information, licensed under the Open Government Licence v3.0, from Crown Estate Scotland. Offshore leases — Annual Ground Rent breakdown row 4, not a title.",
       });
       map.addLayer({
         id: "crown-leases-fill",
@@ -2037,40 +2034,10 @@ export default function ScotlandMap() {
               source?: string;
             }
           | undefined;
-        let parcelId: string | null = null;
-        let areaSqm: number | null = null;
-        let parcelSource: string | null = null;
-        if (map.getZoom() >= CADASTRAL_MIN_ZOOM) {
-          try {
-            const parcelBody = await apiJson<{
-              features?: Array<{
-                properties?: {
-                  inspire_id?: string;
-                  label?: string;
-                  national_reference?: string;
-                  area_sqm?: number;
-                  source?: string;
-                };
-              }>;
-              meta?: { source?: string; found?: boolean };
-            }>(`/layers/parcels/at?lat=${lat}&lng=${lng}`);
-            const props = parcelBody.features?.[0]?.properties;
-            parcelId =
-              props?.inspire_id ||
-              props?.national_reference ||
-              props?.label ||
-              null;
-            areaSqm =
-              typeof props?.area_sqm === "number" ? props.area_sqm : null;
-            parcelSource =
-              props?.source || parcelBody.meta?.source || "ROS INSPIRE";
-          } catch {
-            /* popup is best-effort; place card still loads */
-          }
-        }
+        // Do not open a cadastral-parcel popup on click — place card owns outline.
         const html = layerPopupHtml({
-          parcelId,
-          areaSqm,
+          parcelId: null,
+          areaSqm: null,
           ownerType: publicProps?.owner_type || publicProps?.organisation || null,
           siteName: publicProps?.site_name || null,
           vdlName: vdlProps?.name || null,
@@ -2089,8 +2056,7 @@ export default function ScotlandMap() {
             lcaProps?.source ||
             vdlProps?.source ||
             publicProps?.source ||
-            parcelSource ||
-            (parcelId || publicProps || vdlProps || lcaProps
+            (publicProps || vdlProps || lcaProps
               ? "Open land layers — research overlay, not a title"
               : null),
         });
@@ -2326,7 +2292,7 @@ export default function ScotlandMap() {
     };
   }, [mapReady, showDataZones]);
 
-  // DESNZ REPD onshore wind (natural capital — MW/status only, no £ rent)
+  // DESNZ REPD onshore wind (MW/status only, no £ rent)
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
@@ -3067,11 +3033,8 @@ export default function ScotlandMap() {
     if (!map) return;
     const sync = () => {
       const zoom = map.getZoom();
-      const close = zoom >= CADASTRAL_MIN_ZOOM;
       if (map.isMoving()) return;
-      if (!boundariesTouched.current) {
-        setShowBoundaries(close);
-      }
+      // Land parcels stay off until the user toggles them (no auto-enable on zoom).
       // public_crown stays off: SG 2024 dashboard licence is unverified/not open
       if (!dataZonesTouched.current) {
         setShowDataZones(zoom >= DATA_ZONE_MIN_ZOOM);

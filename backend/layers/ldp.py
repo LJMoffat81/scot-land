@@ -161,11 +161,13 @@ def catalog_layer() -> dict[str, Any]:
         "status": "live",
         "label": "LDP allocations",
         "description": (
-            "Local Development Plan allocation polygons from OGL Spatial Hub / "
-            "authority portals, loaded into PostGIS. National coverage is fragmented "
-            "(Edinburgh missing; some authorities portal-only). Natural capital ledger "
-            "nested row 1a (planning uplift) — not a LayersPanel toggle. Planning "
-            "extents, not a title. No public AGR £."
+            "Local development plan allocation shapes where an open licence allows. "
+            "Coverage is incomplete (Edinburgh is missing). Planning extents, not a title. "
+            "Planning: of which figure inside the land part — never added again."
+        ),
+        "developer_note": (
+            "LDP polygons from OGL Spatial Hub / authority portals into PostGIS. "
+            "National coverage fragmented. Ledger row 1a planning uplift."
         ),
         "endpoint": "/layers/open/ldp",
         "licence": meta["licence"],

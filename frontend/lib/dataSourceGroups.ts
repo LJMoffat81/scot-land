@@ -1,5 +1,5 @@
 /**
- * /data sources table groups — Land · Resources · Nature · Limits.
+ * /data sources table groups — Land · Natural resource rents · Services of nature · Limits.
  * Maps open-catalogue layer ids (and ledger roles) into the four public buckets.
  */
 
@@ -17,9 +17,9 @@ export function dataSourceGroupLabel(group: DataSourceGroupKey): string {
     case "land":
       return "Land";
     case "resources":
-      return "Resources";
+      return "Natural resource rents";
     case "nature":
-      return "Nature";
+      return "Services of nature";
     case "limits":
       return "Limits";
     default: {

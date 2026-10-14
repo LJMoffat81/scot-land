@@ -51,7 +51,8 @@ def test_file_fallback_returns_both_vintages(client, boundary_dir):
     r = client.get("/layers/context/data-zones/at", params={"lat": LAT, "lon": LON})
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["code"] == "S01008677" and body["vintage"] == 2011
+    # Default public grain is DZ2022 when both vintages hit.
+    assert body["code"] == "S01016000" and body["vintage"] == 2022
     assert body["dz2011"]["name"] == "Synthetic Old Town"
     assert body["dz2022"]["code"] == "S01016000"
     assert body["vintages_loaded"] == [2011, 2022]

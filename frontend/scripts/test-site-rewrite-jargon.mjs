@@ -99,6 +99,66 @@ assert.equal(
   `jargon on public pages:\n${violations.join("\n")}`,
 );
 
+// Site-watch PR B item 6: also scan visitor catalogue descriptions.
+// Prefer live /api/catalog.json when BACKEND_URL is set; otherwise scan the
+// plain-English map in backend/layers/catalog_copy.py.
+const catalogForbidden = [
+  ...FORBIDDEN,
+  { name: "LayersPanel", re: /LayersPanel/i },
+  { name: "MapServer", re: /MapServer/i },
+  { name: "£0", re: /£0/ },
+];
+
+const catalogViolations = [];
+const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_BASE;
+if (backendUrl) {
+  try {
+    const res = await fetch(
+      new URL("/api/catalog.json", backendUrl).toString(),
+    );
+    if (res.ok) {
+      const body = await res.json();
+      for (const layer of body.layers || []) {
+        const text = String(layer.description || "");
+        for (const { name, re } of catalogForbidden) {
+          if (re.test(text)) {
+            catalogViolations.push(
+              `catalog.json ${layer.id}: "${name}" in «${text.slice(0, 120)}»`,
+            );
+          }
+        }
+      }
+    }
+  } catch {
+    /* offline CI — fall through to source scan */
+  }
+}
+
+const catalogCopyPath = join(frontendRoot, "..", "backend/layers/catalog_copy.py");
+const catalogCopy = readFileSync(catalogCopyPath, "utf8");
+const plainBlocks = [
+  ...catalogCopy.matchAll(
+    /"([a-z0-9_]+)":\s*\(\s*((?:"[^"]*"\s*)+)\)/g,
+  ),
+];
+for (const match of plainBlocks) {
+  const id = match[1];
+  const joined = match[2].replace(/"\s*"/g, " ").replace(/"/g, "");
+  for (const { name, re } of catalogForbidden) {
+    if (re.test(joined)) {
+      catalogViolations.push(
+        `catalog_copy.py ${id}: "${name}" in «${joined.slice(0, 120)}»`,
+      );
+    }
+  }
+}
+
+assert.equal(
+  catalogViolations.length,
+  0,
+  `jargon in catalogue descriptions:\n${catalogViolations.join("\n")}`,
+);
+
 console.log(
-  `test-site-rewrite-jargon: ok (${files.length} files, prose clean)`,
+  `test-site-rewrite-jargon: ok (${files.length} files, prose clean; catalogue ok)`,
 );

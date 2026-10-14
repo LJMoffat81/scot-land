@@ -4,11 +4,18 @@ import { useEffect, useRef, useState } from "react";
 
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
+import { apiJson } from "@/lib/api";
 
 const SWAGGER_CSS = "/swagger-ui/swagger-ui.css";
 const SWAGGER_BUNDLE = "/swagger-ui/swagger-ui-bundle.js";
 const SWAGGER_PRESET = "/swagger-ui/swagger-ui-standalone-preset.js";
 const OPENAPI_URL = "/backend/openapi.json";
+
+type CatalogLayerNote = {
+  id: string;
+  label?: string;
+  developer_note?: string;
+};
 
 type SwaggerUIBundleFn = (opts: Record<string, unknown>) => unknown;
 
@@ -68,6 +75,25 @@ function loadScript(src: string): Promise<void> {
 export default function ApiReferencePage() {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [devNotes, setDevNotes] = useState<CatalogLayerNote[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void apiJson<{ layers?: CatalogLayerNote[] }>("/api/catalog.json")
+      .then((body) => {
+        if (cancelled) return;
+        const notes = (body.layers ?? []).filter((layer) =>
+          Boolean(layer.developer_note?.trim()),
+        );
+        setDevNotes(notes);
+      })
+      .catch(() => {
+        if (!cancelled) setDevNotes([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -135,6 +161,28 @@ export default function ApiReferencePage() {
         </a>
         . Overview: <a href="/developers">Downloads &amp; API</a>.
       </p>
+      {devNotes.length > 0 ? (
+        <section
+          className="api-dev-notes"
+          data-testid="catalog-developer-notes"
+          aria-label="Catalogue technical notes"
+        >
+          <h2>Catalogue technical notes</h2>
+          <p className="downloads-note">
+            Developer-only ingest detail from{" "}
+            <code>/api/catalog.json</code> (<code>developer_note</code>). Visitor
+            pages use the plain-English <code>description</code> field instead.
+          </p>
+          <ul>
+            {devNotes.map((layer) => (
+              <li key={layer.id} data-developer-note-id={layer.id}>
+                <strong>{layer.label || layer.id}</strong>
+                <pre className="download-path">{layer.developer_note}</pre>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {error && <p className="downloads-note">{error}</p>}
       <div
         ref={hostRef}

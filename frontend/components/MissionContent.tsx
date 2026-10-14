@@ -11,7 +11,7 @@ const SLC_FIVE_YEAR =
   "https://www.landcommission.gov.scot/a-five-year-route-to-modernising-land-tax-administration/the-case-for-modernising-land-tax-administration";
 
 /**
- * About page copy — site rewrite section B (wording pending Laurie approval).
+ * About page copy — SLRG wording (site-watch PR C).
  */
 export default function MissionContent() {
   return (
@@ -21,22 +21,37 @@ export default function MissionContent() {
       <ResearchBanner />
 
       <p>
-        Scot-LAND is a free, open map of Scotland&apos;s land. It shows what the
-        land itself is worth to use each year, and where that value comes from:
-        homes and businesses, farms, wind, water, fish farms, forests and peat.
-        Anyone can use it: the public, community groups, journalists,
-        researchers and people who make policy.
+        Scot-LAND is a free, open map of Scotland&apos;s land, built around
+        Annual Ground Rent, the yearly rental value of the land itself. It
+        shows where that value comes from: homes and businesses, farms, wind,
+        water, fish farms, forests and peat. Anyone can use it: the public,
+        community groups, journalists, researchers and people who make policy.
       </p>
+
+      <section id="why-it-matters">
+        <h2>Why it matters</h2>
+        <p>
+          Today Scotland raises money by taxing work and trade: Income Tax,
+          VAT, Council Tax, business rates. Those taxes do damage. Economists
+          call it <strong>deadweight loss</strong>: jobs not created, homes not
+          built and businesses that never start. Annual Ground Rent is
+          different. It is not an extra tax. Collected instead of taxes like
+          Council Tax and business rates, it would fund public services without
+          that damage, and land held empty for speculation would come back into
+          use. Scot-LAND shows the evidence so everyone can judge the case for
+          themselves.
+        </p>
+      </section>
 
       <section id="what-it-isnt">
         <h2>What Scot-LAND is not</h2>
         <p>
-          It is not a bill. It is not a tax proposal. It is not an official
-          valuation. We only show owners from public records, never private
-          owners&apos; names, sale prices or title plans. We use open data only
-          at launch. Paid sources may be added later as the project advances,
-          each one clearly tagged. Paid data is never republished or offered for
-          download.
+          It is not a bill or an official valuation. It does not propose a
+          rate. It shows the evidence. We only show owners from public records,
+          never private owners&apos; names, sale prices or title plans. We use
+          open data only at launch. Paid sources may be added later as the
+          project advances, each one clearly tagged. Paid data is never
+          republished or offered for download.
         </p>
       </section>
 
@@ -72,7 +87,8 @@ export default function MissionContent() {
             said Scotland does not have enough data on land use, value and
             ownership to use its tax powers in a transformative way, and falls
             behind other countries in gathering it. It noted public interest in
-            land value tax but did not set a rate.
+            Annual Ground Rent (sometimes called land value tax) but did not set
+            a rate.
           </li>
           <li>
             In <strong>August 2026</strong> its{" "}
@@ -80,14 +96,16 @@ export default function MissionContent() {
               five-year route to modernising land tax administration
             </a>{" "}
             said Scotland lacks an up-to-date, complete picture of land value, a
-            hurdle that comes up again and again in debates on land value tax.
+            hurdle that comes up again and again in debates on Annual Ground Rent
+            (sometimes called land value tax).
           </li>
         </ul>
         <p>
           This map is my answer to that gap. You can look at any area and see a
           research estimate of what its land is worth to use. The building stays
-          with whoever made it. The figure is not a bill and not an official
-          assessment.
+          with whoever made it. Annual Ground Rent figures are research
+          estimates. They are not a bill or an official valuation. Scot-LAND does
+          not propose a rate.
         </p>
       </section>
 

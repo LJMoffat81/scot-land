@@ -49,20 +49,42 @@ def _stub_place_seams(monkeypatch):
         "layers.platform._data_zone_at",
         lambda lat, lng: {
             "status": "ok",
-            "code": "S01008677",
-            "name": "Demo Zone",
-            "vintage": 2011,
+            "code": "S01014713",
+            "name": "Demo Zone 2022",
+            "vintage": 2022,
             "zones": [
                 {
                     "code": "S01008677",
                     "vintage": 2011,
-                    "name": "Demo Zone",
+                    "name": "Demo Zone 2011",
                     "on_boundary": False,
-                }
+                },
+                {
+                    "code": "S01014713",
+                    "vintage": 2022,
+                    "name": "Demo Zone 2022",
+                    "on_boundary": False,
+                },
             ],
             "source": "test",
-            "vintages_loaded": [2011],
+            "vintages_loaded": [2011, 2022],
         },
+    )
+    monkeypatch.setattr(
+        "layers.platform._intermediate_zone_for",
+        lambda data_zone: {
+            "status": "ok",
+            "code": "S02002727",
+            "name": "Old Town, Princes Street and Leith Street",
+            "note": None,
+            "licence": "OGL v3.0 — NRS/Scottish Government Intermediate Zones",
+        },
+    )
+    monkeypatch.setattr(
+        "layers.platform._place_label_from_nrs",
+        lambda lat, lng, *, council_name=None, postcode=None: (
+            "Edinburgh, Old Town" if council_name else (postcode or "This place")
+        ),
     )
     monkeypatch.setattr(
         "layers.platform._resolve_council",
@@ -83,8 +105,16 @@ def test_platform_place_contract_shape(monkeypatch):
     assert body["contract"] == "place_card_v1"
     assert body["council_code"] == "S12000049"
     assert body["council_name"] == "Glasgow City"
-    assert body["data_zone"]["code"] == "S01008677"
+    assert body["data_zone"]["code"] == "S01014713"
+    assert body["data_zone"]["vintage"] == 2022
     assert body["data_zone"]["status"] == "ok"
+    assert body["intermediate_zone"]["name"] == (
+        "Old Town, Princes Street and Leith Street"
+    )
+    assert body["intermediate_zone"]["status"] == "ok"
+    assert "No data" not in (body["intermediate_zone"].get("name") or "")
+    assert "inspire_id" not in (body.get("land_outline") or {})
+    assert body.get("land_outline", {}).get("label") == "Land outline"
 
     layer_ids = [row["id"] for row in body["layers"]]
     assert layer_ids == [
@@ -128,9 +158,7 @@ def test_platform_place_contract_shape(monkeypatch):
     }
     assert body["holder"]["label"]
     assert body["constraints"]
-    assert body["intermediate_zone"]["note"] == "No data" or body["intermediate_zone"].get(
-        "name"
-    )
+    assert body["intermediate_zone"].get("name")
 
     link_ids = {row["id"] for row in body["links"]}
     assert "scotlis" in link_ids

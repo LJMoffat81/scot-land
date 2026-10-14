@@ -6,7 +6,7 @@ import ConfidenceTag, {
 export const EVIDENCE_TAG_GLOSS: Record<ConfidenceTagKind, string> = {
   market: "taken from real prices people paid",
   proxy: "worked out from related prices",
-  shadow: "an estimate for something with no market price",
+  shadow: "no market price available",
 };
 
 const ORDER: ConfidenceTagKind[] = ["market", "proxy", "shadow"];
@@ -18,7 +18,7 @@ export type EvidenceTagLegendProps = {
 };
 
 /**
- * Market / Proxy / Shadow legend — mount once in the layers drawer and place card.
+ * Market / Modelled / Estimate legend — mount once in the layers drawer and place card.
  */
 export default function EvidenceTagLegend({
   className,

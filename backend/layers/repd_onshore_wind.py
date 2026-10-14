@@ -1,4 +1,4 @@
-"""Natural capital — DESNZ REPD onshore wind (Scotland).
+"""DESNZ REPD onshore wind (Scotland) — Annual Ground Rent breakdown row 3.
 
 PostGIS ``repd_onshore_wind`` after ``python -m etl.ingest_repd_onshore_wind``.
 Publishes MW and development status only — **no £ rent figures**. Overlay never
@@ -61,7 +61,7 @@ def source_meta() -> dict[str, Any]:
     row = sources.get("repd_onshore_wind") or {}
     return {
         "source": row.get("name")
-        or "REPD onshore wind (natural capital)",
+        or "REPD onshore wind (Annual Ground Rent breakdown)",
         "licence": row.get("licence") or "OGL-3.0",
         "licence_url": row.get("licence_url") or LICENCE_URL,
         "attribution": row.get("attribution")

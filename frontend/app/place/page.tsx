@@ -15,7 +15,7 @@ import {
 } from "@/lib/placeStack";
 
 /**
- * Full place page — per-hectare Natural capital stack (FRONTEND_IA §4).
+ * Full place page — per-hectare Annual Ground Rent breakdown (FRONTEND_IA §4).
  * Offline preview: /place or /place?fixture=1 ; blocked: ?fixture=blocked.
  * Live: /place?zone=S01… or /place?lat=&lng=.
  */

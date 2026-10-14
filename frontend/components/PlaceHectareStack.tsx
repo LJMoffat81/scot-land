@@ -86,7 +86,8 @@ function StackRow({ row }: { row: PlaceStackRow }) {
       </div>
       {row.nested ? (
         <p className="place-stack-nested-note" data-testid="place-stack-1a-note">
-          Of which under surface land — not added into the headline total
+          Planning uplift: an &apos;of which&apos; figure inside the land part,
+          never added again
         </p>
       ) : null}
       {!row.in_total && !row.nested && row.outside_scottish_total ? (
@@ -109,7 +110,7 @@ export function PlaceHectareStack({
     <article
       className="place-hectare-stack"
       data-testid="place-hectare-stack"
-      aria-label="Per-hectare natural capital stack"
+      aria-label="Per-hectare Annual Ground Rent breakdown"
     >
       {isLoading ? (
         <p className="place-stack-loading" aria-busy="true">
@@ -238,11 +239,11 @@ export function PlaceHectareStack({
 
           <p className="place-stack-disclaimer" data-testid="place-stack-disclaimer">
             Figures are being checked and aren&apos;t published yet.{" "}
-            <a href="/methodology#ledger">How we value land</a>
+            <a href="/methodology#calculation">How we value land</a>
             {stack.checks_url ? (
               <>
                 {" · "}
-                <a href={stack.checks_url}>Ledger checks</a>
+                <a href={stack.checks_url}>Checks</a>
               </>
             ) : null}
           </p>

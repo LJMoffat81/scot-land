@@ -1,4 +1,4 @@
-"""Natural capital ledger payload for GET /ledger.
+"""Annual Ground Rent breakdown payload for GET /ledger.
 
 Authoritative ROWS / Constraints: project store georgist-ledger-accounting-rules
 and docs/FRONTEND_IA.md. Public amounts are placeholders — no AGR £ until
@@ -9,18 +9,18 @@ from __future__ import annotations
 
 from typing import Any
 
-CONSTRAINT_RULE = "£0, changes best use"
+CONSTRAINT_RULE = "Constraint: changes best use, adds no value"
 
 _ROWS: list[dict[str, Any]] = [
     {
         "id": "1",
-        "label": "Surface site rent",
+        "label": "Land",
         "parent_id": None,
         "nested": False,
         "tag": "market_or_proxy",
         "status": "not_yet",
         "status_note": (
-            "Best permitted use. Public £ withheld until ECONOMIC_RULES / calibration."
+            "Best permitted use. Figures are being checked and aren't published yet."
         ),
         "amount_placeholder": "—",
     },
@@ -29,9 +29,11 @@ _ROWS: list[dict[str, Any]] = [
         "label": "Planning uplift",
         "parent_id": "1",
         "nested": True,
-        "tag": "nested",
+        "tag": "already_included",
         "status": "not_yet",
-        "status_note": "Nested in row 1 — never added as a sibling total.",
+        "status_note": (
+            "Planning uplift: an 'of which' figure inside the land part, never added again"
+        ),
         "amount_placeholder": "—",
     },
     {
@@ -41,7 +43,7 @@ _ROWS: list[dict[str, Any]] = [
         "nested": False,
         "tag": "proxy",
         "status": "not_yet",
-        "status_note": "Royalty/tonne, below ground. Not yet on the public ledger.",
+        "status_note": "Royalty/tonne, below ground. Not yet on the public breakdown.",
         "amount_placeholder": "—",
     },
     {
@@ -52,7 +54,8 @@ _ROWS: list[dict[str, Any]] = [
         "tag": "proxy",
         "status": "partial",
         "status_note": (
-            "Site rent minus footprint surface rent. Inventory layers may paint; £ withheld."
+            "Site rent minus footprint surface rent. Inventory layers may paint; "
+            "figures not published yet."
         ),
         "amount_placeholder": "—",
     },
@@ -93,7 +96,9 @@ _ROWS: list[dict[str, Any]] = [
         "nested": False,
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Shadow, ~0 when published. Not shown as £0 while not yet.",
+        "status_note": (
+            "Shadow, ~0 when published. Not shown as a money value while not yet."
+        ),
         "amount_placeholder": "—",
     },
     {
@@ -149,10 +154,13 @@ def ledger_payload() -> dict[str, Any]:
     """Public ledger skeleton — rows + constraints; no published rent £."""
     return {
         "version": 1,
-        "brief": "Natural capital ledger — ROWS 1–10 + nested 1a; Constraints £0",
+        "brief": (
+            "Annual Ground Rent breakdown: where the value comes from — "
+            "ROWS 1–10 + 1a already included in surface; "
+            "Constraint: changes best use, adds no value"
+        ),
         "publication_note": (
-            "Zone-level only. Public AGR £ withheld until ECONOMIC_RULES / "
-            "calibration. Placeholders are not £0."
+            "Zone-level only. Figures are being checked and aren't published yet."
         ),
         "rows": list(_ROWS),
         "constraints": list(_CONSTRAINTS),

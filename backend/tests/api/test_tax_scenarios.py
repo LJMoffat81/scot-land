@@ -307,10 +307,14 @@ def test_s1_rate_differs_by_council_and_revenue_equals_ct_plus_nbr():
         assert "target_gbp" not in body
         assert "s1_revenue_central_gbp" not in body
         assert "taxable_rent_central_gbp" not in body
+        assert "_target_gbp" not in body
+        assert "_taxable_rent_gbp" not in body
+        assert "_s1_revenue_central_gbp" not in body
         assert set(body["s1_rate"]) == {"low", "central", "high"}
         assert "s1_rate_source" in body
     for c in out["by_council"]:
         assert "s1_target_gbp" not in c
+        assert "_target_gbp" not in c
         assert "s1_rate" in c and "s1_rate_source" in c
     rates = {c["la_code"]: c["s1_rate"]["central"] for c in out["by_council"]}
     assert rates["S12000036"] != rates["S12000049"]
@@ -767,6 +771,13 @@ def test_assert_no_aggregate_gbp_refuses_rollup_and_s1_money_fields():
         assert_no_aggregate_gbp({
             "by_council": [{"la_code": "S", "s1_target_gbp": {"total_gbp": 1}}],
         })
+    # Internal reconcile fields must never leak onto response blocks.
+    for field in ("_target_gbp", "_taxable_rent_gbp", "_s1_revenue_central_gbp"):
+        with pytest.raises(TaxScenarioError) as leak:
+            assert_no_aggregate_gbp({
+                "s1_by_council": {"S12000036": {"s1_rate": {"central": 0.2}, field: 1}},
+            })
+        assert leak.value.code == "aggregate_gbp_forbidden"
 
 
 def test_zone_row_reads_estimate_label_from_2022_surface_row():

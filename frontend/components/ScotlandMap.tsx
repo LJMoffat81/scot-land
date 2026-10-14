@@ -779,10 +779,15 @@ export default function ScotlandMap() {
         popYear?: number | null;
         dwellings?: number | null;
         dwYear?: number | null;
+        /** When the caller already owns lookupGen, reuse it (do not bump again). */
+        generation?: number;
       } = {},
     ) => {
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-      const gen = ++lookupGen.current;
+      const gen =
+        typeof opts.generation === "number"
+          ? opts.generation
+          : ++lookupGen.current;
       const map = mapRef.current;
       markerRef.current?.remove();
       if (map) {
@@ -966,6 +971,7 @@ export default function ScotlandMap() {
       fly: true,
       postcode: payload.postcode?.postcode ?? postcode,
       label: payload.postcode?.postcode ?? postcode,
+      generation,
     });
   };
 
@@ -980,6 +986,7 @@ export default function ScotlandMap() {
       await inspectRef.current(body.lat, body.lng, {
         fly: true,
         label: body.label ?? `///${words}`,
+        generation,
       });
       return;
     }
@@ -987,6 +994,7 @@ export default function ScotlandMap() {
       await inspectRef.current(body.lat, body.lng, {
         fly: true,
         label: `///${body.words ?? words}`,
+        generation,
       });
       return;
     }
@@ -1020,7 +1028,10 @@ export default function ScotlandMap() {
       );
       if (generation !== lookupGen.current) return;
       setQuery(body.postcode);
-      void inspectRef.current(body.lat, body.lng, { fly: true });
+      void inspectRef.current(body.lat, body.lng, {
+        fly: true,
+        generation,
+      });
     } catch (err) {
       if (generation !== lookupGen.current) return;
       setError(
@@ -1048,6 +1059,7 @@ export default function ScotlandMap() {
         await inspectRef.current(coords.lat, coords.lng, {
           fly: true,
           label: `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`,
+          generation,
         });
         if (generation === lookupGen.current) setApiOk(true);
       } finally {
@@ -1077,6 +1089,7 @@ export default function ScotlandMap() {
         await inspectRef.current(body.lat, body.lng, {
           fly: true,
           label: body.label ?? null,
+          generation,
         });
       } else if (body.kind === "places" && body.matches && body.matches.length > 1) {
         clearPlace();
@@ -1092,6 +1105,7 @@ export default function ScotlandMap() {
         await inspectRef.current(match.lat, match.lng, {
           fly: true,
           label: match.label,
+          generation,
         });
       } else {
         clearPlace();
@@ -1131,6 +1145,7 @@ export default function ScotlandMap() {
         await inspectRef.current(item.lat, item.lng, {
           fly: true,
           label: item.label,
+          generation,
         });
       }
       if (generation === lookupGen.current) setApiOk(true);

@@ -19,13 +19,18 @@ from shapely.ops import transform
 
 from agr.fiscal import place_fiscal
 from agr.service import ValuationService
+from georgist.publication_rules import FORBIDDEN_PUBLIC_AGR_PROPERTIES
 from layers.vdl import by_council_hectares
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BOUNDARIES = REPO_ROOT / "data" / "processed" / "scotland_councils.geojson"
 CONTEXT = REPO_ROOT / "data" / "processed" / "context_by_council.json"
 
-# Public choropleth metrics the UI may colour by
+# Context-only metrics allowed on the public /api/catalog.json choropleth list.
+# AGR / fiscal £ metrics stay in METRIC_DEFS for internal builders but are not catalogued.
+PUBLIC_CATALOG_METRIC_IDS = frozenset({"house_price", "simd", "pop_density"})
+
+# Full metric defs (including withheld AGR £). Public catalogue filters via PUBLIC_CATALOG_METRIC_IDS.
 METRIC_DEFS: dict[str, dict[str, Any]] = {
     "agr_plot": {
         "property": "annual_ground_rent_plot_gbp",
@@ -280,6 +285,33 @@ def build_council_metrics_geojson(scenario: str = "full_agr") -> dict[str, Any]:
     }
 
 
+def scrub_public_agr_properties(geo: dict[str, Any]) -> dict[str, Any]:
+    """Drop forbidden modelled AGR £ keys from a public council FeatureCollection."""
+    out = dict(geo)
+    features = []
+    for feat in out.get("features") or []:
+        props = dict((feat or {}).get("properties") or {})
+        for key in FORBIDDEN_PUBLIC_AGR_PROPERTIES:
+            props.pop(key, None)
+        features.append({**feat, "properties": props})
+    out["features"] = features
+    meta = dict(out.get("meta") or {})
+    metrics = dict(meta.get("metrics") or {})
+    meta["metrics"] = {
+        mid: defn
+        for mid, defn in metrics.items()
+        if (defn or {}).get("property") not in FORBIDDEN_PUBLIC_AGR_PROPERTIES
+        and mid in PUBLIC_CATALOG_METRIC_IDS
+    }
+    meta["note"] = (
+        "Council outlines with open context metrics only. "
+        "Modelled AGR £ properties are withheld from public routes."
+    )
+    meta["publication_status"] = "agr_properties_blocked"
+    out["meta"] = meta
+    return out
+
+
 def layer_catalog() -> dict[str, Any]:
     """Machine-readable layer list for the UI."""
     return {
@@ -287,6 +319,7 @@ def layer_catalog() -> dict[str, Any]:
         "choropleth_metrics": [
             {"id": mid, **{k: v for k, v in defn.items() if k != "property"}, "property": defn["property"]}
             for mid, defn in METRIC_DEFS.items()
+            if mid in PUBLIC_CATALOG_METRIC_IDS
         ],
         "overlays": [
             {

@@ -191,3 +191,22 @@ def test_guard_catches_internal_component_route_without_panel_suffix(tmp_path):
         ),
     }) is None else None
     assert any("secret-tools" in p and "gated" in p for p in problems), problems
+
+
+def test_guard_forbids_public_agr_property_columns(tmp_path):
+    """Tracked tabular data must not ship forbidden modelled AGR £ property names."""
+    g = _guard()
+    assert "annual_ground_rent_plot_gbp" in g.FORBIDDEN_PUBLIC_AGR_PROPERTIES
+    for prop in sorted(g.FORBIDDEN_PUBLIC_AGR_PROPERTIES):
+        problems = _problems(tmp_path / prop) if _repo(tmp_path / prop, {
+            "data/processed/x/a.csv": f"code,{prop}\nS01006506,1\n",
+        }) is None else None
+        assert any("forbidden public AGR" in p and prop in p for p in problems), (prop, problems)
+
+
+def test_forbidden_public_agr_properties_match_publication_rules():
+    """stdlib guard list stays in lock-step with georgist.publication_rules."""
+    from georgist.publication_rules import FORBIDDEN_PUBLIC_AGR_PROPERTIES as runtime
+
+    g = _guard()
+    assert g.FORBIDDEN_PUBLIC_AGR_PROPERTIES == runtime

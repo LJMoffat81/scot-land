@@ -15,7 +15,7 @@ from layers.common_good import catalog_layer as common_good_catalog_layer
 from layers.common_good import place_common_good
 from layers.community_ownership import catalog_layer as community_ownership_catalog_layer
 from layers.community_ownership import query_point as community_ownership_at_point
-from layers.council_metrics import METRIC_DEFS
+from layers.council_metrics import METRIC_DEFS, PUBLIC_CATALOG_METRIC_IDS
 from layers.crofting import catalog_common_grazings, catalog_crofting_register
 from layers.crofting import place_crofting
 from layers.dz_context import catalog_layers as dz_context_catalog_layers
@@ -132,7 +132,9 @@ def platform_catalog() -> dict[str, Any]:
     return {
         "version": 2,
         "brief": "docs/PLATFORM.md",
-        "principle": "AGR first — open layers around a residual land-rent engine.",
+        "principle": (
+            "AGR £ figures are internal only until ECONOMIC_RULES approval — no public £."
+        ),
         "choropleth_metrics": [
             {
                 "id": mid,
@@ -140,14 +142,18 @@ def platform_catalog() -> dict[str, Any]:
                 "property": defn["property"],
             }
             for mid, defn in METRIC_DEFS.items()
+            if mid in PUBLIC_CATALOG_METRIC_IDS
         ],
         "layers": [
             {
                 "id": "agr_value",
                 "group": "value",
-                "status": "live",
+                "status": "blocked",
                 "label": "Annual Ground Rent",
-                "description": "Residual site-value AGR on Scot-LAND squares and notional plots.",
+                "description": (
+                    "Residual site-value AGR withheld from the public catalogue "
+                    "until ECONOMIC_RULES approval — no public £."
+                ),
             },
             _parcels_meta(),
 

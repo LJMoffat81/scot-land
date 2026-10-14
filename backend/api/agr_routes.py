@@ -44,7 +44,7 @@ from spatial.w3w import (
     words_to_coordinates,
 )
 from layers.councils_layer import build_councils_agr_geojson
-from layers.council_metrics import build_council_metrics_geojson
+from layers.council_metrics import build_council_metrics_geojson, scrub_public_agr_properties
 from layers.grid_layer import build_w3w_agr_grid
 from layers.platform import platform_catalog
 from spatial.address import search_door, search_place
@@ -257,13 +257,13 @@ def get_layer_catalog() -> dict:
 def layer_councils_metrics(
     scenario: str = Query(default="full_agr"),
 ) -> JSONResponse:
-    """Full multi-metric council FeatureCollection (AGR, HPI, SIMD, density, …)."""
+    """Council FeatureCollection with open context metrics only (no modelled AGR £)."""
     try:
         geo = build_council_metrics_geojson(scenario)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     # Copy so the cached layer is not given a stamp it did not have.
-    return JSONResponse(with_stamp(geo))
+    return JSONResponse(with_stamp(scrub_public_agr_properties(geo)))
 
 
 @internal_router.get("/internal/agr/fiscal/summary")

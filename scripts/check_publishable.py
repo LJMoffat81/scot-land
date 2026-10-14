@@ -6,7 +6,8 @@ Fails (exit 1) if anything tracked by git (the index, so staged files count) is:
   2. inside a raw/ or internal/ folder, a Spatial Hub download, a GeoPackage under data/
      (site layers such as svdls_sites.gpkg / hls_sites.gpkg are internal), an INSPIRE-derived
      file, or parcel geometry / a tile archive (size);
-  3. a CSV/TSV whose header carries address, postcode, UPRN or similar columns;
+  3. a CSV/TSV whose header carries address, postcode, UPRN or similar columns,
+     or a forbidden public AGR £ property name;
   4. under a discovered frontend preview app route (name ends in -panel / -card, a
      layout imports @/lib/internalUi, or a page imports an Internal* component)
      without a layout.tsx that actually gates via if (!internalUiEnabled()) notFound()
@@ -45,6 +46,17 @@ GEOMETRY_PRODUCT = re.compile(r"parcel[^/]*\.(geojson|gpkg|fgb|shp|pmtiles|mbtil
 # Code that may name these things (scripts, routes) is not data.
 CODE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".md", ".sql", ".yml", ".yaml", ".json", ".txt", ".sh"}
 TABULAR = {".csv": ",", ".tsv": "\t"}
+# Modelled council/plot AGR £ columns — never in tracked public tabular data.
+# Keep in sync with georgist.publication_rules.FORBIDDEN_PUBLIC_AGR_PROPERTIES.
+FORBIDDEN_PUBLIC_AGR_PROPERTIES = frozenset({
+    "annual_ground_rent_plot_gbp",
+    "site_rental_per_sqm_gbp",
+    "site_capital_per_sqm_gbp",
+    "net_contribution_plot_gbp",
+    "gross_plot_liability_gbp",
+    "vacant_full_agr_gbp",
+    "agr_as_pct_of_price",
+})
 # Top-level app segments that look like Dev/QA previews (no hard-coded route list).
 PREVIEW_ROUTE_NAME = re.compile(r".+-(panel|card)$")
 # Layout must call the gate — mentioning the two identifiers is not enough.
@@ -165,7 +177,7 @@ def check(files: list[str]) -> list[str]:
             problems.append(f"{f}: parcel geometry / tile archive (kept out of the repo for size)")
         if SPATIAL_HUB.search(f):
             problems.append(f"{f}: looks like a Spatial Hub download")
-        # 3. address / postcode / UPRN-like columns
+        # 3. address / postcode / UPRN-like columns, or forbidden public AGR £ properties
         sep = TABULAR.get(PurePosixPath(f).suffix.lower())
         if sep:
             first = index_head(f).splitlines()[:1]
@@ -174,6 +186,9 @@ def check(files: list[str]) -> list[str]:
                    and not AGGREGATE_TOKENS & set(c.strip().lower().split("_"))]
             if bad:
                 problems.append(f"{f}: address/postcode/UPRN-like column(s) {bad}")
+            agr_bad = [c for c in header if c.strip() in FORBIDDEN_PUBLIC_AGR_PROPERTIES]
+            if agr_bad:
+                problems.append(f"{f}: forbidden public AGR £ property column(s) {agr_bad}")
 
     # 4. discovered preview app routes must actually gate via layout.tsx
     for route in sorted(discover_preview_routes(files)):

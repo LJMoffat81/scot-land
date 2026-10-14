@@ -479,6 +479,7 @@ export default function ScotlandMap() {
   const [activeSuggest, setActiveSuggest] = useState(-1);
   const suggestGen = useRef(0);
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suggestAbort = useRef<AbortController | null>(null);
   const [addressLine, setAddressLine] = useState<string | null>(null);
   const [scenario, setScenario] = useState<ScenarioId>("full_agr");
   // Public shell: never paint council-area AGR £ / rent £/m² (internal-only until calibration).
@@ -996,9 +997,12 @@ export default function ScotlandMap() {
   };
 
   const clearSuggestions = () => {
+    suggestAbort.current?.abort();
+    suggestAbort.current = null;
     setSuggestions([]);
     setSuggestNote(null);
     setActiveSuggest(-1);
+    setSuggesting(false);
   };
 
   // Postcode-only search (postcodes.io via /geocode/postcode) when the AGR place search is absent.
@@ -1148,29 +1152,43 @@ export default function ScotlandMap() {
 
   const loadSuggestions = async (text: string) => {
     const generation = ++suggestGen.current;
+    suggestAbort.current?.abort();
+    const controller = new AbortController();
+    suggestAbort.current = controller;
     if (!(await fetchCapabilities()).agr) {
+      if (generation !== suggestGen.current) return;
       setSuggestions([]);
       setSuggestNote(
         looksLikeFullPostcode(text) ? "Press Enter to find this postcode." : POSTCODES_ONLY,
       );
+      setSuggesting(false);
       return;
     }
     setSuggesting(true);
     try {
-      const response = await apiFetch(`/place?q=${encodeURIComponent(text)}`);
+      const response = await apiFetch(`/place?q=${encodeURIComponent(text)}`, {
+        signal: controller.signal,
+      });
       const body = (await response.json()) as PlaceLookup;
       if (generation !== suggestGen.current) return;
       const found = suggestionsFromLookup(body, text);
       setSuggestions(found.items);
-      setSuggestNote(found.items.length ? null : found.note);
+      setSuggestNote(
+        found.items.length
+          ? null
+          : found.note || "No matches",
+      );
       setActiveSuggest(found.items.length ? 0 : -1);
+      setSuggesting(false);
     } catch (err) {
-      if (generation !== suggestGen.current) return;
+      if (controller.signal.aborted || generation !== suggestGen.current) return;
       setSuggestions([]);
       setActiveSuggest(-1);
       if (!isServiceFailure(err)) setSuggestNote(visitorFacingError(err));
       else setSuggestNote(null);
+      setSuggesting(false);
     } finally {
+      if (suggestAbort.current === controller) suggestAbort.current = null;
       if (generation === suggestGen.current) setSuggesting(false);
     }
   };
@@ -1181,12 +1199,11 @@ export default function ScotlandMap() {
     if (text.length < 3) {
       suggestGen.current += 1;
       clearSuggestions();
-      setSuggesting(false);
       return;
     }
     suggestTimer.current = setTimeout(() => {
       void loadSuggestions(text);
-    }, 450);
+    }, 250);
   };
 
   const clearQuery = () => {
@@ -3415,6 +3432,7 @@ export default function ScotlandMap() {
             }}
             onBlur={() => {
               window.setTimeout(() => {
+                suggestGen.current += 1;
                 clearSuggestions();
               }, 180);
             }}
@@ -3443,9 +3461,13 @@ export default function ScotlandMap() {
                 } else {
                   void runSearch();
                 }
-              } else if (event.key === "Escape" && (suggestions.length || suggestNote)) {
+              } else if (
+                event.key === "Escape" &&
+                (suggestions.length || suggestNote || suggesting)
+              ) {
                 event.preventDefault();
                 event.stopPropagation();
+                suggestGen.current += 1;
                 clearSuggestions();
               }
             }}

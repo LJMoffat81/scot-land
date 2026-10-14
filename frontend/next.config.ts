@@ -39,12 +39,12 @@ const nextConfig: NextConfig = {
       // Site rewrite PR1 — permanent redirects (spec A).
       {
         source: "/downloads",
-        destination: "/developers#downloads",
+        destination: "/developers?moved=1#downloads",
         permanent: true,
       },
       {
         source: "/open-api",
-        destination: "/developers#api",
+        destination: "/developers?moved=1#api",
         permanent: true,
       },
       // Charter C1+C2: docs entry points land on self-hosted Swagger.

@@ -1260,6 +1260,12 @@ input {
   box-shadow: var(--hud-shadow);
 }
 
+/* `.site-nav-panel { display: flex }` must not override the HTML hidden attribute
+   or the burger menu paints open on first mobile paint. */
+.site-nav-panel[hidden] {
+  display: none;
+}
+
 .site-nav-panel a {
   text-decoration: none;
   color: var(--slrg-text);
@@ -2564,6 +2570,50 @@ button.linkish:disabled {
   color: var(--slrg-muted);
   font-size: 0.9rem;
   line-height: 1.4;
+}
+
+.sources-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.sources-group {
+  border: 1px solid color-mix(in srgb, var(--slrg-navy) 12%, transparent);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.15rem 0.85rem 0.85rem;
+}
+
+.sources-group-summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.1rem;
+  font-weight: 650;
+  color: var(--slrg-navy);
+}
+
+.sources-group-summary::-webkit-details-marker {
+  display: none;
+}
+
+.sources-group-title {
+  font-size: 1.02rem;
+}
+
+.sources-group-count {
+  color: var(--slrg-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.sources-group-blurb {
+  margin: 0 0 0.35rem;
 }
 
 .sources-table-wrap {

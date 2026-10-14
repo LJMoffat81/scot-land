@@ -5,6 +5,7 @@ import GlossaryBox from "@/components/GlossaryBox";
 import HashRedirect from "@/components/HashRedirect";
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
+import { groupCatalogSources } from "@/lib/dataSourceGroups";
 import { apiJson } from "../../lib/api";
 
 type CatalogLayer = {
@@ -15,6 +16,9 @@ type CatalogLayer = {
   licence_url?: string;
   source_url?: string;
   status?: string;
+  group?: string;
+  ledger_role?: string | null;
+  ledger_row?: string | null;
 };
 
 type CatalogPayload = {
@@ -24,6 +28,7 @@ type CatalogPayload = {
 /**
  * Data & sources — site rewrite section B (wording pending Laurie approval).
  * Sources table reads /api/catalog.json; rows need a licence_url.
+ * Grouped into collapsible Land / Resources / Nature / Limits.
  */
 export default function DataChecksPage() {
   const [layers, setLayers] = useState<CatalogLayer[]>([]);
@@ -44,6 +49,8 @@ export default function DataChecksPage() {
       });
   }, []);
 
+  const groups = groupCatalogSources(layers);
+
   return (
     <main className="downloads-page data-ledger-page methodology-page">
       <HashRedirect fromHash="checks" to="/developers/checks" />
@@ -56,56 +63,78 @@ export default function DataChecksPage() {
       </p>
 
       <h2 id="sources">Sources on the map</h2>
-      <p className="downloads-note">
+      <p className="downloads-note" data-testid="data-sources-summary">
         Built from the open source catalogue. A source appears only when its
-        licence link is set.
+        licence link is set. Sources are grouped as Land, Resources, Nature and
+        Limits — open a group to see the rows.
       </p>
       {error ? <p className="downloads-note">{error}</p> : null}
-      <div className="sources-table-wrap">
-        <table className="sources-table" data-testid="data-sources-table">
-          <thead>
-            <tr>
-              <th scope="col">Source</th>
-              <th scope="col">What it shows</th>
-              <th scope="col">Licence</th>
-              <th scope="col">Link</th>
-            </tr>
-          </thead>
-          <tbody>
-            {layers.map((layer) => (
-              <tr key={layer.id} data-source-id={layer.id}>
-                <td>{layer.label}</td>
-                <td>{layer.description || "—"}</td>
-                <td>
-                  {layer.licence_url ? (
-                    <a
-                      href={layer.licence_url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      {layer.licence || "Licence"}
-                    </a>
-                  ) : (
-                    layer.licence || "—"
-                  )}
-                </td>
-                <td>
-                  {layer.source_url ? (
-                    <a
-                      href={layer.source_url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Source
-                    </a>
-                  ) : (
-                    "—"
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="sources-groups" data-testid="data-sources-groups">
+        {groups.map((bucket) => (
+          <details
+            key={bucket.key}
+            className="sources-group"
+            data-testid={`data-sources-group-${bucket.key}`}
+            open={bucket.key === "land"}
+          >
+            <summary className="sources-group-summary">
+              <span className="sources-group-title">{bucket.label}</span>
+              <span className="sources-group-count">
+                {bucket.layers.length}
+              </span>
+            </summary>
+            <p className="downloads-note sources-group-blurb">{bucket.summary}</p>
+            <div className="sources-table-wrap">
+              <table
+                className="sources-table"
+                data-testid={`data-sources-table-${bucket.key}`}
+              >
+                <thead>
+                  <tr>
+                    <th scope="col">Source</th>
+                    <th scope="col">What it shows</th>
+                    <th scope="col">Licence</th>
+                    <th scope="col">Link</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bucket.layers.map((layer) => (
+                    <tr key={layer.id} data-source-id={layer.id}>
+                      <td>{layer.label}</td>
+                      <td>{layer.description || "—"}</td>
+                      <td>
+                        {layer.licence_url ? (
+                          <a
+                            href={layer.licence_url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {layer.licence || "Licence"}
+                          </a>
+                        ) : (
+                          layer.licence || "—"
+                        )}
+                      </td>
+                      <td>
+                        {layer.source_url ? (
+                          <a
+                            href={layer.source_url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Source
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        ))}
       </div>
 
       <h2>Linked, not copied</h2>

@@ -21,6 +21,7 @@
     "build:downloads": "node --experimental-strip-types scripts/build-download-bundles.mjs",
     "check:download-bundles-fresh": "node scripts/check-download-bundles-fresh.mjs",
     "test:site-rewrite-pr3": "node --experimental-strip-types scripts/test-site-rewrite-pr3.mjs",
+    "test:designer-live-check": "node --experimental-strip-types scripts/test-designer-live-check.mjs",
     "check:developers-links": "node scripts/check-developers-links.mjs"
   },
   "dependencies": {

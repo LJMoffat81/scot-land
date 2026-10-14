@@ -13,7 +13,7 @@ export default function MethodologyContent() {
       <HashRedirect fromHash="why" to="/about#why" />
       <SiteNav current="how" />
       <h1>How it works</h1>
-      <ResearchBanner />
+      <ResearchBanner variant="methodology" />
 
       <p>
         <strong>What is Annual Ground Rent?</strong> It is the yearly rental
@@ -109,7 +109,7 @@ export default function MethodologyContent() {
             Contains OS data © Crown copyright and database right 2026
           </li>
           <li>
-            © Crown copyright 2026, licensed under the Open Government Licence v3.0
+            National Records of Scotland: © Crown copyright 2026, licensed under the Open Government Licence v3.0
           </li>
           <li>
             Contains Scottish Government data licensed under the Open Government

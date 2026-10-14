@@ -14,6 +14,12 @@ export type SiteNavId = (typeof SITE_NAV_ITEMS)[number]["id"];
 export const RESEARCH_BANNER_LEAD = "Research estimate.";
 
 export const RESEARCH_BANNER_BODY =
-  "Scot-LAND is experimental. Annual Ground Rent figures are not published yet. They are not a bill or an official valuation.";
+  "Annual Ground Rent figures are not published yet. They are not a bill or an official valuation.";
 
 export const RESEARCH_BANNER_TEXT = `${RESEARCH_BANNER_LEAD} ${RESEARCH_BANNER_BODY}`;
+
+/** /methodology only — includes approved "experimental" sentence. */
+export const METHODOLOGY_RESEARCH_BANNER_BODY =
+  "Scot-LAND is experimental. Annual Ground Rent figures are not published yet. They are not a bill or an official valuation.";
+
+export const METHODOLOGY_RESEARCH_BANNER_TEXT = `${RESEARCH_BANNER_LEAD} ${METHODOLOGY_RESEARCH_BANNER_BODY}`;

@@ -75,7 +75,16 @@
     text-overflow: ellipsis;
   }
 
-  /* Keep expanded notice clear of the bottom-anchored place card. */
+  /*
+   * Tall mobile place cards grow up into the strip’s y-range.
+   * Keep the card (and its Close control) above the banner so the strip
+   * never covers burger/search (header) or the place card.
+   */
+  .app-shell.place-open .hud-place.place-card,
+  .app-shell.place-open .place-card-stub {
+    z-index: 6;
+  }
+
   .app-shell.place-open .research-banner-map.research-banner-strip {
     z-index: 3;
     max-height: min(28dvh, 11rem);

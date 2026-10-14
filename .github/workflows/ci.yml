@@ -104,11 +104,13 @@ jobs:
       - run: npm run test:designer-live-check
       - run: npm run test:site-watch-pr-b
       - run: npm run test:site-watch-pr-c
+      - run: npm run test:methodology-nits
       - run: npm run test:prereview-rent-groups
       - run: npm run check:developers-links
       - run: npx tsc --noEmit
       - run: npm run build
       - run: npm run test:site-watch-pr-c
+      - run: npm run test:methodology-nits
 
   e2e:
     name: Frontend Playwright e2e

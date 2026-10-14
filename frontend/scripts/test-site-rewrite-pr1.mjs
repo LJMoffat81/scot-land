@@ -27,11 +27,15 @@ assert.deepEqual(
   ["Map", "About", "How it works", "Data & sources", "Downloads & API"],
 );
 assert.equal(RESEARCH_BANNER_LEAD, "Research estimate.");
-assert.match(
+assert.equal(
   RESEARCH_BANNER_BODY,
-  /Annual Ground Rent figures are not published yet/,
+  "Annual Ground Rent figures are not published yet. They are not a bill or an official valuation.",
 );
-assert.match(RESEARCH_BANNER_TEXT, /^Research estimate\./);
+assert.equal(
+  RESEARCH_BANNER_TEXT,
+  "Research estimate. Annual Ground Rent figures are not published yet. They are not a bill or an official valuation.",
+);
+assert.doesNotMatch(RESEARCH_BANNER_BODY, /experimental/i);
 assert.doesNotMatch(RESEARCH_BANNER_BODY, /still being built|rates bill|tax proposal/i);
 
 for (const rel of [

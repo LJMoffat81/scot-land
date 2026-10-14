@@ -1,10 +1,14 @@
 """AGR routes under the publication geometry rule.
 
 Public router: shapes, metadata, place/address/postcode search, context tiles, and
-the council multi-metric choropleth (council grain). Modelled residual AGR £ on
-plot grain (W3W grid, cell square, assessment packs, validation) and national
-fiscal / councils-agr choropleth live on `internal_router` under /internal/agr/...
+the council multi-metric choropleth (council grain; scrubbed of modelled AGR £).
+Place £ live on `/internal/agr/place` (Wealth Engine, DZ2022 + address_uprn only,
+publication_status=blocked). Plot residual diagnostics and (opt-in) national
+fiscal / councils-agr live on `internal_router` under /internal/agr/...
 (auth; mounted only when ENABLE_INTERNAL_ENDPOINTS is on).
+
+Council/Scotland aggregate £ routes stay behind ENABLE_INTERNAL_AGR_AGGREGATE_GBP
+(off by default) and assert_no_aggregate_gbp on the place path.
 
 api/main.py mounts the public router optionally (import or declaration failure
 skips it; /health.routers reports why).
@@ -19,32 +23,40 @@ import math
 import os
 import threading
 import time
+from typing import Any, Mapping
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 
-from agr.engine import breakdown_to_dict
-from agr.config import load_config
-from agr.export_stamp import with_stamp
-from agr.layers import engine_stamp
-from agr.fiscal import fiscal_summary, place_fiscal
-from agr.overrides import merge_config_overrides
 from agr.batch import assess_points, batch_meta
+from agr.config import load_config
+from agr.engine import breakdown_to_dict
+from agr.export_stamp import with_stamp
+from agr.fiscal import fiscal_summary, place_fiscal
+from agr.layers import engine_stamp
+from agr.overrides import merge_config_overrides
+from agr.publication import (
+    UNPUBLISHED_REASON,
+    blocked_wealth_place,
+    internal_yield_from_surface,
+)
 from agr.report import API_VERSION, build_assessment_report, render_report_markdown
+from agr.response_labels import AGR_INTERNAL_ROUTER_NOTE, stamp_experimental
 from agr.scenarios import resolve_active_scenario
 from agr.service import ValuationService
-from spatial.grid import METERS_PER_DEGREE_LAT, snap_to_w3w_grid
-from spatial.urban_rural import NotLand
-from spatial.w3w import (
-    W3WNotConfiguredError,
-    is_configured as w3w_is_configured,
-    normalise_words,
-    try_coordinates_to_words,
-    words_to_coordinates,
+from georgist import db
+from georgist import dz_lookup
+from georgist.aggregator import MixedPriceYearError, aggregator
+from georgist.attribution import AttributionMissing
+from georgist.surface_dz2022 import estimate_label_for_fill
+from georgist.tax_scenarios import (
+    TaxScenarioError,
+    UPRN_DZ2022_CROSSWALK,
+    assert_no_aggregate_gbp,
 )
-from layers.councils_layer import build_councils_agr_geojson
 from layers.council_metrics import build_council_metrics_geojson, scrub_public_agr_properties
+from layers.councils_layer import build_councils_agr_geojson
 from layers.grid_layer import build_w3w_agr_grid
 from layers.platform import platform_catalog
 from spatial.address import search_door, search_place
@@ -54,7 +66,16 @@ from spatial.context_tiles import (
     fetch_seabed_async,
     fetch_urban_rural_class_async,
 )
+from spatial.grid import METERS_PER_DEGREE_LAT, snap_to_w3w_grid
 from spatial.parcels import TRANSPARENT_PNG, lookup_parcel_geojson
+from spatial.urban_rural import NotLand
+from spatial.w3w import (
+    W3WNotConfiguredError,
+    is_configured as w3w_is_configured,
+    normalise_words,
+    try_coordinates_to_words,
+    words_to_coordinates,
+)
 from validation.glasgow_ward_18 import run_validation
 from validation.ratio_study import ratio_study_points
 
@@ -66,6 +87,19 @@ from api.common import (  # noqa: F401  (re-exported for platform_routes)
     _scotland_bounds_check,
 )
 from api.internal_auth import require_internal_auth
+from api.wealth_routes import (
+    _attribution_missing,
+    _mixed_years,
+    _unavailable,
+    parse_vintage,
+    resolve_zone,
+)
+
+# Opt-in only: council / Scotland residual £ aggregates behind login.
+# Default off — Valuation HOLD: no aggregate GBP until the rules doc lands.
+_AGGREGATE_GBP_ENV = "ENABLE_INTERNAL_AGR_AGGREGATE_GBP"
+_REQUIRED_PLACE_VINTAGE = 2022
+_REQUIRED_CROSSWALK = UPRN_DZ2022_CROSSWALK
 
 router = APIRouter()
 internal_router = APIRouter(
@@ -78,33 +112,131 @@ INTERNAL_PUBLICATION = {
     "publication_status": "blocked",
     "unpublished_reason": "yield_calibration_pending",
     "note": (
-        "INTERNAL ONLY. Modelled residual AGR £ is blocked from the public map "
-        "until yield calibration (Data Zone publication rule)."
+        "INTERNAL ONLY. Place pages use Wealth Engine figures at Data Zone 2022 "
+        f"({_REQUIRED_CROSSWALK}); publication_status=blocked. Yield central/band "
+        "from surface.yaml (Georgist v3 metadata when present). Council/Scotland "
+        f"aggregate £ require {_AGGREGATE_GBP_ENV}=1 (off by default). Experimental; "
+        "each rent figure carries a market, proxy or shadow tag."
     ),
 }
+
+
+def _aggregate_gbp_enabled() -> bool:
+    return os.getenv(_AGGREGATE_GBP_ENV, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _refuse_aggregate_gbp(route: str) -> None:
+    """Council/Scotland £ aggregates stay off unless explicitly opted in."""
+    if _aggregate_gbp_enabled():
+        return
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "error": "aggregate_gbp_disabled",
+            "route": route,
+            "publication_status": "blocked",
+            "unpublished_reason": UNPUBLISHED_REASON,
+            "setting": _AGGREGATE_GBP_ENV,
+            "message": (
+                f"Council/Scotland aggregate £ on {route} are disabled by default. "
+                f"Set {_AGGREGATE_GBP_ENV}=1 to opt in (internal only). "
+                "Place £ stay at Data Zone grain on /internal/agr/place."
+            ),
+        },
+    )
 
 
 def agr_health_extras() -> dict:
     """AGR fields that /health reported before the split (only when AGR loads)."""
     config = load_config()
     signoff = config.get("economist_signoff", {})
-    return {
-        "version": API_VERSION,
-        "w3w_configured": w3w_is_configured(),
-        "economist_signoff_status": signoff.get("status", "unknown"),
-        "sales_pipeline": "comps_crosscheck",
-        "data_policy": "no_portal_scraping",
-        "assessment_reports": "internal",  # /internal/agr/assessment/report
-        "publication_geometry": "public_shapes_modelled_agr_internal",
-        "stamp": engine_stamp(config),
-    }
+    return stamp_experimental(
+        {
+            "version": API_VERSION,
+            "w3w_configured": w3w_is_configured(),
+            "economist_signoff_status": signoff.get("status", "unknown"),
+            "sales_pipeline": "comps_crosscheck",
+            "data_policy": "no_portal_scraping",
+            "public_rents": False,
+            "agr_place_pages": "internal_wealth_engine_dz2022_blocked_until_yield_calibration",
+            "agr_internal_routes_note": AGR_INTERNAL_ROUTER_NOTE,
+            "agr_aggregate_gbp_enabled": _aggregate_gbp_enabled(),
+            "assessment_reports": "internal",  # /internal/agr/assessment/report
+            "publication_geometry": "public_shapes_no_rents_wealth_engine_internal",
+            "stamp": engine_stamp(config),
+        }
+    )
 
 
 def _with_internal_block(payload: dict) -> dict:
-    body = dict(payload)
+    body = stamp_experimental(payload)
     body["internal"] = True
     body.update(INTERNAL_PUBLICATION)
-    return body
+    return stamp_experimental(body)
+
+
+def _estimate_label_from_surface(row: Mapping[str, Any] | None) -> str | None:
+    if not row:
+        return None
+    raw = row.get("estimate_label")
+    if raw:
+        return str(raw)
+    tags = row.get("proxy_tags") or ()
+    if isinstance(tags, str):
+        tags = [t for t in tags.split(";") if t]
+    for tag in tags:
+        text = str(tag)
+        if text.startswith("estimate_label="):
+            return text.split("=", 1)[1]
+    return estimate_label_for_fill(row.get("fill_method"))
+
+
+def _require_dz2022_address_uprn(surface: Mapping[str, Any] | None, *, code: str, vintage: int) -> None:
+    """Place path: DZ2022 + address_uprn only (#71)."""
+    if int(vintage) != _REQUIRED_PLACE_VINTAGE:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "vintage_required",
+                "code": code,
+                "vintage": vintage,
+                "required_vintage": _REQUIRED_PLACE_VINTAGE,
+                "message": (
+                    f"/internal/agr/place requires vintage {_REQUIRED_PLACE_VINTAGE} "
+                    f"(address_uprn crosswalk). Got {vintage}."
+                ),
+            },
+        )
+    if surface is None:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "surface_row_not_found",
+                "code": code,
+                "vintage": vintage,
+                "crosswalk_method": _REQUIRED_CROSSWALK,
+                "message": (
+                    f"No internal surface_rent_dz row for {code} vintage {vintage} "
+                    f"with {_REQUIRED_CROSSWALK}."
+                ),
+            },
+        )
+    method = str(surface.get("crosswalk_method") or "none")
+    if method != _REQUIRED_CROSSWALK:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "crosswalk_method_required",
+                "code": code,
+                "vintage": vintage,
+                "crosswalk_method": method,
+                "required_crosswalk_method": _REQUIRED_CROSSWALK,
+                "message": (
+                    f"/internal/agr/place requires crosswalk_method={_REQUIRED_CROSSWALK} "
+                    f"(#71 DZ2022 path). Got {method!r}."
+                ),
+            },
+        )
 
 
 def _parse_sensitivity(
@@ -229,12 +361,44 @@ def _square_response(
 @router.get("/signoff")
 def get_signoff() -> dict:
     config = load_config()
-    return config.get("economist_signoff", {"status": "unknown"})
+    return stamp_experimental(
+        config.get("economist_signoff", {"status": "unknown"})
+    )
+
+
+def _public_config_view(config: dict) -> dict:
+    """Sign-off and methodology labels only — no £ pool / yield money figures."""
+    integrity = config.get("integrity") or {}
+    _placeholder_yield = "5" + "%"
+    caveats = [
+        c
+        for c in (integrity.get("caveats") or [])
+        if isinstance(c, str)
+        and _placeholder_yield not in c
+        and "5 per cent" not in c.lower()
+    ]
+    return stamp_experimental(
+        {
+            "economist_signoff": config.get("economist_signoff", {"status": "unknown"}),
+            "integrity": {
+                "estimate_kind": integrity.get("estimate_kind"),
+                "estimate_label": integrity.get("estimate_label"),
+                "caveats": caveats,
+            },
+            "note": (
+                "Monetary parameters and national rent-pool figures are not served on "
+                "public /config before yield calibration. Place pages: Wealth Engine "
+                "at /internal/agr/place (Data Zone 2022; blocked). Experimental; rents "
+                "will carry market / proxy / shadow tags."
+            ),
+        }
+    )
 
 
 @router.get("/config")
 def get_config() -> dict:
-    return load_config()
+    """Public config mirror without rent / £ figures."""
+    return _public_config_view(load_config())
 
 
 @router.get("/boundaries/councils")
@@ -249,8 +413,8 @@ def get_glasgow_ward_18_boundary() -> JSONResponse:
 
 @router.get("/layers/catalog")
 def get_layer_catalog() -> dict:
-    """Open land platform layer list (brief + live/gap status)."""
-    return platform_catalog()
+    """Open land platform layer list (brief + live/gap status). No rents."""
+    return stamp_experimental(platform_catalog())
 
 
 @router.get("/layers/councils")
@@ -266,13 +430,161 @@ def layer_councils_metrics(
     return JSONResponse(with_stamp(scrub_public_agr_properties(geo)))
 
 
+@internal_router.get("/internal/agr/place")
+def internal_agr_place(
+    lat: float = Query(..., ge=-90, le=90),
+    lng: float = Query(..., ge=-180, le=180),
+    zone_id: str | None = Query(
+        default=None,
+        description="Optional data zone code; inferred from lat/lng when omitted",
+    ),
+    vintage: str | None = Query(
+        default="2022",
+        description="Must be 2022 (DZ2022 + address_uprn path from #71)",
+    ),
+) -> JSONResponse:
+    """INTERNAL place page: Wealth Engine at Data Zone 2022. Blocked.
+
+    Requires vintage=2022 and surface crosswalk_method=address_uprn.
+    Yield central/band are read from surface.yaml (same path as #9).
+    Every £ figure is a low/central/high range. No council/Scotland aggregates.
+    """
+    _scotland_bounds_check(lat, lng)
+    vin = parse_vintage(vintage, required=True)
+    if vin != _REQUIRED_PLACE_VINTAGE:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "vintage_required",
+                "vintage": vin,
+                "required_vintage": _REQUIRED_PLACE_VINTAGE,
+                "message": (
+                    f"/internal/agr/place requires vintage {_REQUIRED_PLACE_VINTAGE} "
+                    f"with crosswalk_method={_REQUIRED_CROSSWALK}."
+                ),
+            },
+        )
+    if zone_id:
+        code, resolved_vin, vin_source = resolve_zone(zone_id, vin)
+    else:
+        try:
+            found = dz_lookup.lookup(lat, lng)
+        except db.DatabaseUnavailable as exc:
+            raise _unavailable(exc) from exc
+        except dz_lookup.BoundariesUnavailable as exc:
+            raise HTTPException(
+                status_code=503,
+                detail={"error": "dz_boundaries_unavailable", "reasons": exc.reasons},
+            ) from exc
+        hit = found.to_dict()
+        if not hit.get("code"):
+            raise HTTPException(
+                status_code=404,
+                detail={"error": "no_data_zone_at_point", "lat": lat, "lng": lng},
+            )
+        code = hit["code"]
+        resolved_vin = int(hit["vintage"])
+        if vin != resolved_vin:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "error": "vintage_mismatch",
+                    "code": code,
+                    "vintage": resolved_vin,
+                    "required_vintage": _REQUIRED_PLACE_VINTAGE,
+                },
+            )
+        vin_source = "point_lookup"
+    if resolved_vin != _REQUIRED_PLACE_VINTAGE:
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "error": "vintage_required",
+                "code": code,
+                "vintage": resolved_vin,
+                "required_vintage": _REQUIRED_PLACE_VINTAGE,
+            },
+        )
+
+    try:
+        with db.cursor() as cur:
+            surface = aggregator.surface_row(
+                cur, code, resolved_vin, internal=True
+            )
+    except db.DatabaseUnavailable as exc:
+        raise _unavailable(exc) from exc
+
+    _require_dz2022_address_uprn(surface, code=code, vintage=resolved_vin)
+
+    try:
+        wealth = aggregator.get_total_wealth(
+            code, resolved_vin, lat, lng, internal=True
+        )
+    except db.DatabaseUnavailable as exc:
+        raise _unavailable(exc) from exc
+    except MixedPriceYearError as exc:
+        raise _mixed_years(exc) from exc
+    except AttributionMissing as exc:
+        raise _attribution_missing(exc) from exc
+
+    ycfg = internal_yield_from_surface()
+    estimate_label = _estimate_label_from_surface(surface)
+    value_tier = None
+    if surface is not None and surface.get("value_tier") in {"market", "proxy", "shadow"}:
+        value_tier = str(surface["value_tier"])
+
+    zone_meta: dict[str, Any] = {
+        "code": code,
+        "vintage": resolved_vin,
+        "vintage_source": vin_source,
+        "crosswalk_method": _REQUIRED_CROSSWALK,
+    }
+    if estimate_label is not None:
+        zone_meta["estimate_label"] = estimate_label
+    if value_tier is not None:
+        zone_meta["value_tier"] = value_tier
+
+    # Per-zone labels also on each place/surface row in wealth.
+    if isinstance(wealth, dict):
+        for comp in wealth.get("components") or []:
+            if isinstance(comp, dict) and comp.get("layer") == "surface":
+                if estimate_label is not None:
+                    comp["estimate_label"] = estimate_label
+                if value_tier is not None:
+                    comp["value_tier"] = value_tier
+
+    body = blocked_wealth_place(
+        lat=lat,
+        lng=lng,
+        zone=zone_meta,
+        wealth=wealth,
+        yield_cfg=ycfg,
+        estimate_label=estimate_label,
+        value_tier=value_tier,
+    )
+    body["warning"] = INTERNAL_PUBLICATION["note"]
+    try:
+        assert_no_aggregate_gbp(body)
+    except TaxScenarioError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": exc.code,
+                "message": exc.message,
+                **exc.extra,
+            },
+        ) from exc
+    return JSONResponse(body, headers=INTERNAL_HEADERS)
+
+
 @internal_router.get("/internal/agr/fiscal/summary")
 def internal_fiscal_summary(
     scenario: str = Query(default="replace_full_basket"),
     dividend: bool = Query(default=True, description="Include equal-share dividend knobs"),
     remote_credit: bool = Query(default=True, description="Include remote/island credits"),
 ) -> JSONResponse:
-    """INTERNAL: national fiscal dashboard (modelled Sandilands pool). Blocked until yield calibration."""
+    """INTERNAL: national fiscal dashboard. Off unless ENABLE_INTERNAL_AGR_AGGREGATE_GBP=1."""
+    _refuse_aggregate_gbp("/internal/agr/fiscal/summary")
     try:
         active = resolve_active_scenario(scenario)
     except ValueError as exc:
@@ -293,13 +605,31 @@ def internal_fiscal_summary(
 def internal_layer_councils_agr(
     scenario: str = Query(default="full_agr"),
 ) -> JSONResponse:
-    """INTERNAL: council AGR choropleth (modelled residual). Blocked until yield calibration."""
+    """INTERNAL: council AGR choropleth. Off unless ENABLE_INTERNAL_AGR_AGGREGATE_GBP=1."""
+    _refuse_aggregate_gbp("/internal/agr/layers/councils-agr")
     try:
         geo = build_councils_agr_geojson(scenario)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     body = _with_internal_block(dict(geo))
     body["stamp"] = engine_stamp(load_config())
+    return JSONResponse(body, headers=INTERNAL_HEADERS)
+
+
+@internal_router.get("/internal/agr/layers/councils")
+def internal_layer_councils_metrics(
+    scenario: str = Query(default="full_agr"),
+) -> JSONResponse:
+    """INTERNAL: multi-metric council layer with residual £. Off by default."""
+    _refuse_aggregate_gbp("/internal/agr/layers/councils")
+    try:
+        geo = build_council_metrics_geojson(scenario)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    body = _with_internal_block(with_stamp(geo))
+    body["geometry_level_note"] = (
+        "Council residual diagnostic. Place £ figures are Wealth Engine at Data Zone only."
+    )
     return JSONResponse(body, headers=INTERNAL_HEADERS)
 
 

@@ -2495,6 +2495,40 @@ button.linkish:disabled {
   line-height: 1.45;
 }
 
+.glossary-box {
+  margin-top: 1.5rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f7fafc;
+}
+
+.glossary-box h2 {
+  margin-top: 0;
+}
+
+.glossary-list {
+  margin: 0.5rem 0 0;
+}
+
+.glossary-item {
+  margin-bottom: 0.85rem;
+}
+
+.glossary-item:last-child {
+  margin-bottom: 0;
+}
+
+.glossary-item dt {
+  font-weight: 650;
+  color: var(--slrg-navy);
+}
+
+.glossary-item dd {
+  margin: 0.2rem 0 0;
+  color: var(--slrg-text);
+}
+
 .panel {
   background: #f0f4f8;
   border: 1px solid var(--line);

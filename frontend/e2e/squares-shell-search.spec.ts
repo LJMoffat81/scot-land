@@ -62,8 +62,11 @@ test.describe("squares shell", () => {
       /Scot-LAND square reference/i,
     );
     await expect(page.getByTestId("place-card-value")).toBeVisible();
-    await expect(page.getByTestId("place-card-figures-checked")).toContainText(
-      /Figures are being checked/i,
+    await expect(page.getByTestId("place-value-status-in_progress")).toHaveText(
+      "Figure not published yet",
+    );
+    await expect(page.getByTestId("place-card-limits")).toContainText(
+      "What limits how it's used",
     );
     await expect(card.getByText(/£\d/)).toHaveCount(0);
     await expect(card).not.toContainText("£0");

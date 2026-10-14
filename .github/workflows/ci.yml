@@ -98,5 +98,6 @@ jobs:
       - run: npm run test:layer-licence-credits
       - run: npm run test:place-card-hotfix
       - run: npm run test:site-rewrite-pr1
+      - run: npm run test:site-rewrite-pr2
       - run: npx tsc --noEmit
       - run: npm run build

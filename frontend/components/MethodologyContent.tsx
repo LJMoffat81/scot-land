@@ -23,11 +23,23 @@ export default function MethodologyContent() {
 
       <section id="calculation">
         <h2>How an area is valued</h2>
+        <p>
+          The residual method works at <strong>Data Zone</strong> grain. For
+          each zone we take the zone house-price total, subtract rebuild cost
+          (NRS dwelling counts times EPC floor area at rebuild rates), and turn
+          the leftover land value into a yearly rent using the configured land
+          yield. That is the surface residual — not a single-property figure.
+        </p>
+        <p>
+          Internally, Georgist yield calibration <strong>v3</strong> (central
+          4.499%, band 3.98–4.50%, hash <code>4654e513</code>) is applied from
+          shared surface config. Public figures stay blocked pending the rules
+          document; visitors do not see money amounts here.
+        </p>
         <ul>
           <li>
-            <strong>In towns</strong>, we start from local house prices. We take
-            away what it would cost to rebuild the house. What is left is roughly
-            the value of the land. We turn that into a yearly rent.
+            <strong>In towns</strong>, residual = zone price minus rebuild cost,
+            then × yield → Data Zone rent range.
           </li>
           <li>
             <strong>In the countryside</strong>, we use one farmland rent per
@@ -68,12 +80,14 @@ export default function MethodologyContent() {
         <h2>How sure are these numbers?</h2>
         <p>
           They are estimates, and some inputs can&apos;t be pinned down exactly.
-          With other sensible assumptions, a typical Data Zone&apos;s figure in
-          most councils could be anywhere from about half to 1.3 times our
+          With other sensible assumptions, a Data Zone rent range in most
+          councils could be anywhere from about half to 1.3 times our central
           estimate. Where house prices are low compared with rebuild costs, the
-          range is wider: about half to double. This covers homes, not farmland.
-          Figures will be checked by an independent valuation step before
-          anything is published. That check is part of the Scot-LAND model.
+          range is wider: about half to double (
+          <code>agr.wide_range</code>). This covers home Data Zones, not
+          farmland, and never a single-property figure. Figures will be checked
+          by an independent valuation step before anything is published. That
+          check is part of the Scot-LAND model.
         </p>
       </section>
 
@@ -85,6 +99,23 @@ export default function MethodologyContent() {
           planning allocations; national common grazings boundaries. Full list →{" "}
           <a href="/data#gaps">Data &amp; sources</a>.
         </p>
+      </section>
+
+      <section id="credits">
+        <h2>Credits</h2>
+        <ul>
+          <li>
+            Contains OS data © Crown copyright and database right 2026
+          </li>
+          <li>
+            Contains National Records of Scotland data © Crown copyright and
+            database right
+          </li>
+          <li>
+            Contains Scottish Government data licensed under the Open Government
+            Licence v3.0
+          </li>
+        </ul>
       </section>
 
       <p>

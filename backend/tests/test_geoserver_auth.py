@@ -73,18 +73,30 @@ def test_authkey_present_adds_wfs_param(monkeypatch):
     assert "request=GetFeature" in url
 
 
+def _assert_visitor_safe(text: str) -> None:
+    """Visitor / public-API prose must not teach operator setup."""
+    lower = text.lower()
+    assert "spatialhub_authkey" not in lower
+    assert "python -m etl" not in lower
+    assert "--from-wfs" not in lower
+    # Bare ``.env`` only banned when paired with Spatial Hub auth setup.
+    if ".env" in lower:
+        assert "spatialhub" not in lower and "authkey" not in lower
+
+
 def test_hla_unloaded_error_says_not_loaded_yet_without_key(monkeypatch):
     monkeypatch.delenv("SPATIALHUB_AUTHKEY", raising=False)
     msg = _unloaded_error()
     assert "not loaded yet" in msg
-    assert "SPATIALHUB_AUTHKEY" in msg
+    _assert_visitor_safe(msg)
 
 
-def test_hla_unloaded_error_with_key_points_at_from_wfs(monkeypatch):
+def test_hla_unloaded_error_with_key_stays_visitor_safe(monkeypatch):
+    """Key present but PostGIS empty: still visitor copy only (no ETL hints)."""
     monkeypatch.setenv("SPATIALHUB_AUTHKEY", "test-key-not-real")
     msg = _unloaded_error()
     assert "not loaded yet" in msg
-    assert "--from-wfs" in msg
+    _assert_visitor_safe(msg)
 
 
 def test_hla_source_meta_reports_authkey_flag(monkeypatch):
@@ -97,6 +109,61 @@ def test_hla_source_meta_reports_authkey_flag(monkeypatch):
     hla_source_meta.cache_clear()
     assert hla_source_meta()["authkey_configured"] is True
     hla_source_meta.cache_clear()
+
+
+def test_hla_public_unload_payloads_are_visitor_safe(monkeypatch):
+    """query_point / query_bbox errors must not leak operator setup to visitors."""
+    monkeypatch.delenv("SPATIALHUB_AUTHKEY", raising=False)
+    monkeypatch.setattr("layers.hla.is_loaded", lambda: False)
+    from layers.hla import query_bbox, query_point
+
+    point = query_point(55.86, -4.26)
+    assert point["ok"] is False
+    assert "not loaded yet" in point["error"]
+    _assert_visitor_safe(point["error"])
+
+    bbox = query_bbox(55.84, -4.30, 55.88, -4.22)
+    meta = bbox["meta"]
+    assert meta["ok"] is False
+    assert "not loaded yet" in meta["error"]
+    _assert_visitor_safe(meta["error"])
+    assert "authkey_configured" not in meta
+
+
+def test_hla_public_gaps_strip_operator_setup(monkeypatch):
+    """Loaded bbox meta.gaps keep honesty lines; drop SPATIALHUB/.env/etl setup."""
+    monkeypatch.setattr("layers.hla.is_loaded", lambda: True)
+
+    class _FakeCur:
+        def execute(self, *_a, **_k):
+            return None
+
+        def fetchall(self):
+            return []
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+    class _FakeConn:
+        def cursor(self, *a, **k):
+            return _FakeCur()
+
+        def close(self):
+            return None
+
+    monkeypatch.setattr("layers.hla._connect", lambda: _FakeConn())
+    from layers.hla import query_bbox
+
+    bbox = query_bbox(55.84, -4.30, 55.88, -4.22)
+    gaps = bbox["meta"].get("gaps") or []
+    assert gaps, "visitor gaps should still list honest coverage limits"
+    for gap in gaps:
+        _assert_visitor_safe(gap)
+    joined = " ".join(gaps).lower()
+    assert "psga" in joined or "digimap" in joined or "scotlis" in joined
 
 
 def test_ingest_from_wfs_without_key_exits_not_loaded_yet(monkeypatch):

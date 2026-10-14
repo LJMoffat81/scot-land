@@ -15,7 +15,8 @@ Shadow never taxed.
 **TEMP while blocked:** £ shown at Data Zone grain only; council views are
 counts. Council + Scotland £ roll-ups are *built* behind that setting for
 reconciliation (Σ councils = Scotland, each zone once) but not shown on
-council/national response blocks.
+council/national response blocks. Roll-up unit of account is DZ2022 via the
+#71 address-UPRN crosswalk; each zone's council is the spine ``la_code``.
 
 Surface Rent (la-calc residual) is a different lens from AGR residual plot charge.
 """
@@ -60,9 +61,9 @@ INTERNAL_WARNING = (
 )
 DRAFT_DEFAULTS_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "tax_scenario_defaults.yaml"
 VALUE_TIERS = frozenset({"market", "proxy", "shadow"})
-# TEMP default + roll-up pin (DZ2022/crosswalk roll-up later — not blocking).
-DEFAULT_DZ_VINTAGE = 2011
-# Planned DZ2022 unit of account via #71 UPRN-weighted crosswalk (address_uprn stamp).
+# Default + council/Scotland £ roll-up pin: DZ2022 via #71 UPRN-weighted crosswalk.
+DEFAULT_DZ_VINTAGE = 2022
+# DZ2022 unit of account via #71 UPRN-weighted crosswalk (address_uprn stamp).
 UPRN_DZ2022_CROSSWALK = "address_uprn"
 ALLOWED_TAX_CROSSWALK = frozenset({"none", "address_uprn", "value_weighted"})
 # SQL path never loads an eligibility column — stamp until a later PR supplies the rule.
@@ -71,6 +72,13 @@ DEFERRAL_NOT_LOADED_NOTE = (
     "Deferral eligibility is not loaded from surface_rent_dz "
     "(_TAX_SCENARIO_SQL has no eligibility column). "
     "Real low-income home-owner eligibility rule is a later separate PR."
+)
+# S1 rate keys follow the rent/yield band, not ascending capture rates.
+S1_RATE_BAND_NOTE = (
+    "s1_rate keys follow the Surface Rent yield band (low/central/high rent), "
+    "not low-to-high capture rates. Each band rate is target / taxable_rent_band, "
+    "so s1_rate.low is solved on the low rent band and is typically the highest "
+    "rate; s1_rate.high is solved on the high rent band and is typically the lowest."
 )
 
 # Keys that must never appear on council/national *display* blocks while TEMP setting is on.
@@ -538,9 +546,10 @@ def _flags_tokens(flags: Any) -> set[str]:
 def tax_scenario_input_admitted(row: Mapping[str, Any]) -> bool:
     """Whether a surface_rent_dz (+ spine) row may feed internal tax scenarios.
 
-    - DZ2011 (TEMP default / roll-up pin): publicly served native rows only.
-    - DZ2022 planned path: UPRN-weighted crosswalk rows (``address_uprn``), which
-      stay ``publish_level=internal`` / ``publication_status=blocked`` (#71).
+    - DZ2022 (default / roll-up pin): UPRN-weighted crosswalk rows (``address_uprn``),
+      which stay ``publish_level=internal`` / ``publication_status=blocked`` (#71).
+      Council membership is the spine ``la_code`` for that zone.
+    - DZ2011 (optional vintage=2011): publicly served native rows only.
     """
     if row.get("quality") == "placeholder":
         return False
@@ -628,10 +637,12 @@ def surface_path_payload(vintage: int, rows: Sequence[ZoneRentRow]) -> dict[str,
             "crosswalk_method": UPRN_DZ2022_CROSSWALK,
             "methods_seen": methods,
             "rollup_pin_vintage": DEFAULT_DZ_VINTAGE,
+            "council_source": "datazones.zone_spine",
             "note": (
-                "Planned unit of account: DZ2022 via #71 address-UPRN crosswalk "
-                f"({UPRN_DZ2022_CROSSWALK}). Tax output stays publication_status=blocked. "
-                "Council/Scotland £ roll-up remains pinned to DZ2011 for now."
+                "Unit of account: DZ2022 via #71 address-UPRN crosswalk "
+                f"({UPRN_DZ2022_CROSSWALK}). Council/Scotland £ roll-up is pinned to "
+                "DZ2022; each zone uses the spine council (la_code). "
+                "Tax output stays publication_status=blocked."
             ),
         }
     return {
@@ -640,11 +651,31 @@ def surface_path_payload(vintage: int, rows: Sequence[ZoneRentRow]) -> dict[str,
         "crosswalk_method": methods[0] if len(methods) == 1 else "none",
         "methods_seen": methods,
         "rollup_pin_vintage": DEFAULT_DZ_VINTAGE,
+        "council_source": "datazones.zone_spine",
         "note": (
-            "TEMP default / roll-up pin: native DZ2011 Surface Rent. "
-            "DZ2022 UPRN-weighted path available with vintage=2022."
+            "Optional native DZ2011 Surface Rent path (vintage=2011). "
+            "Default council/Scotland £ roll-up pin is DZ2022 via address_uprn."
         ),
     }
+
+
+def _combine_estimate_labels_or_refuse(
+    rows: Sequence[ZoneRentRow],
+    *,
+    where: str,
+) -> str:
+    """Combine zone estimate labels; refuse any zone with no label (match #71 roll-up)."""
+    labels = [z.estimate_label for z in rows]
+    missing = [z.code for z, lbl in zip(rows, labels) if not lbl]
+    if missing:
+        raise TaxScenarioError(
+            "missing_estimate_label",
+            f"estimate_label required on every zone for {where} roll-up "
+            f"(missing on {missing[:3]}).",
+            where=where,
+            missing_codes=missing[:10],
+        )
+    return combine_estimate_labels([str(lbl) for lbl in labels])
 
 
 def is_taxable(row: ZoneRentRow) -> bool:
@@ -812,8 +843,9 @@ def solve_s1_per_council(
     """Solve S1 capture rate per council so revenue equals that council's CT + business rates.
 
     Rates are solved as a low/central/high triple against each band of the taxable
-    Surface Rent base. Shadow zones are excluded. National single-rate is not used.
-    Any band rate above 100% is flagged (``s1_rate_above_100_pct``).
+    Surface Rent base (keys follow the *rent* band, not ascending rates — see
+    ``S1_RATE_BAND_NOTE``). Shadow zones are excluded. National single-rate is not
+    used. Any band rate above 100% is flagged (``s1_rate_above_100_pct``).
     """
     cfg = defaults if defaults is not None else load_draft_defaults()
     yp = yp or yield_placeholder()
@@ -850,6 +882,7 @@ def solve_s1_per_council(
             "la_name": group[0].la_name,
             "s1_rate": rate,
             "s1_rate_above_100_pct": above,
+            "s1_rate_band_note": S1_RATE_BAND_NOTE,
             "s1_rate_source": {
                 "basis": "council_tax_plus_business_rates",
                 "council_tax_year": tgt.get("council_tax_year"),
@@ -957,7 +990,8 @@ def build_aggregate_rollup(
         "publication_status": PUBLICATION_STATUS,
         "internal": True,
         "note": (
-            "Blocked aggregate roll-up built behind TEMP display_while_blocked setting. "
+            "Blocked aggregate roll-up built behind TEMP display_while_blocked setting "
+            f"(DZ{rows[0].vintage if rows else DEFAULT_DZ_VINTAGE} unit; spine council). "
             "Not shown on council/national display blocks while gbp_grain=data_zone_only."
         ),
     }
@@ -1076,7 +1110,6 @@ def aggregate_by_council(
     for code in sorted(by_la, key=lambda c: by_la[c][0].la_name):
         group = by_la[code]
         _refuse_mixed_price_years(group, where=f"council:{code}")
-        labels = [z.estimate_label for z in group if z.estimate_label]
         entry: dict[str, Any] = {
             "la_code": code,
             "la_name": group[0].la_name,
@@ -1085,13 +1118,15 @@ def aggregate_by_council(
             "zone_codes": sorted(z.code for z in group),
             "status": STATUS,
             "disclaimer": DISCLAIMER,
+            "estimate_label": _combine_estimate_labels_or_refuse(
+                group, where=f"council:{code}"
+            ),
         }
-        if labels:
-            entry["estimate_label"] = combine_estimate_labels(labels)
         if sid == "S1" and code in s1_by_council:
             # Rate + source only — no £ totals on the display block.
             entry["s1_rate"] = dict(s1_by_council[code]["s1_rate"])
             entry["s1_rate_above_100_pct"] = bool(s1_by_council[code]["s1_rate_above_100_pct"])
+            entry["s1_rate_band_note"] = S1_RATE_BAND_NOTE
             entry["s1_rate_source"] = dict(s1_by_council[code]["s1_rate_source"])
         councils.append(entry)
 
@@ -1129,15 +1164,13 @@ def aggregate_by_council(
                 methods=bad_methods,
             )
 
-    national_labels = [z.estimate_label for z in usable if z.estimate_label]
     national: dict[str, Any] = {
         "zone_count": len(usable),
         "price_year": price_year,
         "status": STATUS,
         "disclaimer": DISCLAIMER,
+        "estimate_label": _combine_estimate_labels_or_refuse(usable, where="scotland"),
     }
-    if national_labels:
-        national["estimate_label"] = combine_estimate_labels(national_labels)
 
     payload: dict[str, Any] = {
         "status": STATUS,
@@ -1186,11 +1219,13 @@ def aggregate_by_council(
             code: {
                 "s1_rate": dict(body["s1_rate"]),
                 "s1_rate_above_100_pct": bool(body["s1_rate_above_100_pct"]),
+                "s1_rate_band_note": S1_RATE_BAND_NOTE,
                 "s1_rate_source": dict(body["s1_rate_source"]),
             }
             for code, body in s1_by_council.items()
         }
         payload["s1_targets_status"] = targets_status
+        payload["s1_rate_band_note"] = S1_RATE_BAND_NOTE
         nat_cfg = ((cfg.get("scenarios") or {}).get("S1") or {}).get("national_single_rate") or {}
         s1_label = _s1_label("S1", (cfg.get("scenarios") or {}).get("S1") or {}, cfg)
         payload["s1_national_single_rate"] = {
@@ -1257,6 +1292,7 @@ def zone_illustration(
         council_block["s1_rate_above_100_pct"] = bool(
             s1_by_council[row.la_code]["s1_rate_above_100_pct"]
         )
+        council_block["s1_rate_band_note"] = S1_RATE_BAND_NOTE
         council_block["s1_rate_source"] = dict(s1_by_council[row.la_code]["s1_rate_source"])
     if row.estimate_label is not None:
         council_block["estimate_label"] = row.estimate_label

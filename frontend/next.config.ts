@@ -71,7 +71,32 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Site rewrite PR3 item 5 — packaged downloads force save-as.
+      // manifest.json is excluded so the developers page can fetch it as JSON.
+      {
+        source: "/downloads/:file*.csv",
+        headers: [
+          { key: "Content-Disposition", value: "attachment" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+        ],
+      },
+      {
+        source: "/downloads/:file*.geojson",
+        headers: [
+          { key: "Content-Disposition", value: "attachment" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+        ],
+      },
+      {
+        source: "/downloads/:file*.zip",
+        headers: [
+          { key: "Content-Disposition", value: "attachment" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+        ],
+      },
+    ];
   },
   // API proxy is app/backend/[...path]/route.ts (not rewrites).
   // Rewrites surface socket hang-ups as TypeError: Failed to fetch;

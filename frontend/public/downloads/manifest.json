@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "updated": "2026",
+  "note": "Open downloads only. Missing files show as JSON (for developers) on /developers#downloads. Each CSV carries estimate_label and licence_attribution columns inside the file.",
+  "bundles": [
+    {
+      "id": "vdl-dz2022",
+      "name": "Vacant and derelict land (Data Zones 2022)",
+      "whats_in_it": "Data Zone 2022 rollup of vacant and derelict land hectares (SVDLS 2025 / OGL inputs). Zone level only — not single sites as a title plan. Main download (DZ2022).",
+      "format": "CSV",
+      "licence": "OGL v3.0",
+      "updated": "2022",
+      "file": "vacant-derelict-land-dz2022.csv",
+      "bytes": 4104150,
+      "api_anchor": "api-vdl",
+      "href": "/downloads/vacant-derelict-land-dz2022.csv"
+    },
+    {
+      "id": "vdl-dz2011",
+      "name": "Vacant and derelict land (Data Zones 2011)",
+      "whats_in_it": "Data Zone 2011 rollup of vacant and derelict land hectares (SVDLS 2025 / OGL inputs). Zone level only — not single sites as a title plan.",
+      "format": "CSV",
+      "licence": "OGL v3.0",
+      "updated": "2011",
+      "file": "vacant-derelict-land-dz2011.csv",
+      "bytes": 3873257,
+      "api_anchor": "api-vdl",
+      "href": "/downloads/vacant-derelict-land-dz2011.csv"
+    },
+    {
+      "id": "ldp",
+      "name": "Planned land use (Local Development Plans)",
+      "whats_in_it": "Sites planned for new homes and other allocated uses. National GeoJSON pack is not published here yet.",
+      "format": "GeoJSON",
+      "licence": "OGL v3.0",
+      "updated": "2024",
+      "file": null,
+      "bytes": null,
+      "api_anchor": "api-ldp",
+      "href": null
+    },
+    {
+      "id": "dz2022",
+      "name": "Data Zone boundaries (2022)",
+      "whats_in_it": "Scottish Government 2022 Data Zone outlines. Packaged GeoJSON is not published here yet.",
+      "format": "GeoJSON",
+      "licence": "OGL v3.0",
+      "updated": "2022",
+      "file": null,
+      "bytes": null,
+      "api_anchor": "api-catalog",
+      "href": null
+    },
+    {
+      "id": "crofting",
+      "name": "Crofting and common grazings lists",
+      "whats_in_it": "Crofting Commission Register of Crofts and common grazings tables (no personal names). Packaged CSV is not published here yet.",
+      "format": "CSV",
+      "licence": "OGL v3.0",
+      "updated": "2024",
+      "file": null,
+      "bytes": null,
+      "api_anchor": "api-crofting",
+      "href": null
+    },
+    {
+      "id": "catalog",
+      "name": "Source catalogue",
+      "whats_in_it": "What is on the map, what is only linked, and what is missing — with licences.",
+      "format": "CSV",
+      "licence": "OGL v3.0",
+      "updated": "2026",
+      "file": "source-catalogue.csv",
+      "bytes": 3553,
+      "api_anchor": "api-catalog",
+      "href": "/downloads/source-catalogue.csv"
+    }
+  ]
+}

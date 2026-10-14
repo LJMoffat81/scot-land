@@ -102,14 +102,21 @@ test.describe("search dropdown Looking…", () => {
     const search = page.locator("#place-query");
     await search.waitFor();
 
+    const dismiss = page.getByTestId("research-banner-dismiss");
+    if (await dismiss.count()) {
+      await dismiss.click({ force: true });
+    }
+
     await search.fill(POSTCODE);
-    const option = page.getByRole("option", { name: POSTCODE });
-    await expect(option).toBeVisible({ timeout: 10_000 });
-    await option.click();
+    await expect(page.getByRole("option", { name: POSTCODE })).toBeVisible({
+      timeout: 10_000,
+    });
+    // Keyboard select (active option is index 0) — avoids banner pointer intercept.
+    await search.press("Enter");
 
     await page.waitForTimeout(1000);
     await expect(page.getByText("Looking…")).toHaveCount(0);
-    await expect(page.locator(".search-suggest-note")).toHaveCount(0);
+    await expect(page.locator(".search-suggest")).toHaveCount(0);
   });
 
   test("Escape and empty results clear Looking…", async ({ page }) => {

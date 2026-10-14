@@ -15,7 +15,7 @@ function readSrc(relPath) {
 }
 
 const LINE =
-  "That point is outside Scotland. Search a Scottish postcode or click the map.";
+  "This spot is outside Scotland's land map. Tap on land to see a place.";
 
 const placeCardLib = readSrc("lib/placeCard.ts");
 assert.match(
@@ -74,7 +74,34 @@ assert.doesNotMatch(
 
 const e2e = readSrc("e2e/sea-click-plain-line.spec.ts");
 assert.match(e2e, /place-card-out-of-scotland/);
+assert.match(
+  e2e,
+  new RegExp(LINE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+  "e2e must assert the exact outside-Scotland line",
+);
 assert.match(e2e, /No data/);
 assert.match(e2e, /getByTestId\("place-card-value"\)\)\.toHaveCount\(0\)/);
+assert.match(
+  e2e,
+  /page\.on\("console"/,
+  "e2e must collect console errors",
+);
+assert.match(
+  e2e,
+  /page\.on\("pageerror"/,
+  "e2e must collect pageerror",
+);
+assert.match(
+  e2e,
+  /consoleErrors/,
+  "e2e must assert consoleErrors is empty",
+);
+
+const pkg = readSrc("package.json");
+assert.match(
+  pkg,
+  /test:e2e:ci[\s\S]*sea-click-plain-line\.spec\.ts/,
+  "sea-click-plain-line.spec.ts must be in test:e2e:ci",
+);
 
 console.log("test-site-watch-d3-sea-click: ok");

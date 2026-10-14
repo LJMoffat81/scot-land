@@ -1,5 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
+const OUT_OF_SCOTLAND_LINE =
+  "This spot is outside Scotland's land map. Tap on land to see a place.";
+
 async function openMap(page: Page) {
   await page.goto("/");
   await page.locator(".maplibregl-canvas").waitFor();
@@ -13,6 +16,16 @@ test.describe("site-watch D3 sea click", () => {
     page,
   }) => {
     test.setTimeout(90_000);
+
+    const consoleErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on("pageerror", (err) => {
+      consoleErrors.push(String(err));
+    });
 
     // North Sea point — no Scottish data zone.
     const lat = 56.5;
@@ -74,9 +87,7 @@ test.describe("site-watch D3 sea click", () => {
 
     const line = page.getByTestId("place-card-out-of-scotland");
     await expect(line).toBeVisible({ timeout: 30_000 });
-    await expect(line).toHaveText(
-      "That point is outside Scotland. Search a Scottish postcode or click the map.",
-    );
+    await expect(line).toHaveText(OUT_OF_SCOTLAND_LINE);
 
     const card = page.getByTestId("place-card");
     await expect(card.getByTestId("place-card-value")).toHaveCount(0);
@@ -84,5 +95,10 @@ test.describe("site-watch D3 sea click", () => {
     await expect(card.getByTestId("place-card-data-zone")).toHaveCount(0);
     await expect(card.getByText("No data")).toHaveCount(0);
     await expect(card.locator(".place-card-field")).toHaveCount(0);
+
+    expect(
+      consoleErrors,
+      `console errors on sea click:\n${consoleErrors.join("\n")}`,
+    ).toEqual([]);
   });
 });

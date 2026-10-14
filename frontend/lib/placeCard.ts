@@ -35,10 +35,9 @@ export const PLACE_CARD_SCOTLIS_LABEL =
 
 /**
  * Sea / outside Scotland map click — one plain line (site-watch D3).
- * Same visitor copy as visitorFacingError / geocode outside-Scotland.
  */
 export const PLACE_CARD_OUT_OF_SCOTLAND_LINE =
-  "That point is outside Scotland. Search a Scottish postcode or click the map.";
+  "This spot is outside Scotland's land map. Tap on land to see a place.";
 
 /** True when the place has no Scottish data zone (e.g. at sea). */
 export function isPlaceCardSeaMiss(

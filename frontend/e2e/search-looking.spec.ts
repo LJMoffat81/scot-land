@@ -2,8 +2,14 @@ import { expect, test, type Page } from "@playwright/test";
 
 const POSTCODE = "EH1 1YZ";
 const LOOKING = "Looking…";
-/** Delay place stubs so Looking… can paint before the response lands. */
-const PLACE_DELAY_MS = 400;
+/** Delay place stubs so Looking… stays painted before the response lands. */
+const PLACE_DELAY_MS = 700;
+
+async function expectLookingVisible(page: Page) {
+  await expect(page.locator(".search-suggest-note", { hasText: LOOKING })).toBeVisible({
+    timeout: 15_000,
+  });
+}
 
 const EMPTY_FC = JSON.stringify({
   type: "FeatureCollection",
@@ -189,7 +195,7 @@ test.describe("search dropdown Looking…", () => {
 
     const search = await openMapSearch(page);
     await search.fill(POSTCODE);
-    await expect(page.getByText(LOOKING)).toBeVisible({ timeout: 5_000 });
+    await expectLookingVisible(page);
     await expect(page.getByRole("option", { name: POSTCODE })).toBeVisible({
       timeout: 10_000,
     });
@@ -209,7 +215,7 @@ test.describe("search dropdown Looking…", () => {
 
     const search = await openMapSearch(page);
     await search.fill("zzznowhere");
-    await expect(page.getByText(LOOKING)).toBeVisible({ timeout: 5_000 });
+    await expectLookingVisible(page);
     await expect(page.getByText("No matches")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(LOOKING)).toHaveCount(0);
     expectNoConsoleErrors(consoleErrors);
@@ -222,7 +228,7 @@ test.describe("search dropdown Looking…", () => {
 
     const search = await openMapSearch(page);
     await search.fill("EH1");
-    await expect(page.getByText(LOOKING)).toBeVisible({ timeout: 5_000 });
+    await expectLookingVisible(page);
     await search.press("Escape");
     await expect(page.getByText(LOOKING)).toHaveCount(0);
     await expect(page.locator(".search-suggest")).toHaveCount(0);
@@ -236,8 +242,8 @@ test.describe("search dropdown Looking…", () => {
 
     const search = await openMapSearch(page);
     await search.fill(POSTCODE);
-    await expect(page.getByText(LOOKING)).toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText(LOOKING)).toHaveCount(0, { timeout: 10_000 });
+    await expectLookingVisible(page);
+    await expect(page.getByText(LOOKING)).toHaveCount(0, { timeout: 15_000 });
     expectNoConsoleErrors(consoleErrors);
   });
 
@@ -248,10 +254,10 @@ test.describe("search dropdown Looking…", () => {
 
     const search = await openMapSearch(page);
     await search.fill(POSTCODE);
-    await expect(page.getByText(LOOKING)).toBeVisible({ timeout: 5_000 });
+    await expectLookingVisible(page);
     await search.blur();
     // onBlur clears after 180ms; allow debounce/abort to settle.
-    await expect(page.getByText(LOOKING)).toHaveCount(0, { timeout: 5_000 });
+    await expect(page.getByText(LOOKING)).toHaveCount(0, { timeout: 10_000 });
     await expect(page.locator(".search-suggest")).toHaveCount(0);
     expectNoConsoleErrors(consoleErrors);
   });

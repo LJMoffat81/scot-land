@@ -98,7 +98,7 @@ function DevelopersPageInner() {
       <ResearchBanner />
       {showMovedNote ? (
         <p className="downloads-note" data-testid="developers-moved-note">
-          This page has moved to Downloads &amp; API.
+          Downloads has moved here.
         </p>
       ) : null}
       <p>

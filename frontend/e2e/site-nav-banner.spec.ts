@@ -103,16 +103,159 @@ test.describe("site-watch PR A — nav visible at desktop widths", () => {
       if (width <= 1366) {
         // SW-010: search sits on a second row below the nav links.
         const searchBox = await page.locator(".hud-search-dock").boundingBox();
-        const aboutBox = await nav
-          .getByRole("link", { name: "About", exact: true })
+        const howBox = await nav
+          .getByRole("link", { name: "How it works", exact: true })
           .boundingBox();
-        expect(searchBox && aboutBox).toBeTruthy();
-        if (searchBox && aboutBox) {
-          expect(searchBox.y).toBeGreaterThan(aboutBox.y + aboutBox.height - 4);
+        expect(searchBox && howBox).toBeTruthy();
+        if (searchBox && howBox) {
+          expect(searchBox.y).toBeGreaterThan(howBox.y + howBox.height - 4);
+          // Link must not be covered by search (elementFromPoint at link centre).
+          const mid = {
+            x: howBox.x + howBox.width / 2,
+            y: howBox.y + howBox.height / 2,
+          };
+          const hit = await page.evaluate(({ x, y }) => {
+            const el = document.elementFromPoint(x, y);
+            return el?.closest("a")?.textContent?.trim() ?? el?.tagName ?? "none";
+          }, mid);
+          expect(hit).toBe("How it works");
         }
       }
     });
   }
+});
+
+test.describe("site-watch PR A — SW-013 downloads moved note", () => {
+  test("/developers?moved=1 shows Downloads has moved here", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1100, height: 800 });
+    await page.goto("/developers?moved=1#downloads");
+    await expect(page.getByTestId("developers-moved-note")).toHaveText(
+      "Downloads has moved here.",
+    );
+  });
+
+  test("/developers without moved=1 hides the note", async ({ page }) => {
+    await page.setViewportSize({ width: 1100, height: 800 });
+    await page.goto("/developers");
+    await expect(page.getByTestId("developers-moved-note")).toHaveCount(0);
+  });
+});
+
+test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
+  test("click suggestion for EH1 1YZ opens place card", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.setViewportSize({ width: 1280, height: 800 });
+
+    await page.route("**/backend/health**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "ok",
+          routers: {
+            "api.agr_routes": { loaded: true },
+            "api.platform_routes": { loaded: true },
+          },
+        }),
+      });
+    });
+    await page.route("**/backend/place**", async (route) => {
+      const url = new URL(route.request().url());
+      const q = (url.searchParams.get("q") || "").toUpperCase();
+      if (q.includes("EH1")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            kind: "places",
+            matches: [
+              {
+                label: "EH1 1YZ, Edinburgh",
+                lat: 55.9508,
+                lng: -3.1875,
+              },
+            ],
+          }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ kind: "places", matches: [] }),
+      });
+    });
+    await page.route("**/platform/place**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          contract: "place_card_v1",
+          lat: 55.9508,
+          lng: -3.1875,
+          place_label: "Edinburgh, Old Town",
+          council_name: "City of Edinburgh",
+          data_zone: {
+            status: "ok",
+            code: "S01008677",
+            name: "Old Town",
+            vintage: 2022,
+          },
+          intermediate_zone: {
+            status: "ok",
+            code: "S02001622",
+            name: "Old Town, Princes Street and Leith Street",
+          },
+          agr_rows: [
+            {
+              id: "surface",
+              label: "Land",
+              tag: "proxy",
+              status: "in_progress",
+              applies: true,
+            },
+          ],
+          constraints: [],
+          layers: [],
+          links: [],
+        }),
+      });
+    });
+
+    await page.goto("/");
+    await page.locator(".maplibregl-canvas").waitFor();
+    const input = page.locator("#place-query");
+    await input.fill("EH1 1YZ");
+    const first = page.locator("#place-suggestions button").first();
+    await expect(first).toBeVisible({ timeout: 15_000 });
+    await expect(first).toContainText(/EH1/i);
+
+    // Suggestion must sit above the research banner (clickable).
+    const suggestBox = await first.boundingBox();
+    const bannerBox = await page.getByTestId("research-banner").boundingBox();
+    expect(suggestBox).toBeTruthy();
+    if (suggestBox && bannerBox) {
+      const mid = {
+        x: suggestBox.x + suggestBox.width / 2,
+        y: suggestBox.y + suggestBox.height / 2,
+      };
+      const hit = await page.evaluate(({ x, y }) => {
+        const el = document.elementFromPoint(x, y);
+        return el?.closest("button")?.textContent?.trim() ?? el?.tagName ?? "none";
+      }, mid);
+      expect(hit).toMatch(/EH1/i);
+    }
+
+    await first.click();
+    await expect(page.getByTestId("place-card")).toBeVisible({
+      timeout: 30_000,
+    });
+    // Intro collapses while the card is open.
+    await expect(page.locator(".app-shell")).toHaveClass(/place-open/);
+    await expect(page.locator(".hud-scotland-job")).toBeHidden();
+  });
 });
 
 test.describe("site-watch PR A — SW-011 mobile nav backdrop", () => {

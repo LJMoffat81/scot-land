@@ -66,6 +66,29 @@ assert.match(
   /@media \(min-width:\s*901px\) and \(max-width:\s*1366px\)[\s\S]*\.hud-search-dock[\s\S]*flex:\s*1 1 100%/,
 );
 assert.match(chrome, /order:\s*50/);
+assert.match(chrome, /position:\s*relative\s*!important/);
+
+// —— SW-014: suggestions above banner ——
+assert.match(chrome, /\.hud-search-dock\.open/);
+assert.match(chrome, /\.search-suggest/);
+assert.match(chrome, /:has\(\.hud-search-dock\.open\)/);
+
+// —— Find a place collapses when place-open ——
+assert.match(chrome, /\.app-shell\.place-open[\s\S]*\.hud-scotland-job/);
+assert.match(
+  readSrc("components/ScotlandMap.tsx"),
+  /collapsedIntroForPlace/,
+);
+
+// —— SW-013: Downloads has moved here ——
+assert.match(
+  readSrc("app/developers/page.tsx"),
+  /Downloads has moved here/,
+);
+assert.match(
+  readSrc("app/developers/page.tsx"),
+  /searchParams\.get\("moved"\) === "1"/,
+);
 
 // —— Item 5: mobile attribution fold + compact footer ——
 assert.match(chrome, /maplibregl-ctrl-attrib-inner/);

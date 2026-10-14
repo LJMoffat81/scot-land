@@ -3,7 +3,7 @@
  * Kept out of globals.css to avoid parallel edits with other drafts.
  */
 
-/* —— SW-010 / item 1: two-row map header up to 1366px (search never overlaps nav) —— */
+/* —— SW-010: two-row map header up to 1366px (search never overlaps nav) —— */
 @media (min-width: 901px) and (max-width: 1366px) {
   .hud-top {
     flex-wrap: wrap;
@@ -15,7 +15,12 @@
     order: 15;
     margin-left: auto;
     position: relative;
-    z-index: 7;
+    z-index: 8;
+  }
+
+  .hud-top .site-nav-map .site-nav-links {
+    position: relative;
+    z-index: 8;
   }
 
   .hud-top [data-testid="hud-layers-btn"] {
@@ -23,17 +28,19 @@
     margin-left: 0.35rem;
   }
 
+  /* Force search onto its own row — beat globals absolute centering */
   .hud-search-dock,
-  .squares-shell .hud-search-dock {
-    position: relative;
-    left: auto;
-    top: auto;
-    transform: none;
+  .squares-shell .hud-search-dock,
+  .hud-top .hud-search-dock {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
     order: 50;
     flex: 1 1 100%;
-    width: 100%;
-    max-width: none;
-    z-index: 5;
+    width: 100% !important;
+    max-width: none !important;
+    z-index: 6;
   }
 }
 
@@ -41,7 +48,7 @@
 @media (min-width: 1367px) {
   .site-nav-map {
     position: relative;
-    z-index: 7;
+    z-index: 8;
   }
 
   .hud-top .site-nav-map {
@@ -56,9 +63,25 @@
 
   .hud-search-dock,
   .squares-shell .hud-search-dock {
-    width: min(36rem, calc(100vw - 28rem));
-    z-index: 5;
+    width: min(34rem, calc(100vw - 30rem));
+    z-index: 6;
   }
+}
+
+/* —— SW-014: suggestion list stacks above research banner; clicks work —— */
+.hud-search-dock.open {
+  z-index: 12;
+}
+
+.hud-search-dock .search-suggest {
+  z-index: 13;
+  position: absolute;
+}
+
+.app-shell:has(.hud-search-dock.open) .research-banner-map {
+  z-index: 2;
+  /* Sit below the open dropdown (header height already includes search row) */
+  top: calc(var(--hud-height, 7.5rem) + 0.35rem);
 }
 
 /* —— Item 3: banner below search at mobile; never steal search taps —— */
@@ -101,6 +124,43 @@
   }
 }
 
+/* —— Find a place intro collapses when place card is open (all widths) —— */
+@media (min-width: 641px) {
+  .app-shell.place-open .hud-scotland-fold {
+    display: inline-block;
+    pointer-events: auto;
+  }
+
+  .app-shell.place-open .hud-scotland {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .app-shell.place-open .hud-scotland:not(.legend-open) .hud-scotland-body {
+    display: none;
+  }
+
+  .app-shell.place-open .hud-scotland:not(.legend-open) .hud-scotland-fold-hide {
+    display: none;
+  }
+
+  .app-shell.place-open .hud-scotland.legend-open .hud-scotland-fold-show {
+    display: none;
+  }
+
+  .app-shell.place-open .hud-scotland.legend-open {
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: var(--hud-shadow);
+    padding: 0.85rem 1rem 0.75rem;
+  }
+}
+
+.app-shell.place-open .hud-scotland .hud-scotland-job,
+.app-shell.place-open .hud-scotland .hud-scotland-lead {
+  display: none;
+}
+
 /* —— SW-011: mobile nav backdrop + closed panel covers nothing —— */
 .site-nav-backdrop {
   position: fixed;
@@ -141,7 +201,6 @@
 }
 
 .site-nav:not(.site-nav-open) {
-  /* Keep the bar in normal flow; never stretch a full-screen hit target */
   z-index: auto;
 }
 
@@ -177,7 +236,6 @@
   font-size: 0.74rem;
 }
 
-/* Content pages: keep layout footers aligned with page column */
 .content-page-footer-wrap {
   max-width: 820px;
   margin: -0.5rem auto 0;

@@ -3307,6 +3307,20 @@ export default function ScotlandMap() {
   }, [result]);
 
   const placeOpen = Boolean(placeStub || result || error);
+  const collapsedIntroForPlace = useRef(false);
+
+  // Usability: collapse Find a place intro when a place card opens; restore on close.
+  useEffect(() => {
+    if (placeOpen) {
+      setLegendOpen(false);
+      collapsedIntroForPlace.current = true;
+      return;
+    }
+    if (collapsedIntroForPlace.current) {
+      setLegendOpen(true);
+      collapsedIntroForPlace.current = false;
+    }
+  }, [placeOpen]);
 
   return (
     <div

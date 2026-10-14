@@ -30,7 +30,7 @@ const API_ROWS = [
   },
   {
     id: "api-ledger",
-    what: "Land rent ledger (structure and rules; no £ yet)",
+    what: "Annual Ground Rent breakdown (structure and rules; figures not published yet)",
     path: "/api/ledger.json",
     tryIt: false,
   },

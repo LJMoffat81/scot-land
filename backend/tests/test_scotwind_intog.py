@@ -46,8 +46,12 @@ def test_scotwind_catalog_ogl_credit_and_evidence_tag():
     assert layer["ledger_role"] == "ledger-row"
     assert layer["ledger_row"] == "4"
     assert layer["ui_surface"] == "ledger"
-    assert "surface rent" in layer["description"].lower()
-    assert "HOLD" in layer["description"] or "hold" in layer["description"].lower()
+    desc = layer["description"]
+    note = layer.get("developer_note") or ""
+    # Plain visitor copy; technical HOLD / la-calc detail is developer-only.
+    assert "surface land rent" in desc.lower() or "surface rent" in desc.lower()
+    assert "HOLD" in note or "hold" in note.lower()
+    assert "PostGIS" not in desc
 
 
 def test_source_meta_matches_registry():

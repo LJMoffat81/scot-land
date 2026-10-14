@@ -59,9 +59,13 @@ def test_catalog_lists_ces_aquaculture_ogl_market_no_rent():
     assert row.get("ledger_row") == "5"
     assert row.get("ui_surface") == "ledger"
     desc = row.get("description") or ""
-    assert "No £" in desc or "no £" in desc
-    assert "surface rent" in desc.lower()
-    assert "ledger row 5" in desc.lower()
+    note = row.get("developer_note") or ""
+    # Visitor copy stays plain; technical no-£ / ledger detail is developer-only.
+    assert "aquaculture" in desc.lower()
+    assert "PostGIS" not in desc and "LayersPanel" not in desc
+    assert "No £" in note or "no £" in note
+    assert "surface rent" in note.lower() or "Surface Rent" in note
+    assert "ledger row 5" in note.lower()
 
 
 def test_source_meta_attribution_and_licence_url():

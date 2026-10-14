@@ -49,6 +49,17 @@ const hrefAttrRe = /\bhref\s*=\s*(?:\{([\s\S]*?)\}|"([^"]*)"|'([^']*)')/;
 
 for (const rel of pages) {
   const src = readSrc(rel);
+  // SW-012: public /developers copy must not link repo paths; use /developers/api.
+  assert.doesNotMatch(
+    src,
+    /docs\/mintlify|api-reference\.mdx|\.mdx["'`]/,
+    `${rel}: must not link repo docs paths (SW-012); use /developers/api`,
+  );
+  assert.doesNotMatch(
+    src,
+    /href=["'`][^"'`]*docs\//,
+    `${rel}: must not href repo docs/ paths (SW-012)`,
+  );
   assert.doesNotMatch(
     src,
     /Pre-registered test log/,

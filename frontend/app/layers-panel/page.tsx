@@ -6,7 +6,7 @@ import LayersPanel, { type LayerToggleState } from "@/components/LayersPanel";
 
 /**
  * Dev/QA preview for the catalog-driven LayersPanel.
- * Public map HUD uses the Natural capital ledger (/ledger-panel), not this checklist.
+ * Public map HUD uses the Annual Ground Rent breakdown (/ledger-panel).
  */
 export default function LayersPanelPreviewPage() {
   const [enabled, setEnabled] = useState<LayerToggleState>({});
@@ -18,7 +18,7 @@ export default function LayersPanelPreviewPage() {
         <p className="layers-panel-page-lead">
           Catalog layers preview (Dev/QA) — driven by{" "}
           <code>/layers/catalog</code>. Public HUD:{" "}
-          <a href="/ledger-panel">Natural capital ledger</a>.
+          <a href="/ledger-panel">Annual Ground Rent breakdown</a>.
         </p>
         <LayersPanel enabled={enabled} onEnabledChange={setEnabled} />
       </div>

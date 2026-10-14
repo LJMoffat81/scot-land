@@ -21,9 +21,13 @@ def test_catalog_lists_live_data_zones_with_ogl():
     assert "Open Government Licence" in row["licence"]
     assert row["licence_url"] == OGL_V3_URL
     assert "spatialdata.gov.scot" in row["source_url"]
-    assert "AGR" in (row.get("description") or "") or "£" in (
-        row.get("description") or ""
-    )
+    desc = row.get("description") or ""
+    note = row.get("developer_note") or ""
+    # Visitor copy: plain English; no rent claim. Technical AGR/£ note is developer-only.
+    assert "Data Zone" in desc and "2022" in desc
+    assert "PostGIS" not in desc
+    assert "rent" in desc.lower()
+    assert "AGR" in note or "£" in note or "Surface Rent" in note
 
 
 def test_data_zones_503_when_upstream_fails(client, monkeypatch):

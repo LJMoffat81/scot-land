@@ -238,7 +238,7 @@ export function PlaceHectareStack({
 
           <p className="place-stack-disclaimer" data-testid="place-stack-disclaimer">
             Figures are being checked and aren&apos;t published yet.{" "}
-            <a href="/methodology#ledger">How we value land</a>
+            <a href="/methodology#calculation">How we value land</a>
             {stack.checks_url ? (
               <>
                 {" · "}

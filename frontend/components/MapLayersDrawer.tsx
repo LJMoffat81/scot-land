@@ -75,7 +75,7 @@ export default function MapLayersDrawer({
 
       <p className="layer-meta" data-testid="map-layers-methodology-link">
         Full ledger table and definitions:{" "}
-        <a href="/methodology#ledger">How we value land</a>
+        <a href="/methodology#calculation">How we value land</a>
       </p>
     </aside>
   );

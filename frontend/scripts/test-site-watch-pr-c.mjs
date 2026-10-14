@@ -79,6 +79,14 @@ assert.match(
   /izCode\s*\?\s*izNote \|\| "name not loaded yet"/,
 );
 
+// SW-012: /developers must point at the public API page, not repo mdx paths.
+const developers = readFileSync(
+  join(frontendRoot, "app/developers/page.tsx"),
+  "utf8",
+);
+assert.match(developers, /href=["']\/developers\/api["']/);
+assert.doesNotMatch(developers, /docs\/mintlify|api-reference\.mdx/);
+
 // Built HTML acceptance (when present after next build).
 const nextHtml = join(frontendRoot, ".next");
 if (existsSync(nextHtml)) {

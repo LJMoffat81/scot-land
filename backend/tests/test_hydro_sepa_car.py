@@ -59,10 +59,14 @@ def test_catalog_lists_hydro_and_sepa_car_ogl_with_tiers():
     assert car["publication_status"] == "ok"
     assert car.get("adds_to_surface_rent") is False
     desc = car.get("description") or ""
-    assert "194" in desc and "195" in desc
-    assert "never prox" in desc.lower() or "PostGIS only" in desc
-    assert "No £" in desc or "no £" in desc
-    assert "surface rent" in desc.lower()
+    note = car.get("developer_note") or ""
+    # Visitor copy is plain English; MapServer layer ids live in developer_note.
+    assert "Controlled Activities" in desc or "water use" in desc.lower()
+    assert "PostGIS" not in desc and "MapServer" not in desc
+    assert "194" in note and "195" in note
+    assert "never prox" in note.lower() or "PostGIS only" in note
+    assert "No £" in note or "no £" in note
+    assert "surface rent" in note.lower()
 
 
 def test_publication_rules_declare_hydro_and_car_routes():

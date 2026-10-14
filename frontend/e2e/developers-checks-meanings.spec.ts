@@ -4,7 +4,7 @@ import { CHECK_MEANINGS, type CheckMeaningId } from "../lib/checkMeanings";
 
 /**
  * /developers/checks — public “what the checks mean” lines (class check-meaning).
- * Stub ledger.json; fail on console error / pageerror.
+ * Stub ledger.json + health (developers layout footer); fail on console / pageerror.
  */
 
 /** Exact order must match LEDGER_CHECK_ORDER (locked by test:check-meanings). */
@@ -50,6 +50,14 @@ const LEDGER_STUB = {
   published: false,
 };
 
+const HEALTH_OK = {
+  status: "ok",
+  routers: {
+    "api.agr_routes": { loaded: true },
+    "api.platform_routes": { loaded: true },
+  },
+};
+
 test.describe("/developers/checks meanings", () => {
   test.use({ viewport: { width: 1100, height: 800 } });
 
@@ -62,6 +70,15 @@ test.describe("/developers/checks meanings", () => {
     });
     page.on("pageerror", (err) => {
       consoleErrors.push(String(err));
+    });
+
+    // ContentPageFooter (developers layout) probes /backend/health.
+    await page.route("**/backend/health**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(HEALTH_OK),
+      });
     });
 
     await page.route("**/api/ledger.json**", async (route) => {

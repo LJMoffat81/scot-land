@@ -195,14 +195,32 @@ if (existsSync(nextHtml)) {
       "built How it works HTML must contain the approved In towns bullet word for word",
     );
   }
-  // SW-025: add-only required phrase on built /developers HTML.
+  // SW-025: add-only — /developers is a client page (Suspense fallback in HTML);
+  // the map-label line ships in SSR/static chunks after build.
+  const SW025_LINE =
+    "These describe where the input data comes from. On the map, figures are labelled Market, Modelled or Estimate.";
   if (developersProse) {
     const flat = developersProse.replace(/\s+/g, " ");
+    let found = flat.includes(SW025_LINE);
+    if (!found) {
+      for (const dir of [
+        join(nextHtml, "server", "chunks"),
+        join(nextHtml, "static", "chunks"),
+      ]) {
+        if (!existsSync(dir)) continue;
+        for (const file of walk(dir)) {
+          if (!/\.(js|map)$/.test(file)) continue;
+          if (readFileSync(file, "utf8").includes(SW025_LINE)) {
+            found = true;
+            break;
+          }
+        }
+        if (found) break;
+      }
+    }
     assert.ok(
-      flat.includes(
-        "These describe where the input data comes from. On the map, figures are labelled Market, Modelled or Estimate.",
-      ),
-      "built /developers HTML must include the quality-tag map-label line",
+      found,
+      "built /developers output must include the quality-tag map-label line (HTML or chunks)",
     );
   }
   assert.equal(

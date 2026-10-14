@@ -1300,6 +1300,22 @@ export default function ScotlandMap() {
     );
     map.getCanvas().style.cursor = "pointer";
 
+    // MapLibre compact mode starts with maplibregl-compact-show (expanded).
+    // Collapse to the (i) control by default; user click still expands.
+    const collapseCompactAttribution = () => {
+      const el = map
+        .getContainer()
+        .querySelector(".maplibregl-ctrl-attrib");
+      if (!el?.classList.contains("maplibregl-compact")) return;
+      el.classList.remove("maplibregl-compact-show");
+      el.removeAttribute("open");
+    };
+    map.on("load", collapseCompactAttribution);
+    map.once("idle", collapseCompactAttribution);
+    map.on("resize", () => {
+      queueMicrotask(collapseCompactAttribution);
+    });
+
     let userMoved = false;
     const noteUserMove = (event: { originalEvent?: Event }) => {
       if (event.originalEvent) userMoved = true;

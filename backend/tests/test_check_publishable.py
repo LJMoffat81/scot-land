@@ -240,21 +240,23 @@ def test_guard_methods_money_keys_forbidden_even_in_methods_report(tmp_path):
     assert "scotland_total_central_gbp_before" in g.FORBIDDEN_PUBLIC_AGR_PROPERTIES
     assert "scotland_total_central_gbp_after" in g.FORBIDDEN_PUBLIC_AGR_PROPERTIES
     assert not hasattr(g, "METHODS_INTERNAL_REPORT")
-    problems = _problems(tmp_path) if _repo(tmp_path, {
+    _repo(tmp_path, {
         "data/processed/methods_code_1/pr1/report.json": (
             '{"publish_level":"internal",'
             '"scotland_total_central_gbp_before":null,'
             '"scotland_total_central_gbp_after":1}\n'
         ),
-    }) is None else None
+    })
+    problems = _problems(tmp_path)
     assert any("scotland_total_central_gbp" in p for p in problems), problems
 
 
 def test_guard_methods_money_keys_forbidden_on_public_processed_json(tmp_path):
     """New methods £ keys remain forbidden on ordinary public processed JSON."""
-    problems = _problems(tmp_path) if _repo(tmp_path, {
+    _repo(tmp_path, {
         "data/processed/other/a.json": '{"scotland_total_central_gbp_after":1}\n',
-    }) is None else None
+    })
+    problems = _problems(tmp_path)
     assert any("scotland_total_central_gbp_after" in p for p in problems), problems
 
 

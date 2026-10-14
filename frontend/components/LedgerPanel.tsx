@@ -106,7 +106,7 @@ export default function LedgerPanel({
           </p>
           {ledger.source === "fixture" && (
             <p className="layer-meta" data-testid="ledger-source-fixture">
-              Using local ledger fixture until <code>/ledger</code> is live.
+              Using sample ledger data until <code>/ledger</code> is live.
             </p>
           )}
 

@@ -91,4 +91,7 @@ function readSrc(relPath) {
   assert.match(groups, /return "Limits on use"/);
 }
 
+// --- Item 9 jargon sweep (public pages, excludes /developers*) ---
+await import("./test-site-rewrite-jargon.mjs");
+
 console.log("test-site-rewrite-pr2: ok");

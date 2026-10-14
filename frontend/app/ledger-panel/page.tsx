@@ -18,8 +18,8 @@ export default function LedgerPanelPreviewPage() {
         <h1 className="ledger-panel-page-brand">Scot-LAND</h1>
         <p className="ledger-panel-page-lead">
           Natural capital ledger preview — driven by{" "}
-          <code>/ledger</code> (fixture fallback). Open via Ledger on the main
-          map. Catalog GIS checklist lives on{" "}
+          <code>/ledger</code> (sample data if the live feed is offline). Open
+          via Ledger on the main map. Catalog GIS checklist lives on{" "}
           <a href="/layers-panel">/layers-panel</a> (Dev/QA only).
         </p>
         <LedgerPanel enabled={enabled} onEnabledChange={setEnabled} />

@@ -1771,8 +1771,8 @@ export default function ScotlandMap() {
         layout: { visibility: "none" },
       });
 
-      // PostGIS Index Polygons bbox (same contract as public-land / VDL).
-      // When unloaded (503), stay empty and rely on live WMS tiles above.
+      // Index Polygons by view bounds (same contract as public-land / VDL).
+      // When unloaded, stay empty and rely on live WMS tiles above.
       map.addSource("parcels-postgis", {
         type: "geojson",
         data: emptyCollection,
@@ -2238,7 +2238,7 @@ export default function ScotlandMap() {
     };
   }, [mapReady, showCellGrid, scenario]);
 
-  // Data Zone boundaries (simplified GeoJSON by bbox — outlines only, no AGR £)
+  // Data Zone boundaries (simplified GeoJSON by view bounds — outlines only, no AGR £)
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
@@ -2356,7 +2356,7 @@ export default function ScotlandMap() {
           setVis("none");
           if (err instanceof ApiError && err.status === 503) {
             setLayerNotice(
-              "REPD onshore wind is not loaded yet (run python -m etl.ingest_repd_onshore_wind on the OGL CSV). Gaps are not filled with guesses.",
+              "REPD onshore wind is not loaded yet. Gaps are not filled with guesses.",
             );
           }
         })
@@ -2380,7 +2380,7 @@ export default function ScotlandMap() {
     };
   }, [mapReady, showRepdOnshoreWind]);
 
-  // CES aquaculture seabed leases (OGL Spatial Hub → PostGIS; ledger row 5; no £ rent)
+  // CES aquaculture seabed leases (OGL Spatial Hub; ledger row 5; no £ rent)
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
@@ -2428,7 +2428,7 @@ export default function ScotlandMap() {
           setVis("none");
           if (err instanceof ApiError && err.status === 503) {
             setLayerNotice(
-              "CES aquaculture seabed leases are not loaded yet (run python -m etl.ingest_ces_aquaculture). Gaps are not filled with guesses.",
+              "Aquaculture seabed leases are not loaded yet. Gaps are not filled with guesses.",
             );
           }
         })
@@ -2522,7 +2522,7 @@ export default function ScotlandMap() {
     };
   }, [mapReady, showVdl]);
 
-  // LDP allocations (PostGIS / OGL Spatial Hub + authority seeds)
+  // LDP allocations (OGL Spatial Hub + authority seeds)
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
@@ -2568,7 +2568,7 @@ export default function ScotlandMap() {
           setVis("none");
           if (err instanceof ApiError && err.status === 503) {
             setLayerNotice(
-              "LDP allocations are not loaded yet (PostGIS empty or unavailable). National coverage is fragmented — gaps are not filled with guesses.",
+              "LDP allocations are not loaded yet. National coverage is fragmented — gaps are not filled with guesses.",
             );
           }
         })
@@ -2592,7 +2592,7 @@ export default function ScotlandMap() {
     };
   }, [mapReady, showLdp]);
 
-  // Community ownership points (SG 2024 OGL → PostGIS postcode centroids; ownership-context)
+  // Community ownership points (SG 2024 OGL postcode centroids; ownership-context)
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
@@ -2639,7 +2639,7 @@ export default function ScotlandMap() {
           setVis("none");
           if (err instanceof ApiError && err.status === 503) {
             setLayerNotice(
-              "Community ownership overlay is not available right now (PostGIS ingest unloaded). Gaps are not filled with guesses.",
+              "Community ownership overlay is not available right now. Gaps are not filled with guesses.",
             );
           }
         })
@@ -2974,7 +2974,7 @@ export default function ScotlandMap() {
     };
   }, [mapReady, showPublicLand]);
 
-  // James Hutton LCA 1:250k (PostGIS ingest; Hutton Open Data Licence)
+  // James Hutton LCA 1:250k (Hutton Open Data Licence)
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
@@ -3020,7 +3020,7 @@ export default function ScotlandMap() {
           setVis("none");
           if (err instanceof ApiError && err.status === 503) {
             setLayerNotice(
-              "Land capability overlay is not available right now (PostGIS ingest unloaded). Gaps are not filled with guesses.",
+              "Land capability overlay is not available right now. Gaps are not filled with guesses.",
             );
           }
         })
@@ -3127,10 +3127,10 @@ export default function ScotlandMap() {
           if (cancelled) return;
           (map.getSource("parcels-postgis") as GeoJSONSource)?.setData(data);
           setVis("visible");
-          // Fixture-scoped CI loads are honest gaps, not national RoS titles.
+          // Sample-scoped loads are honest gaps, not national RoS titles.
           if (data.meta?.fixture_scoped) {
             setLayerNotice(
-              "Cadastral PostGIS load is fixture-scoped (synthetic CI polygons). Live WMS still shows registered extents where available.",
+              "Land outline data for this view is sample-only, not the full national register. Live map tiles still show registered extents where available.",
             );
           } else {
             setLayerNotice(null);
@@ -3141,10 +3141,10 @@ export default function ScotlandMap() {
           (map.getSource("parcels-postgis") as GeoJSONSource)?.setData(
             emptyCollection,
           );
-          // 503 = table empty: keep WMS tiles; do not invent polygons.
+          // Empty table: keep WMS tiles; do not invent polygons.
           if (err instanceof ApiError && err.status === 503) {
             setLayerNotice(
-              "Local cadastral PostGIS table is empty. Live RoS WMS tiles still draw registered extents where the view service answers.",
+              "Local land outline data is empty. Live register tiles still draw registered extents where available.",
             );
           }
         })
@@ -3588,8 +3588,8 @@ export default function ScotlandMap() {
             {showCroftingConstraint && (
               <p className="layer-meta" data-testid="crofting-constraint-gap">
                 Crofting / common grazings — constraint that changes best use
-                and adds no value. Crofting Commission OGL lists → PostGIS; no
-                national OGL polygon paint. Extents:{" "}
+                and adds no value. Crofting Commission open lists; no national
+                open polygon layer yet. Extents:{" "}
                 <a
                   href="https://www.crofts.ros.gov.uk/register/search"
                   target="_blank"
@@ -3616,8 +3616,8 @@ export default function ScotlandMap() {
             )}
             {showRepd && (
               <p className="layer-meta" data-testid="layer-repd-credit">
-                REPD (DESNZ, OGL v3.0) — Scotland planning-site points from
-                PostGIS — not lease polygons, not a rent or title. Zoom{" "}
+                REPD (DESNZ, OGL v3.0) — Scotland planning-site points — not
+                lease polygons, not a rent or title. Zoom{" "}
                 {REPD_MIN_ZOOM}+.
               </p>
             )}

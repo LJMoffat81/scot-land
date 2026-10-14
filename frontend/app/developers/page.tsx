@@ -122,7 +122,9 @@ function DevelopersPageInner() {
             </span>
           ))}
         </span>
-        . Annual Ground Rent amounts are not a public download.
+        . These describe where the input data comes from. On the map, figures
+        are labelled Market, Modelled or Estimate. Annual Ground Rent amounts
+        are not a public download.
       </p>
 
       <section id="downloads" data-testid="developers-downloads">

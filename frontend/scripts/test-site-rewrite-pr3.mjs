@@ -48,13 +48,16 @@ assert.deepEqual(
   expectedIds,
 );
 
-// DZ2022 is the main VDL pack (first)
+// DZ2022 is the main VDL pack (first). updated = survey year; zone_set = DZ vintage.
 assert.equal(manifest.bundles[0].id, "vdl-dz2022");
-assert.equal(manifest.bundles[0].updated, "2022");
+assert.equal(manifest.bundles[0].updated, "2025");
+assert.equal(manifest.bundles[0].zone_set, "2022");
 assert.equal(manifest.bundles[1].id, "vdl-dz2011");
-assert.equal(manifest.bundles[1].updated, "2011");
+assert.equal(manifest.bundles[1].updated, "2025");
+assert.equal(manifest.bundles[1].zone_set, "2011");
 
-// No hard-coded site-rewrite placeholder date
+// Top-level updated is the VDL survey year (data date), not a zone set or placeholder.
+assert.equal(manifest.updated, "2025");
 assert.notEqual(manifest.updated, "2026-06-08");
 for (const bundle of manifest.bundles) {
   assert.notEqual(
@@ -113,6 +116,12 @@ const catalogue = readFileSync(
 );
 assert.equal(catalogue.includes("£"), false);
 assert.equal(/agr_plot|rent_per_sqm|site_capital/i.test(catalogue), false);
+assert.match(catalogue, /not applicable: catalogue entry/);
+assert.equal(
+  catalogue.includes("not applicable: hectares and counts"),
+  false,
+  "catalogue must use catalogue-entry estimate_label, not hectares/counts",
+);
 assert.match(
   catalogue,
   /Contains OS data © Crown copyright and database right 2026/,
@@ -123,6 +132,7 @@ const inspireLine = catalogue
   .find((line) => line.startsWith("inspire_parcels,"));
 assert.ok(inspireLine);
 assert.match(inspireLine, /Registers of Scotland/);
+assert.match(inspireLine, /not applicable: catalogue entry/);
 assert.match(
   inspireLine,
   /Contains OS data © Crown copyright and database right 2026/,
@@ -157,6 +167,8 @@ assert.match(developers, /id="api"/);
 assert.match(developers, /JSON \(for developers\)/);
 assert.match(developers, /manifest\.json/);
 assert.match(developers, /CopyCodeButton/);
+assert.match(developers, /zone_set/);
+assert.match(developers, /Zone set/);
 assert.match(developers, /\/layers\/…\?south=&west=&north=&east=/);
 assert.match(developers, /Full API reference/);
 assert.match(developers, /Technical checks/);

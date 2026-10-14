@@ -8,6 +8,7 @@ import {
   PLACE_CARD_LIMITS_HEADING,
   PLACE_CARD_OUT_OF_SCOTLAND_LINE,
   PLACE_CARD_SCOTLIS_LABEL,
+  PLACE_CARD_SHOW_SCOTLAND_LABEL,
   dataZoneFieldLabel,
   isPlaceCardSeaMiss,
   sanitizePlaceCard,
@@ -23,6 +24,8 @@ export type PlaceCardProps = {
   isLoading?: boolean;
   error?: string | null;
   onClose?: () => void;
+  /** SW-028: sea stub — close card and reset map to Scotland national view. */
+  onShowScotland?: () => void;
   /** When true, render as a floating HUD card (map shell). Default: true. */
   floating?: boolean;
   /** Extra class on the aside (e.g. place-card-stub for map HUD selectors). */
@@ -76,6 +79,7 @@ export function PlaceCard({
   isLoading = false,
   error = null,
   onClose,
+  onShowScotland,
   floating = true,
   className,
 }: PlaceCardProps) {
@@ -163,12 +167,24 @@ export function PlaceCard({
       ) : null}
 
       {!isLoading && !error && card && seaMiss ? (
-        <p
-          className="place-card-sea-line"
-          data-testid="place-card-out-of-scotland"
-        >
-          {PLACE_CARD_OUT_OF_SCOTLAND_LINE}
-        </p>
+        <>
+          <p
+            className="place-card-sea-line"
+            data-testid="place-card-out-of-scotland"
+          >
+            {PLACE_CARD_OUT_OF_SCOTLAND_LINE}
+          </p>
+          {onShowScotland ? (
+            <button
+              type="button"
+              className="place-card-show-scotland"
+              data-testid="place-card-show-scotland"
+              onClick={onShowScotland}
+            >
+              {PLACE_CARD_SHOW_SCOTLAND_LABEL}
+            </button>
+          ) : null}
+        </>
       ) : null}
 
       {!isLoading && !error && card && !seaMiss ? (

@@ -39,6 +39,9 @@ export const PLACE_CARD_SCOTLIS_LABEL =
 export const PLACE_CARD_OUT_OF_SCOTLAND_LINE =
   "This spot is outside Scotland's land map. Tap on land to see a place.";
 
+/** SW-028: link under the sea line — close card and reset to national map view. */
+export const PLACE_CARD_SHOW_SCOTLAND_LABEL = "Show me Scotland";
+
 /** True when the place has no Scottish data zone (e.g. at sea). */
 export function isPlaceCardSeaMiss(
   zone: { status?: string | null } | null | undefined,

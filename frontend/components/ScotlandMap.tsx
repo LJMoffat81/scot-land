@@ -793,6 +793,27 @@ export default function ScotlandMap() {
     }
   }, []);
 
+  /** SW-028: close sea stub and reset camera to Scotland national view. */
+  const showScotlandNationalView = useCallback(() => {
+    clearPlace();
+    const map = mapRef.current;
+    if (!map) return;
+    const narrow = window.innerWidth <= 900;
+    map.fitBounds(
+      [
+        [-8.05, 54.48],
+        [-0.55, 60.88],
+      ],
+      {
+        padding: narrow
+          ? { top: 132, bottom: 72, left: 12, right: 16 }
+          : { top: 96, bottom: 36, left: 24, right: 28 },
+        animate: true,
+        maxZoom: 7.4,
+      },
+    );
+  }, [clearPlace]);
+
   // Public path for a point (map click, search, ?lat=&lng=): marker, optional fly,
   // shareable URL, lightweight place card. No modelled AGR £ / Wealth / tax on the public shell.
   const selectPlace = useCallback(
@@ -3882,6 +3903,7 @@ export default function ScotlandMap() {
               loading={placeLoading}
               error={error}
               onClose={() => clearPlace()}
+              onShowScotland={showScotlandNationalView}
             />
           ) : error ? (
             <aside className="hud-card hud-place place-card-stub" aria-label="Place">

@@ -18,12 +18,21 @@ function readSrc(relPath) {
 const LINE =
   "This spot is outside Scotland's land map. Tap on land to see a place.";
 
+const SHOW_SCOTLAND = "Show me Scotland";
+
 const placeCardLib = readSrc("lib/placeCard.ts");
 assert.match(
   placeCardLib,
   new RegExp(
     `PLACE_CARD_OUT_OF_SCOTLAND_LINE\\s*=\\s*\\n?\\s*"${LINE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`,
   ),
+);
+assert.match(
+  placeCardLib,
+  new RegExp(
+    `PLACE_CARD_SHOW_SCOTLAND_LABEL\\s*=\\s*"${SHOW_SCOTLAND.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}"`,
+  ),
+  "SW-028 exact Show me Scotland label",
 );
 assert.match(placeCardLib, /export function isPlaceCardSeaMiss/);
 assert.match(
@@ -67,6 +76,21 @@ assert.doesNotMatch(
   /place-card-out-of-scotland[\s\S]{0,120}No data/,
   "sea-miss line must not be No data",
 );
+assert.match(
+  placeCard,
+  /PLACE_CARD_SHOW_SCOTLAND_LABEL/,
+  "SW-028 Show me Scotland label required",
+);
+assert.match(
+  placeCard,
+  /data-testid="place-card-show-scotland"/,
+  "SW-028 Show me Scotland control required",
+);
+assert.match(
+  placeCard,
+  /onShowScotland/,
+  "SW-028 onShowScotland handler required",
+);
 
 const api = readSrc("lib/api.ts");
 assert.match(api, /export function isOutsideScotlandError/);
@@ -106,6 +130,21 @@ assert.match(
   map,
   /outsideScotlandPlaceCard/,
   "map must install the sea-miss card on outside-Scotland 400",
+);
+assert.match(
+  map,
+  /showScotlandNationalView/,
+  "SW-028 map must reset to national Scotland view",
+);
+assert.match(
+  map,
+  /onShowScotland=\{showScotlandNationalView\}/,
+  "SW-028 PlaceCardStub must receive Show me Scotland handler",
+);
+assert.match(
+  map,
+  /\[-8\.05,\s*54\.48\]/,
+  "SW-028 national view must use Scotland bounds",
 );
 
 const stub = readSrc("components/PlaceCardStub.tsx");
@@ -172,5 +211,27 @@ assert.match(
   /test:e2e:ci[\s\S]*sea-click-plain-line\.spec\.ts/,
   "sea-click-plain-line.spec.ts must be in test:e2e:ci",
 );
+assert.match(
+  pkg,
+  /test:e2e:ci[\s\S]*sea-stub-card\.spec\.ts/,
+  "sea-stub-card.spec.ts must be in test:e2e:ci",
+);
+
+const chrome = readSrc("app/map-chrome.css");
+assert.match(
+  chrome,
+  /place-card-sea-miss[\s\S]*bottom:\s*auto/,
+  "SW-028 sea stub must not stretch with bottom:auto",
+);
+
+const e2eStub = readSrc("e2e/sea-stub-card.spec.ts");
+assert.match(e2eStub, /Show me Scotland/);
+assert.match(e2eStub, /1280/);
+assert.match(e2eStub, /390/);
+assert.match(e2eStub, /toBeLessThanOrEqual\(24\)/);
+assert.match(e2eStub, /page\.on\("console"/);
+assert.match(e2eStub, /page\.on\("pageerror"/);
+assert.match(e2eStub, /basemap-switcher/);
+assert.match(e2eStub, /maplibregl-ctrl-zoom-in/);
 
 console.log("test-site-watch-d3-sea-click: ok");

@@ -278,14 +278,43 @@ input {
 
 .place-card-sea-miss {
   max-width: min(22rem, calc(100vw - 1.5rem));
+  height: auto;
 }
 
 .place-card-sea-line {
   margin: 0;
-  padding: 0.15rem 0.25rem 0.35rem;
+  padding: 0.15rem 0.25rem 0.15rem;
   font-size: 0.92rem;
   line-height: 1.45;
   color: var(--slrg-ink, #1a2332);
+}
+
+/* SW-028: link under the sea plain line — closes card + national view. */
+.place-card-show-scotland {
+  display: inline-block;
+  align-self: flex-start;
+  margin: 0.15rem 0.25rem 0.1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--slrg-navy);
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.place-card-show-scotland:hover,
+.place-card-show-scotland:focus-visible {
+  color: var(--rugby-navy, var(--slrg-navy));
+}
+
+@media (min-width: 1024px) {
+  .hud-place.place-card-sea-miss {
+    padding-top: 1.65rem;
+    padding-bottom: 0.75rem;
+  }
 }
 
 .place-card-no-data {

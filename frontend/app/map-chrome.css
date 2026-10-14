@@ -157,6 +157,21 @@
   }
 }
 
+/*
+ * SW-028: sea stub must not stretch top→bottom (empty panel under the line).
+ * Full place cards keep the SW-023 bottom clearance; sea miss hugs content.
+ * Desktop ≥1024 is the product requirement; apply wherever the stretch rule does.
+ */
+@media (min-width: 901px) {
+  .app-shell.place-open .hud-place.place-card.place-card-sea-miss,
+  .app-shell.place-open .place-card-stub.place-card-sea-miss {
+    bottom: auto;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+}
+
 /* —— Find a place intro collapses when place card is open (all widths) —— */
 @media (min-width: 641px) {
   .app-shell.place-open .hud-scotland-fold {

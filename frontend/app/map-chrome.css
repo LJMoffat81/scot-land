@@ -143,6 +143,20 @@
   }
 }
 
+/*
+ * SW-023: desktop place card must leave the bottom-right chrome clear
+ * (basemap tile beside zoom, zoom +/- , attribution (i)).
+ */
+@media (min-width: 901px) {
+  .app-shell.place-open .hud-place.place-card,
+  .app-shell.place-open .place-card-stub {
+    bottom: 9rem;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}
+
 /* —— Find a place intro collapses when place card is open (all widths) —— */
 @media (min-width: 641px) {
   .app-shell.place-open .hud-scotland-fold {
@@ -260,4 +274,114 @@
   margin: -0.5rem auto 0;
   padding: 0 1rem 2.5rem;
   background: #fff;
+}
+
+/* —— SW-023: basemap switcher (bottom-right, beside / above zoom) —— */
+.basemap-switcher {
+  position: absolute;
+  z-index: 3;
+  /* Desktop: sit left of the MapLibre zoom group (≈29px + 10px margin). */
+  right: 3.15rem;
+  bottom: 2.55rem;
+  width: 64px;
+  margin: 0;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(11, 30, 58, 0.28);
+  background: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font: inherit;
+  color: var(--slrg-text, #0b1e3a);
+  line-height: 1.1;
+  /* Keep above map chrome but below the place card (z-index 14). */
+  pointer-events: auto;
+}
+
+.basemap-switcher:focus {
+  outline: 2px solid var(--slrg-navy, #0b1e3a);
+  outline-offset: 2px;
+}
+
+.basemap-switcher:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.basemap-switcher:focus-visible {
+  outline: 2px solid var(--slrg-navy, #0b1e3a);
+  outline-offset: 2px;
+}
+
+.basemap-switcher-preview {
+  display: block;
+  width: 100%;
+  height: 42px;
+  background-size: cover;
+  background-position: center;
+}
+
+/* Preview of the style you would switch to (other than current). */
+.basemap-switcher-preview.preview-satellite {
+  background-color: #3d5a4a;
+  background-image:
+    linear-gradient(
+      145deg,
+      #2a4538 0%,
+      #5f7a4e 38%,
+      #8a9a62 62%,
+      #3a5648 100%
+    ),
+    radial-gradient(circle at 30% 40%, rgba(180, 160, 90, 0.45), transparent 42%),
+    radial-gradient(circle at 70% 65%, rgba(40, 70, 90, 0.5), transparent 48%);
+}
+
+.basemap-switcher-preview.preview-map {
+  background-color: #e7eef3;
+  background-image:
+    linear-gradient(#ffffff 1px, transparent 1px),
+    linear-gradient(90deg, #ffffff 1px, transparent 1px),
+    linear-gradient(#c5d0d8 1px, transparent 1px),
+    linear-gradient(90deg, #c5d0d8 1px, transparent 1px),
+    linear-gradient(180deg, #dfe8ee 0%, #eef3f6 100%);
+  background-size:
+    16px 16px,
+    16px 16px,
+    8px 8px,
+    8px 8px,
+    100% 100%;
+}
+
+.basemap-switcher-caption {
+  display: block;
+  padding: 0.22rem 0.15rem 0.28rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-align: center;
+  background: #fff;
+  color: var(--slrg-text, #0b1e3a);
+}
+
+/* Mobile: same right column as zoom, stacked above it — clear of (i) + place card. */
+@media (max-width: 900px) {
+  .basemap-switcher {
+    right: 0.55rem;
+    /*
+     * Above zoom group (~58px) + collapsed (i) (~24px) + MapLibre margins.
+     * Measured against the resting collapsed-(i) layout (not expanded attrib).
+     */
+    bottom: 7.35rem;
+  }
+
+  /*
+   * Place card must leave a right gutter for the 64px tile (+ margin).
+   * Beat globals.css `.hud-place { right: 3.35rem }` in the same breakpoint.
+   */
+  .hud-place,
+  .app-shell.place-open .hud-place.place-card,
+  .app-shell.place-open .place-card-stub {
+    right: 5.35rem;
+  }
 }

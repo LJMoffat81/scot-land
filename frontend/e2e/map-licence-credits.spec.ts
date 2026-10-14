@@ -12,7 +12,7 @@ async function openMap(page: Page) {
 test.describe("map licence credits (catalog-driven)", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("range legend and no-data swatch; Locate / postcode / zone still work", async ({
+  test("range legend and no-data swatch; postcode / zone still work", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -95,10 +95,9 @@ test.describe("map licence credits (catalog-driven)", () => {
     await expect(card).toBeVisible({ timeout: 45_000 });
     await expect(card.getByText(/£\d/)).toHaveCount(0);
 
-    // Locate control remains present and clickable (geolocation may be denied).
-    const locate = page.getByRole("button", { name: "Locate" });
-    await expect(locate).toBeVisible();
-    await locate.click();
+    // Locate control was removed (SW-023); basemap switcher is the chrome control.
+    await expect(page.getByRole("button", { name: "Locate" })).toHaveCount(0);
+    await expect(page.getByTestId("basemap-switcher")).toBeVisible();
   });
 
   test("non-commercial badge when ledger row 9 (NSTA) is on", async ({ page }) => {

@@ -235,7 +235,7 @@ def ledger_checks() -> list[dict[str, Any]]:
                     "id": "headline_market_proxy",
                     "status": "pass",
                     "detail": (
-                        "Scottish totals use separate market and proxy totals only."
+                        "Scottish totals use separate Market and Modelled totals only."
                     ),
                 },
                 {
@@ -611,7 +611,7 @@ def ledger_totals_policy(*, rows: list[dict[str, Any]] | None = None) -> dict[st
             "status": "counted" if headline_ready else "not_yet",
             "range": None,  # never invent a money value for not_yet
             "note": (
-                "Sum of separate market and proxy totals only; "
+                "Sum of separate Market and Modelled totals only; "
                 "row 1a already included in Surface site rent — never added."
             ),
         },

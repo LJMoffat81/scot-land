@@ -388,13 +388,13 @@ export async function fetchLedger(): Promise<LedgerPayload> {
 export function tagLabel(tag: LedgerTag): string {
   switch (tag) {
     case "market":
-      return "market";
+      return "Market";
     case "proxy":
-      return "proxy";
+      return "Modelled";
     case "shadow":
       return "Estimate";
     case "market_or_proxy":
-      return "market / proxy";
+      return "Market / Modelled";
     case "reported":
       return "outside";
     case "already_included":

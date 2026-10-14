@@ -91,9 +91,9 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     publication_status: "ok",
   },
   publication_note:
-    "Per-hectare stack. Figures are being checked and aren't published yet. Planning uplift sits under land. Services of nature stay separate from market and proxy rows. Oil and gas sit outside the Scottish land total.",
+    "Per-hectare stack. Figures are being checked and aren't published yet. Planning uplift sits under land. Services of nature stay separate from Market and Modelled rows. Oil and gas sit outside the Scottish land total.",
   headline: {
-    label: "Scottish totals (market and proxy)",
+    label: "Scottish totals (Market + Modelled)",
     unit: "per hectare per year",
     sum_row_ids: ["1", "2", "3", "4"],
     total_placeholder: "—",
@@ -379,13 +379,13 @@ export function sanitizePlaceStack(
 export function tagLabel(tag: string): string {
   switch (tag) {
     case "market":
-      return "market";
+      return "Market";
     case "proxy":
-      return "proxy";
+      return "Modelled";
     case "shadow":
       return "Estimate";
     case "market_or_proxy":
-      return "market / proxy";
+      return "Market / Modelled";
     case "reported":
       return "outside";
     case "already_included":

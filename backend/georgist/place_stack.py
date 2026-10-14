@@ -269,7 +269,7 @@ def place_hectare_stack(
             "Oil & gas and benchmarks sit outside both."
         ),
         "headline": {
-            "label": "Scottish totals (market and proxy)",
+            "label": "Scottish totals (Market and Modelled)",
             "unit": "£/ha/year",
             "rows": headline_rows,
             "sum_row_ids": headline_sum_row_ids(headline_rows),
@@ -288,7 +288,7 @@ def place_hectare_stack(
             "total_placeholder": AMOUNT_PH,
             "total_note": (
                 "Estimate stack total is separate from the Scottish totals "
-                "(C-totals). Never added into market or proxy totals."
+                "(C-totals). Never added into Market or Modelled totals."
             ),
         },
         "outside": {

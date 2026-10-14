@@ -69,6 +69,19 @@ assert.match(chips, /Estimate \(no market price\)/);
 assert.doesNotMatch(chips, /proxy: "Proxy"/);
 assert.doesNotMatch(chips, /shadow: "Shadow"/);
 
+// tagLabel visitor chips: Market / Modelled (API tags stay market / proxy / shadow).
+for (const rel of ["lib/ledger.ts", "lib/placeStack.ts"]) {
+  const src = readFileSync(join(frontendRoot, rel), "utf8");
+  assert.match(src, /case "market":\s*return "Market"/);
+  assert.match(src, /case "proxy":\s*return "Modelled"/);
+  assert.match(src, /case "shadow":\s*return "Estimate"/);
+  assert.match(src, /case "market_or_proxy":\s*return "Market \/ Modelled"/);
+  assert.doesNotMatch(src, /return "market"/);
+  assert.doesNotMatch(src, /return "proxy"/);
+  assert.doesNotMatch(src, /return "shadow"/);
+  assert.doesNotMatch(src, /return "market \/ proxy"/);
+}
+
 const placeCard = readFileSync(
   join(frontendRoot, "components/PlaceCard.tsx"),
   "utf8",

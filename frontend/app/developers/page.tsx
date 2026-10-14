@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import CopyCodeButton from "@/components/CopyCodeButton";
 import QualityTag from "@/components/QualityTag";
 import ResearchBanner from "@/components/ResearchBanner";
@@ -68,7 +69,9 @@ const API_ROWS = [
 const LAYERS_BBOX =
   "/layers/…?south=&west=&north=&east=";
 
-export default function DevelopersPage() {
+function DevelopersPageInner() {
+  const searchParams = useSearchParams();
+  const showMovedNote = searchParams.get("moved") === "1";
   const [manifest, setManifest] = useState<DownloadManifest | null>(null);
   const [manifestError, setManifestError] = useState<string | null>(null);
 
@@ -93,6 +96,11 @@ export default function DevelopersPage() {
       <SiteNav current="developers" />
       <h1>Downloads &amp; API</h1>
       <ResearchBanner />
+      {showMovedNote ? (
+        <p className="downloads-note" data-testid="developers-moved-note">
+          This page has moved to Downloads &amp; API.
+        </p>
+      ) : null}
       <p>
         Use Scot-LAND&apos;s open data in your own work. Everything here is free
         under the licence shown. Please say where it came from.
@@ -252,5 +260,21 @@ export default function DevelopersPage() {
         </p>
       </section>
     </main>
+  );
+}
+
+export default function DevelopersPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="downloads-page developers-page">
+          <SiteNav current="developers" />
+          <ResearchBanner />
+          Loading…
+        </main>
+      }
+    >
+      <DevelopersPageInner />
+    </Suspense>
   );
 }

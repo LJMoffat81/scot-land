@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
+from spatial.council_names import official_council_name
 from spatial.polygons import lookup_council_boundary
 from spatial.urban_rural import is_rural_point
 
@@ -45,7 +46,12 @@ def _load_councils() -> list[dict]:
         )
     with COUNCILS_PATH.open(encoding="utf-8") as handle:
         payload = json.load(handle)
-    return payload["councils"]
+    councils: list[dict] = []
+    for row in payload["councils"]:
+        fixed = dict(row)
+        fixed["name"] = official_council_name(row.get("code"), row.get("name")) or row["name"]
+        councils.append(fixed)
+    return councils
 
 
 @lru_cache(maxsize=1)

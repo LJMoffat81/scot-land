@@ -49,6 +49,8 @@ test.describe("site nav + research banner (rewrite PR1)", () => {
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor();
     await expect(page.getByTestId("site-nav-menu-btn")).toBeVisible();
+    // Designer live-check: burger must start closed (not covering banner/map).
+    await expect(page.getByTestId("site-nav-panel")).toBeHidden();
     await page.getByTestId("site-nav-menu-btn").click();
     await expect(page.getByTestId("site-nav-panel")).toBeVisible();
     await expect(

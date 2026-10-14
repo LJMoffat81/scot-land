@@ -43,14 +43,14 @@ for (const rel of [
 
 const nextConfig = readSrc("next.config.ts");
 for (const pair of [
-  ["/downloads", "/developers#downloads"],
-  ["/open-api", "/developers#api"],
+  ["/downloads", "/developers?moved=1#downloads"],
+  ["/open-api", "/developers?moved=1#api"],
   ["/mission", "/about"],
 ]) {
   assert.match(
     nextConfig,
     new RegExp(
-      `source:\\s*"${pair[0].replace("/", "\\/")}"[\\s\\S]*?destination:\\s*"${pair[1].replace(/[/#]/g, "\\$&")}"[\\s\\S]*?permanent:\\s*true`,
+      `source:\\s*"${pair[0].replace("/", "\\/")}"[\\s\\S]*?destination:\\s*"${pair[1].replace(/[/#?]/g, "\\$&")}"[\\s\\S]*?permanent:\\s*true`,
     ),
     `redirect ${pair[0]} → ${pair[1]}`,
   );
@@ -62,7 +62,7 @@ for (const pair of [
   assert.match(
     nextConfig,
     new RegExp(
-      `source:\\s*"${pair[0].replace("/", "\\/")}"[\\s\\S]*?destination:\\s*"${pair[1].replace(/[/#]/g, "\\$&")}"[\\s\\S]*?statusCode:\\s*301`,
+      `source:\\s*"${pair[0].replace("/", "\\/")}"[\\s\\S]*?destination:\\s*"${pair[1].replace(/[/#?]/g, "\\$&")}"[\\s\\S]*?statusCode:\\s*301`,
     ),
     `301 redirect ${pair[0]} → ${pair[1]}`,
   );

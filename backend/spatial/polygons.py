@@ -8,6 +8,8 @@ from pathlib import Path
 from shapely.geometry import Point, shape
 from shapely.prepared import prep
 
+from spatial.council_names import official_council_name
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 COUNCILS_GEOJSON_PATH = REPO_ROOT / "data" / "processed" / "scotland_councils.geojson"
 WARD_18_PATH = REPO_ROOT / "data" / "processed" / "glasgow_ward_18.geojson"
@@ -40,9 +42,13 @@ def _council_index() -> list[tuple[BoundaryMatch, object]]:
     index: list[tuple[BoundaryMatch, object]] = []
     for feature in payload["features"]:
         props = feature["properties"]
+        hpi_code = props["hpi_code"]
+        # GeoJSON may still carry UK HPI aliases ("City of Glasgow"); always
+        # expose the official NRS/SG council area name on the place card.
+        name = official_council_name(hpi_code, props.get("name")) or props["name"]
         match = BoundaryMatch(
-            hpi_code=props["hpi_code"],
-            name=props["name"],
+            hpi_code=hpi_code,
+            name=name,
             boundary_code=props["boundary_code"],
         )
         index.append((match, prep(shape(feature["geometry"]))))

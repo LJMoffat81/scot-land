@@ -273,7 +273,10 @@ export function deriveHolder(card: PlaceCardPayload): PlaceHolder {
   };
 }
 
-/** Prefer DZ2022 when the API returns multiple vintages. */
+/**
+ * Prefer a real DZ2022 entry from `zones[]` when present.
+ * Never invent vintage 2022 — keep API vintage (2011 / null) otherwise.
+ */
 export function preferDz2022(zone: PlaceDataZone | null | undefined): PlaceDataZone | null {
   if (!zone) return null;
   const zones = zone.zones ?? [];
@@ -287,11 +290,16 @@ export function preferDz2022(zone: PlaceDataZone | null | undefined): PlaceDataZ
       vintage: 2022,
     };
   }
-  if (zone.vintage === 2022 && zone.code) return zone;
-  if (zone.code && (zone.vintage == null || zone.vintage === 2022)) {
-    return { ...zone, vintage: zone.vintage ?? 2022 };
-  }
   return zone;
+}
+
+/** Place-card Data Zone field heading — never label an S01 2011 code as 2022. */
+export function dataZoneFieldLabel(
+  vintage: number | null | undefined,
+): string {
+  if (vintage === 2022) return "Data zone (2022)";
+  if (vintage === 2011) return "Data zone (2011)";
+  return "Data zone";
 }
 
 /** Demo fixture for internal preview / e2e — DZ2022 (not 2011). */
@@ -486,11 +494,8 @@ export function sanitizePlaceCard(payload: PlaceCardPayload): PlaceCardPayload {
   const agrRows = (rest.agr_rows?.length ? rest.agr_rows : defaultAgrRows())
     .map(normalizeAgrRow)
     .filter((row) => row.applies !== false);
-  const constraints = (
-    rest.constraints?.length
-      ? rest.constraints
-      : defaultConstraints(rest.vacant_or_derelict)
-  ).filter((row) => row.applies !== false);
+  // Pass through every constraint row (true / false / null). Empty means a gap.
+  const constraints = Array.isArray(rest.constraints) ? rest.constraints : [];
   return {
     ...rest,
     data_zone: zone,

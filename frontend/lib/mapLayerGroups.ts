@@ -116,7 +116,7 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
     group: "resources",
     label: "Aquaculture",
     description: "Aquaculture seabed leases (licence rent).",
-    tag: "shadow",
+    tag: "proxy",
     licence: "OGL-3.0",
     licenceUrl: OGL_V3,
   },

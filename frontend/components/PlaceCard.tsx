@@ -6,6 +6,7 @@ import {
   PLACE_CARD_FIGURES_CHECKED,
   PLACE_CARD_HOW_WE_VALUE_LABEL,
   PLACE_CARD_RESEARCH_DISCLAIMER,
+  dataZoneFieldLabel,
   sanitizePlaceCard,
   valueStatusLabel,
   type PlaceCardPayload,
@@ -50,6 +51,16 @@ function layerLicence(layer: PlaceLayer): string {
   return layer.licence?.trim() || "Licence not recorded";
 }
 
+/** Gap copy for unknown / missing constraint coverage. */
+function LimitsGapLine({ testId }: { testId: string }) {
+  return (
+    <p className="place-card-meta" data-testid={testId}>
+      No data here yet.{" "}
+      <a href="/data#gaps">Why?</a>
+    </p>
+  );
+}
+
 /**
  * Designer ledger redesign place card — value / limits IA; DZ2022; no £.
  */
@@ -87,9 +98,8 @@ export function PlaceCard({
     zone?.name?.trim() ||
     "This place";
   const valueRows = (card?.agr_rows || []).filter((row) => row.applies !== false);
-  const limitRows = (card?.constraints || []).filter(
-    (row) => row.applies === true,
-  );
+  // Show every constraint row (applies true / false / unknown).
+  const limitRows = card?.constraints ?? [];
 
   return (
     <aside
@@ -135,7 +145,9 @@ export function PlaceCard({
 
           <dl className="place-card-fields">
             <div className="place-card-field">
-              <dt>Data zone (2022)</dt>
+              <dt data-testid="place-card-data-zone-label">
+                {dataZoneFieldLabel(zone?.vintage)}
+              </dt>
               <dd data-testid="place-card-data-zone">
                 {dzCode ? (
                   <>
@@ -258,17 +270,27 @@ export function PlaceCard({
                   >
                     <span className="place-constraint-label">{row.label}</span>
                     <span className="place-constraint-state">
-                      {row.applies === true
-                        ? "Applies"
-                        : row.applies === false
-                          ? "Does not apply"
-                          : row.note || "No data"}
+                      {row.applies === true ? (
+                        "Applies"
+                      ) : row.applies === false ? (
+                        "Does not apply"
+                      ) : (
+                        <>
+                          No data here yet.{" "}
+                          <a
+                            href="/data#gaps"
+                            data-testid={`place-card-constraint-gap-${row.id}`}
+                          >
+                            Why?
+                          </a>
+                        </>
+                      )}
                     </span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="place-card-meta">No limits listed for this place.</p>
+              <LimitsGapLine testId="place-card-limits-gap" />
             )}
           </section>
 

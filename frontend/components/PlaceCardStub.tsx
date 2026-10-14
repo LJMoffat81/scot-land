@@ -31,6 +31,8 @@ type PlaceCardStubProps = {
   loading?: boolean;
   error?: string | null;
   onClose: () => void;
+  /** SW-028: sea stub — close + national Scotland map view. */
+  onShowScotland?: () => void;
 };
 
 /** Map HUD place card — Designer v3.1 fields; thin wrapper over PlaceCard. */
@@ -39,6 +41,7 @@ export default function PlaceCardStub({
   loading = false,
   error = null,
   onClose,
+  onShowScotland,
 }: PlaceCardStubProps) {
   const data: PlaceCardPayload =
     place.card ??
@@ -78,6 +81,7 @@ export default function PlaceCardStub({
       isLoading={loading}
       error={error}
       onClose={onClose}
+      onShowScotland={onShowScotland}
       floating
       className="place-card-stub"
     />

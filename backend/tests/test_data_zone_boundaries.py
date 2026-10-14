@@ -21,9 +21,10 @@ def test_catalog_lists_live_data_zones_with_ogl():
     assert "Open Government Licence" in row["licence"]
     assert row["licence_url"] == OGL_V3_URL
     assert "spatialdata.gov.scot" in row["source_url"]
-    assert "AGR" in (row.get("description") or "") or "£" in (
-        row.get("description") or ""
-    )
+    # SW-032: signed no-money-figures clause (no bare £ / AGR £ shorthand).
+    desc = row.get("description") or ""
+    assert "Not a rent figure; no Annual Ground Rent figures on the map." in desc
+    assert "£" not in desc
 
 
 def test_data_zones_503_when_upstream_fails(client, monkeypatch):

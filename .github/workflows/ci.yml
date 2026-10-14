@@ -93,6 +93,7 @@ jobs:
       - run: npm run test:catalog-ui-drift
       - run: npm run test:map-licence-credits
       - run: npm run test:map-colour-ramps
+      - run: npm run test:forbidden-agr-properties
       - run: npm run test:quality-tags
       - run: npm run test:layer-licence-credits
       - run: npx tsc --noEmit

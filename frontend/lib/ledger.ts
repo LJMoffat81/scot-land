@@ -3,7 +3,7 @@
  * - GET /api/ledger.json — rows 1–10 (+1a), checks, excluded, benchmarks (Data / API)
  * - GET /ledger — ROWS 1–10 + nested 1a + Constraints (map HUD panel)
  *
- * Public payload carries no AGR £; amounts stay placeholders until ECONOMIC_RULES.
+ * Public payload carries no rent figures; amounts stay placeholders.
  */
 
 import { ApiError, apiJson, visitorFacingError } from "@/lib/api";
@@ -180,7 +180,7 @@ export type LedgerRow = {
 export type LedgerConstraint = {
   id: string;
   label: string;
-  /** Always "£0, changes best use" per accounting rules. */
+  /** Constraint rule — never a rent figure. */
   rule: string;
 };
 
@@ -205,7 +205,7 @@ export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
     tag: "market_or_proxy",
     status: "not_yet",
     status_note:
-      "Best permitted use. Public £ withheld until ECONOMIC_RULES / calibration.",
+      "Best permitted use. Figures are being checked and aren't published yet.",
     amount_placeholder: "—",
   },
   {
@@ -215,7 +215,7 @@ export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
     nested: true,
     tag: "nested",
     status: "not_yet",
-    status_note: "Nested in row 1 — never added as a sibling total.",
+    status_note: "Of which under surface land — never added as a sibling total.",
     amount_placeholder: "—",
   },
   {
@@ -236,7 +236,7 @@ export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
     tag: "proxy",
     status: "partial",
     status_note:
-      "Site rent minus footprint surface rent. Inventory layers may paint; £ withheld.",
+      "Site rent minus footprint surface rent. Inventory layers may paint.",
     amount_placeholder: "—",
   },
   {
@@ -256,7 +256,7 @@ export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
     nested: false,
     tag: "shadow",
     status: "not_yet",
-    status_note: "Shadow — total minus CES seabed paid. Drawn in shadow stack later.",
+    status_note: "Value with no market price — total minus CES seabed paid.",
     amount_placeholder: "—",
   },
   {
@@ -276,7 +276,7 @@ export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
     nested: false,
     tag: "shadow",
     status: "not_yet",
-    status_note: "Shadow, ~0 when published. Not shown as £0 while not yet.",
+    status_note: "Value with no market price — not yet published.",
     amount_placeholder: "—",
   },
   {
@@ -296,7 +296,7 @@ export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
     nested: false,
     tag: "reported",
     status: "excluded",
-    status_note: "UK-reserved — outside Scottish total (and both headline stacks).",
+    status_note: "Offshore, outside the Scottish land total.",
     amount_placeholder: "—",
     outside_scottish_total: true,
   },
@@ -307,7 +307,7 @@ export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
     nested: false,
     tag: "shadow",
     status: "not_yet",
-    status_note: "Shadow, later.",
+    status_note: "Value with no market price — later.",
     amount_placeholder: "—",
   },
 ];
@@ -316,30 +316,30 @@ export const LEDGER_FIXTURE_CONSTRAINTS: LedgerConstraint[] = [
   {
     id: "designations",
     label: "Designations",
-    rule: "£0, changes best use",
+    rule: "Constraint: changes best use, adds no value",
   },
   {
     id: "flood",
     label: "Flood",
-    rule: "£0, changes best use",
+    rule: "Constraint: changes best use, adds no value",
   },
   {
     id: "crofting",
     label: "Crofting / common grazings",
-    rule: "£0, changes best use",
+    rule: "Constraint: changes best use, adds no value",
   },
   {
     id: "lca",
     label: "Land Capability for Agriculture (LCA)",
-    rule: "£0, changes best use",
+    rule: "Constraint: changes best use, adds no value",
   },
 ];
 
 export const LEDGER_FIXTURE: LedgerPayload = {
   version: 1,
-  brief: "Natural capital ledger — ROWS 1–10 + nested 1a; Constraints £0",
+  brief: "Natural capital ledger — rows 1–10 + planning uplift under surface",
   publication_note:
-    "Zone-level only. Public AGR £ withheld until ECONOMIC_RULES / calibration. Placeholders are not £0.",
+    "Figures are being checked and aren't published yet.",
   rows: LEDGER_FIXTURE_ROWS,
   constraints: LEDGER_FIXTURE_CONSTRAINTS,
   source: "fixture",
@@ -394,9 +394,9 @@ export function tagLabel(tag: LedgerTag): string {
     case "market_or_proxy":
       return "market / proxy";
     case "reported":
-      return "reported";
+      return "outside";
     case "nested":
-      return "nested";
+      return "of which";
     default: {
       const _exhaustive: never = tag;
       return _exhaustive;

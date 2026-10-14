@@ -211,7 +211,7 @@ export const CONTEXT_LAYERS: ContextLayer[] = [
     color: "#0b1e3a",
     opacity: 0.45,
   },
-  // SEPA flood is a Natural capital Constraint (ledger £0 / best-use only).
+  // SEPA flood is a natural-capital constraint (changes best use, adds no value).
   // Not a context paint toggle — see catalog flood layer (ui_surface=ledger).
   {
     id: "woodland",

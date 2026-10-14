@@ -7,15 +7,10 @@ import maplibregl, {
   ExpressionSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import {
-  MapStampFooter,
-  type AgrResult,
-  type PlaceFiscal,
-  type ScenarioId,
-} from "./AgrBreakdown";
+import { MapStampFooter } from "./MapStampFooter";
 import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
 import { fetchPlaceCard } from "@/lib/placeCard";
-import LedgerPanel from "./LedgerPanel";
+import MapLayersDrawer from "./MapLayersDrawer";
 import MapLicenceCredits from "./MapLicenceCredits";
 import MapRangeLegend from "./MapRangeLegend";
 import {
@@ -68,6 +63,13 @@ type ParcelFeature = GeoJSON.Feature<
   }
 >;
 
+type ScenarioId =
+  | "full_agr"
+  | "replace_income_tax"
+  | "revenue_neutral"
+  | "replace_full_basket";
+
+/** Legacy /square payload — public shell never reads modelled AGR £ fields. */
 type SquareResponse = {
   square: {
     lat: number;
@@ -77,18 +79,18 @@ type SquareResponse = {
     grid?: string;
   };
   reason?: string;
-  agr: AgrResult | null;
+  agr: { active_scenario?: ScenarioId } | null;
   what3words?: string | null;
   w3w_configured?: boolean;
-  sales_context?: import("./AgrBreakdown").SalesContext | null;
+  sales_context?: unknown;
   parcel?: ParcelFeature | null;
-  fiscal?: PlaceFiscal | null;
+  fiscal?: unknown;
   postcode?: {
     postcode: string;
     admin_district: string | null;
     country: string | null;
   };
-  platform?: import("./AgrBreakdown").PlatformContext | null;
+  platform?: unknown;
 };
 
 type PlaceMatch = {
@@ -503,7 +505,7 @@ export default function ScotlandMap() {
   const showCrownLeases = Boolean(ledgerEnabled["4"]);
   /** CES aquaculture seabed leases paint when ledger row 5 is on. */
   const showCesAquaculture = Boolean(ledgerEnabled["5"]);
-  /** LCA constraint — Hutton Open Data Licence; £0, changes best use. */
+  /** LCA constraint — Hutton Open Data Licence; changes best use, adds no value. */
   const showLca = Boolean(ledgerEnabled.lca);
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
   const dataZonesTouched = useRef(false);
@@ -511,8 +513,18 @@ export default function ScotlandMap() {
   const layerPopupRef = useRef<maplibregl.Popup | null>(null);
   const dzHoverPopupRef = useRef<maplibregl.Popup | null>(null);
 
-  const onLedgerEnabledChange = (next: LedgerToggleState) => {
+  const onMapLayersChange = (next: LedgerToggleState) => {
     setLedgerEnabled(next);
+    // Catalog boundary / VDL toggles from the right-hand Layers drawer.
+    if ("boundaries" in next) {
+      boundariesTouched.current = true;
+      setShowBoundaries(Boolean(next.boundaries));
+    }
+    if ("data_zones" in next) {
+      dataZonesTouched.current = true;
+      setShowDataZones(Boolean(next.data_zones));
+    }
+    if ("vdl" in next) setShowVdl(Boolean(next.vdl));
     // Constraint flood paints the existing flood context overlay when available.
     setContextOn((cur) => ({ ...cur, flood: Boolean(next.flood) }));
   };
@@ -3342,9 +3354,9 @@ export default function ScotlandMap() {
           className={toolsOpen ? "hud-layers-btn on" : "hud-layers-btn"}
           aria-pressed={toolsOpen}
           onClick={() => setToolsOpen((v) => !v)}
-          data-testid="hud-ledger-btn"
+          data-testid="hud-layers-btn"
         >
-          Ledger
+          Layers
         </button>
         <button
           type="button"
@@ -3512,9 +3524,8 @@ export default function ScotlandMap() {
               Search a postcode, place or coordinates — or click the map.
             </p>
             <p className="hud-scotland-note">
-              Modelled Annual Ground Rent (council charges and rent £/m²) and tax
-              scenarios are not shown on the public map. Ownership and place
-              details follow in later updates.
+              Search or click the map to open a place card. Figures for land
+              value are being checked and are not published yet.
             </p>
             <MapRangeLegend
               title={rangeLegendTitle(contextMetric)}
@@ -3546,20 +3557,13 @@ export default function ScotlandMap() {
       )}
 
       {toolsOpen && (
-        <aside className="hud-card hud-tools" aria-label="Natural capital ledger">
+        <aside className="hud-card hud-tools" aria-label="Map layers">
           <div className="layer-panel">
-            <LedgerPanel
-              className="ledger-panel-in-shell"
+            <MapLayersDrawer
+              className="layers-panel-in-shell"
               enabled={ledgerEnabled}
-              onEnabledChange={onLedgerEnabledChange}
+              onEnabledChange={onMapLayersChange}
             />
-            <p className="layer-meta" data-testid="public-agr-withheld">
-              Modelled Annual Ground Rent (including council-area charges and
-              rent per square metre) is not shown on the public map. AGR £
-              stays internal at Data Zone band level until yield calibration.
-              Shadow ledger totals stay separate and are never summed into the
-              headline.
-            </p>
             {showBoundaries && (
               <p className="layer-meta" data-testid="layer-parcels-credit">
                 {inspireRosOsAttribution()}{" "}
@@ -3576,27 +3580,24 @@ export default function ScotlandMap() {
             )}
             {showLdp && (
               <p className="layer-meta" data-testid="layer-ldp-credit">
-                LDP allocations (OGL v3.0) — ledger nested row 1a. Spatial Hub
-                pack is fragmented; Edinburgh unavailable. Planning extents, not
-                a title. Zoom {LDP_MIN_ZOOM}+.
+                LDP allocations (OGL v3.0). Spatial Hub pack is fragmented;
+                Edinburgh unavailable. Planning extents, not a title. Zoom{" "}
+                {LDP_MIN_ZOOM}+.
               </p>
             )}
             {showCommunityOwnership && (
               <p className="layer-meta" data-testid="layer-community-ownership-credit">
-                Community Ownership in Scotland 2024 (OGL v3.0) — ownership-context
-                (who/outline), not a rent row. Postcode centroids via postcodes.io
-                (ONS Postcode Directory), not titles. Contains OS data © Crown
-                copyright and database right 2026. Contains Royal Mail data © Royal
-                Mail copyright and database right 2026. Contains National Statistics
-                data © Crown copyright and database right 2026. Zoom{" "}
+                Community Ownership in Scotland 2024 (OGL v3.0) — ownership
+                context, not a rent row. Postcode centroids via postcodes.io
+                (ONS Postcode Directory), not titles. Zoom{" "}
                 {COMMUNITY_OWNERSHIP_MIN_ZOOM}+. Enable with ?community=1.
               </p>
             )}
             {showCroftingConstraint && (
               <p className="layer-meta" data-testid="crofting-constraint-gap">
-                Crofting / common grazings — ledger constraint (£0, no rent
-                row). Crofting Commission OGL lists (parishes / holdings /
-                grazings) → PostGIS; no national OGL polygon paint. Extents:{" "}
+                Crofting / common grazings — constraint that changes best use
+                and adds no value. Crofting Commission OGL lists → PostGIS; no
+                national OGL polygon paint. Extents:{" "}
                 <a
                   href="https://www.crofts.ros.gov.uk/register/search"
                   target="_blank"
@@ -3604,47 +3605,41 @@ export default function ScotlandMap() {
                 >
                   RoS Crofting Register map
                 </a>
-                . Individuals CSV not ingested. Spatial Hub Decrofted Areas is
-                Restricted — not used.
+                .
               </p>
             )}
             {showLca && (
               <p className="layer-meta" data-testid="lca-constraint-credit">
-                Land Capability for Agriculture (Hutton LCA 1:250k) — ledger
-                constraint (£0, no rent row). James Hutton Institute Open Data
-                Licence (not OGL); PSI under OGL v2.0 per attribution. Capability
-                classes change best use only — not a rent or title. Zoom{" "}
-                {LCA_MIN_ZOOM}+. PostGIS ingest required (
-                <code>python -m etl.ingest_lca</code>).
+                Land Capability for Agriculture (Hutton LCA 1:250k) —
+                constraint that changes best use and adds no value. James
+                Hutton Institute Open Data Licence. Zoom {LCA_MIN_ZOOM}+.
               </p>
             )}
             {showWoodland && (
               <p className="layer-meta" data-testid="layer-woodland-credit">
-                NFI + Native Woodland Survey (OGL v3.0) — ledger row 1 land-use.
-                Inventory / survey polygons, not a rent or title. Zoom{" "}
-                {NFI_MIN_ZOOM}+ / {NATIVE_WOODLAND_MIN_ZOOM}+.
+                NFI + Native Woodland Survey (OGL v3.0) — inventory / survey
+                polygons, not a rent or title. Zoom {NFI_MIN_ZOOM}+ /{" "}
+                {NATIVE_WOODLAND_MIN_ZOOM}+.
               </p>
             )}
             {showRepd && (
               <p className="layer-meta" data-testid="layer-repd-credit">
-                REPD (DESNZ, OGL v3.0) — ledger row 3. Scotland planning-site
-                points from PostGIS — not lease polygons, not a rent or title.
-                Zoom {REPD_MIN_ZOOM}+.
+                REPD (DESNZ, OGL v3.0) — Scotland planning-site points from
+                PostGIS — not lease polygons, not a rent or title. Zoom{" "}
+                {REPD_MIN_ZOOM}+.
               </p>
             )}
             {showRepdOnshoreWind && (
               <p className="layer-meta" data-testid="layer-repd-onshore-wind-credit">
-                REPD onshore wind (DESNZ, OGL v3.0) — ledger row 3. Scotland
-                planning-site points with MW and status only — natural-capital
-                evidence, not Surface Rent, not AGR, not a lease. Zoom{" "}
+                REPD onshore wind (DESNZ, OGL v3.0) — Scotland planning-site
+                points with MW and status only. Zoom{" "}
                 {REPD_ONSHORE_WIND_MIN_ZOOM}+.
               </p>
             )}
             {showCrownLeases && (
               <p className="layer-meta" data-testid="layer-crown-leases-credit">
                 Crown Estate Scotland Spatial Hub offshore leases (OGL v3.0) —
-                ledger row 4. Offshore wind, wave, tidal, CCS only —
-                aquaculture is a separate layer. Not a title sheet. Zoom{" "}
+                offshore wind, wave, tidal, CCS only. Not a title sheet. Zoom{" "}
                 {CROWN_LEASES_MIN_ZOOM}+.
               </p>
             )}
@@ -3654,10 +3649,9 @@ export default function ScotlandMap() {
                 data-testid="layer-ces-aquaculture-credit"
               >
                 Contains information from the Crown Estate Scotland licensed
-                under the Open Government Licence v3.0. Ledger row 5 —
-                aquaculture seabed lease polygons only (attributes/status) —
-                not a title, not Surface Rent, not AGR, no £ rent or fee.
-                Zoom {CES_AQUACULTURE_MIN_ZOOM}+.
+                under the Open Government Licence v3.0. Aquaculture seabed
+                lease polygons only — not a title. Zoom{" "}
+                {CES_AQUACULTURE_MIN_ZOOM}+.
               </p>
             )}
             {layerNotice && <p className="layer-meta">{layerNotice}</p>}
@@ -3670,6 +3664,7 @@ export default function ScotlandMap() {
           </div>
         </aside>
       )}
+
           {placeStub ? (
             <PlaceCardStub
               place={placeStub}

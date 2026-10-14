@@ -331,6 +331,16 @@ export function groupLabel(group: string): string {
       return "Spatial";
     case "ownership":
       return "Ownership";
+    case "land":
+      return "Land";
+    case "resources":
+      return "Resources";
+    case "nature":
+      return "Nature";
+    case "limits":
+      return "Limits";
+    case "boundaries":
+      return "Boundaries";
     default:
       return group;
   }

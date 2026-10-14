@@ -86,11 +86,13 @@ function StackRow({ row }: { row: PlaceStackRow }) {
       </div>
       {row.nested ? (
         <p className="place-stack-nested-note" data-testid="place-stack-1a-note">
-          Nested under surface — not added into the headline total
+          Of which under surface land — not added into the headline total
         </p>
       ) : null}
       {!row.in_total && !row.nested && row.outside_scottish_total ? (
-        <p className="place-stack-outside-note">Outside Scottish total</p>
+        <p className="place-stack-outside-note">
+          Offshore, outside the Scottish land total
+        </p>
       ) : null}
     </li>
   );
@@ -212,7 +214,7 @@ export function PlaceHectareStack({
             >
               <h2 className="place-stack-section-title">Constraints</h2>
               <p className="place-stack-note">
-                No rent row — £0, change best permitted use only.
+                Constraint: changes best use, adds no value.
               </p>
               <ul className="place-stack-list">
                 {stack.constraints.map((c) => (
@@ -234,11 +236,13 @@ export function PlaceHectareStack({
           ) : null}
 
           <p className="place-stack-disclaimer" data-testid="place-stack-disclaimer">
-            Zone-level stack only — never plots. Public figures are placeholders
-            until ECONOMIC_RULES / calibration. No modelled Annual Ground Rent on
-            this page.{" "}
+            Figures are being checked and aren&apos;t published yet.{" "}
+            <a href="/methodology#ledger">How we value land</a>
             {stack.checks_url ? (
-              <a href={stack.checks_url}>Ledger checks</a>
+              <>
+                {" · "}
+                <a href={stack.checks_url}>Ledger checks</a>
+              </>
             ) : null}
           </p>
         </>

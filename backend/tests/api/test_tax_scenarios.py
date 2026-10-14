@@ -12,6 +12,7 @@ from georgist.surface_settings import YIELD_SOURCE, yield_placeholder
 from georgist.tax_scenarios import (
     BLOCKED_REASON,
     CAPTURE_NOTE,
+    DEFAULT_DZ_VINTAGE,
     DEFERRAL_NOT_LOADED,
     DISCLAIMER,
     INTERNAL_WARNING,
@@ -19,6 +20,7 @@ from georgist.tax_scenarios import (
     MONEY_GRAIN,
     POLICY_CONFIG,
     PUBLICATION_STATUS,
+    S1_RATE_BAND_NOTE,
     UPRN_DZ2022_CROSSWALK,
     TaxScenarioError,
     ZoneRentRow,
@@ -63,7 +65,7 @@ def _row(
     deferral_eligibility_loaded: bool = False,
     vintage: int = 2011,
     crosswalk_method: str = "none",
-    estimate_label: str | None = None,
+    estimate_label: str | None = "measured",
     uncertainty_low: float | None = None,
     uncertainty_high: float | None = None,
 ) -> ZoneRentRow:
@@ -338,6 +340,40 @@ def test_rollup_councils_sum_to_scotland_each_zone_once():
     assert len(all_codes) == len(set(all_codes)) == 3
     glasgow = next(c for c in rollup["by_council"] if c["la_code"] == "S12000049")
     assert "S01010117" in glasgow["zone_codes"]
+
+
+def test_dz2022_uprn_rollup_councils_sum_to_scotland_spine_council():
+    """DZ2022 UPRN path: exact-to-the-penny Σ councils = Scotland; spine la_code."""
+    rows = [
+        _row(
+            "S01020870", la_code="S12000049", la_name="Glasgow City",
+            rent=100_000.0, vintage=2022, crosswalk_method=UPRN_DZ2022_CROSSWALK,
+            estimate_label="measured",
+        ),
+        _row(
+            "S01020871", la_code="S12000049", la_name="Glasgow City",
+            rent=50_000.0, vintage=2022, crosswalk_method=UPRN_DZ2022_CROSSWALK,
+            estimate_label="fully_estimated",
+        ),
+        _row(
+            "S01020872", la_code="S12000036", la_name="City of Edinburgh",
+            rent=25_000.0, vintage=2022, crosswalk_method=UPRN_DZ2022_CROSSWALK,
+            estimate_label="partly_estimated",
+        ),
+    ]
+    rate_by_zone = {r.code: 0.5 for r in rows}
+    rollup = build_aggregate_rollup(rows, rate_by_zone=rate_by_zone)
+    sum_c = _penny(sum(c["measured_rent_gbp"]["central"] for c in rollup["by_council"]))
+    assert sum_c == rollup["scotland"]["measured_rent_gbp"]["central"]
+    assert sum_c == 175_000.0
+    assert rollup["vintage"] == 2022
+    out = aggregate_by_council(rows, scenario_id="S2", defaults=_mini_defaults(1.0, 1.0))
+    assert out["surface_path"]["rollup_pin_vintage"] == 2022
+    assert out["national"]["estimate_label"] == "partly_estimated"
+    by_la = {c["la_code"]: c for c in out["by_council"]}
+    assert by_la["S12000049"]["estimate_label"] == "partly_estimated"
+    assert by_la["S12000036"]["estimate_label"] == "partly_estimated"
+    assert set(by_la["S12000049"]["zone_codes"]) == {"S01020870", "S01020871"}
 
 
 def test_phase_in_year_by_year_schedule_applied_at_data_zone():
@@ -695,7 +731,8 @@ def test_uprn_dz2022_path_admitted_and_applied_in_scenarios():
     )
     assert out["surface_path"]["path"] == "uprn_weighted_dz2022"
     assert out["surface_path"]["crosswalk_method"] == UPRN_DZ2022_CROSSWALK
-    assert out["surface_path"]["rollup_pin_vintage"] == 2011
+    assert out["surface_path"]["rollup_pin_vintage"] == 2022
+    assert out["surface_path"]["council_source"] == "datazones.zone_spine"
     assert out["by_zone"][0]["crosswalk_method"] == UPRN_DZ2022_CROSSWALK
     assert out["by_zone"][0]["illustrated_collection_gbp"]["central"] == 5_000.0
     assert out["publication_status"] == "blocked"
@@ -709,14 +746,22 @@ def test_uprn_dz2022_path_admitted_and_applied_in_scenarios():
     assert exc.value.code == "invalid_dz2022_crosswalk"
 
 
-def test_defaults_pin_rollup_dz2011_and_name_uprn_dz2022_path():
+def test_defaults_pin_rollup_dz2022_via_uprn_path():
     cfg = load_draft_defaults()
-    assert cfg["data_zone"]["vintage"] == 2011
-    assert cfg["data_zone"]["rollup_pin_vintage"] == 2011
+    assert DEFAULT_DZ_VINTAGE == 2022
+    assert cfg["data_zone"]["vintage"] == 2022
+    assert cfg["data_zone"]["rollup_pin_vintage"] == 2022
     assert cfg["data_zone"]["dz2022_path"] == UPRN_DZ2022_CROSSWALK
-    path = surface_path_payload(2011, [_row()])
-    assert path["path"] == "native_dz2011"
-    assert path["rollup_pin_vintage"] == 2011
+    assert cfg["data_zone"]["spine_lookup"] == "datazones.zone_spine"
+    path = surface_path_payload(2022, [_row(
+        "S01020870", vintage=2022, crosswalk_method=UPRN_DZ2022_CROSSWALK,
+    )])
+    assert path["path"] == "uprn_weighted_dz2022"
+    assert path["rollup_pin_vintage"] == 2022
+    assert path["council_source"] == "datazones.zone_spine"
+    native = surface_path_payload(2011, [_row()])
+    assert native["path"] == "native_dz2011"
+    assert native["rollup_pin_vintage"] == 2022
 
 
 def test_s1_rate_lch_and_flags_above_100_pct():
@@ -726,17 +771,23 @@ def test_s1_rate_lch_and_flags_above_100_pct():
             uncertainty_low=40_000.0, uncertainty_high=60_000.0,
         ),
     ]
-    # target 60k → central rate 1.2 (>100%), low 1.5, high 1.0
+    # target 60k → central rate 1.2 (>100%); keys follow rent band:
+    # low rent → highest rate (1.5), high rent → lowest rate (1.0)
     defaults = _mini_defaults(edi_target=60_000.0, glasgow_target=1.0)
     solved = solve_s1_per_council(rows, defaults=defaults)
     rate = solved["S12000036"]["s1_rate"]
     assert rate["central"] == pytest.approx(1.2)
     assert rate["low"] == pytest.approx(1.5)
     assert rate["high"] == pytest.approx(1.0)
+    assert rate["low"] > rate["central"] > rate["high"]
     assert solved["S12000036"]["s1_rate_above_100_pct"] is True
+    assert solved["S12000036"]["s1_rate_band_note"] == S1_RATE_BAND_NOTE
     out = aggregate_by_council(rows, scenario_id="S1", defaults=defaults)
     assert out["s1_by_council"]["S12000036"]["s1_rate_above_100_pct"] is True
+    assert out["s1_by_council"]["S12000036"]["s1_rate_band_note"] == S1_RATE_BAND_NOTE
+    assert out["s1_rate_band_note"] == S1_RATE_BAND_NOTE
     assert "target_gbp" not in out["s1_by_council"]["S12000036"]
+    assert "highest" in S1_RATE_BAND_NOTE.lower()
 
 
 def test_estimate_label_on_zones_and_combined_for_council_scotland():
@@ -757,6 +808,18 @@ def test_estimate_label_on_zones_and_combined_for_council_scotland():
     assert edi["estimate_label"] == "partly_estimated"  # measured + fully
     assert gla["estimate_label"] == "measured"
     assert out["national"]["estimate_label"] == "partly_estimated"
+
+
+def test_council_scotland_estimate_label_refuses_zones_with_no_label():
+    """Match #71 surface roll-up: missing estimate_label refuses council/Scotland combine."""
+    rows = [
+        _row("S01008677", rent=10_000.0, estimate_label="measured"),
+        _row("S01008678", rent=5_000.0, estimate_label=None),
+    ]
+    with pytest.raises(TaxScenarioError) as exc:
+        aggregate_by_council(rows, scenario_id="S2", defaults=_mini_defaults(1.0, 1.0))
+    assert exc.value.code == "missing_estimate_label"
+    assert "S01008678" in str(exc.value.extra.get("missing_codes") or [])
 
 
 def test_assert_no_aggregate_gbp_refuses_rollup_and_s1_money_fields():

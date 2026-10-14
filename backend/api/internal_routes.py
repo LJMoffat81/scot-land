@@ -213,7 +213,8 @@ def internal_eco_mock() -> JSONResponse:
 
 
 # Latest surface_rent_dz row per zone, joined to council codes on the Data Zones spine.
-# One Data Zone vintage throughout; la_code/la_name from the spine (e.g. S01010117 → Glasgow City).
+# One Data Zone vintage throughout. Council for each zone is always the spine
+# la_code/la_name (DZ2022 default roll-up pin; e.g. S01010117 → Glasgow City).
 _TAX_SCENARIO_SQL = (
     "SELECT DISTINCT ON (s.code) "
     "s.code, s.vintage, s.measured_rent, s.price_year, s.quality, s.publish_level, s.publication_status, "
@@ -276,8 +277,8 @@ def internal_tax_scenario(
     vintage: str = Query(
         default=str(DEFAULT_DZ_VINTAGE),
         description=(
-            "One Data Zone version throughout (default 2011 TEMP / roll-up pin). "
-            "Use 2022 for the planned UPRN-weighted DZ2022 path (#71 address_uprn). "
+            "One Data Zone version throughout (default 2022 roll-up pin via #71 "
+            "address_uprn; council from zone_spine). Use 2011 for native DZ2011. "
             + VINTAGE_QUERY_DESCRIPTION
         ),
     ),

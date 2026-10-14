@@ -261,7 +261,7 @@ test.describe("site-watch PR A — nav visible at desktop widths", () => {
         const box = await link.boundingBox();
         expect(box, `${label} at ${width}`).toBeTruthy();
         if (!box) continue;
-        // Must not sit under the search dock (two-row ≤1366; centred above).
+        // UX-00: search shares the top-bar row — must not cover nav links.
         const search = page.locator(".hud-search-dock");
         const searchBox = await search.boundingBox();
         if (searchBox) {
@@ -277,26 +277,21 @@ test.describe("site-watch PR A — nav visible at desktop widths", () => {
           ).toBeFalsy();
         }
       }
-      if (width <= 1440) {
-        // SW-010: search sits on a second row below the nav links.
-        const searchBox = await page.locator(".hud-search-dock").boundingBox();
-        const howBox = await nav
-          .getByRole("link", { name: "How it works", exact: true })
-          .boundingBox();
-        expect(searchBox && howBox).toBeTruthy();
-        if (searchBox && howBox) {
-          expect(searchBox.y).toBeGreaterThan(howBox.y + howBox.height - 4);
-          // Link must not be covered by search (elementFromPoint at link centre).
-          const mid = {
-            x: howBox.x + howBox.width / 2,
-            y: howBox.y + howBox.height / 2,
-          };
-          const hit = await page.evaluate(({ x, y }) => {
-            const el = document.elementFromPoint(x, y);
-            return el?.closest("a")?.textContent?.trim() ?? el?.tagName ?? "none";
-          }, mid);
-          expect(hit).toBe("How it works");
-        }
+      // Nav link must remain hit-targets (elementFromPoint at link centre).
+      const howBox = await nav
+        .getByRole("link", { name: "How it works", exact: true })
+        .boundingBox();
+      expect(howBox).toBeTruthy();
+      if (howBox) {
+        const mid = {
+          x: howBox.x + howBox.width / 2,
+          y: howBox.y + howBox.height / 2,
+        };
+        const hit = await page.evaluate(({ x, y }) => {
+          const el = document.elementFromPoint(x, y);
+          return el?.closest("a")?.textContent?.trim() ?? el?.tagName ?? "none";
+        }, mid);
+        expect(hit).toBe("How it works");
       }
     });
   }

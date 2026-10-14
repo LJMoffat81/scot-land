@@ -3,19 +3,25 @@
  * Kept out of globals.css to avoid parallel edits with other drafts.
  */
 
-/* —— SW-010: two-row map header through 1440px (search never overlaps nav) —— */
-@media (min-width: 901px) and (max-width: 1440px) {
+/*
+ * UX-00: desktop search sits in the top-bar row with logo, nav and Layers.
+ * Same height + border as the Layers button; edges align (e2e @1280/1920).
+ * Replaces SW-010 two-row header — nav must still never be covered by search.
+ */
+@media (min-width: 901px) {
   .hud-top {
-    flex-wrap: wrap;
+    --hud-control-h: calc(0.7rem * 2 + 0.85rem * 1.2);
+    flex-wrap: nowrap;
     align-items: center;
-    row-gap: 0.55rem;
+    gap: 0.65rem;
   }
 
   .hud-top .site-nav-map {
     order: 15;
-    margin-left: auto;
+    margin-left: 0;
     position: relative;
     z-index: 8;
+    flex-shrink: 0;
   }
 
   .hud-top .site-nav-map .site-nav-links {
@@ -25,10 +31,19 @@
 
   .hud-top [data-testid="hud-layers-btn"] {
     order: 20;
-    margin-left: 0.35rem;
+    margin-left: 0;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: var(--hud-control-h);
+    padding: 0 0.95rem;
+    border: 0;
+    line-height: 1.2;
   }
 
-  /* Force search onto its own row — beat globals absolute centering */
+  /* In-flow top-bar search — beat globals absolute centering */
   .hud-search-dock,
   .squares-shell .hud-search-dock,
   .hud-top .hud-search-dock {
@@ -36,41 +51,58 @@
     left: auto !important;
     top: auto !important;
     transform: none !important;
-    order: 50;
-    flex: 1 1 100%;
-    width: 100% !important;
-    max-width: none !important;
+    order: 10;
+    flex: 1 1 auto;
+    width: auto !important;
+    min-width: 10rem;
+    max-width: min(34rem, 100%) !important;
     z-index: 6;
   }
 
-  /* Banner must clear the taller two-row HUD (was overlapping search at 1280) */
+  .hud-search,
+  .squares-shell .hud-search {
+    box-sizing: border-box;
+    height: var(--hud-control-h);
+    min-height: var(--hud-control-h);
+    border: 0;
+    border-radius: 999px;
+    box-shadow: var(--hud-shadow);
+    overflow: hidden;
+  }
+
+  .hud-search input,
+  .squares-shell .hud-search input {
+    box-sizing: border-box;
+    height: 100%;
+    padding: 0 0.9rem;
+    font-size: 0.85rem;
+    line-height: 1.2;
+  }
+
+  .hud-search-go,
+  .squares-shell .hud-search-go {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: calc(100% - 0.4rem);
+    margin: 0.2rem;
+    padding: 0 0.85rem;
+    font-size: 0.8rem;
+    line-height: 1;
+  }
+
+  .hud-search-clear {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 0 0.4rem;
+  }
+
   .research-banner-map {
-    top: calc(var(--hud-height, 8.5rem) + 0.4rem);
+    top: calc(var(--hud-height, 6.5rem) + 0.4rem);
     z-index: 3;
-  }
-}
-
-/* Above 1440px: single-row centred search with clearance for nav + Layers */
-@media (min-width: 1441px) {
-  .site-nav-map {
-    position: relative;
-    z-index: 8;
-  }
-
-  .hud-top .site-nav-map {
-    order: 15;
-    margin-left: auto;
-  }
-
-  .hud-top [data-testid="hud-layers-btn"] {
-    order: 20;
-    margin-left: 0.35rem;
-  }
-
-  .hud-search-dock,
-  .squares-shell .hud-search-dock {
-    width: min(34rem, calc(100vw - 30rem));
-    z-index: 6;
   }
 }
 
@@ -130,16 +162,16 @@
   }
 }
 
-/* —— Place card above search HUD so Close is clickable (esp. two-row ≤1440) —— */
+/* —— Place card above search HUD so Close is clickable —— */
 .app-shell.place-open .hud-place.place-card,
 .app-shell.place-open .place-card-stub {
   z-index: 14;
 }
 
-@media (min-width: 901px) and (max-width: 1440px) {
+@media (min-width: 901px) {
   .app-shell.place-open .hud-place.place-card,
   .app-shell.place-open .place-card-stub {
-    top: calc(var(--hud-height, 8.5rem) + 0.45rem);
+    top: calc(var(--hud-height, 6.5rem) + 0.45rem);
   }
 }
 

@@ -152,10 +152,11 @@ input {
   display: block;
   flex-shrink: 0;
   line-height: 0;
-  background: none;
-  padding: 0;
-  border-radius: 0;
-  box-shadow: none;
+  /* Solid backing so map labels cannot show through the transparent mark. */
+  background: #fff;
+  padding: 0.2rem;
+  border-radius: 12px;
+  box-shadow: var(--hud-shadow);
   text-decoration: none;
 }
 
@@ -2989,13 +2990,16 @@ button.linkish:disabled {
   .hud-top {
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.4rem;
+    /* ≥8px between logo and Layers (was 0.4rem / ~6.4px). */
+    gap: 8px;
     padding: 0.5rem 0.6rem 0.4rem;
   }
 
   .hud-brand {
     order: 0;
     flex-basis: auto;
+    /* Extra clearance so the logo never touches Layers at 390px. */
+    margin-inline-end: 8px;
   }
 
   .hud-wordmark img {

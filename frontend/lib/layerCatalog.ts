@@ -141,7 +141,7 @@ export const LAYER_ATTRIBUTION: Record<
       "https://www.data.gov.uk/dataset/5750f8e5-d51b-4e75-a8d6-403a0d1ded81/hydropower_sites",
   },
   sepa_car: {
-    source: "SEPA CAR licences (MapServer 194/195 → PostGIS)",
+    source: "SEPA CAR licences (MapServer 194/195)",
     licence: "OGL-3.0",
     sourceUrl: "https://www.sepa.org.uk/environment/environmental-data/",
   },

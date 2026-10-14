@@ -2292,7 +2292,7 @@ export default function ScotlandMap() {
     };
   }, [mapReady, showDataZones]);
 
-  // DESNZ REPD onshore wind (natural capital — MW/status only, no £ rent)
+  // DESNZ REPD onshore wind (MW/status only, no £ rent)
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;

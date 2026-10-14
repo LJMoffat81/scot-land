@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 /**
  * SW-030 — sea / out-of-area stub:
@@ -163,72 +163,6 @@ function boxesOverlap(a: Box, b: Box) {
   );
 }
 
-/**
- * Bounding box of the sea-line *text* (not the padded element box).
- * Prefer Range client rects on text nodes; fall back to content box
- * (border box minus padding) when Range returns empty (seen in CI).
- */
-async function lineTextBox(line: Locator): Promise<Box | null> {
-  return line.evaluate((el) => {
-    // Force layout before measuring.
-    void (el as HTMLElement).offsetHeight;
-
-    const range = document.createRange();
-    const textNodes: Text[] = [];
-    const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-    let node = walk.nextNode();
-    while (node) {
-      if (node.nodeType === Node.TEXT_NODE && (node.textContent || "").trim()) {
-        textNodes.push(node as Text);
-      }
-      node = walk.nextNode();
-    }
-
-    let left = Number.POSITIVE_INFINITY;
-    let top = Number.POSITIVE_INFINITY;
-    let right = Number.NEGATIVE_INFINITY;
-    let bottom = Number.NEGATIVE_INFINITY;
-    let saw = false;
-    for (const text of textNodes) {
-      range.selectNodeContents(text);
-      for (const r of Array.from(range.getClientRects())) {
-        if (r.width <= 0 || r.height <= 0) continue;
-        saw = true;
-        left = Math.min(left, r.left);
-        top = Math.min(top, r.top);
-        right = Math.max(right, r.right);
-        bottom = Math.max(bottom, r.bottom);
-      }
-    }
-
-    if (!saw) {
-      // Content box excludes padding reserved for the ×.
-      const rect = el.getBoundingClientRect();
-      const style = getComputedStyle(el);
-      const padL = parseFloat(style.paddingLeft) || 0;
-      const padR = parseFloat(style.paddingRight) || 0;
-      const padT = parseFloat(style.paddingTop) || 0;
-      const padB = parseFloat(style.paddingBottom) || 0;
-      const width = rect.width - padL - padR;
-      const height = rect.height - padT - padB;
-      if (width <= 0 || height <= 0) return null;
-      return {
-        x: rect.left + padL,
-        y: rect.top + padT,
-        width,
-        height,
-      };
-    }
-
-    return {
-      x: left,
-      y: top,
-      width: right - left,
-      height: bottom - top,
-    };
-  });
-}
-
 async function openSeaStub(page: Page) {
   await page.goto("/");
   await page.locator(".maplibregl-canvas").waitFor();
@@ -241,10 +175,13 @@ async function openSeaStub(page: Page) {
   await expect(line).toBeVisible({ timeout: 30_000 });
   await expect(line).toHaveText(OUT_OF_SCOTLAND_LINE);
 
+  const text = page.getByTestId("place-card-sea-line-text");
+  await expect(text).toBeVisible();
+
   const card = page.getByTestId("place-card");
   await expect(card).toBeVisible();
   await expect(card).toHaveClass(/place-card-sea-miss/);
-  return { card, line };
+  return { card, line, text };
 }
 
 async function assertCloseClearsSeaLineText(page: Page) {
@@ -252,14 +189,24 @@ async function assertCloseClearsSeaLineText(page: Page) {
   await stubMapChrome(page);
   await stubSeaMissPlaceApis(page);
 
-  const { line } = await openSeaStub(page);
+  const { line, text } = await openSeaStub(page);
   const close = page.getByRole("button", { name: "Close place card" });
   await expect(close).toBeVisible();
 
   const closeBox = await close.boundingBox();
   expect(closeBox, "close × bounding box").toBeTruthy();
 
-  const textBox = await lineTextBox(line);
+  // Spec: right padding ≥ × width + 8px (finite numbers only — CI-safe).
+  const padRight = await line.evaluate((el) =>
+    parseFloat(getComputedStyle(el).paddingRight),
+  );
+  expect(
+    padRight,
+    `sea-line padding-right ${padRight} < × width ${closeBox!.width} + 8`,
+  ).toBeGreaterThanOrEqual(closeBox!.width + 8);
+
+  // Inner span wraps the glyphs only (excludes padding reserved for ×).
+  const textBox = await text.boundingBox();
   expect(textBox, "sea-line text bounding box").toBeTruthy();
 
   expect(

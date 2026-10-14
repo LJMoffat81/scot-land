@@ -191,7 +191,10 @@ export function PlaceCard({
             className="place-card-sea-line"
             data-testid="place-card-out-of-scotland"
           >
-            {PLACE_CARD_OUT_OF_SCOTLAND_LINE}
+            {/* Inner span = line text box for SW-030 (excludes × padding). */}
+            <span data-testid="place-card-sea-line-text">
+              {PLACE_CARD_OUT_OF_SCOTLAND_LINE}
+            </span>
           </p>
           {onShowScotland ? (
             <button

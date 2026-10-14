@@ -91,9 +91,9 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     publication_status: "ok",
   },
   publication_note:
-    "Per-hectare stack. Figures are being checked and aren't published yet. Planning uplift sits under land. Services of nature stay separate from market and proxy rows. Oil and gas sit outside the Scottish land total.",
+    "Per-hectare stack. Figures are being checked and aren't published yet. Planning uplift sits under land. Services of nature stay separate from Market and Modelled rows. Oil and gas sit outside the Scottish land total.",
   headline: {
-    label: "Scottish totals (market and proxy)",
+    label: "Scottish totals (Market + Modelled)",
     unit: "per hectare per year",
     sum_row_ids: ["1", "2", "3", "4"],
     total_placeholder: "—",
@@ -177,14 +177,14 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     sum_row_ids: ["5", "6", "7", "8", "10"],
     total_placeholder: "—",
     total_note:
-      "Estimate stack total is separate from the Scottish totals. Totals per chip only, never across chips or price years.",
+      "estimate stack total is separate from the Scottish totals. Totals per chip only, never across chips or price years.",
     rows: [
       {
         id: "5",
         label: "Aquaculture licence rent",
         tag: "shadow",
         status: "not_yet",
-        status_note: "Estimate — total minus CES seabed paid. Separate stack.",
+        status_note: "estimate — total minus CES seabed paid. Separate stack.",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -198,7 +198,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
         tag: "shadow",
         status: "not_yet",
         status_note:
-          "Market if lease prices, else Estimate (default: Estimate stack).",
+          "Market if lease prices, else estimate (default: estimate stack).",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -238,7 +238,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
         label: "Ecosystem services",
         tag: "shadow",
         status: "not_yet",
-        status_note: "Estimate, later.",
+        status_note: "estimate, later.",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -379,13 +379,13 @@ export function sanitizePlaceStack(
 export function tagLabel(tag: string): string {
   switch (tag) {
     case "market":
-      return "market";
+      return "Market";
     case "proxy":
-      return "proxy";
+      return "Modelled";
     case "shadow":
       return "Estimate";
     case "market_or_proxy":
-      return "market / proxy";
+      return "Market / Modelled";
     case "reported":
       return "outside";
     case "already_included":

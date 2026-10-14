@@ -27,7 +27,6 @@ import yaml
 from psycopg2 import extras
 
 from spatial.geoserver_auth import is_configured as spatialhub_auth_configured
-from spatial.geoserver_auth import not_loaded_message
 
 logger = logging.getLogger(__name__)
 
@@ -162,6 +161,12 @@ _VISITOR_BANNED_DEV = (
     "SPATIALHUB_AUTHKEY",
     "python -m etl",
     "--from-wfs",
+    ".env",
+)
+
+# Exact visitor 503 / unload copy (no "overlay"; no operator setup).
+HLA_NOT_LOADED_YET = (
+    "Housing land audit isn't loaded yet. We don't fill gaps with guesses."
 )
 
 
@@ -171,7 +176,7 @@ def _unloaded_error() -> str:
     Operator setup (``SPATIALHUB_AUTHKEY``, ``.env``, ``python -m etl``) stays in
     developer surfaces only — never in map/UI or public JSON error strings.
     """
-    return not_loaded_message("Housing land audit overlay")
+    return HLA_NOT_LOADED_YET
 
 
 def _visitor_gaps(gaps: list[str] | None) -> list[str]:
@@ -181,11 +186,6 @@ def _visitor_gaps(gaps: list[str] | None) -> list[str]:
         text = str(gap)
         lower = text.lower()
         if any(token.lower() in lower for token in _VISITOR_BANNED_DEV):
-            continue
-        # Bare ``.env`` only when paired with Spatial Hub / authkey setup prose.
-        if ".env" in lower and (
-            "spatialhub" in lower or "authkey" in lower or "auth key" in lower
-        ):
             continue
         out.append(text)
     return out

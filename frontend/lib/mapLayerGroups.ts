@@ -87,6 +87,16 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
     licenceUrl: OGL_V3,
   },
   {
+    id: "hla",
+    group: "land",
+    label: "Housing land audit",
+    description:
+      "Housing land supply sites from local-authority Housing Land Audits.",
+    tag: "proxy",
+    licence: "OGL-3.0",
+    licenceUrl: OGL_V3,
+  },
+  {
     id: "2",
     group: "resources",
     label: "Minerals",

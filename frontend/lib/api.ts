@@ -43,6 +43,10 @@ export class ApiError extends Error {
 
 export const SERVICE_BUSY = "Service busy, please try again";
 
+/** Exact visitor copy when Housing land audit PostGIS is unloaded (HLA 503). */
+export const HLA_NOT_LOADED =
+  "Housing land audit isn't loaded yet. We don't fill gaps with guesses.";
+
 function isDevFacing(detail: string): boolean {
   const lower = detail.toLowerCase();
   return (
@@ -109,6 +113,10 @@ export async function apiFetch(
       if (typeof body?.detail === "string") detail = body.detail;
     } catch {
       /* ignore non-JSON error bodies */
+    }
+    // Keep honest HLA unload copy; other 5xx stay generic Service busy.
+    if (detail.trim() === HLA_NOT_LOADED) {
+      throw new ApiError(detail, url, response.status);
     }
     if (response.status >= 500 || !detail.trim() || isDevFacing(detail)) {
       detail = SERVICE_BUSY;

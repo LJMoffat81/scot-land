@@ -75,6 +75,7 @@ FORBIDDEN_PUBLIC_FILL_TOKENS = frozenset({
 FORBIDDEN_PUBLIC_ROUTE_PHRASES = frozenset({
     "£0",
     "market+proxy",
+    ".env",
 })
 FORBIDDEN_PUBLIC_ROUTE_PROSE_WORDS = frozenset({
     "nested",
@@ -188,6 +189,8 @@ def _phrase_hits_in_sample(sample: str) -> list[str]:
         hits.append("£0")
     if "market+proxy" in sample:
         hits.append("market+proxy")
+    if ".env" in sample:
+        hits.append(".env")
     if NESTED_WORD.search(sample) and "nested" in FORBIDDEN_PUBLIC_ROUTE_PROSE_WORDS:
         hits.append("nested")
     return hits
@@ -196,9 +199,9 @@ def _phrase_hits_in_sample(sample: str) -> list[str]:
 def public_route_phrase_hits(text: str) -> list[str]:
     """Return forbidden visitor phrases found in quoted / JSX text values.
 
-    Exact ``£0`` / ``market+proxy`` values are flagged. Prose strings (with
-    whitespace) are also scanned for those tokens and the word ``nested``.
-    Machine keys such as ``nested`` / ``nested_under`` stay allowed.
+    Exact ``£0`` / ``market+proxy`` / ``.env`` values are flagged. Prose
+    strings (with whitespace) are also scanned for those tokens and the word
+    ``nested``. Machine keys such as ``nested`` / ``nested_under`` stay allowed.
     Additive coverage only — does not weaken AGR property rules.
     """
     cleaned = LINE_COMMENT.sub("", BLOCK_COMMENT.sub("", text))

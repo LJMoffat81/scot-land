@@ -12,7 +12,13 @@ from etl.ingest_hla_sites import (
     site_id_for,
     vintage_for,
 )
-from layers.hla import ATTRIBUTION, LICENCE, SPATIAL_HUB_URL, hla_source_meta
+from layers.hla import (
+    ATTRIBUTION,
+    HLA_NOT_LOADED_YET,
+    LICENCE,
+    SPATIAL_HUB_URL,
+    hla_source_meta,
+)
 from layers.platform import platform_catalog
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -87,7 +93,7 @@ def test_hla_503_when_not_loaded(client, monkeypatch):
             "features": [],
             "meta": {
                 "ok": False,
-                "error": "Housing land audit overlay is not loaded yet",
+                "error": HLA_NOT_LOADED_YET,
                 "layer": "hla",
             },
         }
@@ -96,12 +102,11 @@ def test_hla_503_when_not_loaded(client, monkeypatch):
     r = client.get("/layers/open/hla", params=GLASGOW_BBOX)
     assert r.status_code == 503, r.text
     detail = r.json().get("detail", "")
-    detail_l = detail.lower()
-    assert "not available" in detail_l or "hla" in detail_l
-    assert "not loaded yet" in detail_l
-    assert "spatialhub_authkey" not in detail_l
-    assert "python -m etl" not in detail_l
-    assert ".env" not in detail_l
+    assert detail == HLA_NOT_LOADED_YET
+    assert "overlay" not in detail.lower()
+    assert "spatialhub_authkey" not in detail.lower()
+    assert "python -m etl" not in detail.lower()
+    assert ".env" not in detail.lower()
     assert "features" not in r.json()
 
 

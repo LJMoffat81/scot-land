@@ -76,7 +76,7 @@ _ROWS: list[dict[str, Any]] = [
         "nested": False,
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Estimate — total minus CES seabed paid. Drawn in Estimate stack later.",
+        "status_note": "estimate — total minus CES seabed paid. Drawn in estimate stack later.",
         "amount_placeholder": "—",
     },
     {
@@ -86,7 +86,7 @@ _ROWS: list[dict[str, Any]] = [
         "nested": False,
         "tag": "market_or_proxy",
         "status": "not_yet",
-        "status_note": "Market if lease prices, else Estimate.",
+        "status_note": "Market if lease prices, else estimate.",
         "amount_placeholder": "—",
     },
     {
@@ -97,7 +97,7 @@ _ROWS: list[dict[str, Any]] = [
         "tag": "shadow",
         "status": "not_yet",
         "status_note": (
-            "Estimate, ~0 when published. Not shown as a money value while not yet."
+            "estimate, ~0 when published. Not shown as a money value while not yet."
         ),
         "amount_placeholder": "—",
     },
@@ -129,7 +129,7 @@ _ROWS: list[dict[str, Any]] = [
         "nested": False,
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Estimate, later.",
+        "status_note": "estimate, later.",
         "amount_placeholder": "—",
     },
 ]

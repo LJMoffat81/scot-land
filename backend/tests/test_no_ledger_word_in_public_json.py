@@ -31,9 +31,11 @@ _HEADLINE_WORD = re.compile(r"\bheadline\b", re.IGNORECASE)
 _SHADOW_WORD = re.compile(r"\bshadow\b", re.IGNORECASE)
 # £ figure = currency symbol with a numeric amount (not unit labels / "£ withheld").
 _POUND_FIGURE = re.compile(r"£\s*[\d,]+(?:\.\d+)?|[\d,]+\s*£")
+_DOT_ENV = re.compile(r"\.env\b")
 
 # Machine / non-prose keys — not shown as visitor copy in the UI.
 # tag / value_tier / stack stay machine values (market|proxy|shadow etc.).
+# ``definition`` is NOT skipped — visitor prose there must pass headline/shadow bans.
 _SKIP_KEYS = frozenset(
     {
         "kind",
@@ -42,7 +44,6 @@ _SKIP_KEYS = frozenset(
         "contract",
         "document",
         "run_hash",
-        "definition",
         "licence_url",
         "source_url",
         "checks_url",
@@ -141,6 +142,11 @@ def _assert_public_visitor_copy(payload: dict[str, Any], label: str) -> None:
         f"{label} visitor text contains a £ figure:\n"
         + "\n".join(repr(h[:200]) for h in pound_hits)
     )
+    env_hits = [t for t in texts if _DOT_ENV.search(t)]
+    assert not env_hits, (
+        f"{label} visitor text contains '.env':\n"
+        + "\n".join(repr(h[:200]) for h in env_hits)
+    )
 
 
 def test_place_stack_runtime_copy_has_no_ledger_word():
@@ -153,9 +159,17 @@ def test_place_stack_runtime_copy_has_no_ledger_word():
         in note
     )
     assert "Scottish totals" in body["headline"]["label"]
+    assert "Market and Modelled" in body["headline"]["label"]
     assert "Estimate" in body["shadow"]["label"]
+    assert "into Market or Modelled totals" in body["shadow"]["total_note"]
     assert "headline" not in body["headline"]["label"].lower()
     assert "shadow" not in body["shadow"]["label"].lower()
+    assert body["headline"]["rows"][0]["tag"] in {
+        "market",
+        "proxy",
+        "shadow",
+        "market_or_proxy",
+    }
 
 
 def test_ledger_json_runtime_copy_has_no_ledger_word():
@@ -165,6 +179,26 @@ def test_ledger_json_runtime_copy_has_no_ledger_word():
     assert oil["note"] == (
         "Reported alongside the breakdown; outside the Scottish totals."
     )
+    totals_note = payload["totals"]["headline"]["note"]
+    assert "Market and Modelled" in totals_note
+    assert payload["totals"]["headline"]["tiers"] == ["market", "proxy"]
+    for row in payload["rows"]:
+        assert row["tag"] in ("market", "proxy", "shadow", "reported")
+
+
+def test_definition_field_is_not_skipped_for_visitor_bans():
+    """``definition`` must be scanned — not listed in ``_SKIP_KEYS``.
+
+    Ledger ``_check`` hashes definition then omits it from the public row today;
+    skipping the key would hide future / nested visitor prose (and glossary-shaped
+    blobs) from headline/shadow bans.
+    """
+    assert "definition" not in _SKIP_KEYS
+    # Nested under definition: banned visitor words must fail the walk.
+    sneaky = {"definition": {"note": "headline and shadow must not ship"}}
+    texts = _visitor_strings(sneaky)
+    assert any(_HEADLINE_WORD.search(t) for t in texts)
+    assert any(_SHADOW_WORD.search(t) for t in texts)
 
 
 def test_all_public_api_json_visitor_copy_bans_headline_shadow_natural_capital():

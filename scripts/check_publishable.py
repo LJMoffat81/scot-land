@@ -6,7 +6,9 @@ Fails (exit 1) if anything tracked by git (the index, so staged files count) is:
   2. inside a raw/ or internal/ folder, a Spatial Hub download, a GeoPackage under data/
      (site layers such as svdls_sites.gpkg / hls_sites.gpkg are internal), an INSPIRE-derived
      file, or parcel geometry / a tile archive (size);
-  3. a CSV/TSV whose header carries address, postcode, UPRN or similar columns.
+  3. a CSV/TSV whose header carries address, postcode, UPRN or similar columns;
+  4. under a frontend preview app route (tax-scenario-panel, ledger-panel, layers-panel,
+     place-card) without a layout.tsx that gates via internalUiEnabled → notFound.
 
 Run from anywhere inside the repo:  python3 scripts/check_publishable.py
 Used by scripts/hooks/pre-commit and CI. Standard library only.
@@ -41,6 +43,13 @@ GEOMETRY_PRODUCT = re.compile(r"parcel[^/]*\.(geojson|gpkg|fgb|shp|pmtiles|mbtil
 # Code that may name these things (scripts, routes) is not data.
 CODE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".md", ".sql", ".yml", ".yaml", ".json", ".txt", ".sh"}
 TABULAR = {".csv": ",", ".tsv": "\t"}
+# Dev/QA preview routes under frontend/app — must stay gated off the public build.
+PREVIEW_APP_ROUTES = frozenset({
+    "tax-scenario-panel",
+    "ledger-panel",
+    "layers-panel",
+    "place-card",
+})
 
 
 def git(*args: str) -> str:
@@ -55,6 +64,14 @@ def index_head(path: str, nbytes: int = 65536) -> str:
     """First bytes of the staged (index) version, so the hook checks what will be committed."""
     out = subprocess.run(["git", "cat-file", "blob", f":{path}"], check=True, capture_output=True).stdout
     return out[:nbytes].decode("utf-8-sig", errors="replace")
+
+
+def _preview_route_gated(fileset: set[str], route: str) -> bool:
+    layout = f"frontend/app/{route}/layout.tsx"
+    if layout not in fileset:
+        return False
+    text = index_head(layout)
+    return "internalUiEnabled" in text and "notFound" in text
 
 
 def check(files: list[str]) -> list[str]:
@@ -75,6 +92,7 @@ def check(files: list[str]) -> list[str]:
             if level == "internal" and target in fileset:
                 problems.append(f"{target}: publish_level=internal in {manifest} but tracked by git")
 
+    preview_routes_present: set[str] = set()
     for f in files:
         parts = PurePosixPath(f).parts
         # 2. raw/ folders and Spatial Hub downloads
@@ -99,6 +117,21 @@ def check(files: list[str]) -> list[str]:
                    and not AGGREGATE_TOKENS & set(c.strip().lower().split("_"))]
             if bad:
                 problems.append(f"{f}: address/postcode/UPRN-like column(s) {bad}")
+        # 4. collect preview app routes
+        if (
+            len(parts) >= 3
+            and parts[0] == "frontend"
+            and parts[1] == "app"
+            and parts[2] in PREVIEW_APP_ROUTES
+        ):
+            preview_routes_present.add(parts[2])
+
+    for route in sorted(preview_routes_present):
+        if not _preview_route_gated(fileset, route):
+            problems.append(
+                f"frontend/app/{route}/: preview route must be gated via layout.tsx "
+                "(internalUiEnabled → notFound)"
+            )
     return problems
 
 

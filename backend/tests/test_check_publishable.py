@@ -92,3 +92,33 @@ def test_extra_and_unknown_manifest_columns_are_tolerated(tmp_path):
         "data/processed/gis/z.csv": "code,vintage,job_access\nS01006506,2011,1.0\n",
     })
     assert _problems(tmp_path) == []
+
+
+def test_guard_catches_ungated_preview_routes(tmp_path):
+    """Preview routes (tax-scenario-panel etc.) must gate via internalUiEnabled → notFound."""
+    problems = _problems(tmp_path) if _repo(tmp_path, {
+        "frontend/app/tax-scenario-panel/page.tsx": "export default function Page() { return null }\n",
+    }) is None else None
+    assert any("tax-scenario-panel" in p and "gated" in p for p in problems), problems
+
+    _repo(tmp_path / "gated", {
+        "frontend/app/tax-scenario-panel/layout.tsx": (
+            'import { notFound } from "next/navigation";\n'
+            'import { internalUiEnabled } from "@/lib/internalUi";\n'
+            "export default function L({ children }) {\n"
+            "  if (!internalUiEnabled()) notFound();\n"
+            "  return children;\n"
+            "}\n"
+        ),
+        "frontend/app/tax-scenario-panel/page.tsx": "export default function Page() { return null }\n",
+        "frontend/app/ledger-panel/layout.tsx": (
+            'import { notFound } from "next/navigation";\n'
+            'import { internalUiEnabled } from "@/lib/internalUi";\n'
+            "export default function L({ children }) {\n"
+            "  if (!internalUiEnabled()) notFound();\n"
+            "  return children;\n"
+            "}\n"
+        ),
+        "frontend/app/ledger-panel/page.tsx": "export default function Page() { return null }\n",
+    })
+    assert _problems(tmp_path / "gated") == []

@@ -310,6 +310,8 @@ export function useWealthApi() {
     [],
   );
 
+  // Tax scenario tools are internal-only (publication_status=blocked) until yield
+  // calibration lands — not exposed on the public map or useWealthApi.
   // No resource/eco fetchers: today those layers hold only mock data, which the
   // public API does not serve (rules v0.4 section 2). Developers use /internal/...
   return { isLoading, failure, fetchDataZoneAt, fetchTotalWealth, lookupWealthAt, fetchSurfaceRentLayer };

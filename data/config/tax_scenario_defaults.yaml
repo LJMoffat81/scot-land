@@ -1,0 +1,413 @@
+# Tax scenario approved defaults (v0.1, Oct 2026) — Laurie approved.
+# Still configurable via this file. publication_status=blocked until Valuation
+# re-passes and GIS checks the zone-to-council lookup. Internal only; no public £.
+# S1 per-council targets: Scottish Government Local Government Finance (OGL-3.0) —
+# SLGFS 2024-25 Table I Council Tax + NDRI Table 2 contributable amount (year recorded
+# per field). National single-rate S1 is a separate scenario and is OFF by default.
+schema_version: 1
+status: approved_defaults
+version: '0.1'
+approved: 2026-10
+approval: approved_laurie_v0_1_oct_2026
+label: approved defaults (v0.1, Oct 2026)
+owner: Georgist
+publication_status: blocked
+configurable: true
+note: >-
+  Configurable scenario settings — approved defaults (v0.1, Oct 2026). No ownership-based exemptions.
+  Shadow values are never taxed. Output £ while blocked is Data Zone only; council views show counts.
+  Council/Scotland £ roll-up is built behind the temporary blocked setting for reconciliation only. S1
+  targets from SG Local Government Finance (OGL).
+data_zone:
+  vintage: 2011                 # TEMP default + council/Scotland £ roll-up pin
+  spine_lookup: datazones.zone_spine
+  dz2022_path: address_uprn     # planned unit via #71 UPRN-weighted crosswalk
+  rollup_pin_vintage: 2011      # DZ2022/crosswalk roll-up later — not blocking
+display_while_blocked:
+  gbp_grain: data_zone_only
+  council_views: counts_only
+  build_council_scotland_rollup: true
+  note: >
+    Temporary setting switched on while figures are blocked. When unblocked, display policy may change;
+    roll-up maths already reconcile Σ councils = Scotland. Roll-up pin stays DZ2011 for now;
+    DZ2022 UPRN-weighted scenario path is available separately (vintage=2022).
+exemptions:
+  ownership_based: false
+  shadow_taxed: false
+deferral:
+  low_income_home_owners: true
+  rate: 0.0262
+phase_in:
+  points_per_year: 10
+revenue_sharing:
+  council_share: 0.5
+  dividend_share: 0.5
+scenarios:
+  S1:
+    id: S1
+    label: Revenue swap (solved rate vs SG CT + NDR)
+    mode: revenue_swap_solved_rate
+    scope: per_council
+    national_single_rate:
+      enabled: false
+      id: S1_national
+      label: Revenue swap (national single rate)
+    targets: sg_local_government_finance
+  S2:
+    id: S2
+    label: 50% capture
+    mode: fixed_capture_rate
+    capture_rate: 0.5
+  S3:
+    id: S3
+    label: 85% capture
+    mode: fixed_capture_rate
+    capture_rate: 0.85
+fiscal_targets:
+  status: sg_local_government_finance
+  version: '0.1'
+  targets_status: loaded
+  note: >-
+    Per-council council tax + non-domestic rates from Scottish Government Local Government Finance publications
+    (OGL-3.0). Used as S1 revenue-swap targets.
+  council_tax:
+    year: 2024-25
+    unit: GBP
+    source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council Tax, £000
+      converted to £; OGL-3.0
+    publication: Scottish Local Government Finance Statistics (SLGFS) 2024-25 Additional Analysis — Revenue
+      Table I
+    licence: OGL-3.0
+  business_rates:
+    year: 2025-2026 [n]
+    unit: GBP
+    source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+    publication: Non-domestic rates income statistics — Table 2 contributable amount
+    licence: OGL-3.0
+    provisional: true
+  national:
+    council_tax_gbp: 2996849000
+    business_rates_gbp: 3079138735
+    council_tax_year: 2024-25
+    business_rates_year: 2025-2026 [n]
+  by_council:
+  - la_code: S12000033
+    la_name: Aberdeen City
+    zone_count_dz2011: 283
+    council_tax_gbp: 143678000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 202828879
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000034
+    la_name: Aberdeenshire
+    zone_count_dz2011: 340
+    council_tax_gbp: 170446000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 133878101
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000041
+    la_name: Angus
+    zone_count_dz2011: 155
+    council_tax_gbp: 58344000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 31311060
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000035
+    la_name: Argyll and Bute
+    zone_count_dz2011: 125
+    council_tax_gbp: 66948000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 41124035
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000036
+    la_name: City of Edinburgh
+    zone_count_dz2011: 597
+    council_tax_gbp: 330188000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 397499676
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000005
+    la_name: Clackmannanshire
+    zone_count_dz2011: 72
+    council_tax_gbp: 26005000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 20108773
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000006
+    la_name: Dumfries and Galloway
+    zone_count_dz2011: 201
+    council_tax_gbp: 79364000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 61265583
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000042
+    la_name: Dundee City
+    zone_count_dz2011: 188
+    council_tax_gbp: 66343000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 61997758
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000008
+    la_name: East Ayrshire
+    zone_count_dz2011: 163
+    council_tax_gbp: 59317000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 30309524
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000045
+    la_name: East Dunbartonshire
+    zone_count_dz2011: 130
+    council_tax_gbp: 72555000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 22286814
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000010
+    la_name: East Lothian
+    zone_count_dz2011: 132
+    council_tax_gbp: 72867000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 61694081
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000011
+    la_name: East Renfrewshire
+    zone_count_dz2011: 122
+    council_tax_gbp: 63328000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 15632358
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000014
+    la_name: Falkirk
+    zone_count_dz2011: 214
+    council_tax_gbp: 78618000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 73331458
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000047
+    la_name: Fife
+    zone_count_dz2011: 494
+    council_tax_gbp: 194348000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 161725086
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000049
+    la_name: Glasgow City
+    zone_count_dz2011: 746
+    council_tax_gbp: 276965000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 396818849
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000017
+    la_name: Highland
+    zone_count_dz2011: 312
+    council_tax_gbp: 153234000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 174019591
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000018
+    la_name: Inverclyde
+    zone_count_dz2011: 114
+    council_tax_gbp: 36037000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 20219912
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000019
+    la_name: Midlothian
+    zone_count_dz2011: 115
+    council_tax_gbp: 58294000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 36259737
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000020
+    la_name: Moray
+    zone_count_dz2011: 126
+    council_tax_gbp: 52553000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 59707762
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000013
+    la_name: Na h-Eileanan Siar
+    zone_count_dz2011: 36
+    council_tax_gbp: 14681000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 8627052
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000021
+    la_name: North Ayrshire
+    zone_count_dz2011: 186
+    council_tax_gbp: 66140000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 42166618
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000050
+    la_name: North Lanarkshire
+    zone_count_dz2011: 447
+    council_tax_gbp: 141657000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 128169021
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000023
+    la_name: Orkney Islands
+    zone_count_dz2011: 29
+    council_tax_gbp: 12461000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 12074725
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000048
+    la_name: Perth and Kinross
+    zone_count_dz2011: 186
+    council_tax_gbp: 100379000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 62613845
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000038
+    la_name: Renfrewshire
+    zone_count_dz2011: 225
+    council_tax_gbp: 97701000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 102220854
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000026
+    la_name: Scottish Borders
+    zone_count_dz2011: 143
+    council_tax_gbp: 69499000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 40716626
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000027
+    la_name: Shetland Islands
+    zone_count_dz2011: 30
+    council_tax_gbp: 11328000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 24009339
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000028
+    la_name: South Ayrshire
+    zone_count_dz2011: 153
+    council_tax_gbp: 67939000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 43931421
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000029
+    la_name: South Lanarkshire
+    zone_count_dz2011: 431
+    council_tax_gbp: 161060000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 389211885
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000030
+    la_name: Stirling
+    zone_count_dz2011: 121
+    council_tax_gbp: 60177000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 40448231
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000039
+    la_name: West Dunbartonshire
+    zone_count_dz2011: 121
+    council_tax_gbp: 41701000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 87463077
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0
+  - la_code: S12000040
+    la_name: West Lothian
+    zone_count_dz2011: 239
+    council_tax_gbp: 92694000
+    council_tax_year: 2024-25
+    council_tax_source: SG SLGFS 2024-25 Additional Analysis Revenue Table I (General Funding) — Council
+      Tax, £000 converted to £; OGL-3.0
+    business_rates_gbp: 95467004
+    business_rates_year: 2025-2026 [n]
+    business_rates_source: SG Non-domestic rates income statistics Table 2 contributable amount; OGL-3.0

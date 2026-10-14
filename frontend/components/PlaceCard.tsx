@@ -3,8 +3,10 @@
 import EvidenceTagLegend from "@/components/EvidenceTagLegend";
 import {
   PLACE_CARD_CONSTRAINT_LABEL,
-  PLACE_CARD_FIGURES_CHECKED,
+  PLACE_CARD_HOLDER_COPY,
   PLACE_CARD_HOW_WE_VALUE_LABEL,
+  PLACE_CARD_LIMITS_HEADING,
+  PLACE_CARD_SCOTLIS_LABEL,
   dataZoneFieldLabel,
   sanitizePlaceCard,
   valueStatusLabel,
@@ -247,12 +249,10 @@ export function PlaceCard({
 
           <section
             className="place-card-constraints"
-            aria-label="What limits how it can be used"
+            aria-label={PLACE_CARD_LIMITS_HEADING}
             data-testid="place-card-limits"
           >
-            <h3 className="place-card-section">
-              What limits how it can be used
-            </h3>
+            <h3 className="place-card-section">{PLACE_CARD_LIMITS_HEADING}</h3>
             <p
               className="place-card-constraint-banner"
               data-testid="place-card-constraint-banner"
@@ -293,15 +293,9 @@ export function PlaceCard({
             )}
           </section>
 
-          <p
-            className="place-card-grain"
-            data-testid="place-card-figures-checked"
-          >
-            {PLACE_CARD_FIGURES_CHECKED}
-          </p>
           <p className="place-card-meta">
             <a
-              href="/methodology"
+              href="/methodology#glossary"
               data-testid="place-card-how-we-value"
             >
               {PLACE_CARD_HOW_WE_VALUE_LABEL}
@@ -310,24 +304,37 @@ export function PlaceCard({
 
           <section
             className="place-card-holder"
-            aria-label="Holder"
+            aria-label="Who holds it"
             data-testid="place-card-holder"
           >
-            <h3 className="place-card-section">Holder</h3>
-            <p className="place-card-holder-label">
-              {card.holder?.label || "private, not shown"}
+            <h3 className="place-card-section">Who holds it</h3>
+            <p className="place-card-holder-label" data-testid="place-card-holder-copy">
+              {PLACE_CARD_HOLDER_COPY}
             </p>
+            {card.holder?.label && card.holder.status === "public_record" ? (
+              <p className="place-card-meta">{card.holder.label}</p>
+            ) : null}
             {card.holder?.note ? (
               <p className="place-card-meta">{card.holder.note}</p>
             ) : null}
+            <p className="place-card-meta">
+              <a
+                href={card.scotlis?.public_home || "https://scotlis.ros.gov.uk/"}
+                target="_blank"
+                rel="noreferrer"
+                data-testid="place-card-scotlis"
+              >
+                {PLACE_CARD_SCOTLIS_LABEL}
+              </a>
+            </p>
           </section>
 
           <section
             className="place-card-sources"
-            aria-label="Sources and licences"
+            aria-label="Where this comes from"
             data-testid="place-card-sources"
           >
-            <h3 className="place-card-section">Sources and licences</h3>
+            <h3 className="place-card-section">Where this comes from</h3>
             <ul className="place-layer-list" data-testid="place-card-layers">
               {card.layers.map((layer) => (
                 <li

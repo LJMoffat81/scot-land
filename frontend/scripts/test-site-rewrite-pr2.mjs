@@ -1,0 +1,94 @@
+/**
+ * Site rewrite PR2 — section B page copy + place-card wording.
+ * Run: npm run test:site-rewrite-pr2
+ */
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const frontendRoot = join(here, "..");
+
+function readSrc(relPath) {
+  return readFileSync(join(frontendRoot, relPath), "utf8");
+}
+
+// --- Place-card exact wording ---
+{
+  const placeCard = readSrc("lib/placeCard.ts");
+  assert.match(
+    placeCard,
+    /PLACE_CARD_FIGURE_STATUS\s*=\s*"Figure not published yet"/,
+  );
+  assert.match(
+    placeCard,
+    /PLACE_CARD_LIMITS_HEADING\s*=\s*"What limits how it's used"/,
+  );
+  assert.match(placeCard, /case "coming_soon":/);
+  assert.match(placeCard, /case "in_progress":/);
+  assert.match(placeCard, /return PLACE_CARD_FIGURE_STATUS/);
+
+  const ui = readSrc("components/PlaceCard.tsx");
+  assert.match(ui, /PLACE_CARD_LIMITS_HEADING/);
+  assert.match(ui, /Who holds it/);
+  assert.match(ui, /Where this comes from/);
+  assert.match(ui, /PLACE_CARD_SCOTLIS_LABEL/);
+  assert.doesNotMatch(ui, /What limits how it can be used/);
+  assert.doesNotMatch(ui, /Coming soon/);
+  assert.doesNotMatch(ui, /In progress/);
+}
+
+// --- Map empty-state + search placeholder ---
+{
+  const map = readSrc("components/ScotlandMap.tsx");
+  assert.match(
+    map,
+    /placeholder="Search a postcode, place or map reference"/,
+  );
+  assert.match(
+    map,
+    /Type a postcode or place name, or tap the map/,
+  );
+  assert.doesNotMatch(
+    map,
+    /Figures for land\s*value are being checked/,
+  );
+}
+
+// --- About / How it works / Data copy anchors ---
+{
+  const about = readSrc("components/MissionContent.tsx");
+  assert.match(about, /About Scot-LAND/);
+  assert.match(about, /I am Laurie Moffat/);
+  assert.match(about, /What Scot-LAND is not/);
+  assert.match(about, /landcommission\.gov\.scot/);
+
+  const how = readSrc("components/MethodologyContent.tsx");
+  assert.match(how, /How an area is valued/);
+  assert.match(how, /Small areas, added up honestly/);
+  assert.match(how, /Three kinds of figure/);
+  assert.match(how, /How sure are these numbers/);
+  assert.doesNotMatch(how, /PostGIS|ECONOMIC_RULES|HTTP 503|python -m/);
+
+  const data = readSrc("app/data/page.tsx");
+  assert.match(data, /Data &amp; sources|Data \& sources/);
+  assert.match(data, /\/api\/catalog\.json/);
+  assert.match(data, /licence_url/);
+  assert.match(data, /Gaps we know about/);
+  assert.match(data, /Technical checks for developers/);
+
+  const glossary = readSrc("components/GlossaryBox.tsx");
+  assert.match(glossary, /Annual Ground Rent/);
+  assert.match(glossary, /Market \/ Proxy \/ Shadow/);
+  assert.match(glossary, /Constraint/);
+  assert.match(glossary, /Open Government Licence/);
+}
+
+// --- Limits group label ---
+{
+  const groups = readSrc("lib/mapLayerGroups.ts");
+  assert.match(groups, /return "Limits on use"/);
+}
+
+console.log("test-site-rewrite-pr2: ok");

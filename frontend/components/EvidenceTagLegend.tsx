@@ -2,11 +2,11 @@ import ConfidenceTag, {
   type ConfidenceTagKind,
 } from "@/components/ConfidenceTag";
 
-/** Redesign three-chip legend copy (drawer + place card + methodology). */
+/** Redesign three-chip legend copy (drawer + place card); aligns with glossary. */
 export const EVIDENCE_TAG_GLOSS: Record<ConfidenceTagKind, string> = {
-  market: "based on real sales or prices",
-  proxy: "modelled from similar evidence",
-  shadow: "a value with no market price",
+  market: "taken from real prices people paid",
+  proxy: "worked out from related prices",
+  shadow: "an estimate for something with no market price",
 };
 
 const ORDER: ConfidenceTagKind[] = ["market", "proxy", "shadow"];

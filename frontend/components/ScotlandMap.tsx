@@ -3394,7 +3394,7 @@ export default function ScotlandMap() {
         >
         <div className={loading || suggesting ? "hud-search loading" : "hud-search"}>
           <label className="sr-only" htmlFor="place-query">
-            Search a postcode, place name, or coordinates
+            Search a postcode, place or map reference
           </label>
           <input
             id="place-query"
@@ -3407,12 +3407,8 @@ export default function ScotlandMap() {
             }
             value={query}
             autoComplete="off"
-            placeholder={
-              agrAvailable === false
-                ? "Postcode or coordinates, e.g. G2 1DU"
-                : "Postcode, place, or coordinates"
-            }
-            title="Search a Scottish postcode, place name, or lat, lng"
+            placeholder="Search a postcode, place or map reference"
+            title="Search a postcode, place or map reference"
             onChange={(event) => {
               setQuery(event.target.value);
               scheduleSuggest(event.target.value);
@@ -3521,11 +3517,8 @@ export default function ScotlandMap() {
           <div className="hud-scotland-body" id="hud-scotland-body">
             <p className="hud-scotland-job">Find a place</p>
             <p className="hud-scotland-lead">
-              Search a postcode, place or coordinates — or click the map.
-            </p>
-            <p className="hud-scotland-note">
-              Search or click the map to open a place card. Figures for land
-              value are being checked and are not published yet.
+              Type a postcode or place name, or tap the map. You&apos;ll see what
+              we know about that area and where the data comes from.
             </p>
             <MapRangeLegend
               title={rangeLegendTitle(contextMetric)}

@@ -8,9 +8,11 @@ import { preferDz2022, type PlaceDataZoneVintage } from "./placeCardDz";
 
 export { dataZoneFieldLabel, preferDz2022 } from "./placeCardDz";
 
-/** Public figures withheld — keep exact wording. */
-export const PLACE_CARD_FIGURES_CHECKED =
-  "Figures are being checked and aren't published yet";
+/** Per-row status until publication — keep exact wording (site rewrite PR2). */
+export const PLACE_CARD_FIGURE_STATUS = "Figure not published yet";
+
+/** @deprecated Prefer PLACE_CARD_FIGURE_STATUS on each value row. */
+export const PLACE_CARD_FIGURES_CHECKED = PLACE_CARD_FIGURE_STATUS;
 
 export const PLACE_CARD_RESEARCH_DISCLAIMER =
   "research estimate, not an official valuation or bill";
@@ -18,7 +20,15 @@ export const PLACE_CARD_RESEARCH_DISCLAIMER =
 export const PLACE_CARD_CONSTRAINT_LABEL =
   "Constraint: changes best use, adds no value";
 
+export const PLACE_CARD_LIMITS_HEADING = "What limits how it's used";
+
 export const PLACE_CARD_HOW_WE_VALUE_LABEL = "How we value land";
+
+export const PLACE_CARD_HOLDER_COPY =
+  "Public records only. Private owners are not shown.";
+
+export const PLACE_CARD_SCOTLIS_LABEL =
+  "Check the official title record on ScotLIS";
 
 export type PlaceRentTag = "market" | "proxy" | "shadow";
 
@@ -158,9 +168,8 @@ export function scotLandSquareReference(lat: number, lng: number): string {
 export function valueStatusLabel(status: PlaceValueStatus): string {
   switch (status) {
     case "coming_soon":
-      return "Coming soon";
     case "in_progress":
-      return "In progress";
+      return PLACE_CARD_FIGURE_STATUS;
     default: {
       const _exhaustive: never = status;
       return _exhaustive;

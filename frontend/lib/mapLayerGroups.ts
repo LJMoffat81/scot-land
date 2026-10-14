@@ -43,7 +43,7 @@ export function mapLayerGroupLabel(group: MapLayerGroupKey): string {
     case "nature":
       return "Nature";
     case "limits":
-      return "Limits";
+      return "Limits on use";
     case "boundaries":
       return "Boundaries";
     default: {

@@ -37,22 +37,26 @@ test.describe("place card (internal preview)", () => {
     await expect(page.getByTestId("place-card-of-which-planning_uplift")).toContainText(
       /of which: planning uplift/i,
     );
-    await expect(page.getByTestId("place-value-status-in_progress")).toBeVisible();
-    await expect(page.getByTestId("place-value-status-coming_soon")).toBeVisible();
+    await expect(page.getByTestId("place-value-status-in_progress")).toHaveText(
+      "Figure not published yet",
+    );
+    await expect(page.getByTestId("place-value-status-coming_soon").first()).toHaveText(
+      "Figure not published yet",
+    );
 
     await expect(page.getByTestId("evidence-tag-legend")).toBeVisible();
     await expect(page.getByTestId("evidence-tag-legend-market")).toContainText(
-      /real sales or prices/i,
+      /real prices people paid/i,
     );
     await expect(page.getByTestId("evidence-tag-legend-proxy")).toContainText(
-      /modelled from similar evidence/i,
+      /related prices/i,
     );
     await expect(page.getByTestId("evidence-tag-legend-shadow")).toContainText(
       /no market price/i,
     );
 
     await expect(page.getByTestId("place-card-limits")).toContainText(
-      /What limits how it can be used/i,
+      "What limits how it's used",
     );
     await expect(page.getByTestId("place-card-constraint-banner")).toContainText(
       "Constraint: changes best use, adds no value",
@@ -67,12 +71,18 @@ test.describe("place card (internal preview)", () => {
     await expect(page.getByTestId("place-card-constraint-crofting")).toContainText(
       "Does not apply",
     );
-    await expect(page.getByTestId("place-card-figures-checked")).toHaveText(
-      "Figures are being checked and aren't published yet",
+    await expect(page.getByTestId("place-card-holder-copy")).toHaveText(
+      "Public records only. Private owners are not shown.",
+    );
+    await expect(page.getByTestId("place-card-scotlis")).toContainText(
+      "Check the official title record on ScotLIS",
     );
     await expect(page.getByTestId("place-card-how-we-value")).toHaveAttribute(
       "href",
-      "/methodology",
+      "/methodology#glossary",
+    );
+    await expect(page.getByTestId("place-card-sources")).toContainText(
+      "Where this comes from",
     );
 
     await expect(card).not.toContainText("£0");

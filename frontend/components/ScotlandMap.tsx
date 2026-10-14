@@ -575,6 +575,8 @@ export default function ScotlandMap() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
   const [legendOpen, setLegendOpen] = useState(false);
+  /** True when the narrow (≤640px) legend fold CSS applies. */
+  const [narrowLegendFold, setNarrowLegendFold] = useState(false);
   /** Map zoom for density legend bands vs zoom-hint (national vs local). */
   const [mapZoom, setMapZoom] = useState(5.7);
   const [catalogLayers, setCatalogLayers] = useState<CatalogLayer[]>([]);
@@ -3540,6 +3542,19 @@ export default function ScotlandMap() {
     }
   }, [placeOpen]);
 
+  // Mirror globals.css / map-chrome.css: body is always shown on desktop until a
+  // place card collapses it; on narrow screens it follows legendOpen only.
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const sync = () => setNarrowLegendFold(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  const legendBodyExpanded =
+    legendOpen || (!narrowLegendFold && !placeOpen);
+
   const suggestOpen =
     suggestions.length > 0 || Boolean(suggestNote) || suggesting;
   const shellClass = [
@@ -3735,7 +3750,7 @@ export default function ScotlandMap() {
           <button
             type="button"
             className="hud-scotland-fold"
-            aria-expanded={legendOpen}
+            aria-expanded={legendBodyExpanded}
             aria-controls="hud-scotland-body"
             onClick={() => setLegendOpen((open) => !open)}
           >

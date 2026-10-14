@@ -924,6 +924,103 @@ def test_uprn_crosswalk_fixture_feeds_tax_scenario_s2():
     assert out["by_zone"][0]["illustrated_collection_gbp"]["central"] == 500.0
 
 
+def test_scotland_total_conserved_dz2011_to_dz2022_uprn_fixture():
+    """#71 fixture → crosswalk → build_aggregate_rollup: Scotland total equal to the penny."""
+    from georgist import surface_dz2022 as dz22
+
+    fixtures = Path(__file__).resolve().parents[1] / "fixtures" / "dz_crosswalk_uprn"
+    pairs, _ = dz22.load_uprn_weight_rows(
+        fixtures / "dz2011_dz2022_uprn_weights.csv",
+        apply_min_share=True,
+        require_full_scotland=False,
+    )
+    # Whole-pound rents with pinned LCH so roll-up triples stay exact across splits.
+    rents = {
+        "S01013401": 1_000.0,
+        "S01013402": 2_000.0,
+        "S01013403": 3_000.0,
+        "S01013404": 4_000.0,
+        "S01013405": 5_000.0,
+        "S01010206": 6_000.0,
+    }
+    la_code, la_name = "S12000049", "Glasgow City"
+    rows_2011 = [
+        _row(
+            code,
+            la_code=la_code,
+            la_name=la_name,
+            rent=rent,
+            vintage=2011,
+            crosswalk_method="none",
+            uncertainty_low=rent,
+            uncertainty_high=rent,
+        )
+        for code, rent in rents.items()
+    ]
+    rate_2011 = {r.code: 0.5 for r in rows_2011}
+    roll_2011 = build_aggregate_rollup(rows_2011, rate_by_zone=rate_2011)
+
+    srcs = [
+        {
+            "code": code,
+            "vintage": 2011,
+            "valuation_date": "2025-04-01",
+            "price_year": 2025,
+            "measured_rent": rent,
+            "uncertainty_low": rent,
+            "uncertainty_high": rent,
+            "land_value_zone_total": rent * 20,
+            "infra_share": rent * 0.1,
+            "planning_uplift": None,
+            "policy_rent": rent * 0.7,
+            "value_tier": "proxy",
+            "quality": "derived",
+            "fill_method": "observed_pooled",
+            "publish_level": "public_zone",
+            "publication_status": "ok",
+            "commons_class": "surface",
+            "crosswalk_method": "none",
+            "source_id": "SYNTHETIC",
+            "licence": "synthetic-test-only",
+            "method": "residual_drc_surface_v1",
+            "proxy_tags": ["pooled_3y"],
+            "dwellings": 100,
+            "measured_rent_per_dwelling": rent / 100,
+        }
+        for code, rent in rents.items()
+    ]
+    crossed = dz22.crosswalk_surface_to_dz2022(srcs, pairs)
+    assert all(r["crosswalk_method"] == UPRN_DZ2022_CROSSWALK for r in crossed)
+    rows_2022 = [
+        ZoneRentRow(
+            code=str(r["code"]),
+            vintage=2022,
+            la_code=la_code,
+            la_name=la_name,
+            measured_rent=float(r["measured_rent"]),
+            price_year=2025,
+            value_tier="proxy",
+            uncertainty_low=float(r["uncertainty_low"]),
+            uncertainty_high=float(r["uncertainty_high"]),
+            crosswalk_method=UPRN_DZ2022_CROSSWALK,
+            estimate_label="measured",
+        )
+        for r in crossed
+    ]
+    rate_2022 = {r.code: 0.5 for r in rows_2022}
+    roll_2022 = build_aggregate_rollup(rows_2022, rate_by_zone=rate_2022)
+
+    scot_2011 = roll_2011["scotland"]["measured_rent_gbp"]
+    scot_2022 = roll_2022["scotland"]["measured_rent_gbp"]
+    # Exact equality to the penny (no approx): every band must match.
+    assert scot_2011 == scot_2022
+    assert scot_2011 == {"low": 21_000.0, "central": 21_000.0, "high": 21_000.0}
+    assert _penny(scot_2011["central"]) == _penny(scot_2022["central"])
+    assert roll_2011["scotland"]["illustrated_collection_gbp"] == (
+        roll_2022["scotland"]["illustrated_collection_gbp"]
+    )
+
+
 def test_public_tax_scenario_paths_absent_from_default_app():
     from api.main import app, registered_routes
 

@@ -7,9 +7,10 @@ Fails (exit 1) if anything tracked by git (the index, so staged files count) is:
      (site layers such as svdls_sites.gpkg / hls_sites.gpkg are internal), an INSPIRE-derived
      file, or parcel geometry / a tile archive (size);
   3. a CSV/TSV whose header carries address, postcode, UPRN or similar columns;
-  4. under a discovered frontend preview app route (name ends in -panel / -card, or a
-     layout imports @/lib/internalUi) without a layout.tsx that actually gates via
-     if (!internalUiEnabled()) notFound().
+  4. under a discovered frontend preview app route (name ends in -panel / -card, a
+     layout imports @/lib/internalUi, or a page imports an Internal* component)
+     without a layout.tsx that actually gates via if (!internalUiEnabled()) notFound()
+     (comments are stripped before the gate match).
 
 Run from anywhere inside the repo:  python3 scripts/check_publishable.py
 Used by scripts/hooks/pre-commit and CI. Standard library only.
@@ -56,6 +57,14 @@ INTERNAL_UI_IMPORT = re.compile(
 NOTFOUND_IMPORT = re.compile(
     r"""from\s+["']next/navigation["']""",
 )
+# page.tsx importing an Internal* component marks the route as a preview.
+INTERNAL_COMPONENT_IMPORT = re.compile(
+    r"""(?:import\s+(?:type\s+)?(?:\{[^}]*\bInternal\w+\b[^}]*\}|Internal\w+)\s+from\s+["'][^"']+["']"""
+    r"""|from\s+["']@/components/Internal\w+["'])""",
+)
+# Strip // and /* */ comments before matching the gate (commented-out gates fail).
+LINE_COMMENT = re.compile(r"//[^\n]*")
+BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 
 
 def git(*args: str) -> str:
@@ -72,11 +81,17 @@ def index_head(path: str, nbytes: int = 65536) -> str:
     return out[:nbytes].decode("utf-8-sig", errors="replace")
 
 
+def strip_ts_comments(text: str) -> str:
+    """Remove // and /* */ comments so a commented-out gate does not count."""
+    return LINE_COMMENT.sub("", BLOCK_COMMENT.sub("", text))
+
+
 def discover_preview_routes(files: list[str]) -> set[str]:
     """Find top-level frontend/app preview segments without a fixed allow-list.
 
-    A route is a preview if its segment name ends in -panel / -card, or its
-    layout.tsx imports @/lib/internalUi (claiming the internal-UI gate).
+    A route is a preview if its segment name ends in -panel / -card, its
+    layout.tsx imports @/lib/internalUi (claiming the internal-UI gate), or
+    its page.tsx imports an Internal* component.
     """
     routes: set[str] = set()
     for f in files:
@@ -93,6 +108,11 @@ def discover_preview_routes(files: list[str]) -> set[str]:
             text = index_head(f)
             if INTERNAL_UI_IMPORT.search(text) or "internalUiEnabled" in text:
                 routes.add(route)
+                continue
+        if len(parts) == 4 and parts[3] == "page.tsx":
+            text = strip_ts_comments(index_head(f))
+            if INTERNAL_COMPONENT_IMPORT.search(text):
+                routes.add(route)
     return routes
 
 
@@ -108,7 +128,8 @@ def _preview_route_gated(fileset: set[str], route: str) -> bool:
         return False
     if "internalUiEnabled" not in text or "notFound" not in text:
         return False
-    return PREVIEW_GATE_CALL.search(text) is not None
+    # Comments stripped: a commented-out fake gate must not pass.
+    return PREVIEW_GATE_CALL.search(strip_ts_comments(text)) is not None
 
 
 def check(files: list[str]) -> list[str]:

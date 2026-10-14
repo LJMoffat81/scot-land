@@ -151,3 +151,43 @@ def test_guard_rejects_layout_that_only_mentions_gate_words(tmp_path):
         "frontend/app/ledger-panel/page.tsx": "export default function Page() { return null }\n",
     }) is None else None
     assert any("ledger-panel" in p and "gated" in p for p in problems), problems
+
+
+def test_guard_rejects_commented_out_fake_gate(tmp_path):
+    """A commented-out if (!internalUiEnabled()) notFound() must not count as gated."""
+    problems = _problems(tmp_path) if _repo(tmp_path, {
+        "frontend/app/ledger-panel/layout.tsx": (
+            'import { notFound } from "next/navigation";\n'
+            'import { internalUiEnabled } from "@/lib/internalUi";\n'
+            "export default function L({ children }) {\n"
+            "  // if (!internalUiEnabled()) notFound();\n"
+            "  return children;\n"
+            "}\n"
+        ),
+        "frontend/app/ledger-panel/page.tsx": "export default function Page() { return null }\n",
+    }) is None else None
+    assert any("ledger-panel" in p and "gated" in p for p in problems), problems
+
+    problems_block = _problems(tmp_path / "block") if _repo(tmp_path / "block", {
+        "frontend/app/tools-panel/layout.tsx": (
+            'import { notFound } from "next/navigation";\n'
+            'import { internalUiEnabled } from "@/lib/internalUi";\n'
+            "export default function L({ children }) {\n"
+            "  /* if (!internalUiEnabled()) notFound(); */\n"
+            "  return children;\n"
+            "}\n"
+        ),
+        "frontend/app/tools-panel/page.tsx": "export default function Page() { return null }\n",
+    }) is None else None
+    assert any("tools-panel" in p and "gated" in p for p in problems_block), problems_block
+
+
+def test_guard_catches_internal_component_route_without_panel_suffix(tmp_path):
+    """A page importing Internal* is a preview even when the route does not end in -panel/-card."""
+    problems = _problems(tmp_path) if _repo(tmp_path, {
+        "frontend/app/secret-tools/page.tsx": (
+            'import InternalTaxScenarioView from "@/components/InternalTaxScenarioView";\n'
+            "export default function Page() { return <InternalTaxScenarioView zones={[]} scenarioId=\"S2\" />; }\n"
+        ),
+    }) is None else None
+    assert any("secret-tools" in p and "gated" in p for p in problems), problems

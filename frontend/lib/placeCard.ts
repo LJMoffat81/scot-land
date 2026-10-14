@@ -14,6 +14,13 @@ export { RENT_GROUP_NAME, RENT_GROUP_NAMES };
 /** Per-row status until publication — keep exact wording (site rewrite PR2). */
 export const PLACE_CARD_FIGURE_STATUS = "Figure not published yet";
 
+/** Why? copy next to PLACE_CARD_FIGURE_STATUS (SW-021). */
+export const PLACE_CARD_FIGURE_WHY =
+  "Figures will appear once the valuation rules are signed off.";
+
+/** Field label for the Scot-LAND 3×3 m grid reference (SW-021). */
+export const PLACE_CARD_MAP_REFERENCE_LABEL = "Map reference";
+
 /** @deprecated Prefer PLACE_CARD_FIGURE_STATUS on each value row. */
 export const PLACE_CARD_FIGURES_CHECKED = PLACE_CARD_FIGURE_STATUS;
 
@@ -448,6 +455,13 @@ export async function fetchPlaceCard({
   }
 }
 
+/** Map stable agr row ids → approved RENT_GROUP_NAMES (never Surface/Resource/Nature). */
+const AGR_ROW_LABEL_BY_ID: Record<string, string> = {
+  surface: RENT_GROUP_NAME.land,
+  resource: RENT_GROUP_NAME.resources,
+  nature: RENT_GROUP_NAME.nature,
+};
+
 function normalizeAgrRow(row: PlaceAgrRow): PlaceAgrRow {
   const legacyAmount = (row as PlaceAgrRow & { amount_label?: string })
     .amount_label;
@@ -457,8 +471,10 @@ function normalizeAgrRow(row: PlaceAgrRow): PlaceAgrRow {
       : legacyAmount
         ? "in_progress"
         : "coming_soon";
+  const approved = AGR_ROW_LABEL_BY_ID[row.id];
   return {
     ...row,
+    label: approved ?? row.label,
     status,
     applies: row.applies !== false,
     of_which: (row.of_which || []).filter(

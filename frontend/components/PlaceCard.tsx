@@ -1,11 +1,15 @@
 "use client";
 
+import { useState } from "react";
+
 import EvidenceTagLegend from "@/components/EvidenceTagLegend";
 import {
   PLACE_CARD_CONSTRAINT_LABEL,
+  PLACE_CARD_FIGURE_WHY,
   PLACE_CARD_HOLDER_COPY,
   PLACE_CARD_HOW_WE_VALUE_LABEL,
   PLACE_CARD_LIMITS_HEADING,
+  PLACE_CARD_MAP_REFERENCE_LABEL,
   PLACE_CARD_OUT_OF_SCOTLAND_LINE,
   PLACE_CARD_SCOTLIS_LABEL,
   PLACE_CARD_SHOW_SCOTLAND_LABEL,
@@ -46,14 +50,66 @@ function TagChip({ tag }: { tag: PlaceRentTag }) {
   );
 }
 
-function StatusChip({ status }: { status: PlaceValueStatus }) {
+function StatusChip({
+  status,
+  showWhy = false,
+}: {
+  status: PlaceValueStatus;
+  showWhy?: boolean;
+}) {
   return (
-    <span
-      className={`place-value-status tone-${status}`}
-      data-testid={`place-value-status-${status}`}
-    >
-      {valueStatusLabel(status)}
+    <span className="place-value-status-wrap">
+      <span
+        className={`place-value-status tone-${status}`}
+        data-testid={`place-value-status-${status}`}
+      >
+        {valueStatusLabel(status)}
+      </span>
+      {showWhy ? (
+        <>
+          {" "}
+          <a
+            href="/methodology#glossary"
+            className="place-card-figure-why"
+            data-testid="place-card-figure-why"
+          >
+            Why?
+          </a>
+          <span
+            className="place-card-figure-why-text"
+            data-testid="place-card-figure-why-text"
+          >
+            {PLACE_CARD_FIGURE_WHY}
+          </span>
+        </>
+      ) : null}
     </span>
+  );
+}
+
+function MapReferenceCopy({ value }: { value: string }) {
+  const [done, setDone] = useState(false);
+
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setDone(true);
+      window.setTimeout(() => setDone(false), 1500);
+    } catch {
+      setDone(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      className="place-card-map-reference-copy"
+      onClick={() => void onCopy()}
+      data-testid="place-card-map-reference-copy"
+      aria-label={`Copy ${PLACE_CARD_MAP_REFERENCE_LABEL}`}
+    >
+      {done ? "Copied" : "Copy"}
+    </button>
   );
 }
 
@@ -293,9 +349,17 @@ export function PlaceCard({
             </div>
 
             <div className="place-card-field">
-              <dt>Square reference</dt>
-              <dd data-testid="place-card-square-reference">
-                {card.square_reference}
+              <dt>{PLACE_CARD_MAP_REFERENCE_LABEL}</dt>
+              <dd
+                className="place-card-map-reference"
+                data-testid="place-card-map-reference"
+              >
+                <span data-testid="place-card-square-reference">
+                  {card.square_reference}
+                </span>
+                {card.square_reference ? (
+                  <MapReferenceCopy value={card.square_reference} />
+                ) : null}
               </dd>
             </div>
           </dl>
@@ -337,7 +401,7 @@ export function PlaceCard({
           >
             <h3 className="place-card-section">What gives this land value</h3>
             <ul className="place-agr-list">
-              {valueRows.map((row) => (
+              {valueRows.map((row, index) => (
                 <li
                   key={row.id}
                   className="place-agr-row"
@@ -346,7 +410,7 @@ export function PlaceCard({
                   <div className="place-agr-row-main">
                     <span className="place-agr-label">{row.label}</span>
                     <TagChip tag={row.tag} />
-                    <StatusChip status={row.status} />
+                    <StatusChip status={row.status} showWhy={index === 0} />
                   </div>
                   {row.of_which?.length ? (
                     <ul className="place-agr-of-which">

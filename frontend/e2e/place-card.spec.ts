@@ -24,15 +24,26 @@ test.describe("place card (internal preview)", () => {
     await expect(page.getByTestId("place-card-council")).toContainText(
       "Glasgow City",
     );
+    await expect(page.getByText("Map reference", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("place-card-map-reference")).toContainText(
+      /Scot-LAND square reference/i,
+    );
     await expect(page.getByTestId("place-card-square-reference")).toContainText(
       /Scot-LAND square reference/i,
     );
+    await expect(page.getByTestId("place-card-map-reference-copy")).toBeVisible();
 
     await expect(page.getByTestId("place-card-value")).toContainText(
       /What gives this land value/i,
     );
     await expect(page.getByTestId("place-card-agr-surface")).toContainText(
       /Land/i,
+    );
+    await expect(page.getByTestId("place-card-agr-resource")).toContainText(
+      "Natural resource rents",
+    );
+    await expect(page.getByTestId("place-card-agr-nature")).toContainText(
+      "Services of nature",
     );
     await expect(page.getByTestId("place-card-of-which-planning_uplift")).toContainText(
       /of which: planning uplift/i,
@@ -43,6 +54,12 @@ test.describe("place card (internal preview)", () => {
     await expect(page.getByTestId("place-value-status-coming_soon").first()).toHaveText(
       "Figure not published yet",
     );
+    await expect(page.getByTestId("place-card-figure-why").first()).toHaveText(
+      "Why?",
+    );
+    await expect(
+      page.getByTestId("place-card-figure-why-text").first(),
+    ).toHaveText("Figures will appear once the valuation rules are signed off.");
 
     await expect(page.getByTestId("evidence-tag-legend")).toBeVisible();
     await expect(page.getByTestId("evidence-tag-legend-market")).toContainText(

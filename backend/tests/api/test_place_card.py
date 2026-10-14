@@ -148,9 +148,15 @@ def test_platform_place_contract_shape(monkeypatch):
     assert "what3words" not in body["square_reference"].lower()
     assert "agr_rows" in body
     assert [r["id"] for r in body["agr_rows"]] == ["surface", "resource", "nature"]
+    assert [r["label"] for r in body["agr_rows"]] == [
+        "Land",
+        "Natural resource rents",
+        "Services of nature",
+    ]
     for row in body["agr_rows"]:
         assert row["amount_label"] == "figures pending sign-off"
         assert row["tag"] in {"market", "proxy", "shadow"}
+        assert row["label"] not in {"Surface", "Resource", "Nature"}
     surface = body["agr_rows"][0]
     assert {n["id"] for n in surface["of_which"]} == {
         "planning_uplift",

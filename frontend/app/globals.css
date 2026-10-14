@@ -423,6 +423,52 @@ input {
   color: var(--slrg-text);
 }
 
+.place-card-map-reference {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.place-card-map-reference-copy {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 650;
+  padding: 0.12rem 0.45rem;
+  border: 1px solid #c5d0dc;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--slrg-navy);
+  cursor: pointer;
+}
+
+.place-card-map-reference-copy:hover {
+  border-color: var(--slrg-navy);
+}
+
+.place-value-status-wrap {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.place-card-figure-why {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--slrg-navy);
+  text-decoration: underline;
+}
+
+.place-card-figure-why-text {
+  flex: 1 1 100%;
+  max-width: 18rem;
+  color: var(--slrg-muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
 .place-card-dz-code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight: 650;

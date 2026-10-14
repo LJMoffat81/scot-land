@@ -907,12 +907,20 @@ def _place_label_from_nrs(
     return "This place"
 
 
+# Public rent/value group headings (AGENTS.md / RENT_GROUP_NAMES). Never Surface/Resource/Nature.
+_RENT_GROUP_LABELS = {
+    "surface": "Land",
+    "resource": "Natural resource rents",
+    "nature": "Services of nature",
+}
+
+
 def _agr_rows() -> list[dict[str, Any]]:
-    """Designer AGR rows: surface / resource / nature — ranges pending, no £."""
+    """Designer AGR rows: land / resource rents / services of nature — no £."""
     return [
         {
             "id": "surface",
-            "label": "Surface",
+            "label": _RENT_GROUP_LABELS["surface"],
             "tag": "proxy",
             "amount_label": _FIGURES_PENDING,
             "of_which": [
@@ -925,13 +933,13 @@ def _agr_rows() -> list[dict[str, Any]]:
         },
         {
             "id": "resource",
-            "label": "Resource",
+            "label": _RENT_GROUP_LABELS["resource"],
             "tag": "market",
             "amount_label": _FIGURES_PENDING,
         },
         {
             "id": "nature",
-            "label": "Nature",
+            "label": _RENT_GROUP_LABELS["nature"],
             "tag": "shadow",
             "amount_label": _FIGURES_PENDING,
         },

@@ -148,6 +148,10 @@ if (existsSync(nextHtml)) {
     { name: "chip Proxy", re: />\s*Proxy\s*</ },
     { name: "chip Shadow", re: />\s*Shadow\s*</ },
     { name: ".env", re: /\.env\b/ },
+    // SW-021 (additive): ban Surface / Resource / Nature as visible group headings.
+    { name: "group heading Surface", re: />\s*Surface\s*</ },
+    { name: "group heading Resource", re: />\s*Resource\s*</ },
+    { name: "group heading Nature", re: />\s*Nature\s*</ },
   ];
   // SW-017: add-only bans for public HTML outside /developers (yield details OK there).
   // Scope narrowings (cleanup): × excludes aria-labelled buttons; \d+% only yield wording.

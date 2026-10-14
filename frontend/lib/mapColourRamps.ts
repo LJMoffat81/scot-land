@@ -19,6 +19,27 @@ export type MetricDef = {
   stops: [number, string][];
 };
 
+/** Exact visitor title for the population-density range legend (SW-022). */
+export const POP_DENSITY_LEGEND_TITLE =
+  "Population density — people per km²";
+
+/** One-line blurb under the density title (SW-022). */
+export const POP_DENSITY_LEGEND_BLURB =
+  "Busier places tend to have higher land rents.";
+
+/** Source / licence line under density bands (SW-022). */
+export const POP_DENSITY_LEGEND_SOURCE =
+  "Source: National Records of Scotland mid-year estimates, Open Government Licence v3.0";
+
+/** Shown instead of bands when density colours are not drawn at this zoom. */
+export const POP_DENSITY_ZOOM_HINT = "Zoom in to see colours";
+
+/**
+ * Zoom at which Data Zone / density context colours become drawable.
+ * Keep in sync with DATA_ZONE_MIN_ZOOM in ScotlandMap.
+ */
+export const POP_DENSITY_COLOURS_MIN_ZOOM = 10;
+
 /** Public-safe colour ramps only (no forbidden AGR £ properties). */
 export const METRICS: MetricDef[] = [
   {
@@ -69,12 +90,13 @@ export const METRICS: MetricDef[] = [
     label: "People per square kilometre",
     group: "context",
     unit: "people/km²",
+    // Stronger, clearly distinct blues (SW-022); adjacent stops pass contrast checks.
     stops: [
-      [10, "#f7fcf0"],
-      [100, "#ccebc5"],
-      [500, "#7bccc4"],
-      [1500, "#2b8cbe"],
-      [3000, "#084081"],
+      [10, "#c6dbef"],
+      [100, "#6baed6"],
+      [500, "#2171b5"],
+      [1500, "#08519c"],
+      [3000, "#08306b"],
     ],
   },
 ];
@@ -112,15 +134,43 @@ export function publicContextMetric(
 
 /** Legend title: metric label plus unit when present (unit not repeated on each stop). */
 export function rangeLegendTitle(metric: MetricDef): string {
-  const base =
-    metric.id === "pop_density"
-      ? "Population density (range)"
-      : `${metric.label} (range)`;
+  if (metric.id === "pop_density") {
+    return POP_DENSITY_LEGEND_TITLE;
+  }
+  const base = `${metric.label} (range)`;
   if (!metric.unit || metric.unit === "£" || metric.unit.startsWith("£")) {
     return base;
   }
   if (metric.unit === "%") return base;
   return `${base} — ${metric.unit}`;
+}
+
+/**
+ * Relative luminance (sRGB, WCAG). Used to keep density swatches distinct.
+ */
+export function relativeLuminance(hex: string): number {
+  const raw = hex.replace("#", "").trim();
+  if (raw.length !== 6) return 0;
+  const channels = [0, 2, 4].map((i) => {
+    const c = parseInt(raw.slice(i, i + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+/**
+ * Adjacent stop contrast ratio (WCAG). Density ramp must stay clearly distinct.
+ */
+export function adjacentStopContrast(stops: [number, string][]): number[] {
+  const ratios: number[] = [];
+  for (let i = 0; i < stops.length - 1; i += 1) {
+    const a = relativeLuminance(stops[i][1]);
+    const b = relativeLuminance(stops[i + 1][1]);
+    const lighter = Math.max(a, b);
+    const darker = Math.min(a, b);
+    ratios.push((lighter + 0.05) / (darker + 0.05));
+  }
+  return ratios;
 }
 
 /**

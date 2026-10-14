@@ -279,7 +279,8 @@ export function PlaceCard({
             </section>
           )}
 
-          <EvidenceTagLegend compact />
+          {/* Chip key only while Market / Modelled / Estimate chips are on screen. */}
+          {valueRows.length > 0 ? <EvidenceTagLegend compact /> : null}
 
           <section
             className="place-card-agr"

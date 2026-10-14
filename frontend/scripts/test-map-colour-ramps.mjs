@@ -33,9 +33,11 @@ const METRICS = [
     label: "People per square kilometre",
     unit: "people/km²",
     stops: [
-      [10, "#f7fcf0"],
-      [100, "#ccebc5"],
-      [500, "#7bccc4"],
+      [10, "#c6dbef"],
+      [100, "#6baed6"],
+      [500, "#2171b5"],
+      [1500, "#08519c"],
+      [3000, "#08306b"],
     ],
   },
   {

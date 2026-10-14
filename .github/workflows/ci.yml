@@ -96,5 +96,6 @@ jobs:
       - run: npm run test:forbidden-agr-properties
       - run: npm run test:quality-tags
       - run: npm run test:layer-licence-credits
+      - run: npm run test:place-card-hotfix
       - run: npx tsc --noEmit
       - run: npm run build

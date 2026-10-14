@@ -9,6 +9,9 @@ test.describe("place card (internal preview)", () => {
     await expect(card).toBeVisible();
 
     await expect(page.getByTestId("place-card-place")).toBeVisible();
+    await expect(page.getByTestId("place-card-data-zone-label")).toHaveText(
+      "Data zone (2022)",
+    );
     await expect(page.getByTestId("place-card-data-zone")).toContainText(
       "S01014567",
     );
@@ -53,6 +56,16 @@ test.describe("place card (internal preview)", () => {
     );
     await expect(page.getByTestId("place-card-constraint-banner")).toContainText(
       "Constraint: changes best use, adds no value",
+    );
+    // Fixture rows apply=false — all three must still list (not filtered out).
+    await expect(page.getByTestId("place-card-constraint-flood")).toContainText(
+      "Does not apply",
+    );
+    await expect(page.getByTestId("place-card-constraint-sssi")).toContainText(
+      "Does not apply",
+    );
+    await expect(page.getByTestId("place-card-constraint-crofting")).toContainText(
+      "Does not apply",
     );
     await expect(page.getByTestId("place-card-figures-checked")).toHaveText(
       "Figures are being checked and aren't published yet",

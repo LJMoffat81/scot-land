@@ -14,7 +14,8 @@
     "test:map-colour-ramps": "node scripts/test-map-colour-ramps.mjs",
     "test:forbidden-agr-properties": "node scripts/test-forbidden-agr-properties.mjs",
     "test:quality-tags": "node scripts/test-quality-tags.mjs",
-    "test:layer-licence-credits": "node scripts/test-layer-licence-credits.mjs"
+    "test:layer-licence-credits": "node scripts/test-layer-licence-credits.mjs",
+    "test:place-card-hotfix": "node --experimental-strip-types scripts/test-place-card-hotfix.mjs"
   },
   "dependencies": {
     "@fontsource-variable/mona-sans": "^5.3.0",

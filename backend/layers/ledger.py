@@ -14,13 +14,13 @@ CONSTRAINT_RULE = "Constraint: changes best use, adds no value"
 _ROWS: list[dict[str, Any]] = [
     {
         "id": "1",
-        "label": "Surface site rent",
+        "label": "Land",
         "parent_id": None,
         "nested": False,
         "tag": "market_or_proxy",
         "status": "not_yet",
         "status_note": (
-            "Best permitted use. Public £ withheld until ECONOMIC_RULES / calibration."
+            "Best permitted use. Figures are being checked and aren't published yet."
         ),
         "amount_placeholder": "—",
     },
@@ -31,7 +31,9 @@ _ROWS: list[dict[str, Any]] = [
         "nested": True,
         "tag": "already_included",
         "status": "not_yet",
-        "status_note": "Already included in Surface site rent — never added as a sibling total.",
+        "status_note": (
+            "Planning uplift: an 'of which' figure inside the land part, never added again"
+        ),
         "amount_placeholder": "—",
     },
     {
@@ -41,7 +43,7 @@ _ROWS: list[dict[str, Any]] = [
         "nested": False,
         "tag": "proxy",
         "status": "not_yet",
-        "status_note": "Royalty/tonne, below ground. Not yet on the public ledger.",
+        "status_note": "Royalty/tonne, below ground. Not yet on the public breakdown.",
         "amount_placeholder": "—",
     },
     {
@@ -52,7 +54,8 @@ _ROWS: list[dict[str, Any]] = [
         "tag": "proxy",
         "status": "partial",
         "status_note": (
-            "Site rent minus footprint surface rent. Inventory layers may paint; £ withheld."
+            "Site rent minus footprint surface rent. Inventory layers may paint; "
+            "figures not published yet."
         ),
         "amount_placeholder": "—",
     },
@@ -157,8 +160,7 @@ def ledger_payload() -> dict[str, Any]:
             "Constraint: changes best use, adds no value"
         ),
         "publication_note": (
-            "Zone-level only. Public AGR £ withheld until ECONOMIC_RULES / "
-            "calibration. Placeholders are not a money value."
+            "Zone-level only. Figures are being checked and aren't published yet."
         ),
         "rows": list(_ROWS),
         "constraints": list(_CONSTRAINTS),

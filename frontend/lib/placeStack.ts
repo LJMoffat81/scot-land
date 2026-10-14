@@ -91,7 +91,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     publication_status: "ok",
   },
   publication_note:
-    "Per-hectare stack. Figures are being checked and aren't published yet. Planning uplift sits under surface land. Nature values stay separate from market and proxy rows. Oil and gas sit outside the Scottish land total.",
+    "Per-hectare stack. Figures are being checked and aren't published yet. Planning uplift sits under land. Services of nature stay separate from market and proxy rows. Oil and gas sit outside the Scottish land total.",
   headline: {
     label: "Headline (market + proxy)",
     unit: "per hectare per year",
@@ -102,7 +102,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     rows: [
       {
         id: "1",
-        label: "Surface site rent",
+        label: "Land",
         tag: "market_or_proxy",
         status: "not_yet",
         status_note:
@@ -120,7 +120,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
         tag: "already_included",
         status: "not_yet",
         status_note:
-          "Already included in Surface site rent — never added as a sibling total.",
+          "Planning uplift: an 'of which' figure inside the land part, never added again",
         parent_id: "1",
         nested: true,
         in_total: false,
@@ -172,7 +172,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     ],
   },
   shadow: {
-    label: "Nature values (separate — never summed into headline)",
+    label: "Services of nature (separate — never summed into headline)",
     unit: "per hectare per year",
     sum_row_ids: ["5", "6", "7", "8", "10"],
     total_placeholder: "—",

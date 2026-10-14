@@ -1,6 +1,6 @@
 /**
- * Map layers drawer groups (Land / Resources / Nature / Limits / Boundaries).
- * Each row reuses an existing paint toggle (ledger id or catalog layer id).
+ * Map layers drawer groups (Land / Natural resource rents / Services of nature /
+ * Limits / Boundaries). Each row reuses an existing paint toggle (catalog id).
  */
 
 export type MapLayerGroupKey =
@@ -39,9 +39,9 @@ export function mapLayerGroupLabel(group: MapLayerGroupKey): string {
     case "land":
       return "Land";
     case "resources":
-      return "Resources";
+      return "Natural resource rents";
     case "nature":
-      return "Nature";
+      return "Services of nature";
     case "limits":
       return "Limits on use";
     case "boundaries":
@@ -61,7 +61,7 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
   {
     id: "1",
     group: "land",
-    label: "Surface land",
+    label: "Land",
     description: "Best permitted use of the land surface.",
     tag: "proxy",
     licence: "Research estimate — figures not published yet",

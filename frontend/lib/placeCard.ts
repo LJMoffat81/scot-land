@@ -189,7 +189,7 @@ export function defaultAgrRows(): PlaceAgrRow[] {
   return [
     {
       id: "surface",
-      label: "Surface land",
+      label: "Land",
       tag: "proxy",
       status: "in_progress",
       applies: true,
@@ -199,14 +199,14 @@ export function defaultAgrRows(): PlaceAgrRow[] {
     },
     {
       id: "resource",
-      label: "Resources from the land and sea",
+      label: "Natural resource rents",
       tag: "market",
       status: "coming_soon",
       applies: true,
     },
     {
       id: "nature",
-      label: "Nature that has no market price",
+      label: "Services of nature",
       tag: "shadow",
       status: "coming_soon",
       applies: true,

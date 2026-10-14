@@ -95,6 +95,7 @@ if (existsSync(nextHtml)) {
   );
   const forbidden = [
     { name: "natural capital", re: /natural capital/i },
+    { name: "ledger", re: /\bledger\b/i },
     { name: "rates bill", re: /rates bill/i },
     { name: "tax proposal", re: /tax proposal/i },
     { name: "£", re: /£/ },
@@ -104,12 +105,13 @@ if (existsSync(nextHtml)) {
   const violations = [];
   for (const file of htmlFiles) {
     const rel = relative(frontendRoot, file);
-    if (rel.includes("developers")) continue; // code samples / API docs
     const html = readFileSync(file, "utf8");
-    // Strip script/json blobs roughly
+    // Strip scripts/styles, then code samples (keep scanning /developers prose).
     const prose = html
       .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ");
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<(pre|code)\b[\s\S]*?<\/\1>/gi, " ")
+      .replace(/<[^>]+>/g, " ");
     for (const { name, re } of forbidden) {
       if (re.test(prose)) {
         violations.push(`${rel}: ${name}`);

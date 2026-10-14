@@ -1,5 +1,5 @@
 /**
- * Natural capital ledger contracts:
+ * Annual Ground Rent breakdown contracts:
  * - GET /api/ledger.json — rows 1–10 (+1a), checks, excluded, benchmarks (Data / API)
  * - GET /ledger — ROWS 1–10 + nested 1a + Constraints (map HUD panel)
  *
@@ -200,7 +200,7 @@ export type LedgerToggleState = Record<string, boolean>;
 export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
   {
     id: "1",
-    label: "Surface site rent",
+    label: "Land",
     parent_id: null,
     nested: false,
     tag: "market_or_proxy",
@@ -217,7 +217,7 @@ export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
     tag: "already_included",
     status: "not_yet",
     status_note:
-      "Already included in Surface site rent — never added as a sibling total.",
+      "Planning uplift: an 'of which' figure inside the land part, never added again",
     amount_placeholder: "—",
   },
   {
@@ -227,7 +227,7 @@ export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
     nested: false,
     tag: "proxy",
     status: "not_yet",
-    status_note: "Royalty/tonne, below ground. Not yet on the public ledger.",
+    status_note: "Royalty/tonne, below ground. Not yet on the public breakdown.",
     amount_placeholder: "—",
   },
   {

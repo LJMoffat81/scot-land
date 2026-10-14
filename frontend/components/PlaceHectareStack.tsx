@@ -86,7 +86,8 @@ function StackRow({ row }: { row: PlaceStackRow }) {
       </div>
       {row.nested ? (
         <p className="place-stack-nested-note" data-testid="place-stack-1a-note">
-          Of which under surface land — not added into the headline total
+          Planning uplift: an &apos;of which&apos; figure inside the land part,
+          never added again
         </p>
       ) : null}
       {!row.in_total && !row.nested && row.outside_scottish_total ? (
@@ -242,7 +243,7 @@ export function PlaceHectareStack({
             {stack.checks_url ? (
               <>
                 {" · "}
-                <a href={stack.checks_url}>Ledger checks</a>
+                <a href={stack.checks_url}>Checks</a>
               </>
             ) : null}
           </p>

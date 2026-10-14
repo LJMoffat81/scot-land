@@ -135,7 +135,7 @@ PLAIN_DESCRIPTIONS: dict[str, str] = {
     "ces_aquaculture": (
         "Aquaculture seabed leases from Crown Estate Scotland. Licence rent "
         "evidence — not a title. No £ rent; never added to surface rent "
-        "(ledger row 5)."
+        "(Annual Ground Rent breakdown row 5)."
     ),
     "nsta_oil_gas": (
         "UK oil and gas fields shown for comparison only. "

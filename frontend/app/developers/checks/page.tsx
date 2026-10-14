@@ -52,7 +52,7 @@ export default function DevelopersChecksPage() {
       })
       .catch(() => {
         setData(null);
-        setError("Ledger catalog unavailable.");
+        setError("Breakdown catalog unavailable.");
       });
   }, []);
 

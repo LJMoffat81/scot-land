@@ -258,7 +258,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "Housing land audit",
                 "description": "Housing land audit / housing land supply sites. Planning: of which figure inside the land part — never added again.",
-                "developer_note": "Spatial Hub Housing Land Supply (Housing Land Audit sites). PostGIS ingest of the OGL open product (503 when unloaded). Natural capital ledger row 1a (planning uplift, already included in surface) — not a LayersPanel toggle. Audit polygons, not a title. No public AGR £.",
+                "developer_note": "Spatial Hub Housing Land Supply (Housing Land Audit sites). PostGIS ingest of the OGL open product (503 when unloaded). Annual Ground Rent breakdown row 1a (planning uplift, already included in surface) — not a LayersPanel toggle. Audit polygons, not a title. No public AGR £.",
                 "endpoint": "/layers/open/hla",
                 "licence": "OGL-3.0",
                 "minzoom": 8,
@@ -286,7 +286,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "Hydropower sites (SEPA CAR)",
                 "description": "Hydropower sites licensed by SEPA. Inventory of water use for power — not a rent figure and not surface land rent.",
-                "developer_note": "SEPA OGL hydropower sites — CAR-licensed water abstractions for hydropower (PostGIS). Natural-capital extractive inventory (value_tier=proxy). No £ rent; separate from surface rent.",
+                "developer_note": "SEPA OGL hydropower sites — CAR-licensed water abstractions for hydropower (PostGIS). Extractive inventory (value_tier=proxy). No £ rent; separate from surface rent.",
                 "endpoint": "/layers/open/hydro",
                 "licence": "OGL-3.0",
                 "licence_url": OGL_V3_URL,
@@ -375,7 +375,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "National Forest Inventory",
                 "description": "National Forest Inventory woodland of half a hectare or more. Land-use context for surface rent — not a title.",
-                "developer_note": "NFI woodland Scotland (≥ 0.5 ha). PostGIS ingest of the open Forestry Commission / NatureScot product. Natural capital ledger row 1 (surface site rent land-use) — not a LayersPanel toggle, not a rent and not a title. 503 when unloaded.",
+                "developer_note": "NFI woodland Scotland (≥ 0.5 ha). PostGIS ingest of the open Forestry Commission / NatureScot product. Annual Ground Rent breakdown row 1 (surface site rent land-use) — not a LayersPanel toggle, not a rent and not a title. 503 when unloaded.",
                 "endpoint": "/layers/open/nfi",
                 "licence": "Open Government Licence v3.0",
                 "licence_url": OGL_V3_URL,
@@ -391,7 +391,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "Native Woodland Survey",
                 "description": "Native woodland areas from the open Scottish Forestry product. Land-use context — not a title.",
-                "developer_note": "Native Woodland Survey of Scotland polygons and habitat attributes. PostGIS ingest of the open Scottish Forestry / NatureScot product. Natural capital ledger row 1 (surface site rent land-use) — not a LayersPanel toggle, not a rent or title. 503 when unloaded.",
+                "developer_note": "Native Woodland Survey of Scotland polygons and habitat attributes. PostGIS ingest of the open Scottish Forestry / NatureScot product. Annual Ground Rent breakdown row 1 (surface site rent land-use) — not a LayersPanel toggle, not a rent or title. 503 when unloaded.",
                 "endpoint": "/layers/open/native-woodland",
                 "licence": "Open Government Licence v3.0",
                 "licence_url": OGL_V3_URL,
@@ -407,7 +407,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "Renewable energy planning (REPD)",
                 "description": "Renewable Energy Planning Database onshore wind and related sites. Planning evidence for resource rent — not lease shapes or a title.",
-                "developer_note": "DESNZ Renewable Energy Planning Database — Scotland planning-site points from the OGL quarterly extract (PostGIS). Natural capital ledger row 3 (onshore wind + hydro resource) — not a LayersPanel toggle. Not lease polygons, not a rent, not a title. 503 when unloaded.",
+                "developer_note": "DESNZ Renewable Energy Planning Database — Scotland planning-site points from the OGL quarterly extract (PostGIS). Annual Ground Rent breakdown row 3 (onshore wind + hydro resource) — not a LayersPanel toggle. Not lease polygons, not a rent, not a title. 503 when unloaded.",
                 "endpoint": "/layers/open/repd",
                 "licence": "OGL-3.0",
                 "licence_url": OGL_V3_URL,
@@ -426,7 +426,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "Crown Estate Scotland offshore leases",
                 "description": "Crown Estate Scotland seabed and foreshore leases (cables, moorings, offshore energy). Inventory for seabed rent — not a title sheet.",
-                "developer_note": "CES Spatial Hub offshore lease polygons (offshore wind, wave, tidal, CCS) under OGL — PostGIS ingest. Offshore only — not onshore estate, not aquaculture (separate layer). Natural capital ledger row 4 (seabed & foreshore) — not a LayersPanel toggle, not a title sheet, no £ rent. 503 when unloaded.",
+                "developer_note": "CES Spatial Hub offshore lease polygons (offshore wind, wave, tidal, CCS) under OGL — PostGIS ingest. Offshore only — not onshore estate, not aquaculture (separate layer). Annual Ground Rent breakdown row 4 (seabed & foreshore) — not a LayersPanel toggle, not a title sheet, no £ rent. 503 when unloaded.",
                 "endpoint": "/layers/open/crown-estate-leases",
                 "licence": "OGL-3.0",
                 "licence_url": OGL_V3_URL,
@@ -497,7 +497,8 @@ def platform_catalog() -> dict[str, Any]:
                 ),
                 "developer_note": (
                     "PostGIS ingest. Evidence tag market. Fees config: "
-                    "data/config/scotwind_option_fees.yaml. Ledger row 4."
+                    "data/config/scotwind_option_fees.yaml. "
+                    "Annual Ground Rent breakdown row 4."
                 ),
                 "endpoint": "/layers/open/scotwind-intog",
                 "minzoom": 5,
@@ -519,7 +520,7 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "REPD onshore wind",
                 "description": "Onshore wind sites from the Renewable Energy Planning Database. Planning evidence — not lease shapes or a title.",
-                "developer_note": "DESNZ Renewable Energy Planning Database — Scotland onshore wind sites with installed capacity (MW) and development status. Natural capital ledger row 3 (onshore wind resource) — not a LayersPanel toggle. Natural-capital evidence only: no £ rent, never added to Surface Rent or AGR. Planning-site points, not leases.",
+                "developer_note": "DESNZ Renewable Energy Planning Database — Scotland onshore wind sites with installed capacity (MW) and development status. Annual Ground Rent breakdown row 3 (onshore wind resource) — not a LayersPanel toggle. Resource-rent evidence only: no £ rent, never added to Surface Rent or AGR. Planning-site points, not leases.",
                 "endpoint": "/layers/open/repd-onshore-wind",
                 "minzoom": 6,
                 "licence": "OGL-3.0",
@@ -547,7 +548,7 @@ def platform_catalog() -> dict[str, Any]:
                 "description": (
                     "Aquaculture seabed leases from Crown Estate Scotland. Licence rent "
                     "evidence — not a title. No £ rent; never added to surface rent "
-                    "(ledger row 5)."
+                    "(Annual Ground Rent breakdown row 5)."
                 ),
                 "developer_note": (
                     "Spatial Hub aquaculture seabed lease polygons (OGL). "

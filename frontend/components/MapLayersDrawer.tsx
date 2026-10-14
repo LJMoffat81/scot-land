@@ -17,8 +17,8 @@ export type MapLayersDrawerProps = {
 };
 
 /**
- * Right-side map layers drawer — Land / Resources / Nature / Limits / Boundaries.
- * Reuses existing ScotlandMap paint toggles via enabled ids.
+ * Right-side map layers drawer — Land / Natural resource rents / Services of
+ * nature / Limits / Boundaries. Reuses ScotlandMap paint toggles via enabled ids.
  */
 export default function MapLayersDrawer({
   enabled = {},
@@ -74,7 +74,7 @@ export default function MapLayersDrawer({
       ))}
 
       <p className="layer-meta" data-testid="map-layers-methodology-link">
-        Full ledger table and definitions:{" "}
+        Full breakdown table and definitions:{" "}
         <a href="/methodology#calculation">How we value land</a>
       </p>
     </aside>

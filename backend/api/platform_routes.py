@@ -457,7 +457,7 @@ def layer_open_naturescot_designations(
 
 @router.get("/ledger")
 def natural_capital_ledger() -> dict:
-    """Natural capital ledger rows + constraints (no published AGR £).
+    """Annual Ground Rent breakdown rows + constraints (no published AGR £).
 
     Contract: ROWS 1–10 + 1a already included in surface; Constraints =
     Limits use (not a money value). Amounts are placeholders until
@@ -693,7 +693,7 @@ def api_ledger(
         description="Optional vintage 2011 or 2022 when zone_id is set.",
     ),
 ) -> dict:
-    """Natural capital ledger: rows 1–10 (+1a), checks, excluded, benchmarks.
+    """Annual Ground Rent breakdown: rows 1–10 (+1a), checks, excluded, benchmarks.
 
     National catalog when zone_id is omitted. With zone_id, returns the
     zone-level stack (nothing published for blocked zones). No map-panel
@@ -754,7 +754,7 @@ def api_place_stack(
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
 ) -> dict:
-    """Place view per-hectare stack (Natural capital ledger).
+    """Place view per-hectare stack (Annual Ground Rent breakdown).
 
     Zone grain only. Nested 1a indented (never added). Shadow stack separate.
     Oil & gas + benchmarks outside. Nothing for blocked zones. Public amounts

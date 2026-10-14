@@ -82,8 +82,8 @@ export default function DataChecksPage() {
       <h2 id="sources">Sources on the map</h2>
       <p className="downloads-note" data-testid="data-sources-summary">
         Built from the open source catalogue. A source appears only when its
-        licence link is set. Sources are grouped as Land, Resources, Nature and
-        Limits — open a group to see the rows.
+        licence link is set. Sources are grouped as Land, Natural resource rents,
+        Services of nature and Limits — open a group to see the rows.
       </p>
       {error ? <p className="downloads-note">{error}</p> : null}
       <div className="sources-groups" data-testid="data-sources-groups">

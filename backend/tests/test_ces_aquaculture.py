@@ -61,7 +61,7 @@ def test_catalog_lists_ces_aquaculture_ogl_market_no_rent():
     desc = row.get("description") or ""
     assert "No £" in desc or "no £" in desc
     assert "surface rent" in desc.lower()
-    assert "ledger row 5" in desc.lower()
+    assert "breakdown row 5" in desc.lower() or "ledger row 5" in desc.lower()
 
 
 def test_source_meta_attribution_and_licence_url():

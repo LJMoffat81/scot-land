@@ -1498,7 +1498,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "© Forestry Commission copyright. Contains OS data © Crown copyright. OGL v3.0. NFI woodland — ledger row 1 land-use, not a rent.",
+          "© Forestry Commission copyright. Contains OS data © Crown copyright. OGL v3.0. NFI woodland — Annual Ground Rent breakdown row 1 land-use, not a rent.",
       });
       map.addLayer({
         id: "nfi-fill",
@@ -1522,7 +1522,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "Native Woodland Survey of Scotland. © Scottish Forestry. OGL v3.0. Ledger row 1 land-use, not a title.",
+          "Native Woodland Survey of Scotland. © Scottish Forestry. OGL v3.0. Annual Ground Rent breakdown row 1 land-use, not a title.",
       });
       map.addLayer({
         id: "native-woodland-fill",
@@ -1550,7 +1550,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "REPD © DESNZ / Crown copyright (OGL v3.0). Planning-site points — ledger row 3, not a rent.",
+          "REPD © DESNZ / Crown copyright (OGL v3.0). Planning-site points — Annual Ground Rent breakdown row 3, not a rent.",
       });
       map.addLayer({
         id: "repd-circle",
@@ -1570,7 +1570,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "Contains public sector information, licensed under the Open Government Licence v3.0, from Crown Estate Scotland. Offshore leases — ledger row 4, not a title.",
+          "Contains public sector information, licensed under the Open Government Licence v3.0, from Crown Estate Scotland. Offshore leases — Annual Ground Rent breakdown row 4, not a title.",
       });
       map.addLayer({
         id: "crown-leases-fill",

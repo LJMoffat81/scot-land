@@ -40,7 +40,7 @@ test.describe("squares shell", () => {
           agr_rows: [
             {
               id: "surface",
-              label: "Surface land",
+              label: "Land",
               tag: "proxy",
               status: "in_progress",
               applies: true,

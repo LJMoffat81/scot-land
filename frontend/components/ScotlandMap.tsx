@@ -769,7 +769,7 @@ export default function ScotlandMap() {
     }
   }, []);
 
-  // Public path for a point (map click, Locate, search, ?lat=&lng=): marker, optional fly,
+  // Public path for a point (map click, search, ?lat=&lng=): marker, optional fly,
   // shareable URL, lightweight place card. No modelled AGR £ / Wealth / tax on the public shell.
   const selectPlace = useCallback(
     async (
@@ -902,29 +902,6 @@ export default function ScotlandMap() {
   );
   const inspectRef = useRef(selectPlace);
   inspectRef.current = selectPlace;
-
-  const locateMe = useCallback(() => {
-    if (!navigator.geolocation) {
-      setError("This browser cannot share a location.");
-      return;
-    }
-    setLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setLoading(false);
-        setError(null);
-        void inspectRef.current(latitude, longitude, { fly: true });
-      },
-      () => {
-        setLoading(false);
-        setError(
-          "Location unavailable. Allow location access, or search a postcode.",
-        );
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
-    );
-  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -3512,6 +3489,39 @@ export default function ScotlandMap() {
         <div id="map" ref={mapContainer} />
       </div>
 
+      <button
+        type="button"
+        className={
+          mapStyle === "satellite"
+            ? "basemap-switcher is-satellite"
+            : "basemap-switcher is-streets"
+        }
+        data-testid="basemap-switcher"
+        aria-label={
+          mapStyle === "streets"
+            ? "Switch to satellite view"
+            : "Switch to map view"
+        }
+        aria-pressed={mapStyle === "satellite"}
+        onClick={() =>
+          setMapStyle((current) =>
+            current === "streets" ? "satellite" : "streets",
+          )
+        }
+      >
+        <span
+          className={
+            mapStyle === "streets"
+              ? "basemap-switcher-preview preview-satellite"
+              : "basemap-switcher-preview preview-map"
+          }
+          aria-hidden="true"
+        />
+        <span className="basemap-switcher-caption">
+          {mapStyle === "streets" ? "Satellite" : "Map"}
+        </span>
+      </button>
+
       <header className="hud-top" ref={headerRef}>
         <div className="hud-brand">
           <a className="hud-wordmark" href="/" aria-label="Scot-LAND">
@@ -3526,31 +3536,6 @@ export default function ScotlandMap() {
           data-testid="hud-layers-btn"
         >
           Layers
-        </button>
-        <button
-          type="button"
-          className={mapStyle === "satellite" ? "hud-layers-btn on" : "hud-layers-btn"}
-          aria-pressed={mapStyle === "satellite"}
-          title={
-            mapStyle === "satellite"
-              ? "Switch to streets map"
-              : "Switch to satellite imagery"
-          }
-          onClick={() =>
-            setMapStyle((current) =>
-              current === "streets" ? "satellite" : "streets",
-            )
-          }
-        >
-          Satellite
-        </button>
-        <button
-          type="button"
-          className="hud-layers-btn"
-          title="Use my location"
-          onClick={() => locateMe()}
-        >
-          Locate
         </button>
         <div
           className={

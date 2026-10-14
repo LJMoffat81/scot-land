@@ -85,9 +85,13 @@ test.describe("squares shell mobile", () => {
     const box = await search.boundingBox();
     expect(box).toBeTruthy();
     expect(box!.width).toBeGreaterThan(200);
-    await expect(page.getByRole("button", { name: "Satellite" })).toBeVisible();
+    const basemap = page.getByTestId("basemap-switcher");
+    await expect(basemap).toBeVisible();
+    await expect(basemap).toHaveAccessibleName("Switch to satellite view");
+    await expect(basemap).toContainText("Satellite");
     await expect(
       page.getByRole("button", { name: "Layers", exact: true }),
     ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Locate" })).toHaveCount(0);
   });
 });

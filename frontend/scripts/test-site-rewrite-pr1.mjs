@@ -50,19 +50,40 @@ for (const rel of [
 }
 
 const nextConfig = readSrc("next.config.ts");
+// SW-013: /downloads and /open-api are middleware 307s (not permanent next.config
+// redirects). A prior 308 without ?moved=1 was sticky-cached on live.
+const middleware = readSrc("middleware.ts");
 for (const pair of [
   ["/downloads", "/developers?moved=1#downloads"],
   ["/open-api", "/developers?moved=1#api"],
-  ["/mission", "/about"],
 ]) {
   assert.match(
-    nextConfig,
+    middleware,
     new RegExp(
-      `source:\\s*"${pair[0].replace("/", "\\/")}"[\\s\\S]*?destination:\\s*"${pair[1].replace(/[/#?]/g, "\\$&")}"[\\s\\S]*?permanent:\\s*true`,
+      `"${pair[0].replace("/", "\\/")}"\\s*:\\s*"${pair[1].replace(/[/#?]/g, "\\$&")}"`,
     ),
-    `redirect ${pair[0]} → ${pair[1]}`,
+    `middleware redirect ${pair[0]} → ${pair[1]}`,
   );
 }
+assert.match(middleware, /redirect\([\s\S]+?,\s*307\)/);
+assert.match(middleware, /["']Cache-Control["']\s*,\s*["']no-store["']/);
+assert.doesNotMatch(
+  nextConfig,
+  /source:\s*"\/downloads"/,
+  "next.config must not own /downloads (middleware does; avoids sticky 308)",
+);
+assert.doesNotMatch(
+  nextConfig,
+  /source:\s*"\/open-api"/,
+  "next.config must not own /open-api (middleware does; avoids sticky 308)",
+);
+assert.match(
+  nextConfig,
+  new RegExp(
+    `source:\\s*"/mission"[\\s\\S]*?destination:\\s*"/about"[\\s\\S]*?permanent:\\s*true`,
+  ),
+  "redirect /mission → /about",
+);
 for (const pair of [
   ["/docs", "/developers/api"],
   ["/backend/docs", "/developers/api"],

@@ -24,6 +24,7 @@
     "check:download-bundles-fresh": "node scripts/check-download-bundles-fresh.mjs",
     "test:site-rewrite-pr3": "node --experimental-strip-types scripts/test-site-rewrite-pr3.mjs",
     "test:designer-live-check": "node --experimental-strip-types scripts/test-designer-live-check.mjs",
+    "test:downloads-redirect-location": "node scripts/test-downloads-redirect-location.mjs",
     "test:site-watch-pr-b": "node scripts/test-site-watch-pr-b.mjs",
     "test:site-watch-pr-c": "node scripts/test-site-watch-pr-c.mjs",
     "test:methodology-nits": "node --experimental-strip-types scripts/test-methodology-nits.mjs",

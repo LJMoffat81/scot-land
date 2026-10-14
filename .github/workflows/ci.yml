@@ -111,6 +111,7 @@ jobs:
       - run: npm run check:developers-links
       - run: npx tsc --noEmit
       - run: npm run build
+      - run: npm run test:downloads-redirect-location
       - run: npm run test:site-watch-pr-c
       - run: npm run test:methodology-nits
 

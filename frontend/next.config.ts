@@ -36,17 +36,9 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   async redirects() {
     return [
-      // Site rewrite PR1 — permanent redirects (spec A).
-      {
-        source: "/downloads",
-        destination: "/developers?moved=1#downloads",
-        permanent: true,
-      },
-      {
-        source: "/open-api",
-        destination: "/developers?moved=1#api",
-        permanent: true,
-      },
+      // /downloads and /open-api → /developers?moved=1#… live in middleware.ts
+      // (307 + Cache-Control: no-store). A prior permanent 308 without ?moved=1
+      // was sticky-cached on live; do not put those two back as permanent here.
       // Charter C1+C2: docs entry points land on self-hosted Swagger.
       {
         source: "/docs",

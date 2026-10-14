@@ -82,9 +82,11 @@ assert.deepEqual(
   ["land", "resources", "nature", "limits"],
 );
 
-const nextConfig = readSrc("next.config.ts");
-assert.match(nextConfig, /\/developers\?moved=1#downloads/);
-assert.match(nextConfig, /\/developers\?moved=1#api/);
+const middleware = readSrc("middleware.ts");
+assert.match(middleware, /\/developers\?moved=1#downloads/);
+assert.match(middleware, /\/developers\?moved=1#api/);
+assert.match(middleware, /redirect\([\s\S]+?,\s*307\)/);
+assert.match(middleware, /["']Cache-Control["']\s*,\s*["']no-store["']/);
 
 const developers = readSrc("app/developers/page.tsx");
 assert.match(developers, /Downloads has moved here/);

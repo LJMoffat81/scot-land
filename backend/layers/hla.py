@@ -4,12 +4,14 @@ Authoritative open product: Spatial Hub *Housing Land Supply – Scotland*
 (UK Open Government Licence v3.0) — local-authority Housing Land Audit sites
 amalgamated by the Improvement Service.
 
-Live anonymous Spatial Hub WFS returns 403 from this host. The national SG
-ArcGIS FeatureServer is PSGA/Digimap-restricted and is **not** used. This
-module serves site polygons from PostGIS ``planning_sites`` (source='hla')
-after ``python -m etl.ingest_hla_sites`` loads a local OGL extract under
-``data/external/`` (gitignored). When the table has no HLA rows, callers
-return HTTP 503 — never invent sites.
+Live anonymous Spatial Hub WFS returns 403 from this host. Operators may set
+``SPATIALHUB_AUTHKEY`` (gitignored ``.env``, passed by ``docker-compose.home.yml``)
+and run ``python -m etl.ingest_hla_sites --from-wfs``. The national SG ArcGIS
+FeatureServer is PSGA/Digimap-restricted and is **not** used. This module
+serves site polygons from PostGIS ``planning_sites`` (source='hla') after
+ingest of a local OGL extract or authenticated WFS pull. When the table has
+no HLA rows (or the authkey is missing for a WFS refresh), callers return
+HTTP 503 with ``not loaded yet`` — never invent sites.
 """
 
 from __future__ import annotations
@@ -23,6 +25,9 @@ from typing import Any
 import psycopg2
 import yaml
 from psycopg2 import extras
+
+from spatial.geoserver_auth import is_configured as spatialhub_auth_configured
+from spatial.geoserver_auth import not_loaded_message
 
 logger = logging.getLogger(__name__)
 
@@ -81,9 +86,13 @@ def hla_source_meta() -> dict[str, Any]:
         "metadata_url": hla.get("metadata_url") or METADATA_URL,
         "gaps": hla.get("gaps")
         or [
-            "Spatial Hub anonymous WFS returns 403; load a local OGL extract",
+            "Spatial Hub anonymous WFS returns 403; set SPATIALHUB_AUTHKEY "
+            "for --from-wfs, or load a local OGL extract",
+            "Without SPATIALHUB_AUTHKEY the overlay stays not loaded yet",
             "National ArcGIS FeatureServer is PSGA/Digimap — not used here",
         ],
+        "api_env": hla.get("api_env") or "SPATIALHUB_AUTHKEY",
+        "authkey_configured": spatialhub_auth_configured(),
     }
 
 
@@ -148,16 +157,27 @@ def _row_props(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _unloaded_error() -> str:
+    """Honest note when PostGIS has no HLA rows (authkey missing or not ingested)."""
+    base = not_loaded_message("Housing land audit overlay")
+    if spatialhub_auth_configured():
+        return (
+            f"{base}. Run python -m etl.ingest_hla_sites --from-wfs "
+            "(or load a local OGL extract)."
+        )
+    return (
+        f"{base}. Set SPATIALHUB_AUTHKEY in .env for Spatial Hub WFS, "
+        "or ingest a local OGL extract (python -m etl.ingest_hla_sites)."
+    )
+
+
 def query_point(lat: float, lng: float) -> dict[str, Any]:
     """Sites whose polygon contains the clicked point (WGS84 in, BNGrid store)."""
     meta = hla_source_meta()
     if not is_loaded():
         return {
             "ok": False,
-            "error": (
-                "Housing land audit overlay is not loaded. Ingest the Spatial "
-                "Hub OGL extract (python -m etl.ingest_hla_sites)."
-            ),
+            "error": _unloaded_error(),
             "intersects": False,
             "sites": [],
             "source": meta["attribution"],
@@ -241,13 +261,11 @@ def query_bbox(
             "features": [],
             "meta": {
                 "ok": False,
-                "error": (
-                    "planning_sites has no HLA rows — run "
-                    "python -m etl.ingest_hla_sites on a Spatial Hub OGL extract"
-                ),
+                "error": _unloaded_error(),
                 "layer": "hla",
                 "spatial_hub_url": meta["spatial_hub_url"],
                 "licence": meta["licence"],
+                "authkey_configured": meta["authkey_configured"],
             },
         }
 

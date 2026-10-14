@@ -2,14 +2,18 @@
 
 The open product is Spatial Hub *Housing Land Supply – Scotland* under
 UK Open Government Licence v3.0. Raw downloads stay under data/external/
-(gitignored). This script never commits geometry — it only loads a local
-GeoJSON extract into ``planning_sites`` with ``source='hla'``.
+(gitignored). This script never commits geometry — it loads a local GeoJSON
+extract or an authenticated Spatial Hub WFS pull into ``planning_sites``
+with ``source='hla'``.
 
 Usage:
   export DATABASE_URL=postgresql://...
   python -m etl.ingest_hla_sites \\
     --input ../data/external/spatialhub/hls/pub_hls.geojson \\
     --replace
+
+  # Authenticated Spatial Hub WFS (requires SPATIALHUB_AUTHKEY in .env):
+  python -m etl.ingest_hla_sites --from-wfs --replace
 
 Convert a Spatial Hub shapefile (EPSG:27700) first if needed:
   ogr2ogr -f GeoJSON -t_srs EPSG:4326 pub_hls.geojson pub_hls.shp
@@ -24,19 +28,33 @@ import os
 from datetime import date
 from pathlib import Path
 from typing import Any
+from urllib.parse import parse_qsl, urlsplit
 
+import httpx
 import psycopg2
+import yaml
+
+from spatial.geoserver_auth import ENV_NAME as SPATIALHUB_AUTHKEY_ENV
+from spatial.geoserver_auth import is_configured as spatialhub_auth_configured
+from spatial.geoserver_auth import not_loaded_message
+from spatial.geoserver_auth import with_wfs_auth
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+SOURCES_PATH = REPO_ROOT / "data" / "config" / "sources.yaml"
 DEFAULT_INPUT = (
     REPO_ROOT / "data" / "external" / "spatialhub" / "hls" / "pub_hls.geojson"
 )
 SOURCE = "hla"
 LICENCE = "OGL-3.0"
 SPATIAL_HUB_URL = "https://data.spatialhub.scot/dataset/housing_land_supply-is"
+DEFAULT_WFS = (
+    "https://geo.spatialhub.scot/geoserver/sh_hls/wfs"
+    "?service=wfs&typeName=sh_hls:pub_hls"
+)
+WFS_PAGE_SIZE = 1000
 
 
 def _db_config() -> dict[str, Any]:
@@ -137,8 +155,94 @@ def geom_source_for(geometry: dict[str, Any] | None, props: dict[str, Any]) -> s
     return "surveyed"
 
 
+def wfs_endpoint() -> tuple[str, str]:
+    """Return (base_wfs_url, type_name) from sources.yaml with hard-coded fallback."""
+    url = DEFAULT_WFS
+    type_name = "sh_hls:pub_hls"
+    if SOURCES_PATH.is_file():
+        with SOURCES_PATH.open(encoding="utf-8") as handle:
+            sources = yaml.safe_load(handle) or {}
+        block = sources.get("hla") or {}
+        url = (block.get("wfs_url") or url).strip()
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    type_name = (
+        query.get("typeName")
+        or query.get("typeNames")
+        or type_name
+    )
+    base = url.split("?", 1)[0]
+    return base, type_name
+
+
+def fetch_wfs_geojson(
+    *,
+    page_size: int = WFS_PAGE_SIZE,
+    client: httpx.Client | None = None,
+) -> dict[str, Any]:
+    """Page Spatial Hub HLA WFS GetFeature (GeoJSON). Requires SPATIALHUB_AUTHKEY."""
+    if not spatialhub_auth_configured():
+        raise SystemExit(
+            not_loaded_message("Housing land audit")
+            + f" — set {SPATIALHUB_AUTHKEY_ENV} in the gitignored .env "
+            "(see backend/.env.example), or pass a local --input extract."
+        )
+    base_url, type_name = wfs_endpoint()
+    features: list[dict[str, Any]] = []
+    start = 0
+    own_client = client is None
+    if own_client:
+        client = httpx.Client(timeout=120.0)
+    assert client is not None
+    try:
+        while True:
+            request_url = with_wfs_auth(
+                base_url,
+                extra_params={
+                    "service": "WFS",
+                    "version": "2.0.0",
+                    "request": "GetFeature",
+                    "typeNames": type_name,
+                    "outputFormat": "application/json",
+                    "srsName": "EPSG:4326",
+                    "count": str(page_size),
+                    "startIndex": str(start),
+                },
+            )
+            response = client.get(request_url)
+            response.raise_for_status()
+            payload = response.json()
+            batch = payload.get("features") or []
+            features.extend(batch)
+            matched = payload.get("numberMatched")
+            logger.info(
+                "Spatial Hub WFS %s: fetched %s (startIndex=%s, numberMatched=%s)",
+                type_name,
+                len(batch),
+                start,
+                matched,
+            )
+            if len(batch) < page_size:
+                break
+            start += len(batch)
+            if matched not in (None, "unknown") and start >= int(matched):
+                break
+            if start > 1_000_000:
+                raise RuntimeError(f"Unexpectedly large WFS layer {type_name}")
+    finally:
+        if own_client:
+            client.close()
+    return {"type": "FeatureCollection", "features": features}
+
+
 def load_geojson(path: Path, conn, replace: bool) -> int:
     payload = json.loads(path.read_text(encoding="utf-8"))
+    return load_feature_collection(payload, conn, replace=replace)
+
+
+def load_feature_collection(
+    payload: dict[str, Any], conn, replace: bool
+) -> int:
     if payload.get("type") != "FeatureCollection":
         raise SystemExit("Input must be a GeoJSON FeatureCollection (WGS84)")
     features = payload.get("features") or []
@@ -249,6 +353,14 @@ def main() -> None:
         help="Path to WGS84 GeoJSON under data/external/ (gitignored)",
     )
     parser.add_argument(
+        "--from-wfs",
+        action="store_true",
+        help=(
+            "Fetch GeoJSON from Spatial Hub HLA WFS (requires "
+            f"{SPATIALHUB_AUTHKEY_ENV} in .env)"
+        ),
+    )
+    parser.add_argument(
         "--vintage",
         default=date.today().isoformat(),
         help="Dataset vintage date (YYYY-MM-DD) recorded in the local stamp",
@@ -259,12 +371,33 @@ def main() -> None:
         help="DELETE existing source='hla' rows before load",
     )
     args = parser.parse_args()
+    if args.from_wfs:
+        payload = fetch_wfs_geojson()
+        stamp_path = DEFAULT_INPUT
+        conn = connect()
+        try:
+            count = load_feature_collection(
+                payload, conn, replace=args.replace
+            )
+        finally:
+            conn.close()
+        stamp = write_local_stamp(stamp_path, count, args.vintage)
+        logger.info(
+            "Loaded %s HLA sites from Spatial Hub WFS into planning_sites. "
+            "Stamp: %s",
+            count,
+            stamp,
+        )
+        return
+
     if not args.input.is_file():
         raise SystemExit(
             f"Input not found: {args.input}\n"
             "Download Spatial Hub Housing Land Supply (OGL) to "
             "data/external/spatialhub/hls/ (gitignored), convert to WGS84 "
-            "GeoJSON, and pass --input. See docs/DATA_ACQUISITION.md."
+            "GeoJSON, and pass --input — or set "
+            f"{SPATIALHUB_AUTHKEY_ENV} and use --from-wfs. "
+            "See docs/DATA_ACQUISITION.md."
         )
     resolved = args.input.resolve()
     path_str = str(resolved).replace("\\", "/")

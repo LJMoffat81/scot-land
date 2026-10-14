@@ -14,7 +14,7 @@ function readSrc(relPath) {
   return readFileSync(join(frontendRoot, relPath), "utf8");
 }
 
-// --- Place-card exact wording ---
+// --- Place-card exact wording (UX-10 skeleton + FP1) ---
 {
   const placeCard = readSrc("lib/placeCard.ts");
   assert.match(
@@ -23,20 +23,36 @@ function readSrc(relPath) {
   );
   assert.match(
     placeCard,
-    /PLACE_CARD_LIMITS_HEADING\s*=\s*"What limits how it's used"/,
+    /PLACE_CARD_LIMITS_HEADING\s*=\s*"Limits"/,
   );
+  assert.match(
+    placeCard,
+    /PLACE_CARD_AGR_LABEL\s*=\s*"Annual Ground Rent"/,
+  );
+  assert.match(
+    placeCard,
+    /PLACE_CARD_PRE_POUND\s*=\s*"We're not showing amounts yet while we check our method\."/,
+  );
+  assert.match(
+    placeCard,
+    /PLACE_CARD_EXPERIMENTAL_FOOTER\s*=\s*"Experimental estimate, not an official valuation\. It is not a bill, and it does not change what you pay\."/,
+  );
+  assert.match(placeCard, /PLACE_CARD_RANK_BAND_ENABLED\s*=\s*false/);
   assert.match(placeCard, /case "coming_soon":/);
   assert.match(placeCard, /case "in_progress":/);
   assert.match(placeCard, /return PLACE_CARD_FIGURE_STATUS/);
 
   const ui = readSrc("components/PlaceCard.tsx");
-  assert.match(ui, /PLACE_CARD_LIMITS_HEADING/);
-  assert.match(ui, /Who holds it/);
-  assert.match(ui, /Where this comes from/);
-  assert.match(ui, /PLACE_CARD_SCOTLIS_LABEL/);
+  assert.match(ui, /PLACE_CARD_AGR_LABEL/);
+  assert.match(ui, /PLACE_CARD_PRE_POUND/);
+  assert.match(ui, /PLACE_CARD_EXPERIMENTAL_FOOTER/);
+  assert.match(ui, /PLACE_CARD_HOW_WE_WORK_LABEL/);
+  assert.match(ui, /PLACE_CARD_HOW_WE_WORK_HOMES/);
+  assert.match(ui, /PLACE_CARD_PARTS_NOTE/);
   assert.doesNotMatch(ui, /What limits how it can be used/);
   assert.doesNotMatch(ui, /Coming soon/);
   assert.doesNotMatch(ui, /In progress/);
+  assert.doesNotMatch(ui, /Estimate \(no market price\)/);
 }
 
 // --- Map empty-state + search placeholder ---
@@ -80,7 +96,11 @@ function readSrc(relPath) {
 
   const glossary = readSrc("components/GlossaryBox.tsx");
   assert.match(glossary, /Annual Ground Rent/);
-  assert.match(glossary, /Market \/ Modelled \/ Estimate \(no market price\)/);
+  assert.match(glossary, /Market \/ Modelled \/ Estimate/);
+  assert.doesNotMatch(
+    glossary,
+    /term:\s*"Market \/ Modelled \/ Estimate \(no market price\)"/,
+  );
   assert.match(glossary, /Constraint/);
   assert.match(glossary, /Open Government Licence/);
 }

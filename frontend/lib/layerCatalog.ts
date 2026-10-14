@@ -5,6 +5,7 @@
 
 import catalogUiToggles from "@/lib/catalogUiToggles.json";
 import { apiJson } from "@/lib/api";
+import { RENT_GROUP_NAME } from "./rentGroupNames.mjs";
 
 export type CatalogLayerStatus = "live" | "linked" | "gap" | "partial";
 
@@ -332,11 +333,11 @@ export function groupLabel(group: string): string {
     case "ownership":
       return "Ownership";
     case "land":
-      return "Land";
+      return RENT_GROUP_NAME.land;
     case "resources":
-      return "Resources";
+      return RENT_GROUP_NAME.resources;
     case "nature":
-      return "Nature";
+      return RENT_GROUP_NAME.nature;
     case "limits":
       return "Limits";
     case "boundaries":

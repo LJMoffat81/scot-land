@@ -339,6 +339,178 @@ input {
   color: var(--slrg-muted);
 }
 
+/* —— UX-10 place card skeleton —— */
+.place-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.place-card-peek {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.place-card-council {
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: var(--slrg-muted);
+}
+
+.place-card-figure {
+  margin: 0.35rem 0 0;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--slrg-navy);
+}
+
+.place-card-covers,
+.place-card-typical,
+.place-card-neighbourhood,
+.place-card-agr-subtitle,
+.place-card-sales-basis,
+.place-card-fact,
+.place-card-parts-note,
+.place-card-how-homes,
+.place-card-part-gloss,
+.place-card-part-range,
+.place-card-fully-estimated-marker {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--slrg-text);
+}
+
+.place-card-experimental-footer {
+  margin: 0.45rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--slrg-muted);
+}
+
+.place-card-experimental-footer-sticky {
+  display: none;
+}
+
+.place-card-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-height: 0;
+}
+
+.place-card-parts,
+.place-card-how {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem 0.55rem;
+  background: #fff;
+}
+
+.place-card-parts-summary,
+.place-card-how-summary {
+  cursor: pointer;
+  font-weight: 650;
+  color: var(--slrg-navy);
+  list-style: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.place-card-parts-summary::-webkit-details-marker,
+.place-card-how-summary::-webkit-details-marker {
+  display: none;
+}
+
+.place-card-part-range {
+  color: var(--slrg-muted);
+  font-style: italic;
+}
+
+.place-card-fully-estimated-marker[data-wider-band="true"] {
+  border-left: 3px solid color-mix(in srgb, var(--slrg-navy) 45%, #c5ccd3);
+  padding-left: 0.55rem;
+}
+
+.place-card-show-scotland {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Desktop side panel: sticky experimental footer visible without scrolling. */
+@media (min-width: 901px) {
+  .hud-place.place-card,
+  .place-card-stub.place-card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .hud-place .place-card-body,
+  .place-card-stub .place-card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .hud-place .place-card-sheet-body,
+  .place-card-stub .place-card-sheet-body {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-bottom: 0.35rem;
+  }
+
+  .hud-place .place-card-experimental-footer-peek,
+  .place-card-stub .place-card-experimental-footer-peek {
+    display: none;
+  }
+
+  .hud-place .place-card-experimental-footer-sticky,
+  .place-card-stub .place-card-experimental-footer-sticky {
+    display: block;
+    flex-shrink: 0;
+    margin-top: auto;
+    padding-top: 0.55rem;
+    border-top: 1px solid var(--line);
+    background: #fff;
+  }
+}
+
+/* Mobile bottom sheet: peek = name + figure + disclaimer. */
+@media (max-width: 900px) {
+  .hud-place.place-card,
+  .app-shell.place-open .hud-place.place-card,
+  .app-shell.place-open .place-card-stub {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: min(72dvh, calc(100dvh - var(--hud-height, 8rem)));
+    border-radius: 16px 16px 0 0;
+    padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
+    box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.14);
+  }
+
+  .hud-place .place-card-experimental-footer-sticky,
+  .place-card-stub .place-card-experimental-footer-sticky {
+    display: none;
+  }
+
+  .hud-place .place-card-sheet-body,
+  .place-card-stub .place-card-sheet-body {
+    overflow-y: auto;
+    max-height: min(42dvh, 22rem);
+  }
+}
+
 .place-card-grain {
   font-weight: 600;
 }

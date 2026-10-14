@@ -58,21 +58,13 @@ test.describe("squares shell", () => {
     const card = page.locator("aside.place-card-stub");
     await expect(card).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("place-card")).toBeVisible();
-    await expect(page.getByText("Map reference", { exact: true })).toBeVisible();
-    await expect(page.getByTestId("place-card-square-reference")).toHaveText(
-      /^-?\d+,-?\d+$/,
+    await expect(page.getByTestId("place-card-agr-label")).toHaveText(
+      "Annual Ground Rent",
     );
-    await expect(page.getByTestId("place-card-square-reference")).not.toContainText(
-      /Scot-LAND square reference/i,
+    await expect(page.getByTestId("place-card-figure")).toContainText(
+      "We're not showing amounts yet while we check our method.",
     );
-    await expect(page.getByTestId("place-card-map-reference-copy")).toBeVisible();
-    await expect(page.getByTestId("place-card-value")).toBeVisible();
-    await expect(page.getByTestId("place-value-status-in_progress")).toHaveText(
-      "Figure not published yet",
-    );
-    await expect(page.getByTestId("place-card-limits")).toContainText(
-      "What limits how it's used",
-    );
+    await expect(page.getByTestId("place-card-covers-homes")).toBeVisible();
     await expect(card.getByText(/£\d/)).toHaveCount(0);
     await expect(card).not.toContainText("£0");
     await expect(card).not.toContainText(/what3words/i);

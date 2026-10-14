@@ -3,124 +3,54 @@ import { expect, test } from "@playwright/test";
 test.describe("place card (internal preview)", () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  test("redesign IA: DZ2022, value/limits, legend, no £", async ({ page }) => {
+  test("UX10-1 skeleton: AGR, pre-£, parts, no £", async ({ page }) => {
     await page.goto("/place-card");
     const card = page.getByTestId("place-card");
     await expect(card).toBeVisible();
 
     await expect(page.getByTestId("place-card-place")).toBeVisible();
-    await expect(page.getByTestId("place-card-data-zone-label")).toHaveText(
-      "Data zone (2022)",
-    );
-    await expect(page.getByTestId("place-card-data-zone")).toContainText(
-      "S01014567",
-    );
-    await expect(page.getByTestId("place-card-dz-vintage")).toContainText(
-      "DZ2022",
-    );
-    await expect(page.getByTestId("place-card-intermediate-zone")).toContainText(
-      /City Centre/i,
-    );
     await expect(page.getByTestId("place-card-council")).toContainText(
       "Glasgow City",
     );
-    await expect(page.getByText("Map reference", { exact: true })).toBeVisible();
-    await expect(page.getByTestId("place-card-square-reference")).toHaveText(
-      /^-?\d+,-?\d+$/,
+    await expect(page.getByTestId("place-card-figure")).toContainText(
+      "We're not showing amounts yet while we check our method.",
     );
-    await expect(page.getByTestId("place-card-square-reference")).not.toContainText(
-      /Scot-LAND square reference/i,
+    await expect(page.getByTestId("place-card-agr-label")).toHaveText(
+      "Annual Ground Rent",
     );
-    await expect(page.getByTestId("place-card-map-reference-copy")).toBeVisible();
+    await expect(page.getByTestId("place-card-covers-homes")).toHaveText(
+      "Covers land under homes only.",
+    );
+    await expect(page.getByTestId("place-card-typical-home")).toContainText(
+      "For a typical home in this neighbourhood, not your home.",
+    );
+    await expect(page.getByTestId("place-card-fact")).toBeVisible();
 
-    await expect(page.getByTestId("place-card-value")).toContainText(
-      /What gives this land value/i,
-    );
+    const parts = page.getByTestId("place-card-parts");
+    await parts.locator("summary").click();
     await expect(page.getByTestId("place-card-agr-surface")).toContainText(
       /Land/i,
     );
     await expect(page.getByTestId("place-card-of-which-planning_uplift")).toContainText(
       /of which: planning uplift/i,
     );
-    await expect(page.getByTestId("place-value-status-in_progress")).toHaveText(
-      "Figure not published yet",
+    await expect(page.getByTestId("place-card-range-surface")).toHaveText(
+      "not yet estimated",
     );
-    await expect(page.getByTestId("place-value-status-coming_soon").first()).toHaveText(
-      "Figure not published yet",
-    );
-
-    await expect(page.getByTestId("evidence-tag-legend")).toBeVisible();
-    await expect(page.getByTestId("evidence-tag-legend-market")).toContainText(
-      /real prices people paid/i,
-    );
-    await expect(page.getByTestId("evidence-tag-legend-proxy")).toContainText(
-      /related prices/i,
-    );
-    await expect(page.getByTestId("evidence-tag-legend-shadow")).toContainText(
-      /no market price/i,
+    await expect(page.getByTestId("place-tag-shadow")).toHaveText("Estimate");
+    await expect(page.getByTestId("place-card-parts-note")).toContainText(
+      "These are worked out differently, so we don't add them up.",
     );
 
-    await expect(page.getByTestId("place-card-limits")).toContainText(
-      "What limits how it's used",
-    );
-    await expect(page.getByTestId("place-card-constraint-banner")).toContainText(
-      "Constraint: changes best use, adds no value",
-    );
-    // Fixture rows apply=false — all three must still list (not filtered out).
-    await expect(page.getByTestId("place-card-constraint-flood")).toContainText(
-      "Does not apply",
-    );
-    await expect(page.getByTestId("place-card-constraint-sssi")).toContainText(
-      "Does not apply",
-    );
-    await expect(page.getByTestId("place-card-constraint-crofting")).toContainText(
-      "Does not apply",
-    );
-    await expect(page.getByTestId("place-card-holder-copy")).toHaveText(
-      "Public records only. Private owners are not shown.",
-    );
-    await expect(page.getByTestId("place-card-scotlis")).toContainText(
-      "Check the official title record on ScotLIS",
-    );
-    await expect(page.getByTestId("place-card-how-we-value")).toHaveAttribute(
-      "href",
-      "/methodology#glossary",
-    );
-    await expect(page.getByTestId("place-card-sources")).toContainText(
-      "Where this comes from",
+    const how = page.getByTestId("place-card-how-we-work");
+    await how.locator("summary").click();
+    await expect(page.getByTestId("place-card-how-homes-only")).toContainText(
+      "Shops, offices and industrial land aren't included yet.",
     );
 
     await expect(card).not.toContainText("£0");
     await expect(card).not.toContainText(/£\d/);
-    await expect(card).not.toContainText(/ECONOMIC_RULES|NESTED|REPORTED/i);
     await expect(card).not.toContainText(/what3words/i);
-  });
-
-  test("gap variant still shows licences", async ({ page }) => {
-    await page.goto("/place-card?variant=gap");
-    await expect(page.getByTestId("place-card-licence-boundaries")).toBeVisible();
-    await expect(
-      page.locator('[data-layer-id="boundaries"] .place-layer-state'),
-    ).toHaveText("No hit");
-  });
-
-  test("map reference copy failure shows exact recovery line", async ({
-    page,
-  }) => {
-    await page.goto("/place-card");
-    const ref = page.getByTestId("place-card-square-reference");
-    await expect(ref).toHaveText(/^-?\d+,-?\d+$/);
-    await page.evaluate(() => {
-      Object.defineProperty(navigator, "clipboard", {
-        configurable: true,
-        value: {
-          writeText: () => Promise.reject(new Error("clipboard denied")),
-        },
-      });
-    });
-    await page.getByTestId("place-card-map-reference-copy").click();
-    await expect(page.getByTestId("place-card-map-reference-copy-fail")).toHaveText(
-      "Couldn't copy — select and copy the reference instead.",
-    );
+    await expect(card).not.toContainText(/Estimate \(no market price\)/);
   });
 });

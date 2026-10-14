@@ -144,7 +144,8 @@ const chips = readFileSync(
   "utf8",
 );
 assert.match(chips, /Modelled/);
-assert.match(chips, /Estimate \(no market price\)/);
+assert.match(chips, /shadow: "Estimate"/);
+assert.doesNotMatch(chips, /Estimate \(no market price\)/);
 assert.doesNotMatch(chips, /proxy: "Proxy"/);
 assert.doesNotMatch(chips, /shadow: "Shadow"/);
 
@@ -161,14 +162,16 @@ for (const rel of ["lib/ledger.ts", "lib/placeStack.ts"]) {
   assert.doesNotMatch(src, /return "market \/ proxy"/);
 }
 
-const placeCard = readFileSync(
-  join(frontendRoot, "components/PlaceCard.tsx"),
+// Never show "No data" when the IZ code is known — rule lives in sanitize (UX-10 card).
+const placeCardLib = readFileSync(
+  join(frontendRoot, "lib/placeCard.ts"),
   "utf8",
 );
-assert.match(placeCard, /name not loaded yet/);
+assert.match(placeCardLib, /PLACE_CARD_NAME_NOT_LOADED\s*=\s*"name not loaded yet"/);
+assert.match(placeCardLib, /PLACE_CARD_NAME_NOT_LOADED/);
 assert.match(
-  placeCard,
-  /izCode\s*\?\s*izNote \|\| "name not loaded yet"/,
+  placeCardLib,
+  /izCode && !izName[\s\S]*PLACE_CARD_NAME_NOT_LOADED/,
 );
 
 // SW-012: /developers must point at the public API page, not repo mdx paths.

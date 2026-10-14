@@ -6,7 +6,7 @@ import ConfidenceTag, {
 export const EVIDENCE_TAG_GLOSS: Record<ConfidenceTagKind, string> = {
   market: "taken from real prices people paid",
   proxy: "worked out from related prices",
-  shadow: "no market price available",
+  shadow: "used when there is no market price",
 };
 
 const ORDER: ConfidenceTagKind[] = ["market", "proxy", "shadow"];

@@ -55,17 +55,18 @@ assert.match(
   /Parcels stay a toggleable outline layer \(off by default\)/,
 );
 
-// --- 3. Place card: Land outline, no parcel ID display, council row, IZ ---
+// --- 3. Place card: council row; no parcel ID; land_outline stays on payload (UX10-4 moves diagnostics) ---
 const placeCard = read(join(frontendRoot, "components/PlaceCard.tsx"));
-assert.match(placeCard, /Land outline/);
-assert.match(placeCard, /place-card-land-outline/);
 assert.match(placeCard, /place-card-council/);
-assert.match(placeCard, /place-card-iz-name/);
+assert.match(placeCard, /PLACE_CARD_AGR_LABEL/);
 assert.doesNotMatch(
   placeCard,
   /inspire_id/,
   "place card must not render parcel inspire_id",
 );
+const placeCardContract = read(join(frontendRoot, "lib/placeCard.ts"));
+assert.match(placeCardContract, /land_outline/);
+assert.match(placeCardContract, /Registered extent outline only/);
 
 // --- 4. Banned wording absent from developers sources ---
 const banned = ["£0", "market+proxy"];
@@ -131,11 +132,13 @@ assert.match(
 );
 assert.match(izCsv, /S02001983,2011,Badenoch and Strathspey Central/);
 
-// --- 7. Item 8: IZ pending copy + DZ secondary ---
-const placeCardUi = read(join(frontendRoot, "components/PlaceCard.tsx"));
-assert.match(placeCardUi, /name not loaded yet/);
-assert.match(placeCardUi, /place-card-dz-2011/);
-assert.match(placeCardUi, /Also on 2011 map/);
+// --- 7. Item 8: IZ pending copy stays in sanitize; DZ prefer helper kept ---
+const placeCardLibB = read(join(frontendRoot, "lib/placeCard.ts"));
+assert.match(placeCardLibB, /PLACE_CARD_NAME_NOT_LOADED/);
+assert.match(placeCardLibB, /name not loaded yet/);
+const placeCardDz = read(join(frontendRoot, "lib/placeCardDz.ts"));
+assert.match(placeCardDz, /preferDz2022/);
+assert.match(placeCardDz, /Data zone \(2011\)|2011/);
 
 // --- 8. Item 9: Zone set gloss ---
 const developers = read(join(frontendRoot, "app/developers/page.tsx"));

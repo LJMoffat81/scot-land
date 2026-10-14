@@ -1,9 +1,10 @@
 export type ConfidenceTagKind = "market" | "proxy" | "shadow";
 
+/** FP1 / AGENTS: chips are Market / Modelled / Estimate (never "market price"). */
 const LABEL: Record<ConfidenceTagKind, string> = {
   market: "Market",
   proxy: "Modelled",
-  shadow: "Estimate (no market price)",
+  shadow: "Estimate",
 };
 
 export default function ConfidenceTag({

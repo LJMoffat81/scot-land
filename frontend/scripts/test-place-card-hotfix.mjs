@@ -112,27 +112,23 @@ const { preferDz2022, dataZoneFieldLabel } = await import(
   );
 }
 
-// --- 3. PlaceCard.tsx: all limit rows + gap copy ---
+// --- 3. PlaceCard.tsx: UX10-1 skeleton + loading placeholders (limits UI → UX10-6) ---
 {
   const src = readSrc("components/PlaceCard.tsx");
-  assert.match(
-    src,
-    /const limitRows = card\?\.constraints \?\? \[\]/,
-    "limitRows must keep all constraint rows (no applies===true filter)",
-  );
+  assert.match(src, /PLACE_CARD_AGR_LABEL/);
+  assert.match(src, /PLACE_CARD_PRE_POUND/);
+  assert.match(src, /PLACE_CARD_EXPERIMENTAL_FOOTER/);
+  assert.match(src, /place-card-parts/);
   assert.doesNotMatch(
     src,
     /filter\(\s*\(row\)\s*=>\s*row\.applies\s*===\s*true/,
-    "must not filter limitRows to applies===true only",
+    "must not filter agr/limit rows to applies===true only",
   );
-  assert.match(src, /No data here yet\./);
-  assert.match(src, /\/data#gaps/);
   assert.doesNotMatch(
     src,
     /No limits listed for this place/,
-    "empty constraints must use gap line, not 'No limits listed'",
+    "must not use retired 'No limits listed' copy",
   );
-  assert.match(src, /dataZoneFieldLabel/);
   assert.doesNotMatch(
     src,
     /<dt>Data zone \(2022\)<\/dt>/,

@@ -2,6 +2,7 @@
 
 import PlaceCard from "@/components/PlaceCard";
 import {
+  PLACE_CARD_HOW_WE_WORK_LABEL,
   PLACE_CARD_OUT_OF_SCOTLAND_LINE,
   defaultAgrRows,
   scotLandSquareReference,
@@ -24,6 +25,10 @@ export type PlaceStub = {
   dwYear?: number | null;
   /** When set, full place_card_v1 from GET /platform/place. */
   card?: PlaceCardPayload | null;
+  /** Search found nothing in Scotland. */
+  noMatch?: boolean;
+  /** True after postcode / address / place-name search (not map click). */
+  fromAddressSearch?: boolean;
 };
 
 type PlaceCardStubProps = {
@@ -35,7 +40,7 @@ type PlaceCardStubProps = {
   onShowScotland?: () => void;
 };
 
-/** Map HUD place card — Designer v3.1 fields; thin wrapper over PlaceCard. */
+/** Map HUD place card — UX-10 skeleton; thin wrapper over PlaceCard. */
 export default function PlaceCardStub({
   place,
   loading = false,
@@ -43,6 +48,29 @@ export default function PlaceCardStub({
   onClose,
   onShowScotland,
 }: PlaceCardStubProps) {
+  if (place.noMatch) {
+    return (
+      <PlaceCard
+        data={{
+          contract: "place_card_v1",
+          lat: place.lat,
+          lng: place.lng,
+          card_state: "no_match",
+          place_label: null,
+          layers: [],
+          links: [],
+        }}
+        isLoading={loading}
+        error={error}
+        onClose={onClose}
+        floating
+        className="place-card-stub"
+        noMatch
+        fromAddressSearch={Boolean(place.fromAddressSearch)}
+      />
+    );
+  }
+
   const data: PlaceCardPayload =
     place.card ??
     ({
@@ -52,6 +80,7 @@ export default function PlaceCardStub({
       place_label: place.label ?? place.dataZoneName ?? null,
       postcode: place.postcode ?? null,
       council_name: place.laName ?? null,
+      dwellings: place.dwellings ?? null,
       data_zone: place.dataZoneCode
         ? {
             status: "ok",
@@ -71,19 +100,29 @@ export default function PlaceCardStub({
       layers: [],
       links: [
         { id: "about", label: "About", url: "/about" },
-        { id: "methodology", label: "How it works", url: "/methodology" },
+        { id: "methodology", label: PLACE_CARD_HOW_WE_WORK_LABEL, url: "/methodology" },
       ],
     } satisfies PlaceCardPayload);
 
+  const merged: PlaceCardPayload = {
+    ...data,
+    dwellings:
+      typeof place.dwellings === "number" ? place.dwellings : data.dwellings,
+    place_label: data.place_label ?? place.label ?? place.dataZoneName ?? null,
+    council_name: data.council_name ?? place.laName ?? null,
+  };
+
   return (
     <PlaceCard
-      data={data}
+      data={merged}
       isLoading={loading}
       error={error}
       onClose={onClose}
       onShowScotland={onShowScotland}
       floating
       className="place-card-stub"
+      fromAddressSearch={Boolean(place.fromAddressSearch)}
+      dwellings={place.dwellings ?? merged.dwellings ?? null}
     />
   );
 }

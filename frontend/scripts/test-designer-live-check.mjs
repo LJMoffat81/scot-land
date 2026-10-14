@@ -72,8 +72,9 @@ assert.match(nextConfig, /\/developers\?moved=1#downloads/);
 assert.match(nextConfig, /\/developers\?moved=1#api/);
 
 const developers = readSrc("app/developers/page.tsx");
-assert.match(developers, /This page has moved to Downloads/);
+assert.match(developers, /Downloads has moved here/);
 assert.match(developers, /developers-moved-note/);
+assert.match(developers, /searchParams\.get\("moved"\) === "1"/);
 
 assert.ok(existsSync(join(frontendRoot, "lib/dataSourceGroups.ts")));
 

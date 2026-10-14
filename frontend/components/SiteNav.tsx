@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import {
   SITE_NAV_ITEMS,
@@ -21,13 +21,14 @@ const MOBILE_MAX = 600;
 
 /**
  * Site-wide nav: Map · About · How it works · Data & sources · Downloads & API.
- * Mobile (≤600px): hamburger menu.
+ * Mobile (≤600px): hamburger menu with backdrop (SW-011).
  */
 export default function SiteNav({
   current,
   variant = "page",
 }: SiteNavProps) {
   const menuId = useId();
+  const navRef = useRef<HTMLElement | null>(null);
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -51,6 +52,30 @@ export default function SiteNav({
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (event: PointerEvent) => {
+      const root = navRef.current;
+      if (!root) return;
+      const target = event.target;
+      if (target instanceof Node && root.contains(target)) return;
+      setOpen(false);
+    };
+    // Capture so map HUD / page chrome taps close the menu even with
+    // pointer-events:none ancestors.
+    document.addEventListener("pointerdown", onPointer, true);
+    return () => document.removeEventListener("pointerdown", onPointer, true);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !isMobile) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open, isMobile]);
+
   const links = SITE_NAV_ITEMS.map((item) => {
     const isCurrent = item.id === current;
     return (
@@ -65,57 +90,72 @@ export default function SiteNav({
     );
   });
 
+  const mobileMenu = isMobile ? (
+    <>
+      {open ? (
+        <button
+          type="button"
+          className="site-nav-backdrop"
+          aria-label="Close menu"
+          data-testid="site-nav-backdrop"
+          onClick={() => setOpen(false)}
+        />
+      ) : null}
+      <button
+        type="button"
+        className="site-nav-menu-btn"
+        aria-expanded={open}
+        aria-controls={menuId}
+        data-testid="site-nav-menu-btn"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="site-nav-menu-icon" aria-hidden="true">
+          ☰
+        </span>
+        <span className="sr-only">Menu</span>
+      </button>
+      <div
+        id={menuId}
+        className="site-nav-panel"
+        hidden={!open}
+        data-testid="site-nav-panel"
+      >
+        {links}
+      </div>
+    </>
+  ) : (
+    <div className="site-nav-links" data-testid="site-nav-links">
+      {links}
+    </div>
+  );
+
   if (variant === "map") {
     return (
       <nav
+        ref={navRef}
         className={
           open ? "site-nav site-nav-map site-nav-open" : "site-nav site-nav-map"
         }
         aria-label="Site"
         data-testid="site-nav"
         data-variant="map"
+        data-open={open ? "true" : "false"}
       >
-        {isMobile ? (
-          <>
-            <button
-              type="button"
-              className="site-nav-menu-btn"
-              aria-expanded={open}
-              aria-controls={menuId}
-              data-testid="site-nav-menu-btn"
-              onClick={() => setOpen((v) => !v)}
-            >
-              <span className="site-nav-menu-icon" aria-hidden="true">
-                ☰
-              </span>
-              <span className="sr-only">Menu</span>
-            </button>
-            <div
-              id={menuId}
-              className="site-nav-panel"
-              hidden={!open}
-              data-testid="site-nav-panel"
-            >
-              {links}
-            </div>
-          </>
-        ) : (
-          <div className="site-nav-links" data-testid="site-nav-links">
-            {links}
-          </div>
-        )}
+        {mobileMenu}
       </nav>
     );
   }
 
   return (
     <nav
+      ref={navRef}
       className={
         open ? "site-nav site-nav-page site-nav-open" : "site-nav site-nav-page"
       }
       aria-label="Site"
       data-testid="site-nav"
       data-variant="page"
+      data-open={open ? "true" : "false"}
     >
       <a
         className="site-nav-brand"
@@ -126,35 +166,7 @@ export default function SiteNav({
         <img src="/scot-land-mark.png" alt="" width={40} height={40} />
         <span>Scot-LAND</span>
       </a>
-      {isMobile ? (
-        <>
-          <button
-            type="button"
-            className="site-nav-menu-btn"
-            aria-expanded={open}
-            aria-controls={menuId}
-            data-testid="site-nav-menu-btn"
-            onClick={() => setOpen((v) => !v)}
-          >
-            <span className="site-nav-menu-icon" aria-hidden="true">
-              ☰
-            </span>
-            <span className="sr-only">Menu</span>
-          </button>
-          <div
-            id={menuId}
-            className="site-nav-panel"
-            hidden={!open}
-            data-testid="site-nav-panel"
-          >
-            {links}
-          </div>
-        </>
-      ) : (
-        <div className="site-nav-links" data-testid="site-nav-links">
-          {links}
-        </div>
-      )}
+      {mobileMenu}
     </nav>
   );
 }

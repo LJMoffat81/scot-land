@@ -40,10 +40,16 @@ test.describe("API reference (charter C1)", () => {
     page,
   }) => {
     const cspViolations: string[] = [];
+    const validatorHits: string[] = [];
     page.on("console", (msg) => {
       const text = msg.text();
-      if (/Content Security Policy|csp|jsdelivr/i.test(text)) {
+      if (/Content Security Policy|csp|jsdelivr|validator\.swagger\.io/i.test(text)) {
         cspViolations.push(text);
+      }
+    });
+    page.on("request", (req) => {
+      if (/validator\.swagger\.io/i.test(req.url())) {
+        validatorHits.push(req.url());
       }
     });
 
@@ -70,6 +76,7 @@ test.describe("API reference (charter C1)", () => {
     });
     await expect(page.locator(".swagger-ui .opblock")).toHaveCount(2);
     expect(cspViolations).toEqual([]);
+    expect(validatorHits).toEqual([]);
   });
 
   test("/docs and /backend/docs 301 to /developers/api", async ({

@@ -1,3 +1,4 @@
+import ContentPageFooter from "@/components/ContentPageFooter";
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
 
@@ -145,6 +146,7 @@ export default function MissionContent() {
         {" · "}
         <a href="/methodology">How it works</a>
       </p>
+      <ContentPageFooter />
     </main>
   );
 }

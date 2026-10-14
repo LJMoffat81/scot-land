@@ -162,4 +162,8 @@ assert.doesNotMatch(
   "hotfix test must not keep a local preferDz2022 copy",
 );
 
+// Site-watch PR A chrome checks (wired here to avoid package.json / CI edits
+// parallel with other drafts).
+await import(pathToFileURL(join(here, "test-site-watch-pr-a.mjs")).href);
+
 console.log("test-site-rewrite-pr1: ok");

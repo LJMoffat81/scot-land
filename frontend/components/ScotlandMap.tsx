@@ -779,10 +779,15 @@ export default function ScotlandMap() {
         popYear?: number | null;
         dwellings?: number | null;
         dwYear?: number | null;
+        /** When the caller already owns lookupGen, reuse it (do not bump again). */
+        generation?: number;
       } = {},
     ) => {
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-      const gen = ++lookupGen.current;
+      const gen =
+        typeof opts.generation === "number"
+          ? opts.generation
+          : ++lookupGen.current;
       const map = mapRef.current;
       markerRef.current?.remove();
       if (map) {
@@ -966,6 +971,7 @@ export default function ScotlandMap() {
       fly: true,
       postcode: payload.postcode?.postcode ?? postcode,
       label: payload.postcode?.postcode ?? postcode,
+      generation,
     });
   };
 
@@ -980,6 +986,7 @@ export default function ScotlandMap() {
       await inspectRef.current(body.lat, body.lng, {
         fly: true,
         label: body.label ?? `///${words}`,
+        generation,
       });
       return;
     }
@@ -987,6 +994,7 @@ export default function ScotlandMap() {
       await inspectRef.current(body.lat, body.lng, {
         fly: true,
         label: `///${body.words ?? words}`,
+        generation,
       });
       return;
     }
@@ -1020,7 +1028,10 @@ export default function ScotlandMap() {
       );
       if (generation !== lookupGen.current) return;
       setQuery(body.postcode);
-      void inspectRef.current(body.lat, body.lng, { fly: true });
+      void inspectRef.current(body.lat, body.lng, {
+        fly: true,
+        generation,
+      });
     } catch (err) {
       if (generation !== lookupGen.current) return;
       setError(
@@ -1048,6 +1059,7 @@ export default function ScotlandMap() {
         await inspectRef.current(coords.lat, coords.lng, {
           fly: true,
           label: `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`,
+          generation,
         });
         if (generation === lookupGen.current) setApiOk(true);
       } finally {
@@ -1077,6 +1089,7 @@ export default function ScotlandMap() {
         await inspectRef.current(body.lat, body.lng, {
           fly: true,
           label: body.label ?? null,
+          generation,
         });
       } else if (body.kind === "places" && body.matches && body.matches.length > 1) {
         clearPlace();
@@ -1092,6 +1105,7 @@ export default function ScotlandMap() {
         await inspectRef.current(match.lat, match.lng, {
           fly: true,
           label: match.label,
+          generation,
         });
       } else {
         clearPlace();
@@ -1131,6 +1145,7 @@ export default function ScotlandMap() {
         await inspectRef.current(item.lat, item.lng, {
           fly: true,
           label: item.label,
+          generation,
         });
       }
       if (generation === lookupGen.current) setApiOk(true);
@@ -1143,7 +1158,11 @@ export default function ScotlandMap() {
         });
       }
     } finally {
-      if (generation === lookupGen.current) setLoading(false);
+      // Always clear search chrome after a pick. `.hud-search.loading` is
+      // `loading || suggesting`; a stale suggest race must not leave the
+      // spinner stuck after the place card is already open.
+      setLoading(false);
+      setSuggesting(false);
     }
   };
 
@@ -1161,6 +1180,10 @@ export default function ScotlandMap() {
       setSuggesting(false);
       return;
     }
+    // Re-check after await: chooseSuggestion bumps suggestGen and must win —
+    // otherwise a stale fetchCapabilities resume sets suggesting and leaves
+    // `.hud-search.loading` stuck (class is loading || suggesting).
+    if (generation !== suggestGen.current) return;
     setSuggesting(true);
     try {
       const response = await apiFetch(`/place?q=${encodeURIComponent(text)}`, {
@@ -1259,6 +1282,16 @@ export default function ScotlandMap() {
       style: "https://tiles.openfreemap.org/styles/positron",
       center: [-4.2, 57.5],
       zoom: 5.7,
+      // Map footer is one line; legal credits live behind the (i) control.
+      // OS / OpenFreeMap credits stay from the style + layers — add the rest here.
+      attributionControl: {
+        compact: true,
+        customAttribution: [
+          "Contains Royal Mail data © Royal Mail copyright and database right 2026",
+          "Source: Office for National Statistics licensed under the Open Government Licence v.3.0",
+          "No data provider endorses this site.",
+        ],
+      },
     });
 
     map.addControl(
@@ -1266,6 +1299,22 @@ export default function ScotlandMap() {
       "bottom-right",
     );
     map.getCanvas().style.cursor = "pointer";
+
+    // MapLibre compact mode starts with maplibregl-compact-show (expanded).
+    // Collapse to the (i) control by default; user click still expands.
+    const collapseCompactAttribution = () => {
+      const el = map
+        .getContainer()
+        .querySelector(".maplibregl-ctrl-attrib");
+      if (!el?.classList.contains("maplibregl-compact")) return;
+      el.classList.remove("maplibregl-compact-show");
+      el.removeAttribute("open");
+    };
+    map.on("load", collapseCompactAttribution);
+    map.once("idle", collapseCompactAttribution);
+    map.on("resize", () => {
+      queueMicrotask(collapseCompactAttribution);
+    });
 
     let userMoved = false;
     const noteUserMove = (event: { originalEvent?: Event }) => {
@@ -3307,6 +3356,20 @@ export default function ScotlandMap() {
   }, [result]);
 
   const placeOpen = Boolean(placeStub || result || error);
+  const collapsedIntroForPlace = useRef(false);
+
+  // Usability: collapse Find a place intro when a place card opens; restore on close.
+  useEffect(() => {
+    if (placeOpen) {
+      setLegendOpen(false);
+      collapsedIntroForPlace.current = true;
+      return;
+    }
+    if (collapsedIntroForPlace.current) {
+      setLegendOpen(true);
+      collapsedIntroForPlace.current = false;
+    }
+  }, [placeOpen]);
 
   return (
     <div

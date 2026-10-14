@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import ContentPageFooter from "@/components/ContentPageFooter";
+
 export const metadata: Metadata = {
   title: "Downloads & API | Scot-LAND",
   description:
@@ -16,5 +18,12 @@ export default function DevelopersLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return children;
+  return (
+    <>
+      {children}
+      <div className="content-page-footer-wrap">
+        <ContentPageFooter />
+      </div>
+    </>
+  );
 }

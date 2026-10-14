@@ -2,6 +2,7 @@
 
 import ConfidenceTag from "@/components/ConfidenceTag";
 import EvidenceTagLegend from "@/components/EvidenceTagLegend";
+import { mapDrawerLicenceDisplay } from "@/lib/mapDrawerLicenceDisplay";
 import {
   mapDrawerLayersByGroup,
   type MapDrawerLayer,
@@ -128,16 +129,27 @@ function DrawerLayerRow({
         ) : null}
       </div>
       <p className="layer-meta">{layer.description}</p>
-      <p className="layer-meta" data-testid={`layer-licence-${layer.id}`}>
-        Licence:{" "}
-        {layer.licenceUrl ? (
-          <a href={layer.licenceUrl} target="_blank" rel="noopener noreferrer">
-            {layer.licence}
-          </a>
-        ) : (
-          layer.licence
-        )}
-      </p>
+      <DrawerLicenceLine layer={layer} />
     </li>
+  );
+}
+
+function DrawerLicenceLine({ layer }: { layer: MapDrawerLayer }) {
+  const display = mapDrawerLicenceDisplay(
+    layer.id,
+    layer.licence,
+    layer.licenceUrl,
+  );
+  return (
+    <p className="layer-meta" data-testid={`layer-licence-${layer.id}`}>
+      Licence:{" "}
+      {display.url ? (
+        <a href={display.url} target="_blank" rel="noopener noreferrer">
+          {display.label}
+        </a>
+      ) : (
+        display.label
+      )}
+    </p>
   );
 }

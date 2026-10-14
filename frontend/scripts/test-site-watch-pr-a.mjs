@@ -60,19 +60,28 @@ assert.match(
   /@media \(max-width:\s*900px\)[\s\S]*\.research-banner-map[\s\S]*top:\s*calc\(var\(--hud-height/,
 );
 
-// —— SW-010 / item 1: two-row header through 1366px ——
+// —— UX-00: desktop search in top-bar row (replaces SW-010 two-row) ——
 assert.match(
   chrome,
-  /@media \(min-width:\s*901px\) and \(max-width:\s*1440px\)[\s\S]*\.hud-search-dock[\s\S]*flex:\s*1 1 100%/,
+  /@media \(min-width:\s*901px\)[\s\S]*\.hud-search-dock[\s\S]*flex:\s*1 1 auto/,
 );
-assert.match(chrome, /order:\s*50/);
+assert.match(chrome, /--hud-control-h/);
+assert.match(
+  chrome,
+  /\[data-testid="hud-layers-btn"\][\s\S]*height:\s*var\(--hud-control-h\)/,
+);
+assert.match(
+  chrome,
+  /\.hud-search[\s\S]*height:\s*var\(--hud-control-h\)[\s\S]*border:\s*0/,
+);
+assert.match(chrome, /order:\s*10/);
 assert.match(chrome, /position:\s*relative\s*!important/);
 
 // —— SW-014: suggestions above banner ——
 assert.match(chrome, /\.hud-search-dock\.open/);
 assert.match(chrome, /\.search-suggest/);
 assert.match(chrome, /:has\(\.hud-search-dock\.open\)/);
-// Place card stacks above search so Close is clickable at two-row widths.
+// Place card stacks above search so Close is clickable.
 assert.match(
   chrome,
   /\.app-shell\.place-open[\s\S]*\.place-card-stub[\s\S]*z-index:\s*14/,

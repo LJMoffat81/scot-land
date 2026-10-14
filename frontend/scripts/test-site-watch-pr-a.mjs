@@ -63,7 +63,7 @@ assert.match(
 // —— SW-010 / item 1: two-row header through 1366px ——
 assert.match(
   chrome,
-  /@media \(min-width:\s*901px\) and \(max-width:\s*1366px\)[\s\S]*\.hud-search-dock[\s\S]*flex:\s*1 1 100%/,
+  /@media \(min-width:\s*901px\) and \(max-width:\s*1440px\)[\s\S]*\.hud-search-dock[\s\S]*flex:\s*1 1 100%/,
 );
 assert.match(chrome, /order:\s*50/);
 assert.match(chrome, /position:\s*relative\s*!important/);

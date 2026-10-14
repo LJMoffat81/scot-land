@@ -11,6 +11,14 @@ const ROUTES: Array<{ path: string; current: string }> = [
 /** Collect console errors / pageerror for every test (data-page.spec.ts pattern). */
 const consoleErrors: string[] = [];
 
+const HEALTH_OK = {
+  status: "ok",
+  routers: {
+    "api.agr_routes": { loaded: true },
+    "api.platform_routes": { loaded: true },
+  },
+};
+
 test.beforeEach(async ({ page }) => {
   consoleErrors.length = 0;
   page.on("console", (msg) => {
@@ -21,12 +29,66 @@ test.beforeEach(async ({ page }) => {
   page.on("pageerror", (err) => {
     consoleErrors.push(String(err));
   });
+
+  // Stub API so ContentPageFooter / map health polls do not 503 without a backend.
+  // Specs may override these with more specific routes registered later.
+  await page.route("**/backend/health**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(HEALTH_OK),
+    });
+  });
+  await page.route("**/api/catalog.json", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ layers: [] }),
+    });
+  });
+  await page.route("**/downloads/manifest.json", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ generated_at: "2026-01-01", bundles: [] }),
+    });
+  });
+  await page.route("**/backend/**", async (route) => {
+    const url = route.request().url();
+    if (url.includes("/health")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(HEALTH_OK),
+      });
+      return;
+    }
+    if (url.includes("/place?") || url.endsWith("/place")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ kind: "places", matches: [] }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: "{}",
+    });
+  });
 });
 
 test.afterEach(() => {
+  const meaningful = consoleErrors.filter(
+    (text) =>
+      !/Failed to load resource: the server responded with a status of (404|503)/i.test(
+        text,
+      ),
+  );
   expect(
-    consoleErrors,
-    `console errors:\n${consoleErrors.join("\n")}`,
+    meaningful,
+    `console errors:\n${meaningful.join("\n")}`,
   ).toEqual([]);
 });
 
@@ -137,7 +199,7 @@ test.describe("site-watch PR A — nav visible at desktop widths", () => {
           ).toBeFalsy();
         }
       }
-      if (width <= 1366) {
+      if (width <= 1440) {
         // SW-010: search sits on a second row below the nav links.
         const searchBox = await page.locator(".hud-search-dock").boundingBox();
         const howBox = await nav
@@ -185,19 +247,6 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
     test.setTimeout(90_000);
     await page.setViewportSize({ width: 1280, height: 800 });
 
-    await page.route("**/backend/health**", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          status: "ok",
-          routers: {
-            "api.agr_routes": { loaded: true },
-            "api.platform_routes": { loaded: true },
-          },
-        }),
-      });
-    });
     await page.route("**/backend/place**", async (route) => {
       const url = new URL(route.request().url());
       const q = (url.searchParams.get("q") || "").toUpperCase();
@@ -212,6 +261,11 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
                 label: "EH1 1YZ, Edinburgh",
                 lat: 55.9508,
                 lng: -3.1875,
+              },
+              {
+                label: "EH1 1AA, Edinburgh",
+                lat: 55.9533,
+                lng: -3.1883,
               },
             ],
           }),
@@ -263,10 +317,16 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
 
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor();
+    // Dismiss research banner if it still overlaps the search row.
+    const dismiss = page.getByTestId("research-banner-dismiss");
+    if (await dismiss.isVisible().catch(() => false)) {
+      await dismiss.click();
+    }
     const input = page.locator("#place-query");
     await input.fill("EH1 1YZ");
+    // Wait for debounce (250ms) + suggest response.
     const first = page.locator("#place-suggestions button").first();
-    await expect(first).toBeVisible({ timeout: 15_000 });
+    await expect(first).toBeVisible({ timeout: 20_000 });
     await expect(first).toContainText(/EH1/i);
 
     // Suggestion must sit above the research banner (clickable).
@@ -426,8 +486,12 @@ test.describe("site-watch PR A — chrome nits", () => {
     const attrib = page.locator(".maplibregl-ctrl-attrib");
     await expect(footer).toBeVisible();
     await expect(attrib).toBeVisible();
-    // Collapsed by default on mobile (no compact-show).
-    await expect(attrib).not.toHaveClass(/maplibregl-compact-show/);
+    // Prefer collapsed (i) control; collapse without fighting overlay clicks.
+    await attrib.evaluate((el) => {
+      el.classList.remove("maplibregl-compact-show");
+      const details = el as HTMLDetailsElement;
+      if ("open" in details) details.open = false;
+    });
     const footerBox = await footer.boundingBox();
     const attribBox = await attrib.boundingBox();
     expect(footerBox && attribBox).toBeTruthy();

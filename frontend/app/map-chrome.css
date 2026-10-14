@@ -3,8 +3,8 @@
  * Kept out of globals.css to avoid parallel edits with other drafts.
  */
 
-/* —— SW-010: two-row map header up to 1366px (search never overlaps nav) —— */
-@media (min-width: 901px) and (max-width: 1366px) {
+/* —— SW-010: two-row map header through 1440px (search never overlaps nav) —— */
+@media (min-width: 901px) and (max-width: 1440px) {
   .hud-top {
     flex-wrap: wrap;
     align-items: center;
@@ -42,10 +42,16 @@
     max-width: none !important;
     z-index: 6;
   }
+
+  /* Banner must clear the taller two-row HUD (was overlapping search at 1280) */
+  .research-banner-map {
+    top: calc(var(--hud-height, 8.5rem) + 0.4rem);
+    z-index: 3;
+  }
 }
 
-/* Above 1366px: single-row centred search with clearance for nav + Layers */
-@media (min-width: 1367px) {
+/* Above 1440px: single-row centred search with clearance for nav + Layers */
+@media (min-width: 1441px) {
   .site-nav-map {
     position: relative;
     z-index: 8;

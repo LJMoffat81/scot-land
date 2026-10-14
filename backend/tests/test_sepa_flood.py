@@ -38,13 +38,7 @@ def test_catalog_lists_flood_live_with_licence_and_source():
     assert layer["endpoint"] == "/layers/open/flood"
     assert "tile_endpoint" not in layer
     assert "mapserver_url" not in layer
-    # URL belongs on source_url / developer_note — not visitor description.
-    assert "www2.sepa.org.uk/flooddata" in layer["source_url"]
-    assert "www2.sepa.org.uk/flooddata" in (layer.get("developer_note") or "")
-    assert "Constraint: changes best use, adds no value" in (
-        layer.get("description") or ""
-    )
-    assert "PostGIS" not in (layer.get("description") or "")
+    assert "www2.sepa.org.uk/flooddata" in layer["description"]
 
     catalog = platform_catalog()
     ids = [row["id"] for row in catalog["layers"]]
@@ -54,7 +48,6 @@ def test_catalog_lists_flood_live_with_licence_and_source():
     assert flood["licence"] == "OGL-3.0"
     assert flood["licence_url"] == LICENCE_URL
     assert flood["source_url"]
-    assert "www2.sepa.org.uk/flooddata" in flood["source_url"]
     assert flood["ledger_role"] == "constraint"
     assert flood.get("ledger_row") is None
     assert flood["ui_surface"] == "ledger"

@@ -25,7 +25,8 @@ PLAIN_DESCRIPTIONS: dict[str, str] = {
     ),
     "data_zones": (
         "Small-area Data Zone boundaries (2022). Hover or click for the zone "
-        "code, name, council, population and dwellings. Not a rent figure."
+        "code, name, council, population and dwellings. Not a rent figure — "
+        "no AGR £ on the map."
     ),
     "settlements": (
         "Places of 500 people or more from the Census 2022 settlements map. "
@@ -75,8 +76,9 @@ PLAIN_DESCRIPTIONS: dict[str, str] = {
         "not a rent figure and not surface land rent."
     ),
     "sepa_car": (
-        "SEPA Controlled Activities Regulations licences for water use. "
-        "Inventory only — not a rent figure."
+        "SEPA Controlled Activities Regulations licences for water use "
+        "(Simple 194 and Registration 195). Inventory only — never proxies "
+        "live map services. No £ rent; not surface rent."
     ),
     "sssi": (
         "Sites of Special Scientific Interest. "
@@ -113,23 +115,27 @@ PLAIN_DESCRIPTIONS: dict[str, str] = {
     ),
     "scotwind_intog": (
         "ScotWind and INTOG offshore wind option areas from Crown Estate Scotland. "
-        "Option shapes only — separate from surface land rent."
+        "Option shapes only — separate from surface rent. "
+        "Option-fee HOLD — not layer attributes."
     ),
     "flood": (
-        "Medium-likelihood river and coastal flood extents from SEPA Flood Maps. "
-        "Constraint: changes best use, adds no value — not a property-level quote."
+        "Medium-likelihood river and coastal flood extents from SEPA Flood Maps "
+        "(www2.sepa.org.uk/flooddata). Constraint: changes best use, adds no value "
+        "— not a property-level quote."
     ),
     "sepa_flood": (
-        "Medium-likelihood river and coastal flood extents from SEPA Flood Maps. "
-        "Constraint: changes best use, adds no value — not a property-level quote."
+        "Medium-likelihood river and coastal flood extents from SEPA Flood Maps "
+        "(www2.sepa.org.uk/flooddata). Constraint: changes best use, adds no value "
+        "— not a property-level quote."
     ),
     "carbon_peatland": (
         "Peat and carbon soils used for nature accounting. "
         "Unpriced carbon sits outside market rents."
     ),
     "ces_aquaculture": (
-        "Aquaculture seabed leases from Crown Estate Scotland. "
-        "Licence rent evidence — not a title."
+        "Aquaculture seabed leases from Crown Estate Scotland. Licence rent "
+        "evidence — not a title. No £ rent; never added to surface rent "
+        "(ledger row 5)."
     ),
     "nsta_oil_gas": (
         "UK oil and gas fields shown for comparison only. "

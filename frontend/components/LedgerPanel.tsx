@@ -83,9 +83,9 @@ export default function LedgerPanel({
     >
       <p className="hud-tools-title">{title}</p>
       <p className="layer-meta" data-testid="ledger-panel-lead">
-        One row per natural-capital rent class. Toggle paints where that row
-        applies. Constraints change best use and add no value. Figures are
-        being checked and aren't published yet.
+        One row per resource rent class. Toggle paints where that row applies.
+        Constraints change best use and add no value. Figures are being checked
+        and aren't published yet.
       </p>
 
       {loading && (

@@ -89,12 +89,12 @@ def catalog_layer() -> dict[str, Any]:
         "status": "live",
         "label": "SEPA flood extent",
         "description": (
-            "Medium-likelihood river and coastal flood extents from SEPA Flood Maps. "
-            "Constraint: changes best use, adds no value — not a property-level quote."
+            "Medium-likelihood river and coastal flood extents from SEPA Flood Maps "
+            "(www2.sepa.org.uk/flooddata). Constraint: changes best use, adds no value "
+            "— not a property-level quote."
         ),
         "developer_note": (
-            "SEPA Flood Maps v3.0 present-day OGL download from "
-            "www2.sepa.org.uk/flooddata — ingested to PostGIS "
+            "SEPA Flood Maps v3.0 present-day OGL download ingested to PostGIS "
             "(503 when unloaded). No MapServer or live web services."
         ),
         "endpoint": BBOX_ENDPOINT,

@@ -166,8 +166,15 @@ def platform_catalog() -> dict[str, Any]:
                 "group": "spatial",
                 "status": "live",
                 "label": "Data Zone boundaries",
-                "description": "Small-area Data Zone boundaries (2022). Hover or click for the zone code, name, council, population and dwellings. Not a rent figure.",
-                "developer_note": "Data Zone boundaries 2022 outlines from PostGIS dz_boundaries when loaded (Georgist/Valuation), else SG StatisticalUnits viewport query. Hover/click: code, name, council, population and dwellings. No AGR £ or Surface Rent on the map.",
+                "description": (
+                    "Small-area Data Zone boundaries (2022). Hover or click for the zone "
+                    "code, name, council, population and dwellings. Not a rent figure — "
+                    "no AGR £ on the map."
+                ),
+                "developer_note": (
+                    "Data Zone boundaries 2022 outlines from PostGIS dz_boundaries when "
+                    "loaded (Georgist/Valuation), else SG StatisticalUnits viewport query."
+                ),
                 "endpoint": "/layers/open/data-zones",
                 "licence": "Open Government Licence v3.0",
                 "licence_url": (
@@ -294,8 +301,16 @@ def platform_catalog() -> dict[str, Any]:
                 "group": "spatial",
                 "status": "live",
                 "label": "SEPA CAR licences",
-                "description": "SEPA Controlled Activities Regulations licences for water use. Inventory only — not a rent figure.",
-                "developer_note": "SEPA Controlled Activities Regulations — Simple (MapServer 194) and Registration (195) ingested from Open/SEPA_Reference into PostGIS (`python -m etl.ingest_sepa_car`). OGL confirmed on SEPA Environmental data. API serves PostGIS only (never proxies MapServer). value_tier=market; no £ rent; not surface rent.",
+                "description": (
+                    "SEPA Controlled Activities Regulations licences for water use "
+                    "(Simple 194 and Registration 195). Inventory only — never proxies "
+                    "live map services. No £ rent; not surface rent."
+                ),
+                "developer_note": (
+                    "Ingested from Open/SEPA_Reference MapServer layers 194/195 "
+                    "(`python -m etl.ingest_sepa_car`). API serves PostGIS only "
+                    "(never proxies MapServer). value_tier=market."
+                ),
                 "endpoint": "/layers/open/sepa-car",
                 "licence": "OGL-3.0",
                 "licence_url": OGL_V3_URL,
@@ -475,8 +490,15 @@ def platform_catalog() -> dict[str, Any]:
                 "group": "ownership",
                 "status": "live",
                 "label": "ScotWind / INTOG seabed options",
-                "description": "ScotWind and INTOG offshore wind option areas from Crown Estate Scotland. Option shapes only — separate from surface land rent.",
-                "developer_note": "Crown Estate Scotland ScotWind and INTOG option/award polygons (PostGIS ingest). Evidence tag market. Polygons only — option-fee £ are HOLD (press release; see data/config/scotwind_option_fees.yaml), not layer attributes. Natural capital ledger row 4 (seabed & foreshore) — not a LayersPanel toggle. Separate from surface rent (la-calc) — this overlay never adds value. No £ rent.",
+                "description": (
+                    "ScotWind and INTOG offshore wind option areas from Crown Estate "
+                    "Scotland. Option shapes only — separate from surface rent. "
+                    "Option-fee HOLD — not layer attributes."
+                ),
+                "developer_note": (
+                    "PostGIS ingest. Evidence tag market. Fees config: "
+                    "data/config/scotwind_option_fees.yaml. Ledger row 4."
+                ),
                 "endpoint": "/layers/open/scotwind-intog",
                 "minzoom": 5,
                 "licence": scotwind_source_meta()["licence"],
@@ -522,8 +544,15 @@ def platform_catalog() -> dict[str, Any]:
                 "group": "natural_capital",
                 "status": "live",
                 "label": "CES aquaculture seabed leases",
-                "description": "Aquaculture seabed leases from Crown Estate Scotland. Licence rent evidence — not a title.",
-                "developer_note": "Crown Estate Scotland Spatial Hub aquaculture seabed lease polygons (OGL). Natural capital ledger row 5 (aquaculture) — not a LayersPanel toggle. Natural-capital evidence (value_tier=market): lease attributes/status only — no £ rent or fee on features; overlay never adds to Surface Rent or AGR; not a title. SEPA biomass stays GIS HOLD.",
+                "description": (
+                    "Aquaculture seabed leases from Crown Estate Scotland. Licence rent "
+                    "evidence — not a title. No £ rent; never added to surface rent "
+                    "(ledger row 5)."
+                ),
+                "developer_note": (
+                    "Spatial Hub aquaculture seabed lease polygons (OGL). "
+                    "value_tier=market. SEPA biomass stays GIS HOLD."
+                ),
                 "endpoint": "/layers/open/ces-aquaculture",
                 "licence": "OGL-3.0",
                 "licence_url": OGL_V3_URL,

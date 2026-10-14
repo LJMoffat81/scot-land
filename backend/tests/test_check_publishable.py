@@ -242,3 +242,16 @@ def test_forbidden_public_agr_properties_match_publication_rules():
     assert g.FORBIDDEN_PUBLIC_AGR_PROPERTIES == runtime
     assert "siteRentalPerSqmGbp" in runtime
     assert "vacantFullAgrGbp" in runtime
+
+
+def test_guard_forbids_model_fill_dz2022_in_public_json(tmp_path):
+    """Additive coverage: DZ2022 fill token must not appear in public JSON keys."""
+    g = _guard()
+    assert "model_fill_dz2022" in g.FORBIDDEN_PUBLIC_FILL_TOKENS
+    problems = _problems(tmp_path) if _repo(tmp_path, {
+        "frontend/public/leak.geojson": (
+            '{"type":"FeatureCollection","features":[{"type":"Feature",'
+            '"properties":{"model_fill_dz2022":1},"geometry":null}]}'
+        ),
+    }) is None else None
+    assert any("model_fill_dz2022" in p for p in problems), problems

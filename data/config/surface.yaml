@@ -327,6 +327,37 @@ surface_rent:
     min_share: 0.01
     min_uprn_count: 5
 
+  # DZ2022 empty-zone fill (Georgist signed-off 14 Oct 2026). Internal / blocked / proxy only.
+  # 2011 rent table + NRS SPD "Urban Rural 6 Fold 2022 Lookup.csv" paths are settings
+  # (never committed). Neighbours: data/reference/council_neighbours_2022.csv.
+  dz2022_empty_fill:
+    status: research_estimate
+    publication_status: blocked
+    publish_level: internal
+    value_tier: proxy
+    proxy_tag: model_fill_dz2022
+    class_min_training: 10
+    empty_share_a_max: 0.50
+    measured_share_fully_below: 0.05
+    neighbours_file: data/reference/council_neighbours_2022.csv
+    ur6_lookup_filename: "Urban Rural 6 Fold 2022 Lookup.csv"
+    ur6_lookup_note: "NRS Scottish Postcode Directory geography lookups release 2026/2, OGL v3; path is a setting; never use 8-fold"
+    island_councils: [S12000013, S12000023, S12000027]   # Na h-Eileanan Siar, Orkney, Shetland
+    reconciled:
+      suppressed_n: 723
+      not_in_price_file: [S01007788, S01010462, S01010493, S01011598]  # filled under C
+      zero_dwellings_n: 3
+    holdout:
+      seed: 20261014
+      frac: 0.20
+      coverage_target: 0.80
+      coverage_tol: 0.05
+      bias_abs_max: 0.10
+      run_log: "{valuation_out_dir}/run_log/dz2022_fill_runs.jsonl"
+    note: >
+      Methods A/B/C/D; island group then Scotland-wide same-UR fallback; fill_step on B/C.
+      Scored holdout waits for rent table + UR6 lookup. No public £.
+
   # Output vocabulary (rules 2, 3, 5)
   commons_class: surface
   use_basis: existing_authorised_use

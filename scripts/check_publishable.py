@@ -63,6 +63,11 @@ FORBIDDEN_PUBLIC_AGR_PROPERTIES = frozenset({
     "siteRentalPerSqmGbp",
     "vacantFullAgrGbp",
 })
+# DZ2022 empty-zone fill stays internal / blocked — never in public JSON/GeoJSON keys.
+# Additive coverage only; does not weaken FORBIDDEN_PUBLIC_AGR_PROPERTIES.
+FORBIDDEN_PUBLIC_FILL_TOKENS = frozenset({
+    "model_fill_dz2022",
+})
 JSON_DATA_SUFFIXES = {".json", ".geojson"}
 JSON_SCAN_PREFIXES = ("data/processed/", "frontend/public/")
 # Top-level app segments that look like Dev/QA previews (no hard-coded route list).
@@ -108,16 +113,38 @@ def index_text(path: str) -> str:
 
 
 def forbidden_json_keys(obj: object) -> list[str]:
-    """Return forbidden AGR £ property names found as object keys (any depth)."""
+    """Return forbidden AGR £ / fill-token property names found as object keys (any depth)."""
     found: list[str] = []
     if isinstance(obj, dict):
         for key, value in obj.items():
-            if isinstance(key, str) and key in FORBIDDEN_PUBLIC_AGR_PROPERTIES:
+            if isinstance(key, str) and (
+                key in FORBIDDEN_PUBLIC_AGR_PROPERTIES or key in FORBIDDEN_PUBLIC_FILL_TOKENS
+            ):
                 found.append(key)
             found.extend(forbidden_json_keys(value))
     elif isinstance(obj, list):
         for item in obj:
             found.extend(forbidden_json_keys(item))
+    return found
+
+
+def forbidden_json_fill_values(obj: object) -> list[str]:
+    """Return forbidden fill tokens found as string *values* (any depth).
+
+    Additive coverage for model_fill_dz2022 leaking via tag arrays / string fields
+    in public JSON/GeoJSON — does not weaken existing AGR key rules.
+    """
+    found: list[str] = []
+    if isinstance(obj, dict):
+        for value in obj.values():
+            found.extend(forbidden_json_fill_values(value))
+    elif isinstance(obj, list):
+        for item in obj:
+            found.extend(forbidden_json_fill_values(item))
+    elif isinstance(obj, str):
+        for token in FORBIDDEN_PUBLIC_FILL_TOKENS:
+            if token in obj:
+                found.append(token)
     return found
 
 
@@ -217,6 +244,9 @@ def check(files: list[str]) -> list[str]:
             agr_bad = [c for c in header if c.strip() in FORBIDDEN_PUBLIC_AGR_PROPERTIES]
             if agr_bad:
                 problems.append(f"{f}: forbidden public AGR £ property column(s) {agr_bad}")
+            fill_bad = [c for c in header if c.strip() in FORBIDDEN_PUBLIC_FILL_TOKENS]
+            if fill_bad:
+                problems.append(f"{f}: forbidden public DZ2022 fill token column(s) {fill_bad}")
         # 4. tracked JSON / GeoJSON under data/processed or frontend/public
         if (
             PurePosixPath(f).suffix.lower() in JSON_DATA_SUFFIXES
@@ -229,7 +259,10 @@ def check(files: list[str]) -> list[str]:
                 continue
             agr_keys = sorted(set(forbidden_json_keys(payload)))
             if agr_keys:
-                problems.append(f"{f}: forbidden public AGR £ property key(s) {agr_keys}")
+                problems.append(f"{f}: forbidden public AGR £ / fill property key(s) {agr_keys}")
+            fill_vals = sorted(set(forbidden_json_fill_values(payload)))
+            if fill_vals:
+                problems.append(f"{f}: forbidden public DZ2022 fill token value(s) {fill_vals}")
 
     # 5. discovered preview app routes must actually gate via layout.tsx
     for route in sorted(discover_preview_routes(files)):

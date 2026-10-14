@@ -1,0 +1,13 @@
+dz2011,dz2022,uprn_count,weight,method
+S01013401,S01020870,100,1.0,uprn_point_in_polygon
+S01013402,S01020871,80,0.8,uprn_point_in_polygon
+S01013403,S01020871,20,0.2,uprn_point_in_polygon
+S01013404,S01020872,20,0.2,uprn_point_in_polygon
+S01013405,S01020872,80,0.8,uprn_point_in_polygon
+S01013403,S01020873,50,1.0,uprn_point_in_polygon
+S01013416,S01020002,40,1.0,uprn_point_in_polygon
+S01013406,S01020001,10,1.0,uprn_point_in_polygon
+S01013419,S01020003,20,1.0,uprn_point_in_polygon
+S01010206,S01017360,10,1.0,uprn_point_in_polygon
+S01013421,S01020005,4,0.04,uprn_point_in_polygon
+S01013420,S01020005,96,0.96,uprn_point_in_polygon

@@ -20,7 +20,9 @@ test.describe("SW-020 mobile logo (390×844)", () => {
 
     const header = page.getByTestId("site-nav");
     await assertHeaderTextClear(header, "content site-nav");
-    await assertUnclipped(brand.locator("img"), "brand logo image");
+    const logo = brand.locator("img");
+    await assertUnclipped(logo, "brand logo image");
+    await assertLogoDoesNotCoverText(logo, header, "content brand logo");
   });
 
   test("map header has no overlapping or clipped text", async ({ page }) => {
@@ -28,11 +30,13 @@ test.describe("SW-020 mobile logo (390×844)", () => {
     await page.locator(".maplibregl-canvas").waitFor();
     const brand = page.locator(".hud-brand");
     await expect(brand).toBeVisible();
-    await expect(brand.locator(".hud-wordmark img")).toBeVisible();
+    const logo = brand.locator(".hud-wordmark img");
+    await expect(logo).toBeVisible();
 
     const header = page.locator("header.hud-top");
     await assertHeaderTextClear(header, "map hud-top");
-    await assertUnclipped(brand.locator(".hud-wordmark img"), "map logo image");
+    await assertUnclipped(logo, "map logo image");
+    await assertLogoDoesNotCoverText(logo, header, "map logo");
   });
 });
 
@@ -57,20 +61,37 @@ type Box = { x: number; y: number; width: number; height: number; label: string 
 async function assertHeaderTextClear(header: Locator, label: string) {
   const boxes = await header.evaluate((root) => {
     const out: Box[] = [];
+    const isVisuallyHidden = (el: Element) => {
+      if (el.classList.contains("sr-only")) return true;
+      const style = getComputedStyle(el);
+      if (
+        style.display === "none" ||
+        style.visibility === "hidden" ||
+        Number(style.opacity) === 0
+      ) {
+        return true;
+      }
+      // Classic sr-only / clip pattern (1px box clipped away).
+      if (style.position === "absolute") {
+        const clip = style.clip || "";
+        const clipPath = style.clipPath || "";
+        if (/rect\s*\(/i.test(clip) || clipPath === "inset(50%)") return true;
+        if (
+          parseFloat(style.width) <= 1 &&
+          parseFloat(style.height) <= 1 &&
+          (style.overflow === "hidden" || style.overflowX === "hidden")
+        ) {
+          return true;
+        }
+      }
+      return false;
+    };
     const walk = (node: Node) => {
       if (node.nodeType === Node.TEXT_NODE) {
         const text = (node.textContent || "").replace(/\s+/g, " ").trim();
         if (!text) return;
         const parent = node.parentElement;
-        if (!parent) return;
-        const style = getComputedStyle(parent);
-        if (
-          style.display === "none" ||
-          style.visibility === "hidden" ||
-          Number(style.opacity) === 0
-        ) {
-          return;
-        }
+        if (!parent || isVisuallyHidden(parent)) return;
         const range = document.createRange();
         range.selectNodeContents(node);
         const rect = range.getBoundingClientRect();
@@ -88,6 +109,7 @@ async function assertHeaderTextClear(header: Locator, label: string) {
         const el = node as Element;
         if (el.getAttribute("hidden") !== null) return;
         if (el.getAttribute("aria-hidden") === "true") return;
+        if (isVisuallyHidden(el)) return;
         for (const child of Array.from(el.childNodes)) walk(child);
       }
     };
@@ -131,6 +153,69 @@ async function assertHeaderTextClear(header: Locator, label: string) {
         `${label}: "${a.label}" overlaps "${b.label}"`,
       ).toBe(false);
     }
+  }
+}
+
+async function assertLogoDoesNotCoverText(
+  logo: Locator,
+  header: Locator,
+  label: string,
+) {
+  const logoBox = await logo.boundingBox();
+  expect(logoBox, `${label} bounding box`).toBeTruthy();
+  if (!logoBox) return;
+
+  const textBoxes = await header.evaluate((root) => {
+    const out: Box[] = [];
+    const skip = (el: Element) => {
+      if (el.classList.contains("sr-only")) return true;
+      const style = getComputedStyle(el);
+      return (
+        style.display === "none" ||
+        style.visibility === "hidden" ||
+        Number(style.opacity) === 0
+      );
+    };
+    const walk = (node: Node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = (node.textContent || "").replace(/\s+/g, " ").trim();
+        if (!text) return;
+        const parent = node.parentElement;
+        if (!parent || skip(parent)) return;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const rect = range.getBoundingClientRect();
+        if (rect.width < 1 || rect.height < 1) return;
+        out.push({
+          x: rect.left,
+          y: rect.top,
+          width: rect.width,
+          height: rect.height,
+          label: text.slice(0, 40),
+        });
+        return;
+      }
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as Element;
+        if (el.getAttribute("hidden") !== null) return;
+        if (el.getAttribute("aria-hidden") === "true") return;
+        if (skip(el)) return;
+        for (const child of Array.from(el.childNodes)) walk(child);
+      }
+    };
+    walk(root);
+    return out;
+  });
+
+  for (const text of textBoxes) {
+    const overlapX =
+      logoBox.x < text.x + text.width && logoBox.x + logoBox.width > text.x;
+    const overlapY =
+      logoBox.y < text.y + text.height && logoBox.y + logoBox.height > text.y;
+    expect(
+      overlapX && overlapY,
+      `${label} covers header text "${text.label}"`,
+    ).toBe(false);
   }
 }
 

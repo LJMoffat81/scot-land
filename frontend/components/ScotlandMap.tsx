@@ -1158,7 +1158,11 @@ export default function ScotlandMap() {
         });
       }
     } finally {
-      if (generation === lookupGen.current) setLoading(false);
+      // Always clear search chrome after a pick. `.hud-search.loading` is
+      // `loading || suggesting`; a stale suggest race must not leave the
+      // spinner stuck after the place card is already open.
+      setLoading(false);
+      setSuggesting(false);
     }
   };
 
@@ -1176,6 +1180,10 @@ export default function ScotlandMap() {
       setSuggesting(false);
       return;
     }
+    // Re-check after await: chooseSuggestion bumps suggestGen and must win —
+    // otherwise a stale fetchCapabilities resume sets suggesting and leaves
+    // `.hud-search.loading` stuck (class is loading || suggesting).
+    if (generation !== suggestGen.current) return;
     setSuggesting(true);
     try {
       const response = await apiFetch(`/place?q=${encodeURIComponent(text)}`, {

@@ -366,23 +366,15 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
     await expect(page.locator(".app-shell")).toHaveClass(/place-open/);
     await expect(page.locator(".hud-scotland-job")).toBeHidden();
 
-    // Search spinner should clear once chooseSuggestion reuses lookupGen (no double-bump).
+    // Root-cause check: spinner must clear after suggest pick (not masked).
     await expect(page.locator(".hud-search.loading")).toHaveCount(0, {
-      timeout: 15_000,
+      timeout: 10_000,
     });
-    // Blur so Escape closes the place (not only the suggest list).
-    await page.locator("#place-query").blur();
-    await page.waitForTimeout(200);
 
     // Item 12: restore Find a place intro when the card closes.
-    // Prefer Close on the card (z-index 14 above search); Escape as fallback.
     const close = placeCard.getByRole("button", { name: "Close place card" });
     await expect(close).toBeVisible();
-    try {
-      await close.click({ timeout: 5_000 });
-    } catch {
-      await page.keyboard.press("Escape");
-    }
+    await close.click();
     await expect(placeCard).toHaveCount(0);
     await expect(page.locator(".app-shell")).not.toHaveClass(/place-open/);
     await expect(page.locator(".hud-scotland-job")).toBeVisible();

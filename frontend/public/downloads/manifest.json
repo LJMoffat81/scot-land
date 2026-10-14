@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "updated": "2026-06-08",
+  "note": "Open downloads only. Missing files show as JSON (for developers) on /developers#downloads.",
+  "bundles": [
+    {
+      "id": "vdl",
+      "name": "Vacant and derelict land",
+      "whats_in_it": "Data Zone rollup of vacant and derelict land hectares (OGL inputs). Zone level only — not single sites as a title plan.",
+      "format": "CSV",
+      "licence": "OGL v3.0",
+      "updated": "2026-06-08",
+      "file": "vacant-derelict-land.csv",
+      "bytes": 2244111,
+      "api_anchor": "api-vdl",
+      "href": "/downloads/vacant-derelict-land.csv"
+    },
+    {
+      "id": "ldp",
+      "name": "Planned land use (Local Development Plans)",
+      "whats_in_it": "Sites planned for new homes and other allocated uses. National GeoJSON pack is not published here yet.",
+      "format": "GeoJSON",
+      "licence": "OGL v3.0",
+      "updated": "2026-06-08",
+      "file": null,
+      "bytes": null,
+      "api_anchor": "api-ldp",
+      "href": null
+    },
+    {
+      "id": "dz2022",
+      "name": "Data Zone boundaries (2022)",
+      "whats_in_it": "Scottish Government 2022 Data Zone outlines. Packaged GeoJSON is not published here yet.",
+      "format": "GeoJSON",
+      "licence": "OGL v3.0",
+      "updated": "2026-06-08",
+      "file": null,
+      "bytes": null,
+      "api_anchor": "api-catalog",
+      "href": null
+    },
+    {
+      "id": "crofting",
+      "name": "Crofting and common grazings lists",
+      "whats_in_it": "Crofting Commission Register of Crofts and common grazings tables (no personal names). Packaged CSV is not published here yet.",
+      "format": "CSV",
+      "licence": "OGL v3.0",
+      "updated": "2026-06-08",
+      "file": null,
+      "bytes": null,
+      "api_anchor": "api-crofting",
+      "href": null
+    },
+    {
+      "id": "catalog",
+      "name": "Source catalogue",
+      "whats_in_it": "What is on the map, what is only linked, and what is missing — with licences.",
+      "format": "CSV",
+      "licence": "OGL v3.0",
+      "updated": "2026-06-08",
+      "file": "source-catalogue.csv",
+      "bytes": 1807,
+      "api_anchor": "api-catalog",
+      "href": "/downloads/source-catalogue.csv"
+    }
+  ]
+}

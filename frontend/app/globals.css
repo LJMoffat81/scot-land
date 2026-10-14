@@ -1370,7 +1370,136 @@ input {
   line-height: 1.35;
 }
 
-.data-ledger-page {
+/* Site rewrite PR3 — download cards + API table */
+.download-card-list {
+  list-style: none;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.download-card {
+  margin: 0;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--slrg-navy) 12%, transparent);
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.download-card-name {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.download-card-desc {
+  margin: 0 0 0.55rem;
+  font-size: 0.9rem;
+  color: var(--slrg-muted);
+}
+
+.download-card-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.75rem;
+  margin: 0 0 0.7rem;
+  font-size: 0.82rem;
+}
+
+.download-card-meta dt {
+  margin: 0;
+  color: var(--slrg-muted);
+  font-weight: 600;
+}
+
+.download-card-meta dd {
+  margin: 0.1rem 0 0;
+}
+
+.download-card-action {
+  display: inline-block;
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--slrg-navy);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.download-card-action-json {
+  color: var(--slrg-muted);
+}
+
+.api-table-wrap,
+.checks-table-wrap,
+.sources-table-wrap {
+  overflow-x: auto;
+  margin: 0.75rem 0 1rem;
+}
+
+.api-table,
+.checks-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.api-table th,
+.api-table td,
+.checks-table th,
+.checks-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.55rem 0.45rem;
+  border-bottom: 1px solid var(--line, #d8dee6);
+}
+
+.api-address {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.api-path-code,
+.check-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+.copy-code-btn,
+.run-id-copy {
+  border: 1px solid color-mix(in srgb, var(--slrg-navy) 18%, transparent);
+  background: #fff;
+  color: var(--slrg-navy);
+  border-radius: 8px;
+  font-size: 0.75rem;
+  font-weight: 650;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+}
+
+.run-id-copy {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+  text-align: left;
+}
+
+.check-test-log {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.check-test-log li {
+  margin: 0.35rem 0;
+}
+
+.data-ledger-page,
+.developers-page {
   max-width: 44rem;
 }
 

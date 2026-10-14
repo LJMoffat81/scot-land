@@ -1,0 +1,11 @@
+id,name,what_it_shows,licence,licence_url,status
+inspire_parcels,Registers of Scotland land outlines,The shape of land parcels,OGL v3.0,https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/,on_map
+data_zones_2022,Scottish Government Data Zones (2022),Small statistics areas,OGL v3.0,https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/,on_map
+uk_hpi,UK House Price Index,Average house prices by council,OGL v3.0,https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/,on_map
+vdl_register,Scottish Vacant and Derelict Land Survey,Empty and derelict sites,OGL v3.0,https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/,on_map
+ldp_allocations,Local Development Plans (Spatial Hub / councils),Land set aside for future uses. Edinburgh is missing for now,OGL v3.0,https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/,on_map
+sepa_hydro,SEPA hydropower sites and water licences,Hydro schemes and water use,OGL v3.0,https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/,on_map
+naturescot_sites,"NatureScot protected sites (SSSI, SPA, SAC, NNR)","Nature protection areas. Constraint: changes best use, adds no value",OGL v3.0,https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/,on_map
+lca_hutton,James Hutton Institute Land Capability,How good land is for farming,James Hutton Open Data Licence,https://www.hutton.ac.uk/wp-content/uploads/2024/05/The-James-Hutton-Institute-Open-Data-Licence-download.pdf,on_map
+crofting_register,Crofting Commission registers,Crofts and common grazings (lists only),OGL v3.0,https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/,on_map
+scotlis,ScotLIS,"Official title record (linked, not copied)",linked,,linked

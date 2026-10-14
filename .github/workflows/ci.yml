@@ -99,5 +99,8 @@ jobs:
       - run: npm run test:place-card-hotfix
       - run: npm run test:site-rewrite-pr1
       - run: npm run test:site-rewrite-pr2
+      - run: npm run build:downloads
+      - run: npm run test:site-rewrite-pr3
+      - run: npm run check:developers-links
       - run: npx tsc --noEmit
       - run: npm run build

@@ -1,0 +1,28 @@
+{
+  "source_id": "ros_residential_sales_price",
+  "licence": "OGL-3.0",
+  "publisher": "Registers of Scotland",
+  "source_url": "https://api.data.gov.scot/resource/3d9a31a5-4b62-436a-a537-7d9bbeba1723/download",
+  "source_sha256": "702c9ada0b26dad9904e97f00ea7aa3357e1bf449e724e83292b5265f0549cf2",
+  "source_sha256_expected": "702c9ada0b26dad9904e97f00ea7aa3357e1bf449e724e83292b5265f0549cf2",
+  "source_sha256_match": true,
+  "extract_file": "ros_dz2011_sales_n_2019_2023.csv",
+  "extract_sha256": "37fe46da5e647b29a966bd70713de21ae8514b95dfbe1e95b43a62e060eeeb50",
+  "geography": "2011 Data Zones",
+  "years": [
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+  ],
+  "columns": [
+    "code",
+    "year",
+    "sales_n",
+    "suppressed"
+  ],
+  "note": "Count-only extract for methods PR-1 pooling coverage. No prices/\u00a3. Suppressed=true when Median absent.",
+  "n_rows": 34830,
+  "n_zones": 6966
+}

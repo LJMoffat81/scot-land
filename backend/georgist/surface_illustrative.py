@@ -25,26 +25,106 @@ UR6_NAMES = {1: "Large Urban Areas", 2: "Other Urban Areas", 3: "Accessible Smal
 LABEL = "ILLUSTRATIVE - not a result; internal diagnostic rows, never served"
 LOG = logging.getLogger(__name__)
 
-# Valuation methods alignment v1.2 (R4.7): empty-with-dwellings zones that gain a
-# measured price via pooling. 3y count is recomputed from committed dz2011_prices;
-# 5y count is Valuation's expected figure until local RoS 2019–2020 recompute.
-VALUATION_EMPTY_WITH_DWELLINGS = 727
-VALUATION_GAINED_POOLED_3Y = 557
-VALUATION_GAINED_POOLED_5Y_EXPECTED = 41  # open: needs local RoS; do not invent zone codes
-VALUATION_GAINED_OBSERVED_EXPECTED = 598  # 557 + 41
+# Pre-pooling null-fill baseline (single-year RoS-2023 spine accounting). Post-pooling
+# remaining empty is recomputed from the hash-pinned sales_n extract; config constant
+# update lands in methods M3 (#84 DZ2022 path still documents 727).
 VALUATION_OLD_NULL_DZ_FILL_TARGET_N = 727
+METHODS_PR1_EXTRACT = Path(__file__).resolve().parents[2] / (
+    "data/processed/methods_code_1/pr1/ros_dz2011_sales_n_2019_2023.csv"
+)
+METHODS_PR1_EXTRACT_META = Path(__file__).resolve().parents[2] / (
+    "data/processed/methods_code_1/pr1/ros_dz2011_sales_n_2019_2023.sha256.json"
+)
+METHODS_LOCAL_PCT_RUN = Path(__file__).resolve().parents[2] / (
+    "data/external/methods_runs/pr1_scotland_pct_change.json"
+)
 
 
-def _published_sales_n(row: Mapping, years: Sequence[int]) -> int:
-    """Sum sales_n only for years with a published median (suppressed years contribute 0)."""
+def _load_sales_n_extract(extract_csv: Path | str) -> dict[str, dict[int, dict]]:
+    """{code: {year: {sales_n, suppressed}}} from count-only RoS extract (no £)."""
+    by: dict[str, dict[int, dict]] = {}
+    with Path(extract_csv).open(encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh):
+            code = row["code"].strip()
+            year = int(row["year"])
+            suppressed = str(row.get("suppressed") or "").strip().lower() == "true"
+            sales_raw = str(row.get("sales_n") or "").strip()
+            sales_n = None if suppressed or not sales_raw else int(float(sales_raw))
+            by.setdefault(code, {})[year] = {"sales_n": sales_n, "suppressed": suppressed}
+    return by
+
+
+def _published_sales_n_extract(by_year: Mapping[int, Mapping], years: Sequence[int]) -> int:
+    """Sum sales_n only for non-suppressed published years (never infer suppressed)."""
     total = 0
     for year in years:
-        med = str(row.get(f"dz_med{year}") or "").strip()
-        n_raw = row.get(f"dz_n{year}")
-        if not med or n_raw is None or str(n_raw).strip() == "":
+        cell = by_year.get(int(year))
+        if not cell or cell.get("suppressed") or not cell.get("sales_n"):
             continue
-        total += int(float(n_raw))
+        total += int(cell["sales_n"])
     return total
+
+
+def empty_zone_pooling_coverage_from_ros_extract(
+    extract_csv: Path | str,
+    spine_csv: Path | str,
+    *,
+    latest_year: int = 2023,
+    pool_years: int = 3,
+    pool_years_max: int = 5,
+    n_min: int = 5,
+) -> dict:
+    """R4.7 coverage from hash-pinned RoS sales_n extract + zone spine (no £).
+
+    Empty-with-dwellings = spine DZ2011 minus zero_dwellings, with no published
+    price in ``latest_year`` (suppressed or absent from extract). Then 3y then 5y.
+    """
+    extract_path, spine_path = Path(extract_csv), Path(spine_csv)
+    by_code = _load_sales_n_extract(extract_path)
+    spine = {
+        r["code"]: r
+        for r in csv.DictReader(spine_path.open(encoding="utf-8"))
+        if str(r.get("vintage")) == "2011"
+    }
+    zero = {c for c, r in spine.items() if "zero_dwellings" in (r.get("flags") or "")}
+    absent = {c for c, r in spine.items() if "absent_from_ros_price_file" in (r.get("flags") or "")}
+
+    def is_empty(code: str) -> bool:
+        if code in absent or code not in by_code:
+            return True
+        cell = by_code[code].get(int(latest_year))
+        return cell is None or bool(cell.get("suppressed"))
+
+    empty_with_dwellings = sorted(c for c in spine if c not in zero and is_empty(c))
+    win3 = tuple(range(latest_year - pool_years + 1, latest_year + 1))
+    win5 = tuple(range(latest_year - pool_years_max + 1, latest_year + 1))
+    gained_3y, gained_5y, remaining = [], [], []
+    for code in empty_with_dwellings:
+        years = by_code.get(code, {})
+        if _published_sales_n_extract(years, win3) >= n_min:
+            gained_3y.append(code)
+        elif _published_sales_n_extract(years, win5) >= n_min:
+            gained_5y.append(code)
+        else:
+            remaining.append(code)
+    return {
+        "empty_with_dwellings": len(empty_with_dwellings),
+        "gained_pooled_3y": len(gained_3y),
+        "gained_pooled_5y": len(gained_5y),
+        "gained_observed": len(gained_3y) + len(gained_5y),
+        "remaining_model_fill": len(remaining),
+        "zero_dwellings": len(zero),
+        "absent_from_ros": len(absent),
+        "pool_years": pool_years,
+        "pool_years_max": pool_years_max,
+        "n_min": n_min,
+        "latest_year": latest_year,
+        "gained_pooled_3y_codes": gained_3y,
+        "gained_pooled_5y_codes": gained_5y,
+        "remaining_model_fill_codes": remaining,
+        "null_dz_fill_target_n_old": VALUATION_OLD_NULL_DZ_FILL_TARGET_N,
+        "null_dz_fill_target_n_new": len(remaining),
+    }
 
 
 def empty_zone_pooling_coverage_from_dz_prices(
@@ -55,11 +135,7 @@ def empty_zone_pooling_coverage_from_dz_prices(
     pool_years: int = 3,
     n_min: int = 5,
 ) -> dict:
-    """Coverage from committed dz2011_prices + spine (CI-safe; no raw RoS).
-
-    Counts empty-in-latest-year zones with dwellings that reach n_min over the
-    first pool window. Does **not** invent 5y zone codes — those need local RoS.
-    """
+    """3y-only coverage from committed dz2011_prices + spine (diagnostic)."""
     prices_path, spine_path = Path(prices_csv), Path(spine_csv)
     rows = list(csv.DictReader(prices_path.open(encoding="utf-8")))
     spine = {
@@ -71,19 +147,27 @@ def empty_zone_pooling_coverage_from_dz_prices(
     empty = [r for r in rows if not str(r.get(f"dz_med{latest_year}") or "").strip()]
     empty_with_dwellings = [r for r in empty if r.get("dz2011") not in zero]
     window = tuple(range(latest_year - pool_years + 1, latest_year + 1))
-    gained_3y = [r for r in empty_with_dwellings if _published_sales_n(r, window) >= n_min]
-    still_empty = [r for r in empty_with_dwellings if _published_sales_n(r, window) < n_min]
+
+    def pub_n(row: Mapping) -> int:
+        total = 0
+        for year in window:
+            med = str(row.get(f"dz_med{year}") or "").strip()
+            n_raw = row.get(f"dz_n{year}")
+            if not med or n_raw is None or str(n_raw).strip() == "":
+                continue
+            total += int(float(n_raw))
+        return total
+
+    gained_3y = [r for r in empty_with_dwellings if pub_n(r) >= n_min]
+    still_empty = [r for r in empty_with_dwellings if pub_n(r) < n_min]
     return {
-        "empty_latest_year": len(empty),
-        "zero_dwellings_in_empty": len(empty) - len(empty_with_dwellings),
         "empty_with_dwellings": len(empty_with_dwellings),
         "gained_pooled_3y": len(gained_3y),
         "still_empty_after_3y": len(still_empty),
+        "zero_dwellings_in_empty": len(empty) - len(empty_with_dwellings),
         "pool_years": pool_years,
         "n_min": n_min,
         "latest_year": latest_year,
-        "gained_pooled_3y_codes": sorted(r["dz2011"] for r in gained_3y),
-        "still_empty_after_3y_codes": sorted(r["dz2011"] for r in still_empty),
     }
 
 

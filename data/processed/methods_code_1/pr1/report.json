@@ -12,47 +12,45 @@
   ],
   "scotland_total": {
     "common_zones_n": 6246,
-    "pct_change_common_zones_valuation_expected": 0.96,
+    "pct_change_common_zones_from_local_run": null,
     "pct_change_limit": 2.0,
-    "scotland_total_central_gbp_before": null,
-    "scotland_total_low_gbp_before": null,
-    "scotland_total_high_gbp_before": null,
-    "scotland_total_central_gbp_after": null,
-    "scotland_total_low_gbp_after": null,
-    "scotland_total_high_gbp_after": null,
-    "note": "\u00a3 totals pending local RoS recompute (data.gov.scot download 403 in this agent). Valuation expects ~+0.96% on 6246 common zones; acceptance requires <2%."
+    "note": "Percent move from local ignored residual run only (data/external/methods_runs/pr1_scotland_pct_change.json). No money keys in this committed report. Valuation expects about +0.96 percent (<2)."
   },
   "coverage": {
     "empty_with_dwellings": 727,
-    "gained_pooled_3y_from_committed_dz2011_prices": 557,
-    "gained_pooled_5y_valuation_expected": 41,
-    "gained_observed_valuation_expected": 598,
-    "still_empty_after_3y": 170,
-    "remaining_model_fill_if_5y_holds": 129,
+    "gained_pooled_3y": 557,
+    "gained_pooled_5y": 41,
+    "gained_observed": 598,
+    "remaining_model_fill": 129,
     "zero_dwellings": 3,
-    "old_null_dz_fill_target_n": 727,
-    "new_null_dz_fill_target_n_if_5y_holds": 129
+    "null_dz_fill_target_n_old": 727,
+    "null_dz_fill_target_n_new": 129,
+    "null_dz_fill_target_n_config_update": "deferred_to_M3"
   },
   "zones_moved_over_20pct_by_ur6_class": {
-    "note": "Pending local RoS+HPI residual recompute; not invented.",
-    "by_class": {}
+    "note": "Local residual run only; not in committed report.",
+    "by_class_counts": {}
   },
   "pr84_interaction": {
     "dz2022_fill_on_main": true,
     "dz2022_reconciled_empty_to_fill_n": 727,
-    "surface_dz2011_pooling_recomputes_fill_target": true,
-    "difference": "#84 DZ2022 empty-zone fill keeps RECONCILED_EMPTY_TO_FILL_N=727 on main. PR-1 DZ2011 surface pooling recomputes the null-fill target after multi-year pooling (expected ~129 remaining if Valuation 5y=41 holds). Counts only; no public \u00a3."
+    "surface_post_pooling_remaining": 129,
+    "difference": "#84 keeps DZ2022 empty-fill target 727. PR-1 DZ2011 pooling leaves 129 zones for model fill. Config constant moves in methods M3."
+  },
+  "extract": {
+    "file": "ros_dz2011_sales_n_2019_2023.csv",
+    "licence": "OGL-3.0",
+    "extract_sha256": "37fe46da5e647b29a966bd70713de21ae8514b95dfbe1e95b43a62e060eeeb50",
+    "source_sha256": "702c9ada0b26dad9904e97f00ea7aa3357e1bf449e724e83292b5265f0549cf2",
+    "columns": [
+      "code",
+      "year",
+      "sales_n",
+      "suppressed"
+    ]
   },
   "open_items": [
-    "Local RoS CSV (sha 702c9ada\u2026) recompute for 5y zone codes (Valuation expects 41) \u2014 do not invent.",
-    "Fill scotland_total_*_gbp before/after from full illustrative residual run once RoS+HPI+EPC available.",
-    "Zones by UR6 class that moved >20% after pooling (needs residual run).",
-    "Confirm new null_dz_fill_target_n against live suppressed_all_years after full RoS pool.",
-    "#84 DZ2022 path still documents 727 \u2014 later methods PR may align DZ2022 empty fill with post-pooling counts."
-  ],
-  "data_gaps": {
-    "ros_download": "403 from api.data.gov.scot and admin.data.gov.scot in agent environment",
-    "ros_sha256_expected": "702c9ada0b26dad9904e97f00ea7aa3357e1bf449e724e83292b5265f0549cf2",
-    "committed_3y_source": "data/processed/dz2011_prices.csv + datazones/zone_spine.csv"
-  }
+    "Local residual run for Scotland total percent move (<2%) and UR6 >20% movers \u2014 ignored output only.",
+    "null_dz_fill_target_n config update to post-pooling remaining \u2014 methods M3 (with #84 alignment)."
+  ]
 }

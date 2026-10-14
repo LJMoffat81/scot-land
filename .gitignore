@@ -29,10 +29,11 @@ data/processed/*
 # NOT committed: list them below with a re-pull note instead.
 !data/processed/gis/
 !data/processed/datazones/
-# Methods alignment internal run reports (publish_level=internal in JSON; £ keys guard-listed)
-!data/processed/methods_code_1/
-!data/processed/methods_code_1/**
 SG_UrbanRural_2022.zip
+# Methods PR-1 local £ run output only (never commit). Count-only extracts / % reports
+# under methods_code_1/ are force-added when needed; no *_gbp keys in tracked JSON.
+data/external/out/
+data/external/methods_runs/
 # batch demos
 data/processed/demo_roll.*
 data/processed/roll_*.csv

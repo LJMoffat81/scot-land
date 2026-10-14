@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
+import os
 from pathlib import Path
 
 import pytest
@@ -12,10 +15,27 @@ from georgist import surface_rent as sr
 REPO = Path(__file__).resolve().parents[3]
 DZ_PRICES = REPO / "data" / "processed" / "dz2011_prices.csv"
 ZONE_SPINE = REPO / "data" / "processed" / "datazones" / "zone_spine.csv"
+EXTRACT = si.METHODS_PR1_EXTRACT
+EXTRACT_META = si.METHODS_PR1_EXTRACT_META
+LOCAL_PCT_RUN = si.METHODS_LOCAL_PCT_RUN
 
 
 def _pence(x: float) -> int:
     return int(round(float(x) * 100))
+
+
+def _assert_extract_pinned():
+    assert EXTRACT.is_file(), f"missing RoS sales_n extract {EXTRACT}"
+    assert EXTRACT_META.is_file(), f"missing extract pin {EXTRACT_META}"
+    meta = json.loads(EXTRACT_META.read_text(encoding="utf-8"))
+    digest = hashlib.sha256(EXTRACT.read_bytes()).hexdigest()
+    assert digest == meta["extract_sha256"]
+    assert meta["source_sha256_match"] is True
+    assert meta["licence"] == "OGL-3.0"
+    assert set(meta["columns"]) == {"code", "year", "sales_n", "suppressed"}
+    # No £ columns in the extract
+    header = EXTRACT.read_text(encoding="utf-8").splitlines()[0].lower()
+    assert "gbp" not in header and "price" not in header and "median" not in header and "mean" not in header
 
 
 # --- (a) 3-year pool exact pence + pooled_3y ---------------------------------
@@ -46,10 +66,9 @@ def test_pool_prices_3y_exact_pence_and_pooled_3y_tag():
 
 def test_pool_prices_widens_to_5y_with_oldest_year():
     y = 2023
-    # no published year in y-2..y; one year with 6 sales in y-4
     obs = [
         sr.YearPrice(y - 4, 6, 150_000, 140_000),
-        sr.YearPrice(y - 2, None, None, None),  # suppressed
+        sr.YearPrice(y - 2, None, None, None),
         sr.YearPrice(y - 1, None, None, None),
         sr.YearPrice(y, None, None, None),
     ]
@@ -62,9 +81,8 @@ def test_pool_prices_widens_to_5y_with_oldest_year():
     assert p.evidence_oldest_year == y - 4
     assert "evidence_oldest_year:%d" % (y - 4) in p.tags
     assert p.sales_n == 6
-    # indexed: 150000 * 1.20
     assert _pence(p.price_gbp) == _pence(150_000 * 1.20)
-    assert "evidence_oldest_year_dominant" in p.tags  # 6/6 > 50%
+    assert "evidence_oldest_year_dominant" in p.tags
 
 
 # --- (c) all years suppressed → suppressed_all_years ------------------------
@@ -74,7 +92,7 @@ def test_pool_prices_all_suppressed_then_model_fill_path():
     obs = [
         sr.YearPrice(2019, None, None, None),
         sr.YearPrice(2021, None, None, None),
-        sr.YearPrice(2022, 3, None, None),  # count without mean = suppressed for pooling
+        sr.YearPrice(2022, 3, None, None),
         sr.YearPrice(2023, None, None, None),
     ]
     idx = {y: 1.0 for y in range(2019, 2024)}
@@ -85,7 +103,6 @@ def test_pool_prices_all_suppressed_then_model_fill_path():
     assert p.price_gbp is None and p.sales_n == 0
     assert p.tags == ("suppressed_all_years",)
     assert p.evidence_oldest_year is None
-    # resolve_land_value then takes model fill (never neighbour)
     lv = sr.resolve_land_value(
         dwellings=400, observed=None, sales_n=p.sales_n, model_gbp=40_000,
         n_min=5, n_full=15, shrinkage_k=8,
@@ -111,7 +128,6 @@ def test_pool_prices_several_years_without_index_raises():
 
 def test_evidence_oldest_year_dominant_strictly_over_half():
     idx = {2021: 1.0, 2022: 1.0, 2023: 1.0}
-    # exactly 50%: oldest 5 of 10 → NOT dominant
     half = [
         sr.YearPrice(2021, 5, 100_000, 95_000),
         sr.YearPrice(2023, 5, 110_000, 105_000),
@@ -123,7 +139,6 @@ def test_evidence_oldest_year_dominant_strictly_over_half():
     assert p_half.sales_n == 10 and p_half.evidence_oldest_year == 2021
     assert "evidence_oldest_year_dominant" not in p_half.tags
 
-    # 50%+1: oldest 6 of 11 → IS dominant
     plus = [
         sr.YearPrice(2021, 6, 100_000, 95_000),
         sr.YearPrice(2023, 5, 110_000, 105_000),
@@ -140,7 +155,6 @@ def test_evidence_oldest_year_dominant_strictly_over_half():
 
 
 def test_observed_zone_output_carries_pooling_tags():
-    """Integration-shaped: pool_zone_price + output fields on every observed zone."""
     cfg = sr.load_config()["price"]
     obs = [
         sr.YearPrice(2021, 6, 200_000, 195_000),
@@ -153,16 +167,13 @@ def test_observed_zone_output_carries_pooling_tags():
     )
     assert pooled.price_gbp is not None
     row = {
-        "code": "S01013401",
         "sales_n": pooled.sales_n,
         "proxy_tags": list(pooled.tags),
         "evidence_oldest_year": pooled.evidence_oldest_year,
-        "evidence_years": pooled.years,
     }
     assert "pooled_3y" in row["proxy_tags"] or "pooled_5y" in row["proxy_tags"]
     assert row["evidence_oldest_year"] is not None
     assert any(t.startswith("evidence_oldest_year:") for t in row["proxy_tags"])
-    # pooled sales_n feeds resolve_land_value thresholds
     lv = sr.resolve_land_value(
         dwellings=400,
         observed=sr.residual_land_value(200_000, 100_000),
@@ -172,65 +183,95 @@ def test_observed_zone_output_carries_pooling_tags():
         n_full=int(cfg["n_full"]),
         shrinkage_k=float(cfg["shrinkage_k"]),
     )
-    assert lv.fill_method == "observed_pooled"  # 15 >= n_full
+    assert lv.fill_method == "observed_pooled"
     assert row["sales_n"] == 15
 
 
-# --- Valuation acceptance (committed data + contract) -----------------------
-
-
-def test_valuation_empty_zone_3y_coverage_from_committed_prices():
-    """Of 727 empty-with-dwellings, 557 gain via 3y from committed dz2011_prices."""
-    assert DZ_PRICES.is_file() and ZONE_SPINE.is_file()
-    cov = si.empty_zone_pooling_coverage_from_dz_prices(DZ_PRICES, ZONE_SPINE)
-    assert cov["empty_with_dwellings"] == si.VALUATION_EMPTY_WITH_DWELLINGS
-    assert cov["empty_with_dwellings"] == 727
-    assert cov["gained_pooled_3y"] == si.VALUATION_GAINED_POOLED_3Y
-    assert cov["gained_pooled_3y"] == 557
-    assert cov["still_empty_after_3y"] == 727 - 557
-    assert cov["zero_dwellings_in_empty"] == 3
-
-
-def test_valuation_acceptance_contract_598_and_model_fill_under_135():
-    """Valuation contract: 557+41=598 gained; remaining model-fill < 135.
-
-    The 41 via 5y is Valuation-expected until local RoS 2019–2020 recompute
-    (open item — zone codes not invented here). 3y count is live from committed CSV.
-    """
-    cov = si.empty_zone_pooling_coverage_from_dz_prices(DZ_PRICES, ZONE_SPINE)
-    gained_3y = cov["gained_pooled_3y"]
-    assert gained_3y == 557
-    # Contract arithmetic (do not invent the 41 zone list)
-    assert si.VALUATION_GAINED_POOLED_3Y + si.VALUATION_GAINED_POOLED_5Y_EXPECTED == si.VALUATION_GAINED_OBSERVED_EXPECTED
-    assert 557 + 41 == 598
-    remaining = cov["empty_with_dwellings"] - si.VALUATION_GAINED_OBSERVED_EXPECTED
-    assert remaining == 129
-    assert remaining < 135
-    # Still-empty after 3y must be large enough to contain the expected 41 via 5y
-    assert cov["still_empty_after_3y"] >= si.VALUATION_GAINED_POOLED_5Y_EXPECTED
-
-
-def test_valuation_common_zone_total_move_under_2_pct_contract():
-    """Scotland total on zones that already had a figure moves < 2% (Valuation ~0.96%)."""
-    # Percentage-only contract until local RoS recompute fills report £ totals.
-    valuation_pct_change_common_zones = 0.96
-    assert valuation_pct_change_common_zones < 2.0
-    common_zones_n = 6246
-    assert common_zones_n == 6246
-
-
 def test_suppressed_years_contribute_nothing_to_counts():
-    """Suppressed zone-years never infer counts or prices (R3)."""
     obs = [
-        sr.YearPrice(2021, 10, 100_000, 95_000),  # published
-        sr.YearPrice(2022, 4, None, None),  # count without price → ignored
-        sr.YearPrice(2023, None, None, None),  # fully suppressed
+        sr.YearPrice(2021, 10, 100_000, 95_000),
+        sr.YearPrice(2022, 4, None, None),
+        sr.YearPrice(2023, None, None, None),
     ]
     idx = {2021: 1.0, 2022: 1.0, 2023: 1.0}
     p = sr.pool_prices(
         obs, latest_year=2023, measure="mean", pool_years=3, pool_years_max=5, n_min=5,
         index_factor=idx, index_to_year=2023,
     )
-    assert p.sales_n == 10  # only 2021
+    assert p.sales_n == 10
     assert p.evidence_oldest_year == 2021
     assert _pence(p.price_gbp) == _pence(100_000)
+
+
+# --- Valuation acceptance (computed from pinned RoS extract — can fail) -----
+
+
+def test_ros_sales_n_extract_is_hash_pinned_ogl_no_prices():
+    _assert_extract_pinned()
+
+
+def test_valuation_empty_zone_pooling_from_ros_extract():
+    """Of empty-with-dwellings zones, 3y then 5y gains are computed from the extract."""
+    _assert_extract_pinned()
+    assert ZONE_SPINE.is_file()
+    cov = si.empty_zone_pooling_coverage_from_ros_extract(EXTRACT, ZONE_SPINE)
+    # These assert computed results — wrong extract / logic fails the build.
+    assert cov["empty_with_dwellings"] == 727
+    assert cov["gained_pooled_3y"] == 557
+    assert cov["gained_pooled_5y"] == 41
+    assert cov["gained_observed"] == 598
+    assert cov["gained_pooled_3y"] + cov["gained_pooled_5y"] == cov["gained_observed"]
+    assert cov["remaining_model_fill"] == 129
+    assert cov["remaining_model_fill"] < 135
+    assert cov["null_dz_fill_target_n_old"] == 727
+    assert cov["null_dz_fill_target_n_new"] == cov["remaining_model_fill"]
+    # Zone lists must match counts (ordering tests assert full lists via length + set size)
+    assert len(cov["gained_pooled_3y_codes"]) == cov["gained_pooled_3y"]
+    assert len(cov["gained_pooled_5y_codes"]) == cov["gained_pooled_5y"]
+    assert len(cov["remaining_model_fill_codes"]) == cov["remaining_model_fill"]
+    assert len(set(cov["gained_pooled_5y_codes"])) == 41
+
+
+def test_valuation_3y_matches_committed_dz_prices_cross_check():
+    """3y gain from extract must match the committed dz2011_prices 3y path."""
+    _assert_extract_pinned()
+    from_extract = si.empty_zone_pooling_coverage_from_ros_extract(EXTRACT, ZONE_SPINE)
+    from_prices = si.empty_zone_pooling_coverage_from_dz_prices(DZ_PRICES, ZONE_SPINE)
+    assert from_extract["gained_pooled_3y"] == from_prices["gained_pooled_3y"]
+    assert from_extract["empty_with_dwellings"] == from_prices["empty_with_dwellings"]
+
+
+def test_scotland_total_pct_move_under_2_local_only():
+    """£ / % residual move: local ignored run output only; skipped in CI.
+
+    Reason: full residual before/after needs local RoS means + HPI + EPC rebuild;
+    committed artifacts hold counts/% report only (no *_gbp keys).
+    """
+    if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
+        pytest.skip(
+            "Scotland total £/% move needs local ignored run output "
+            f"({LOCAL_PCT_RUN}); not available in CI (no residual £ in repo)"
+        )
+    if not LOCAL_PCT_RUN.is_file():
+        pytest.skip(
+            f"local run output missing: {LOCAL_PCT_RUN} "
+            "(write pct_change_common_zones from illustrative before/after)"
+        )
+    payload = json.loads(LOCAL_PCT_RUN.read_text(encoding="utf-8"))
+    pct = float(payload["pct_change_common_zones"])
+    assert payload["common_zones_n"] == 6246
+    assert pct < 2.0
+
+
+def test_committed_methods_report_has_no_gbp_keys():
+    report = REPO / "data/processed/methods_code_1/pr1/report.json"
+    assert report.is_file()
+    text = report.read_text(encoding="utf-8")
+    assert "_gbp" not in text
+    assert "£" not in text
+    payload = json.loads(text)
+    assert payload.get("publish_level") == "internal"
+    cov = payload["coverage"]
+    assert cov["gained_pooled_3y"] == 557
+    assert cov["gained_pooled_5y"] == 41
+    assert cov["remaining_model_fill"] == 129

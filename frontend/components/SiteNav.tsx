@@ -29,6 +29,7 @@ export default function SiteNav({
 }: SiteNavProps) {
   const menuId = useId();
   const navRef = useRef<HTMLElement | null>(null);
+  const menuBtnRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -46,7 +47,10 @@ export default function SiteNav({
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key !== "Escape") return;
+      setOpen(false);
+      // UX-03: return focus to the hamburger that opened the menu.
+      menuBtnRef.current?.focus();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -102,6 +106,7 @@ export default function SiteNav({
         />
       ) : null}
       <button
+        ref={menuBtnRef}
         type="button"
         className="site-nav-menu-btn"
         aria-expanded={open}

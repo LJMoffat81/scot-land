@@ -245,7 +245,7 @@ def test_forbidden_public_agr_properties_match_publication_rules():
 
 
 def test_guard_forbids_model_fill_dz2022_in_public_json(tmp_path):
-    """Additive coverage: DZ2022 fill token must not appear in public JSON keys."""
+    """Additive coverage: DZ2022 fill token must not appear in public JSON keys or values."""
     g = _guard()
     assert "model_fill_dz2022" in g.FORBIDDEN_PUBLIC_FILL_TOKENS
     problems = _problems(tmp_path) if _repo(tmp_path, {
@@ -255,3 +255,10 @@ def test_guard_forbids_model_fill_dz2022_in_public_json(tmp_path):
         ),
     }) is None else None
     assert any("model_fill_dz2022" in p for p in problems), problems
+
+    problems_val = _problems(tmp_path / "val") if _repo(tmp_path / "val", {
+        "frontend/public/tags.json": (
+            '{"proxy_tags":["research_estimate","model_fill_dz2022"]}\n'
+        ),
+    }) is None else None
+    assert any("model_fill_dz2022" in p and "value" in p for p in problems_val), problems_val

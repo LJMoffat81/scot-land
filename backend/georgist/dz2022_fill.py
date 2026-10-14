@@ -486,48 +486,37 @@ def resolve_group_model(
 
     if is_island_council(la):
         # Islands: own → island group same class → Scotland-wide same class.
+        # STEP_ISLAND only when the island pool reaches class_min; otherwise continue
+        # to Scotland-wide (never label a still-thin pool as island).
         if len(logs) < class_min:
             for other in sorted(ISLAND_COUNCILS - {la}):
                 extra = by_group.get((other, ur6)) or ()
                 if extra:
                     logs.extend(extra)
                     borrowed.append(f"island:{other}")
-            if len(logs) >= class_min or (logs and any(t.startswith("island:") for t in borrowed)):
-                # Prefer island step when island peers contributed, even if still thin,
-                # before Scotland — but only advance when we gained peers or hit min.
-                if len(logs) >= class_min:
-                    return _fit_one(
-                        la, ur6, logs, fill_step=STEP_ISLAND, borrowed=borrowed
-                    )
-                # keep going to Scotland with island tags retained
-                island_logs = list(logs)
-                island_borrowed = list(borrowed)
-            else:
-                island_logs = list(logs)
-                island_borrowed = list(borrowed)
-        else:
-            island_logs = list(logs)
-            island_borrowed = list(borrowed)
+            if len(logs) >= class_min:
+                return _fit_one(
+                    la, ur6, logs, fill_step=STEP_ISLAND, borrowed=borrowed
+                )
 
-        # Scotland-wide same UR class
+        # Still under class_min after island pooling → Scotland-wide same UR class.
         scot: list[float] = []
-        for (ola, our), vals in by_group.items():
+        for (_ola, our), vals in by_group.items():
             if int(our) == int(ur6):
                 scot.extend(vals)
-        if len(scot) < 1 and len(island_logs) < 1:
-            raise FillError(f"no training logs for island council {la} UR6 {ur6}")
-        use = scot if len(scot) >= class_min or len(scot) >= len(island_logs) else island_logs
-        step = STEP_SCOTLAND if use is scot and len(scot) >= 1 else STEP_ISLAND
-        tags = list(island_borrowed)
-        if step == STEP_SCOTLAND:
-            tags.append(f"scotland_ur6:{ur6}")
+        if len(scot) < 1:
+            raise FillError(
+                f"no training logs for island council {la} UR6 {ur6} "
+                "(island pool still under class_min and Scotland-wide same class empty)"
+            )
+        tags = list(borrowed) + [f"scotland_ur6:{ur6}"]
         return _fit_one(
             la,
             ur6,
-            use if use else island_logs,
-            fill_step=step if use else STEP_ISLAND,
+            scot,
+            fill_step=STEP_SCOTLAND,
             borrowed=tags,
-            scotland_fallback=step == STEP_SCOTLAND,
+            scotland_fallback=True,
         )
 
     # Mainland: own → next UR class → neighbouring council → Scotland-wide same class.
@@ -1005,12 +994,65 @@ def fill_dz2022_empty_zones(
     )
 
 
+def count_reconciled_sources(dz2011_rows: Sequence[Mapping]) -> dict[str, int]:
+    """Count suppressed / not-in-price-file / zero-dwellings on a 2011 inventory."""
+    zero = set(ZERO_DWELLING_CODES)
+    n_zero = 0
+    n_not_in_price = 0
+    n_suppressed = 0
+    for r in dz2011_rows:
+        code = str(r.get("code") or "").strip()
+        if _is_zero_dwellings(r, zero) or code in zero:
+            n_zero += 1
+            continue
+        if code in NOT_IN_PRICE_FILE_CODES or "absent_from_ros_price_file" in str(
+            r.get("flags") or ""
+        ).split(";"):
+            # Reconciled: the 4 C-filled codes (not the zero-dwelling absents).
+            if code in NOT_IN_PRICE_FILE_CODES:
+                n_not_in_price += 1
+            continue
+        if _is_empty_to_fill(r, zero):
+            n_suppressed += 1
+    return {
+        "suppressed_n": n_suppressed,
+        "not_in_price_file_n": n_not_in_price,
+        "zero_dwellings_n": n_zero,
+    }
+
+
+def assert_reconciled_source_counts(dz2011_rows: Sequence[Mapping]) -> None:
+    """Real-run gate: inventory must match reconciled 723 / 4 / 3."""
+    counts = count_reconciled_sources(dz2011_rows)
+    expected = {
+        "suppressed_n": SUPPRESSED_N,
+        "not_in_price_file_n": len(NOT_IN_PRICE_FILE_CODES),
+        "zero_dwellings_n": len(ZERO_DWELLING_CODES),
+    }
+    if counts != expected:
+        raise FillError(
+            f"reconciled source counts {counts} != expected {expected} "
+            "(723 suppressed + 4 not in price file + 3 zero-dwellings)"
+        )
+
+
 def assert_post_fill_gate(
     rows_2011: Sequence[Mapping],
     rows_2022: Sequence[Mapping],
+    *,
+    require_reconciled_counts: bool = False,
+    source_2011: Sequence[Mapping] | None = None,
 ) -> None:
-    """Gate: Scotland total conserved; every 2022 zone rent > 0 except N/A."""
+    """Gate: Scotland total conserved; every 2022 zone rent > 0 except N/A.
+
+    On a real run pass ``require_reconciled_counts=True`` and the original 2011
+    rent-table inventory as ``source_2011`` to assert the signed-off
+    723 suppressed / 4 not-in-price-file / 3 zero-dwellings counts.
+    """
     dz22.assert_scotland_total_conserved(rows_2011, rows_2022, field="measured_rent")
+    if require_reconciled_counts:
+        inventory = source_2011 if source_2011 is not None else rows_2011
+        assert_reconciled_source_counts(inventory)
     for r in rows_2022:
         label = str(r.get("estimate_label") or "")
         fm = str(r.get("fill_method") or "")
@@ -1030,3 +1072,11 @@ def assert_post_fill_gate(
             raise FillError(f"post-fill gate: {r.get('code')} value_tier must stay proxy")
         if PROXY_TAG not in _tags(r):
             raise FillError(f"post-fill gate: {r.get('code')} missing {PROXY_TAG}")
+
+
+def class_min_from_settings(config: Mapping | None = None) -> int:
+    """``dz2022_empty_fill.class_min_training`` from surface.yaml (default 10)."""
+    if config is None:
+        config = sr.load_config()
+    section = config.get("dz2022_empty_fill") or {}
+    return int(section.get("class_min_training", CLASS_MIN_TRAINING))

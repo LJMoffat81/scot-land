@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import csv
+import json
 from pathlib import Path
 
 import pytest
@@ -26,7 +26,19 @@ def neighbours():
     return fill.load_neighbouring_councils()
 
 
-def test_run_guard_refuses_second_scored_run(tmp_path, measured, neighbours):
+def test_spec_hash_requires_real_file():
+    assert ho.SPEC_PATH.is_file()
+    h = ho.spec_hash()
+    assert len(h) == 64
+    with pytest.raises(ho.MissingSpecError, match="no fixed-string fallback"):
+        ho.spec_hash(spec_path="/tmp/missing-dz2022-fill-spec.md")
+
+
+def test_class_min_from_settings_defaults_to_ten():
+    assert fill.class_min_from_settings() == 10
+
+
+def test_run_holdout_preregisters_before_scoring(tmp_path, measured, neighbours):
     log = tmp_path / "run_log" / "dz2022_fill_runs.jsonl"
     r1 = ho.run_holdout(
         measured,
@@ -35,9 +47,34 @@ def test_run_guard_refuses_second_scored_run(tmp_path, measured, neighbours):
         scored=True,
         input_hashes={"rent": "abc"},
         require_preconditions={"ready": True},
+        class_min=3,  # tests only
     )
-    assert r1["run_log_entry"]["scored"] is True
-    assert log.exists()
+    lines = [json.loads(x) for x in log.read_text().splitlines() if x.strip()]
+    assert len(lines) == 2
+    assert lines[0]["phase"] == "preregister"
+    assert lines[0]["metrics"] == {}
+    assert "pass_bands" in lines[0] and lines[0]["pass_bands"]
+    assert lines[0]["spec_sha256"]
+    assert lines[0]["script_sha256"]
+    assert lines[0]["seed"] == ho.DEFAULT_SEED
+    assert lines[1]["phase"] == "result"
+    assert "C" in lines[1]["metrics"]
+    assert r1["preregister_entry"]["phase"] == "preregister"
+    assert r1["run_log_entry"]["phase"] == "result"
+    assert r1["class_min"] == 3
+
+
+def test_run_guard_refuses_second_scored_run(tmp_path, measured, neighbours):
+    log = tmp_path / "run_log" / "dz2022_fill_runs.jsonl"
+    ho.run_holdout(
+        measured,
+        neighbours=neighbours,
+        log_path=log,
+        scored=True,
+        input_hashes={"rent": "abc"},
+        require_preconditions={"ready": True},
+        class_min=3,
+    )
     with pytest.raises(ho.RepeatScoredRunError):
         ho.run_holdout(
             measured,
@@ -45,8 +82,8 @@ def test_run_guard_refuses_second_scored_run(tmp_path, measured, neighbours):
             log_path=log,
             scored=True,
             require_preconditions={"ready": True},
+            class_min=3,
         )
-    # Override with reason is allowed and logged.
     r3 = ho.run_holdout(
         measured,
         neighbours=neighbours,
@@ -55,9 +92,11 @@ def test_run_guard_refuses_second_scored_run(tmp_path, measured, neighbours):
         override=True,
         reason="fixture re-run for CI",
         require_preconditions={"ready": True},
+        class_min=3,
     )
     assert r3["run_log_entry"]["override"] is True
-    assert len(log.read_text().splitlines()) == 2
+    # preregister + result, then override preregister + result
+    assert len(log.read_text().splitlines()) == 4
 
 
 def test_scored_holdout_refuses_missing_preconditions(tmp_path, measured, neighbours):
@@ -71,13 +110,13 @@ def test_scored_holdout_refuses_missing_preconditions(tmp_path, measured, neighb
             neighbours=neighbours,
             log_path=tmp_path / "run_log" / "dz2022_fill_runs.jsonl",
             require_preconditions=pre,
+            class_min=3,
         )
 
 
 def test_fail_path_widens_bands_without_refit(measured, neighbours, tmp_path):
-    # Force a fail by using empty held set metrics path via evaluate_pass with bad coverage.
     c_metrics = {
-        "coverage_p10_p90": 0.50,  # outside 80% ±5
+        "coverage_p10_p90": 0.50,
         "signed_median_log_bias_lowest_sales_decile": 0.0,
         "abs_log_errors": [0.1, 0.2, 0.5],
         "n": 3,
@@ -93,14 +132,12 @@ def test_fail_path_widens_bands_without_refit(measured, neighbours, tmp_path):
     widening = ho.widen_on_fail(decision["fails"], c_metrics, a_metrics)
     assert fill.CLASS_C in widening
     assert widening[fill.CLASS_C] == [0.1, 0.2, 0.5]
-    # Apply widen — central unchanged (no re-fit).
     low, c, high = fill.widen_bands_from_holdout_errors(
         90.0, 100.0, 110.0, abs_log_errors=widening[fill.CLASS_C]
     )
     assert c == 100.0
     assert low < 90.0 or high > 110.0
 
-    # Record widening in run log via register.
     g = ho.FillRunGuard(tmp_path / "dz2022_fill_runs.jsonl")
     entry = g.register(
         spec_sha256="x",
@@ -116,15 +153,14 @@ def test_fail_path_widens_bands_without_refit(measured, neighbours, tmp_path):
 
 
 def test_method_a_bias_path_exact(measured):
-    # With noise-free synthetic mask, pred == actual; coverage should be high.
     m = ho.score_method_a_synthetic(measured, empty_share=0.25, seed=1)
     assert m["n"] == len(measured)
-    assert m["median_abs_log_error"] == pytest.approx(0.0)
-    assert m["coverage_p10_p90"] == pytest.approx(1.0)
+    assert m["median_abs_log_error"] == 0.0
+    assert m["coverage_p10_p90"] == 1.0
 
 
 def test_publishability_guard_no_pound_leak_from_fill_outputs(tmp_path):
-    """Tracked public JSON must not ship model_fill_dz2022 £ payloads."""
+    """Tracked public JSON must not ship model_fill_dz2022 keys or values."""
     import importlib.util
     import os
     import subprocess
@@ -140,7 +176,7 @@ def test_publishability_guard_no_pound_leak_from_fill_outputs(tmp_path):
     leak.parent.mkdir(parents=True)
     leak.write_text(
         '{"type":"FeatureCollection","features":[{"type":"Feature",'
-        '"properties":{"code":"S01020870","model_fill_dz2022":1000},'
+        '"properties":{"code":"S01020870","tags":["model_fill_dz2022"]},'
         '"geometry":null}]}',
         encoding="utf-8",
     )

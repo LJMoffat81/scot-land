@@ -128,6 +128,26 @@ def forbidden_json_keys(obj: object) -> list[str]:
     return found
 
 
+def forbidden_json_fill_values(obj: object) -> list[str]:
+    """Return forbidden fill tokens found as string *values* (any depth).
+
+    Additive coverage for model_fill_dz2022 leaking via tag arrays / string fields
+    in public JSON/GeoJSON — does not weaken existing AGR key rules.
+    """
+    found: list[str] = []
+    if isinstance(obj, dict):
+        for value in obj.values():
+            found.extend(forbidden_json_fill_values(value))
+    elif isinstance(obj, list):
+        for item in obj:
+            found.extend(forbidden_json_fill_values(item))
+    elif isinstance(obj, str):
+        for token in FORBIDDEN_PUBLIC_FILL_TOKENS:
+            if token in obj:
+                found.append(token)
+    return found
+
+
 def strip_ts_comments(text: str) -> str:
     """Remove // and /* */ comments so a commented-out gate does not count."""
     return LINE_COMMENT.sub("", BLOCK_COMMENT.sub("", text))
@@ -240,6 +260,9 @@ def check(files: list[str]) -> list[str]:
             agr_keys = sorted(set(forbidden_json_keys(payload)))
             if agr_keys:
                 problems.append(f"{f}: forbidden public AGR £ / fill property key(s) {agr_keys}")
+            fill_vals = sorted(set(forbidden_json_fill_values(payload)))
+            if fill_vals:
+                problems.append(f"{f}: forbidden public DZ2022 fill token value(s) {fill_vals}")
 
     # 5. discovered preview app routes must actually gate via layout.tsx
     for route in sorted(discover_preview_routes(files)):

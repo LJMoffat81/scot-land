@@ -8,7 +8,6 @@ from pathlib import Path
 import pytest
 
 from georgist import dz2022_fill as fill
-from georgist import surface_dz2022 as dz22
 from georgist import surface_rollup as roll
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "dz2022_fill"
@@ -128,7 +127,7 @@ def test_classification_unaffected_a_b_c_d(filled):
 
 def test_unaffected_pass_through_exact(filled):
     row = next(r for r in filled.rows_2022 if r["code"] == "S01020870")
-    assert row["measured_rent"] == pytest.approx(1000.0)
+    assert row["measured_rent"] == 1000.0
     assert row["estimate_label"] == fill.ESTIMATE_MEASURED
     assert row["publication_status"] == "blocked"
     assert row["value_tier"] == "proxy"
@@ -136,13 +135,12 @@ def test_unaffected_pass_through_exact(filled):
 
 
 def test_class_a_scale_up_exact_and_widen(filled):
-    # S01013402 (measured 2000, weight 1.0) + S01013403 empty 30 UPRNs.
-    # rent/AP of measured × total APs: (2000/70)*100
+    # S01013402 (measured 2000, weight 1.0, 80 UPRNs) + empty 20 UPRNs.
+    # rent/AP of measured × total APs: (2000/80)*100 = 2500 exactly.
     row = next(r for r in filled.rows_2022 if r["code"] == "S01020871")
     assert row["estimate_label"] == fill.ESTIMATE_PARTLY
-    central = (2000.0 / 70) * 100
-    assert row["measured_rent"] == pytest.approx(central)
-    # Range widened by empty_share 0.3
+    assert row["measured_rent"] == 2500.0
+    # Range widened by empty_share 0.2
     assert row["uncertainty_low"] < row["measured_rent"]
     assert row["uncertainty_high"] > row["measured_rent"]
     assert row["fill_method"] == "model_filled"
@@ -185,16 +183,6 @@ def test_class_c_neighbour_or_next_class_borrow(filled):
     }
 
 
-def test_island_group_borrow(filled):
-    row = next(r for r in filled.rows_2022 if r["code"] == "S01020003")
-    assert row["la_code"] == "S12000027"
-    assert row["estimate_label"] == fill.ESTIMATE_FULLY
-    assert row["fill_step"] in {fill.STEP_ISLAND, fill.STEP_SCOTLAND, fill.STEP_OWN}
-    # Shetland empty → borrows Orkney / Western Isles before mainland
-    if row["fill_step"] == fill.STEP_ISLAND:
-        assert any(str(t).startswith("island:") for t in (row.get("borrowed_class") or []))
-
-
 def test_class_d_zero_dwellings_not_applicable(filled):
     row = next(r for r in filled.rows_2022 if r["code"] == "S01017360")
     assert row["estimate_label"] == fill.ESTIMATE_NA
@@ -207,7 +195,162 @@ def test_post_fill_gate_conserved_and_blocked(filled):
     fill.assert_post_fill_gate(filled.rows_2011_for_conservation, filled.rows_2022)
     t11 = sum(float(r["measured_rent"]) for r in filled.rows_2011_for_conservation)
     t22 = sum(float(r["measured_rent"]) for r in filled.rows_2022)
-    assert abs(t11 - t22) <= dz22.PENNY
+    assert t11 == t22
+
+
+def _measured_row(code, la, ur6, rent, dwellings=20, sales_n=10):
+    return {
+        "code": code,
+        "la_code": la,
+        "ur6_class": ur6,
+        "measured_rent": rent,
+        "dwellings": dwellings,
+        "sales_n": sales_n,
+        "fill_method": "observed_pooled",
+    }
+
+
+def test_fill_step_next_ur_class_exactly(neighbours):
+    """Own class thin; adjacent class in same council reaches class_min → next_ur_class."""
+    la = "S12000049"
+    measured = [
+        _measured_row(f"S0101{3200 + i}", la, 1, 200.0 + i, dwellings=20)
+        for i in range(10)
+    ]
+    measured += [_measured_row("S01013250", la, 2, 150.0, dwellings=20)]  # thin own for UR2
+    models = fill.fit_council_ur6_models(
+        measured, neighbours=neighbours, class_min=10, target_keys=[(la, 2)]
+    )
+    assert models[(la, 2)].fill_step == fill.STEP_NEXT_UR
+    assert any(t.startswith("ur6:") for t in models[(la, 2)].borrowed_class)
+
+
+def test_fill_step_neighbouring_council_exactly(neighbours):
+    """Own+adjacent thin; neighbouring council same class fills → neighbouring_council."""
+    # Glasgow UR6=4 thin; Renfrewshire (neighbour of Glasgow) has 10 in UR4.
+    glasgow, renfrew = "S12000049", "S12000038"
+    assert renfrew in neighbours[glasgow]
+    measured = [
+        _measured_row(f"S0101{3300 + i}", renfrew, 4, 180.0 + i, dwellings=20)
+        for i in range(10)
+    ]
+    measured += [_measured_row("S01013350", glasgow, 4, 100.0, dwellings=20)]
+    models = fill.fit_council_ur6_models(
+        measured, neighbours=neighbours, class_min=10, target_keys=[(glasgow, 4)]
+    )
+    assert models[(glasgow, 4)].fill_step == fill.STEP_NEIGHBOUR
+    assert any(t.startswith("council:") for t in models[(glasgow, 4)].borrowed_class)
+
+
+def test_fill_step_island_group_exactly():
+    """Island own thin; island group same class ≥ class_min → island_group (not Scotland)."""
+    neighbours = {}  # islands have no land neighbours
+    shetland, orkney, western = "S12000027", "S12000023", "S12000013"
+    measured = [
+        _measured_row(f"S0101{3400 + i}", orkney, 6, 100.0 + i, dwellings=20)
+        for i in range(5)
+    ]
+    measured += [
+        _measured_row(f"S0101{3410 + i}", western, 6, 110.0 + i, dwellings=20)
+        for i in range(5)
+    ]
+    measured += [_measured_row("S01013420", shetland, 6, 90.0, dwellings=20)]
+    models = fill.fit_council_ur6_models(
+        measured, neighbours=neighbours, class_min=10, target_keys=[(shetland, 6)]
+    )
+    assert models[(shetland, 6)].fill_step == fill.STEP_ISLAND
+    assert models[(shetland, 6)].scotland_fallback is False
+    assert any(str(t).startswith("island:") for t in models[(shetland, 6)].borrowed_class)
+
+
+def test_fill_step_scotland_mainland_exactly(neighbours):
+    """Mainland own/next/neighbour all thin; Scotland-wide same class → scotland_ur_class."""
+    # Target Fife UR5 with no local/neighbour pool; Glasgow has 10 in UR5.
+    fife, glasgow = "S12000047", "S12000049"
+    measured = [
+        _measured_row(f"S0101{3500 + i}", glasgow, 5, 200.0 + i, dwellings=20)
+        for i in range(10)
+    ]
+    measured += [_measured_row("S01013550", fife, 5, 50.0, dwellings=20)]
+    models = fill.fit_council_ur6_models(
+        measured, neighbours=neighbours, class_min=10, target_keys=[(fife, 5)]
+    )
+    assert models[(fife, 5)].fill_step == fill.STEP_SCOTLAND
+    assert models[(fife, 5)].scotland_fallback is True
+
+
+def test_fill_step_scotland_island_when_group_under_min():
+    """Island pool still under 10 → Scotland-wide, never STEP_ISLAND."""
+    neighbours = {}
+    shetland, orkney = "S12000027", "S12000023"
+    # Only 3 island peers — under class_min=10.
+    measured = [
+        _measured_row(f"S0101{3600 + i}", orkney, 6, 100.0 + i, dwellings=20)
+        for i in range(3)
+    ]
+    # Mainland Scotland same class provides the pool.
+    measured += [
+        _measured_row(f"S0101{3610 + i}", "S12000049", 6, 200.0 + i, dwellings=20)
+        for i in range(10)
+    ]
+    measured += [_measured_row("S01013650", shetland, 6, 90.0, dwellings=20)]
+    models = fill.fit_council_ur6_models(
+        measured, neighbours=neighbours, class_min=10, target_keys=[(shetland, 6)]
+    )
+    assert models[(shetland, 6)].fill_step == fill.STEP_SCOTLAND
+    assert models[(shetland, 6)].scotland_fallback is True
+
+
+def test_gate_asserts_723_4_3_on_real_run_inventory():
+    """Real-run gate checks reconciled source counts on the 2011 inventory."""
+    rows = []
+    for i in range(723):
+        rows.append({
+            "code": f"S010{6506 + i:05d}",
+            "fill_method": "model_fill_pending",
+            "measured_rent": None,
+            "dwellings": 50,
+            "flags": "",
+        })
+    for code in sorted(fill.NOT_IN_PRICE_FILE_CODES):
+        rows.append({
+            "code": code,
+            "fill_method": "model_fill_pending",
+            "measured_rent": None,
+            "dwellings": 40,
+            "flags": "absent_from_ros_price_file",
+        })
+    for code in sorted(fill.ZERO_DWELLING_CODES):
+        rows.append({
+            "code": code,
+            "fill_method": "not_applicable",
+            "measured_rent": 0.0,
+            "dwellings": 0,
+            "flags": "zero_dwellings",
+        })
+    assert fill.count_reconciled_sources(rows) == {
+        "suppressed_n": 723,
+        "not_in_price_file_n": 4,
+        "zero_dwellings_n": 3,
+    }
+    fill.assert_reconciled_source_counts(rows)
+    with pytest.raises(fill.FillError, match="723"):
+        fill.assert_reconciled_source_counts(rows[:-1])
+
+    out = [{
+        "code": "S01020870",
+        "vintage": 2022,
+        "measured_rent": 0.0,
+        "estimate_label": fill.ESTIMATE_NA,
+        "fill_method": fill.FILL_METHOD_NA,
+        "publication_status": "blocked",
+        "value_tier": "proxy",
+        "proxy_tags": [fill.PROXY_TAG],
+    }]
+    cons = [{"code": "S01006506", "measured_rent": 0.0}]
+    fill.assert_post_fill_gate(
+        cons, out, require_reconciled_counts=True, source_2011=rows
+    )
 
 
 def test_label_refusal_on_rollup_missing_estimate_label(filled):

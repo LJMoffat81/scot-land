@@ -30,6 +30,7 @@ from layers.cadastral import parcel_source_meta
 from layers.scotwind import OGL_LICENCE_URL as SCOTWIND_LICENCE_URL
 from layers.scotwind import source_meta as scotwind_source_meta
 from layers.vdl import query_point as vdl_at_point
+from spatial.council_names import official_council_name
 from spatial.parcels import lookup_parcel, lookup_parcel_geojson
 from spatial.polygons import lookup_council_boundary
 
@@ -791,19 +792,22 @@ def _resolve_council(
     council_code: str | None,
     council_name: str | None,
 ) -> tuple[str | None, str | None]:
-    """Prefer caller-supplied codes; otherwise open council polygons."""
-    if council_code and council_name:
-        return council_code, council_name
-    try:
-        match = lookup_council_boundary(lat, lng)
-    except FileNotFoundError:
-        return council_code, council_name
-    if match is None:
-        return council_code, council_name
-    return (
-        council_code or match.hpi_code,
-        council_name or match.name,
-    )
+    """Prefer caller-supplied codes; otherwise open council polygons.
+
+    Display names are always canonicalised to the official NRS/SG 32 council
+    area list (fixes HPI aliases and typos such as "City of Ediburgh").
+    """
+    code = council_code
+    name = council_name
+    if not (code and name):
+        try:
+            match = lookup_council_boundary(lat, lng)
+        except FileNotFoundError:
+            match = None
+        if match is not None:
+            code = code or match.hpi_code
+            name = name or match.name
+    return code, official_council_name(code, name)
 
 
 def _data_zone_at(lat: float, lng: float) -> dict[str, Any]:

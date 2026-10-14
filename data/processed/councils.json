@@ -51,7 +51,7 @@
     },
     {
       "code": "S12000033",
-      "name": "City of Aberdeen",
+      "name": "Aberdeen City",
       "centroid": {
         "lat": 57.1497,
         "lng": -2.0943
@@ -65,7 +65,7 @@
     },
     {
       "code": "S12000042",
-      "name": "City of Dundee",
+      "name": "Dundee City",
       "centroid": {
         "lat": 56.462,
         "lng": -2.9707
@@ -93,7 +93,7 @@
     },
     {
       "code": "S12000049",
-      "name": "City of Glasgow",
+      "name": "Glasgow City",
       "centroid": {
         "lat": 55.8642,
         "lng": -4.2518

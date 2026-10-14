@@ -225,7 +225,7 @@ const NFI_FILL = "#1f6b3a";
 const NATIVE_WOODLAND_FILL = "#2d8f4e";
 const LDP_MIN_ZOOM = 8;
 const REPD_MIN_ZOOM = 6;
-/** REPD onshore wind planning-site points (natural capital — MW/status only). */
+/** REPD onshore wind planning-site points (MW/status only). */
 const REPD_ONSHORE_WIND_MIN_ZOOM = 6;
 const CROWN_LEASES_MIN_ZOOM = 5;
 /** CES aquaculture seabed leases — coastal polygons; ledger row 5; no £ rent. */

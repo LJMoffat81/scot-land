@@ -143,6 +143,20 @@
   }
 }
 
+/*
+ * SW-023: desktop place card must leave the bottom-right chrome clear
+ * (basemap tile beside zoom, zoom +/- , attribution (i)).
+ */
+@media (min-width: 901px) {
+  .app-shell.place-open .hud-place.place-card,
+  .app-shell.place-open .place-card-stub {
+    bottom: 9rem;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+}
+
 /* —— Find a place intro collapses when place card is open (all widths) —— */
 @media (min-width: 641px) {
   .app-shell.place-open .hud-scotland-fold {
@@ -265,10 +279,10 @@
 /* —— SW-023: basemap switcher (bottom-right, beside / above zoom) —— */
 .basemap-switcher {
   position: absolute;
-  z-index: 2;
+  z-index: 3;
   /* Desktop: sit left of the MapLibre zoom group (≈29px + 10px margin). */
   right: 3.15rem;
-  bottom: 2.4rem;
+  bottom: 2.55rem;
   width: 64px;
   margin: 0;
   padding: 0;
@@ -283,6 +297,8 @@
   font: inherit;
   color: var(--slrg-text, #0b1e3a);
   line-height: 1.1;
+  /* Keep above map chrome but below the place card (z-index 14). */
+  pointer-events: auto;
 }
 
 .basemap-switcher:focus {
@@ -351,12 +367,18 @@
 /* Mobile: same right column as zoom, stacked above it — clear of (i) + place card. */
 @media (max-width: 900px) {
   .basemap-switcher {
-    right: 0.65rem;
-    bottom: 5.85rem;
+    right: 0.55rem;
+    /* Above zoom + collapsed (i); stays in the right gutter beside the place card. */
+    bottom: 6.1rem;
   }
 
-  /* Widen the right clearance so the 64px tile never clips the place card. */
-  .hud-place {
-    right: 5.15rem;
+  /*
+   * Place card must leave a right gutter for the 64px tile (+ margin).
+   * Beat globals.css `.hud-place { right: 3.35rem }` in the same breakpoint.
+   */
+  .hud-place,
+  .app-shell.place-open .hud-place.place-card,
+  .app-shell.place-open .place-card-stub {
+    right: 5.35rem;
   }
 }

@@ -183,11 +183,13 @@ test.afterEach(() => {
 
 async function openMap(page: Page) {
   await page.goto("/");
+  // React chrome (basemap tile) is independent of MapLibre tile load.
+  await page.getByTestId("basemap-switcher").waitFor({ state: "attached" });
   await page.locator(".maplibregl-canvas").waitFor();
   await page.locator(".maplibregl-ctrl-attrib").waitFor();
   await page.locator(".maplibregl-ctrl-zoom-in").waitFor();
   await page.locator(".maplibregl-ctrl-zoom-out").waitFor();
-  await page.getByTestId("basemap-switcher").waitFor();
+  await expect(page.getByTestId("basemap-switcher")).toBeVisible();
 }
 
 async function openPlaceCard(page: Page) {
@@ -196,6 +198,14 @@ async function openPlaceCard(page: Page) {
   await page.locator(".hud-search-go").click();
   const card = page.locator("aside.place-card-stub, aside.place-card").first();
   await expect(card).toBeVisible({ timeout: 45_000 });
+  // Wait for place-open layout (desktop bottom clearance / mobile right gutter).
+  await expect(page.locator(".app-shell.place-open")).toBeVisible();
+  await expect
+    .poll(async () => {
+      const box = await card.boundingBox();
+      return box ? Math.round(box.height) : 0;
+    })
+    .toBeGreaterThan(40);
   return card;
 }
 

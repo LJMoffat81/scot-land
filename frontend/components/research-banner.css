@@ -1,0 +1,83 @@
+/**
+ * SW-016 — research banner mobile strip (≤768px).
+ * Kept beside ResearchBanner so chrome PRs (#88 map-chrome) stay separate.
+ */
+
+.research-banner-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.research-banner-chevron {
+  flex-shrink: 0;
+  color: var(--slrg-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  padding-top: 0.05rem;
+}
+
+@media (max-width: 768px) {
+  /* Sit under the HUD header — clears burger + search (both in .hud-top). */
+  .research-banner-map {
+    top: calc(var(--hud-height, 7.5rem) + 0.25rem);
+    left: 0.55rem;
+    right: 0.55rem;
+    transform: none;
+    width: auto;
+    max-width: none;
+    z-index: 3;
+  }
+
+  .research-banner-map.research-banner-strip {
+    margin: 0;
+    padding: 0.4rem 0.65rem;
+    border-radius: 10px;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    max-height: min(42dvh, 16rem);
+    overflow: auto;
+  }
+
+  .research-banner-strip:not(.research-banner-expanded) {
+    max-height: none;
+    overflow: hidden;
+  }
+
+  .research-banner-strip:not(.research-banner-expanded) .research-banner-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .research-banner-page.research-banner-strip {
+    margin: 0 0 0.75rem;
+    padding: 0.45rem 0.7rem;
+    align-items: center;
+  }
+
+  .research-banner-page.research-banner-strip:not(.research-banner-expanded)
+    .research-banner-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Keep expanded notice clear of the bottom-anchored place card. */
+  .app-shell.place-open .research-banner-map.research-banner-strip {
+    z-index: 3;
+    max-height: min(28dvh, 11rem);
+  }
+}

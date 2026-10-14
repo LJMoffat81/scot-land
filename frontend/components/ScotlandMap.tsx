@@ -1259,6 +1259,16 @@ export default function ScotlandMap() {
       style: "https://tiles.openfreemap.org/styles/positron",
       center: [-4.2, 57.5],
       zoom: 5.7,
+      // Map footer is one line; legal credits live behind the (i) control.
+      // OS / OpenFreeMap credits stay from the style + layers — add the rest here.
+      attributionControl: {
+        compact: true,
+        customAttribution: [
+          "Contains Royal Mail data © Royal Mail copyright and database right 2026",
+          "Source: Office for National Statistics licensed under the Open Government Licence v.3.0",
+          "No data provider endorses this site.",
+        ],
+      },
     });
 
     map.addControl(

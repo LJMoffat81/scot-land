@@ -90,6 +90,19 @@ assert.match(
   /searchParams\.get\("moved"\) === "1"/,
 );
 
+// —— Map (i) attribution carries RM / ONS / endorsement (footer stays one line) ——
+const scotlandMap = readSrc("components/ScotlandMap.tsx");
+assert.match(scotlandMap, /attributionControl/);
+assert.match(scotlandMap, /customAttribution/);
+assert.match(scotlandMap, /Royal Mail data/);
+assert.match(scotlandMap, /Office for National Statistics/);
+assert.match(scotlandMap, /No data provider endorses this site/);
+assert.doesNotMatch(
+  stamp,
+  /Royal Mail data/,
+  "map one-line footer must not re-list Royal Mail (lives in (i))",
+);
+
 // —— Item 5: mobile attribution fold + compact footer ——
 assert.match(chrome, /maplibregl-ctrl-attrib-inner/);
 assert.match(chrome, /maplibregl-compact-show/);

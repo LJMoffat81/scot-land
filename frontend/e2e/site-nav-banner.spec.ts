@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const ROUTES: Array<{ path: string; current: string }> = [
   { path: "/", current: "Map" },
@@ -7,6 +7,43 @@ const ROUTES: Array<{ path: string; current: string }> = [
   { path: "/data", current: "Data & sources" },
   { path: "/developers", current: "Downloads & API" },
 ];
+
+/** Collect console errors / pageerror for every test (data-page.spec.ts pattern). */
+const consoleErrors: string[] = [];
+
+test.beforeEach(async ({ page }) => {
+  consoleErrors.length = 0;
+  page.on("console", (msg) => {
+    if (msg.type() === "error") {
+      consoleErrors.push(msg.text());
+    }
+  });
+  page.on("pageerror", (err) => {
+    consoleErrors.push(String(err));
+  });
+});
+
+test.afterEach(() => {
+  expect(
+    consoleErrors,
+    `console errors:\n${consoleErrors.join("\n")}`,
+  ).toEqual([]);
+});
+
+async function openAttributionIfCollapsed(page: Page) {
+  const attrib = page.locator(".maplibregl-ctrl-attrib");
+  const collapsed = await attrib.evaluate((el) => {
+    const compact = el.classList.contains("maplibregl-compact");
+    const shown = el.classList.contains("maplibregl-compact-show");
+    const inner = el.querySelector(".maplibregl-ctrl-attrib-inner");
+    if (!inner) return false;
+    const style = getComputedStyle(inner);
+    const hidden = style.display === "none" || style.visibility === "hidden";
+    return (compact && !shown) || hidden;
+  });
+  if (!collapsed) return;
+  await page.locator(".maplibregl-ctrl-attrib-button").click({ timeout: 10_000 });
+}
 
 test.describe("site nav + research banner (rewrite PR1)", () => {
   test.use({ viewport: { width: 1100, height: 800 } });
@@ -255,6 +292,13 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
     // Intro collapses while the card is open.
     await expect(page.locator(".app-shell")).toHaveClass(/place-open/);
     await expect(page.locator(".hud-scotland-job")).toBeHidden();
+
+    // Item 12: restore Find a place intro when the card closes.
+    await page.getByRole("button", { name: "Close place card" }).click();
+    await expect(page.getByTestId("place-card")).toHaveCount(0);
+    await expect(page.locator(".app-shell")).not.toHaveClass(/place-open/);
+    await expect(page.locator(".hud-scotland-job")).toBeVisible();
+    await expect(page.locator(".hud-scotland-job")).toHaveText("Find a place");
   });
 });
 
@@ -349,5 +393,64 @@ test.describe("site-watch PR A — map footer + mobile banner", () => {
     }
     await input.fill("EH1");
     await expect(input).toHaveValue("EH1");
+  });
+
+  test("map (i) attribution includes Royal Mail, ONS and endorsement", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1100, height: 800 });
+    await page.goto("/");
+    await page.locator(".maplibregl-canvas").waitFor();
+    await page.locator(".maplibregl-ctrl-attrib").waitFor();
+    await openAttributionIfCollapsed(page);
+    const attrib = page.locator(".maplibregl-ctrl-attrib");
+    await expect(attrib).toContainText("Royal Mail");
+    await expect(attrib).toContainText("Office for National Statistics");
+    await expect(attrib).toContainText("No data provider endorses this site");
+    // One-line footer unchanged.
+    await expect(page.getByTestId("map-footer-line")).toHaveText(
+      "Research estimate · Open data · Sources and licences",
+    );
+  });
+});
+
+test.describe("site-watch PR A — chrome nits", () => {
+  test("390x844 footer + collapsed attribution ≤ ~10% height", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    await page.locator(".maplibregl-canvas").waitFor();
+    await page.locator(".maplibregl-ctrl-attrib").waitFor();
+    const footer = page.getByTestId("map-stamp-footer");
+    const attrib = page.locator(".maplibregl-ctrl-attrib");
+    await expect(footer).toBeVisible();
+    await expect(attrib).toBeVisible();
+    // Collapsed by default on mobile (no compact-show).
+    await expect(attrib).not.toHaveClass(/maplibregl-compact-show/);
+    const footerBox = await footer.boundingBox();
+    const attribBox = await attrib.boundingBox();
+    expect(footerBox && attribBox).toBeTruthy();
+    if (footerBox && attribBox) {
+      const used = footerBox.height + attribBox.height;
+      expect(used).toBeLessThanOrEqual(844 * 0.1 + 8);
+    }
+  });
+
+  test("Layers button sits top-right at 1280", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/");
+    await page.locator(".maplibregl-canvas").waitFor();
+    const layers = page.getByTestId("hud-layers-btn");
+    const brand = page.locator(".hud-brand");
+    await expect(layers).toBeVisible();
+    const layersBox = await layers.boundingBox();
+    const brandBox = await brand.boundingBox();
+    expect(layersBox && brandBox).toBeTruthy();
+    if (layersBox && brandBox) {
+      expect(layersBox.x).toBeGreaterThan(brandBox.x + brandBox.width);
+      expect(layersBox.x + layersBox.width).toBeGreaterThan(1280 * 0.7);
+      expect(layersBox.y).toBeLessThan(120);
+    }
   });
 });

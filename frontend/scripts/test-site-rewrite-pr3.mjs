@@ -3,7 +3,7 @@
  * Run: npm run test:site-rewrite-pr3
  */
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -14,9 +14,9 @@ function readSrc(relPath) {
   return readFileSync(join(frontendRoot, relPath), "utf8");
 }
 
-const {
-  formatDownloadBytes,
-} = await import(pathToFileURL(join(frontendRoot, "lib/downloadManifest.ts")).href);
+const { formatDownloadBytes } = await import(
+  pathToFileURL(join(frontendRoot, "lib/downloadManifest.ts")).href
+);
 
 assert.equal(formatDownloadBytes(null), "—");
 assert.equal(formatDownloadBytes(512), "512 B");
@@ -25,38 +25,73 @@ assert.match(formatDownloadBytes(2_500_000), /MB/);
 
 // --- Item 5: manifest + files ---
 const downloadsDir = join(frontendRoot, "public/downloads");
-assert.ok(existsSync(downloadsDir), "public/downloads missing — run build-download-bundles");
+assert.ok(
+  existsSync(downloadsDir),
+  "public/downloads missing — run build-download-bundles",
+);
 const manifest = JSON.parse(
   readFileSync(join(downloadsDir, "manifest.json"), "utf8"),
 );
 assert.equal(manifest.version, 1);
 assert.ok(Array.isArray(manifest.bundles));
-assert.equal(manifest.bundles.length, 5);
 
-const expectedIds = ["vdl", "ldp", "dz2022", "crofting", "catalog"];
+const expectedIds = [
+  "vdl-dz2022",
+  "vdl-dz2011",
+  "ldp",
+  "dz2022",
+  "crofting",
+  "catalog",
+];
 assert.deepEqual(
   manifest.bundles.map((b) => b.id),
   expectedIds,
 );
+
+// DZ2022 is the main VDL pack (first)
+assert.equal(manifest.bundles[0].id, "vdl-dz2022");
+assert.equal(manifest.bundles[0].updated, "2022");
+assert.equal(manifest.bundles[1].id, "vdl-dz2011");
+assert.equal(manifest.bundles[1].updated, "2011");
+
+// No hard-coded site-rewrite placeholder date
+assert.notEqual(manifest.updated, "2026-06-08");
+for (const bundle of manifest.bundles) {
+  assert.notEqual(
+    bundle.updated,
+    "2026-06-08",
+    `${bundle.id} updated must be a real vintage, not 2026-06-08`,
+  );
+}
 
 for (const bundle of manifest.bundles) {
   assert.ok(bundle.name);
   assert.ok(bundle.format);
   assert.ok(bundle.licence);
   assert.ok(bundle.api_anchor);
+  assert.ok(bundle.updated);
   if (bundle.file) {
     assert.ok(bundle.href?.startsWith("/downloads/"));
     const filePath = join(downloadsDir, bundle.file);
     assert.ok(existsSync(filePath), `missing ${bundle.file}`);
     assert.equal(statSync(filePath).size, bundle.bytes);
+    if (bundle.file.endsWith(".csv")) {
+      const header = readFileSync(filePath, "utf8").split(/\r?\n/, 1)[0];
+      assert.match(header, /estimate_label/);
+      assert.match(header, /licence_attribution/);
+    }
   } else {
     assert.equal(bundle.href, null);
   }
 }
 
 assert.ok(
-  manifest.bundles.some((b) => b.id === "vdl" && b.file),
-  "VDL CSV should be packaged when rollup exists",
+  manifest.bundles.some((b) => b.id === "vdl-dz2022" && b.file),
+  "VDL DZ2022 CSV should be packaged when rollup exists",
+);
+assert.ok(
+  manifest.bundles.some((b) => b.id === "vdl-dz2011" && b.file),
+  "VDL DZ2011 CSV should be packaged when rollup exists",
 );
 assert.ok(
   manifest.bundles.some((b) => b.id === "catalog" && b.file),
@@ -66,6 +101,11 @@ assert.ok(
   manifest.bundles.some((b) => b.id === "ldp" && !b.file),
   "LDP GeoJSON missing → JSON (for developers)",
 );
+assert.equal(
+  existsSync(join(downloadsDir, "vacant-derelict-land.csv")),
+  false,
+  "combined vacant-derelict-land.csv must be removed",
+);
 
 const catalogue = readFileSync(
   join(downloadsDir, "source-catalogue.csv"),
@@ -73,6 +113,35 @@ const catalogue = readFileSync(
 );
 assert.equal(catalogue.includes("£"), false);
 assert.equal(/agr_plot|rent_per_sqm|site_capital/i.test(catalogue), false);
+assert.match(
+  catalogue,
+  /Contains OS data © Crown copyright and database right 2026/,
+);
+assert.match(catalogue, /Registers of Scotland/);
+const inspireLine = catalogue
+  .split(/\r?\n/)
+  .find((line) => line.startsWith("inspire_parcels,"));
+assert.ok(inspireLine);
+assert.match(inspireLine, /Registers of Scotland/);
+assert.match(
+  inspireLine,
+  /Contains OS data © Crown copyright and database right 2026/,
+);
+
+const vdl2022 = readFileSync(
+  join(downloadsDir, "vacant-derelict-land-dz2022.csv"),
+  "utf8",
+);
+assert.match(vdl2022, /estimate_label/);
+assert.match(vdl2022, /licence_attribution/);
+assert.match(vdl2022, /Scottish Vacant and Derelict Land Survey 2025/);
+assert.equal(vdl2022.includes("£"), false);
+// All data rows are vintage 2022
+const vdlRows = vdl2022.trim().split(/\r?\n/).slice(1);
+assert.ok(vdlRows.length > 0);
+for (const row of vdlRows.slice(0, 20)) {
+  assert.match(row, /,2022,/);
+}
 
 // --- Item 5: Content-Disposition headers in next.config ---
 const nextConfig = readSrc("next.config.ts");
@@ -93,7 +162,6 @@ assert.match(developers, /Full API reference/);
 assert.match(developers, /Technical checks/);
 assert.match(developers, /Source code/);
 
-// Item 4: each /api/*.json address appears once (API table only).
 const apiPaths = [
   "/api/place.json?pc=EH1+1YZ",
   "/api/catalog.json",
@@ -109,7 +177,6 @@ for (const path of apiPaths) {
   assert.equal(count, 1, `${path} must appear exactly once on developers page`);
 }
 
-// Downloads section must not list GET /api/*.json as separate download links.
 const downloadsSection = developers.slice(
   developers.indexOf('id="downloads"'),
   developers.indexOf('id="api"'),
@@ -117,11 +184,12 @@ const downloadsSection = developers.slice(
 assert.doesNotMatch(downloadsSection, /href=\{?["'`]\/api\//);
 assert.doesNotMatch(downloadsSection, /GET \/api\//);
 
-// Item 3: layers bbox is code, not an <a href="/layers...">
 assert.doesNotMatch(developers, /<a[^>]+href=["']\/layers/);
-assert.match(developers, /<code className="api-path-code">\{LAYERS_BBOX\}<\/code>/);
+assert.match(
+  developers,
+  /<code className="api-path-code">\{LAYERS_BBOX\}<\/code>/,
+);
 
-// --- Checks page: no fake "Pre-registered test log" link ---
 const checks = readSrc("app/developers/checks/page.tsx");
 assert.doesNotMatch(checks, /Pre-registered test log/);
 assert.match(checks, /Known issue/);

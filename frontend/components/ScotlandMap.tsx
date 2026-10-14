@@ -863,28 +863,34 @@ export default function ScotlandMap() {
       setPlaceLoading(true);
       try {
         if (!knownCode) {
-          const data = await apiJson<{
-            code?: string;
-            name?: string;
-            vintage?: number;
-          }>(
-            `/layers/context/data-zones/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
-            { cache: "no-store" },
-          );
-          if (gen !== lookupGen.current) return;
-          const code = data.code?.trim() || null;
-          const name = data.name?.trim() || null;
-          setPlaceStub((prev) =>
-            prev && prev.lat === lat && prev.lng === lng
-              ? {
-                  ...prev,
-                  dataZoneCode: code,
-                  dataZoneName: name,
-                  dataZoneVintage:
-                    typeof data.vintage === "number" ? data.vintage : null,
-                }
-              : prev,
-          );
+          try {
+            const data = await apiJson<{
+              code?: string;
+              name?: string;
+              vintage?: number;
+            }>(
+              `/layers/context/data-zones/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+              { cache: "no-store" },
+            );
+            if (gen !== lookupGen.current) return;
+            const code = data.code?.trim() || null;
+            const name = data.name?.trim() || null;
+            setPlaceStub((prev) =>
+              prev && prev.lat === lat && prev.lng === lng
+                ? {
+                    ...prev,
+                    dataZoneCode: code,
+                    dataZoneName: name,
+                    dataZoneVintage:
+                      typeof data.vintage === "number" ? data.vintage : null,
+                  }
+                : prev,
+            );
+          } catch {
+            // Sea / outside Scotland (404 no_data_zone_at_point) or boundaries
+            // unavailable: still load place_card_v1 so miss/unavailable is honest
+            // and the UI can show one plain line instead of No-data rows.
+          }
         }
         // Designer place card (place_card_v1) — ownership / sources; no £.
         const card = await fetchPlaceCard({

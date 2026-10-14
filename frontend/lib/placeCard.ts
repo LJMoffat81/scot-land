@@ -33,6 +33,20 @@ export const PLACE_CARD_HOLDER_COPY =
 export const PLACE_CARD_SCOTLIS_LABEL =
   "Check the official title record on ScotLIS";
 
+/**
+ * Sea / outside Scotland map click — one plain line (site-watch D3).
+ * Same visitor copy as visitorFacingError / geocode outside-Scotland.
+ */
+export const PLACE_CARD_OUT_OF_SCOTLAND_LINE =
+  "That point is outside Scotland. Search a Scottish postcode or click the map.";
+
+/** True when the place has no Scottish data zone (e.g. at sea). */
+export function isPlaceCardSeaMiss(
+  zone: { status?: string | null } | null | undefined,
+): boolean {
+  return zone?.status === "miss";
+}
+
 export type PlaceRentTag = "market" | "proxy" | "shadow";
 
 export type PlaceValueStatus = "coming_soon" | "in_progress";

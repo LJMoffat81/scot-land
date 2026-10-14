@@ -27,6 +27,7 @@
     "test:site-watch-pr-b": "node scripts/test-site-watch-pr-b.mjs",
     "test:site-watch-pr-c": "node scripts/test-site-watch-pr-c.mjs",
     "test:methodology-nits": "node --experimental-strip-types scripts/test-methodology-nits.mjs",
+    "test:site-watch-d3-sea-click": "node --experimental-strip-types scripts/test-site-watch-d3-sea-click.mjs",
     "test:prereview-rent-groups": "node --experimental-strip-types scripts/test-prereview-rent-groups.mjs",
     "check:developers-links": "node scripts/check-developers-links.mjs"
   },

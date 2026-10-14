@@ -188,7 +188,7 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
 
     await page.getByTestId("layer-toggle-agr_value").click();
     await expect(page.getByTestId("layer-unavailable-agr_value")).toContainText(
-      /not on the public map|yield calibration|tax scenarios/i,
+      /not on the public map|tax scenarios/i,
     );
 
     await expect(page.getByTestId("layers-panel")).not.toContainText(

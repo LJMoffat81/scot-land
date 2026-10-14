@@ -15,7 +15,8 @@
     "test:forbidden-agr-properties": "node scripts/test-forbidden-agr-properties.mjs",
     "test:quality-tags": "node scripts/test-quality-tags.mjs",
     "test:layer-licence-credits": "node scripts/test-layer-licence-credits.mjs",
-    "test:place-card-hotfix": "node --experimental-strip-types scripts/test-place-card-hotfix.mjs"
+    "test:place-card-hotfix": "node --experimental-strip-types scripts/test-place-card-hotfix.mjs",
+    "test:site-rewrite-pr1": "node --experimental-strip-types scripts/test-site-rewrite-pr1.mjs"
   },
   "dependencies": {
     "@fontsource-variable/mona-sans": "^5.3.0",

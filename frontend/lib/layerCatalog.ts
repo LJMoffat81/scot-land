@@ -77,7 +77,7 @@ export const LAYER_ATTRIBUTION: Record<
 > = {
   agr_value: {
     source: "Scot-LAND residual AGR (SLRG methodology)",
-    licence: "Research estimate — not a rates bill; plot £ not public yet",
+    licence: "Research estimate — land rent figures are not published yet",
   },
   boundaries: {
     source: "Registers of Scotland INSPIRE Index Polygons",
@@ -86,7 +86,7 @@ export const LAYER_ATTRIBUTION: Record<
   },
   cell_grid: {
     source: "Scot-LAND squares 3×3 m grid (internal AGR)",
-    licence: "Not published on the public map until yield calibration",
+    licence: "Not published on the public map yet",
   },
   data_zones: {
     source: "Scottish Government Data Zone boundaries 2011",
@@ -289,7 +289,7 @@ export const LAYER_ATTRIBUTION: Record<
 };
 
 export const WITHHELD_PUBLIC_MESSAGE =
-  "Not on the public map yet. Modelled plot Annual Ground Rent and Scot-LAND squares stay internal until yield calibration. No public tax scenarios.";
+  "Not on the public map yet. Modelled plot Annual Ground Rent and Scot-LAND squares stay internal. No public tax scenarios.";
 
 export function layerSource(layer: CatalogLayer): string {
   const fallback = LAYER_ATTRIBUTION[layer.id];

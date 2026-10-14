@@ -14,31 +14,9 @@ function readSrc(relPath) {
   return readFileSync(join(frontendRoot, relPath), "utf8");
 }
 
-/**
- * Mirror of preferDz2022 / dataZoneFieldLabel — kept in lockstep with
- * frontend/lib/placeCard.ts (asserted via source checks below).
- */
-function preferDz2022(zone) {
-  if (!zone) return null;
-  const zones = zone.zones ?? [];
-  const dz2022 = zones.find((z) => z.vintage === 2022);
-  if (dz2022) {
-    return {
-      ...zone,
-      status: "ok",
-      code: dz2022.code,
-      name: dz2022.name ?? zone.name,
-      vintage: 2022,
-    };
-  }
-  return zone;
-}
-
-function dataZoneFieldLabel(vintage) {
-  if (vintage === 2022) return "Data zone (2022)";
-  if (vintage === 2011) return "Data zone (2011)";
-  return "Data zone";
-}
+const { preferDz2022, dataZoneFieldLabel } = await import(
+  pathToFileURL(join(frontendRoot, "lib/placeCardDz.ts")).href
+);
 
 // --- 1. Aquaculture tag shadow → proxy; fisheries stays market ---
 {
@@ -65,13 +43,18 @@ function dataZoneFieldLabel(vintage) {
   );
   assert.match(
     placeCardSrc,
-    /export function preferDz2022/,
-    "preferDz2022 must remain exported",
+    /export \{ dataZoneFieldLabel, preferDz2022 \} from "\.\/placeCardDz"/,
+    "preferDz2022 and dataZoneFieldLabel must remain re-exported from placeCard",
   );
   assert.match(
-    placeCardSrc,
+    readSrc("lib/placeCardDz.ts"),
+    /export function preferDz2022/,
+    "preferDz2022 must live in placeCardDz",
+  );
+  assert.match(
+    readSrc("lib/placeCardDz.ts"),
     /export function dataZoneFieldLabel/,
-    "dataZoneFieldLabel must be exported for the place-card heading",
+    "dataZoneFieldLabel must live in placeCardDz",
   );
   assert.match(
     placeCardSrc,
@@ -82,6 +65,11 @@ function dataZoneFieldLabel(vintage) {
     placeCardSrc,
     /defaultConstraints\(rest\.vacant_or_derelict\)/,
     "empty API constraints must not be replaced with defaultConstraints",
+  );
+  assert.doesNotMatch(
+    placeCardSrc,
+    /export function defaultConstraints/,
+    "unused defaultConstraints export must be removed",
   );
 
   const withDz2022 = preferDz2022({

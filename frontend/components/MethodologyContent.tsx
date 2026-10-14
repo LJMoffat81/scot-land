@@ -2,7 +2,10 @@ import ConfidenceTag, {
   type ConfidenceTagKind,
 } from "@/components/ConfidenceTag";
 import { EVIDENCE_TAG_GLOSS } from "@/components/EvidenceTagLegend";
+import HashRedirect from "@/components/HashRedirect";
 import QualityTag from "@/components/QualityTag";
+import ResearchBanner from "@/components/ResearchBanner";
+import SiteNav from "@/components/SiteNav";
 import { allLayerLicenceCredits } from "@/lib/layerLicenceCredits";
 import { LEDGER_FIXTURE_CONSTRAINTS, LEDGER_FIXTURE_ROWS } from "@/lib/ledger";
 import { QUALITY_TAGS, QUALITY_TAG_GLOSS } from "@/lib/qualityTag";
@@ -54,32 +57,19 @@ const LOOKUP_OGL =
 export default function MethodologyContent() {
   return (
     <main className="methodology-page" data-testid="methodology-page">
-      <p className="meta" style={{ marginBottom: "0.5rem" }}>
-        <a href="/">Map</a>
-        {" · "}
-        <a href="/data">Data</a>
-        {" · "}
-        <a href="/mission">Mission</a>
-        {" · "}
-        <a href="/methodology" aria-current="page">
-          Methodology
-        </a>
-        {" · "}
-        <a href="/downloads">Downloads</a>
-        {" · "}
-        <a href="/open-api">Public API</a>
-      </p>
-      <h1>Methodology</h1>
-      <p className="downloads-note" data-testid="experimental-not-official">
-        Research estimate, not an official valuation or bill. Figures pending
-        sign-off. For now, figures are published at Data Zone level only, not
-        for individual parcels, plots or addresses. Open data only at launch;
-        paid sources may be added later, each clearly tagged; paid data never
+      <HashRedirect fromHash="why" to="/about#why" />
+      <SiteNav current="how" />
+      <h1>How it works</h1>
+      <ResearchBanner />
+      <p data-testid="experimental-not-official">
+        For now, figures are published at Data Zone level only, not for
+        individual parcels, plots or addresses. Open data only at launch; paid
+        sources may be added later, each clearly tagged; paid data never
         republished.
       </p>
       <p>
-        Purpose and who the site is for: <a href="/mission">Mission</a>. Raw
-        datasets and licences: <a href="/data">Data</a>.
+        Purpose and who the site is for: <a href="/about">About</a>. Raw
+        datasets and licences: <a href="/data">Data &amp; sources</a>.
       </p>
       <p>
         <a href="#agr">What AGR is</a>
@@ -250,8 +240,8 @@ export default function MethodologyContent() {
         <p>
           Every layer shows its licence in the legend on the map. The table
           below lists the catalog attribution lines. More detail and downloads
-          live under <a href="/data">Data</a>,{" "}
-          <a href="/downloads">Downloads</a> and the{" "}
+          live under <a href="/data">Data &amp; sources</a>,{" "}
+          <a href="/developers">Downloads &amp; API</a> and the{" "}
           <a href={MINTLIFY.mapLayers} target="_blank" rel="noreferrer">
             map layer guide
           </a>
@@ -322,11 +312,11 @@ export default function MethodologyContent() {
       <section id="validation">
         <h2>Validation</h2>
         <p>
-          Figures stay internal until economic rules and yield calibration are
-          signed off. The Valuation and Georgist bots check figures; the GIS bot
-          checks every source and licence; CI must pass before merge.
-          Publication grain remains: For now, figures are published at Data Zone
-          level only, not for individual parcels, plots or addresses.
+          Figures stay internal until the economic rules are signed off. The
+          Valuation and Georgist bots check figures; the GIS bot checks every
+          source and licence. Publication grain remains: For now, figures are
+          published at Data Zone level only, not for individual parcels, plots
+          or addresses.
         </p>
         <p>
           API honesty rules (gaps as HTTP 503, never silent placeholders):{" "}
@@ -364,7 +354,7 @@ export default function MethodologyContent() {
       <p>
         <a href="/">Back to map</a>
         {" · "}
-        <a href="/mission">Mission</a>
+        <a href="/about">About</a>
       </p>
     </main>
   );

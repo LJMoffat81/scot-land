@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import PlaceHectareStack from "@/components/PlaceHectareStack";
+import ResearchBanner from "@/components/ResearchBanner";
+import SiteNav from "@/components/SiteNav";
 import { visitorFacingError } from "@/lib/api";
 import {
   fetchPlaceStack,
@@ -11,24 +13,6 @@ import {
   PLACE_STACK_FIXTURE,
   type PlaceHectareStackPayload,
 } from "@/lib/placeStack";
-
-function PlaceNav() {
-  return (
-    <p className="downloads-nav">
-      <a href="/">Map</a>
-      {" · "}
-      <a href="/data">Data</a>
-      {" · "}
-      <a href="/mission">Mission</a>
-      {" · "}
-      <a href="/methodology">Methodology</a>
-      {" · "}
-      <a href="/place" aria-current="page">
-        Place
-      </a>
-    </p>
-  );
-}
 
 /**
  * Full place page — per-hectare Natural capital stack (FRONTEND_IA §4).
@@ -89,7 +73,8 @@ function PlacePageInner() {
 
   return (
     <main className="downloads-page place-stack-page" data-testid="place-page">
-      <PlaceNav />
+      <SiteNav current="map" />
+      <ResearchBanner />
       <PlaceHectareStack data={data} isLoading={loading} error={error} />
     </main>
   );
@@ -99,7 +84,11 @@ export default function PlacePage() {
   return (
     <Suspense
       fallback={
-        <main className="downloads-page place-stack-page">Loading…</main>
+        <main className="downloads-page place-stack-page">
+          <SiteNav current="map" />
+          <ResearchBanner />
+          Loading…
+        </main>
       }
     >
       <PlacePageInner />

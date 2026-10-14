@@ -5,7 +5,6 @@ import {
   PLACE_CARD_CONSTRAINT_LABEL,
   PLACE_CARD_FIGURES_CHECKED,
   PLACE_CARD_HOW_WE_VALUE_LABEL,
-  PLACE_CARD_RESEARCH_DISCLAIMER,
   dataZoneFieldLabel,
   sanitizePlaceCard,
   valueStatusLabel,
@@ -393,21 +392,12 @@ export function PlaceCard({
               </ul>
             ) : (
               <p className="place-card-meta">
-                <a href="/mission">Mission</a>
+                <a href="/about">About</a>
                 {" · "}
                 <a href="/methodology">{PLACE_CARD_HOW_WE_VALUE_LABEL}</a>
               </p>
             )}
           </section>
-
-          <p
-            className="place-card-disclaimer"
-            data-testid="place-card-disclaimer"
-          >
-            {PLACE_CARD_RESEARCH_DISCLAIMER.charAt(0).toUpperCase() +
-              PLACE_CARD_RESEARCH_DISCLAIMER.slice(1)}
-            .
-          </p>
         </div>
       ) : null}
 

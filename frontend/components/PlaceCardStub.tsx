@@ -3,7 +3,6 @@
 import PlaceCard from "@/components/PlaceCard";
 import {
   defaultAgrRows,
-  defaultConstraints,
   scotLandSquareReference,
   type PlaceCardPayload,
 } from "@/lib/placeCard";
@@ -60,15 +59,15 @@ export default function PlaceCardStub({
       intermediate_zone: { status: "no_data", name: null, note: "No data" },
       square_reference: scotLandSquareReference(place.lat, place.lng),
       agr_rows: defaultAgrRows(),
-      constraints: defaultConstraints(false),
+      constraints: [],
       holder: {
         status: "private_not_shown",
         label: "private, not shown",
       },
       layers: [],
       links: [
-        { id: "mission", label: "Mission", url: "/mission" },
-        { id: "methodology", label: "Methodology", url: "/methodology" },
+        { id: "about", label: "About", url: "/about" },
+        { id: "methodology", label: "How it works", url: "/methodology" },
       ],
     } satisfies PlaceCardPayload);
 

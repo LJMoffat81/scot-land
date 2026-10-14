@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Place — per-hectare ledger stack",
+  title: "Place | Scot-LAND",
   description:
-    "Natural capital per-hectare stack for a Data Zone. Figures are being checked and aren't published yet — research estimate, not a rates bill.",
+    "Natural capital per-hectare stack for a Data Zone. Research estimate — land rent figures are not published yet.",
 };
 
 export default function PlaceLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return children;
 }

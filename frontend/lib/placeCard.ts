@@ -4,6 +4,9 @@
  */
 
 import { apiJson } from "./api";
+import { preferDz2022, type PlaceDataZoneVintage } from "./placeCardDz";
+
+export { dataZoneFieldLabel, preferDz2022 } from "./placeCardDz";
 
 /** Public figures withheld — keep exact wording. */
 export const PLACE_CARD_FIGURES_CHECKED =
@@ -42,20 +45,7 @@ export type PlaceLink = {
   url: string;
 };
 
-export type PlaceDataZone = {
-  status: "ok" | "miss" | "unavailable" | string;
-  code?: string | null;
-  name?: string | null;
-  vintage?: number | null;
-  zones?: Array<{
-    code: string;
-    vintage: number;
-    name?: string | null;
-    on_boundary?: boolean;
-  }>;
-  note?: string | null;
-  reasons?: string[];
-};
+export type PlaceDataZone = PlaceDataZoneVintage;
 
 export type PlaceIntermediateZone = {
   status: "ok" | "no_data" | string;
@@ -208,44 +198,6 @@ export function defaultAgrRows(): PlaceAgrRow[] {
   ];
 }
 
-/**
- * Constraints listed when they apply (or when status is unknown for honesty).
- * Flood, SSSI, crofting are the redesign focus.
- */
-export function defaultConstraints(
-  vacantOrDerelict?: boolean,
-): PlaceConstraintRow[] {
-  return [
-    {
-      id: "flood",
-      label: "Flood",
-      applies: null,
-      note: "No data",
-    },
-    {
-      id: "sssi",
-      label: "SSSI",
-      applies: null,
-      note: "No data",
-    },
-    {
-      id: "crofting",
-      label: "Crofting",
-      applies: null,
-      note: "No data",
-    },
-    ...(vacantOrDerelict
-      ? [
-          {
-            id: "vdl",
-            label: "Vacant and derelict land",
-            applies: true as boolean | null,
-          },
-        ]
-      : []),
-  ];
-}
-
 export function deriveHolder(card: PlaceCardPayload): PlaceHolder {
   if (card.holder) return card.holder;
   const community = card.community_ownership;
@@ -271,35 +223,6 @@ export function deriveHolder(card: PlaceCardPayload): PlaceHolder {
     label: "private, not shown",
     note: "Owner details from public records only.",
   };
-}
-
-/**
- * Prefer a real DZ2022 entry from `zones[]` when present.
- * Never invent vintage 2022 — keep API vintage (2011 / null) otherwise.
- */
-export function preferDz2022(zone: PlaceDataZone | null | undefined): PlaceDataZone | null {
-  if (!zone) return null;
-  const zones = zone.zones ?? [];
-  const dz2022 = zones.find((z) => z.vintage === 2022);
-  if (dz2022) {
-    return {
-      ...zone,
-      status: "ok",
-      code: dz2022.code,
-      name: dz2022.name ?? zone.name,
-      vintage: 2022,
-    };
-  }
-  return zone;
-}
-
-/** Place-card Data Zone field heading — never label an S01 2011 code as 2022. */
-export function dataZoneFieldLabel(
-  vintage: number | null | undefined,
-): string {
-  if (vintage === 2022) return "Data zone (2022)";
-  if (vintage === 2011) return "Data zone (2011)";
-  return "Data zone";
 }
 
 /** Demo fixture for internal preview / e2e — DZ2022 (not 2011). */

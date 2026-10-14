@@ -62,6 +62,16 @@ FORBIDDEN_PUBLIC_AGR_PROPERTIES = frozenset({
     # camelCase aliases used by legacy roll / vdl-councils builders
     "siteRentalPerSqmGbp",
     "vacantFullAgrGbp",
+    # Methods alignment £ totals — never in tracked public JSON (additive; local run output only)
+    "scotland_total_central_gbp",
+    "scotland_total_low_gbp",
+    "scotland_total_high_gbp",
+    "scotland_total_central_gbp_before",
+    "scotland_total_low_gbp_before",
+    "scotland_total_high_gbp_before",
+    "scotland_total_central_gbp_after",
+    "scotland_total_low_gbp_after",
+    "scotland_total_high_gbp_after",
 })
 # DZ2022 empty-zone fill stays internal / blocked — never in public JSON/GeoJSON keys.
 # Additive coverage only; does not weaken FORBIDDEN_PUBLIC_AGR_PROPERTIES.

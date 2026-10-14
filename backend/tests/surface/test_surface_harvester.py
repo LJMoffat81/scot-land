@@ -101,3 +101,36 @@ def test_uk_hpi_loader_and_points(tmp_path):
     _hpi_csv(short, months=range(1, 12))
     with pytest.raises(ValueError):  # an incomplete base year is refused, never filled
         sh.council_hpi_points(sh.load_uk_hpi(short, expected_sha256=None), base_year=2023, target_month="2025-04")
+
+
+def _hpi_multi_year_csv(path, years=(2021, 2022, 2023), target=True):
+    """SYNTHETIC multi-year UK HPI: index rises 100 → 105 → 110 by year; Apr-2025 = 110."""
+    cols = ["Date", "RegionName", "AreaCode", "AveragePrice", "Index"]
+    for t in ("Detached", "SemiDetached", "Terraced", "Flat"):
+        cols += [f"{t}Price", f"{t}Index"]
+    rows = []
+    for year in years:
+        idx = 100.0 + 5.0 * (year - 2021)
+        for m in range(1, 13):
+            rows.append([f"01/{m:02d}/{year}", "SYNTHETIC council", "S12999999", 200000, idx,
+                         400000, idx, 250000, idx, 180000, idx, 120000, idx])
+    if target:
+        rows.append(["01/04/2025", "SYNTHETIC council", "S12999999", 220000, 110.0,
+                     440000, 110.0, 270000, 110.0, 190000, 110.0, 130000, 110.0])
+    pd.DataFrame(rows, columns=cols).to_csv(path, index=False)
+
+
+def test_pooling_index_factors_type_weighted(tmp_path):
+    p = tmp_path / "hpi_years_SYNTHETIC.csv"
+    _hpi_multi_year_csv(p)
+    df = sh.load_uk_hpi(p, expected_sha256=None, licence="synthetic-test-only", synthetic=True)
+    annual = sh.council_annual_hpi(df, [2021, 2022, 2023])
+    factors = sh.pooling_index_factors(
+        annual["S12999999"], index_to_year=2023, type_mix=None, years=[2021, 2022, 2023],
+    )
+    # all-dwellings: 110/100, 110/105, 110/110
+    assert round(factors[2021], 6) == round(110 / 100, 6)
+    assert round(factors[2022], 6) == round(110 / 105, 6)
+    assert factors[2023] == 1.0
+    with pytest.raises(KeyError):
+        sh.pooling_index_factors(annual["S12999999"], index_to_year=2023, type_mix=None, years=[2020])

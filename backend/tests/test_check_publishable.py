@@ -234,6 +234,30 @@ def test_guard_json_scan_skips_code_outside_data_prefixes(tmp_path):
     assert _problems(tmp_path) == []
 
 
+def test_guard_methods_money_keys_forbidden_even_in_methods_report(tmp_path):
+    """No exemption: methods_code report.json must not carry *_gbp keys (even null)."""
+    g = _guard()
+    assert "scotland_total_central_gbp_before" in g.FORBIDDEN_PUBLIC_AGR_PROPERTIES
+    assert "scotland_total_central_gbp_after" in g.FORBIDDEN_PUBLIC_AGR_PROPERTIES
+    assert not hasattr(g, "METHODS_INTERNAL_REPORT")
+    problems = _problems(tmp_path) if _repo(tmp_path, {
+        "data/processed/methods_code_1/pr1/report.json": (
+            '{"publish_level":"internal",'
+            '"scotland_total_central_gbp_before":null,'
+            '"scotland_total_central_gbp_after":1}\n'
+        ),
+    }) is None else None
+    assert any("scotland_total_central_gbp" in p for p in problems), problems
+
+
+def test_guard_methods_money_keys_forbidden_on_public_processed_json(tmp_path):
+    """New methods £ keys remain forbidden on ordinary public processed JSON."""
+    problems = _problems(tmp_path) if _repo(tmp_path, {
+        "data/processed/other/a.json": '{"scotland_total_central_gbp_after":1}\n',
+    }) is None else None
+    assert any("scotland_total_central_gbp_after" in p for p in problems), problems
+
+
 def test_forbidden_public_agr_properties_match_publication_rules():
     """stdlib guard list stays in lock-step with georgist.publication_rules."""
     from georgist.publication_rules import FORBIDDEN_PUBLIC_AGR_PROPERTIES as runtime
@@ -242,6 +266,15 @@ def test_forbidden_public_agr_properties_match_publication_rules():
     assert g.FORBIDDEN_PUBLIC_AGR_PROPERTIES == runtime
     assert "siteRentalPerSqmGbp" in runtime
     assert "vacantFullAgrGbp" in runtime
+    assert "scotland_total_central_gbp_before" in runtime
+    assert "scotland_total_central_gbp_after" in runtime
+    # All nine methods £ keys kept on the forbidden list
+    methods_keys = {
+        "scotland_total_central_gbp", "scotland_total_low_gbp", "scotland_total_high_gbp",
+        "scotland_total_central_gbp_before", "scotland_total_low_gbp_before", "scotland_total_high_gbp_before",
+        "scotland_total_central_gbp_after", "scotland_total_low_gbp_after", "scotland_total_high_gbp_after",
+    }
+    assert methods_keys <= set(runtime)
 
 
 def test_guard_forbids_model_fill_dz2022_in_public_json(tmp_path):

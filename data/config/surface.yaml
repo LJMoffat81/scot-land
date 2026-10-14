@@ -281,18 +281,22 @@ surface_rent:
   class_min_zones: 150
 
   # Land-value model fill for suppressed / absent Data Zones (Wealth Engine internal).
-  # Target count 727 = 724 RoS-2023 suppressed + 6 absent − 3 zero-dwellings (spine facts).
-  # Research estimates only — not official valuations; does not change public modelled £ publication.
+  # Pre-pooling spine count 727 = 724 RoS-2023 single-year suppressed + 6 absent − 3 zero-dwellings.
+  # Methods PR-1 recomputes remaining empty after 3y+5y pooling (R4.7) in the run log / report
+  # (count-only). Config constant stays 727 until methods M3 updates it alongside #84 DZ2022
+  # RECONCILED_EMPTY_TO_FILL_N. Research estimates only — not official valuations.
   model_fill:
     status: research_estimate
     delta: 1.0                    # ASSUMPTION: log(L + δ) target offset
     drivers: []                   # optional allowed drivers (empty = class intercept / FE only)
-    null_dz_fill_target_n: 727
+    null_dz_fill_target_n: 727    # pre-pooling baseline; post-pooling figure moves in M3
     publication: internal_calibration_only
     note: >
       Fills null residential Data Zones via per-UR6-class log-linear prediction.
       Never copies a neighbour. Thin classes borrow adjacent-class training rows
       (tag borrowed_class). Leave yield.central / yield.band (v3 calibration) untouched.
+      PR-1 logs recomputed remaining-empty after pooling; null_dz_fill_target_n config
+      update is deferred to methods M3.
 
   drivers:
     allowed:

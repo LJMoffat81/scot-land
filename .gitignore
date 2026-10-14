@@ -30,6 +30,10 @@ data/processed/*
 !data/processed/gis/
 !data/processed/datazones/
 SG_UrbanRural_2022.zip
+# Methods PR-1 local £ run output only (never commit). Count-only extracts / % reports
+# under methods_code_1/ are force-added when needed; no *_gbp keys in tracked JSON.
+data/external/out/
+data/external/methods_runs/
 # batch demos
 data/processed/demo_roll.*
 data/processed/roll_*.csv

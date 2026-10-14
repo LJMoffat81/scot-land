@@ -313,6 +313,7 @@ class PooledPrice:
     measure: str
     tags: tuple[str, ...]
     evidence_year: int | None = None  # sales year the pooled price is expressed in (latest RoS year, or index_to_year)
+    evidence_oldest_year: int | None = None  # oldest published year that contributed to the pool
 
 
 def _measure_value(obs: YearPrice, measure: str) -> float | None:
@@ -343,6 +344,11 @@ def pool_prices(
     For the MEAN this is exact: Σ n·mean / Σ n is the pooled mean. With
     `index_factor`, prices are expressed in `index_to_year` (required);
     otherwise in `latest_year`, and every pooled year must equal it.
+
+    Suppressed zone-years (missing measure or sales_n) contribute nothing — never
+    inferred. Tags (values unchanged): pooled_Ny; evidence_oldest_year:<yyyy>;
+    evidence_oldest_year_dominant when the oldest year's sales are strictly more
+    than half the pooled total (not at exactly 50%).
     """
     if index_factor is not None and index_to_year is None:
         raise ValueError("index_to_year is required with index_factor (rules 2: stated evidence_year)")
@@ -350,7 +356,7 @@ def pool_prices(
     for window in (pool_years, pool_years_max):
         first = latest_year - window + 1
         total_n, weighted = 0, 0.0
-        used: list[int] = []
+        used_n: dict[int, int] = {}
         for obs in observations:
             if not (first <= obs.year <= latest_year):
                 continue
@@ -365,15 +371,24 @@ def pool_prices(
                 factor = float(index_factor[obs.year])
             else:
                 raise KeyError(f"no index factor for {obs.year}")
-            total_n += int(obs.sales_n)
-            weighted += int(obs.sales_n) * value * factor
-            used.append(obs.year)
+            n = int(obs.sales_n)
+            total_n += n
+            weighted += n * value * factor
+            used_n[int(obs.year)] = used_n.get(int(obs.year), 0) + n
         if total_n >= n_min:
-            tags = [f"pooled_{window}y"]
-            if measure == "median" and len(used) > 1:
+            used_years = sorted(used_n)
+            oldest = used_years[0]
+            tags = [f"pooled_{window}y", f"evidence_oldest_year:{oldest}"]
+            # Strictly > 50%: exactly half does NOT dominate (R3).
+            if used_n[oldest] * 2 > total_n:
+                tags.append("evidence_oldest_year_dominant")
+            if measure == "median" and len(used_years) > 1:
                 tags.append("pooled_median_approx")
-            return PooledPrice(weighted / total_n, total_n, f"{min(used)}-{max(used)}", measure, tuple(tags), evidence_year)
-    return PooledPrice(None, 0, None, measure, ("suppressed_all_years",), evidence_year)
+            return PooledPrice(
+                weighted / total_n, total_n, f"{min(used_years)}-{max(used_years)}",
+                measure, tuple(tags), evidence_year, oldest,
+            )
+    return PooledPrice(None, 0, None, measure, ("suppressed_all_years",), evidence_year, None)
 
 
 def price_skew_flag(mean_gbp: float | None, median_gbp: float | None, sales_n: int, skew_cfg: Mapping) -> tuple[float | None, bool]:

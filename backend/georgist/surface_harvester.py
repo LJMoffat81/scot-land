@@ -19,6 +19,7 @@ import re
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Mapping, Sequence
 
 import pandas as pd
 
@@ -321,6 +322,96 @@ def council_hpi_points(hpi: pd.DataFrame, *, base_year: int, target_month: str) 
             target_index={t: float(tgt[f"index_{t}"].iloc[0]) for t in types if tgt[f"index_{t}"].notna().all()},
             base_price={t: float(base[f"price_{t}"].mean()) for t in types if base[f"price_{t}"].notna().all()},
         )
+    return out
+
+
+def council_annual_hpi(hpi: pd.DataFrame, years: Sequence[int]) -> dict[str, dict[int, dict[str, float]]]:
+    """{council_code: {year: {index_<type>, price_<type>}}} annual means.
+
+    Each year must have all 12 monthly rows; missing months raise (never filled).
+    Used for within-RoS pooling index factors (sale year → index_to_year).
+    """
+    years = sorted({int(y) for y in years})
+    types = list(_HPI_TYPES)
+    out: dict[str, dict[int, dict[str, float]]] = {}
+    for code, g in hpi.groupby("council_code"):
+        by_year: dict[int, dict[str, float]] = {}
+        for year in years:
+            rows = g[g["date"].dt.year == year]
+            if len(rows) != 12:
+                raise ValueError(f"{code}: need 12 months of {year} for pooling index (got {len(rows)})")
+            pts: dict[str, float] = {}
+            for t in types:
+                if not rows[f"index_{t}"].notna().all() or not rows[f"price_{t}"].notna().all():
+                    raise ValueError(f"{code}: incomplete UK HPI type {t} in {year}")
+                pts[f"index_{t}"] = float(rows[f"index_{t}"].mean())
+                pts[f"price_{t}"] = float(rows[f"price_{t}"].mean())
+            by_year[year] = pts
+        out[str(code)] = by_year
+    return out
+
+
+def pooling_index_factors(
+    annual: Mapping[int, Mapping[str, float]],
+    *,
+    index_to_year: int,
+    type_mix: Mapping[str, float] | None,
+    years: Sequence[int],
+) -> dict[int, float]:
+    """Sale-year → index_to_year factors from council annual UK HPI, type-weighted.
+
+    Same Laspeyres form as ``surface_rent.hpi_factor``: weights use the sale year's
+    average prices. Falls back to all-dwellings when mix is missing or unusable.
+    """
+    from georgist.surface_rent import HPI_TYPES
+
+    to_year = int(index_to_year)
+    if to_year not in annual:
+        raise KeyError(f"no annual UK HPI for index_to_year {to_year}")
+    target = annual[to_year]
+    w = {t: float(type_mix.get(t, 0.0)) for t in HPI_TYPES} if type_mix else {}
+    factors: dict[int, float] = {}
+    for year in years:
+        y = int(year)
+        if y not in annual:
+            raise KeyError(f"no annual UK HPI for sale year {y}")
+        base = annual[y]
+        usable = all(
+            f"index_{t}" in base and f"index_{t}" in target and f"price_{t}" in base
+            for t in HPI_TYPES
+        )
+        if w and sum(w.values()) > 0 and usable:
+            num = sum(
+                w[t] * base[f"price_{t}"] * target[f"index_{t}"] / base[f"index_{t}"]
+                for t in HPI_TYPES
+            )
+            den = sum(w[t] * base[f"price_{t}"] for t in HPI_TYPES)
+            factors[y] = num / den
+        else:
+            factors[y] = float(target["index_all"]) / float(base["index_all"])
+    return factors
+
+
+def ros_year_prices_for_zone(ros: pd.DataFrame, code: str, *, vintage: int = 2011) -> list:
+    """RoS zone-years as ``YearPrice`` rows. Suppressed years keep None counts/prices."""
+    from georgist.surface_rent import YearPrice
+
+    rows = ros[(ros["vintage"] == vintage) & (ros["code"] == code)].sort_values("year")
+    out = []
+    for r in rows.itertuples():
+        suppressed = bool(getattr(r, "suppressed", False))
+        if suppressed:
+            out.append(YearPrice(int(r.year), None, None, None))
+            continue
+        sales = getattr(r, "sales_n", None)
+        mean = getattr(r, "price_mean_gbp", None)
+        median = getattr(r, "price_median_gbp", None)
+        out.append(YearPrice(
+            int(r.year),
+            None if sales is None or (isinstance(sales, float) and pd.isna(sales)) else int(sales),
+            None if mean is None or (isinstance(mean, float) and pd.isna(mean)) else float(mean),
+            None if median is None or (isinstance(median, float) and pd.isna(median)) else float(median),
+        ))
     return out
 
 

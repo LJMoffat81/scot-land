@@ -86,13 +86,24 @@ assert.match(
 );
 
 // —— SW-013: Downloads has moved here ——
+const developersPage = readSrc("app/developers/page.tsx");
+assert.match(developersPage, /Downloads has moved here/);
+assert.match(developersPage, /searchParams\.get\("moved"\) === "1"/);
 assert.match(
-  readSrc("app/developers/page.tsx"),
-  /Downloads has moved here/,
+  developersPage,
+  /window\.location\.search[\s\S]*get\("moved"\) === "1"/,
 );
 assert.match(
-  readSrc("app/developers/page.tsx"),
-  /searchParams\.get\("moved"\) === "1"/,
+  developersPage,
+  /id="downloads"[\s\S]*developers-moved-note[\s\S]*Download files/,
+);
+assert.match(
+  readSrc("app/downloads/page.tsx"),
+  /\/developers\?moved=1#downloads/,
+);
+assert.match(
+  readSrc("app/open-api/page.tsx"),
+  /\/developers\?moved=1#api/,
 );
 
 // —— Map (i) attribution carries RM / ONS / endorsement (footer stays one line) ——

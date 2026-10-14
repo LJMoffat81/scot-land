@@ -303,14 +303,27 @@ test.describe("site-watch PR A — nav visible at desktop widths", () => {
 });
 
 test.describe("site-watch PR A — SW-013 downloads moved note", () => {
-  test("/developers?moved=1 shows Downloads has moved here", async ({
+  test("/developers?moved=1#downloads shows note in viewport", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1100, height: 800 });
     await page.goto("/developers?moved=1#downloads");
-    await expect(page.getByTestId("developers-moved-note")).toHaveText(
-      "Downloads has moved here.",
-    );
+    const note = page.getByTestId("developers-moved-note");
+    await expect(note).toHaveText("Downloads has moved here.");
+    await expect(note).toBeInViewport();
+    // Hash target is the downloads section; note must live inside it.
+    await expect(
+      page.getByTestId("developers-downloads").getByTestId("developers-moved-note"),
+    ).toHaveCount(1);
+  });
+
+  test("/downloads redirect shows visible moved note", async ({ page }) => {
+    await page.setViewportSize({ width: 1100, height: 800 });
+    await page.goto("/downloads");
+    await expect(page).toHaveURL(/\/developers\?moved=1/);
+    const note = page.getByTestId("developers-moved-note");
+    await expect(note).toHaveText("Downloads has moved here.");
+    await expect(note).toBeInViewport();
   });
 
   test("/developers without moved=1 hides the note", async ({ page }) => {

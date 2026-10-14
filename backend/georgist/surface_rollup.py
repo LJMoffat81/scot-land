@@ -18,6 +18,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Iterable, Mapping, Sequence
 
+from georgist.surface_dz2022 import combine_estimate_labels
 from georgist.surface_zones import validate_code, vintage_int
 
 GEO_LEVELS = ("data_zone", "intermediate_zone", "council", "scotland")
@@ -89,6 +90,7 @@ def _agg_row(
     licence: str,
     method: str,
     zone_codes: Sequence[str],
+    estimate_label: str,
 ) -> dict:
     if not _code_prefix_ok(geo_level, code):
         raise RollupError(f"{geo_level} code {code!r} fails SG prefix check")
@@ -116,6 +118,7 @@ def _agg_row(
         "licence": licence,
         "method": method,
         "parent_code": parent_code,
+        "estimate_label": estimate_label,
         "child_zone_codes": list(zone_codes),
         "note": (
             "INTERNAL / UNPUBLISHED SG roll-up. Not an official valuation or tax bill. "
@@ -176,6 +179,15 @@ def rollup_surface_rent_dz2022(
         raise RollupError("licence required on surface rows for roll-up provenance")
     method = str(head.get("method") or "residual_drc_surface_v1") + "+sg_rollup_dz2022"
 
+    def _labels_for(zones: Sequence[str]) -> str:
+        labels = [str(by_code[z].get("estimate_label") or "") for z in zones]
+        if any(not lbl for lbl in labels):
+            raise RollupError(
+                f"estimate_label required on every DZ2022 row for roll-up "
+                f"(missing on {[z for z, lbl in zip(zones, labels) if not lbl][:3]})"
+            )
+        return combine_estimate_labels(labels)
+
     out: list[dict] = []
     # Leaves (data zone) — same £ figures, marked as hierarchy leaves.
     for code in sorted(by_code):
@@ -195,6 +207,7 @@ def rollup_surface_rent_dz2022(
                 licence=licence,
                 method=method,
                 zone_codes=[code],
+                estimate_label=_labels_for([code]),
             )
         )
 
@@ -222,6 +235,7 @@ def rollup_surface_rent_dz2022(
                 licence=licence,
                 method=method,
                 zone_codes=zones,
+                estimate_label=_labels_for(zones),
             )
         )
 
@@ -241,6 +255,7 @@ def rollup_surface_rent_dz2022(
                 licence=licence,
                 method=method,
                 zone_codes=zones,
+                estimate_label=_labels_for(zones),
             )
         )
 
@@ -259,6 +274,7 @@ def rollup_surface_rent_dz2022(
             licence=licence,
             method=method,
             zone_codes=all_zones,
+            estimate_label=_labels_for(all_zones),
         )
     )
 

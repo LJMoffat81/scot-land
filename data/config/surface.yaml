@@ -309,6 +309,15 @@ surface_rent:
   # Exact team enum (rules 11). Surface may only use none | address_uprn | value_weighted.
   crosswalk_methods: [none, pop_hhres_2022, address_uprn, value_weighted, footprint_area]
   crosswalk_allowed_surface: [none, address_uprn, value_weighted]
+  # Full OS Open UPRN DZ2011→DZ2022 weights (not committed). Resolve via
+  # SCOT_LAND_DZ_UPRN_CROSSWALK_DIR or paths.dz_uprn_crosswalk in surface.local.yaml.
+  dz2022_uprn_crosswalk:
+    dir: "{dz_uprn_crosswalk_dir}"
+    weights_file: dz2011_dz2022_uprn_weights.csv
+    zero_file: dz_crosswalk_zero_uprn.csv
+    apply_min_share: true          # drop share < 1 percent AND uprn_count < 5; redistribute
+    min_share: 0.01
+    min_uprn_count: 5
 
   # Output vocabulary (rules 2, 3, 5)
   commons_class: surface

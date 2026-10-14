@@ -1,0 +1,10 @@
+dz2011,dz2022,uprn_count,weight,hh2022_share,share_diff_flag,method
+S01013401,S01020870,100,1.000000,1.0,False,uprn_point_in_polygon
+S01013402,S01020871,100,0.990099,0.99,False,uprn_point_in_polygon
+S01013402,S01020872,1,0.009901,0.01,False,uprn_point_in_polygon
+S01013403,S01020870,40,0.400000,0.10,True,uprn_point_in_polygon
+S01013403,S01020871,60,0.600000,0.90,False,uprn_point_in_polygon
+S01010206,S01017360,10,1.000000,,False,uprn_point_in_polygon
+S01013404,S01020872,200,0.995025,0.995,False,uprn_point_in_polygon
+S01013404,S01020873,1,0.004975,0.005,False,uprn_point_in_polygon
+S01013405,S01020873,50,1.000000,1.0,False,uprn_point_in_polygon

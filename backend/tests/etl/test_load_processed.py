@@ -409,8 +409,8 @@ def _need_datazones():
 
 
 def test_repo_datazones_manifest_validates(datazones_root):
-    """Data Zones' 10 CSVs: checksums, rows, integer vintages, attribution, key types incl. the
-    (dz2011, dz2022) crosswalk. The committed manifest validates as is."""
+    """Data Zones' CSVs: checksums, rows, integer vintages, attribution, key types incl. the
+    (dz2011, dz2022) people crosswalk. The committed manifest validates as is."""
     _need_datazones()
     entries = {e.file: e for e in lp.validate(datazones_root, "datazones")}
     assert set(entries) == DZ_FILES and all(e.attribution for e in entries.values())
@@ -428,7 +428,7 @@ def test_repo_datazones_loads_into_owner_typed_tables(pgconn, datazones_root):
     entries = lp.validate(datazones_root, "datazones")
     for _ in range(2):  # re-runnable: one TRUNCATE + COPY per run
         loaded = lp.load(pgconn, entries)
-    assert len(loaded) == 10
+    assert len(loaded) == len(DZ_FILES)
     with pgconn.cursor() as cur:
         cur.execute("SELECT vintage, count(*) FROM datazones.zone_spine GROUP BY 1 ORDER BY 1")
         assert cur.fetchall() == [(2011, 6976), (2022, 7392)]

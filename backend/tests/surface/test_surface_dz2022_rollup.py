@@ -194,6 +194,7 @@ def test_rollup_dz_iz_council_scotland_no_double_count():
             "vintage": 2022,
             "crosswalk_method": "value_weighted",
             "publish_level": "internal",
+            "estimate_label": "measured",
         },
         {
             **_src(code="S01020871", rent=300.0),
@@ -201,6 +202,7 @@ def test_rollup_dz_iz_council_scotland_no_double_count():
             "vintage": 2022,
             "crosswalk_method": "value_weighted",
             "publish_level": "internal",
+            "estimate_label": "measured",
         },
         {
             **_src(code="S01020872", rent=50.0),
@@ -208,6 +210,7 @@ def test_rollup_dz_iz_council_scotland_no_double_count():
             "vintage": 2022,
             "crosswalk_method": "value_weighted",
             "publish_level": "internal",
+            "estimate_label": "fully_estimated",
         },
     ]
     spine = [
@@ -222,9 +225,13 @@ def test_rollup_dz_iz_council_scotland_no_double_count():
     assert by[("council", "S12000036")]["measured_rent"] == pytest.approx(400.0)
     assert by[("council", "S12000049")]["measured_rent"] == pytest.approx(50.0)
     assert by[("scotland", roll.SCOTLAND_CODE)]["measured_rent"] == pytest.approx(450.0)
+    assert by[("council", "S12000036")]["estimate_label"] == "measured"
+    assert by[("council", "S12000049")]["estimate_label"] == "fully_estimated"
+    assert by[("scotland", roll.SCOTLAND_CODE)]["estimate_label"] == "partly_estimated"
     for r in out:
         assert r["publish_level"] == "internal"
         assert r["vintage"] == 2022
+        assert r["estimate_label"] in ("measured", "partly_estimated", "fully_estimated")
 
 
 def test_rollup_db_rows_drop_leaves_and_keep_internal():
@@ -235,6 +242,7 @@ def test_rollup_db_rows_drop_leaves_and_keep_internal():
             "vintage": 2022,
             "crosswalk_method": "value_weighted",
             "publish_level": "internal",
+            "estimate_label": "measured",
         }
     ]
     spine = [_spine("S01020870", "S02000001", "S12000036")]
@@ -258,6 +266,7 @@ def test_rollup_refuses_missing_spine():
         "vintage": 2022,
         "crosswalk_method": "value_weighted",
         "publish_level": "internal",
+        "estimate_label": "measured",
     }
     with pytest.raises(roll.RollupError, match="no DZ2022 rows in zone_spine"):
         roll.rollup_surface_rent_dz2022([row], [])
@@ -274,6 +283,7 @@ def test_rollup_refuses_iz_spanning_councils():
             "vintage": 2022,
             "crosswalk_method": "value_weighted",
             "publish_level": "internal",
+            "estimate_label": "measured",
         },
         {
             **_src(code="S01020871", rent=20.0),
@@ -281,6 +291,7 @@ def test_rollup_refuses_iz_spanning_councils():
             "vintage": 2022,
             "crosswalk_method": "value_weighted",
             "publish_level": "internal",
+            "estimate_label": "measured",
         },
     ]
     spine = [

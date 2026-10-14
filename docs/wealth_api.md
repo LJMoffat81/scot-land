@@ -198,12 +198,16 @@ Applied by the postgis container on first start and by
 - `surface_rent_rollup` (`023`) — **internal only** SG hierarchy aggregates for DZ2022
   surface rent: Intermediate Zone (S02) → Council (S12) → Scotland (`S92000003`).
   Hierarchy parents come from `datazones.zone_spine` (official SG 2022 Data Zone
-  lookup, OGL v3.0). Built by `georgist.surface_dz2022` (value-weighted 2011→2022
-  crosswalk; population weights refused) then `georgist.surface_rollup` (sums
-  `measured_rent` once per DZ; refuses mixed `price_year`). `publish_level` is
-  constrained to `internal` in SQL. Served only on
-  `/internal/georgist/surface-rent-rollup`. Leaves stay on `surface_rent_dz`.
-  **Roll-up £ figures stay unpublished** (designer brief v3.1).
+  lookup, OGL v3.0). Built by `georgist.surface_dz2022` (address-UPRN 2011→2022
+  crosswalk from a configured local GIS handoff —
+  `SCOT_LAND_DZ_UPRN_CROSSWALK_DIR` / `paths.dz_uprn_crosswalk`; min-share filter
+  default ON; population/area weights refused; `crosswalk_method=address_uprn`)
+  then `georgist.surface_rollup` (sums `measured_rent` once per DZ; carries
+  `estimate_label` to council and Scotland; refuses mixed `price_year`).
+  `publication_status` stays `blocked`. `publish_level` is constrained to
+  `internal` in SQL. Served only on `/internal/georgist/surface-rent-rollup`.
+  Leaves stay on `surface_rent_dz`. **Roll-up £ figures stay unpublished**
+  (designer brief v3.1). DZ2011 roll-up pin left for a later change.
 - `planning_sites` — PK `(source, site_id)`; source hla|svdls|planning_app,
   geom_source surveyed|ros_title|point (a point must be a POINT), MultiPolygon or
   Point 27700, both DZ codes, plan-making vs deciding authority, publish_level

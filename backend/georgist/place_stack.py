@@ -298,8 +298,8 @@ def place_hectare_stack(
             "benchmark_label": "benchmark only, not inputs",
             "note": (
                 "Oil & gas (row 9) is reported UK-reserved and sits outside "
-                "headline and shadow Scottish totals. Benchmarks are beside "
-                "the ledger and never inputs."
+                "headline and shadow Scottish totals. Benchmarks are shown "
+                "alongside the breakdown and are never inputs."
             ),
         },
         "constraints": list(_CONSTRAINTS),

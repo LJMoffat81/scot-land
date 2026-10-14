@@ -70,7 +70,7 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
     id: "1a",
     group: "land",
     label: "Planning uplift",
-    description: "Of which under surface land — planning permission effect.",
+    description: "Planning uplift: an 'of which' figure inside the land part.",
     tag: "proxy",
     comingSoon: true,
     licence: "Research estimate — figures not published yet",

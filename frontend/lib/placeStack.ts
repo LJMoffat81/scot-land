@@ -251,7 +251,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
   outside: {
     label: "Outside Scottish total",
     note:
-      "Oil and gas (row 9) — offshore, outside the Scottish land total. Benchmarks are beside the ledger and never inputs.",
+      "Oil and gas (row 9) — offshore, outside the Scottish land total. Benchmarks are shown alongside the breakdown and are never inputs.",
     benchmark_label: "benchmark only, not inputs",
     rows: [
       {

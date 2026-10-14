@@ -554,7 +554,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="Reported beside the ledger; OUTSIDE Scottish headline and shadow totals.",
+            note="Reported alongside the breakdown; outside the Scottish totals.",
             outside_scottish_total=True,
             stack="outside",
         ),

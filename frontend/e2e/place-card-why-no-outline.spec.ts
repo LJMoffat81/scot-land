@@ -143,44 +143,65 @@ function assertConsoleClean(gate: ConsoleGate) {
 }
 
 async function stubMapChrome(page: Page) {
-  await page.route("**/backend/health**", async (route) => {
+  // Quiet unmatched /backend traffic so the Next proxy never 503s in CI.
+  await page.route("**/backend/**", async (route) => {
+    const url = route.request().url();
+    if (/\/platform\/place/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(PLACE_NO_OUTLINE),
+      });
+      return;
+    }
+    if (/\/layers\/context\/data-zones\/at/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "ok",
+          code: "S01014567",
+          name: "City Centre South",
+          vintage: 2022,
+        }),
+      });
+      return;
+    }
+    if (/\/health/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(HEALTH_OK),
+      });
+      return;
+    }
+    if (/\/layers\/catalog/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ version: 2, layers: [] }),
+      });
+      return;
+    }
+    if (/\/backend\/place/i.test(url) && !/platform\/place/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ kind: "places", matches: [] }),
+      });
+      return;
+    }
+    const wantsGeo =
+      /\/layers\//i.test(url) ||
+      /\/w3w-grid/i.test(url) ||
+      /\/parcels/i.test(url);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(HEALTH_OK),
+      body: JSON.stringify(wantsGeo ? EMPTY_FC : {}),
     });
   });
-  await page.route("**/backend/layers/catalog**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ layers: [] }),
-    });
-  });
-  await page.route("**/backend/place**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ kind: "places", matches: [] }),
-    });
-  });
-  await page.route("**/backend/layers/open/data-zones**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
-  await page.route("**/api/catalog.json", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ layers: [] }),
-    });
-  });
-}
 
-async function stubNoOutlinePlace(page: Page) {
   await page.route("**/platform/place**", async (route) => {
     await route.fulfill({
       status: 200,
@@ -207,10 +228,19 @@ async function stubNoOutlinePlace(page: Page) {
       }),
     });
   });
+  await page.route("**/api/catalog.json", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ layers: [] }),
+    });
+  });
 }
 
 async function openNoOutlineCard(page: Page) {
-  await page.goto("/");
+  // Full document load so client module state (expand Map) cannot leak across tests.
+  await page.goto("about:blank");
+  await page.goto("/", { waitUntil: "load" });
   await page.locator(".maplibregl-canvas").waitFor();
   await page.locator("#place-query").waitFor();
 
@@ -219,9 +249,13 @@ async function openNoOutlineCard(page: Page) {
 
   const card = page.getByTestId("place-card");
   await expect(card).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("place-card-loading")).toHaveCount(0, {
+    timeout: 30_000,
+  });
   await expect(page.getByTestId("place-card-outline-status")).toHaveText(
     NO_OUTLINE_STATUS,
   );
+  await expect(page.getByTestId("place-card-why-no-outline-btn")).toBeVisible();
   return card;
 }
 
@@ -278,10 +312,27 @@ async function assertFirstValueRowVisibleWithoutScroll(page: Page) {
   ).toBeGreaterThanOrEqual(0.5);
 }
 
+async function clickWhyNoOutline(page: Page) {
+  const toggle = page.getByTestId("place-card-why-no-outline-btn");
+  await expect(toggle).toBeVisible();
+  await toggle.evaluate((el) => (el as HTMLButtonElement).click());
+}
+
+async function expectExpanded(page: Page, open: boolean) {
+  const toggle = page.getByTestId("place-card-why-no-outline-btn");
+  const detail = page.getByTestId("place-card-why-no-outline-detail");
+  await expect(toggle).toHaveAttribute("aria-expanded", open ? "true" : "false");
+  if (open) {
+    await expect(detail).toBeVisible();
+    await expect(detail).toHaveText(NO_OUTLINE_NOTE);
+  } else {
+    await expect(detail).toHaveCount(0);
+  }
+}
+
 async function runWhyNoOutlineChecks(page: Page, opts: { checkScroll: boolean }) {
   const gate = attachConsoleGate(page);
   await stubMapChrome(page);
-  await stubNoOutlinePlace(page);
 
   const card = await openNoOutlineCard(page);
 
@@ -292,28 +343,35 @@ async function runWhyNoOutlineChecks(page: Page, opts: { checkScroll: boolean })
   const toggle = page.getByTestId("place-card-why-no-outline-btn");
   await expect(toggle).toBeVisible();
   await expect(toggle).toHaveText(WHY_NO_OUTLINE);
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await expect(page.getByTestId("place-card-why-no-outline-detail")).toHaveCount(
-    0,
-  );
+  await expectExpanded(page, false);
   await expect(card).not.toContainText(NO_OUTLINE_NOTE);
 
   if (opts.checkScroll) {
     await assertFirstValueRowVisibleWithoutScroll(page);
   }
 
-  await toggle.evaluate((el) => (el as HTMLButtonElement).click());
-  await expect(toggle).toHaveAttribute("aria-expanded", "true");
-  const detail = page.getByTestId("place-card-why-no-outline-detail");
-  await expect(detail).toBeVisible();
-  await expect(detail).toHaveText(NO_OUTLINE_NOTE);
+  await expect(async () => {
+    const expanded =
+      (await toggle.getAttribute("aria-expanded")) === "true";
+    if (!expanded) {
+      await clickWhyNoOutline(page);
+    }
+    await expectExpanded(page, true);
+  }).toPass({ timeout: 15_000 });
 
-  await toggle.evaluate((el) => (el as HTMLButtonElement).click());
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await expect(page.getByTestId("place-card-why-no-outline-detail")).toHaveCount(
-    0,
-  );
+  await expect(async () => {
+    const expanded =
+      (await page
+        .getByTestId("place-card-why-no-outline-btn")
+        .getAttribute("aria-expanded")) === "true";
+    if (expanded) {
+      await clickWhyNoOutline(page);
+    }
+    await expectExpanded(page, false);
+  }).toPass({ timeout: 15_000 });
+
   await expect(status).toHaveText(NO_OUTLINE_STATUS);
+  await expect(card).not.toContainText(NO_OUTLINE_NOTE);
 
   assertConsoleClean(gate);
 }

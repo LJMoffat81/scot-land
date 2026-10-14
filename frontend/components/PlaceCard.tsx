@@ -25,8 +25,17 @@ import {
 const WHY_NO_OUTLINE_LABEL = "Why no outline?";
 const NO_OUTLINE_STATUS_LINE = "No registered outline at this point";
 
+/**
+ * Survive PlaceCard body remounts (loading flicker / stub→card swap) so the
+ * open/closed choice is not lost mid-toggle under CI timing.
+ */
+const whyNoOutlineExpandedByNote = new Map<string, boolean>();
+
 function WhyNoOutlineBlock({ note }: { note: string }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(
+    () => whyNoOutlineExpandedByNote.get(note) ?? false,
+  );
+
   return (
     <div className="place-card-why-no-outline" data-testid="place-card-why-no-outline">
       <p className="place-card-meta place-card-outline-status-row">
@@ -36,7 +45,13 @@ function WhyNoOutlineBlock({ note }: { note: string }) {
           className="place-card-why-no-outline-btn"
           data-testid="place-card-why-no-outline-btn"
           aria-expanded={expanded}
-          onClick={() => setExpanded((v) => !v)}
+          onClick={() => {
+            // Write the Map before setState so a remount mid-click still
+            // rehydrates the intended open/closed value.
+            const next = !(whyNoOutlineExpandedByNote.get(note) ?? expanded);
+            whyNoOutlineExpandedByNote.set(note, next);
+            setExpanded(next);
+          }}
         >
           {WHY_NO_OUTLINE_LABEL}
         </button>

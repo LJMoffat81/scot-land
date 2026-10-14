@@ -51,13 +51,11 @@ test.describe("map licence credits (catalog-driven)", () => {
 
     await openMap(page);
 
-    // Range legend (public context density ramp) + hatched/grey no-data — no rent £.
+    // At national zoom the density legend shows the zoom hint (no bands yet).
     const legend = page.getByTestId("map-range-legend");
     await expect(legend).toBeVisible();
     await expect(legend).toContainText(/population density/i);
-    await expect(legend.getByTestId("map-range-legend-no-data")).toContainText(
-      /no data/i,
-    );
+    await expect(legend).toContainText(/Zoom in to see colours/i);
     await expect(legend.getByText(/£\d/)).toHaveCount(0);
 
     // Must frame Scotland before any user zoom (zoom marks userMoved and skips framing).
@@ -76,6 +74,15 @@ test.describe("map licence credits (catalog-driven)", () => {
       "Registers of Scotland",
       { timeout: 45_000 },
     );
+
+    // Zoomed in: density bands + hatched no-data — still no rent £.
+    await expect(legend).toHaveAttribute("data-mode", "bands", {
+      timeout: 45_000,
+    });
+    await expect(legend.getByTestId("map-range-legend-no-data")).toContainText(
+      /no data/i,
+    );
+    await expect(legend.getByText(/£\d/)).toHaveCount(0);
 
     // Catalog-driven boundaries credit once parcels are on (zoom ≥ 14).
     const credits = page.getByTestId("map-licence-credits");

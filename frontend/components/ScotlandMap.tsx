@@ -42,12 +42,17 @@ import {
 import type { LedgerToggleState } from "../lib/ledger";
 import {
   DEFAULT_PUBLIC_CONTEXT_METRIC_ID,
+  POP_DENSITY_COLOURS_MIN_ZOOM,
+  POP_DENSITY_LEGEND_BLURB,
+  POP_DENSITY_LEGEND_SOURCE,
+  POP_DENSITY_ZOOM_HINT,
   type MetricDef,
   type MetricId,
   paintMetricForChoropleth,
   publicContextMetric,
   rangeLegendTitle,
 } from "../lib/mapColourRamps";
+import type { MapRangeLegendMode } from "./MapRangeLegend";
 import {
   NO_DATA_HATCH_IMAGE,
   activeMapCredits,
@@ -220,8 +225,8 @@ const PUBLIC_LAND_MIN_ZOOM = 8;
 const VDL_MIN_ZOOM = 8;
 const HLA_MIN_ZOOM = 8;
 const HLA_FILL = "#7b5ea7";
-/** Data Zone outlines are readable from neighbourhood zoom. */
-const DATA_ZONE_MIN_ZOOM = 10;
+/** Data Zone outlines / density colours — readable from neighbourhood zoom. */
+const DATA_ZONE_MIN_ZOOM = POP_DENSITY_COLOURS_MIN_ZOOM;
 const NFI_MIN_ZOOM = 7;
 const NATIVE_WOODLAND_MIN_ZOOM = 8;
 const NFI_FILL = "#1f6b3a";
@@ -566,6 +571,8 @@ export default function ScotlandMap() {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
   const [legendOpen, setLegendOpen] = useState(false);
+  /** Map zoom for density legend bands vs zoom-hint (national vs local). */
+  const [mapZoom, setMapZoom] = useState(5.7);
   const [catalogLayers, setCatalogLayers] = useState<CatalogLayer[]>([]);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const parcelLabelRef = useRef<maplibregl.Marker | null>(null);
@@ -592,12 +599,25 @@ export default function ScotlandMap() {
       contextOn,
     }),
   );
-  // Public range legend: context colour ramp (not AGR £). Rent metrics stay band-labelled.
+  // Public range legend: active context colour ramp only (not AGR £).
+  // Density bands follow whether colours are drawable at this zoom; if the
+  // carrier layer is off, show no bands. Rent metrics stay band-labelled.
   const contextMetric = publicContextMetric(DEFAULT_PUBLIC_CONTEXT_METRIC_ID);
   const contextLegend = rangeLegendFromStops(contextMetric.stops, {
     metricId: contextMetric.id,
     unit: contextMetric.unit,
   });
+  // Density legend follows the active context layer only. Below the drawable
+  // zoom → hint (no bands). At neighbourhood zoom with zones on (or still
+  // auto-enabling) → bands. If the user turned zones off → nothing drawn.
+  const densityLegendMode: MapRangeLegendMode =
+    contextMetric.id !== "pop_density"
+      ? "off"
+      : mapZoom < POP_DENSITY_COLOURS_MIN_ZOOM
+        ? "zoom-hint"
+        : showDataZones || !dataZonesTouched.current
+          ? "bands"
+          : "off";
 
   useEffect(() => {
     const header = headerRef.current;
@@ -3181,6 +3201,7 @@ export default function ScotlandMap() {
     if (!map) return;
     const sync = () => {
       const zoom = map.getZoom();
+      setMapZoom(zoom);
       if (map.isMoving()) return;
       // Land parcels stay off until the user toggles them (no auto-enable on zoom).
       // public_crown stays off: SG 2024 dashboard licence is unverified/not open
@@ -3679,8 +3700,20 @@ export default function ScotlandMap() {
             </p>
             <MapRangeLegend
               title={rangeLegendTitle(contextMetric)}
+              blurb={
+                contextMetric.id === "pop_density"
+                  ? POP_DENSITY_LEGEND_BLURB
+                  : undefined
+              }
               ranges={contextLegend.ranges}
               showNoData
+              mode={densityLegendMode}
+              zoomHint={POP_DENSITY_ZOOM_HINT}
+              source={
+                contextMetric.id === "pop_density"
+                  ? POP_DENSITY_LEGEND_SOURCE
+                  : null
+              }
             />
             <MapLicenceCredits credits={mapCredits} />
             <p className="hud-scotland-foot">

@@ -28,6 +28,10 @@ export default function MapLayersDrawer({
   title = "Layers",
 }: MapLayersDrawerProps) {
   const groups = mapDrawerLayersByGroup();
+  // Chip key only while Market / Modelled / Estimate chips are on screen.
+  const chipsOnScreen = groups.some(({ layers }) =>
+    layers.some((layer) => Boolean(layer.tag)),
+  );
 
   const setEnabled = (id: string, on: boolean) => {
     onEnabledChange?.({ ...enabled, [id]: on });
@@ -48,7 +52,7 @@ export default function MapLayersDrawer({
         published yet.
       </p>
 
-      <EvidenceTagLegend compact />
+      {chipsOnScreen ? <EvidenceTagLegend compact /> : null}
 
       {groups.map(({ key, label, layers }) => (
         <section

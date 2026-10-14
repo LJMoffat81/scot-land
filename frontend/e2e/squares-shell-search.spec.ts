@@ -58,9 +58,14 @@ test.describe("squares shell", () => {
     const card = page.locator("aside.place-card-stub");
     await expect(card).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId("place-card")).toBeVisible();
-    await expect(page.getByTestId("place-card-square-reference")).toContainText(
+    await expect(page.getByText("Map reference", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("place-card-square-reference")).toHaveText(
+      /^-?\d+,-?\d+$/,
+    );
+    await expect(page.getByTestId("place-card-square-reference")).not.toContainText(
       /Scot-LAND square reference/i,
     );
+    await expect(page.getByTestId("place-card-map-reference-copy")).toBeVisible();
     await expect(page.getByTestId("place-card-value")).toBeVisible();
     await expect(page.getByTestId("place-value-status-in_progress")).toHaveText(
       "Figure not published yet",

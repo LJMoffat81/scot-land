@@ -824,12 +824,12 @@ _METERS_PER_DEGREE_LAT = 111_320.0
 
 
 def _square_reference(lat: float, lng: float) -> str:
-    """Scot-LAND square reference (3×3 m grid). Never a what3words brand string."""
+    """Map reference indices on the 3×3 m grid (numbers only; never what3words)."""
     lat_rad = math.radians(lat)
     meters_per_degree_lng = _METERS_PER_DEGREE_LAT * math.cos(lat_rad)
     lat_index = round(lat * _METERS_PER_DEGREE_LAT / _W3W_SQUARE_SIZE_M)
     lng_index = round(lng * meters_per_degree_lng / _W3W_SQUARE_SIZE_M)
-    return f"Scot-LAND square reference {lat_index},{lng_index}"
+    return f"{lat_index},{lng_index}"
 
 
 def _intermediate_zone_for(data_zone: dict[str, Any]) -> dict[str, Any]:

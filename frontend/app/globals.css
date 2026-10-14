@@ -1305,6 +1305,7 @@ input {
 .research-banner-text {
   margin: 0;
   flex: 1;
+  min-width: 0;
 }
 
 .research-banner-map {
@@ -1317,6 +1318,33 @@ input {
   margin: 0;
   box-shadow: var(--hud-shadow);
   background: #fff;
+}
+
+.research-banner-toggle {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  gap: 0.45rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.research-banner-body {
+  font-weight: 400;
+}
+
+.research-banner-chevron {
+  flex-shrink: 0;
+  color: var(--slrg-muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
 }
 
 .research-banner-dismiss {
@@ -1332,6 +1360,58 @@ input {
 
 .research-banner-dismiss:hover {
   color: var(--slrg-text);
+}
+
+/* SW-016: ≤768px — one-line strip under the header; tap to expand.
+   Must not cover burger, search, or place card (below those in z-order). */
+@media (max-width: 768px) {
+  .research-banner-map {
+    top: calc(var(--hud-height, 7.5rem) + 0.35rem);
+    z-index: 3;
+    width: min(36rem, calc(100vw - 1.2rem));
+    padding: 0.4rem 0.65rem;
+    align-items: center;
+  }
+
+  .research-banner-strip {
+    align-items: center;
+  }
+
+  .research-banner-collapsed {
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .research-banner-collapsed .research-banner-toggle {
+    align-items: center;
+  }
+
+  .research-banner-collapsed .research-banner-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .research-banner-page.research-banner-collapsed {
+    margin-bottom: 0.65rem;
+  }
+
+  /* Place card and search stay above the strip */
+  .app-shell.place-open .hud-place,
+  .app-shell.place-open .place-card-stub,
+  .app-shell.place-open .hud-place.place-card {
+    z-index: 14;
+  }
+
+  .hud-search-dock,
+  .squares-shell .hud-search-dock {
+    z-index: 6;
+  }
+
+  .site-nav-map .site-nav-menu-btn {
+    position: relative;
+    z-index: 7;
+  }
 }
 
 @media (max-width: 600px) {

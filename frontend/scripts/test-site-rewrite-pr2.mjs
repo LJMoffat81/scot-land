@@ -67,7 +67,7 @@ function readSrc(relPath) {
   const how = readSrc("components/MethodologyContent.tsx");
   assert.match(how, /How an area is valued/);
   assert.match(how, /Small areas, added up honestly/);
-  assert.match(how, /Three kinds of figure/);
+  assert.match(how, /Words we use/);
   assert.match(how, /How sure are these numbers/);
   assert.doesNotMatch(how, /PostGIS|ECONOMIC_RULES|HTTP 503|python -m/);
 

@@ -36,7 +36,7 @@ export const GLOSSARY_TERMS = [
 ] as const;
 
 export type GlossaryBoxProps = {
-  /** Section heading — How it works uses “Three kinds of figure”. */
+  /** Section heading — How it works uses “Words we use”. */
   title?: string;
 };
 

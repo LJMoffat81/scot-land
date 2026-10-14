@@ -1,0 +1,186 @@
+/**
+ * Site-watch PR A — page chrome overrides.
+ * Kept out of globals.css to avoid parallel edits with other drafts.
+ */
+
+/* —— SW-010 / item 1: two-row map header up to 1366px (search never overlaps nav) —— */
+@media (min-width: 901px) and (max-width: 1366px) {
+  .hud-top {
+    flex-wrap: wrap;
+    align-items: center;
+    row-gap: 0.55rem;
+  }
+
+  .hud-top .site-nav-map {
+    order: 15;
+    margin-left: auto;
+    position: relative;
+    z-index: 7;
+  }
+
+  .hud-top [data-testid="hud-layers-btn"] {
+    order: 20;
+    margin-left: 0.35rem;
+  }
+
+  .hud-search-dock,
+  .squares-shell .hud-search-dock {
+    position: relative;
+    left: auto;
+    top: auto;
+    transform: none;
+    order: 50;
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: none;
+    z-index: 5;
+  }
+}
+
+/* Above 1366px: single-row centred search with clearance for nav + Layers */
+@media (min-width: 1367px) {
+  .site-nav-map {
+    position: relative;
+    z-index: 7;
+  }
+
+  .hud-top .site-nav-map {
+    order: 15;
+    margin-left: auto;
+  }
+
+  .hud-top [data-testid="hud-layers-btn"] {
+    order: 20;
+    margin-left: 0.35rem;
+  }
+
+  .hud-search-dock,
+  .squares-shell .hud-search-dock {
+    width: min(36rem, calc(100vw - 28rem));
+    z-index: 5;
+  }
+}
+
+/* —— Item 3: banner below search at mobile; never steal search taps —— */
+@media (max-width: 900px) {
+  .research-banner-map {
+    top: calc(var(--hud-height, 7.5rem) + 0.35rem);
+    z-index: 3;
+    width: min(36rem, calc(100vw - 1.2rem));
+  }
+}
+
+/* —— Item 5: fold MapLibre attribution behind (i); compact footer —— */
+@media (max-width: 640px) {
+  .map-stage .maplibregl-ctrl-attrib {
+    max-width: 2.5rem;
+  }
+
+  .map-stage .maplibregl-ctrl-attrib:not(.maplibregl-compact-show) {
+    padding: 0;
+  }
+
+  .map-stage
+    .maplibregl-ctrl-attrib:not(.maplibregl-compact-show)
+    .maplibregl-ctrl-attrib-inner {
+    display: none;
+  }
+
+  .map-footer {
+    padding: 0.12rem 0.55rem 0.14rem;
+    font-size: 0.62rem;
+    line-height: 1.25;
+    max-height: 2.1rem;
+    overflow: hidden;
+  }
+
+  .map-footer p {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* —— SW-011: mobile nav backdrop + closed panel covers nothing —— */
+.site-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(11, 30, 58, 0.42);
+  cursor: pointer;
+}
+
+.site-nav-open .site-nav-menu-btn {
+  position: relative;
+  z-index: 50;
+}
+
+.site-nav-open .site-nav-panel:not([hidden]) {
+  position: fixed;
+  top: 4.25rem;
+  right: 0.75rem;
+  left: auto;
+  z-index: 50;
+  min-width: min(18rem, calc(100vw - 1.5rem));
+  max-height: min(70vh, calc(100dvh - 5rem));
+  overflow: auto;
+}
+
+/* Closed menu must not intercept taps or obscure H1 / banner */
+.site-nav-panel[hidden] {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden;
+}
+
+.site-nav:not(.site-nav-open) .site-nav-panel {
+  pointer-events: none;
+}
+
+.site-nav:not(.site-nav-open) {
+  /* Keep the bar in normal flow; never stretch a full-screen hit target */
+  z-index: auto;
+}
+
+.site-nav-page:not(.site-nav-open),
+.site-nav-map:not(.site-nav-open) {
+  overflow: visible;
+}
+
+/* —— Item 4: shared content-page footer —— */
+.content-page-footer {
+  margin: 2rem 0 0;
+  padding: 1rem 0 0.25rem;
+  border-top: 1px solid var(--line);
+  color: var(--slrg-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.content-page-footer p {
+  margin: 0.35rem 0 0;
+}
+
+.content-page-footer p:first-child {
+  margin-top: 0;
+}
+
+.content-page-footer a {
+  color: var(--slrg-navy);
+  text-underline-offset: 0.12em;
+}
+
+.content-page-footer .engine-stamp {
+  font-size: 0.74rem;
+}
+
+/* Content pages: keep layout footers aligned with page column */
+.content-page-footer-wrap {
+  max-width: 820px;
+  margin: -0.5rem auto 0;
+  padding: 0 1rem 2.5rem;
+  background: #fff;
+}

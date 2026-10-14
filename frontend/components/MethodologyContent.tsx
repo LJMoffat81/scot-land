@@ -1,3 +1,4 @@
+import ContentPageFooter from "@/components/ContentPageFooter";
 import GlossaryBox from "@/components/GlossaryBox";
 import HashRedirect from "@/components/HashRedirect";
 import ResearchBanner from "@/components/ResearchBanner";
@@ -125,6 +126,7 @@ export default function MethodologyContent() {
         {" · "}
         <a href="/data">Data &amp; sources</a>
       </p>
+      <ContentPageFooter />
     </main>
   );
 }

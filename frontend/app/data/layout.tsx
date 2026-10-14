@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 
+import ContentPageFooter from "@/components/ContentPageFooter";
+import DataLicencesAnchor from "@/components/DataLicencesAnchor";
+
 export const metadata: Metadata = {
   title: "Data & sources | Scot-LAND",
   description:
@@ -16,5 +19,13 @@ export default function DataLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return children;
+  return (
+    <>
+      <DataLicencesAnchor />
+      {children}
+      <div className="content-page-footer-wrap">
+        <ContentPageFooter />
+      </div>
+    </>
+  );
 }

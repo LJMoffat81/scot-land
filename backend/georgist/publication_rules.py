@@ -47,6 +47,18 @@ MODELLED_QUALITY = frozenset({"modelled", "placeholder"})
 EXEMPT_PATHS = frozenset({"/health", "/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"})
 INTERNAL_PREFIX = "/internal"
 
+# Modelled council/plot AGR £ property names — never on a public route or tile until
+# ECONOMIC_RULES approval. Mirrored in scripts/check_publishable.py (stdlib-only).
+FORBIDDEN_PUBLIC_AGR_PROPERTIES = frozenset({
+    "annual_ground_rent_plot_gbp",
+    "site_rental_per_sqm_gbp",
+    "site_capital_per_sqm_gbp",
+    "net_contribution_plot_gbp",
+    "gross_plot_liability_gbp",
+    "vacant_full_agr_gbp",
+    "agr_as_pct_of_price",
+})
+
 ZONE_CODE_RE = re.compile(r"^S01\d{6}$")
 # Column names that carry a value or rent (manifest load-time check).
 VALUE_COLUMN_RE = re.compile(r"(^|_)(rent|rents|value|values|price|prices|gbp|rv|valuation|rateable)(_|$)")
@@ -266,9 +278,24 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     "/api/public-land.json": LayerRule("zone", "zone", "none", note="public-land download meta"),
     "/api/vdl.json": LayerRule("zone", "zone", "none", note="VDL download meta"),
     "/api/ldp.json": LayerRule("zone", "zone", "none", note="LDP allocation coverage meta"),
-    "/api/vdl-councils.json": LayerRule("zone", "zone", "none", note="VDL by council meta"),
-    "/api/roll.json": LayerRule("zone", "zone", "none", note="open stats roll"),
-    "/api/roll.csv": LayerRule("zone", "zone", "none", note="open stats roll csv"),
+    "/api/vdl-councils.json": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="blocked public stub — vacant AGR £ not published",
+    ),
+    "/api/roll.json": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="blocked public stub — council AGR roll £ not published",
+    ),
+    "/api/roll.csv": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="blocked public stub — council AGR roll £ not published",
+    ),
     "/api/place.json": LayerRule("site", "site", "none", note="place card download"),
     "/api/registers.json": LayerRule("zone", "zone", "none", note="registers catalogue"),
     "/api/common-good.json": LayerRule(
@@ -295,8 +322,11 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     "/layers/councils": LayerRule(
         "zone",
         "zone",
-        "modelled",
-        note="Council multi-metric choropleth; AGR fields are research estimates at council grain",
+        "none",
+        note=(
+            "Council outlines + open context metrics; modelled AGR £ properties "
+            "scrubbed (FORBIDDEN_PUBLIC_AGR_PROPERTIES)"
+        ),
     ),
     "/layers/context/urban-rural/class": LayerRule(
         "site", "site", "none", note="urban-rural class label at a point; no rent",

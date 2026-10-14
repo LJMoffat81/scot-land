@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import csv
-import io
-
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse
 
-from agr.export_stamp import current_stamp, stamp_comment, with_stamp
+from agr.export_stamp import with_stamp
 from georgist import db
 from georgist.ledger import ledger_catalog, ledger_zone_payload, resolve_ledger_zone
 from georgist.place_stack import (
@@ -24,8 +21,6 @@ from layers.ldp import query_bbox as ldp_bbox
 from layers.open_stats import (
     catalog_json,
     public_land_json,
-    roll_json,
-    vdl_councils_json,
     vdl_json,
 )
 from layers.ledger import ledger_payload
@@ -818,31 +813,40 @@ def api_ldp() -> dict:
 def api_vdl_councils(
     scenario: str = Query(default="full_agr"),
 ) -> dict:
-    return with_stamp(vdl_councils_json(scenario))
+    """Blocked: vacant-land residual AGR £ is not a public download."""
+    del scenario  # signature kept for clients that still pass ?scenario=
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "message": "Modelled vacant-land AGR £ is not published on public routes.",
+            "publication_status": "blocked",
+        },
+    )
 
 
 @router.get("/api/roll.json")
 def api_roll(scenario: str = Query(default="full_agr")) -> dict:
-    return with_stamp(roll_json(scenario))
+    """Blocked: council AGR roll £ is not a public download."""
+    del scenario
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "message": "Modelled council AGR roll £ is not published on public routes.",
+            "publication_status": "blocked",
+        },
+    )
 
 
 @router.get("/api/roll.csv")
-def api_roll_csv(scenario: str = Query(default="full_agr")) -> PlainTextResponse:
-    payload = roll_json(scenario)
-    rows = payload.get("councils") or []
-    comment = stamp_comment(current_stamp())
-    cache = {"Cache-Control": "public, max-age=300"}
-    if not rows:
-        return PlainTextResponse(
-            comment + "\n", media_type="text/csv", headers=cache
-        )
-    fields = list(rows[0].keys())
-    buf = io.StringIO()
-    writer = csv.DictWriter(buf, fieldnames=fields, extrasaction="ignore")
-    writer.writeheader()
-    writer.writerows(rows)
-    return PlainTextResponse(
-        comment + "\n" + buf.getvalue(), media_type="text/csv", headers=cache
+def api_roll_csv(scenario: str = Query(default="full_agr")) -> dict:
+    """Blocked: council AGR roll £ is not a public download."""
+    del scenario
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "message": "Modelled council AGR roll £ is not published on public routes.",
+            "publication_status": "blocked",
+        },
     )
 
 

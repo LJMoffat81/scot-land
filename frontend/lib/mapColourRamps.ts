@@ -25,7 +25,7 @@ export const POP_DENSITY_LEGEND_TITLE =
 
 /** One-line blurb under the density title (SW-022). */
 export const POP_DENSITY_LEGEND_BLURB =
-  "Busier places tend to have higher land rents.";
+  "Busier places tend to have a higher Annual Ground Rent.";
 
 /** Source / licence line under density bands (SW-022). */
 export const POP_DENSITY_LEGEND_SOURCE =

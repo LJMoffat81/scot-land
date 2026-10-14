@@ -5,8 +5,11 @@
 
 import { apiJson } from "./api";
 import { preferDz2022, type PlaceDataZoneVintage } from "./placeCardDz";
+import { defaultAgrGroupRows } from "./rentGroupAgrRows.mjs";
+import { RENT_GROUP_NAME, RENT_GROUP_NAMES } from "./rentGroupNames.mjs";
 
 export { dataZoneFieldLabel, preferDz2022 } from "./placeCardDz";
+export { RENT_GROUP_NAME, RENT_GROUP_NAMES };
 
 /** Per-row status until publication — keep exact wording (site rewrite PR2). */
 export const PLACE_CARD_FIGURE_STATUS = "Figure not published yet";
@@ -186,32 +189,7 @@ export function valueStatusLabel(status: PlaceValueStatus): string {
 
 /** Value classes that may apply — plain words; no £. */
 export function defaultAgrRows(): PlaceAgrRow[] {
-  return [
-    {
-      id: "surface",
-      label: "Land",
-      tag: "proxy",
-      status: "in_progress",
-      applies: true,
-      of_which: [
-        { id: "planning_uplift", label: "of which: planning uplift" },
-      ],
-    },
-    {
-      id: "resource",
-      label: "Natural resource rents",
-      tag: "market",
-      status: "coming_soon",
-      applies: true,
-    },
-    {
-      id: "nature",
-      label: "Services of nature",
-      tag: "shadow",
-      status: "coming_soon",
-      applies: true,
-    },
-  ];
+  return defaultAgrGroupRows() as PlaceAgrRow[];
 }
 
 export function deriveHolder(card: PlaceCardPayload): PlaceHolder {

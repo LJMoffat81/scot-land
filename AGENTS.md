@@ -45,15 +45,37 @@ Annual Ground Rent remains first: residual site value on a What3Words 3×3 m gri
 
 ## Pre-review checklist
 
-Every PR must self-check against this list **before asking for review**. CI enforces the same rules (see `backend/tests/test_no_ledger_word_in_public_json.py` and frontend site-watch scripts). Fail the PR if any item fails.
+Every PR must self-check against this list **before asking for review**. Fail the PR if any item fails.
 
-1. **Banned visitor words** — Fail on visible `ledger` or `natural capital` in public pages or visitor-facing JSON. Code samples on `/developers` are excluded.
-2. **No £ figures** — Fail on any £ amount in public pages or public JSON (placeholders and unit labels only; never published money figures).
-3. **Group names** — Value/rent group headings must be exactly **Land** / **Natural resource rents** / **Services of nature**. Fail on any other name for those buckets (e.g. “Natural capital”).
-4. **Spatial grain** — Fail on anything finer than Data Zone for published modelled/proxy values (no plot / UPRN / parcel / building grain).
-5. **Required wording / test follow-ups**
-   - `backend/georgist/place_stack.py` outside note must say `outside the Scottish totals`.
-   - Runtime public-JSON tests must also ban `natural capital` (extend `test_no_ledger_word_in_public_json.py`).
+Tag each line: **CI** = covered by an automated check today; **hand** = reviewer confirms.
+
+### Always (public surface)
+
+| Check | Who |
+|-------|-----|
+| Fail on visible `ledger` or `natural capital` (code samples on `/developers` excluded) | **CI** |
+| Fail on any £ figure in public pages or public JSON | **CI** |
+| Fail on value/rent group names other than Land / Natural resource rents / Services of nature (`RENT_GROUP_NAMES`) | **CI** |
+| Fail on anything finer than Data Zone for published modelled/proxy values | **CI** |
+| `place_stack` outside note says `outside the Scottish totals` | **CI** |
+| Runtime public JSON also bans `natural capital` | **CI** |
+
+### Pass / fail (from prior PRs)
+
+| Check | Who |
+|-------|-----|
+| Every layer has a label and licence credit, including the OS credit on parcels (#82) | **CI** |
+| The holdout is pre-registered before scoring (#84) | **CI** |
+| `class_min` comes from settings, default 10, never hard-coded (#84) | **CI** |
+| Money tests are exact, with no approx, and order tests force each fill step, including the island to Scotland-wide fallthrough (#84) | **CI** |
+| The PR is rebased on main and merges cleanly, especially `check_publishable.py` and its test (#87) | **hand** |
+| Guard changes only add rules, never loosen one | **hand** |
+| The banned visible words `ledger`, `natural capital` and `headline/shadow` are checked in the built HTML **and** the runtime JSON (#87) | **CI** |
+| Never show `No data` when the code is known; show `name not loaded yet` (#87) | **CI** |
+| Jargon is fixed at the source (`platform.py` and its developer notes), with a backend test that runs without `BACKEND_URL` (#87) | **CI** |
+| `main.py` and `AGENTS.md` stay untouched unless an add-only change is approved | **hand** |
+| SLRG wording: Annual Ground Rent comes before land value tax; “Why it matters” is used word for word; the chips are Market/Modelled/Estimate with API values unchanged; the constraint line reads `Constraint: changes best use, adds no value`; totals are per chip only | **CI** |
+| e2e tests run at the stated widths and fail on console errors | **hand** |
 
 ## Tests
 ```powershell

@@ -24,6 +24,7 @@
     "test:designer-live-check": "node --experimental-strip-types scripts/test-designer-live-check.mjs",
     "test:site-watch-pr-b": "node scripts/test-site-watch-pr-b.mjs",
     "test:site-watch-pr-c": "node scripts/test-site-watch-pr-c.mjs",
+    "test:prereview-rent-groups": "node --experimental-strip-types scripts/test-prereview-rent-groups.mjs",
     "check:developers-links": "node scripts/check-developers-links.mjs"
   },
   "dependencies": {

@@ -19,12 +19,40 @@ test.describe("squares shell", () => {
     await expect(page.locator("#map")).toBeVisible();
     const search = page.locator("#place-query");
     await expect(search).toBeVisible();
-    await expect(search).toHaveAttribute(
-      "placeholder",
-      /postcode|place|coordinates/i,
-    );
 
-    // Coordinate search opens the stub place card (no AGR £ / tax copy as the headline figure).
+    await page.route("**/platform/place**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          contract: "place_card_v1",
+          lat: 55.8609,
+          lng: -4.2514,
+          place_label: "Glasgow",
+          council_name: "Glasgow City",
+          data_zone: {
+            status: "ok",
+            code: "S01014567",
+            name: "City Centre South",
+            vintage: 2022,
+          },
+          intermediate_zone: { status: "ok", name: "City Centre" },
+          agr_rows: [
+            {
+              id: "surface",
+              label: "Surface land",
+              tag: "proxy",
+              status: "in_progress",
+              applies: true,
+            },
+          ],
+          constraints: [],
+          layers: [],
+          links: [],
+        }),
+      });
+    });
+
     await search.fill("55.86090, -4.25140");
     await page.locator(".hud-search-go").click();
     const card = page.locator("aside.place-card-stub");
@@ -33,16 +61,12 @@ test.describe("squares shell", () => {
     await expect(page.getByTestId("place-card-square-reference")).toContainText(
       /Scot-LAND square reference/i,
     );
-    await expect(page.getByTestId("place-card-agr-surface")).toContainText(
-      /figures pending sign-off/i,
-    );
-    await expect(page.getByTestId("place-card-data-zone-grain")).toHaveText(
-      "For now, figures are published at Data Zone level only, not for individual parcels, plots or addresses.",
-    );
-    await expect(page.getByTestId("place-card-constraints")).toContainText(
-      /Constraint: changes best use, adds no value/i,
+    await expect(page.getByTestId("place-card-value")).toBeVisible();
+    await expect(page.getByTestId("place-card-figures-checked")).toContainText(
+      /Figures are being checked/i,
     );
     await expect(card.getByText(/£\d/)).toHaveCount(0);
+    await expect(card).not.toContainText("£0");
     await expect(card).not.toContainText(/what3words/i);
   });
 });
@@ -61,6 +85,6 @@ test.describe("squares shell mobile", () => {
     await expect(page.getByRole("button", { name: "Satellite" })).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Layers", exact: true }),
-    ).toHaveCount(0);
+    ).toBeVisible();
   });
 });

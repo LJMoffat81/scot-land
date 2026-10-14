@@ -724,10 +724,64 @@ input {
 
 .hud-tools {
   top: 7.4rem;
-  left: 1.1rem;
+  right: 1.1rem;
+  left: auto;
   width: min(332px, calc(100vw - 2rem));
   max-height: calc(100vh - 13rem);
   padding: 0.9rem 1rem 1rem;
+  z-index: 4;
+}
+
+/* Layers drawer sits on the right; Find-a-place stays bottom-left. */
+.app-shell.tools-open .hud-scotland {
+  /* Keep Find-a-place visible on the left — never under the right drawer. */
+  right: auto;
+}
+
+.evidence-tag-legend {
+  list-style: none;
+  margin: 0.55rem 0 0.75rem;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.evidence-tag-legend-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.5rem;
+  font-size: 0.78rem;
+  color: var(--slrg-muted);
+  line-height: 1.35;
+}
+
+.evidence-tag-legend-item.compact {
+  gap: 0.3rem;
+}
+
+.evidence-tag-legend-gloss {
+  color: var(--slrg-text);
+}
+
+.place-value-status {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--slrg-muted);
+}
+
+.place-value-status.tone-in_progress {
+  color: #0b4f6c;
+  border-color: #7eb6c9;
+  background: #eef7fb;
+}
+
+.place-value-status.tone-coming_soon {
+  color: #5c5c5c;
+  background: #f3f3f3;
 }
 
 .hud-scotland {

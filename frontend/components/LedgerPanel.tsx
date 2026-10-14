@@ -84,8 +84,8 @@ export default function LedgerPanel({
       <p className="hud-tools-title">{title}</p>
       <p className="layer-meta" data-testid="ledger-panel-lead">
         One row per natural-capital rent class. Toggle paints where that row
-        applies. Constraints are not rent — £0, they change best use only.
-        Public AGR £ is not shown yet.
+        applies. Constraints change best use and add no value. Figures are
+        being checked and aren't published yet.
       </p>
 
       {loading && (
@@ -168,7 +168,7 @@ export default function LedgerPanel({
                         className="ledger-panel-note"
                         data-testid={`ledger-outside-${row.id}`}
                       >
-                        Outside Scottish total
+                        Offshore, outside the Scottish land total
                       </p>
                     )}
                   </li>
@@ -184,7 +184,7 @@ export default function LedgerPanel({
           >
             <label className="layer-select-label">Constraints</label>
             <p className="layer-meta" data-testid="ledger-constraints-rule">
-              £0, changes best use
+              Constraint: changes best use, adds no value
             </p>
             <ul className="ledger-panel-list">
               {ledger.constraints.map((constraint) => {

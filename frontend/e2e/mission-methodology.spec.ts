@@ -50,6 +50,7 @@ test.describe("mission and methodology pages", () => {
       "The roll-up",
       "The three tags",
       "Rents kept separate; constraints add no value",
+      "Natural capital ledger",
       "Sources",
       "Gaps",
       "Validation",
@@ -63,18 +64,18 @@ test.describe("mission and methodology pages", () => {
     await expect(root).toContainText("Roll-up figures stay unpublished");
     await expect(root).toContainText("2011-to-2022");
     await expect(page.getByTestId("confidence-tag-list")).toBeVisible();
+    await expect(page.getByTestId("methodology-ledger-table")).toBeVisible();
+    await expect(page.getByTestId("methodology-oil-gas-footnote")).toContainText(
+      /offshore, outside the Scottish land total/i,
+    );
     await expect(
       page.getByTestId("confidence-tag").filter({ hasText: "Market" }),
     ).toHaveAttribute("data-confidence", "market");
-    await expect(
-      page.getByTestId("confidence-tag").filter({ hasText: "Proxy" }),
-    ).toHaveAttribute("data-confidence", "proxy");
-    await expect(
-      page.getByTestId("confidence-tag").filter({ hasText: "Shadow" }),
-    ).toHaveAttribute("data-confidence", "shadow");
+    await expect(root).toContainText(/based on real sales or prices/i);
     const table = page.getByTestId("sources-table");
     await expect(table).toBeVisible();
     expect(await table.locator("tbody tr").count()).toBeGreaterThan(20);
+    await expect(root).not.toContainText("£0");
     await expect(root).not.toContainText(/£\s*[\d,]+/);
   });
 });

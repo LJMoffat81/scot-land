@@ -1,13 +1,17 @@
 "use client";
 
+import EvidenceTagLegend from "@/components/EvidenceTagLegend";
 import {
   PLACE_CARD_CONSTRAINT_LABEL,
-  PLACE_CARD_DATA_ZONE_GRAIN,
+  PLACE_CARD_FIGURES_CHECKED,
+  PLACE_CARD_HOW_WE_VALUE_LABEL,
   PLACE_CARD_RESEARCH_DISCLAIMER,
   sanitizePlaceCard,
+  valueStatusLabel,
   type PlaceCardPayload,
   type PlaceLayer,
   type PlaceRentTag,
+  type PlaceValueStatus,
 } from "../lib/placeCard";
 
 export type PlaceCardProps = {
@@ -31,13 +35,23 @@ function TagChip({ tag }: { tag: PlaceRentTag }) {
   );
 }
 
+function StatusChip({ status }: { status: PlaceValueStatus }) {
+  return (
+    <span
+      className={`place-value-status tone-${status}`}
+      data-testid={`place-value-status-${status}`}
+    >
+      {valueStatusLabel(status)}
+    </span>
+  );
+}
+
 function layerLicence(layer: PlaceLayer): string {
   return layer.licence?.trim() || "Licence not recorded";
 }
 
 /**
- * Designer brief v3.1 place card — field order fixed.
- * Lives on the map; no £ figures.
+ * Designer ledger redesign place card — value / limits IA; DZ2022; no £.
  */
 export function PlaceCard({
   data,
@@ -72,6 +86,10 @@ export function PlaceCard({
     card?.postcode?.trim() ||
     zone?.name?.trim() ||
     "This place";
+  const valueRows = (card?.agr_rows || []).filter((row) => row.applies !== false);
+  const limitRows = (card?.constraints || []).filter(
+    (row) => row.applies === true,
+  );
 
   return (
     <aside
@@ -105,7 +123,6 @@ export function PlaceCard({
 
       {!isLoading && !error && card ? (
         <div className="place-card-body">
-          {/* 1. Place */}
           <header className="place-card-header">
             <p className="place-card-kicker">Place</p>
             <h2 className="place-card-title" data-testid="place-card-place">
@@ -117,13 +134,21 @@ export function PlaceCard({
           </header>
 
           <dl className="place-card-fields">
-            {/* 2. Data zone code (S01) */}
             <div className="place-card-field">
-              <dt>Data zone</dt>
+              <dt>Data zone (2022)</dt>
               <dd data-testid="place-card-data-zone">
                 {dzCode ? (
                   <>
                     <span className="place-card-dz-code">{dzCode}</span>
+                    {zone?.vintage ? (
+                      <span
+                        className="place-card-meta-inline"
+                        data-testid="place-card-dz-vintage"
+                      >
+                        {" "}
+                        · DZ{zone.vintage}
+                      </span>
+                    ) : null}
                     {zone?.name ? (
                       <span className="place-card-meta-inline">
                         {" "}
@@ -141,7 +166,6 @@ export function PlaceCard({
               </dd>
             </div>
 
-            {/* 3. Intermediate Zone name */}
             <div className="place-card-field">
               <dt>Intermediate Zone</dt>
               <dd data-testid="place-card-intermediate-zone">
@@ -156,7 +180,6 @@ export function PlaceCard({
               </dd>
             </div>
 
-            {/* 4. Council */}
             <div className="place-card-field">
               <dt>Council</dt>
               <dd data-testid="place-card-council">
@@ -166,7 +189,6 @@ export function PlaceCard({
               </dd>
             </div>
 
-            {/* 5. Square reference */}
             <div className="place-card-field">
               <dt>Square reference</dt>
               <dd data-testid="place-card-square-reference">
@@ -175,15 +197,16 @@ export function PlaceCard({
             </div>
           </dl>
 
-          {/* 6–7. AGR surface / resource / nature + of which notes */}
+          <EvidenceTagLegend compact />
+
           <section
             className="place-card-agr"
-            aria-label="Annual Ground Rent"
-            data-testid="place-card-agr"
+            aria-label="What gives this land value"
+            data-testid="place-card-value"
           >
-            <h3 className="place-card-section">Annual Ground Rent</h3>
+            <h3 className="place-card-section">What gives this land value</h3>
             <ul className="place-agr-list">
-              {(card.agr_rows || []).map((row) => (
+              {valueRows.map((row) => (
                 <li
                   key={row.id}
                   className="place-agr-row"
@@ -192,12 +215,7 @@ export function PlaceCard({
                   <div className="place-agr-row-main">
                     <span className="place-agr-label">{row.label}</span>
                     <TagChip tag={row.tag} />
-                    <span
-                      className="place-agr-amount"
-                      data-testid={`place-card-agr-amount-${row.id}`}
-                    >
-                      {row.amount_label}
-                    </span>
+                    <StatusChip status={row.status} />
                   </div>
                   {row.of_which?.length ? (
                     <ul className="place-agr-of-which">
@@ -214,45 +232,61 @@ export function PlaceCard({
                 </li>
               ))}
             </ul>
-            <p
-              className="place-card-grain"
-              data-testid="place-card-data-zone-grain"
-            >
-              {PLACE_CARD_DATA_ZONE_GRAIN}
-            </p>
           </section>
 
-          {/* 8. Constraints (no £) */}
           <section
             className="place-card-constraints"
-            aria-label="Constraints"
-            data-testid="place-card-constraints"
+            aria-label="What limits how it can be used"
+            data-testid="place-card-limits"
           >
-            <h3 className="place-card-section">Constraints</h3>
-            <p className="place-card-constraint-banner">
+            <h3 className="place-card-section">
+              What limits how it can be used
+            </h3>
+            <p
+              className="place-card-constraint-banner"
+              data-testid="place-card-constraint-banner"
+            >
               {PLACE_CARD_CONSTRAINT_LABEL}
             </p>
-            <ul className="place-constraint-list">
-              {(card.constraints || []).map((row) => (
-                <li
-                  key={row.id}
-                  className="place-constraint-row"
-                  data-testid={`place-card-constraint-${row.id}`}
-                >
-                  <span className="place-constraint-label">{row.label}</span>
-                  <span className="place-constraint-state">
-                    {row.applies === true
-                      ? "Applies"
-                      : row.applies === false
-                        ? "Does not apply"
-                        : row.note || "No data"}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            {limitRows.length ? (
+              <ul className="place-constraint-list">
+                {limitRows.map((row) => (
+                  <li
+                    key={row.id}
+                    className="place-constraint-row"
+                    data-testid={`place-card-constraint-${row.id}`}
+                  >
+                    <span className="place-constraint-label">{row.label}</span>
+                    <span className="place-constraint-state">
+                      {row.applies === true
+                        ? "Applies"
+                        : row.applies === false
+                          ? "Does not apply"
+                          : row.note || "No data"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="place-card-meta">No limits listed for this place.</p>
+            )}
           </section>
 
-          {/* 9. Holder */}
+          <p
+            className="place-card-grain"
+            data-testid="place-card-figures-checked"
+          >
+            {PLACE_CARD_FIGURES_CHECKED}
+          </p>
+          <p className="place-card-meta">
+            <a
+              href="/methodology"
+              data-testid="place-card-how-we-value"
+            >
+              {PLACE_CARD_HOW_WE_VALUE_LABEL}
+            </a>
+          </p>
+
           <section
             className="place-card-holder"
             aria-label="Holder"
@@ -267,7 +301,6 @@ export function PlaceCard({
             ) : null}
           </section>
 
-          {/* 10. Sources and licences */}
           <section
             className="place-card-sources"
             aria-label="Sources and licences"
@@ -318,16 +351,6 @@ export function PlaceCard({
                 </li>
               ))}
             </ul>
-            {card.data_zone?.status === "ok" && card.data_zone.code ? (
-              <p className="place-card-meta">
-                <a
-                  href={`/place?zone=${encodeURIComponent(card.data_zone.code)}`}
-                  data-testid="place-card-hectare-stack-link"
-                >
-                  Per-hectare ledger stack
-                </a>
-              </p>
-            ) : null}
             {card.links?.length ? (
               <ul className="place-link-list" data-testid="place-card-links">
                 {card.links.map((link) => {
@@ -350,7 +373,7 @@ export function PlaceCard({
               <p className="place-card-meta">
                 <a href="/mission">Mission</a>
                 {" · "}
-                <a href="/methodology">Methodology</a>
+                <a href="/methodology">{PLACE_CARD_HOW_WE_VALUE_LABEL}</a>
               </p>
             )}
           </section>

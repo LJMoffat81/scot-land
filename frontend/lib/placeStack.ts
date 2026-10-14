@@ -31,7 +31,7 @@ export type PlaceStackRow = {
   in_total: boolean;
   stack: "headline" | "shadow" | "outside" | string;
   amount_placeholder: string;
-  /** Always null on public payloads until ECONOMIC_RULES approve £. */
+  /** Always null on public payloads while figures are unpublished. */
   amount_gbp_per_ha: number | null;
   outside_scottish_total?: boolean;
 };
@@ -83,21 +83,21 @@ export type PlaceHectareStackPayload = {
 export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
   contract: "place_hectare_stack_v1",
   published: true,
-  grain: "zone-level only; never plots; nothing published for blocked zones",
+  grain: "Figures are being checked and aren't published yet.",
   zone: {
-    code: "S01010264",
+    code: "S01014567",
     name: "City Centre South",
     publication_status: "ok",
   },
   publication_note:
-    "Per-hectare stack (Natural capital ledger). Public AGR £ withheld until ECONOMIC_RULES / calibration. Placeholders are not £0. Nested 1a is indented and never added. Shadow total is separate and never summed into the headline. Oil & gas and benchmarks sit outside both.",
+    "Per-hectare stack. Figures are being checked and aren't published yet. Planning uplift sits under surface land. Nature values stay separate from market and proxy rows. Oil and gas sit outside the Scottish land total.",
   headline: {
     label: "Headline (market + proxy)",
-    unit: "£/ha/year",
+    unit: "per hectare per year",
     sum_row_ids: ["1", "2", "3", "4"],
     total_placeholder: "—",
     total_note:
-      "Visually stacked rows that add to this total: 1, 2, 3, 4. Nested 1a excluded from the sum.",
+      "Visually stacked rows that add to this total: 1, 2, 3, 4. Planning uplift excluded from the sum.",
     rows: [
       {
         id: "1",
@@ -105,7 +105,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
         tag: "market_or_proxy",
         status: "not_yet",
         status_note:
-          "Best permitted use. Public £ withheld until ECONOMIC_RULES / calibration.",
+          "Best permitted use. Figures are being checked and aren't published yet.",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -118,7 +118,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
         label: "Planning uplift",
         tag: "nested",
         status: "not_yet",
-        status_note: "Nested in row 1 — never added as a sibling total.",
+        status_note: "Of which under surface land — never added as a sibling total.",
         parent_id: "1",
         nested: true,
         in_total: false,
@@ -146,7 +146,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
         tag: "proxy",
         status: "partial",
         status_note:
-          "Site rent minus footprint surface rent. Inventory may paint; £ withheld.",
+          "Site rent minus footprint surface rent. Inventory layers may paint.",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -170,8 +170,8 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     ],
   },
   shadow: {
-    label: "Shadow (separate — never summed into headline)",
-    unit: "£/ha/year",
+    label: "Nature values (separate — never summed into headline)",
+    unit: "per hectare per year",
     sum_row_ids: ["5", "6", "7", "8", "10"],
     total_placeholder: "—",
     total_note:
@@ -210,7 +210,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
         tag: "shadow",
         status: "not_yet",
         status_note:
-          "Shadow, ~0 when published. Not shown as £0 while not yet.",
+          "Value with no market price — not yet published.",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -249,7 +249,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
   outside: {
     label: "Outside Scottish total",
     note:
-      "Oil & gas (row 9) is reported UK-reserved and sits outside headline and shadow Scottish totals. Benchmarks are beside the ledger and never inputs.",
+      "Oil and gas (row 9) — offshore, outside the Scottish land total. Benchmarks are beside the ledger and never inputs.",
     benchmark_label: "benchmark only, not inputs",
     rows: [
       {
@@ -258,7 +258,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
         tag: "reported",
         status: "excluded",
         status_note:
-          "UK-reserved — outside Scottish total (headline and shadow).",
+          "Offshore, outside the Scottish land total.",
         parent_id: null,
         nested: false,
         in_total: false,
@@ -285,18 +285,18 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     {
       id: "designations",
       label: "Designations",
-      rule: "£0, changes best use",
+      rule: "Constraint: changes best use, adds no value",
     },
-    { id: "flood", label: "Flood", rule: "£0, changes best use" },
+    { id: "flood", label: "Flood", rule: "Constraint: changes best use, adds no value" },
     {
       id: "crofting",
       label: "Crofting / common grazings",
-      rule: "£0, changes best use",
+      rule: "Constraint: changes best use, adds no value",
     },
     {
       id: "lca",
       label: "Land Capability for Agriculture (LCA)",
-      rule: "£0, changes best use",
+      rule: "Constraint: changes best use, adds no value",
     },
   ],
   checks_url: "/data",
@@ -306,7 +306,7 @@ export const PLACE_STACK_BLOCKED_FIXTURE: PlaceHectareStackPayload = {
   contract: "place_hectare_stack_v1",
   published: false,
   reason: "blocked",
-  grain: "zone-level only; never plots; nothing published for blocked zones",
+  grain: "Figures are being checked and aren't published yet.",
   zone: {
     code: "S01008680",
     name: null,
@@ -315,7 +315,7 @@ export const PLACE_STACK_BLOCKED_FIXTURE: PlaceHectareStackPayload = {
   note:
     "Nothing published for blocked zones (publication_status=blocked — ceiling breach / hold rules).",
   publication_note:
-    "Blocked zone — no per-hectare stack and no modelled AGR £.",
+    "Blocked zone — no per-hectare stack published.",
   headline: null,
   shadow: null,
   outside: null,
@@ -385,9 +385,9 @@ export function tagLabel(tag: string): string {
     case "market_or_proxy":
       return "market / proxy";
     case "reported":
-      return "reported";
+      return "outside";
     case "nested":
-      return "nested";
+      return "of which";
     default: {
       const _exhaustive: string = tag;
       return _exhaustive;

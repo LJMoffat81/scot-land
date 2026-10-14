@@ -138,7 +138,7 @@ export default function LayersPanel({
       <p className="layer-meta">
         Open layers from the platform catalog. Live layers can be toggled.
         Linked and gap rows stay honest — no invented geometry. Modelled plot
-        AGR £ and tax scenarios are not shown here.
+        rents and tax scenarios are not shown here.
       </p>
 
       {loading && (

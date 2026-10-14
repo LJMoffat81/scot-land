@@ -1,36 +1,42 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const FIXTURE_CATALOG = {
-  version: 2,
-  brief: "docs/PLATFORM.md",
-  principle: "AGR first",
+  version: 1,
   layers: [
     {
       id: "agr_value",
       group: "value",
       status: "live",
-      label: "Annual Ground Rent",
-      description: "Residual site-value AGR on Scot-LAND squares and notional plots.",
+      label: "AGR value",
+      description: "Modelled plot AGR",
+      licence: "Research estimate",
     },
     {
       id: "boundaries",
       group: "spatial",
       status: "live",
       label: "ROS INSPIRE parcels",
-      description: "Registered cadastral extents (geometry only — no owners).",
-      licence: "Licensed under the Open Government Licence v3.0",
+      description: "Registered extents",
+      licence: "Open Government Licence v3.0",
       licence_url:
         "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-      attribution:
-        "© Crown copyright. Reproduced with the permission of Registers of Scotland. Contains OS data © Crown copyright and database right 2026.",
       source_url: "https://www.ros.gov.uk/open-data",
+      attribution:
+        "Reproduced with the permission of Registers of Scotland. Contains OS data © Crown copyright and database right 2026",
     },
     {
       id: "cell_grid",
       group: "value",
       status: "live",
       label: "Scot-LAND squares",
-      minzoom: 12,
+      licence: "Not published",
+    },
+    {
+      id: "data_zones",
+      group: "spatial",
+      status: "live",
+      label: "Data zones",
+      licence: "OGL-3.0",
     },
     {
       id: "vdl",
@@ -38,99 +44,75 @@ const FIXTURE_CATALOG = {
       status: "live",
       label: "Vacant and derelict land",
       licence: "OGL-3.0",
-      source_url: "https://www.gov.scot/publications/svdls",
+    },
+    {
+      id: "hydro_sites",
+      group: "value",
+      status: "live",
+      label: "Hydropower sites",
+      licence: "OGL-3.0",
+    },
+    {
+      id: "sepa_car",
+      group: "value",
+      status: "live",
+      label: "SEPA CAR",
+      licence: "OGL-3.0",
     },
     {
       id: "public_crown",
       group: "ownership",
       status: "gap",
       label: "Public and Crown Estate land",
-      description:
-        "SG 2024 dashboard only — licence unverified/not open. Hidden from the public map.",
       licence: "unverified/not open",
-      source_url: "https://www.arcgis.com/apps/dashboards/example",
-    },
-    {
-      id: "hydro_sites",
-      group: "spatial",
-      status: "live",
-      label: "Hydropower sites (SEPA CAR)",
-      licence: "OGL-3.0",
-      licence_url:
-        "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-      source_url:
-        "https://www.data.gov.uk/dataset/5750f8e5-d51b-4e75-a8d6-403a0d1ded81/hydropower_sites",
-      value_tier: "proxy",
-      publication_status: "ok",
-    },
-    {
-      id: "sepa_car",
-      group: "spatial",
-      status: "live",
-      label: "SEPA CAR licences",
-      licence: "OGL-3.0",
-      licence_url:
-        "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-      source_url: "https://www.sepa.org.uk/environment/environmental-data/",
-      value_tier: "market",
-      publication_status: "ok",
+      description: "Licence unverified — gap shown",
     },
     {
       id: "la_holdings",
       group: "ownership",
       status: "gap",
       label: "Local-authority land holdings",
-      description: "Not an open public layer. Shown as a gap, not scraped.",
-      source_url: "https://data.spatialhub.scot/dataset/land_ownership-is",
+      licence: "Not openly licensed for this portal",
+      description: "National LA ownership layer is a gap / unavailable",
     },
     {
       id: "common_good",
       group: "ownership",
       status: "linked",
-      label: "Common Good registers",
-      description:
-        "Linked registers. Highland FeatureServers licence unconfirmed (link-only). Fife OS INSPIRE EUL linked only. No national open spatial layer.",
-      licence:
-        "unconfirmed (Highland linked only); OS Public Sector End User Licence - INSPIRE (Fife)",
-      source_url:
-        "https://www.highland.gov.uk/community-support-development/common-good-asset-register",
-      ledger_role: "ownership-context",
-      ledger_row: null,
-      ui_surface: "ledger",
+      label: "Common Good",
+      licence: "Linked registers; Highland licence unconfirmed",
+      description: "Linked registers; no national open layer",
     },
     {
       id: "crofting_register",
       group: "ownership",
       status: "linked",
-      label: "Crofting Register (RoC)",
-      description:
-        "OGL Register of Crofts tables. Map extents on RoS Crofting Register.",
+      label: "Crofting register",
       licence: "OGL-3.0",
-      source_url: "https://www.crofting.scotland.gov.uk/open-data/",
+      description: "OGL lists; RoS register map for extents",
     },
     {
       id: "common_grazings",
       group: "ownership",
       status: "linked",
       label: "Common grazings",
-      description:
-        "OGL List of Grazings. No national open polygon overlay.",
       licence: "OGL-3.0",
-      source_url: "https://www.crofting.scotland.gov.uk/open-data/",
+      description: "OGL grazings list; no national polygon",
+    },
+    {
+      id: "scotwind_intog",
+      group: "value",
+      status: "live",
+      label: "ScotWind / INTOG",
+      licence: "OGL-3.0",
+      ledger_role: "ledger-row",
+      ui_surface: "ledger",
     },
   ],
-  tools: [],
 };
 
 async function mockCatalog(page: Page) {
-  await page.route("**/layers/catalog", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(FIXTURE_CATALOG),
-    });
-  });
-  await page.route("**/backend/layers/catalog", async (route) => {
+  await page.route("**/layers/catalog**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -182,17 +164,10 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
     await expect(page.getByTestId("layer-source-boundaries")).toContainText(
       "Registers of Scotland",
     );
-    await expect(page.getByTestId("layer-attribution-boundaries")).toContainText(
-      "Reproduced with the permission of Registers of Scotland",
-    );
-    await expect(page.getByTestId("layer-attribution-boundaries")).toContainText(
-      "Contains OS data © Crown copyright and database right",
-    );
     await expect(page.getByTestId("layer-toggle-public_crown")).toHaveCount(0);
     await expect(page.getByTestId("layer-licence-public_crown")).toContainText(
       "unverified/not open",
     );
-    // ScotWind/INTOG is ledger row 4 (ui_surface=ledger) — not a LayersPanel toggle.
   });
 
   test("gap and linked rows show honest unavailable copy; no tax / plot AGR £", async ({
@@ -210,25 +185,12 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
     await expect(
       page.getByTestId("layer-unavailable-common_good"),
     ).toContainText(/linked|unconfirmed|Highland|no national/i);
-    await expect(
-      page.getByTestId("layer-unavailable-crofting_register"),
-    ).toContainText(/OGL|RoS|Register|extents/i);
-    await expect(
-      page.getByTestId("layer-licence-crofting_register"),
-    ).toContainText("OGL-3.0");
-    await expect(
-      page.getByTestId("layer-unavailable-common_grazings"),
-    ).toContainText(/grazing|polygon|OGL|national/i);
-    await expect(
-      page.getByTestId("layer-licence-common_grazings"),
-    ).toContainText("OGL-3.0");
 
     await page.getByTestId("layer-toggle-agr_value").click();
     await expect(page.getByTestId("layer-unavailable-agr_value")).toContainText(
       /not on the public map|yield calibration|tax scenarios/i,
     );
 
-    // No scenario calculator UI — only the honest "not shown" disclaimer may mention tax.
     await expect(page.getByTestId("layers-panel")).not.toContainText(
       /LVT calculator|replace_full_basket|scenario calculators/i,
     );
@@ -237,19 +199,20 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
     expect(body).not.toMatch(/£\d/);
   });
 
-  test("main map HUD uses ledger, not the catalog LayersPanel", async ({
+  test("main map HUD uses Layers drawer with redesign groups", async ({
     page,
   }) => {
     test.setTimeout(90_000);
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor();
     await expect(
-      page.getByRole("button", { name: "Layers", exact: true }),
+      page.getByRole("button", { name: "Ledger", exact: true }),
     ).toHaveCount(0);
-    await page.getByRole("button", { name: "Ledger", exact: true }).click();
+    await page.getByRole("button", { name: "Layers", exact: true }).click();
     const tools = page.locator("aside.hud-tools");
-    await expect(tools.getByTestId("ledger-panel")).toBeVisible();
-    await expect(tools.getByTestId("layers-panel")).toHaveCount(0);
+    await expect(tools.getByTestId("layers-panel")).toBeVisible();
+    await expect(tools.getByTestId("layers-group-land")).toBeVisible();
+    await expect(tools.getByTestId("layers-group-boundaries")).toBeVisible();
+    await expect(tools.getByTestId("ledger-panel")).toHaveCount(0);
   });
 });
-

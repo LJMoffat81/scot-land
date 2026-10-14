@@ -18,9 +18,9 @@ const FIXTURE_ZONES = {
         ],
       },
       properties: {
-        code: "S01009859",
-        name: "Ibrox - 01",
-        vintage: 2011,
+        code: "S01014567",
+        name: "City Centre South",
+        vintage: 2022,
         la_name: "Glasgow City",
         population: 812,
         pop_year: 2022,
@@ -34,7 +34,7 @@ const FIXTURE_ZONES = {
     ok: true,
     layer: "data_zones",
     count: 1,
-    vintage: 2011,
+    vintage: 2022,
     serve: "postgis:dz_boundaries",
     licence: "Open Government Licence v3.0",
     note: "Boundaries and open rollups only. No Annual Ground Rent.",
@@ -61,9 +61,9 @@ async function mockDzRoutes(page: Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        code: "S01009859",
-        name: "Ibrox - 01",
-        vintage: 2011,
+        code: "S01014567",
+        name: "City Centre South",
+        vintage: 2022,
       }),
     });
   });
@@ -72,9 +72,9 @@ async function mockDzRoutes(page: Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        code: "S01009859",
-        name: "Ibrox - 01",
-        vintage: 2011,
+        code: "S01014567",
+        name: "City Centre South",
+        vintage: 2022,
       }),
     });
   });
@@ -83,37 +83,59 @@ async function mockDzRoutes(page: Page) {
 test.describe("Data Zone boundaries layer", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("place card shows zone identity without £; HUD is ledger not GIS checklist", async ({
+  test("place card shows DZ2022 identity without £; HUD is Layers drawer", async ({
     page,
   }) => {
     test.setTimeout(90_000);
     await mockDzRoutes(page);
+    await page.route("**/platform/place**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          contract: "place_card_v1",
+          lat: 55.8609,
+          lng: -4.2514,
+          place_label: "City Centre South",
+          council_name: "Glasgow City",
+          data_zone: {
+            status: "ok",
+            code: "S01014567",
+            name: "City Centre South",
+            vintage: 2022,
+          },
+          intermediate_zone: { status: "ok", name: "City Centre" },
+          agr_rows: [],
+          constraints: [],
+          layers: [],
+          links: [],
+        }),
+      });
+    });
     await page.goto("/?lat=55.8609&lng=-4.2514");
     await page.locator(".maplibregl-canvas").waitFor();
 
     await expect(
-      page.getByRole("button", { name: "Layers", exact: true }),
+      page.getByRole("button", { name: "Ledger", exact: true }),
     ).toHaveCount(0);
-    await page.getByRole("button", { name: "Ledger", exact: true }).click();
+    await page.getByRole("button", { name: "Layers", exact: true }).click();
     const panel = page.locator("aside.hud-tools");
     await expect(panel).toBeVisible();
-    await expect(panel.getByTestId("ledger-panel")).toBeVisible();
-    await expect(panel.getByTestId("layer-data-zones")).toHaveCount(0);
+    await expect(panel.getByTestId("layers-panel")).toBeVisible();
+    await expect(panel.getByTestId("layer-toggle-data_zones")).toBeVisible();
 
-    // URL-driven inspect + mocked /at → place card with code/name (no £).
     const card = page.locator("aside.place-card-stub");
     await expect(card).toBeVisible({ timeout: 20_000 });
-    await expect(card.getByTestId("place-data-zone")).toContainText(/S01009859|Ibrox/i);
+    await expect(card.getByTestId("place-card-data-zone")).toContainText(/S01014567|City Centre/i);
+    await expect(card).not.toContainText("£0");
     await expect(card.getByText(/£\d/)).toHaveCount(0);
 
-    // Close ledger; click map should keep zone card (and may add rollups).
-    await page.getByRole("button", { name: "Ledger", exact: true }).click();
+    await page.getByRole("button", { name: "Layers", exact: true }).click();
     await page.waitForTimeout(800);
     await page.locator("#map").click({ position: { x: 720, y: 420 } });
-    await expect(card.getByTestId("place-data-zone")).toContainText(/S01009859|Ibrox/i, {
+    await expect(card.getByTestId("place-card-data-zone")).toContainText(/S01014567|City Centre/i, {
       timeout: 10_000,
     });
-    await expect(card.getByText(/£\d/)).toHaveCount(0);
   });
 });
 

@@ -3,18 +3,20 @@ import { expect, test } from "@playwright/test";
 test.describe("place card (internal preview)", () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  test("Designer v3.1 field order, tags, no £ figures", async ({ page }) => {
+  test("redesign IA: DZ2022, value/limits, legend, no £", async ({ page }) => {
     await page.goto("/place-card");
     const card = page.getByTestId("place-card");
     await expect(card).toBeVisible();
 
-    // Field order: Place → DZ → IZ → Council → Square → AGR → constraints → holder → sources
     await expect(page.getByTestId("place-card-place")).toBeVisible();
     await expect(page.getByTestId("place-card-data-zone")).toContainText(
-      "S01010264",
+      "S01014567",
+    );
+    await expect(page.getByTestId("place-card-dz-vintage")).toContainText(
+      "DZ2022",
     );
     await expect(page.getByTestId("place-card-intermediate-zone")).toContainText(
-      /No data/i,
+      /City Centre/i,
     );
     await expect(page.getByTestId("place-card-council")).toContainText(
       "Glasgow City",
@@ -22,58 +24,47 @@ test.describe("place card (internal preview)", () => {
     await expect(page.getByTestId("place-card-square-reference")).toContainText(
       /Scot-LAND square reference/i,
     );
-    await expect(page.getByTestId("place-card-square-reference")).not.toContainText(
-      /what3words/i,
-    );
 
+    await expect(page.getByTestId("place-card-value")).toContainText(
+      /What gives this land value/i,
+    );
     await expect(page.getByTestId("place-card-agr-surface")).toContainText(
-      "Surface",
-    );
-    await expect(page.getByTestId("place-card-agr-resource")).toContainText(
-      "Resource",
-    );
-    await expect(page.getByTestId("place-card-agr-nature")).toContainText(
-      "Nature",
-    );
-    await expect(page.getByTestId("place-card-agr-amount-surface")).toHaveText(
-      "figures pending sign-off",
+      /Surface land/i,
     );
     await expect(page.getByTestId("place-card-of-which-planning_uplift")).toContainText(
       /of which: planning uplift/i,
     );
-    await expect(
-      page.getByTestId("place-card-of-which-infrastructure_share"),
-    ).toContainText(/of which: infrastructure share/i);
+    await expect(page.getByTestId("place-value-status-in_progress")).toBeVisible();
+    await expect(page.getByTestId("place-value-status-coming_soon")).toBeVisible();
 
-    await expect(page.getByTestId("place-tag-market")).toBeVisible();
-    await expect(page.getByTestId("place-tag-proxy")).toBeVisible();
-    await expect(page.getByTestId("place-tag-shadow")).toBeVisible();
-
-    await expect(page.getByTestId("place-card-data-zone-grain")).toHaveText(
-      "For now, figures are published at Data Zone level only, not for individual parcels, plots or addresses.",
+    await expect(page.getByTestId("evidence-tag-legend")).toBeVisible();
+    await expect(page.getByTestId("evidence-tag-legend-market")).toContainText(
+      /real sales or prices/i,
+    );
+    await expect(page.getByTestId("evidence-tag-legend-proxy")).toContainText(
+      /modelled from similar evidence/i,
+    );
+    await expect(page.getByTestId("evidence-tag-legend-shadow")).toContainText(
+      /no market price/i,
     );
 
-    await expect(page.getByTestId("place-card-constraints")).toContainText(
+    await expect(page.getByTestId("place-card-limits")).toContainText(
+      /What limits how it can be used/i,
+    );
+    await expect(page.getByTestId("place-card-constraint-banner")).toContainText(
       "Constraint: changes best use, adds no value",
     );
-    await expect(page.getByTestId("place-card-holder")).toContainText(
-      /private, not shown/i,
+    await expect(page.getByTestId("place-card-figures-checked")).toHaveText(
+      "Figures are being checked and aren't published yet",
+    );
+    await expect(page.getByTestId("place-card-how-we-value")).toHaveAttribute(
+      "href",
+      "/methodology",
     );
 
-    const layers = page.getByTestId("place-card-layers");
-    await expect(layers.getByText("ROS INSPIRE parcels")).toBeVisible();
-    await expect(page.getByTestId("place-card-licence-boundaries")).toContainText(
-      /Open Government Licence/i,
-    );
-    await expect(page.getByTestId("place-card-licence-vdl")).toContainText(
-      /OGL/i,
-    );
-
-    await expect(page.getByTestId("place-card-disclaimer")).toContainText(
-      /research estimate, not an official valuation or bill/i,
-    );
-    await expect(card).not.toContainText("/year");
+    await expect(card).not.toContainText("£0");
     await expect(card).not.toContainText(/£\d/);
+    await expect(card).not.toContainText(/ECONOMIC_RULES|NESTED|REPORTED/i);
     await expect(card).not.toContainText(/what3words/i);
   });
 

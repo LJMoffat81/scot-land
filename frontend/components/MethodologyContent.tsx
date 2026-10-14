@@ -1,8 +1,10 @@
 import ConfidenceTag, {
   type ConfidenceTagKind,
 } from "@/components/ConfidenceTag";
+import { EVIDENCE_TAG_GLOSS } from "@/components/EvidenceTagLegend";
 import QualityTag from "@/components/QualityTag";
 import { allLayerLicenceCredits } from "@/lib/layerLicenceCredits";
+import { LEDGER_FIXTURE_CONSTRAINTS, LEDGER_FIXTURE_ROWS } from "@/lib/ledger";
 import { QUALITY_TAGS, QUALITY_TAG_GLOSS } from "@/lib/qualityTag";
 
 const MINTLIFY = {
@@ -18,21 +20,29 @@ const CONFIDENCE: Array<{
   kind: ConfidenceTagKind;
   gloss: string;
 }> = [
-  {
-    kind: "market",
-    gloss: "observed rents from a public source (solid blue).",
-  },
-  {
-    kind: "proxy",
-    gloss:
-      "modelled from open evidence where a direct rent is not available (hatched amber).",
-  },
-  {
-    kind: "shadow",
-    gloss:
-      "no market price; estimated value of services or sinks that are not traded (outlined green).",
-  },
+  { kind: "market", gloss: `${EVIDENCE_TAG_GLOSS.market}.` },
+  { kind: "proxy", gloss: `${EVIDENCE_TAG_GLOSS.proxy}.` },
+  { kind: "shadow", gloss: `${EVIDENCE_TAG_GLOSS.shadow}.` },
 ];
+
+function ledgerPublicTag(tag: string): string {
+  switch (tag) {
+    case "market":
+      return "Market";
+    case "proxy":
+      return "Proxy";
+    case "shadow":
+      return "Shadow";
+    case "market_or_proxy":
+      return "Market / Proxy";
+    case "nested":
+      return "of which";
+    case "reported":
+      return "outside";
+    default:
+      return tag;
+  }
+}
 
 const LAYER_CREDITS = allLayerLicenceCredits();
 
@@ -79,6 +89,8 @@ export default function MethodologyContent() {
         <a href="#tags">Three tags</a>
         {" · "}
         <a href="#rents">Rents and constraints</a>
+        {" · "}
+        <a href="#ledger">Ledger</a>
         {" · "}
         <a href="#sources">Sources</a>
         {" · "}
@@ -173,16 +185,64 @@ export default function MethodologyContent() {
         <h2>Rents kept separate; constraints add no value</h2>
         <p>
           Surface, resource and eco (nature) rents stay on separate rows. One
-          rent per hectare per use. Planning uplift and infrastructure share
-          appear only as &ldquo;of which&rdquo; notes inside surface rent — never
-          added as sibling totals.
+          rent per hectare per use. Planning uplift appears only as an
+          &ldquo;of which&rdquo; note under surface land — never added as a
+          sibling total.
         </p>
         <p>
           Designations, flood, crofting, land capability and similar overlays
           are labelled{" "}
           <strong>Constraint: changes best use, adds no value</strong>. They
-          never show a rent figure — including no £0.
+          never show a rent figure.
         </p>
+      </section>
+
+      <section id="ledger" data-testid="methodology-ledger">
+        <h2>Natural capital ledger</h2>
+        <p>
+          Full ledger rows and definitions. The map place card shows only the
+          classes that apply at a point; this table is the complete account.
+        </p>
+        <div className="sources-table-wrap">
+          <table className="sources-table" data-testid="methodology-ledger-table">
+            <thead>
+              <tr>
+                <th scope="col">Row</th>
+                <th scope="col">Class</th>
+                <th scope="col">Tag</th>
+                <th scope="col">Definition</th>
+              </tr>
+            </thead>
+            <tbody>
+              {LEDGER_FIXTURE_ROWS.map((row) => (
+                <tr key={row.id} data-ledger-row={row.id}>
+                  <td>{row.id}</td>
+                  <td>{row.label}</td>
+                  <td>{ledgerPublicTag(row.tag)}</td>
+                  <td>
+                    {row.id === "9"
+                      ? "Offshore, outside the Scottish land total."
+                      : row.id === "1a"
+                        ? "Of which under surface land — never added as a sibling total."
+                        : row.status_note}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p data-testid="methodology-oil-gas-footnote">
+          <strong>Oil and gas</strong> — offshore, outside the Scottish land
+          total.
+        </p>
+        <h3>Constraints</h3>
+        <ul data-testid="methodology-ledger-constraints">
+          {LEDGER_FIXTURE_CONSTRAINTS.map((c) => (
+            <li key={c.id}>
+              <strong>{c.label}</strong> — {c.rule}
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section id="sources">

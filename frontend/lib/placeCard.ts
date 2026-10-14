@@ -1,23 +1,25 @@
 /**
  * Public place-card contract (place_card_v1).
- * Designer brief v3.1 field order — Annual Ground Rent purpose; no £ figures.
+ * Ledger redesign IA — value / limits sections; DZ2022; no £ figures.
  */
 
 import { apiJson } from "./api";
 
-/** Charter / Designer grain rule — keep exact wording. */
-export const PLACE_CARD_DATA_ZONE_GRAIN =
-  "For now, figures are published at Data Zone level only, not for individual parcels, plots or addresses.";
+/** Public figures withheld — keep exact wording. */
+export const PLACE_CARD_FIGURES_CHECKED =
+  "Figures are being checked and aren't published yet";
 
 export const PLACE_CARD_RESEARCH_DISCLAIMER =
   "research estimate, not an official valuation or bill";
 
-export const PLACE_CARD_FIGURES_PENDING = "figures pending sign-off";
-
 export const PLACE_CARD_CONSTRAINT_LABEL =
   "Constraint: changes best use, adds no value";
 
+export const PLACE_CARD_HOW_WE_VALUE_LABEL = "How we value land";
+
 export type PlaceRentTag = "market" | "proxy" | "shadow";
+
+export type PlaceValueStatus = "coming_soon" | "in_progress";
 
 export type PlaceLayerStatus = "live" | "linked" | "gap" | string;
 
@@ -63,10 +65,13 @@ export type PlaceIntermediateZone = {
 };
 
 export type PlaceAgrRow = {
-  id: "surface" | "resource" | "nature";
+  id: "surface" | "resource" | "nature" | string;
   label: string;
   tag: PlaceRentTag;
-  amount_label: string;
+  /** Public status — never a £ amount. */
+  status: PlaceValueStatus;
+  /** When false, row is omitted from the place card. */
+  applies?: boolean;
   of_which?: Array<{ id: string; label: string }>;
 };
 
@@ -160,49 +165,57 @@ export function scotLandSquareReference(lat: number, lng: number): string {
   return `Scot-LAND square reference ${latIndex},${lngIndex}`;
 }
 
-/** Designer AGR rows — surface / resource / nature, each tagged; no £. */
+export function valueStatusLabel(status: PlaceValueStatus): string {
+  switch (status) {
+    case "coming_soon":
+      return "Coming soon";
+    case "in_progress":
+      return "In progress";
+    default: {
+      const _exhaustive: never = status;
+      return _exhaustive;
+    }
+  }
+}
+
+/** Value classes that may apply — plain words; no £. */
 export function defaultAgrRows(): PlaceAgrRow[] {
   return [
     {
       id: "surface",
-      label: "Surface",
+      label: "Surface land",
       tag: "proxy",
-      amount_label: PLACE_CARD_FIGURES_PENDING,
+      status: "in_progress",
+      applies: true,
       of_which: [
         { id: "planning_uplift", label: "of which: planning uplift" },
-        { id: "infrastructure_share", label: "of which: infrastructure share" },
       ],
     },
     {
       id: "resource",
-      label: "Resource",
+      label: "Resources from the land and sea",
       tag: "market",
-      amount_label: PLACE_CARD_FIGURES_PENDING,
+      status: "coming_soon",
+      applies: true,
     },
     {
       id: "nature",
-      label: "Nature",
+      label: "Nature that has no market price",
       tag: "shadow",
-      amount_label: PLACE_CARD_FIGURES_PENDING,
+      status: "coming_soon",
+      applies: true,
     },
   ];
 }
 
+/**
+ * Constraints listed when they apply (or when status is unknown for honesty).
+ * Flood, SSSI, crofting are the redesign focus.
+ */
 export function defaultConstraints(
   vacantOrDerelict?: boolean,
 ): PlaceConstraintRow[] {
   return [
-    {
-      id: "vdl",
-      label: "Vacant and derelict land",
-      applies: vacantOrDerelict ?? null,
-    },
-    {
-      id: "designations",
-      label: "Designations (e.g. SSSI)",
-      applies: null,
-      note: "No data",
-    },
     {
       id: "flood",
       label: "Flood",
@@ -210,11 +223,26 @@ export function defaultConstraints(
       note: "No data",
     },
     {
-      id: "crofting",
-      label: "Crofting / common grazings",
+      id: "sssi",
+      label: "SSSI",
       applies: null,
       note: "No data",
     },
+    {
+      id: "crofting",
+      label: "Crofting",
+      applies: null,
+      note: "No data",
+    },
+    ...(vacantOrDerelict
+      ? [
+          {
+            id: "vdl",
+            label: "Vacant and derelict land",
+            applies: true as boolean | null,
+          },
+        ]
+      : []),
   ];
 }
 
@@ -245,7 +273,28 @@ export function deriveHolder(card: PlaceCardPayload): PlaceHolder {
   };
 }
 
-/** Demo fixture for internal preview / e2e (no live network). */
+/** Prefer DZ2022 when the API returns multiple vintages. */
+export function preferDz2022(zone: PlaceDataZone | null | undefined): PlaceDataZone | null {
+  if (!zone) return null;
+  const zones = zone.zones ?? [];
+  const dz2022 = zones.find((z) => z.vintage === 2022);
+  if (dz2022) {
+    return {
+      ...zone,
+      status: "ok",
+      code: dz2022.code,
+      name: dz2022.name ?? zone.name,
+      vintage: 2022,
+    };
+  }
+  if (zone.vintage === 2022 && zone.code) return zone;
+  if (zone.code && (zone.vintage == null || zone.vintage === 2022)) {
+    return { ...zone, vintage: zone.vintage ?? 2022 };
+  }
+  return zone;
+}
+
+/** Demo fixture for internal preview / e2e — DZ2022 (not 2011). */
 export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
   contract: "place_card_v1",
   lat: 55.8642,
@@ -256,27 +305,30 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
   council_name: "Glasgow City",
   data_zone: {
     status: "ok",
-    code: "S01010264",
+    code: "S01014567",
     name: "City Centre South",
-    vintage: 2011,
+    vintage: 2022,
     zones: [
       {
-        code: "S01010264",
-        vintage: 2011,
+        code: "S01014567",
+        vintage: 2022,
         name: "City Centre South",
         on_boundary: false,
       },
     ],
   },
   intermediate_zone: {
-    status: "no_data",
-    code: "S02001236",
-    name: null,
-    note: "No data",
+    status: "ok",
+    code: "S02002645",
+    name: "City Centre",
   },
   square_reference: scotLandSquareReference(55.8642, -4.2518),
   agr_rows: defaultAgrRows(),
-  constraints: defaultConstraints(false),
+  constraints: [
+    { id: "flood", label: "Flood", applies: false },
+    { id: "sssi", label: "SSSI", applies: false },
+    { id: "crofting", label: "Crofting", applies: false },
+  ],
   holder: {
     status: "private_not_shown",
     label: "private, not shown",
@@ -383,7 +435,7 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
     },
     {
       id: "methodology",
-      label: "Sources and method",
+      label: PLACE_CARD_HOW_WE_VALUE_LABEL,
       url: "/methodology",
     },
   ],
@@ -408,18 +460,45 @@ export function fetchPlaceCard({
   return apiJson<PlaceCardPayload>(`/platform/place?${params.toString()}`);
 }
 
+function normalizeAgrRow(row: PlaceAgrRow): PlaceAgrRow {
+  const legacyAmount = (row as PlaceAgrRow & { amount_label?: string })
+    .amount_label;
+  const status: PlaceValueStatus =
+    row.status === "in_progress" || row.status === "coming_soon"
+      ? row.status
+      : legacyAmount
+        ? "in_progress"
+        : "coming_soon";
+  return {
+    ...row,
+    status,
+    applies: row.applies !== false,
+    of_which: (row.of_which || []).filter(
+      (note) => note.id !== "infrastructure_share",
+    ),
+  };
+}
+
 /** Strip any accidental AGR £ payload before render; fill Designer defaults. */
 export function sanitizePlaceCard(payload: PlaceCardPayload): PlaceCardPayload {
   const { agr: _agr, ...rest } = payload;
+  const zone = preferDz2022(rest.data_zone);
+  const agrRows = (rest.agr_rows?.length ? rest.agr_rows : defaultAgrRows())
+    .map(normalizeAgrRow)
+    .filter((row) => row.applies !== false);
+  const constraints = (
+    rest.constraints?.length
+      ? rest.constraints
+      : defaultConstraints(rest.vacant_or_derelict)
+  ).filter((row) => row.applies !== false);
   return {
     ...rest,
+    data_zone: zone,
     square_reference:
       rest.square_reference?.trim() ||
       scotLandSquareReference(rest.lat, rest.lng),
-    agr_rows: rest.agr_rows?.length ? rest.agr_rows : defaultAgrRows(),
-    constraints: rest.constraints?.length
-      ? rest.constraints
-      : defaultConstraints(rest.vacant_or_derelict),
+    agr_rows: agrRows,
+    constraints,
     holder: deriveHolder(rest),
     intermediate_zone: rest.intermediate_zone ?? {
       status: "no_data",

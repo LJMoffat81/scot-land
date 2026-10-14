@@ -186,8 +186,8 @@ test.describe("map licence credits (catalog-driven)", () => {
     });
 
     await openMap(page);
-    await page.getByRole("button", { name: "Ledger", exact: true }).click();
-    const toggle = page.getByTestId("ledger-toggle-9");
+    await page.getByRole("button", { name: "Layers", exact: true }).click();
+    const toggle = page.getByTestId("layer-toggle-9");
     await expect(toggle).toBeVisible({ timeout: 20_000 });
     await toggle.click();
 

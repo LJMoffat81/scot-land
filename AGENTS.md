@@ -43,6 +43,42 @@ Annual Ground Rent remains first: residual site value on a What3Words 3×3 m gri
 | `docs/PROFESSIONAL_STANDARD.md` | Build standard |
 | `docs/methodology.md` | Public methodology |
 
+## Pre-review checklist
+
+Every PR must self-check against this list **before asking for review**. Fail the PR if any item fails.
+
+Tag each line: **CI** = covered by an automated check today; **hand** = reviewer confirms.
+
+### Always (public surface)
+
+| Check | Who |
+|-------|-----|
+| Fail on visible `ledger` or `natural capital` (code samples on `/developers` excluded) | **CI** |
+| Fail on any £ figure in public pages or public JSON | **CI** |
+| Fail on value/rent group names other than Land / Natural resource rents / Services of nature (`RENT_GROUP_NAMES`) | **CI** |
+| Fail on anything finer than Data Zone for published modelled/proxy values | **CI** |
+
+### Pass / fail (from prior PRs)
+
+| Check | Who |
+|-------|-----|
+| Every layer has a label and licence credit, including the OS credit on parcels (#82) | **CI** |
+| The holdout is pre-registered before scoring (#84) | **CI** |
+| `class_min` comes from settings, default 10 (#84) | **CI** |
+| `class_min` is never hard-coded (#84) | **hand** |
+| #84 fill tests are exact and force each step (including the island to Scotland-wide fallthrough) | **CI** |
+| No `pytest.approx` in new money tests (`test_postgis_integration.py:86` and `:92` still use approx) | **hand** |
+| The PR is rebased on main and merges cleanly, especially `check_publishable.py` and its test (#87) | **hand** |
+| Guard changes only add rules, never loosen one | **hand** |
+| The banned visible words `ledger`, `natural capital` and `headline/shadow` are checked in the built HTML **and** the runtime JSON (#87) | **CI** |
+| Never show `No data` when the code is known; show `name not loaded yet` (#87) | **CI** |
+| Jargon is fixed at the source (`platform.py` and its developer notes), with a backend test that runs without `BACKEND_URL` (#87) | **CI** |
+| `main.py` and `AGENTS.md` stay untouched unless an add-only change is approved | **hand** |
+| SLRG wording: Annual Ground Rent comes before land value tax; the chips are Market/Modelled/Estimate with API values unchanged; the constraint line reads `Constraint: changes best use, adds no value` | **CI** |
+| SLRG wording: “Why it matters” is used word for word | **hand** |
+| SLRG wording: totals are per chip only | **hand** |
+| e2e tests run at the stated widths and fail on console errors | **hand** |
+
 ## Tests
 ```powershell
 cd backend

@@ -3,6 +3,8 @@
  * Maps open-catalogue layer ids (and ledger roles) into the four public buckets.
  */
 
+import { RENT_GROUP_NAME } from "./rentGroupNames.mjs";
+
 export type DataSourceGroupKey = "land" | "resources" | "nature" | "limits";
 
 export const DATA_SOURCE_GROUP_ORDER: DataSourceGroupKey[] = [
@@ -15,11 +17,11 @@ export const DATA_SOURCE_GROUP_ORDER: DataSourceGroupKey[] = [
 export function dataSourceGroupLabel(group: DataSourceGroupKey): string {
   switch (group) {
     case "land":
-      return "Land";
+      return RENT_GROUP_NAME.land;
     case "resources":
-      return "Natural resource rents";
+      return RENT_GROUP_NAME.resources;
     case "nature":
-      return "Services of nature";
+      return RENT_GROUP_NAME.nature;
     case "limits":
       return "Limits";
     default: {

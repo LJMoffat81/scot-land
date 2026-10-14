@@ -96,6 +96,7 @@ if (existsSync(nextHtml)) {
   const forbidden = [
     { name: "natural capital", re: /natural capital/i },
     { name: "ledger", re: /\bledger\b/i },
+    { name: "headline/shadow", re: /headline\s*\/\s*shadow/i },
     { name: "rates bill", re: /rates bill/i },
     { name: "tax proposal", re: /tax proposal/i },
     { name: "£", re: /£/ },

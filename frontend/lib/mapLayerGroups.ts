@@ -3,6 +3,8 @@
  * Limits / Boundaries). Each row reuses an existing paint toggle (catalog id).
  */
 
+import { RENT_GROUP_NAME } from "./rentGroupNames.mjs";
+
 export type MapLayerGroupKey =
   | "land"
   | "resources"
@@ -37,11 +39,11 @@ export const MAP_LAYER_GROUP_ORDER: MapLayerGroupKey[] = [
 export function mapLayerGroupLabel(group: MapLayerGroupKey): string {
   switch (group) {
     case "land":
-      return "Land";
+      return RENT_GROUP_NAME.land;
     case "resources":
-      return "Natural resource rents";
+      return RENT_GROUP_NAME.resources;
     case "nature":
-      return "Services of nature";
+      return RENT_GROUP_NAME.nature;
     case "limits":
       return "Limits on use";
     case "boundaries":

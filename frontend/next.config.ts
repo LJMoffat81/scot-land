@@ -56,6 +56,37 @@ const nextConfig: NextConfig = {
   // Next 16 blocks HMR/dev assets when the page is opened on a different host
   // (localhost vs 127.0.0.1). Allow both so local browsing does not break.
   allowedDevOrigins: ["127.0.0.1", "localhost"],
+  async redirects() {
+    return [
+      // Site rewrite PR1 — permanent redirects (spec A).
+      // /backend/docs stays live (Swagger CSP hotfix); /developers/api points there.
+      {
+        source: "/downloads",
+        destination: "/developers#downloads",
+        permanent: true,
+      },
+      {
+        source: "/open-api",
+        destination: "/developers#api",
+        permanent: true,
+      },
+      {
+        source: "/docs",
+        destination: "/developers/api",
+        permanent: true,
+      },
+      {
+        source: "/mission",
+        destination: "/about",
+        permanent: true,
+      },
+      {
+        source: "/developers/api",
+        destination: "/backend/docs",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       // Docs CSP must win over /:path* (Next merges; later same-key overwrites).

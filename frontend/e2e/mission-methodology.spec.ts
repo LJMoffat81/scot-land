@@ -3,16 +3,18 @@ import { expect, test } from "@playwright/test";
 const DZ_GRAIN =
   "For now, figures are published at Data Zone level only, not for individual parcels, plots or addresses.";
 
-test.describe("mission and methodology pages", () => {
+test.describe("about and how-it-works pages", () => {
   test.use({ viewport: { width: 1100, height: 800 } });
 
-  test("mission follows Designer brief sections", async ({ page }) => {
-    await page.goto("/mission");
+  test("about follows Designer brief sections", async ({ page }) => {
+    await page.goto("/about");
     const root = page.getByTestId("mission-page");
     await expect(root).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Mission" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "About Scot-LAND" }),
+    ).toBeVisible();
     for (const heading of [
-      "Why",
+      "Why I am building this",
       "Goal",
       "Who it's for",
       "What it isn't",
@@ -22,15 +24,11 @@ test.describe("mission and methodology pages", () => {
       await expect(page.getByRole("heading", { name: heading })).toBeVisible();
     }
     await expect(root).toContainText("Annual Ground Rent");
-    await expect(page.getByTestId("experimental-not-official")).toContainText(
-      "Research estimate, not an official valuation or bill",
+    await expect(page.getByTestId("research-banner")).toContainText(
+      "Research estimate.",
     );
-    await expect(page.getByTestId("experimental-not-official")).toContainText(
-      "Figures pending sign-off",
-    );
-    await expect(page.getByTestId("experimental-not-official")).toContainText(
-      DZ_GRAIN,
-    );
+    await expect(page.getByTestId("experimental-not-official")).toHaveCount(0);
+    await expect(root).toContainText(DZ_GRAIN);
     await expect(root).toContainText(
       "Open data only at launch; paid sources may be added later",
     );
@@ -38,12 +36,12 @@ test.describe("mission and methodology pages", () => {
     await expect(root).not.toContainText(/£\s*[\d,]+/);
   });
 
-  test("methodology covers roll-up, tags, sources, gaps", async ({ page }) => {
+  test("how it works covers roll-up, tags, sources, gaps", async ({ page }) => {
     await page.goto("/methodology");
     const root = page.getByTestId("methodology-page");
     await expect(root).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Methodology" }),
+      page.getByRole("heading", { name: "How it works" }),
     ).toBeVisible();
     for (const heading of [
       "What AGR is",
@@ -77,5 +75,6 @@ test.describe("mission and methodology pages", () => {
     expect(await table.locator("tbody tr").count()).toBeGreaterThan(20);
     await expect(root).not.toContainText("£0");
     await expect(root).not.toContainText(/£\s*[\d,]+/);
+    await expect(page).toHaveTitle(/How it works \| Scot-LAND/);
   });
 });

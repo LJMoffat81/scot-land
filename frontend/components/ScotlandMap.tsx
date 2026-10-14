@@ -9,6 +9,8 @@ import maplibregl, {
 import "maplibre-gl/dist/maplibre-gl.css";
 import { MapStampFooter } from "./MapStampFooter";
 import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
+import ResearchBanner from "./ResearchBanner";
+import SiteNav from "./SiteNav";
 import { fetchPlaceCard } from "@/lib/placeCard";
 import MapLayersDrawer from "./MapLayersDrawer";
 import MapLicenceCredits from "./MapLicenceCredits";
@@ -3496,11 +3498,9 @@ export default function ScotlandMap() {
           </ul>
         )}
         </div>
-        <nav className="hud-nav">
-          <a href="/mission">Mission</a>
-          <a href="/methodology">Methodology</a>
-        </nav>
+        <SiteNav current="map" variant="map" />
       </header>
+      <ResearchBanner dismissible />
 
       <aside
         className={legendOpen ? "hud-scotland legend-open" : "hud-scotland"}
@@ -3534,10 +3534,9 @@ export default function ScotlandMap() {
             />
             <MapLicenceCredits credits={mapCredits} />
             <p className="hud-scotland-foot">
-              Research map, not a rates bill.{" "}
-              <a href="/mission">Mission</a>
+              <a href="/about">About</a>
               {" · "}
-              <a href="/methodology">Methodology</a>
+              <a href="/methodology">How it works</a>
             </p>
           </div>
         </div>

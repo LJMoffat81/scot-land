@@ -1,30 +1,15 @@
+import ResearchBanner from "@/components/ResearchBanner";
+import SiteNav from "@/components/SiteNav";
+
 export default function MissionContent() {
   return (
     <main className="methodology-page" data-testid="mission-page">
-      <p className="meta" style={{ marginBottom: "0.5rem" }}>
-        <a href="/">Map</a>
-        {" · "}
-        <a href="/data">Data</a>
-        {" · "}
-        <a href="/mission" aria-current="page">
-          Mission
-        </a>
-        {" · "}
-        <a href="/methodology">Methodology</a>
-        {" · "}
-        <a href="/downloads">Downloads</a>
-        {" · "}
-        <a href="/open-api">Public API</a>
-      </p>
-      <h1>Mission</h1>
-      <p className="downloads-note" data-testid="experimental-not-official">
-        Research estimate, not an official valuation or bill. Figures pending
-        sign-off. For now, figures are published at Data Zone level only, not
-        for individual parcels, plots or addresses.
-      </p>
+      <SiteNav current="about" />
+      <h1>About Scot-LAND</h1>
+      <ResearchBanner />
 
       <section id="why">
-        <h2>Why</h2>
+        <h2>Why I am building this</h2>
         <p>
           Scotland&apos;s land and natural resources are worth a great deal, but
           few people can see that value or who holds it. Debates about land
@@ -94,7 +79,7 @@ export default function MissionContent() {
           <li>
             Every value can be traced to a data zone and an open source, using
             the Scottish Government roll-up (see{" "}
-            <a href="/methodology">Methodology</a>).
+            <a href="/methodology">How it works</a>).
           </li>
         </ul>
       </section>
@@ -102,10 +87,10 @@ export default function MissionContent() {
       <section id="get-involved">
         <h2>Get involved</h2>
         <p>
-          Read the <a href="/methodology">Methodology</a>, explore open{" "}
-          <a href="/data">Data</a> and licences, or use the{" "}
-          <a href="/open-api">Public API</a> and{" "}
-          <a href="/downloads">Downloads</a>. Feedback and corrections welcome.
+          Read <a href="/methodology">How it works</a>, explore open{" "}
+          <a href="/data">Data &amp; sources</a>, or use{" "}
+          <a href="/developers">Downloads &amp; API</a>. Feedback and
+          corrections welcome.
         </p>
         <p>
           <a href="mailto:laurie.moffat@scot-land.scot">
@@ -116,7 +101,11 @@ export default function MissionContent() {
             X: @LJMoffat81
           </a>
           <br />
-          <a href="https://github.com/LJMoffat81/scot-land" target="_blank" rel="noreferrer">
+          <a
+            href="https://github.com/LJMoffat81/scot-land"
+            target="_blank"
+            rel="noreferrer"
+          >
             GitHub: LJMoffat81/scot-land
           </a>
         </p>
@@ -124,13 +113,15 @@ export default function MissionContent() {
 
       <p className="meta">
         The mark uses the &ldquo;Land&rdquo; icon by Adrien Coquet, from{" "}
-        <a href="https://thenounproject.com/browse/icons/term/land/">Noun Project</a>{" "}
+        <a href="https://thenounproject.com/browse/icons/term/land/">
+          Noun Project
+        </a>{" "}
         (CC BY 3.0).
       </p>
       <p>
         <a href="/">Back to map</a>
         {" · "}
-        <a href="/methodology">Methodology</a>
+        <a href="/methodology">How it works</a>
       </p>
     </main>
   );

@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Data — Checks & excluded | Scot-LAND",
+  title: "Data & sources | Scot-LAND",
   description:
-    "Natural capital ledger checks (C-hectare…C-cap), excluded list with reasons, and benchmarks labelled not inputs.",
+    "Open data sources, licences, gaps and excluded lists behind the Scot-LAND map. Research estimate — land rent figures are not published yet.",
   openGraph: {
-    title: "Data — Checks & excluded | Scot-LAND",
+    title: "Data & sources | Scot-LAND",
     description:
-      "Natural capital ledger checks, exclusions, and benchmarks (not inputs).",
+      "Open data sources, licences, gaps and excluded lists behind the Scot-LAND map. Research estimate — land rent figures are not published yet.",
   },
 };
 

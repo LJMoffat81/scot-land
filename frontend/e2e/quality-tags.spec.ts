@@ -22,15 +22,11 @@ test.describe("quality-tag colours", () => {
     assertDistinct(colors);
   });
 
-  test("downloads and open-api reuse quality-tag chips", async ({ page }) => {
-    await page.goto("/downloads");
-    await expect(page.getByTestId("quality-tag-inline").getByTestId("quality-tag")).toHaveCount(
-      4,
-    );
-    await page.goto("/open-api");
-    await expect(page.getByTestId("quality-tag-inline").getByTestId("quality-tag")).toHaveCount(
-      4,
-    );
+  test("developers page reuses quality-tag chips", async ({ page }) => {
+    await page.goto("/developers");
+    await expect(
+      page.getByTestId("quality-tag-inline").getByTestId("quality-tag"),
+    ).toHaveCount(4);
   });
 });
 

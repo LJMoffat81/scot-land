@@ -139,7 +139,8 @@ export function PlaceHectareStack({
             {stack.note || stack.publication_note}
           </p>
           <p className="place-stack-disclaimer">
-            No modelled Annual Ground Rent. Research map — not a rates bill.
+            No modelled Annual Ground Rent. Land rent figures are not published
+            yet.
           </p>
         </div>
       ) : null}

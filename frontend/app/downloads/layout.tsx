@@ -1,14 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Downloads | Scot-LAND",
+  title: "Downloads & API | Scot-LAND",
   description:
-    "Open tables and source links that feed Scot-LAND’s Annual Ground Rent map. £ figures not published yet.",
-  openGraph: {
-    title: "Downloads | Scot-LAND",
-    description:
-      "Open tables and source links that feed Scot-LAND’s Annual Ground Rent map. £ figures not published yet.",
-  },
+    "Redirects to Downloads & API. Research estimate — land rent figures are not published yet.",
 };
 
 export default function DownloadsLayout({

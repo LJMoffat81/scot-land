@@ -11,13 +11,13 @@ const mona = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Scot-LAND — open map of Scotland’s land",
+  title: "Map | Scot-LAND",
   description:
-    "Search a Scottish postcode, place or coordinates on an open land map. Research estimates, not a bill.",
+    "Search a Scottish postcode, place or map reference on an open land map. Research estimate — land rent figures are not published yet.",
   openGraph: {
-    title: "Scot-LAND — open map of Scotland’s land",
+    title: "Map | Scot-LAND",
     description:
-      "Find a place on Scotland’s open land map. Ownership and research land-rent figures follow; not a tax bill.",
+      "Find a place on Scotland’s open land map. Research estimate — land rent figures are not published yet.",
   },
 };
 

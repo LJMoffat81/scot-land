@@ -51,6 +51,15 @@ assert.match(
   /Natural resource rents and the services of nature/,
 );
 assert.match(method, /Constraint: changes best use, adds no value/);
+// SW-024: glossary heading; chip → label; no duplicate totals sentence.
+assert.match(method, /Words we use/);
+assert.doesNotMatch(method, /Three kinds of figure/);
+assert.match(method, /different labels are never added into one total/);
+assert.doesNotMatch(method, /\bchips?\b/i);
+assert.doesNotMatch(
+  method,
+  /Totals per chip only, never across chips or price years/,
+);
 // SW-017: restored towns bullet word-for-word; no public yield jargon.
 const TOWNS_BULLET =
   "In towns, we start from local house prices. We take away what it would cost to rebuild the house. What is left is roughly the value of the land. We turn that into a yearly rent.";

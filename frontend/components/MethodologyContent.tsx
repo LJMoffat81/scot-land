@@ -37,7 +37,7 @@ export default function MethodologyContent() {
           <li>
             <strong>Natural resource rents and the services of nature</strong>{" "}
             are part of Annual Ground Rent, shown as separate parts; parts with
-            different chips are never added into one total.
+            different labels are never added into one total.
           </li>
           <li>
             <strong>Limits on use</strong> (nature sites, flood risk, crofting)
@@ -54,8 +54,7 @@ export default function MethodologyContent() {
           Zones, those fit inside council areas, and council areas make up
           Scotland. This is the Scottish Government&apos;s own system. We add up
           each kind of figure (Market, Modelled, Estimate) separately, and never
-          across different price years. Nothing is counted twice. Totals per chip
-          only, never across chips or price years.
+          across different price years. Nothing is counted twice.
         </p>
         <p className="downloads-note">
           Today our land figures still use the 2011 Data Zones. We are moving
@@ -63,7 +62,7 @@ export default function MethodologyContent() {
         </p>
       </section>
 
-      <GlossaryBox title="Three kinds of figure" />
+      <GlossaryBox title="Words we use" />
 
       <section id="how-sure">
         <h2>How sure are these numbers?</h2>

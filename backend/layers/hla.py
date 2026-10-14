@@ -157,18 +157,38 @@ def _row_props(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# Operator-only tokens that must never appear in visitor-facing API prose.
+_VISITOR_BANNED_DEV = (
+    "SPATIALHUB_AUTHKEY",
+    "python -m etl",
+    "--from-wfs",
+)
+
+
 def _unloaded_error() -> str:
-    """Honest note when PostGIS has no HLA rows (authkey missing or not ingested)."""
-    base = not_loaded_message("Housing land audit overlay")
-    if spatialhub_auth_configured():
-        return (
-            f"{base}. Run python -m etl.ingest_hla_sites --from-wfs "
-            "(or load a local OGL extract)."
-        )
-    return (
-        f"{base}. Set SPATIALHUB_AUTHKEY in .env for Spatial Hub WFS, "
-        "or ingest a local OGL extract (python -m etl.ingest_hla_sites)."
-    )
+    """Visitor-safe note when PostGIS has no HLA rows.
+
+    Operator setup (``SPATIALHUB_AUTHKEY``, ``.env``, ``python -m etl``) stays in
+    developer surfaces only — never in map/UI or public JSON error strings.
+    """
+    return not_loaded_message("Housing land audit overlay")
+
+
+def _visitor_gaps(gaps: list[str] | None) -> list[str]:
+    """Drop operator-setup gap lines from public API payloads."""
+    out: list[str] = []
+    for gap in gaps or []:
+        text = str(gap)
+        lower = text.lower()
+        if any(token.lower() in lower for token in _VISITOR_BANNED_DEV):
+            continue
+        # Bare ``.env`` only when paired with Spatial Hub / authkey setup prose.
+        if ".env" in lower and (
+            "spatialhub" in lower or "authkey" in lower or "auth key" in lower
+        ):
+            continue
+        out.append(text)
+    return out
 
 
 def query_point(lat: float, lng: float) -> dict[str, Any]:
@@ -265,7 +285,6 @@ def query_bbox(
                 "layer": "hla",
                 "spatial_hub_url": meta["spatial_hub_url"],
                 "licence": meta["licence"],
-                "authkey_configured": meta["authkey_configured"],
             },
         }
 
@@ -337,6 +356,6 @@ def query_bbox(
             "spatial_hub_url": meta["spatial_hub_url"],
             "metadata_url": meta["metadata_url"],
             "licence": meta["licence"],
-            "gaps": list(meta["gaps"]),
+            "gaps": _visitor_gaps(list(meta["gaps"])),
         },
     }

@@ -237,6 +237,7 @@ Registry: `data/config/sources.yaml` → `vdl`. Zone-level rollups used by the W
 **Honest access notes**
 
 - Spatial Hub lists the open product under OGL, but anonymous WFS from this host returns **403** (same GeoServer gate as other Spatial Hub WFS endpoints).
+- Operators may set `SPATIALHUB_AUTHKEY` in the gitignored `.env` (blank placeholder in `backend/.env.example`; passed by `docker-compose.home.yml`) and run `python -m etl.ingest_hla_sites --from-wfs`. **Never commit a real key.** Blank key → public map stays **not loaded yet** (no invented sites). Visitor UI must not show the authkey / `.env` / `python -m etl` instructions.
 - The national SG ArcGIS FeatureServer *Housing Land Supply (Scotland)* is **PSGA / Digimap restricted** — not used here.
 - Glasgow City Region publishes an OGL FeatureServer extract — regional only; not used as a national substitute.
 - Operators download the OGL open product from Spatial Hub, convert to WGS84 GeoJSON if needed, and ingest locally:
@@ -245,6 +246,8 @@ Registry: `data/config/sources.yaml` → `vdl`. Zone-level rollups used by the W
 cd backend
 # After placing pub_hls.geojson under data/external/spatialhub/hls/
 python -m etl.ingest_hla_sites --input ../data/external/spatialhub/hls/pub_hls.geojson --replace
+# Or authenticated WFS (requires SPATIALHUB_AUTHKEY in gitignored .env):
+# python -m etl.ingest_hla_sites --from-wfs --replace
 ```
 
 Registry: `data/config/sources.yaml` → `hla`.

@@ -87,7 +87,7 @@ def test_hla_503_when_not_loaded(client, monkeypatch):
             "features": [],
             "meta": {
                 "ok": False,
-                "error": "planning_sites has no HLA rows",
+                "error": "Housing land audit overlay is not loaded yet",
                 "layer": "hla",
             },
         }
@@ -95,8 +95,13 @@ def test_hla_503_when_not_loaded(client, monkeypatch):
     monkeypatch.setattr("api.platform_routes.hla_bbox", _down)
     r = client.get("/layers/open/hla", params=GLASGOW_BBOX)
     assert r.status_code == 503, r.text
-    detail = r.json().get("detail", "").lower()
-    assert "not available" in detail or "hla" in detail
+    detail = r.json().get("detail", "")
+    detail_l = detail.lower()
+    assert "not available" in detail_l or "hla" in detail_l
+    assert "not loaded yet" in detail_l
+    assert "spatialhub_authkey" not in detail_l
+    assert "python -m etl" not in detail_l
+    assert ".env" not in detail_l
     assert "features" not in r.json()
 
 

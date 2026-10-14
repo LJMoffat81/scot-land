@@ -3388,18 +3388,20 @@ export default function ScotlandMap() {
     }
   }, [placeOpen]);
 
+  const suggestOpen =
+    suggestions.length > 0 || Boolean(suggestNote) || suggesting;
+  const shellClass = [
+    "app-shell",
+    "squares-shell",
+    toolsOpen ? "tools-open" : "",
+    placeOpen ? "place-open" : "",
+    suggestOpen ? "suggest-open" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div
-      className={
-        toolsOpen
-          ? placeOpen
-            ? "app-shell squares-shell tools-open place-open"
-            : "app-shell squares-shell tools-open"
-          : placeOpen
-            ? "app-shell squares-shell place-open"
-            : "app-shell squares-shell"
-      }
-    >
+    <div className={shellClass}>
       <div className="map-stage">
       <div className="map-wrap">
         <div id="map" ref={mapContainer} />
@@ -3561,7 +3563,7 @@ export default function ScotlandMap() {
         </div>
         <SiteNav current="map" variant="map" />
       </header>
-      <ResearchBanner dismissible />
+      <ResearchBanner dismissible collapseForSuggest={suggestOpen} />
 
       <aside
         className={legendOpen ? "hud-scotland legend-open" : "hud-scotland"}

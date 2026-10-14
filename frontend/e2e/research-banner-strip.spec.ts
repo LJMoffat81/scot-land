@@ -288,6 +288,91 @@ test.describe("SW-016 research banner strip 390x844", () => {
     await assertBannerClears(banner, burger, "burger with place card open");
     await assertBannerClears(banner, search, "search with place card open");
   });
+
+  test("suggestions open collapse expanded strip so first result is tappable", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    await page.route("**/backend/place**", async (route) => {
+      const url = new URL(route.request().url());
+      const q = (url.searchParams.get("q") || "").toUpperCase();
+      if (q.includes("EH1")) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            kind: "places",
+            matches: [
+              {
+                label: "EH1 1YZ, Edinburgh",
+                lat: 55.9508,
+                lng: -3.1875,
+              },
+              {
+                label: "EH1 1AA, Edinburgh",
+                lat: 55.9533,
+                lng: -3.1883,
+              },
+            ],
+          }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ kind: "places", matches: [] }),
+      });
+    });
+
+    await openMap(page);
+
+    const banner = page.getByTestId("research-banner");
+    const toggle = page.getByTestId("research-banner-toggle");
+    await expect(banner).toBeVisible({ timeout: 15_000 });
+    await expect(banner).toHaveAttribute("data-strip", "1");
+
+    // Expand the strip, then open suggestions — banner must collapse again.
+    await toggle.click();
+    await expect(banner).toHaveAttribute("data-expanded", "1");
+
+    const search = page.locator("#place-query");
+    await search.fill("EH1 1YZ");
+    const first = page.locator("#place-suggestions button").first();
+    await expect(first).toBeVisible({ timeout: 20_000 });
+    await expect(first).toContainText(/EH1/i);
+
+    await expect(page.locator(".app-shell")).toHaveClass(/suggest-open/);
+    await expect(banner).toHaveAttribute("data-expanded", "0");
+    await expect(banner.locator(".research-banner-text")).toHaveText(
+      RESEARCH_BANNER_STRIP_COLLAPSED,
+    );
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    // First suggestion must be the top hit — not covered by the research banner.
+    await assertCenterTappable(first, "first suggestion");
+    const suggestBox = await first.boundingBox();
+    const bannerBox = await banner.boundingBox();
+    expect(suggestBox, "first suggestion box").toBeTruthy();
+    expect(bannerBox, "banner box").toBeTruthy();
+    const mid = {
+      x: suggestBox!.x + suggestBox!.width / 2,
+      y: suggestBox!.y + suggestBox!.height / 2,
+    };
+    const hit = await page.evaluate(({ x, y }) => {
+      const el = document.elementFromPoint(x, y);
+      return (
+        el?.closest("button")?.textContent?.trim() ?? el?.tagName ?? "none"
+      );
+    }, mid);
+    expect(hit).toMatch(/EH1/i);
+
+    await first.click();
+    await expect(page.getByTestId("place-card")).toBeVisible({
+      timeout: 30_000,
+    });
+  });
 });
 
 async function openMap(page: Page) {

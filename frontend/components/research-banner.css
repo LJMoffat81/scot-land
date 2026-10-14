@@ -89,4 +89,21 @@
     z-index: 3;
     max-height: min(28dvh, 11rem);
   }
+
+  /*
+   * While search suggestions are open, keep the strip one-line so the
+   * dropdown (overflowing the HUD) is not covered by an expanded banner.
+   */
+  .app-shell.suggest-open .research-banner-map.research-banner-strip {
+    max-height: none;
+    overflow: hidden;
+  }
+
+  .app-shell.suggest-open
+    .research-banner-map.research-banner-strip
+    .research-banner-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 }

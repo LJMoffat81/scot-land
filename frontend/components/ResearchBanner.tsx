@@ -22,6 +22,11 @@ export type ResearchBannerProps = {
   dismissible?: boolean;
   /** Use methodology-only copy (includes "experimental"). */
   variant?: ResearchBannerVariant;
+  /**
+   * When search suggestions are open on the map, keep the ≤768 strip
+   * collapsed so the first result stays tappable.
+   */
+  collapseForSuggest?: boolean;
 };
 
 function bannerBody(variant: ResearchBannerVariant): string {
@@ -46,6 +51,7 @@ function bannerBody(variant: ResearchBannerVariant): string {
 export default function ResearchBanner({
   dismissible = false,
   variant = "default",
+  collapseForSuggest = false,
 }: ResearchBannerProps) {
   const [hidden, setHidden] = useState(false);
   const [strip, setStrip] = useState(false);
@@ -71,6 +77,12 @@ export default function ResearchBanner({
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
   }, []);
+
+  useEffect(() => {
+    if (collapseForSuggest && strip) {
+      setExpanded(false);
+    }
+  }, [collapseForSuggest, strip]);
 
   if (hidden) return null;
 
@@ -113,7 +125,10 @@ export default function ResearchBanner({
           className="research-banner-toggle"
           data-testid="research-banner-toggle"
           aria-expanded={expanded}
-          onClick={() => setExpanded((v) => !v)}
+          onClick={() => {
+            if (collapseForSuggest) return;
+            setExpanded((v) => !v);
+          }}
         >
           {text}
         </button>

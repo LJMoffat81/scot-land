@@ -234,6 +234,39 @@ def test_guard_json_scan_skips_code_outside_data_prefixes(tmp_path):
     assert _problems(tmp_path) == []
 
 
+def test_guard_methods_internal_report_may_hold_forbidden_money_keys(tmp_path):
+    """Additive: methods_code_*/**/report.json with publish_level=internal may carry £ keys."""
+    g = _guard()
+    assert "scotland_total_central_gbp_before" in g.FORBIDDEN_PUBLIC_AGR_PROPERTIES
+    assert "scotland_total_central_gbp_after" in g.FORBIDDEN_PUBLIC_AGR_PROPERTIES
+    _repo(tmp_path, {
+        "data/processed/methods_code_1/pr1/report.json": (
+            '{"publish_level":"internal",'
+            '"scotland_total_central_gbp_before":1,'
+            '"scotland_total_central_gbp_after":2}\n'
+        ),
+    })
+    assert _problems(tmp_path) == []
+
+
+def test_guard_methods_report_without_internal_level_still_forbidden(tmp_path):
+    """Carve-out requires publish_level=internal — missing level stays blocked."""
+    problems = _problems(tmp_path) if _repo(tmp_path, {
+        "data/processed/methods_code_1/pr1/report.json": (
+            '{"scotland_total_central_gbp_before":1}\n'
+        ),
+    }) is None else None
+    assert any("scotland_total_central_gbp_before" in p for p in problems), problems
+
+
+def test_guard_methods_money_keys_still_forbidden_outside_methods_path(tmp_path):
+    """New methods £ keys remain forbidden on ordinary public processed JSON."""
+    problems = _problems(tmp_path) if _repo(tmp_path, {
+        "data/processed/other/a.json": '{"scotland_total_central_gbp_after":1}\n',
+    }) is None else None
+    assert any("scotland_total_central_gbp_after" in p for p in problems), problems
+
+
 def test_forbidden_public_agr_properties_match_publication_rules():
     """stdlib guard list stays in lock-step with georgist.publication_rules."""
     from georgist.publication_rules import FORBIDDEN_PUBLIC_AGR_PROPERTIES as runtime
@@ -242,6 +275,8 @@ def test_forbidden_public_agr_properties_match_publication_rules():
     assert g.FORBIDDEN_PUBLIC_AGR_PROPERTIES == runtime
     assert "siteRentalPerSqmGbp" in runtime
     assert "vacantFullAgrGbp" in runtime
+    assert "scotland_total_central_gbp_before" in runtime
+    assert "scotland_total_central_gbp_after" in runtime
 
 
 def test_guard_forbids_model_fill_dz2022_in_public_json(tmp_path):

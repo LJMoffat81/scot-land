@@ -1,14 +1,17 @@
 """ILLUSTRATIVE national run: residual land share by urban-rural class.
 
 Not a result. Rows are INTERNAL (diagnostic) and never served. Inputs:
-RoS 2023 DZ2011 mean prices -> council UK HPI to Apr-2025; Data Zones
-dwellings_by_year 2025 (council tax, Sept); GIS EPC rollup (DZ2011 rows only) for mix, age and floor area;
-SGUR 2020 6-fold on DZ2011; OPEN_ESTIMATE rebuild band at the 2025 price base.
+RoS DZ2011 mean prices pooled over configured years -> council UK HPI to Apr-2025;
+Data Zones dwellings_by_year 2025 (council tax, Sept); GIS EPC rollup (DZ2011 rows only)
+for mix, age and floor area; SGUR 2020 6-fold on DZ2011; OPEN_ESTIMATE rebuild band at
+the 2025 price base.
 """
 
 from __future__ import annotations
 
+import csv
 import dataclasses
+import logging
 from pathlib import Path
 
 from typing import Callable, Iterable, Mapping, Sequence
@@ -20,6 +23,89 @@ from georgist.surface_zones import vintage_int
 UR6_NAMES = {1: "Large Urban Areas", 2: "Other Urban Areas", 3: "Accessible Small Towns",
              4: "Remote Small Towns", 5: "Accessible Rural", 6: "Remote Rural"}
 LABEL = "ILLUSTRATIVE - not a result; internal diagnostic rows, never served"
+LOG = logging.getLogger(__name__)
+
+# Valuation methods alignment v1.2 (R4.7): empty-with-dwellings zones that gain a
+# measured price via pooling. 3y count is recomputed from committed dz2011_prices;
+# 5y count is Valuation's expected figure until local RoS 2019–2020 recompute.
+VALUATION_EMPTY_WITH_DWELLINGS = 727
+VALUATION_GAINED_POOLED_3Y = 557
+VALUATION_GAINED_POOLED_5Y_EXPECTED = 41  # open: needs local RoS; do not invent zone codes
+VALUATION_GAINED_OBSERVED_EXPECTED = 598  # 557 + 41
+VALUATION_OLD_NULL_DZ_FILL_TARGET_N = 727
+
+
+def _published_sales_n(row: Mapping, years: Sequence[int]) -> int:
+    """Sum sales_n only for years with a published median (suppressed years contribute 0)."""
+    total = 0
+    for year in years:
+        med = str(row.get(f"dz_med{year}") or "").strip()
+        n_raw = row.get(f"dz_n{year}")
+        if not med or n_raw is None or str(n_raw).strip() == "":
+            continue
+        total += int(float(n_raw))
+    return total
+
+
+def empty_zone_pooling_coverage_from_dz_prices(
+    prices_csv: Path | str,
+    spine_csv: Path | str,
+    *,
+    latest_year: int = 2023,
+    pool_years: int = 3,
+    n_min: int = 5,
+) -> dict:
+    """Coverage from committed dz2011_prices + spine (CI-safe; no raw RoS).
+
+    Counts empty-in-latest-year zones with dwellings that reach n_min over the
+    first pool window. Does **not** invent 5y zone codes — those need local RoS.
+    """
+    prices_path, spine_path = Path(prices_csv), Path(spine_csv)
+    rows = list(csv.DictReader(prices_path.open(encoding="utf-8")))
+    spine = {
+        r["code"]: r
+        for r in csv.DictReader(spine_path.open(encoding="utf-8"))
+        if str(r.get("vintage")) == "2011"
+    }
+    zero = {c for c, r in spine.items() if "zero_dwellings" in (r.get("flags") or "")}
+    empty = [r for r in rows if not str(r.get(f"dz_med{latest_year}") or "").strip()]
+    empty_with_dwellings = [r for r in empty if r.get("dz2011") not in zero]
+    window = tuple(range(latest_year - pool_years + 1, latest_year + 1))
+    gained_3y = [r for r in empty_with_dwellings if _published_sales_n(r, window) >= n_min]
+    still_empty = [r for r in empty_with_dwellings if _published_sales_n(r, window) < n_min]
+    return {
+        "empty_latest_year": len(empty),
+        "zero_dwellings_in_empty": len(empty) - len(empty_with_dwellings),
+        "empty_with_dwellings": len(empty_with_dwellings),
+        "gained_pooled_3y": len(gained_3y),
+        "still_empty_after_3y": len(still_empty),
+        "pool_years": pool_years,
+        "n_min": n_min,
+        "latest_year": latest_year,
+        "gained_pooled_3y_codes": sorted(r["dz2011"] for r in gained_3y),
+        "still_empty_after_3y_codes": sorted(r["dz2011"] for r in still_empty),
+    }
+
+
+def pool_zone_price(
+    observations: Sequence[sr.YearPrice],
+    *,
+    latest_year: int,
+    price_cfg: Mapping,
+    index_factor: Mapping[int, float],
+    index_to_year: int,
+) -> sr.PooledPrice:
+    """Wire ``pool_prices`` with surface.yaml price knobs (R3.1–R3.5)."""
+    return sr.pool_prices(
+        observations,
+        latest_year=int(latest_year),
+        measure=str(price_cfg["measure"]),
+        pool_years=int(price_cfg["pool_years"]),
+        pool_years_max=int(price_cfg["pool_years_max"]),
+        n_min=int(price_cfg["n_min"]),
+        index_factor=index_factor,
+        index_to_year=int(index_to_year),
+    )
 
 
 def class_table(zones: Sequence[Mapping], scenario: str) -> list[dict]:
@@ -309,7 +395,16 @@ def run(*, raw_dir: str, gis_dir: str, dz_dir: str | None = None, residential_la
         land_rows = sh.residential_land_rows_from_gis(rl[rl["vintage"] == 2011].to_dict("records"),
                                                       low_coverage=res_land_low_coverage, zero_codes=zero_codes,
                                                       min_share=rl_cfg["gradient_exclude"]["min_share_res_uprn_in_parcels"])
-    pts = hv.council_hpi_points(hv.load_uk_hpi(R + "hpi-2026-07.csv"), base_year=2023, target_month="2025-04")
+    hpi_df = hv.load_uk_hpi(R + "hpi-2026-07.csv")
+    price_cfg = cfg["price"]
+    ros11 = ros[ros.vintage == 2011]
+    latest_ros_year = int(ros11["year"].max())
+    # Within-RoS pooling indexes sale years to the latest RoS year (surface.yaml price.index_to_valuation_year).
+    index_to_year = latest_ros_year
+    pool_years_max = int(price_cfg["pool_years_max"])
+    pool_year_list = list(range(latest_ros_year - pool_years_max + 1, latest_ros_year + 1))
+    annual_hpi = hv.council_annual_hpi(hpi_df, pool_year_list)
+    pts = hv.council_hpi_points(hpi_df, base_year=index_to_year, target_month="2025-04")
     band = sr.rebuild_band(cfg, base_year)
     n17i = n17.set_index("code")
     n25i = n25.set_index("code")
@@ -317,24 +412,71 @@ def run(*, raw_dir: str, gis_dir: str, dz_dir: str | None = None, residential_la
     joins = {"epc_dz2011_rows": len(epc), "epc_dz2022_rows_not_used": int((epc_all["vintage"] == 2022).sum()),
              "nrs_zones": len(n25), "urc_zones": len(urc),
              "nrs_codes_equal_urc": set(n25["code"]) == urc_codes, "nrs_codes_equal_epc": set(n25["code"]) == set(epc.index)}
-    d = ros[(ros.vintage == 2011) & (ros.year == 2023) & (~ros.suppressed)]
-    ros_codes = set(ros.loc[ros.vintage == 2011, "code"])
+    ros_codes = set(ros11["code"])
     no_price = {"absent_from_ros_price_file": [c for c in absent if c not in ros_codes],
                 "absent_flag_but_in_ros": [c for c in absent if c in ros_codes],
-                "suppressed_2023_lt5_sales": int(((ros.vintage == 2011) & (ros.year == 2023) & ros.suppressed).sum())}
+                "suppressed_2023_lt5_sales": int(((ros.vintage == 2011) & (ros.year == latest_ros_year) & ros.suppressed).sum())}
+    # Model-fill target: recompute from data after pooling (log old hard-coded 727 against new).
+    old_fill_target = int((cfg.get("model_fill") or {}).get("null_dz_fill_target_n", VALUATION_OLD_NULL_DZ_FILL_TARGET_N))
     prices, fallback = [], {}
-    for r in d.itertuples():
-        mixrow = n17i.loc[r.code] if r.code in n17i.index else None
+    suppressed_all = []
+    pool_tag_counts: dict[str, int] = {}
+    for code in sorted(ros_codes):
+        if code not in n25i.index:
+            continue
+        mixrow = n17i.loc[code] if code in n17i.index else None
         m = sr.nrs2017_type_shares(mixrow) if mixrow is not None else None
         hm = {"detached": m["detached"], "semi_detached": m["semi_detached"], "terraced": m["terraced"], "flat": m["flat_purpose_built"]} if m else None
-        council = n25i.loc[r.code, "council_code"]
+        council = n25i.loc[code, "council_code"]
+        observations = hv.ros_year_prices_for_zone(ros, code, vintage=2011)
+        idx_factors = hv.pooling_index_factors(
+            annual_hpi[str(council)], index_to_year=index_to_year, type_mix=hm, years=pool_year_list,
+        )
+        pooled = pool_zone_price(
+            observations, latest_year=latest_ros_year, price_cfg=price_cfg,
+            index_factor=idx_factors, index_to_year=index_to_year,
+        )
+        for t in pooled.tags:
+            pool_tag_counts[t] = pool_tag_counts.get(t, 0) + 1
+        if pooled.price_gbp is None:
+            suppressed_all.append(code)
+            continue
         f, series, tags = sr.hpi_factor(pts[council], hm)
-        pooled = sr.PooledPrice(float(r.price_mean_gbp), int(r.sales_n), "2023-2023", "mean", (), 2023)
         ip = sr.index_price(pooled, price_year=base_year, factor=f, series=series, tags=tags)
-        prices.append({"code": r.code, "council_code": council, "council_name": n25i.loc[r.code, "council_name"],
-                       "price_raw": pooled.price_gbp, "price_indexed": ip.price_indexed_gbp, "sales_n": int(r.sales_n)})
+        # Pooled sales_n feeds resolve_land_value n_full / n_min / shrinkage_k.
+        prices.append({
+            "code": code, "council_code": council, "council_name": n25i.loc[code, "council_name"],
+            "price_raw": pooled.price_gbp, "price_indexed": ip.price_indexed_gbp,
+            "sales_n": int(pooled.sales_n),
+            "proxy_tags": list(pooled.tags),
+            "evidence_years": pooled.years,
+            "evidence_year": pooled.evidence_year,
+            "evidence_oldest_year": pooled.evidence_oldest_year,
+        })
+    # Absent-only codes are not in ros_codes; subtract zero dwellings that are absent or suppressed.
+    absent_only = [c for c in absent if c not in ros_codes]
+    null_codes = set(suppressed_all) | set(absent_only)
+    new_fill_target = len(null_codes - zero_codes)
+    LOG.info(
+        "null_dz_fill_target_n old=%s new=%s (suppressed_all_years=%s absent_only=%s zero_in_null=%s)",
+        old_fill_target, new_fill_target, len(suppressed_all), len(absent_only),
+        len(null_codes & zero_codes),
+    )
     zero_dropped = sorted(p["code"] for p in prices if p["code"] in zero_codes)  # rules v0.7: not applicable, overrides price
     prices = [p for p in prices if p["code"] not in zero_codes]
+    pooling_meta = {
+        "latest_ros_year": latest_ros_year,
+        "index_to_year": index_to_year,
+        "pool_years": int(price_cfg["pool_years"]),
+        "pool_years_max": pool_years_max,
+        "n_min": int(price_cfg["n_min"]),
+        "n_full": int(price_cfg["n_full"]),
+        "observed_pooled_zones": len(prices),
+        "suppressed_all_years_zones": len(suppressed_all),
+        "pool_tag_counts": pool_tag_counts,
+        "null_dz_fill_target_n_old": old_fill_target,
+        "null_dz_fill_target_n_new": new_fill_target,
+    }
     dwell = {c: (int(v) if v == v else None) for c, v in zip(dw_tot["code"], dw_tot["dwellings_total"])}
     occupancy = {r.code: (None if r.vacant_share != r.vacant_share else float(r.vacant_share),
                                None if r.second_home_share != r.second_home_share else float(r.second_home_share))
@@ -383,6 +525,7 @@ def run(*, raw_dir: str, gis_dir: str, dz_dir: str | None = None, residential_la
     cov = sum(1 for i in inputs_cache.values() if "epc_coverage_over_100_recent_only" in i.tags)
     return {
         "label": LABEL, "joins": joins, "epc_primary": epc_primary, "no_price_zones": no_price,
+        "pooling": pooling_meta,
         "dwellings_source": dict(dw_tot.attrs.get("provenance", {})),
         "dwellings_total_scotland": int(dw_tot["dwellings_total"].sum()),
 

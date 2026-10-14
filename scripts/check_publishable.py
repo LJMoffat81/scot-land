@@ -62,7 +62,20 @@ FORBIDDEN_PUBLIC_AGR_PROPERTIES = frozenset({
     # camelCase aliases used by legacy roll / vdl-councils builders
     "siteRentalPerSqmGbp",
     "vacantFullAgrGbp",
+    # Methods alignment run reports (internal only; additive — never public)
+    "scotland_total_central_gbp",
+    "scotland_total_low_gbp",
+    "scotland_total_high_gbp",
+    "scotland_total_central_gbp_before",
+    "scotland_total_low_gbp_before",
+    "scotland_total_high_gbp_before",
+    "scotland_total_central_gbp_after",
+    "scotland_total_low_gbp_after",
+    "scotland_total_high_gbp_after",
 })
+# Additive: internal methods_code_* run reports may carry the forbidden £ keys above
+# when top-level publish_level is exactly "internal". Does not loosen public scans.
+METHODS_INTERNAL_REPORT = re.compile(r"^data/processed/methods_code_[^/]+/.+/report\.json$")
 # DZ2022 empty-zone fill stays internal / blocked — never in public JSON/GeoJSON keys.
 # Additive coverage only; does not weaken FORBIDDEN_PUBLIC_AGR_PROPERTIES.
 FORBIDDEN_PUBLIC_FILL_TOKENS = frozenset({
@@ -336,8 +349,15 @@ def check(files: list[str]) -> list[str]:
             except json.JSONDecodeError as exc:
                 problems.append(f"{f}: invalid JSON ({exc.msg})")
                 continue
+            # Additive carve-out: methods_code_*/**/report.json with publish_level=internal
+            # may hold forbidden £ keys (still blocked on every other public path).
+            methods_internal = (
+                METHODS_INTERNAL_REPORT.fullmatch(f)
+                and isinstance(payload, dict)
+                and str(payload.get("publish_level") or "").strip().lower() == "internal"
+            )
             agr_keys = sorted(set(forbidden_json_keys(payload)))
-            if agr_keys:
+            if agr_keys and not methods_internal:
                 problems.append(f"{f}: forbidden public AGR £ / fill property key(s) {agr_keys}")
             fill_vals = sorted(set(forbidden_json_fill_values(payload)))
             if fill_vals:

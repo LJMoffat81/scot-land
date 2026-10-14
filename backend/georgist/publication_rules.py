@@ -60,6 +60,16 @@ FORBIDDEN_PUBLIC_AGR_PROPERTIES = frozenset({
     # camelCase aliases used by legacy roll / vdl-councils builders
     "siteRentalPerSqmGbp",
     "vacantFullAgrGbp",
+    # Methods alignment run reports (internal only; additive — never public)
+    "scotland_total_central_gbp",
+    "scotland_total_low_gbp",
+    "scotland_total_high_gbp",
+    "scotland_total_central_gbp_before",
+    "scotland_total_low_gbp_before",
+    "scotland_total_high_gbp_before",
+    "scotland_total_central_gbp_after",
+    "scotland_total_low_gbp_after",
+    "scotland_total_high_gbp_after",
 })
 
 ZONE_CODE_RE = re.compile(r"^S01\d{6}$")

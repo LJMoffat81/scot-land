@@ -55,8 +55,13 @@ def test_pool_prices_widens_then_suppresses():
     kw = dict(latest_year=2023, measure="mean", pool_years=3, pool_years_max=5, n_min=5, index_factor=idx, index_to_year=2023)
     p = sr.pool_prices(obs, **kw)
     assert p.evidence_year == 2023
-    assert p.tags == ("pooled_5y",) and p.sales_n == 7
-    assert p.price_gbp == pytest.approx((3 * 100_000 + 2 * 120_000 + 2 * 130_000) / 7)
+    assert p.sales_n == 7
+    assert p.evidence_oldest_year == 2019
+    assert "pooled_5y" in p.tags and "evidence_oldest_year:2019" in p.tags
+    # 3/7 < 50% → not dominant
+    assert "evidence_oldest_year_dominant" not in p.tags
+    # Exact pence: (3*100000 + 2*120000 + 2*130000) / 7 = 800000/7
+    assert round(p.price_gbp, 2) == round(800_000 / 7, 2)
     none = sr.pool_prices(obs[1:2], **kw)
     assert none.price_gbp is None and "suppressed_all_years" in none.tags
     med = sr.pool_prices(obs, **dict(kw, measure="median"))

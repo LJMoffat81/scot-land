@@ -76,7 +76,7 @@ export const LAYER_ATTRIBUTION: Record<
   { source: string; licence: string; sourceUrl?: string }
 > = {
   agr_value: {
-    source: "Scot-LAND residual AGR (SLRG methodology)",
+    source: "Scot-LAND Annual Ground Rent (SLRG methodology)",
     licence: "Research estimate — land rent figures are not published yet",
   },
   boundaries: {
@@ -85,7 +85,7 @@ export const LAYER_ATTRIBUTION: Record<
     sourceUrl: "https://www.ros.gov.uk/open-data",
   },
   cell_grid: {
-    source: "Scot-LAND squares 3×3 m grid (internal AGR)",
+    source: "Scot-LAND squares 3-by-3 m grid (internal AGR)",
     licence: "Not published on the public map yet",
   },
   data_zones: {

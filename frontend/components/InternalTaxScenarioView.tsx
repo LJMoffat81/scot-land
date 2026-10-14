@@ -42,7 +42,7 @@ export default function InternalTaxScenarioView({
     >
       <p className="internal-tax-banner" role="status">
         INTERNAL · publication_status=blocked · approved defaults (v0.1, Oct
-        2026). No public £. Data Zone grain only while blocked; council views
+        2026). No public £. Data Zone level only while blocked; council views
         are counts. Estimate values are never taxed.
       </p>
       <h2>Tax scenario {scenarioId}</h2>

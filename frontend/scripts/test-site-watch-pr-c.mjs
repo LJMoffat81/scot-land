@@ -51,6 +51,16 @@ assert.match(
   /Natural resource rents and the services of nature/,
 );
 assert.match(method, /Constraint: changes best use, adds no value/);
+// SW-017: restored towns bullet word-for-word; no public yield jargon.
+const TOWNS_BULLET =
+  "In towns, we start from local house prices. We take away what it would cost to rebuild the house. What is left is roughly the value of the land. We turn that into a yearly rent.";
+assert.ok(
+  method.replace(/\s+/g, " ").includes(TOWNS_BULLET),
+  "How it works must restore the approved In towns bullet word for word",
+);
+assert.doesNotMatch(method, /residual method|Data Zone grain|configured land yield/i);
+assert.doesNotMatch(method, /4\.499%|4654e513|agr\.wide_range|× yield|→/);
+assert.doesNotMatch(method, /\(agr\.\w+\)/);
 
 const banner = readFileSync(join(frontendRoot, "lib/siteNav.ts"), "utf8");
 assert.match(
@@ -106,9 +116,21 @@ if (existsSync(nextHtml)) {
     { name: "chip Proxy", re: />\s*Proxy\s*</ },
     { name: "chip Shadow", re: />\s*Shadow\s*</ },
   ];
+  // SW-017: add-only bans for public HTML outside /developers (yield details OK there).
+  const forbiddenOutsideDevelopers = [
+    { name: "residual", re: /\bresidual\b/i },
+    { name: "grain", re: /\bgrain\b/i },
+    { name: "config", re: /\bconfig\b/i },
+    { name: "hash", re: /\bhash\b/i },
+    { name: "agr.*", re: /\bagr\.\w+/i },
+    { name: "×", re: /×/ },
+    { name: "→", re: /→/ },
+    { name: "yield %", re: /\d+(\.\d+)?\s*%/ },
+  ];
   const violations = [];
+  let methodologyProse = "";
   for (const file of htmlFiles) {
-    const rel = relative(frontendRoot, file);
+    const rel = relative(frontendRoot, file).replace(/\\/g, "/");
     const html = readFileSync(file, "utf8");
     // Strip scripts/styles, then code samples (keep scanning /developers prose).
     // Styles removed first so CSS box-shadow never hits the shadow word ban.
@@ -122,6 +144,14 @@ if (existsSync(nextHtml)) {
         violations.push(`${rel}: ${name}`);
       }
     }
+    const isDevelopers = /(^|\/)developers(\/|$)/.test(rel);
+    if (!isDevelopers) {
+      for (const { name, re } of forbiddenOutsideDevelopers) {
+        if (re.test(prose)) {
+          violations.push(`${rel}: ${name}`);
+        }
+      }
+    }
     if (/land value tax/i.test(prose)) {
       const agr = prose.search(/Annual Ground Rent/i);
       const lvt = prose.search(/land value tax/i);
@@ -129,6 +159,16 @@ if (existsSync(nextHtml)) {
         violations.push(`${rel}: Annual Ground Rent must precede land value tax`);
       }
     }
+    if (rel.includes("/methodology")) {
+      methodologyProse += ` ${prose}`;
+    }
+  }
+  if (methodologyProse) {
+    const flat = methodologyProse.replace(/\s+/g, " ");
+    assert.ok(
+      flat.includes(TOWNS_BULLET),
+      "built How it works HTML must contain the approved In towns bullet word for word",
+    );
   }
   assert.equal(
     violations.length,

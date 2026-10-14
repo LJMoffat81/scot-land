@@ -142,15 +142,15 @@ PLAIN_DESCRIPTIONS: dict[str, str] = {
         "Outside Scotland’s land totals."
     ),
     "house_prices": (
-        "House price context at Data Zone grain from open Registers of Scotland "
+        "House price context at Data Zone level from open Registers of Scotland "
         "and UK HPI inputs. Not a modelled rent."
     ),
     "simd": (
-        "Scottish Index of Multiple Deprivation context at Data Zone grain. "
+        "Scottish Index of Multiple Deprivation context at Data Zone level. "
         "Open statistics — not a rent."
     ),
     "population_density": (
-        "Population density at Data Zone grain from open statistics. "
+        "Population density at Data Zone level from open statistics. "
         "Context only — not a rent."
     ),
     "dz_context": (

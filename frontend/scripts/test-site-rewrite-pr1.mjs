@@ -45,9 +45,7 @@ const nextConfig = readSrc("next.config.ts");
 for (const pair of [
   ["/downloads", "/developers#downloads"],
   ["/open-api", "/developers#api"],
-  ["/docs", "/developers/api"],
   ["/mission", "/about"],
-  ["/developers/api", "/backend/docs"],
 ]) {
   assert.match(
     nextConfig,
@@ -57,6 +55,41 @@ for (const pair of [
     `redirect ${pair[0]} → ${pair[1]}`,
   );
 }
+for (const pair of [
+  ["/docs", "/developers/api"],
+  ["/backend/docs", "/developers/api"],
+]) {
+  assert.match(
+    nextConfig,
+    new RegExp(
+      `source:\\s*"${pair[0].replace("/", "\\/")}"[\\s\\S]*?destination:\\s*"${pair[1].replace(/[/#]/g, "\\$&")}"[\\s\\S]*?statusCode:\\s*301`,
+    ),
+    `301 redirect ${pair[0]} → ${pair[1]}`,
+  );
+}
+assert.doesNotMatch(
+  nextConfig,
+  /destination:\s*"\/backend\/docs"/,
+  "API reference must not redirect away to /backend/docs",
+);
+assert.doesNotMatch(
+  nextConfig,
+  /cdn\.jsdelivr\.net/,
+  "site CSP must not allow jsDelivr after self-hosting Swagger",
+);
+
+assert.ok(
+  existsSync(join(frontendRoot, "public/swagger-ui/swagger-ui-bundle.js")),
+  "missing vendored swagger-ui-bundle.js",
+);
+assert.ok(
+  existsSync(join(frontendRoot, "public/swagger-ui/swagger-ui.css")),
+  "missing vendored swagger-ui.css",
+);
+const apiPage = readSrc("app/developers/api/page.tsx");
+assert.match(apiPage, /\/swagger-ui\/swagger-ui-bundle\.js/);
+assert.match(apiPage, /\/backend\/openapi\.json/);
+assert.doesNotMatch(apiPage, /cdn\.jsdelivr\.net/);
 
 const titles = {
   "app/methodology/page.tsx": "How it works | Scot-LAND",

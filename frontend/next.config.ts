@@ -5,6 +5,7 @@ import type { NextConfig } from "next";
 // MapLibre's worker is a blob URL, and raster tiles are images (data: and blob: too).
 // Outside hosts the browser actually fetches: OpenFreeMap (style, tiles, sprites,
 // glyphs) and Esri World Imagery. Context and parcel tiles are same-origin proxies.
+// API docs at /developers/api use self-hosted swagger-ui under /swagger-ui/ — no CDN.
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -20,31 +21,8 @@ const contentSecurityPolicy = [
   "child-src 'self' blob:",
 ].join("; ");
 
-// FastAPI Swagger UI at /backend/docs loads assets from jsDelivr; allow that CDN
-// only on the docs route (site-wide CSP stays strict).
-const docsContentSecurityPolicy = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "form-action 'self'",
-  "frame-ancestors 'self'",
-  "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
-  "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
-  "img-src 'self' data: blob: https://cdn.jsdelivr.net https://tiles.openfreemap.org https://server.arcgisonline.com",
-  "font-src 'self' https://cdn.jsdelivr.net",
-  "connect-src 'self' https://cdn.jsdelivr.net https://tiles.openfreemap.org https://server.arcgisonline.com http://localhost:* http://127.0.0.1:* https://localhost:* https://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*",
-  "worker-src 'self' blob:",
-  "child-src 'self' blob:",
-].join("; ");
-
 const securityHeaders = [
   { key: "Content-Security-Policy", value: contentSecurityPolicy },
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-];
-
-const docsSecurityHeaders = [
-  { key: "Content-Security-Policy", value: docsContentSecurityPolicy },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
 ];
@@ -59,7 +37,6 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // Site rewrite PR1 — permanent redirects (spec A).
-      // /backend/docs stays live (Swagger CSP hotfix); /developers/api points there.
       {
         source: "/downloads",
         destination: "/developers#downloads",
@@ -70,30 +47,31 @@ const nextConfig: NextConfig = {
         destination: "/developers#api",
         permanent: true,
       },
+      // Charter C1+C2: docs entry points land on self-hosted Swagger.
       {
         source: "/docs",
         destination: "/developers/api",
-        permanent: true,
+        statusCode: 301,
+      },
+      {
+        source: "/backend/docs",
+        destination: "/developers/api",
+        statusCode: 301,
+      },
+      {
+        source: "/backend/docs/:path*",
+        destination: "/developers/api",
+        statusCode: 301,
       },
       {
         source: "/mission",
         destination: "/about",
         permanent: true,
       },
-      {
-        source: "/developers/api",
-        destination: "/backend/docs",
-        permanent: true,
-      },
     ];
   },
   async headers() {
-    return [
-      // Docs CSP must win over /:path* (Next merges; later same-key overwrites).
-      { source: "/((?!backend/docs(?:/|$)).*)", headers: securityHeaders },
-      { source: "/backend/docs", headers: docsSecurityHeaders },
-      { source: "/backend/docs/:path*", headers: docsSecurityHeaders },
-    ];
+    return [{ source: "/:path*", headers: securityHeaders }];
   },
   // API proxy is app/backend/[...path]/route.ts (not rewrites).
   // Rewrites surface socket hang-ups as TypeError: Failed to fetch;

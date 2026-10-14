@@ -27,6 +27,12 @@ function walkHtml(dir, out = []) {
 
 // —— Item 2: map footer exact wording + /data#licences ——
 const stamp = readSrc("components/MapStampFooter.tsx");
+assert.doesNotMatch(
+  stamp,
+  /<<<<<<|======|>>>>>>/,
+  "MapStampFooter must not contain merge conflict markers",
+);
+assert.doesNotMatch(stamp, /£/, "map footer must not contain £");
 assert.match(
   stamp,
   /Research estimate · Open data ·/,

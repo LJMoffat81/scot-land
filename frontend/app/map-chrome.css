@@ -368,8 +368,11 @@
 @media (max-width: 900px) {
   .basemap-switcher {
     right: 0.55rem;
-    /* Above zoom + collapsed (i); stays in the right gutter beside the place card. */
-    bottom: 6.1rem;
+    /*
+     * Above zoom group (~58px) + collapsed (i) (~24px) + MapLibre margins.
+     * Measured against the resting collapsed-(i) layout (not expanded attrib).
+     */
+    bottom: 7.35rem;
   }
 
   /*

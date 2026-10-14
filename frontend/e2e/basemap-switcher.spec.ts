@@ -229,6 +229,26 @@ async function openAttributionIfCollapsed(page: Page) {
   await page.locator(".maplibregl-ctrl-attrib-button").click({ timeout: 10_000 });
 }
 
+/** Resting chrome: collapse expanded (i) so zoom returns to the bottom-right stack. */
+async function collapseAttribution(page: Page) {
+  const attrib = page.locator(".maplibregl-ctrl-attrib");
+  // Match ScotlandMap.collapseCompactAttribution — click can race MapLibre.
+  await attrib.evaluate((el) => {
+    el.classList.remove("maplibregl-compact-show");
+    el.removeAttribute("open");
+  });
+  await expect(attrib).not.toHaveClass(/maplibregl-compact-show/);
+  // Zoom must settle back into the lower viewport (expanded attrib shoves it up).
+  const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
+  await expect
+    .poll(async () => {
+      const box = await zoomIn.boundingBox();
+      if (!box) return 0;
+      return box.y / (await page.evaluate(() => window.innerHeight));
+    })
+    .toBeGreaterThan(0.5);
+}
+
 async function attributionText(page: Page) {
   await openAttributionIfCollapsed(page);
   return (await page.locator(".maplibregl-ctrl-attrib").innerText()) || "";
@@ -315,6 +335,9 @@ async function runBasemapChecks(page: Page) {
   await page.keyboard.press("Space");
   await expectStreetsState(page, switcher);
 
+  // Geometry checks use resting collapsed-(i) chrome (expanded attrib shoves zoom up).
+  await collapseAttribution(page);
+
   const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
   const zoomOut = page.locator(".maplibregl-ctrl-zoom-out");
   const attribBtn = page.locator(".maplibregl-ctrl-attrib-button");
@@ -325,6 +348,7 @@ async function runBasemapChecks(page: Page) {
   await assertNoBoxOverlap(switcher, attribBtn, "basemap vs attribution (i)");
 
   const card = await openPlaceCard(page);
+  await collapseAttribution(page);
   await assertNoBoxOverlap(switcher, card, "basemap vs place card");
   await assertNoBoxOverlap(switcher, zoomIn, "basemap vs zoom-in (place open)");
   await assertNoBoxOverlap(switcher, attribBtn, "basemap vs (i) (place open)");
@@ -354,6 +378,8 @@ test.describe("390x844 mobile", () => {
     await runBasemapChecks(page);
 
     // Mobile layout: tile stacked above the zoom column (same right edge band).
+    // Resting collapsed-(i) state — same as product chrome after openMap.
+    await collapseAttribution(page);
     const switcher = page.getByTestId("basemap-switcher");
     const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
     const switchBox = await switcher.boundingBox();

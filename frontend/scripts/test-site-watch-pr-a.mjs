@@ -72,6 +72,11 @@ assert.match(chrome, /position:\s*relative\s*!important/);
 assert.match(chrome, /\.hud-search-dock\.open/);
 assert.match(chrome, /\.search-suggest/);
 assert.match(chrome, /:has\(\.hud-search-dock\.open\)/);
+// Place card stacks above search so Close is clickable at two-row widths.
+assert.match(
+  chrome,
+  /\.app-shell\.place-open[\s\S]*\.place-card-stub[\s\S]*z-index:\s*14/,
+);
 
 // —— Find a place collapses when place-open ——
 assert.match(chrome, /\.app-shell\.place-open[\s\S]*\.hud-scotland-job/);

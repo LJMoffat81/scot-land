@@ -84,7 +84,10 @@ test.afterEach(() => {
     (text) =>
       !/Failed to load resource: the server responded with a status of (404|503)/i.test(
         text,
-      ),
+      ) &&
+      // MapLibre / aborted suggest fetches often surface as a bare "Error".
+      !/^(Error|AbortError)$/i.test(text.trim()) &&
+      !/\bAbortError\b|The user aborted|The operation was aborted/i.test(text),
   );
   expect(
     meaningful,
@@ -278,6 +281,17 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
         body: JSON.stringify({ kind: "places", matches: [] }),
       });
     });
+    await page.route("**/layers/context/data-zones/at**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code: "S01008677",
+          name: "Old Town",
+          vintage: 2022,
+        }),
+      });
+    });
     await page.route("**/platform/place**", async (route) => {
       await route.fulfill({
         status: 200,
@@ -346,16 +360,24 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
     }
 
     await first.click();
-    await expect(page.getByTestId("place-card")).toBeVisible({
-      timeout: 30_000,
-    });
+    const placeCard = page.getByTestId("place-card");
+    await expect(placeCard).toBeVisible({ timeout: 30_000 });
     // Intro collapses while the card is open.
     await expect(page.locator(".app-shell")).toHaveClass(/place-open/);
     await expect(page.locator(".hud-scotland-job")).toBeHidden();
 
+    // chooseSuggestion sets .hud-search.loading during inspect — wait it out so
+    // the Search control is not mid-flight; place card z-index also wins in CSS.
+    await expect(page.locator(".hud-search.loading")).toHaveCount(0, {
+      timeout: 20_000,
+    });
+    await page.locator("#place-query").blur();
+
     // Item 12: restore Find a place intro when the card closes.
-    await page.getByRole("button", { name: "Close place card" }).click();
-    await expect(page.getByTestId("place-card")).toHaveCount(0);
+    const close = placeCard.getByRole("button", { name: "Close place card" });
+    await expect(close).toBeVisible();
+    await close.click();
+    await expect(placeCard).toHaveCount(0);
     await expect(page.locator(".app-shell")).not.toHaveClass(/place-open/);
     await expect(page.locator(".hud-scotland-job")).toBeVisible();
     await expect(page.locator(".hud-scotland-job")).toHaveText("Find a place");

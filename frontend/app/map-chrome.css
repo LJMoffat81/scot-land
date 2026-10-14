@@ -130,6 +130,19 @@
   }
 }
 
+/* —— Place card above search HUD so Close is clickable (esp. two-row ≤1440) —— */
+.app-shell.place-open .hud-place.place-card,
+.app-shell.place-open .place-card-stub {
+  z-index: 14;
+}
+
+@media (min-width: 901px) and (max-width: 1440px) {
+  .app-shell.place-open .hud-place.place-card,
+  .app-shell.place-open .place-card-stub {
+    top: calc(var(--hud-height, 8.5rem) + 0.45rem);
+  }
+}
+
 /* —— Find a place intro collapses when place card is open (all widths) —— */
 @media (min-width: 641px) {
   .app-shell.place-open .hud-scotland-fold {

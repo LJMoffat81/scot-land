@@ -3628,7 +3628,7 @@ export default function ScotlandMap() {
               onMouseDown={(event) => event.preventDefault()}
               onClick={clearQuery}
             >
-              ×
+              x
             </button>
           ) : null}
           <button
@@ -3846,7 +3846,7 @@ export default function ScotlandMap() {
                 title="Close (Esc)"
                 onClick={() => clearPlace()}
               >
-                ×
+                x
               </button>
               <p className="error-line">{error}</p>
               <p className="meta">

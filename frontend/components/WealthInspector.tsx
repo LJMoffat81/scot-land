@@ -312,7 +312,7 @@ export function WealthInspector({ isOpen, onClose, data, failure, isLoading }: W
             <div className="flex justify-between text-xs text-slate-600">
               <span>
                 Policy rent
-                {w.policy.policy_despec_factor != null ? ` (× ${w.policy.policy_despec_factor} de-speculation)` : ""}
+                {w.policy.policy_despec_factor != null ? ` (x ${w.policy.policy_despec_factor} de-speculation)` : ""}
               </span>
               <span className="font-mono">{w.policy.policy_rent == null ? "–" : gbp(w.policy.policy_rent)}</span>
             </div>
@@ -338,7 +338,7 @@ export function WealthInspector({ isOpen, onClose, data, failure, isLoading }: W
               <p>
                 Road distance to nearest large urban centre ({w.context.access.nearest_luc ?? "n/a"}):{" "}
                 {w.context.access.road_km_nearest_luc != null ? `${w.context.access.road_km_nearest_luc.toFixed(1)} km` : "n/a"}
-                {w.context.access.distance_method === "euclid_x1.3" ? " (1.3 × straight line, no road link)" : ""}
+                {w.context.access.distance_method === "euclid_x1.3" ? " (1.3 x straight line, no road link)" : ""}
               </p>
               {w.context.access.flags.length > 0 && (
                 <p className="text-slate-500">Flags: {w.context.access.flags.join(", ")}</p>

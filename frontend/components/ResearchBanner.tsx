@@ -84,7 +84,7 @@ export default function ResearchBanner({
             setHidden(true);
           }}
         >
-          ×
+          x
         </button>
       ) : null}
     </aside>

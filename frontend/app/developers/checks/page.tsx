@@ -84,6 +84,11 @@ export default function DevelopersChecksPage() {
         developers and reviewers. Source catalogue and excluded list:{" "}
         <a href="/data">Data &amp; sources</a>.
       </p>
+      <p className="downloads-note" data-testid="developers-checks-yield-note">
+        Signed-off land yield v3 (central 4.499%, band 3.98–4.50%, hash{" "}
+        <code>4654e513</code>) comes from shared surface config. Public money
+        figures stay blocked; visitors do not see these amounts on How it works.
+      </p>
       {error && <p className="downloads-note">{error}</p>}
 
       <div className="checks-table-wrap">

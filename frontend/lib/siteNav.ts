@@ -14,6 +14,6 @@ export type SiteNavId = (typeof SITE_NAV_ITEMS)[number]["id"];
 export const RESEARCH_BANNER_LEAD = "Research estimate.";
 
 export const RESEARCH_BANNER_BODY =
-  "Annual Ground Rent figures are not published yet. They are not a bill or an official valuation.";
+  "Scot-LAND is experimental. Annual Ground Rent figures are not published yet. They are not a bill or an official valuation.";
 
 export const RESEARCH_BANNER_TEXT = `${RESEARCH_BANNER_LEAD} ${RESEARCH_BANNER_BODY}`;

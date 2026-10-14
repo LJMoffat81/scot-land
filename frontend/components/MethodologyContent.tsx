@@ -109,8 +109,8 @@ export default function MethodologyContent() {
             Contains OS data © Crown copyright and database right 2026
           </li>
           <li>
-            Contains National Records of Scotland data © Crown copyright and
-            database right
+            © Crown copyright 2026, licensed under the Open Government Licence
+            v3.0
           </li>
           <li>
             Contains Scottish Government data licensed under the Open Government

@@ -1,0 +1,26 @@
+{
+  "publish_level": "internal",
+  "methods_alignment": "v1.2",
+  "pr": "pr2_price_skew_flag",
+  "rules_implemented": [
+    "R6.1_skew_pooled_mean_over_count_weighted_pooled_median"
+  ],
+  "price_skew_flag": {
+    "ratio": "pooled_mean / count_weighted_pooled_median",
+    "sales_n": "pooled_sales_count",
+    "mean_median_ratio_min": 1.4,
+    "small_sales_n_below": 15,
+    "tags": {
+      "ratio_computed": "skew_ratio_pooled_approx",
+      "flagged": "price_skew_small_sample"
+    },
+    "value_change": false,
+    "note": "Flag only — land value and rent identical with or without the flag."
+  },
+  "boundary_pins": {
+    "ratio_1_40_sales_14_flagged": true,
+    "ratio_1_40_sales_15_not_flagged": true,
+    "ratio_1_399_sales_14_not_flagged": true
+  },
+  "open_items": []
+}

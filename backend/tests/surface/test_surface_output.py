@@ -178,12 +178,39 @@ def test_dwelling_year_lag_policy(cfg, band):
         _row(cfg, band, dwellings=sr.DwellingCount(470, 2026, 2011))
 
 
+def _pence(x: float) -> int:
+    return int(round(float(x) * 100))
+
+
 def test_skew_flag_in_row(cfg, band):
     pooled = sr.PooledPrice(300_000, 8, "2021-2023", "mean", (), 2023)
     row = _row(cfg, band, pooled=pooled, typical_sale_gbp=150_000)
-    assert row["price_skew_flag"] is True and row["mean_median_ratio"] == pytest.approx(2.0)
+    assert row["price_skew_flag"] is True and row["mean_median_ratio"] == 2.0
+    assert "skew_ratio_pooled_approx" in row["proxy_tags"]
     assert "price_skew_small_sample" in row["proxy_tags"]
-    assert _row(cfg, band)["price_skew_flag"] is False
+    clear = _row(cfg, band)
+    assert clear["price_skew_flag"] is False
+    assert "skew_ratio_pooled_approx" in clear["proxy_tags"]  # ratio computed; flag off
+
+
+def test_price_skew_flag_does_not_change_land_value(cfg, band):
+    """Flag only: land value identical to the penny with and without the flag."""
+    pooled = sr.PooledPrice(140_000, 14, "2021-2023", "mean", ("pooled_3y",), 2023)
+    indexed = sr.index_price(
+        pooled, price_year=2025, factor=SYN_FACTOR, series="SYNTHETIC council index",
+        tags=("indexed_council_hpi",),
+    )
+    flagged = _row(cfg, band, pooled=pooled, indexed=indexed, typical_sale_gbp=100_000)
+    clear = _row(cfg, band, pooled=pooled, indexed=indexed, typical_sale_gbp=100_100)
+    assert flagged["price_skew_flag"] is True
+    assert clear["price_skew_flag"] is False
+    assert flagged["mean_median_ratio"] == 1.4
+    assert clear["mean_median_ratio"] == 140_000 / 100_100
+    assert _pence(flagged["land_value"]) == _pence(clear["land_value"])
+    assert _pence(flagged["land_value_zone_total"]) == _pence(clear["land_value_zone_total"])
+    assert _pence(flagged["measured_rent"]) == _pence(clear["measured_rent"])
+    assert "skew_ratio_pooled_approx" in flagged["proxy_tags"]
+    assert "skew_ratio_pooled_approx" in clear["proxy_tags"]
 
 
 def test_rebuild_mix_basis_stamped(cfg, band):

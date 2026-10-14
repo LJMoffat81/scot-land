@@ -242,7 +242,8 @@ The v0.3 rules supersede items 1, 2, 4, 6 and 7 in the conflict list above. What
   - `measured_rent` = zone total × land yield. `measured_rent_per_dwelling` = `measured_rent` / dwellings.
   - Pooling the mean across years is exact (Σ n·mean / Σ n). It now requires an HPI `index_factor` and a stated `index_to_year`; mixing price years without indexing raises.
 - **Median is display only.** It is shown as `typical_sale_gbp`, with `mean_median_ratio` alongside.
-  - `price_skew_flag` (tag `price_skew_small_sample`) fires when pooled sales are below `skew_flag.small_sales_n_below` (default 15, equal to `n_full`) and mean ÷ median ≥ `skew_flag.mean_median_ratio_min` (default 1.40).
+  - `price_skew_flag` (Methods M2) = **pooled mean ÷ count-weighted pooled median**, using the **pooled** sales count. Tag `skew_ratio_pooled_approx` whenever the ratio is computed (multi-year median pooling is approximate). Tag `price_skew_small_sample` when the flag fires. **Flag only — land value and rent never change.**
+  - Flag when pooled sales are below `skew_flag.small_sales_n_below` (default 15, equal to `n_full`) and ratio ≥ `skew_flag.mean_median_ratio_min` (default 1.40).
   - Why 1.40: in RoS DZ2011 zone-years 2019–2023, the 95th percentile of mean ÷ median is 1.381 for zones with 5–9 sales and 1.389 for 10–14 sales. So the flag catches roughly the top 1 in 20 small zones.
 - **Rebuild mix for the same homes.** `choose_rebuild_mix()` uses the mix of homes that sold (EPCs lodged for marketed sales in the price window) when there are at least `rebuild_mix.min_sold_records` (5, ASSUMPTION). Otherwise it uses the whole stock. `rebuild_mix_basis` (sold | all_stock) is stamped on every row, and all_stock is also tagged.
 - **Land yield is r − g (rule 1).**

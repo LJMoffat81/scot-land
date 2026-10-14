@@ -21,7 +21,9 @@ Rules applied here:
 - 4.2: zone ceiling uses MEAN price x dwellings on the SAME vintage.
 - 6.1: MEAN for anything that adds up; zone total = (mean P - mean DRC) x count,
   per-home = total / count. Median is display only (`typical_sale_gbp`) plus a
-  small-sample skew flag. Rebuild mix basis is stamped (sold | all_stock).
+  small-sample skew flag (pooled mean ÷ count-weighted pooled median; tag
+  `skew_ratio_pooled_approx`; flag only — values unchanged). Rebuild mix basis
+  is stamped (sold | all_stock).
 - 1: land yield IS r - g (one config number). Separate r, g only in scenario
   runs, asserted to satisfy r - g = land_yield.
 - 2 / 4.2: raw RoS prices keep their sales year as `evidence_year`; they are
@@ -392,7 +394,14 @@ def pool_prices(
 
 
 def price_skew_flag(mean_gbp: float | None, median_gbp: float | None, sales_n: int, skew_cfg: Mapping) -> tuple[float | None, bool]:
-    """Rules 6.1 robustness flag: mean/median unusually high in a small-sales zone."""
+    """Rules 6.1 robustness flag (Methods M2): diagnostic only — never changes values.
+
+    Ratio = **pooled mean** ÷ **count-weighted pooled median** (same Σ n·x / Σ n
+    pooling as ``pool_prices``; multi-year medians are approximate). ``sales_n`` is
+    the **pooled** sales count. Flag when ``sales_n < small_sales_n_below`` and
+    ratio ≥ ``mean_median_ratio_min``. Caller tags ``skew_ratio_pooled_approx``
+    whenever a ratio is computed, and ``price_skew_small_sample`` when flagged.
+    """
     if not mean_gbp or not median_gbp or median_gbp <= 0:
         return None, False
     ratio = float(mean_gbp) / float(median_gbp)
@@ -1609,7 +1618,11 @@ def build_output_row(
         tags.add("rebuild_mix_all_stock")
     if lag:
         tags.add("dwelling_year_lag")  # per-dwelling rent at the price base; totals use the latest published count
+    # M2: pooled mean ÷ count-weighted pooled median; pooled sales_n. Flag only.
+    # typical_sale_gbp must be the count-weighted pooled median (display measure).
     ratio, skew = price_skew_flag(pooled.price_gbp, typical_sale_gbp, pooled.sales_n, config["price"]["skew_flag"])
+    if ratio is not None:
+        tags.add("skew_ratio_pooled_approx")
     if skew:
         tags.add("price_skew_small_sample")
 

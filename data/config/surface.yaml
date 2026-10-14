@@ -13,7 +13,9 @@ surface_rent:
     measure: mean                 # rules 6.1 (v0.3): MEAN for anything that adds up (rent, totals, ceiling)
     ceiling_measure: mean         # rules 4.2: zone observed total = MEAN price x dwellings, same vintage and year
     display_measure: median       # rules 6.1: shown as `typical_sale_gbp` only, never used in rent or totals
-    skew_flag:                    # rules 6.1 robustness flag -> price_skew_flag / tag price_skew_small_sample
+    skew_flag:                    # rules 6.1 / Methods M2: price_skew_flag = pooled mean ÷ count-weighted pooled median
+                                  # (pooled sales_n). Tag skew_ratio_pooled_approx; flag tag price_skew_small_sample.
+                                  # Flag only — never changes land value or rent.
       mean_median_ratio_min: 1.40 # DEFAULT: ~95th pct of mean/median among RoS DZ2011 zone-years 2019-2023 with 5-14 sales
                                   # (5-9 sales: p95 1.381; 10-14 sales: p95 1.389). Flags roughly 1 in 20 small zones.
       small_sales_n_below: 15     # DEFAULT: = n_full; zones at/above this are used unshrunk and not flagged

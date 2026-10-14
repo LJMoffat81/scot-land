@@ -3,16 +3,34 @@
 import { useEffect, useState } from "react";
 
 import {
+  METHODOLOGY_RESEARCH_BANNER_BODY,
   RESEARCH_BANNER_BODY,
   RESEARCH_BANNER_LEAD,
 } from "@/lib/siteNav";
 
 const DISMISS_KEY = "scot-land-research-banner-dismissed";
 
+export type ResearchBannerVariant = "default" | "methodology";
+
 export type ResearchBannerProps = {
   /** Map strip can be dismissed for the session. */
   dismissible?: boolean;
+  /** Use methodology-only copy (includes "experimental"). */
+  variant?: ResearchBannerVariant;
 };
+
+function bannerBody(variant: ResearchBannerVariant): string {
+  switch (variant) {
+    case "methodology":
+      return METHODOLOGY_RESEARCH_BANNER_BODY;
+    case "default":
+      return RESEARCH_BANNER_BODY;
+    default: {
+      const _exhaustive: never = variant;
+      return _exhaustive;
+    }
+  }
+}
 
 /**
  * One research-estimate banner per page (site rewrite item 8).
@@ -20,6 +38,7 @@ export type ResearchBannerProps = {
  */
 export default function ResearchBanner({
   dismissible = false,
+  variant = "default",
 }: ResearchBannerProps) {
   const [hidden, setHidden] = useState(false);
 
@@ -34,6 +53,8 @@ export default function ResearchBanner({
 
   if (hidden) return null;
 
+  const body = bannerBody(variant);
+
   return (
     <aside
       className={
@@ -43,9 +64,10 @@ export default function ResearchBanner({
       }
       role="status"
       data-testid="research-banner"
+      data-banner-variant={variant}
     >
       <p className="research-banner-text">
-        <strong>{RESEARCH_BANNER_LEAD}</strong> {RESEARCH_BANNER_BODY}
+        <strong>{RESEARCH_BANNER_LEAD}</strong> {body}
       </p>
       {dismissible ? (
         <button

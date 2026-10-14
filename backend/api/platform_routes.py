@@ -291,12 +291,13 @@ def layer_open_hla(
     payload = hla_bbox(south, west, north, east, max_features=max_features)
     meta = payload.get("meta") or {}
     if meta.get("ok") is False:
+        # Visitor-safe only — no SPATIALHUB_AUTHKEY / .env / python -m etl.
         raise HTTPException(
             status_code=503,
             detail=(
                 "Housing land audit overlay is not available: "
-                f"{meta.get('error') or 'PostGIS HLA source not loaded'}. "
-                "Spatial Hub OGL extract only — gaps are not filled with guesses."
+                f"{meta.get('error') or 'not loaded yet'}. "
+                "Gaps are not filled with guesses."
             ),
         )
     return JSONResponse(payload)

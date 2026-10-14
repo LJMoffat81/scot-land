@@ -74,6 +74,8 @@ DEFERRAL_NOT_LOADED_NOTE = (
 )
 
 # Keys that must never appear on council/national *display* blocks while TEMP setting is on.
+# Underscore-prefixed names are internal reconcile fields on solve_s1_per_council — never copy
+# them onto API response bodies (s1_by_council / by_council / council / national).
 _FORBIDDEN_AGGREGATE_GBP = frozenset({
     "measured_rent_total_gbp",
     "illustrated_collection_gbp",
@@ -88,6 +90,9 @@ _FORBIDDEN_AGGREGATE_GBP = frozenset({
     "business_rates_gbp",
     "council_share_gbp",
     "dividend_share_gbp",
+    "_target_gbp",
+    "_taxable_rent_gbp",
+    "_s1_revenue_central_gbp",
 })
 # Top-level keys that must never appear on the API response (built internally only).
 _FORBIDDEN_RESPONSE_TOP_LEVEL = frozenset({

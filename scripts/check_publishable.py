@@ -7,8 +7,9 @@ Fails (exit 1) if anything tracked by git (the index, so staged files count) is:
      (site layers such as svdls_sites.gpkg / hls_sites.gpkg are internal), an INSPIRE-derived
      file, or parcel geometry / a tile archive (size);
   3. a CSV/TSV whose header carries address, postcode, UPRN or similar columns;
-  4. under a frontend preview app route (tax-scenario-panel, ledger-panel, layers-panel,
-     place-card) without a layout.tsx that gates via internalUiEnabled → notFound.
+  4. under a discovered frontend preview app route (name ends in -panel / -card, or a
+     layout imports @/lib/internalUi) without a layout.tsx that actually gates via
+     if (!internalUiEnabled()) notFound().
 
 Run from anywhere inside the repo:  python3 scripts/check_publishable.py
 Used by scripts/hooks/pre-commit and CI. Standard library only.
@@ -43,13 +44,18 @@ GEOMETRY_PRODUCT = re.compile(r"parcel[^/]*\.(geojson|gpkg|fgb|shp|pmtiles|mbtil
 # Code that may name these things (scripts, routes) is not data.
 CODE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".md", ".sql", ".yml", ".yaml", ".json", ".txt", ".sh"}
 TABULAR = {".csv": ",", ".tsv": "\t"}
-# Dev/QA preview routes under frontend/app — must stay gated off the public build.
-PREVIEW_APP_ROUTES = frozenset({
-    "tax-scenario-panel",
-    "ledger-panel",
-    "layers-panel",
-    "place-card",
-})
+# Top-level app segments that look like Dev/QA previews (no hard-coded route list).
+PREVIEW_ROUTE_NAME = re.compile(r".+-(panel|card)$")
+# Layout must call the gate — mentioning the two identifiers is not enough.
+PREVIEW_GATE_CALL = re.compile(
+    r"if\s*\(\s*!\s*internalUiEnabled\s*\(\s*\)\s*\)\s*(?:\{\s*)?notFound\s*\(\s*\)",
+)
+INTERNAL_UI_IMPORT = re.compile(
+    r"""from\s+["']@/lib/internalUi["']""",
+)
+NOTFOUND_IMPORT = re.compile(
+    r"""from\s+["']next/navigation["']""",
+)
 
 
 def git(*args: str) -> str:
@@ -66,12 +72,43 @@ def index_head(path: str, nbytes: int = 65536) -> str:
     return out[:nbytes].decode("utf-8-sig", errors="replace")
 
 
+def discover_preview_routes(files: list[str]) -> set[str]:
+    """Find top-level frontend/app preview segments without a fixed allow-list.
+
+    A route is a preview if its segment name ends in -panel / -card, or its
+    layout.tsx imports @/lib/internalUi (claiming the internal-UI gate).
+    """
+    routes: set[str] = set()
+    for f in files:
+        parts = PurePosixPath(f).parts
+        if len(parts) < 3 or parts[0] != "frontend" or parts[1] != "app":
+            continue
+        route = parts[2]
+        if not route or route.startswith(("(", "_")) or route == "api":
+            continue
+        if PREVIEW_ROUTE_NAME.fullmatch(route):
+            routes.add(route)
+            continue
+        if len(parts) == 4 and parts[3] == "layout.tsx":
+            text = index_head(f)
+            if INTERNAL_UI_IMPORT.search(text) or "internalUiEnabled" in text:
+                routes.add(route)
+    return routes
+
+
 def _preview_route_gated(fileset: set[str], route: str) -> bool:
+    """True only when layout imports and calls if (!internalUiEnabled()) notFound()."""
     layout = f"frontend/app/{route}/layout.tsx"
     if layout not in fileset:
         return False
     text = index_head(layout)
-    return "internalUiEnabled" in text and "notFound" in text
+    if not INTERNAL_UI_IMPORT.search(text):
+        return False
+    if not NOTFOUND_IMPORT.search(text):
+        return False
+    if "internalUiEnabled" not in text or "notFound" not in text:
+        return False
+    return PREVIEW_GATE_CALL.search(text) is not None
 
 
 def check(files: list[str]) -> list[str]:
@@ -92,7 +129,6 @@ def check(files: list[str]) -> list[str]:
             if level == "internal" and target in fileset:
                 problems.append(f"{target}: publish_level=internal in {manifest} but tracked by git")
 
-    preview_routes_present: set[str] = set()
     for f in files:
         parts = PurePosixPath(f).parts
         # 2. raw/ folders and Spatial Hub downloads
@@ -117,20 +153,13 @@ def check(files: list[str]) -> list[str]:
                    and not AGGREGATE_TOKENS & set(c.strip().lower().split("_"))]
             if bad:
                 problems.append(f"{f}: address/postcode/UPRN-like column(s) {bad}")
-        # 4. collect preview app routes
-        if (
-            len(parts) >= 3
-            and parts[0] == "frontend"
-            and parts[1] == "app"
-            and parts[2] in PREVIEW_APP_ROUTES
-        ):
-            preview_routes_present.add(parts[2])
 
-    for route in sorted(preview_routes_present):
+    # 4. discovered preview app routes must actually gate via layout.tsx
+    for route in sorted(discover_preview_routes(files)):
         if not _preview_route_gated(fileset, route):
             problems.append(
                 f"frontend/app/{route}/: preview route must be gated via layout.tsx "
-                "(internalUiEnabled → notFound)"
+                "(if (!internalUiEnabled()) notFound())"
             )
     return problems
 

@@ -1,6 +1,10 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
-import { RESEARCH_BANNER_STRIP_COLLAPSED } from "../lib/siteNav";
+import {
+  RESEARCH_BANNER_BODY,
+  RESEARCH_BANNER_LEAD,
+  RESEARCH_BANNER_STRIP_COLLAPSED,
+} from "../lib/siteNav";
 
 /**
  * SW-016 — ≤768px research banner is a one-line strip under the header;
@@ -202,6 +206,7 @@ test.describe("SW-016 research banner strip 390x844", () => {
     await expect(banner).toBeVisible({ timeout: 15_000 });
     await expect(banner).toHaveAttribute("data-strip", "1");
     await expect(banner).toHaveAttribute("data-expanded", "0");
+    await expect(banner).toHaveAttribute("data-banner-variant", "default");
 
     const toggle = page.getByTestId("research-banner-toggle");
     await expect(toggle).toBeVisible();
@@ -253,9 +258,11 @@ test.describe("SW-016 research banner strip 390x844", () => {
     await toggle.click();
     await expect(banner).toHaveAttribute("data-expanded", "1");
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
-    await expect(banner).toContainText(
-      "Annual Ground Rent figures are not published yet",
+    await expect(banner).toHaveAttribute("data-banner-variant", "default");
+    await expect(banner.locator(".research-banner-text")).toHaveText(
+      `${RESEARCH_BANNER_LEAD} ${RESEARCH_BANNER_BODY}`,
     );
+    await expect(banner).not.toContainText("experimental");
     await assertBannerClears(banner, burger, "burger with banner expanded");
     await assertBannerClears(banner, search, "search with banner expanded");
     await assertCenterTappable(burger, "burger with banner expanded");

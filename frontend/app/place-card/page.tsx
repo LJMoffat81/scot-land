@@ -54,7 +54,19 @@ function PlaceCardPreviewInner() {
         }),
         land_register_outline: {
           status: "no_outline",
-          note: "We found no Land Register boundary at this point.",
+          note:
+            "We found no Land Register boundary at this point. Its title may still be in " +
+            "the older Sasine register, or the land may not be registered at all. We estimate " +
+            "it by area and land type, and show no boundaries, titles or owners.",
+        },
+        land_outline: {
+          status: "no_outline",
+          label: "Land outline",
+          area_sqm: null,
+          note:
+            "We found no Land Register boundary at this point. Its title may still be in " +
+            "the older Sasine register, or the land may not be registered at all. We estimate " +
+            "it by area and land type, and show no boundaries, titles or owners.",
         },
         flags: ["no_inspire_parcel"],
       };

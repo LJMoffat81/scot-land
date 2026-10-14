@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import EvidenceTagLegend from "@/components/EvidenceTagLegend";
 import {
   PLACE_CARD_CONSTRAINT_LABEL,
@@ -18,6 +20,34 @@ import {
   type PlaceRentTag,
   type PlaceValueStatus,
 } from "../lib/placeCard";
+
+/** Suggestion 31 — fold the Sasine / no-outline explanation behind a short control. */
+const WHY_NO_OUTLINE_LABEL = "Why no outline?";
+
+function WhyNoOutlineNote({ note }: { note: string }) {
+  const [expanded, setExpanded] = useState(false);
+  return (
+    <div className="place-card-why-no-outline" data-testid="place-card-why-no-outline">
+      <button
+        type="button"
+        className="place-card-why-no-outline-btn"
+        data-testid="place-card-why-no-outline-btn"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
+      >
+        {WHY_NO_OUTLINE_LABEL}
+      </button>
+      {expanded ? (
+        <p
+          className="place-card-meta place-card-why-no-outline-detail"
+          data-testid="place-card-why-no-outline-detail"
+        >
+          {note}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 export type PlaceCardProps = {
   data: PlaceCardPayload | null;
@@ -325,7 +355,11 @@ export function PlaceCard({
                 </p>
               ) : null}
               {outlineNote ? (
-                <p className="place-card-meta">{outlineNote}</p>
+                outlineStatus === "no_outline" ? (
+                  <WhyNoOutlineNote note={outlineNote} />
+                ) : (
+                  <p className="place-card-meta">{outlineNote}</p>
+                )
               ) : null}
             </section>
           )}

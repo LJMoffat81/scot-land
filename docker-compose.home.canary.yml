@@ -1,0 +1,46 @@
+# Canary stack for safe home deploy (see docs/HOME_DEPLOY.md / scripts/ops/deploy-home.ps1).
+# Runs api + frontend on alternate loopback ports while the live stack keeps serving.
+# Shares the live PostGIS via the published host port (127.0.0.1:5433 → host.docker.internal).
+# Never include cloudflared here — the tunnel stays on the live origin until swap.
+#
+#   docker compose -p scot-land-canary -f docker-compose.home.canary.yml up -d
+#
+services:
+  api:
+    image: scot-land-home-api:local
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      args:
+        RAILWAY_GIT_COMMIT_SHA: ${GIT_COMMIT:-unknown}
+    restart: "no"
+    ports:
+      - "127.0.0.1:${CANARY_API_PORT:-8001}:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./data:/app/data:ro
+      - ${SCOT_LAND_LOCAL_DIR:-../scot-land-local}:/app/local:ro
+    environment:
+      W3W_API_KEY: ${W3W_API_KEY:-}
+      SPATIALHUB_AUTHKEY: ${SPATIALHUB_AUTHKEY:-}
+      ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001
+      ALLOW_VERCEL_PREVIEWS: "false"
+      PORT: "8000"
+      DATA_DIR: /app/data
+      DATABASE_URL: postgresql://${POSTGRES_USER:-scotland}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@host.docker.internal:5433/${POSTGRES_DB:-scotland_wealth}
+
+  frontend:
+    image: scot-land-home-frontend:local
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: /backend
+    restart: "no"
+    ports:
+      - "127.0.0.1:${CANARY_FRONTEND_PORT:-3001}:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: /backend
+      API_PROXY_TARGET: http://api:8000
+    depends_on:
+      - api

@@ -1,0 +1,14 @@
+[Unit]
+Description=Scot-LAND public /backend/health uptime probe
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+# Override WorkingDirectory / ExecStart paths when installing on the host.
+WorkingDirectory=%h/scot-land
+ExecStart=%h/scot-land/scripts/ops/uptime-check.sh
+# Do not touch cloudflared or docker — probe only.
+
+[Install]
+WantedBy=default.target

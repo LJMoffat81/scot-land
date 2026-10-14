@@ -1,0 +1,13 @@
+[Unit]
+Description=Run Scot-LAND uptime probe every 5 minutes
+Requires=scot-land-uptime.service
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Unit=scot-land-uptime.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

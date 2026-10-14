@@ -7,7 +7,7 @@ export const GLOSSARY_TERMS = [
     id: "agr",
     term: "Annual Ground Rent",
     definition:
-      "what the land alone would earn if it were rented out for a year. Buildings are left out.",
+      "the yearly rental value of a site, the land without its buildings. It is public value, created by the community and by nature, not by the owner.",
   },
   {
     id: "data-zone",
@@ -17,15 +17,15 @@ export const GLOSSARY_TERMS = [
   },
   {
     id: "tags",
-    term: "Market / Proxy / Shadow",
+    term: "Market / Modelled / Estimate (no market price)",
     definition:
-      "how a figure was found. Market = taken from real prices people paid. Proxy = worked out from related prices. Shadow = an estimate for something with no market price, like peat holding carbon. We never add different kinds together.",
+      "how a figure was found. Market = taken from real prices people paid. Modelled = worked out from related prices. Estimate (no market price) = used when there is no market price, like peat holding carbon. We never add different kinds together.",
   },
   {
     id: "constraint",
     term: "Constraint",
     definition:
-      "a rule that limits how land can be used, like a nature protection area or flood risk. A constraint changes the best use of the land. It never adds value.",
+      "a rule that limits how land can be used, like a nature protection area or flood risk. Constraint: changes best use, adds no value.",
   },
   {
     id: "ogl",

@@ -28,7 +28,7 @@ export default function LedgerPanel({
   onEnabledChange,
   ledger: ledgerProp,
   className,
-  title = "Natural capital ledger",
+  title = "Annual Ground Rent breakdown",
 }: LedgerPanelProps) {
   const [ledger, setLedger] = useState<LedgerPayload | null>(ledgerProp ?? null);
   const [loadError, setLoadError] = useState<string | null>(null);

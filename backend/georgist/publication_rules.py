@@ -246,7 +246,7 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "zone",
         "zone",
         "none",
-        note="Natural capital ledger skeleton; placeholders only, no published AGR £",
+        note="Annual Ground Rent breakdown skeleton; placeholders only, no published AGR £",
     ),
     "/layers/open/community-ownership": LayerRule(
         "site",
@@ -260,7 +260,7 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note=(
             "Hutton LCA 1:250k capability polygons; constraint "
-            "(Limits use (not a money value)); no rent"
+            "(Constraint: changes best use, adds no value); no rent"
         ),
     ),
     "/platform/place": LayerRule("site", "site", "none", note="ownership/vacant/gap card; no modelled rent"),
@@ -271,7 +271,7 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "zone",
         "none",
         note=(
-            "natural capital ledger rows 1–10 (+1a), checks/excluded/benchmarks; "
+            "Annual Ground Rent breakdown rows 1–10 (+1a), checks/excluded/benchmarks; "
             "zone optional; blocked zones empty; no public modelled £ until ECONOMIC_RULES"
         ),
     ),

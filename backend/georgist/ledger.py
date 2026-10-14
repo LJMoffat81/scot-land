@@ -189,7 +189,7 @@ def ledger_checks() -> list[dict[str, Any]]:
         _check(
             "C-overlay",
             meaning=(
-                "Constraints: Limits use (not a money value) "
+                "Constraints: Constraint: changes best use, adds no value "
                 "(designations, flood, crofting, LCA)"
             ),
             result="pass",
@@ -200,7 +200,7 @@ def ledger_checks() -> list[dict[str, Any]]:
                     "status": "pass",
                     "detail": (
                         "Constraints change best use only; no rent row; "
-                        "Limits use (not a money value)."
+                        "Constraint: changes best use, adds no value."
                     ),
                 }
             ],
@@ -221,7 +221,7 @@ def ledger_checks() -> list[dict[str, Any]]:
         _check(
             "C-totals",
             meaning=(
-                "Headline = separate market and proxy totals; shadow total "
+                "Totals per chip only, never across chips or price years; estimate total "
                 "separate, never summed; oil & gas + benchmarks outside both"
             ),
             result="pass",
@@ -723,7 +723,7 @@ def ledger_catalog_base() -> dict[str, Any]:
         "version": 2,
         "kind": "natural_capital_ledger",
         "brief": (
-            "Natural capital ledger rows (1–10 + 1a already included in surface), "
+            "Annual Ground Rent breakdown: where the value comes from — rows (1–10 + 1a already included in surface), "
             "checks, and exclusions. Driven by this catalog — not a map-panel "
             "layer dump."
         ),

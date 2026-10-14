@@ -339,7 +339,7 @@ export const LEDGER_FIXTURE_CONSTRAINTS: LedgerConstraint[] = [
 
 export const LEDGER_FIXTURE: LedgerPayload = {
   version: 1,
-  brief: "Natural capital ledger — rows 1–10 + planning uplift under surface",
+  brief: "Annual Ground Rent breakdown: where the value comes from",
   publication_note:
     "Figures are being checked and aren't published yet.",
   rows: LEDGER_FIXTURE_ROWS,

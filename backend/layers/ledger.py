@@ -1,4 +1,4 @@
-"""Natural capital ledger payload for GET /ledger.
+"""Annual Ground Rent breakdown payload for GET /ledger.
 
 Authoritative ROWS / Constraints: project store georgist-ledger-accounting-rules
 and docs/FRONTEND_IA.md. Public amounts are placeholders — no AGR £ until
@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-CONSTRAINT_RULE = "Limits use (not a money value)"
+CONSTRAINT_RULE = "Constraint: changes best use, adds no value"
 
 _ROWS: list[dict[str, Any]] = [
     {
@@ -152,8 +152,9 @@ def ledger_payload() -> dict[str, Any]:
     return {
         "version": 1,
         "brief": (
-            "Natural capital ledger — ROWS 1–10 + 1a already included in "
-            "surface; Constraints: Limits use (not a money value)"
+            "Annual Ground Rent breakdown: where the value comes from — "
+            "ROWS 1–10 + 1a already included in surface; "
+            "Constraint: changes best use, adds no value"
         ),
         "publication_note": (
             "Zone-level only. Public AGR £ withheld until ECONOMIC_RULES / "

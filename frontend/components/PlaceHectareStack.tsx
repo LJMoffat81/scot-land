@@ -109,7 +109,7 @@ export function PlaceHectareStack({
     <article
       className="place-hectare-stack"
       data-testid="place-hectare-stack"
-      aria-label="Per-hectare natural capital stack"
+      aria-label="Per-hectare Annual Ground Rent breakdown"
     >
       {isLoading ? (
         <p className="place-stack-loading" aria-busy="true">

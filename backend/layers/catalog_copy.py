@@ -12,7 +12,8 @@ from typing import Any
 # Forbidden jargon in visitor-facing description (site-watch PR B item 6).
 _JARGON = re.compile(
     r"PostGIS|LayersPanel|MapServer|value_tier|python\s+-m|\bbbox\b|"
-    r"503\s+when\s+unloaded|fixture|\bCI\b|£0",
+    r"503\s+when\s+unloaded|fixture|\bCI\b|£0|natural capital|"
+    r"Limits use \(not a money value\)",
     re.IGNORECASE,
 )
 
@@ -78,12 +79,13 @@ PLAIN_DESCRIPTIONS: dict[str, str] = {
         "Inventory only — not a rent figure."
     ),
     "sssi": (
-        "Sites of Special Scientific Interest. A limit on how land can be used — "
-        "not a rent and not a title."
+        "Sites of Special Scientific Interest. "
+        "Constraint: changes best use, adds no value — not a rent and not a title."
     ),
     "naturescot_designations": (
-        "NatureScot SPA, SAC and NNR areas. A limit on how land can be used — "
-        "not a rent. SSSI is a separate source."
+        "NatureScot SPA, SAC and NNR areas. "
+        "Constraint: changes best use, adds no value — not a rent. "
+        "SSSI is a separate source."
     ),
     "nfi": (
         "National Forest Inventory woodland of half a hectare or more. "
@@ -107,7 +109,7 @@ PLAIN_DESCRIPTIONS: dict[str, str] = {
     ),
     "lca": (
         "Land Capability for Agriculture soil and climate classes "
-        "(James Hutton Institute). A limit on best use — not a rent or title."
+        "(James Hutton Institute). Constraint: changes best use, adds no value — not a rent or title."
     ),
     "scotwind_intog": (
         "ScotWind and INTOG offshore wind option areas from Crown Estate Scotland. "
@@ -115,11 +117,11 @@ PLAIN_DESCRIPTIONS: dict[str, str] = {
     ),
     "flood": (
         "Medium-likelihood river and coastal flood extents from SEPA Flood Maps. "
-        "A limit on how land can be used — not a property-level quote."
+        "Constraint: changes best use, adds no value — not a property-level quote."
     ),
     "sepa_flood": (
         "Medium-likelihood river and coastal flood extents from SEPA Flood Maps. "
-        "A limit on how land can be used — not a property-level quote."
+        "Constraint: changes best use, adds no value — not a property-level quote."
     ),
     "carbon_peatland": (
         "Peat and carbon soils used for nature accounting. "

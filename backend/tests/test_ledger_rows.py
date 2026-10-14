@@ -37,7 +37,7 @@ def test_ledger_route_returns_rows_and_constraints():
     body = r.json()
     assert [row["id"] for row in body["rows"]] == EXPECTED_ROW_IDS
     assert [c["id"] for c in body["constraints"]] == EXPECTED_CONSTRAINT_IDS
-    assert "Limits use (not a money value)" in body["constraints"][0]["rule"]
+    assert "Constraint: changes best use, adds no value" in body["constraints"][0]["rule"]
     assert "£0" not in body["constraints"][0]["rule"]
     assert "market+proxy" not in body.get("brief", "")
     dumped = str(body)

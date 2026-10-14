@@ -285,7 +285,7 @@ def test_guard_forbids_banned_public_route_wording(tmp_path):
     # Machine boolean key ``nested`` alone is allowed (not visitor prose).
     clean = _problems(tmp_path / "ok") if _repo(tmp_path / "ok", {
         "backend/layers/ledger.py": (
-            'CONSTRAINT_RULE = "Limits use (not a money value)"\n'
+            'CONSTRAINT_RULE = "Constraint: changes best use, adds no value"\n'
             'ROW = {"id": "1a", "nested": True, "tag": "already_included"}\n'
         ),
     }) is None else None

@@ -29,7 +29,11 @@ export type PlaceCardProps = {
 
 function TagChip({ tag }: { tag: PlaceRentTag }) {
   const label =
-    tag === "market" ? "Market" : tag === "proxy" ? "Proxy" : "Shadow";
+    tag === "market"
+      ? "Market"
+      : tag === "proxy"
+        ? "Modelled"
+        : "Estimate (no market price)";
   return (
     <span className={`place-tag tone-${tag}`} data-testid={`place-tag-${tag}`}>
       {label}
@@ -93,8 +97,14 @@ export function PlaceCard({
   // Never show "No data" when the IZ code is known.
   const izName = iz?.name?.trim() || null;
   const izCode = iz?.code ? String(iz.code) : null;
+  const izNote = iz?.note?.trim() || null;
   const izPending = Boolean(izCode && !izName);
-  const izDisplay = izName || (izPending ? "name not loaded yet" : iz?.note || "No data");
+  // Code known but name/note missing → "name not loaded yet" (never "No data").
+  const izDisplay = izName
+    ? izName
+    : izCode
+      ? izNote || "name not loaded yet"
+      : izNote || "No data";
   const placeName =
     card?.place_label?.trim() ||
     card?.council_name?.trim() ||

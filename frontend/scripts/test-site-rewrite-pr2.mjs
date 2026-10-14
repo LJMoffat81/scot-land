@@ -80,7 +80,7 @@ function readSrc(relPath) {
 
   const glossary = readSrc("components/GlossaryBox.tsx");
   assert.match(glossary, /Annual Ground Rent/);
-  assert.match(glossary, /Market \/ Proxy \/ Shadow/);
+  assert.match(glossary, /Market \/ Modelled \/ Estimate \(no market price\)/);
   assert.match(glossary, /Constraint/);
   assert.match(glossary, /Open Government Licence/);
 }

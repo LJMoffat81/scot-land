@@ -201,11 +201,13 @@ def catalog_crofting_register() -> dict[str, Any]:
         "status": "linked",
         "label": "Crofting Register (RoC)",
         "description": (
-            "Crofting Commission Register of Crofts — OGL-3.0 lists only "
-            "(holdings CSV → PostGIS). No boundary polygons. Never ingest List "
-            "of Individuals. Constraint (Limits use (not a money value), no rent "
-            "row) — changes best use only. Map extents: RoS Crofting Register "
-            "search (not OGL redistributable). No LayersPanel toggle."
+            "Crofting Commission Register of Crofts — open lists only. "
+            "No national open boundary map here; map extents stay on RoS. "
+            "Constraint: changes best use, adds no value."
+        ),
+        "developer_note": (
+            "OGL-3.0 lists only (holdings CSV → PostGIS). No boundary polygons. "
+            "Never ingest List of Individuals. Map extents: RoS Crofting Register."
         ),
         "endpoint": "/api/crofting.json",
         "licence": "OGL-3.0",
@@ -232,11 +234,13 @@ def catalog_common_grazings() -> dict[str, Any]:
         "status": "linked",
         "label": "Common grazings",
         "description": (
-            "Crofting Commission List of Grazings — OGL-3.0 lists only "
-            "(extent ha → PostGIS). No national OGL polygon overlay; RoS "
-            "Crofting Register map holds definitive common-land extents. "
-            "Constraint (Limits use (not a money value), no rent row). "
-            "No LayersPanel toggle."
+            "Crofting Commission list of common grazings — open lists only. "
+            "No national open boundary map here. "
+            "Constraint: changes best use, adds no value."
+        ),
+        "developer_note": (
+            "OGL-3.0 lists only (extent ha → PostGIS). No national OGL polygon "
+            "overlay; RoS Crofting Register map holds definitive extents."
         ),
         "endpoint": "/api/crofting.json",
         "licence": "OGL-3.0",

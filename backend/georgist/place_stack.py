@@ -21,7 +21,7 @@ from typing import Any, Mapping
 from georgist.ledger import ledger_benchmarks
 from georgist.publication_rules import ZONE_CODE_RE
 
-CONSTRAINT_RULE = "Limits use (not a money value)"
+CONSTRAINT_RULE = "Constraint: changes best use, adds no value"
 
 # Placeholder until ECONOMIC_RULES approval — never a modelled AGR £ figure.
 AMOUNT_PH = "—"
@@ -94,7 +94,7 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "label": "Aquaculture licence rent",
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Shadow — total minus CES seabed paid. Separate stack.",
+        "status_note": "Estimate — total minus CES seabed paid. Separate stack.",
         "parent_id": None,
         "nested": False,
         "in_total": True,
@@ -115,7 +115,7 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "tag": "shadow",
         "status": "not_yet",
         "status_note": (
-            "Shadow, ~0 when published. Not shown as a money value while not yet."
+            "Estimate, ~0 when published. Not shown as a money value while not yet."
         ),
         "parent_id": None,
         "nested": False,
@@ -147,7 +147,7 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "label": "Ecosystem services",
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Shadow, later.",
+        "status_note": "Estimate, later.",
         "parent_id": None,
         "nested": False,
         "in_total": True,
@@ -261,11 +261,11 @@ def place_hectare_stack(
             "publication_status": status if status else "ok",
         },
         "publication_note": (
-            "Per-hectare stack (Natural capital ledger). "
+            "Per-hectare stack (Annual Ground Rent breakdown). "
             "Public AGR £ withheld until ECONOMIC_RULES / calibration. "
             "Placeholders are not a money value. Row 1a is already included "
             "in Surface site rent (indented, never added). "
-            "Shadow total is separate and never summed into the headline. "
+            "Estimate total is separate and never summed into the headline. "
             "Oil & gas and benchmarks sit outside both."
         ),
         "headline": {
@@ -281,13 +281,13 @@ def place_hectare_stack(
             ),
         },
         "shadow": {
-            "label": "Shadow (separate — never summed into headline)",
+            "label": "Estimate (separate — never summed into headline)",
             "unit": "£/ha/year",
             "rows": shadow_rows,
             "sum_row_ids": shadow_sum_row_ids(shadow_rows),
             "total_placeholder": AMOUNT_PH,
             "total_note": (
-                "Shadow stack total is separate from the headline "
+                "Estimate stack total is separate from the headline "
                 "(C-totals). Never added into market or proxy totals."
             ),
         },

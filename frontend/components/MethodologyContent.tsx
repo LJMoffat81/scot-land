@@ -4,7 +4,7 @@ import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
 
 /**
- * How it works page copy — site rewrite section B (wording pending Laurie approval).
+ * How it works page copy — SLRG wording (site-watch PR C).
  */
 export default function MethodologyContent() {
   return (
@@ -15,10 +15,10 @@ export default function MethodologyContent() {
       <ResearchBanner />
 
       <p>
-        <strong>What is Annual Ground Rent?</strong> It is what the land alone
-        would earn if it were rented out for a year. Buildings are left out,
-        because whoever built them made that value. The land&apos;s value comes
-        from where it is and what is around it.
+        <strong>What is Annual Ground Rent?</strong> It is the yearly rental
+        value of a site, the land without its buildings. Buildings are left out,
+        because whoever built them made that value. The land&apos;s value is
+        created by the community around it and by nature, not by the owner.
       </p>
 
       <section id="calculation">
@@ -34,14 +34,14 @@ export default function MethodologyContent() {
             hectare for the whole of Scotland.
           </li>
           <li>
-            <strong>Natural resources</strong> (wind, hydro, fish farms, forests,
-            peat carbon) are worked out separately. They are never mixed into the
-            land figure.
+            <strong>Natural resource rents and the services of nature</strong>{" "}
+            are part of Annual Ground Rent, shown as separate parts; parts with
+            different chips are never added into one total.
           </li>
           <li>
             <strong>Limits on use</strong> (nature sites, flood risk, crofting)
-            do not add or take away money. They change what the land can best be
-            used for.
+            follow the rule{" "}
+            <em>Constraint: changes best use, adds no value</em>.
           </li>
         </ul>
       </section>
@@ -52,13 +52,13 @@ export default function MethodologyContent() {
           Every figure belongs to a Data Zone. Data Zones fit inside Intermediate
           Zones, those fit inside council areas, and council areas make up
           Scotland. This is the Scottish Government&apos;s own system. We add up
-          each kind of figure (Market, Proxy, Shadow) separately, and never
-          across different price years. Nothing is counted twice.
+          each kind of figure (Market, Modelled, Estimate) separately, and never
+          across different price years. Nothing is counted twice. Totals per chip
+          only, never across chips or price years.
         </p>
         <p className="downloads-note">
-          Being built: today our land figures still use the 2011 Data Zones. We
-          are moving them to the 2022 set before adding up to councils and
-          Scotland.
+          Today our land figures still use the 2011 Data Zones. We are moving
+          them to the 2022 set before adding up to councils and Scotland.
         </p>
       </section>
 
@@ -73,7 +73,7 @@ export default function MethodologyContent() {
           estimate. Where house prices are low compared with rebuild costs, the
           range is wider: about half to double. This covers homes, not farmland.
           Figures will be checked by an independent valuation step before
-          anything is published.
+          anything is published. That check is part of the Scot-LAND model.
         </p>
       </section>
 

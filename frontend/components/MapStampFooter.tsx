@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { apiJson, engineVersionLine, type EngineStamp } from "../lib/api";
 
 const DEVELOPMENT_NOTICE =
-  "Research estimate. Figures are in development and may change as the engine improves.";
+  "Research estimate. Annual Ground Rent figures are not published yet. They are not a bill or an official valuation.";
 
 /** Footer stamp for the public map shell (no AGR £ breakdown). */
 export function MapStampFooter() {

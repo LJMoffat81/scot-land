@@ -57,6 +57,9 @@ FORBIDDEN_PUBLIC_AGR_PROPERTIES = frozenset({
     "gross_plot_liability_gbp",
     "vacant_full_agr_gbp",
     "agr_as_pct_of_price",
+    # camelCase aliases used by legacy roll / vdl-councils builders
+    "siteRentalPerSqmGbp",
+    "vacantFullAgrGbp",
 })
 
 ZONE_CODE_RE = re.compile(r"^S01\d{6}$")

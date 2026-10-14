@@ -8,7 +8,9 @@ Fails (exit 1) if anything tracked by git (the index, so staged files count) is:
      file, or parcel geometry / a tile archive (size);
   3. a CSV/TSV whose header carries address, postcode, UPRN or similar columns,
      or a forbidden public AGR £ property name;
-  4. under a discovered frontend preview app route (name ends in -panel / -card, a
+  4. a tracked .json / .geojson under data/processed or frontend/public whose object
+     keys include a forbidden public AGR £ property name;
+  5. under a discovered frontend preview app route (name ends in -panel / -card, a
      layout imports @/lib/internalUi, or a page imports an Internal* component)
      without a layout.tsx that actually gates via if (!internalUiEnabled()) notFound()
      (comments are stripped before the gate match).
@@ -20,6 +22,7 @@ Used by scripts/hooks/pre-commit and CI. Standard library only.
 from __future__ import annotations
 
 import csv
+import json
 import os
 import io
 import re
@@ -56,7 +59,12 @@ FORBIDDEN_PUBLIC_AGR_PROPERTIES = frozenset({
     "gross_plot_liability_gbp",
     "vacant_full_agr_gbp",
     "agr_as_pct_of_price",
+    # camelCase aliases used by legacy roll / vdl-councils builders
+    "siteRentalPerSqmGbp",
+    "vacantFullAgrGbp",
 })
+JSON_DATA_SUFFIXES = {".json", ".geojson"}
+JSON_SCAN_PREFIXES = ("data/processed/", "frontend/public/")
 # Top-level app segments that look like Dev/QA previews (no hard-coded route list).
 PREVIEW_ROUTE_NAME = re.compile(r".+-(panel|card)$")
 # Layout must call the gate — mentioning the two identifiers is not enough.
@@ -91,6 +99,26 @@ def index_head(path: str, nbytes: int = 65536) -> str:
     """First bytes of the staged (index) version, so the hook checks what will be committed."""
     out = subprocess.run(["git", "cat-file", "blob", f":{path}"], check=True, capture_output=True).stdout
     return out[:nbytes].decode("utf-8-sig", errors="replace")
+
+
+def index_text(path: str) -> str:
+    """Full staged (index) text for a path."""
+    out = subprocess.run(["git", "cat-file", "blob", f":{path}"], check=True, capture_output=True).stdout
+    return out.decode("utf-8-sig", errors="replace")
+
+
+def forbidden_json_keys(obj: object) -> list[str]:
+    """Return forbidden AGR £ property names found as object keys (any depth)."""
+    found: list[str] = []
+    if isinstance(obj, dict):
+        for key, value in obj.items():
+            if isinstance(key, str) and key in FORBIDDEN_PUBLIC_AGR_PROPERTIES:
+                found.append(key)
+            found.extend(forbidden_json_keys(value))
+    elif isinstance(obj, list):
+        for item in obj:
+            found.extend(forbidden_json_keys(item))
+    return found
 
 
 def strip_ts_comments(text: str) -> str:
@@ -189,8 +217,21 @@ def check(files: list[str]) -> list[str]:
             agr_bad = [c for c in header if c.strip() in FORBIDDEN_PUBLIC_AGR_PROPERTIES]
             if agr_bad:
                 problems.append(f"{f}: forbidden public AGR £ property column(s) {agr_bad}")
+        # 4. tracked JSON / GeoJSON under data/processed or frontend/public
+        if (
+            PurePosixPath(f).suffix.lower() in JSON_DATA_SUFFIXES
+            and f.startswith(JSON_SCAN_PREFIXES)
+        ):
+            try:
+                payload = json.loads(index_text(f))
+            except json.JSONDecodeError as exc:
+                problems.append(f"{f}: invalid JSON ({exc.msg})")
+                continue
+            agr_keys = sorted(set(forbidden_json_keys(payload)))
+            if agr_keys:
+                problems.append(f"{f}: forbidden public AGR £ property key(s) {agr_keys}")
 
-    # 4. discovered preview app routes must actually gate via layout.tsx
+    # 5. discovered preview app routes must actually gate via layout.tsx
     for route in sorted(discover_preview_routes(files)):
         if not _preview_route_gated(fileset, route):
             problems.append(

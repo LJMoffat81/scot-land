@@ -133,7 +133,8 @@ def platform_catalog() -> dict[str, Any]:
         "version": 2,
         "brief": "docs/PLATFORM.md",
         "principle": (
-            "AGR £ figures are internal only until ECONOMIC_RULES approval — no public £."
+            "Annual Ground Rent for every place in Scotland; every figure labelled "
+            "market/proxy/shadow; £ figures not published yet"
         ),
         "choropleth_metrics": [
             {

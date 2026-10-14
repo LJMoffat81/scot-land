@@ -109,6 +109,14 @@ const developers = readFileSync(
 );
 assert.match(developers, /href=["']\/developers\/api["']/);
 assert.doesNotMatch(developers, /docs\/mintlify|api-reference\.mdx/);
+// SW-025: keep quality tags; lock the map-label line after them (add-only).
+assert.match(developers, /quality-tag-inline/);
+assert.match(developers, /QUALITY_TAGS\.map/);
+assert.match(
+  developers,
+  /These describe where the input data comes from\. On the map, figures\s+are labelled Market, Modelled or Estimate\./,
+);
+assert.doesNotMatch(developers, /£/);
 
 // Built HTML acceptance (when present after next build).
 const nextHtml = join(frontendRoot, ".next");
@@ -143,6 +151,7 @@ if (existsSync(nextHtml)) {
   ];
   const violations = [];
   let methodologyProse = "";
+  let developersProse = "";
   for (const file of htmlFiles) {
     const rel = relative(frontendRoot, file).replace(/\\/g, "/");
     const html = readFileSync(file, "utf8");
@@ -165,6 +174,8 @@ if (existsSync(nextHtml)) {
           violations.push(`${rel}: ${name}`);
         }
       }
+    } else {
+      developersProse += ` ${prose}`;
     }
     if (/land value tax/i.test(prose)) {
       const agr = prose.search(/Annual Ground Rent/i);
@@ -182,6 +193,16 @@ if (existsSync(nextHtml)) {
     assert.ok(
       flat.includes(TOWNS_BULLET),
       "built How it works HTML must contain the approved In towns bullet word for word",
+    );
+  }
+  // SW-025: add-only required phrase on built /developers HTML.
+  if (developersProse) {
+    const flat = developersProse.replace(/\s+/g, " ");
+    assert.ok(
+      flat.includes(
+        "These describe where the input data comes from. On the map, figures are labelled Market, Modelled or Estimate.",
+      ),
+      "built /developers HTML must include the quality-tag map-label line",
     );
   }
   assert.equal(

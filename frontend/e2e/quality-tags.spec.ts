@@ -15,6 +15,10 @@ test.describe("quality-tag colours", () => {
       nodes.map((n) => getComputedStyle(n).color),
     );
     assertDistinct(colors);
+    // SW-025: map-label line after the input quality tags.
+    await expect(page.getByTestId("quality-tag-inline")).toContainText(
+      "These describe where the input data comes from. On the map, figures are labelled Market, Modelled or Estimate.",
+    );
   });
 });
 

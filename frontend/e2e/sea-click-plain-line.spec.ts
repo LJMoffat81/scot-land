@@ -291,7 +291,7 @@ test.describe("site-watch SW-019 outside-Scotland 400", () => {
   test("map click outside Scotland shows plain line within 3s, no spinner", async ({
     page,
   }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(120_000);
     const gate = attachConsoleGate(page);
     await stubMapChrome(page);
     // Any click's lat/lng is mocked to the outside-Scotland 400 path.
@@ -301,6 +301,27 @@ test.describe("site-watch SW-019 outside-Scotland 400", () => {
     const canvas = page.locator(".maplibregl-canvas");
     await canvas.waitFor();
     await page.locator("#place-query").waitFor();
+    // F2 gates place-pick below zoom 9 — zoom in first so the click reaches
+    // the outside-Scotland path (country-zoom taps are covered by F2 e2e).
+    await page.locator("#map[data-framed='1']").waitFor({ timeout: 30_000 });
+    const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
+    for (let step = 0; step < 30; step += 1) {
+      const zoom = await page.locator("#map").evaluate((el) =>
+        Number((el as HTMLElement).dataset.zoom),
+      );
+      if (zoom >= 9) break;
+      await zoomIn.click({ timeout: 10_000 });
+      await page.waitForTimeout(400);
+    }
+    await expect
+      .poll(
+        async () =>
+          page.locator("#map").evaluate((el) =>
+            Number((el as HTMLElement).dataset.zoom),
+          ),
+        { timeout: 20_000 },
+      )
+      .toBeGreaterThanOrEqual(9);
 
     const box = await canvas.boundingBox();
     expect(box).toBeTruthy();

@@ -227,6 +227,10 @@ const PUBLIC_LAND_FILL: ExpressionSpecification = [
 const CADASTRAL_MIN_ZOOM = 14;
 const PUBLIC_LAND_MIN_ZOOM = 8;
 const VDL_MIN_ZOOM = 8;
+/** Below this zoom, map taps nudge zoom-in instead of opening a place card. */
+const PLACE_PICK_MIN_ZOOM = 9;
+const PLACE_PICK_HINT = "Zoom in to pick a place.";
+const PLACE_PICK_HINT_MS = 4000;
 const HLA_MIN_ZOOM = 8;
 const HLA_FILL = "#7b5ea7";
 /** Data Zone outlines / density colours — readable from neighbourhood zoom. */
@@ -568,6 +572,12 @@ export default function ScotlandMap() {
   const [, setLayerBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Country-zoom tap hint (F2) — not a place card. */
+  const [placePickHint, setPlacePickHint] = useState<string | null>(null);
+  const placePickHintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const placePickHintMoveClearRef = useRef<(() => void) | null>(null);
   const [result, setResult] = useState<SquareResponse | null>(null);
   const [apiOk, setApiOk] = useState<boolean | null>(null);
   // Legacy ground-rent router mounted? null = not known yet. Its endpoints are never called when false.
@@ -963,6 +973,77 @@ export default function ScotlandMap() {
   );
   const inspectRef = useRef(selectPlace);
   inspectRef.current = selectPlace;
+
+  const clearPlacePickHint = useCallback(() => {
+    if (placePickHintTimerRef.current) {
+      clearTimeout(placePickHintTimerRef.current);
+      placePickHintTimerRef.current = null;
+    }
+    if (placePickHintMoveClearRef.current) {
+      placePickHintMoveClearRef.current();
+      placePickHintMoveClearRef.current = null;
+    }
+    setPlacePickHint(null);
+  }, []);
+
+  /**
+   * Country / nation zoom: nudge zoom-in instead of place APIs.
+   * Returns true when the tap was gated (caller must not inspect).
+   */
+  const tryPlacePickZoomGate = useCallback(
+    (lat: number, lng: number): boolean => {
+      const map = mapRef.current;
+      if (!map || map.getZoom() >= PLACE_PICK_MIN_ZOOM) return false;
+
+      clearPlacePickHint();
+      setPlacePickHint(PLACE_PICK_HINT);
+      placePickHintTimerRef.current = setTimeout(() => {
+        placePickHintTimerRef.current = null;
+        if (placePickHintMoveClearRef.current) {
+          placePickHintMoveClearRef.current();
+          placePickHintMoveClearRef.current = null;
+        }
+        setPlacePickHint(null);
+      }, PLACE_PICK_HINT_MS);
+
+      // flyTo itself fires moveend — ignore that one, then clear on the next move.
+      let skipFlyMoveEnd = true;
+      const onMoveEnd = () => {
+        if (skipFlyMoveEnd) {
+          skipFlyMoveEnd = false;
+          return;
+        }
+        clearPlacePickHint();
+      };
+      map.on("moveend", onMoveEnd);
+      placePickHintMoveClearRef.current = () => {
+        map.off("moveend", onMoveEnd);
+      };
+
+      map.flyTo({
+        center: [lng, lat],
+        zoom: 11,
+        essential: true,
+      });
+      return true;
+    },
+    [clearPlacePickHint],
+  );
+  const placePickZoomGateRef = useRef(tryPlacePickZoomGate);
+  placePickZoomGateRef.current = tryPlacePickZoomGate;
+
+  useEffect(() => {
+    return () => {
+      if (placePickHintTimerRef.current) {
+        clearTimeout(placePickHintTimerRef.current);
+        placePickHintTimerRef.current = null;
+      }
+      if (placePickHintMoveClearRef.current) {
+        placePickHintMoveClearRef.current();
+        placePickHintMoveClearRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -2073,6 +2154,9 @@ export default function ScotlandMap() {
     map.on("click", async (event) => {
       const lat = event.lngLat.lat;
       const lng = event.lngLat.lng;
+
+      // F2: below PLACE_PICK_MIN_ZOOM — fly in + hint; no place / DZ-at APIs.
+      if (placePickZoomGateRef.current(lat, lng)) return;
 
       // Data Zone click → place card (boundaries only; no AGR £).
       const dzHits =
@@ -3555,6 +3639,12 @@ export default function ScotlandMap() {
       <div className="map-wrap">
         <div id="map" ref={mapContainer} />
       </div>
+
+      {placePickHint ? (
+        <p className="map-hint" data-testid="place-pick-zoom-hint" role="status">
+          {placePickHint}
+        </p>
+      ) : null}
 
       <button
         type="button"

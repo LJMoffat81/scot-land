@@ -6,7 +6,7 @@
     {
       "id": "vdl-dz2022",
       "name": "Vacant and derelict land (Data Zones 2022)",
-      "whats_in_it": "Data Zone 2022 rollup of vacant and derelict land hectares (SVDLS 2025 / OGL inputs). Zone level only — not single sites as a title plan. Main download (DZ2022).",
+      "whats_in_it": "One row per Data Zone, 2022 set.",
       "format": "CSV",
       "licence": "OGL v3.0",
       "updated": "2025",
@@ -19,7 +19,7 @@
     {
       "id": "vdl-dz2011",
       "name": "Vacant and derelict land (Data Zones 2011)",
-      "whats_in_it": "Data Zone 2011 rollup of vacant and derelict land hectares (SVDLS 2025 / OGL inputs). Zone level only — not single sites as a title plan.",
+      "whats_in_it": "One row per Data Zone, 2011 set.",
       "format": "CSV",
       "licence": "OGL v3.0",
       "updated": "2025",
@@ -32,7 +32,7 @@
     {
       "id": "ldp",
       "name": "Planned land use (Local Development Plans)",
-      "whats_in_it": "Sites planned for new homes and other allocated uses. National GeoJSON pack is not published here yet.",
+      "whats_in_it": "One feature per planned site allocation. Pack not published yet.",
       "format": "GeoJSON",
       "licence": "OGL v3.0",
       "updated": "2024",
@@ -44,7 +44,7 @@
     {
       "id": "dz2022",
       "name": "Data Zone boundaries (2022)",
-      "whats_in_it": "Scottish Government 2022 Data Zone outlines. Packaged GeoJSON is not published here yet.",
+      "whats_in_it": "One polygon per Data Zone, 2022 set. Pack not published yet.",
       "format": "GeoJSON",
       "licence": "OGL v3.0",
       "updated": "2022",
@@ -56,7 +56,7 @@
     {
       "id": "crofting",
       "name": "Crofting and common grazings lists",
-      "whats_in_it": "Crofting Commission Register of Crofts and common grazings tables (no personal names). Packaged CSV is not published here yet.",
+      "whats_in_it": "One row per croft or common grazing. Pack not published yet.",
       "format": "CSV",
       "licence": "OGL v3.0",
       "updated": "2024",
@@ -68,7 +68,7 @@
     {
       "id": "catalog",
       "name": "Source catalogue",
-      "whats_in_it": "What is on the map, what is only linked, and what is missing — with licences.",
+      "whats_in_it": "One row per map source, with licence.",
       "format": "CSV",
       "licence": "OGL v3.0",
       "updated": "2026",

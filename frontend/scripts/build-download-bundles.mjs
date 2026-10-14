@@ -297,10 +297,7 @@ const bundles = [];
       bundles.push({
         id: pack.id,
         name: pack.name,
-        whats_in_it:
-          `Data Zone ${pack.vintage} rollup of vacant and derelict land hectares ` +
-          `(SVDLS ${VDL_SURVEY_YEAR} / OGL inputs). Zone level only — not single sites as a title plan.` +
-          (pack.main ? " Main download (DZ2022)." : ""),
+        whats_in_it: `One row per Data Zone, ${pack.vintage} set.`,
         format: "CSV",
         licence: OGL,
         updated: VDL_SURVEY_YEAR,
@@ -320,9 +317,7 @@ const bundles = [];
       bundles.push({
         id: pack.id,
         name: pack.name,
-        whats_in_it:
-          `Data Zone ${pack.vintage} rollup of vacant and derelict land hectares. ` +
-          "Packaged CSV is not available in this build.",
+        whats_in_it: `One row per Data Zone, ${pack.vintage} set. Pack not published yet.`,
         format: "CSV",
         licence: OGL,
         updated: VDL_SURVEY_YEAR,
@@ -342,7 +337,7 @@ bundles.push(
     id: "ldp",
     name: "Planned land use (Local Development Plans)",
     whats_in_it:
-      "Sites planned for new homes and other allocated uses. National GeoJSON pack is not published here yet.",
+      "One feature per planned site allocation. Pack not published yet.",
     format: "GeoJSON",
     licence: OGL,
     updated: "2024",
@@ -354,8 +349,7 @@ bundles.push(
   {
     id: "dz2022",
     name: "Data Zone boundaries (2022)",
-    whats_in_it:
-      "Scottish Government 2022 Data Zone outlines. Packaged GeoJSON is not published here yet.",
+    whats_in_it: "One polygon per Data Zone, 2022 set. Pack not published yet.",
     format: "GeoJSON",
     licence: OGL,
     updated: "2022",
@@ -368,7 +362,7 @@ bundles.push(
     id: "crofting",
     name: "Crofting and common grazings lists",
     whats_in_it:
-      "Crofting Commission Register of Crofts and common grazings tables (no personal names). Packaged CSV is not published here yet.",
+      "One row per croft or common grazing. Pack not published yet.",
     format: "CSV",
     licence: OGL,
     updated: "2024",
@@ -427,8 +421,7 @@ bundles.push(
   bundles.push({
     id: "catalog",
     name: "Source catalogue",
-    whats_in_it:
-      "What is on the map, what is only linked, and what is missing — with licences.",
+    whats_in_it: "One row per map source, with licence.",
     format: "CSV",
     licence: OGL,
     updated: catalogVintage,

@@ -138,6 +138,14 @@ const { preferDz2022, dataZoneFieldLabel } = await import(
     /<dt>Data zone \(2022\)<\/dt>/,
     "heading must not hardcode Data zone (2022)",
   );
+  // Grey placeholder rows while a place is being looked up.
+  assert.match(src, /Looking up this spot…/);
+  assert.match(src, /place-card-placeholder-rows/);
+  assert.match(src, /data-testid="place-card-placeholders"/);
+  assert.match(src, /place-card-placeholder-row/);
+  const css = readSrc("app/globals.css");
+  assert.match(css, /\.place-card-placeholder-row/);
+  assert.match(css, /place-card-placeholder-pulse/);
 }
 
 console.log("test-place-card-hotfix: ok");

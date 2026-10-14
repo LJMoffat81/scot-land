@@ -155,8 +155,27 @@ export function PlaceCard({
       ) : null}
 
       {isLoading ? (
-        <div className="place-card-loading" aria-busy="true">
-          Looking up this spot…
+        <div
+          className="place-card-loading"
+          aria-busy="true"
+          data-testid="place-card-loading"
+        >
+          <p className="place-card-loading-label">Looking up this spot…</p>
+          <div
+            className="place-card-placeholder-rows"
+            aria-hidden="true"
+            data-testid="place-card-placeholders"
+          >
+            <div className="place-card-placeholder-row place-card-placeholder-title" />
+            <div className="place-card-placeholder-row place-card-placeholder-meta" />
+            <div className="place-card-placeholder-row" />
+            <div className="place-card-placeholder-row" />
+            <div className="place-card-placeholder-row" />
+            <div className="place-card-placeholder-row place-card-placeholder-wide" />
+            <div className="place-card-placeholder-row" />
+            <div className="place-card-placeholder-row" />
+            <div className="place-card-placeholder-row place-card-placeholder-wide" />
+          </div>
         </div>
       ) : null}
 

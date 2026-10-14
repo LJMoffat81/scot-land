@@ -153,15 +153,25 @@ function DevelopersPageInner() {
                 data-has-file={hasFile ? "true" : "false"}
               >
                 <h3 className="download-card-name">{bundle.name}</h3>
-                <p className="download-card-desc">{bundle.whats_in_it}</p>
+                <p
+                  className="download-card-summary"
+                  data-testid={`download-summary-${bundle.id}`}
+                >
+                  <span
+                    className="download-card-size"
+                    data-testid={`download-size-${bundle.id}`}
+                  >
+                    {formatDownloadBytes(bundle.bytes)}
+                  </span>
+                  <span className="download-card-summary-sep" aria-hidden="true">
+                    ·
+                  </span>
+                  <span className="download-card-desc">{bundle.whats_in_it}</span>
+                </p>
                 <dl className="download-card-meta">
                   <div>
                     <dt>Format</dt>
                     <dd>{bundle.format}</dd>
-                  </div>
-                  <div>
-                    <dt>Size</dt>
-                    <dd>{formatDownloadBytes(bundle.bytes)}</dd>
                   </div>
                   <div>
                     <dt>Licence</dt>

@@ -23,7 +23,7 @@ function readSrc(relPath) {
   );
   assert.match(
     placeCard,
-    /PLACE_CARD_LIMITS_HEADING\s*=\s*"What limits how it's used"/,
+    /PLACE_CARD_LIMITS_HEADING\s*=\s*"Limits"/,
   );
   assert.match(placeCard, /case "coming_soon":/);
   assert.match(placeCard, /case "in_progress":/);

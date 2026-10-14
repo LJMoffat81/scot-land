@@ -72,9 +72,7 @@ test.describe("place card (internal preview)", () => {
       /no market price/i,
     );
 
-    await expect(page.getByTestId("place-card-limits")).toContainText(
-      "What limits how it's used",
-    );
+    await expect(page.getByTestId("place-card-limits")).toContainText("Limits");
     await expect(page.getByTestId("place-card-constraint-banner")).toContainText(
       "Constraint: changes best use, adds no value",
     );

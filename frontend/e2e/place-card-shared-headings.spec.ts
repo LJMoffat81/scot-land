@@ -1,11 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const POSTCODE = "EH1 1YZ";
-const APPROVED_HEADINGS = [
+/** Four public group names — same as Layers and /data. */
+const APPROVED_VALUE_HEADINGS = [
   "Land",
   "Natural resource rents",
   "Services of nature",
 ] as const;
+const APPROVED_LIMITS_HEADING = "Limits";
 const FIGURE_WHY =
   "Figures will appear once the valuation rules are signed off.";
 
@@ -66,6 +68,36 @@ function placeCardBody(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/** Legacy live labels — must remap to Land / NRR / SoN in the card. */
+function placeCardBodyLegacyLabels() {
+  return placeCardBody({
+    agr_rows: [
+      {
+        id: "surface",
+        label: "Surface",
+        tag: "proxy",
+        status: "in_progress",
+        applies: true,
+        of_which: [{ id: "planning_uplift", label: "of which: planning uplift" }],
+      },
+      {
+        id: "resource",
+        label: "Resource",
+        tag: "market",
+        status: "coming_soon",
+        applies: true,
+      },
+      {
+        id: "nature",
+        label: "Nature",
+        tag: "shadow",
+        status: "coming_soon",
+        applies: true,
+      },
+    ],
+  });
+}
+
 function attachConsoleTraps(page: Page): string[] {
   const consoleErrors: string[] = [];
   page.on("console", (msg) => {
@@ -86,7 +118,10 @@ function attachConsoleTraps(page: Page): string[] {
   return consoleErrors;
 }
 
-async function stubMapBackend(page: Page) {
+async function stubMapBackend(
+  page: Page,
+  opts: { legacyAgrLabels?: boolean } = {},
+) {
   await page.route("**/backend/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
@@ -150,7 +185,9 @@ async function stubMapBackend(page: Page) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(placeCardBody()),
+        body: JSON.stringify(
+          opts.legacyAgrLabels ? placeCardBodyLegacyLabels() : placeCardBody(),
+        ),
       });
       return;
     }
@@ -186,9 +223,12 @@ async function expectApprovedPlaceCard(page: Page) {
   const card = page.getByTestId("place-card");
   await expect(card).toBeVisible({ timeout: 30_000 });
 
-  for (const heading of APPROVED_HEADINGS) {
+  for (const heading of APPROVED_VALUE_HEADINGS) {
     await expect(card.getByTestId("place-card-value")).toContainText(heading);
   }
+  await expect(card.getByTestId("place-card-limits")).toContainText(
+    APPROVED_LIMITS_HEADING,
+  );
   await expect(card.getByTestId("place-card-value")).not.toContainText(
     /\bSurface\b/,
   );
@@ -201,6 +241,9 @@ async function expectApprovedPlaceCard(page: Page) {
   );
   await expect(card.getByTestId("place-card-agr-nature")).not.toHaveText(
     /^Nature$/,
+  );
+  await expect(card.getByTestId("place-card-limits")).not.toContainText(
+    "What limits how it's used",
   );
 
   await expect(card.getByText("Map reference", { exact: true })).toBeVisible();
@@ -254,6 +297,28 @@ test.describe("SW-021 shared place card headings", () => {
     const box = await canvas.boundingBox();
     expect(box).toBeTruthy();
     await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+    await expectApprovedPlaceCard(page);
+
+    expect(
+      consoleErrors,
+      `console errors:\n${consoleErrors.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  test("legacy Surface/Resource/Nature API labels remap to approved four groups", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    const consoleErrors = attachConsoleTraps(page);
+    await stubMapBackend(page, { legacyAgrLabels: true });
+    await openMap(page);
+
+    const search = page.locator("#place-query");
+    await search.fill(POSTCODE);
+    await expect(page.getByRole("option", { name: POSTCODE })).toBeVisible({
+      timeout: 15_000,
+    });
+    await page.getByRole("option", { name: POSTCODE }).click();
     await expectApprovedPlaceCard(page);
 
     expect(

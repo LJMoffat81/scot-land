@@ -72,9 +72,7 @@ test.describe("squares shell", () => {
     await expect(page.getByTestId("place-card-figure-why").first()).toHaveText(
       "Why?",
     );
-    await expect(page.getByTestId("place-card-limits")).toContainText(
-      "What limits how it's used",
-    );
+    await expect(page.getByTestId("place-card-limits")).toContainText("Limits");
     await expect(card.getByText(/£\d/)).toHaveCount(0);
     await expect(card).not.toContainText("£0");
     await expect(card).not.toContainText(/what3words/i);

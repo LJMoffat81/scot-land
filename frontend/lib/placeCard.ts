@@ -30,7 +30,8 @@ export const PLACE_CARD_RESEARCH_DISCLAIMER =
 export const PLACE_CARD_CONSTRAINT_LABEL =
   "Constraint: changes best use, adds no value";
 
-export const PLACE_CARD_LIMITS_HEADING = "What limits how it's used";
+/** Fourth public group name — same as Layers /data (Land · NRR · SoN · Limits). */
+export const PLACE_CARD_LIMITS_HEADING = "Limits";
 
 export const PLACE_CARD_HOW_WE_VALUE_LABEL = "How we value land";
 
@@ -462,6 +463,13 @@ const AGR_ROW_LABEL_BY_ID: Record<string, string> = {
   nature: RENT_GROUP_NAME.nature,
 };
 
+/** Legacy API/fixture labels → approved headings (defence in depth). */
+const AGR_ROW_LABEL_BY_LEGACY: Record<string, string> = {
+  Surface: RENT_GROUP_NAME.land,
+  Resource: RENT_GROUP_NAME.resources,
+  Nature: RENT_GROUP_NAME.nature,
+};
+
 function normalizeAgrRow(row: PlaceAgrRow): PlaceAgrRow {
   const legacyAmount = (row as PlaceAgrRow & { amount_label?: string })
     .amount_label;
@@ -471,10 +479,13 @@ function normalizeAgrRow(row: PlaceAgrRow): PlaceAgrRow {
       : legacyAmount
         ? "in_progress"
         : "coming_soon";
-  const approved = AGR_ROW_LABEL_BY_ID[row.id];
+  const approved =
+    AGR_ROW_LABEL_BY_ID[row.id] ??
+    AGR_ROW_LABEL_BY_LEGACY[row.label] ??
+    row.label;
   return {
     ...row,
-    label: approved ?? row.label,
+    label: approved,
     status,
     applies: row.applies !== false,
     of_which: (row.of_which || []).filter(

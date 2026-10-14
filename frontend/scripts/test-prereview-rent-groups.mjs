@@ -104,8 +104,13 @@ assert.match(
 );
 assert.match(
   placeCardLibForRemap,
-  /label:\s*approved\s*\?\?\s*row\.label/,
+  /AGR_ROW_LABEL_BY_ID\[row\.id\]\s*\?\?/,
 );
+assert.match(
+  placeCardLibForRemap,
+  /AGR_ROW_LABEL_BY_LEGACY\[row\.label\]\s*\?\?/,
+);
+assert.match(placeCardLibForRemap, /label:\s*approved,/);
 
 // Platform place-card API source must emit approved headings (not Surface/Resource/Nature).
 const platformSrc = readFileSync(
@@ -142,5 +147,18 @@ assert.match(
   placeCardLibForRemap,
   /PLACE_CARD_MAP_REFERENCE_LABEL\s*=\s*"Map reference"/,
 );
+assert.match(
+  placeCardLibForRemap,
+  /PLACE_CARD_LIMITS_HEADING\s*=\s*"Limits"/,
+);
+assert.doesNotMatch(
+  placeCardLibForRemap,
+  /PLACE_CARD_LIMITS_HEADING\s*=\s*"What limits how it's used"/,
+);
+// Defence in depth: legacy Surface/Resource/Nature labels remapped by text too.
+assert.match(placeCardLibForRemap, /AGR_ROW_LABEL_BY_LEGACY/);
+assert.match(placeCardLibForRemap, /Surface:\s*RENT_GROUP_NAME\.land/);
+assert.match(placeCardLibForRemap, /Resource:\s*RENT_GROUP_NAME\.resources/);
+assert.match(placeCardLibForRemap, /Nature:\s*RENT_GROUP_NAME\.nature/);
 
 console.log("test-prereview-rent-groups: ok");

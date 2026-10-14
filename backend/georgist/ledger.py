@@ -140,7 +140,7 @@ def ledger_checks() -> list[dict[str, Any]]:
                 {
                     "id": "aqua_minus_ces",
                     "status": "pass",
-                    "detail": "Row 5 shadow = total licence rent minus CES seabed paid.",
+                    "detail": "Row 5 Estimate = total licence rent minus CES seabed paid.",
                 }
             ],
         ),
@@ -235,18 +235,24 @@ def ledger_checks() -> list[dict[str, Any]]:
                     "id": "headline_market_proxy",
                     "status": "pass",
                     "detail": (
-                        "Headline totals use separate market and proxy totals only."
+                        "Scottish totals use separate market and proxy totals only."
                     ),
                 },
                 {
                     "id": "shadow_never_summed",
                     "status": "pass",
-                    "detail": "Shadow stack is separate and never added into the headline.",
+                    "detail": (
+                        "Estimate stack is separate and never added into the "
+                        "Scottish totals."
+                    ),
                 },
                 {
                     "id": "oil_gas_and_benchmarks_outside",
                     "status": "pass",
-                    "detail": "Oil & gas and benchmarks sit outside headline and shadow Scottish totals.",
+                    "detail": (
+                        "Oil & gas and benchmarks sit outside the Scottish totals "
+                        "and Estimate totals."
+                    ),
                 },
             ],
         ),
@@ -316,8 +322,8 @@ def ledger_excluded() -> list[dict[str, str]]:
             "id": "oil_gas_scottish_total",
             "label": "Oil & gas in Scottish total",
             "reason": (
-                "Row 9 is reported (UK-reserved) but OUTSIDE the Scottish headline "
-                "and shadow totals — not silently dropped."
+                "Row 9 is reported (UK-reserved) but OUTSIDE the Scottish totals "
+                "and Estimate totals — not silently dropped."
             ),
         },
     ]
@@ -495,7 +501,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="Shadow stack; total licence rent minus CES seabed paid (C-aqua).",
+            note="Estimate stack; total licence rent minus CES seabed paid (C-aqua).",
             stack="shadow",
         ),
         _row(
@@ -503,13 +509,13 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             label="Fisheries quota",
             tag="shadow",
             status="not_yet",
-            source="ICES landings / quota — market if lease prices, else shadow",
+            source="ICES landings / quota — market if lease prices, else Estimate",
             licence="OGL-3.0",
             licence_url=ogl,
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="No public lease-price series yet — treated as shadow until priced.",
+            note="No public lease-price series yet — treated as Estimate until priced.",
             stack="shadow",
         ),
         _row(
@@ -569,7 +575,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="Later — shadow stack; not yet modelled.",
+            note="Later — Estimate stack; not yet modelled.",
             stack="shadow",
         ),
     ]
@@ -580,7 +586,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
 
 
 def ledger_totals_policy(*, rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-    """Headline = separate market and proxy totals; shadow separate; outside both."""
+    """Scottish totals = separate market and proxy; Estimate separate; outside both."""
     rows = rows if rows is not None else ledger_rows()
     headline_ids = [
         r["id"]
@@ -614,14 +620,18 @@ def ledger_totals_policy(*, rows: list[dict[str, Any]] | None = None) -> dict[st
             "status": "counted" if shadow_ready else "not_yet",
             "range": None,
             "never_summed_into_headline": True,
-            "note": "Shadow stack drawn separately; never added into the headline.",
+            "note": (
+                "Estimate stack drawn separately; never added into the Scottish totals."
+            ),
         },
         "outside": {
             "oil_gas": {
                 "row_ids": outside_ids,
                 "status": "not_yet",
                 "range": None,
-                "note": "UK-reserved — outside Scottish headline and shadow totals.",
+                "note": (
+                    "UK-reserved — outside the Scottish totals and Estimate totals."
+                ),
             },
             "benchmarks": "benchmark only, not inputs",
         },

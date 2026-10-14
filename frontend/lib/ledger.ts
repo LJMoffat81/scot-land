@@ -268,7 +268,7 @@ export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
     nested: false,
     tag: "market_or_proxy",
     status: "not_yet",
-    status_note: "Market if lease prices, else shadow.",
+    status_note: "Market if lease prices, else Estimate.",
     amount_placeholder: "—",
   },
   {
@@ -392,7 +392,7 @@ export function tagLabel(tag: LedgerTag): string {
     case "proxy":
       return "proxy";
     case "shadow":
-      return "shadow";
+      return "Estimate";
     case "market_or_proxy":
       return "market / proxy";
     case "reported":

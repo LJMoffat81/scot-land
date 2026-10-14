@@ -252,7 +252,7 @@ input {
 
 .place-card-meta,
 .place-card-meta-inline,
-.place-card-loading,
+.place-card-loading-label,
 .place-card-error,
 .place-card-empty,
 .place-card-disclaimer,
@@ -265,6 +265,72 @@ input {
   font-size: 0.82rem;
   line-height: 1.4;
   color: var(--slrg-text);
+}
+
+/* Grey placeholder rows while a place is being looked up. */
+.place-card-loading {
+  margin: 0.35rem 0 0;
+}
+
+.place-card-loading-label {
+  margin: 0;
+  color: var(--slrg-muted);
+}
+
+.place-card-placeholder-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.place-card-placeholder-row {
+  height: 0.72rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--slrg-muted) 22%, #e8eaed);
+  animation: place-card-placeholder-pulse 1.2s ease-in-out infinite;
+}
+
+.place-card-placeholder-title {
+  height: 1.05rem;
+  width: 72%;
+  background: color-mix(in srgb, var(--slrg-muted) 28%, #e8eaed);
+}
+
+.place-card-placeholder-meta {
+  width: 48%;
+  height: 0.58rem;
+}
+
+.place-card-placeholder-wide {
+  width: 88%;
+}
+
+.place-card-placeholder-row:nth-child(3),
+.place-card-placeholder-row:nth-child(4),
+.place-card-placeholder-row:nth-child(5) {
+  width: 64%;
+}
+
+.place-card-placeholder-row:nth-child(7),
+.place-card-placeholder-row:nth-child(8) {
+  width: 70%;
+}
+
+@keyframes place-card-placeholder-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .place-card-placeholder-row {
+    animation: none;
+  }
 }
 
 .place-card-meta-inline {
@@ -1398,9 +1464,29 @@ input {
   font-size: 1rem;
 }
 
-.download-card-desc {
+.download-card-summary {
   margin: 0 0 0.55rem;
   font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--slrg-muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.45rem;
+  align-items: baseline;
+}
+
+.download-card-size {
+  font-weight: 650;
+  color: var(--slrg-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.download-card-summary-sep {
+  color: color-mix(in srgb, var(--slrg-muted) 70%, transparent);
+}
+
+.download-card-desc {
+  margin: 0;
   color: var(--slrg-muted);
 }
 

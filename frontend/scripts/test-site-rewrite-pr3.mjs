@@ -169,10 +169,40 @@ assert.match(developers, /manifest\.json/);
 assert.match(developers, /CopyCodeButton/);
 assert.match(developers, /zone_set/);
 assert.match(developers, /Zone set/);
+assert.match(developers, /download-card-summary/);
+assert.match(developers, /formatDownloadBytes\(bundle\.bytes\)/);
+assert.match(developers, /bundle\.whats_in_it/);
 assert.match(developers, /\/layers\/…\?south=&west=&north=&east=/);
 assert.match(developers, /Full API reference/);
 assert.match(developers, /Technical checks/);
 assert.match(developers, /Source code/);
+
+// Each packaged bundle has bytes + a one-line grain note (e.g. One row per Data Zone).
+for (const bundle of manifest.bundles) {
+  assert.ok(
+    typeof bundle.whats_in_it === "string" && bundle.whats_in_it.length > 0,
+    `${bundle.id} needs whats_in_it`,
+  );
+  assert.doesNotMatch(
+    bundle.whats_in_it,
+    /£/,
+    `${bundle.id} whats_in_it must not contain £`,
+  );
+  if (bundle.file) {
+    assert.ok(
+      typeof bundle.bytes === "number" && bundle.bytes > 0,
+      `${bundle.id} packaged file must report bytes`,
+    );
+  }
+}
+assert.match(
+  manifest.bundles.find((b) => b.id === "vdl-dz2022").whats_in_it,
+  /One row per Data Zone, 2022 set/,
+);
+assert.match(
+  manifest.bundles.find((b) => b.id === "vdl-dz2011").whats_in_it,
+  /One row per Data Zone, 2011 set/,
+);
 
 const apiPaths = [
   "/api/place.json?pc=EH1+1YZ",

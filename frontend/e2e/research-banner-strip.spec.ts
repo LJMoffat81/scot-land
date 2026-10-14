@@ -1,8 +1,11 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import { RESEARCH_BANNER_STRIP_COLLAPSED } from "../lib/siteNav";
+
 /**
  * SW-016 — ≤768px research banner is a one-line strip under the header;
  * tap expands. Must not cover burger, search, or place card.
+ * Also: open menu keeps Map + About on top; no console errors.
  */
 test.describe("SW-016 research banner strip 390x844", () => {
   test.use({ viewport: { width: 390, height: 844 } });
@@ -11,6 +14,16 @@ test.describe("SW-016 research banner strip 390x844", () => {
     page,
   }) => {
     test.setTimeout(90_000);
+    const consoleErrors: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
+        consoleErrors.push(msg.text());
+      }
+    });
+    page.on("pageerror", (err) => {
+      consoleErrors.push(String(err));
+    });
+
     await openMap(page);
 
     const banner = page.getByTestId("research-banner");
@@ -21,7 +34,9 @@ test.describe("SW-016 research banner strip 390x844", () => {
     const toggle = page.getByTestId("research-banner-toggle");
     await expect(toggle).toBeVisible();
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
-    await expect(banner).toContainText("Research estimate.");
+    await expect(banner.locator(".research-banner-text")).toHaveText(
+      RESEARCH_BANNER_STRIP_COLLAPSED,
+    );
     await expect(banner).not.toContainText(
       "Annual Ground Rent figures are not published yet",
     );
@@ -34,6 +49,23 @@ test.describe("SW-016 research banner strip 390x844", () => {
     await assertBannerClears(banner, search, "search field");
     await assertCenterTappable(burger, "burger menu");
     await assertCenterTappable(search, "search field");
+
+    // Menu open: Map and About stay on top (first links, near the top of the panel).
+    await burger.click();
+    const panel = page.getByTestId("site-nav-panel");
+    await expect(panel).toBeVisible();
+    const menuLinks = panel.getByRole("link");
+    await expect(menuLinks.nth(0)).toHaveText("Map");
+    await expect(menuLinks.nth(1)).toHaveText("About");
+    const mapBox = await menuLinks.nth(0).boundingBox();
+    const aboutBox = await menuLinks.nth(1).boundingBox();
+    expect(mapBox, "Map link box").toBeTruthy();
+    expect(aboutBox, "About link box").toBeTruthy();
+    expect(mapBox!.y, "Map should be near the top").toBeLessThan(200);
+    expect(aboutBox!.y, "About should sit under Map").toBeGreaterThan(mapBox!.y);
+    expect(aboutBox!.y, "About should stay near the top").toBeLessThan(280);
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
 
     // One-line strip: height stays compact while collapsed.
     const collapsedBox = await banner.boundingBox();
@@ -57,6 +89,9 @@ test.describe("SW-016 research banner strip 390x844", () => {
     await toggle.click();
     await expect(banner).toHaveAttribute("data-expanded", "0");
     await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(banner.locator(".research-banner-text")).toHaveText(
+      RESEARCH_BANNER_STRIP_COLLAPSED,
+    );
 
     await mockPlaceCard(page);
     await search.fill("55.86090, -4.25140");
@@ -71,6 +106,11 @@ test.describe("SW-016 research banner strip 390x844", () => {
     await assertCenterTappable(cardClose, "place card close");
     await assertBannerClears(banner, burger, "burger with place card open");
     await assertBannerClears(banner, search, "search with place card open");
+
+    expect(
+      consoleErrors,
+      `console errors on map strip e2e:\n${consoleErrors.join("\n")}`,
+    ).toEqual([]);
   });
 });
 

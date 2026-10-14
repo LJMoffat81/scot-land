@@ -1,5 +1,6 @@
 /**
- * Site-watch D3: sea / outside-Scotland click → one plain line, not No-data rows.
+ * Site-watch D3 + SW-019: sea / outside-Scotland → one plain line, not No-data
+ * rows, and place 400 must clear the spinner.
  * Run: npm run test:site-watch-d3-sea-click
  */
 import assert from "node:assert/strict";
@@ -30,6 +31,21 @@ assert.match(
   /return zone\?\.status === "miss"/,
   "sea miss must be data_zone.status === miss",
 );
+assert.match(
+  placeCardLib,
+  /export function outsideScotlandPlaceCard/,
+  "SW-019 miss payload helper required",
+);
+assert.match(
+  placeCardLib,
+  /isOutsideScotlandError/,
+  "fetchPlaceCard must catch outside-Scotland 400",
+);
+assert.match(
+  placeCardLib,
+  /return outsideScotlandPlaceCard\(lat, lng\)/,
+  "outside-Scotland 400 must become a sea-miss card",
+);
 
 const placeCard = readSrc("components/PlaceCard.tsx");
 assert.match(placeCard, /isPlaceCardSeaMiss/);
@@ -52,6 +68,24 @@ assert.doesNotMatch(
   "sea-miss line must not be No data",
 );
 
+const api = readSrc("lib/api.ts");
+assert.match(api, /export function isOutsideScotlandError/);
+assert.match(
+  api,
+  /err\.status !== 400/,
+  "outside-Scotland detector must require HTTP 400",
+);
+assert.match(
+  api,
+  new RegExp(LINE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+  "visitorFacingError must use the signed-off outside-Scotland line",
+);
+assert.match(
+  api,
+  /lng < -11\.0/,
+  "parseCoordinates must accept SW-019 west-of-bounds pastes (lng=-9.196485)",
+);
+
 const map = readSrc("components/ScotlandMap.tsx");
 assert.match(
   map,
@@ -62,6 +96,16 @@ assert.match(
   map,
   /if \(!knownCode\) \{[\s\S]*?try \{[\s\S]*?data-zones\/at[\s\S]*?\} catch \{/,
   "data-zone lookup must be isolated so a sea miss does not abort place card",
+);
+assert.match(
+  map,
+  /isOutsideScotlandError/,
+  "map must clear spinner on outside-Scotland 400 (SW-019)",
+);
+assert.match(
+  map,
+  /outsideScotlandPlaceCard/,
+  "map must install the sea-miss card on outside-Scotland 400",
 );
 
 const stub = readSrc("components/PlaceCardStub.tsx");
@@ -95,6 +139,31 @@ assert.match(
   e2e,
   /consoleErrors/,
   "e2e must assert consoleErrors is empty",
+);
+assert.match(
+  e2e,
+  /Looking up this spot/,
+  "e2e must assert the Looking up spinner is gone",
+);
+assert.match(
+  e2e,
+  /bounds400|Coordinates appear to be outside Scotland/,
+  "e2e must cover SW-019 place 400",
+);
+assert.match(
+  e2e,
+  /\?lat=.*lng=|lat=\$\{OUTSIDE_LAT\}/,
+  "e2e must cover URL / coordinate deep-link",
+);
+assert.match(
+  e2e,
+  /mouse\.click|maplibregl-canvas/,
+  "e2e must cover a real map click",
+);
+assert.match(
+  e2e,
+  /3_000|timeout:\s*3000/,
+  "SW-019 e2e must require the line within 3s",
 );
 
 const pkg = readSrc("package.json");

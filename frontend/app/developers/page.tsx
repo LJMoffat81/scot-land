@@ -71,9 +71,20 @@ const LAYERS_BBOX =
 
 function DevelopersPageInner() {
   const searchParams = useSearchParams();
-  const showMovedNote = searchParams.get("moved") === "1";
+  // Keep the hook check (tests + soft nav). Also read window.location because the
+  // Full Route Cache serves this page with empty server searchParams ("q":""), so
+  // useSearchParams alone misses ?moved=1 on hard loads after deploy.
+  const movedFromHook = searchParams.get("moved") === "1";
+  const [movedFromUrl, setMovedFromUrl] = useState(false);
+  const showMovedNote = movedFromHook || movedFromUrl;
   const [manifest, setManifest] = useState<DownloadManifest | null>(null);
   const [manifestError, setManifestError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMovedFromUrl(
+      new URLSearchParams(window.location.search).get("moved") === "1",
+    );
+  }, []);
 
   useEffect(() => {
     void fetch("/downloads/manifest.json", { cache: "no-store" })
@@ -96,11 +107,6 @@ function DevelopersPageInner() {
       <SiteNav current="developers" />
       <h1>Downloads &amp; API</h1>
       <ResearchBanner />
-      {showMovedNote ? (
-        <p className="downloads-note" data-testid="developers-moved-note">
-          Downloads has moved here.
-        </p>
-      ) : null}
       <p>
         Use Scot-LAND&apos;s open data in your own work. Everything here is free
         under the licence shown. Please say where it came from.
@@ -120,6 +126,12 @@ function DevelopersPageInner() {
       </p>
 
       <section id="downloads" data-testid="developers-downloads">
+        {/* Inside #downloads so ?moved=1#downloads keeps the note in view after hash scroll. */}
+        {showMovedNote ? (
+          <p className="downloads-note" data-testid="developers-moved-note">
+            Downloads has moved here.
+          </p>
+        ) : null}
         <h2>Download files</h2>
         <p className="downloads-note">
           One card per bundle. Until a packaged file exists, use{" "}

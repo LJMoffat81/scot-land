@@ -3615,7 +3615,7 @@ export default function ScotlandMap() {
               onMouseDown={(event) => event.preventDefault()}
               onClick={clearQuery}
             >
-              x
+              ×
             </button>
           ) : null}
           <button
@@ -3831,9 +3831,10 @@ export default function ScotlandMap() {
                 type="button"
                 className="hud-close"
                 title="Close (Esc)"
+                aria-label="Close place card"
                 onClick={() => clearPlace()}
               >
-                x
+                ×
               </button>
               <p className="error-line">{error}</p>
               <p className="meta">

@@ -483,20 +483,35 @@ input {
   }
 }
 
-/* Mobile bottom sheet: peek = name + figure + disclaimer. */
+/*
+ * Mobile bottom sheet: peek = name + figure + disclaimer.
+ * Keep SW-023 chrome clear: bottom above basemap/zoom, right gutter for 64px tile
+ * (map-chrome.css sets right: 5.35rem — do not override to full-bleed).
+ */
 @media (max-width: 900px) {
   .hud-place.place-card,
   .app-shell.place-open .hud-place.place-card,
   .app-shell.place-open .place-card-stub {
     top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    max-height: min(72dvh, calc(100dvh - var(--hud-height, 8rem)));
+    left: 0.55rem;
+    bottom: 7.4rem;
+    width: auto;
+    max-height: min(58dvh, calc(100dvh - var(--hud-height, 8rem) - 8rem));
     border-radius: 16px 16px 0 0;
-    padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
+    padding-bottom: 0.85rem;
     box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.14);
+  }
+
+  /* Sea stub hugs content; still clear of basemap/zoom (SW-028). */
+  .hud-place.place-card.place-card-sea-miss,
+  .app-shell.place-open .hud-place.place-card.place-card-sea-miss,
+  .app-shell.place-open .place-card-stub.place-card-sea-miss {
+    bottom: 7.4rem;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    box-shadow: var(--hud-shadow);
+    border-radius: 12px;
   }
 
   .hud-place .place-card-experimental-footer-sticky,
@@ -507,7 +522,7 @@ input {
   .hud-place .place-card-sheet-body,
   .place-card-stub .place-card-sheet-body {
     overflow-y: auto;
-    max-height: min(42dvh, 22rem);
+    max-height: min(36dvh, 18rem);
   }
 }
 
@@ -929,8 +944,11 @@ input {
   position: absolute;
   top: 0.7rem;
   right: 0.7rem;
-  width: 1.85rem;
-  height: 1.85rem;
+  /* UX-01 / UX10-1: tap target ≥44px */
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border: 0;
   border-radius: 999px;
   background: #f3f5f7;
@@ -938,6 +956,9 @@ input {
   font-size: 1.2rem;
   line-height: 1;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hud-place {

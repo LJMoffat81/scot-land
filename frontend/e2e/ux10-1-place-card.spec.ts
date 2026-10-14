@@ -344,8 +344,9 @@ test.describe("UX10-1 place card mobile 390", () => {
 
     const cardBox = await page.getByTestId("place-card").boundingBox();
     expect(cardBox).toBeTruthy();
-    // Bottom sheet: sits near the bottom of the viewport.
+    // Bottom sheet: lower half, but clears basemap/zoom chrome (bottom ≈ 7.4rem).
     expect(cardBox!.y).toBeGreaterThan(200);
+    expect(cardBox!.y + cardBox!.height).toBeLessThan(844 - 64);
 
     await expect(page.getByTestId("research-banner")).toHaveCount(1);
     await expect(page.getByTestId("place-card")).not.toContainText("£");

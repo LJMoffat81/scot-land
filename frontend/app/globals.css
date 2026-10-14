@@ -316,6 +316,35 @@ input {
   color: var(--slrg-text);
 }
 
+.place-card-map-reference {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.place-card-map-reference-copy {
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 650;
+  padding: 0.12rem 0.45rem;
+  border: 1px solid #c5d0dc;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--slrg-navy);
+  cursor: pointer;
+}
+
+.place-card-map-reference-copy:hover {
+  border-color: var(--slrg-navy);
+}
+
+.place-card-map-reference-copy-fail {
+  flex: 1 1 100%;
+  font-size: 0.72rem;
+  color: var(--slrg-muted);
+}
+
 .place-card-dz-code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-weight: 650;
@@ -1337,6 +1366,12 @@ input {
 @media (max-width: 600px) {
   .site-nav-page .site-nav-links,
   .site-nav-map .site-nav-links {
+    display: none;
+  }
+
+  /* SW-020: logo PNG already shows LAND — hide the text wordmark so it
+     cannot sit under the mark or leave stray letters at 390px. */
+  .site-nav-brand .site-nav-wordmark {
     display: none;
   }
 

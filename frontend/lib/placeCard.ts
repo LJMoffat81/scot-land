@@ -33,6 +33,13 @@ export const PLACE_CARD_HOLDER_COPY =
 export const PLACE_CARD_SCOTLIS_LABEL =
   "Check the official title record on ScotLIS";
 
+/** Place-card field label for the 3×3 m grid index. */
+export const PLACE_CARD_MAP_REFERENCE_LABEL = "Map reference";
+
+/** Shown when the map-reference Copy button cannot write the clipboard. */
+export const PLACE_CARD_MAP_REFERENCE_COPY_FAIL =
+  "Couldn't copy — select and copy the reference instead.";
+
 export type PlaceRentTag = "market" | "proxy" | "shadow";
 
 export type PlaceValueStatus = "coming_soon" | "in_progress";
@@ -101,7 +108,7 @@ export type PlaceCardPayload = {
   council_name?: string | null;
   data_zone?: PlaceDataZone | null;
   intermediate_zone?: PlaceIntermediateZone | null;
-  /** Scot-LAND square reference — never a what3words brand string. */
+  /** Map reference grid indices (`latIndex,lngIndex`) — never a what3words brand string. */
   square_reference?: string | null;
   agr_rows?: PlaceAgrRow[];
   constraints?: PlaceConstraintRow[];
@@ -166,13 +173,21 @@ export type FetchPlaceCardArgs = {
 const METERS_PER_DEGREE_LAT = 111_320.0;
 const SQUARE_SIZE_M = 3.0;
 
-/** Scot-LAND square reference from snapped 3×3 m grid (no what3words brand). */
+/** Map reference indices from snapped 3×3 m grid (numbers only; no what3words). */
 export function scotLandSquareReference(lat: number, lng: number): string {
   const latRad = (lat * Math.PI) / 180;
   const metersPerDegreeLng = METERS_PER_DEGREE_LAT * Math.cos(latRad);
   const latIndex = Math.round((lat * METERS_PER_DEGREE_LAT) / SQUARE_SIZE_M);
   const lngIndex = Math.round((lng * metersPerDegreeLng) / SQUARE_SIZE_M);
-  return `Scot-LAND square reference ${latIndex},${lngIndex}`;
+  return `${latIndex},${lngIndex}`;
+}
+
+/** Display/copy form: digits only (`1234,5678`), stripping any legacy label prefix. */
+export function mapReferenceNumbers(ref: string): string {
+  const trimmed = ref.trim();
+  const match = trimmed.match(/(-?\d+)\s*,\s*(-?\d+)\s*$/);
+  if (match) return `${match[1]},${match[2]}`;
+  return trimmed;
 }
 
 export function valueStatusLabel(status: PlaceValueStatus): string {
@@ -422,9 +437,10 @@ export function sanitizePlaceCard(payload: PlaceCardPayload): PlaceCardPayload {
   return {
     ...rest,
     data_zone: zone,
-    square_reference:
+    square_reference: mapReferenceNumbers(
       rest.square_reference?.trim() ||
-      scotLandSquareReference(rest.lat, rest.lng),
+        scotLandSquareReference(rest.lat, rest.lng),
+    ),
     agr_rows: agrRows,
     constraints,
     holder: deriveHolder(rest),

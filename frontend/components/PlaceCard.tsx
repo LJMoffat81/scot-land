@@ -1,13 +1,18 @@
 "use client";
 
+import { useState } from "react";
+
 import EvidenceTagLegend from "@/components/EvidenceTagLegend";
 import {
   PLACE_CARD_CONSTRAINT_LABEL,
   PLACE_CARD_HOLDER_COPY,
   PLACE_CARD_HOW_WE_VALUE_LABEL,
   PLACE_CARD_LIMITS_HEADING,
+  PLACE_CARD_MAP_REFERENCE_COPY_FAIL,
+  PLACE_CARD_MAP_REFERENCE_LABEL,
   PLACE_CARD_SCOTLIS_LABEL,
   dataZoneFieldLabel,
+  mapReferenceNumbers,
   sanitizePlaceCard,
   valueStatusLabel,
   type PlaceCardPayload,
@@ -49,6 +54,46 @@ function StatusChip({ status }: { status: PlaceValueStatus }) {
     >
       {valueStatusLabel(status)}
     </span>
+  );
+}
+
+function MapReferenceCopy({ value }: { value: string }) {
+  const [done, setDone] = useState(false);
+  const [failMsg, setFailMsg] = useState<string | null>(null);
+
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setFailMsg(null);
+      setDone(true);
+      window.setTimeout(() => setDone(false), 1500);
+    } catch {
+      setDone(false);
+      setFailMsg(PLACE_CARD_MAP_REFERENCE_COPY_FAIL);
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="place-card-map-reference-copy"
+        onClick={() => void onCopy()}
+        data-testid="place-card-map-reference-copy"
+        aria-label={`Copy ${PLACE_CARD_MAP_REFERENCE_LABEL}`}
+      >
+        {done ? "Copied" : "Copy"}
+      </button>
+      {failMsg ? (
+        <span
+          className="place-card-map-reference-copy-fail"
+          data-testid="place-card-map-reference-copy-fail"
+          role="status"
+        >
+          {failMsg}
+        </span>
+      ) : null}
+    </>
   );
 }
 
@@ -245,9 +290,21 @@ export function PlaceCard({
             </div>
 
             <div className="place-card-field">
-              <dt>Square reference</dt>
-              <dd data-testid="place-card-square-reference">
-                {card.square_reference}
+              <dt>{PLACE_CARD_MAP_REFERENCE_LABEL}</dt>
+              <dd
+                className="place-card-map-reference"
+                data-testid="place-card-map-reference"
+              >
+                {card.square_reference ? (
+                  <>
+                    <span data-testid="place-card-square-reference">
+                      {mapReferenceNumbers(card.square_reference)}
+                    </span>
+                    <MapReferenceCopy
+                      value={mapReferenceNumbers(card.square_reference)}
+                    />
+                  </>
+                ) : null}
               </dd>
             </div>
           </dl>

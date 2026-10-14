@@ -24,9 +24,14 @@ test.describe("place card (internal preview)", () => {
     await expect(page.getByTestId("place-card-council")).toContainText(
       "Glasgow City",
     );
-    await expect(page.getByTestId("place-card-square-reference")).toContainText(
+    await expect(page.getByText("Map reference", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("place-card-square-reference")).toHaveText(
+      /^-?\d+,-?\d+$/,
+    );
+    await expect(page.getByTestId("place-card-square-reference")).not.toContainText(
       /Scot-LAND square reference/i,
     );
+    await expect(page.getByTestId("place-card-map-reference-copy")).toBeVisible();
 
     await expect(page.getByTestId("place-card-value")).toContainText(
       /What gives this land value/i,
@@ -97,5 +102,25 @@ test.describe("place card (internal preview)", () => {
     await expect(
       page.locator('[data-layer-id="boundaries"] .place-layer-state'),
     ).toHaveText("No hit");
+  });
+
+  test("map reference copy failure shows exact recovery line", async ({
+    page,
+  }) => {
+    await page.goto("/place-card");
+    const ref = page.getByTestId("place-card-square-reference");
+    await expect(ref).toHaveText(/^-?\d+,-?\d+$/);
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, "clipboard", {
+        configurable: true,
+        value: {
+          writeText: () => Promise.reject(new Error("clipboard denied")),
+        },
+      });
+    });
+    await page.getByTestId("place-card-map-reference-copy").click();
+    await expect(page.getByTestId("place-card-map-reference-copy-fail")).toHaveText(
+      "Couldn't copy — select and copy the reference instead.",
+    );
   });
 });

@@ -132,7 +132,16 @@ function DrawerLayerRow({
           </span>
         ) : null}
       </div>
-      <p className="layer-meta">{layer.description}</p>
+      <p
+        className="layer-meta"
+        data-testid={
+          comingSoon
+            ? `layer-coming-soon-line-${layer.id}`
+            : `layer-desc-${layer.id}`
+        }
+      >
+        {layer.description}
+      </p>
       <DrawerLicenceLine layer={layer} />
     </li>
   );

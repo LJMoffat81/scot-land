@@ -72,7 +72,8 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
     id: "1a",
     group: "land",
     label: "Planning uplift",
-    description: "Planning uplift: an 'of which' figure inside the land part.",
+    description:
+      "Will show where planning permission could raise land rent.",
     tag: "proxy",
     comingSoon: true,
     licence: "Research estimate — figures not published yet",
@@ -100,7 +101,8 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
     id: "2",
     group: "resources",
     label: "Minerals",
-    description: "Below-ground mineral rent where evidence exists.",
+    description:
+      "Will show where mineral rights could add natural resource rent.",
     tag: "proxy",
     comingSoon: true,
     licence: "Research estimate — figures not published yet",

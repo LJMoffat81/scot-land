@@ -102,11 +102,42 @@ def test_rebuild_mix_prefers_sold_homes():
 
 
 def test_price_skew_flag(cfg):
+    """Methods M2: pooled mean ÷ count-weighted pooled median; pooled sales_n. Exact pins."""
     sk = cfg["price"]["skew_flag"]
+    assert sk["mean_median_ratio_min"] == 1.40
+    assert sk["small_sales_n_below"] == 15
+    # 1.40 with 14 sales → flagged; 1.40 with 15 → not; 1.399 with 14 → not
+    assert sr.price_skew_flag(140_000, 100_000, 14, sk) == (1.4, True)
+    assert sr.price_skew_flag(140_000, 100_000, 15, sk) == (1.4, False)
+    assert sr.price_skew_flag(139_900, 100_000, 14, sk) == (1.399, False)
+    # Prior coverage retained
     assert sr.price_skew_flag(300_000, 150_000, 8, sk) == (2.0, True)
-    assert sr.price_skew_flag(300_000, 150_000, 40, sk)[1] is False   # large sample: not flagged
+    assert sr.price_skew_flag(300_000, 150_000, 40, sk)[1] is False
     assert sr.price_skew_flag(160_000, 150_000, 8, sk)[1] is False
     assert sr.price_skew_flag(None, 150_000, 8, sk) == (None, False)
+
+
+def test_price_skew_flag_uses_pooled_mean_and_count_weighted_median(cfg):
+    """Ratio inputs are pool_prices(mean) / pool_prices(median) with shared pooled sales_n."""
+    obs = [
+        sr.YearPrice(2021, 6, 200_000, 150_000),
+        sr.YearPrice(2022, 4, 220_000, 160_000),
+        sr.YearPrice(2023, 4, 180_000, 140_000),
+    ]
+    idx = {2021: 1.0, 2022: 1.0, 2023: 1.0}
+    kw = dict(
+        observations=obs, latest_year=2023, pool_years=3, pool_years_max=5, n_min=5,
+        index_factor=idx, index_to_year=2023,
+    )
+    pooled_mean = sr.pool_prices(**kw, measure="mean")
+    pooled_med = sr.pool_prices(**kw, measure="median")
+    assert pooled_mean.sales_n == pooled_med.sales_n == 14
+    expected = pooled_mean.price_gbp / pooled_med.price_gbp
+    ratio, flag = sr.price_skew_flag(
+        pooled_mean.price_gbp, pooled_med.price_gbp, pooled_mean.sales_n, cfg["price"]["skew_flag"],
+    )
+    assert ratio == expected
+    assert flag == (expected >= 1.40)  # 14 < 15
 
 
 def test_suppressed_zone_needs_model_never_neighbour():

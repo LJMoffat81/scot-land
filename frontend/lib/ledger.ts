@@ -268,7 +268,7 @@ export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
     nested: false,
     tag: "market_or_proxy",
     status: "not_yet",
-    status_note: "Market if lease prices, else Estimate.",
+    status_note: "Market if lease prices, else estimate.",
     amount_placeholder: "—",
   },
   {

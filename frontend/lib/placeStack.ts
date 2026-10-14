@@ -177,14 +177,14 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     sum_row_ids: ["5", "6", "7", "8", "10"],
     total_placeholder: "—",
     total_note:
-      "Estimate stack total is separate from the Scottish totals. Totals per chip only, never across chips or price years.",
+      "estimate stack total is separate from the Scottish totals. Totals per chip only, never across chips or price years.",
     rows: [
       {
         id: "5",
         label: "Aquaculture licence rent",
         tag: "shadow",
         status: "not_yet",
-        status_note: "Estimate — total minus CES seabed paid. Separate stack.",
+        status_note: "estimate — total minus CES seabed paid. Separate stack.",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -198,7 +198,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
         tag: "shadow",
         status: "not_yet",
         status_note:
-          "Market if lease prices, else Estimate (default: Estimate stack).",
+          "Market if lease prices, else estimate (default: estimate stack).",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -238,7 +238,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
         label: "Ecosystem services",
         tag: "shadow",
         status: "not_yet",
-        status_note: "Estimate, later.",
+        status_note: "estimate, later.",
         parent_id: null,
         nested: false,
         in_total: true,

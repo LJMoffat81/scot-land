@@ -140,7 +140,7 @@ def ledger_checks() -> list[dict[str, Any]]:
                 {
                     "id": "aqua_minus_ces",
                     "status": "pass",
-                    "detail": "Row 5 Estimate = total licence rent minus CES seabed paid.",
+                    "detail": "Row 5 estimate = total licence rent minus CES seabed paid.",
                 }
             ],
         ),
@@ -242,7 +242,7 @@ def ledger_checks() -> list[dict[str, Any]]:
                     "id": "shadow_never_summed",
                     "status": "pass",
                     "detail": (
-                        "Estimate stack is separate and never added into the "
+                        "estimate stack is separate and never added into the "
                         "Scottish totals."
                     ),
                 },
@@ -251,7 +251,7 @@ def ledger_checks() -> list[dict[str, Any]]:
                     "status": "pass",
                     "detail": (
                         "Oil & gas and benchmarks sit outside the Scottish totals "
-                        "and Estimate totals."
+                        "and estimate totals."
                     ),
                 },
             ],
@@ -323,7 +323,7 @@ def ledger_excluded() -> list[dict[str, str]]:
             "label": "Oil & gas in Scottish total",
             "reason": (
                 "Row 9 is reported (UK-reserved) but OUTSIDE the Scottish totals "
-                "and Estimate totals — not silently dropped."
+                "and estimate totals — not silently dropped."
             ),
         },
     ]
@@ -501,7 +501,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="Estimate stack; total licence rent minus CES seabed paid (C-aqua).",
+            note="estimate stack; total licence rent minus CES seabed paid (C-aqua).",
             stack="shadow",
         ),
         _row(
@@ -509,13 +509,13 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             label="Fisheries quota",
             tag="shadow",
             status="not_yet",
-            source="ICES landings / quota — market if lease prices, else Estimate",
+            source="ICES landings / quota — market if lease prices, else estimate",
             licence="OGL-3.0",
             licence_url=ogl,
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="No public lease-price series yet — treated as Estimate until priced.",
+            note="No public lease-price series yet — treated as estimate until priced.",
             stack="shadow",
         ),
         _row(
@@ -575,7 +575,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="Later — Estimate stack; not yet modelled.",
+            note="Later — estimate stack; not yet modelled.",
             stack="shadow",
         ),
     ]
@@ -621,7 +621,7 @@ def ledger_totals_policy(*, rows: list[dict[str, Any]] | None = None) -> dict[st
             "range": None,
             "never_summed_into_headline": True,
             "note": (
-                "Estimate stack drawn separately; never added into the Scottish totals."
+                "estimate stack drawn separately; never added into the Scottish totals."
             ),
         },
         "outside": {
@@ -630,7 +630,7 @@ def ledger_totals_policy(*, rows: list[dict[str, Any]] | None = None) -> dict[st
                 "status": "not_yet",
                 "range": None,
                 "note": (
-                    "UK-reserved — outside the Scottish totals and Estimate totals."
+                    "UK-reserved — outside the Scottish totals and estimate totals."
                 ),
             },
             "benchmarks": "benchmark only, not inputs",

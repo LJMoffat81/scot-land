@@ -29,6 +29,7 @@ from layers.registers import registers_payload
 from layers.data_zones import query_bbox as data_zones_bbox
 from layers.flood import query_bbox as flood_bbox
 from layers.hydro import query_bbox as hydro_bbox
+from layers.hla import HLA_NOT_LOADED_YET
 from layers.hla import query_bbox as hla_bbox
 from layers.public_land import query_bbox as public_land_bbox
 from layers.sepa_car import query_bbox as sepa_car_bbox
@@ -291,14 +292,10 @@ def layer_open_hla(
     payload = hla_bbox(south, west, north, east, max_features=max_features)
     meta = payload.get("meta") or {}
     if meta.get("ok") is False:
-        # Visitor-safe only — no SPATIALHUB_AUTHKEY / .env / python -m etl.
+        # Visitor-safe only — exact unload copy; no SPATIALHUB_AUTHKEY / .env / etl.
         raise HTTPException(
             status_code=503,
-            detail=(
-                "Housing land audit overlay is not available: "
-                f"{meta.get('error') or 'not loaded yet'}. "
-                "Gaps are not filled with guesses."
-            ),
+            detail=HLA_NOT_LOADED_YET,
         )
     return JSONResponse(payload)
 

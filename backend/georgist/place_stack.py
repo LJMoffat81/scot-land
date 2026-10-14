@@ -94,7 +94,7 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "label": "Aquaculture licence rent",
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Estimate — total minus CES seabed paid. Separate stack.",
+        "status_note": "estimate — total minus CES seabed paid. Separate stack.",
         "parent_id": None,
         "nested": False,
         "in_total": True,
@@ -104,7 +104,7 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "label": "Fisheries quota",
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Market if lease prices, else Estimate (default: Estimate stack).",
+        "status_note": "Market if lease prices, else estimate (default: estimate stack).",
         "parent_id": None,
         "nested": False,
         "in_total": True,
@@ -115,7 +115,7 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "tag": "shadow",
         "status": "not_yet",
         "status_note": (
-            "Estimate, ~0 when published. Not shown as a money value while not yet."
+            "estimate, ~0 when published. Not shown as a money value while not yet."
         ),
         "parent_id": None,
         "nested": False,
@@ -147,7 +147,7 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "label": "Ecosystem services",
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Estimate, later.",
+        "status_note": "estimate, later.",
         "parent_id": None,
         "nested": False,
         "in_total": True,
@@ -265,7 +265,7 @@ def place_hectare_stack(
             "Public AGR £ withheld until ECONOMIC_RULES / calibration. "
             "Placeholders are not a money value. Row 1a is already included "
             "in Surface site rent (indented, never added). "
-            "Estimate total is separate and never summed into the Scottish totals. "
+            "estimate total is separate and never summed into the Scottish totals. "
             "Oil & gas and benchmarks sit outside both."
         ),
         "headline": {
@@ -287,7 +287,7 @@ def place_hectare_stack(
             "sum_row_ids": shadow_sum_row_ids(shadow_rows),
             "total_placeholder": AMOUNT_PH,
             "total_note": (
-                "Estimate stack total is separate from the Scottish totals "
+                "estimate stack total is separate from the Scottish totals "
                 "(C-totals). Never added into Market or Modelled totals."
             ),
         },

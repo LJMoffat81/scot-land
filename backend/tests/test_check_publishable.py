@@ -269,18 +269,21 @@ def test_guard_forbids_banned_public_route_wording(tmp_path):
     g = _guard()
     assert "£0" in g.FORBIDDEN_PUBLIC_ROUTE_PHRASES
     assert "market+proxy" in g.FORBIDDEN_PUBLIC_ROUTE_PHRASES
+    assert ".env" in g.FORBIDDEN_PUBLIC_ROUTE_PHRASES
     assert "nested" in g.FORBIDDEN_PUBLIC_ROUTE_PROSE_WORDS
 
     problems = _problems(tmp_path) if _repo(tmp_path, {
         "frontend/app/developers/page.tsx": (
             'export default function Page() {\n'
-            '  return <p>Constraints are £0 and headline is market+proxy with nested 1a.</p>;\n'
+            '  return <p>Constraints are £0 and headline is market+proxy with nested 1a. '
+            'Set .env for the key.</p>;\n'
             '}\n'
         ),
     }) is None else None
     assert any("£0" in p for p in problems), problems
     assert any("market+proxy" in p for p in problems), problems
     assert any("nested" in p for p in problems), problems
+    assert any(".env" in p for p in problems), problems
 
     # Machine boolean key ``nested`` alone is allowed (not visitor prose).
     clean = _problems(tmp_path / "ok") if _repo(tmp_path / "ok", {

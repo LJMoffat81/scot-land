@@ -9,7 +9,7 @@ import pytest
 import yaml
 
 from etl import ingest_hla_sites as hla_ingest
-from layers.hla import _unloaded_error, hla_source_meta
+from layers.hla import HLA_NOT_LOADED_YET, _unloaded_error, hla_source_meta
 from spatial import geoserver_auth as gauth
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -79,15 +79,15 @@ def _assert_visitor_safe(text: str) -> None:
     assert "spatialhub_authkey" not in lower
     assert "python -m etl" not in lower
     assert "--from-wfs" not in lower
-    # Bare ``.env`` only banned when paired with Spatial Hub auth setup.
-    if ".env" in lower:
-        assert "spatialhub" not in lower and "authkey" not in lower
+    # ``.env`` banned outright in visitor prose (operator docs stay elsewhere).
+    assert ".env" not in lower
 
 
 def test_hla_unloaded_error_says_not_loaded_yet_without_key(monkeypatch):
     monkeypatch.delenv("SPATIALHUB_AUTHKEY", raising=False)
     msg = _unloaded_error()
-    assert "not loaded yet" in msg
+    assert msg == HLA_NOT_LOADED_YET
+    assert "overlay" not in msg.lower()
     _assert_visitor_safe(msg)
 
 
@@ -95,7 +95,8 @@ def test_hla_unloaded_error_with_key_stays_visitor_safe(monkeypatch):
     """Key present but PostGIS empty: still visitor copy only (no ETL hints)."""
     monkeypatch.setenv("SPATIALHUB_AUTHKEY", "test-key-not-real")
     msg = _unloaded_error()
-    assert "not loaded yet" in msg
+    assert msg == HLA_NOT_LOADED_YET
+    assert "overlay" not in msg.lower()
     _assert_visitor_safe(msg)
 
 
@@ -119,13 +120,13 @@ def test_hla_public_unload_payloads_are_visitor_safe(monkeypatch):
 
     point = query_point(55.86, -4.26)
     assert point["ok"] is False
-    assert "not loaded yet" in point["error"]
+    assert point["error"] == HLA_NOT_LOADED_YET
     _assert_visitor_safe(point["error"])
 
     bbox = query_bbox(55.84, -4.30, 55.88, -4.22)
     meta = bbox["meta"]
     assert meta["ok"] is False
-    assert "not loaded yet" in meta["error"]
+    assert meta["error"] == HLA_NOT_LOADED_YET
     _assert_visitor_safe(meta["error"])
     assert "authkey_configured" not in meta
 

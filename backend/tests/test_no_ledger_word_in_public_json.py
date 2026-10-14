@@ -31,6 +31,7 @@ _HEADLINE_WORD = re.compile(r"\bheadline\b", re.IGNORECASE)
 _SHADOW_WORD = re.compile(r"\bshadow\b", re.IGNORECASE)
 # £ figure = currency symbol with a numeric amount (not unit labels / "£ withheld").
 _POUND_FIGURE = re.compile(r"£\s*[\d,]+(?:\.\d+)?|[\d,]+\s*£")
+_DOT_ENV = re.compile(r"\.env\b")
 
 # Machine / non-prose keys — not shown as visitor copy in the UI.
 # tag / value_tier / stack stay machine values (market|proxy|shadow etc.).
@@ -140,6 +141,11 @@ def _assert_public_visitor_copy(payload: dict[str, Any], label: str) -> None:
     assert not pound_hits, (
         f"{label} visitor text contains a £ figure:\n"
         + "\n".join(repr(h[:200]) for h in pound_hits)
+    )
+    env_hits = [t for t in texts if _DOT_ENV.search(t)]
+    assert not env_hits, (
+        f"{label} visitor text contains '.env':\n"
+        + "\n".join(repr(h[:200]) for h in env_hits)
     )
 
 

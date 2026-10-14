@@ -118,6 +118,7 @@ if (existsSync(nextHtml)) {
     { name: "£", re: /£/ },
     { name: "chip Proxy", re: />\s*Proxy\s*</ },
     { name: "chip Shadow", re: />\s*Shadow\s*</ },
+    { name: ".env", re: /\.env\b/ },
   ];
   const violations = [];
   for (const file of htmlFiles) {

@@ -17,6 +17,7 @@ import MapLicenceCredits from "./MapLicenceCredits";
 import MapRangeLegend from "./MapRangeLegend";
 import {
   ApiError,
+  HLA_NOT_LOADED,
   SERVICE_BUSY,
   apiFetch,
   apiJson,
@@ -217,6 +218,8 @@ const PUBLIC_LAND_FILL: ExpressionSpecification = [
 const CADASTRAL_MIN_ZOOM = 14;
 const PUBLIC_LAND_MIN_ZOOM = 8;
 const VDL_MIN_ZOOM = 8;
+const HLA_MIN_ZOOM = 8;
+const HLA_FILL = "#7b5ea7";
 /** Data Zone outlines are readable from neighbourhood zoom. */
 const DATA_ZONE_MIN_ZOOM = 10;
 const NFI_MIN_ZOOM = 7;
@@ -424,6 +427,7 @@ function activeCatalogLayerIds(opts: {
   showBoundaries: boolean;
   showDataZones: boolean;
   showVdl: boolean;
+  showHla: boolean;
   showCommunityOwnership: boolean;
   showLdp: boolean;
   showWoodland: boolean;
@@ -440,6 +444,7 @@ function activeCatalogLayerIds(opts: {
   if (opts.showBoundaries) ids.push("boundaries");
   if (opts.showDataZones) ids.push("data_zones");
   if (opts.showVdl) ids.push("vdl");
+  if (opts.showHla) ids.push("hla");
   if (opts.showCommunityOwnership) ids.push("community_ownership");
   if (opts.showLdp) ids.push("ldp_allocations");
   if (opts.showWoodland) {
@@ -484,6 +489,7 @@ export default function ScotlandMap() {
   const [showBoundaries, setShowBoundaries] = useState(false);
   const [showCellGrid] = useState(false);
   const [showVdl, setShowVdl] = useState(false);
+  const [showHla, setShowHla] = useState(false);
   // SG 2024 public/Crown dashboard: licence unverified/not open — never paint
   const showPublicLand = false;
   const [showDataZones, setShowDataZones] = useState(false);
@@ -525,6 +531,7 @@ export default function ScotlandMap() {
       setShowDataZones(Boolean(next.data_zones));
     }
     if ("vdl" in next) setShowVdl(Boolean(next.vdl));
+    if ("hla" in next) setShowHla(Boolean(next.hla));
     // Constraint flood paints the existing flood context overlay when available.
     setContextOn((cur) => ({ ...cur, flood: Boolean(next.flood) }));
   };
@@ -571,6 +578,7 @@ export default function ScotlandMap() {
       showBoundaries,
       showDataZones,
       showVdl,
+      showHla,
       showCommunityOwnership,
       showLdp,
       showWoodland,
@@ -1663,6 +1671,30 @@ export default function ScotlandMap() {
         paint: { "line-color": "#5a2200", "line-width": 1.1, "line-opacity": 0.9 },
       });
 
+      map.addSource("hla-overlay", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution:
+          "Housing Land Supply – Scotland © Improvement Service / local planning authorities (OGL v3.0). Audit sites, not a title.",
+      });
+      map.addLayer({
+        id: "hla-fill",
+        type: "fill",
+        source: "hla-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": HLA_FILL,
+          "fill-opacity": 0.4,
+        },
+      });
+      map.addLayer({
+        id: "hla-line",
+        type: "line",
+        source: "hla-overlay",
+        layout: { visibility: "none" },
+        paint: { "line-color": "#3d2a5c", "line-width": 1.0, "line-opacity": 0.9 },
+      });
+
       map.addSource("ldp-overlay", {
         type: "geojson",
         data: emptyCollection,
@@ -2553,6 +2585,79 @@ export default function ScotlandMap() {
       map.off("moveend", onMove);
     };
   }, [mapReady, showVdl]);
+
+  // Housing land audit / housing land supply (OGL Spatial Hub amalgamation)
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const setVis = (vis: "visible" | "none") => {
+      if (!map.getLayer("hla-fill")) return;
+      map.setLayoutProperty("hla-fill", "visibility", vis);
+      map.setLayoutProperty("hla-line", "visibility", vis);
+    };
+
+    if (!showHla) {
+      setVis("none");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const loadHla = () => {
+      if (cancelled || !mapRef.current || inFlight) return;
+      const b = map.getBounds();
+      if (!b) return;
+      if (map.getZoom() < HLA_MIN_ZOOM) {
+        setVis("none");
+        return;
+      }
+      inFlight = true;
+      setLayerBusy(true);
+      const path =
+        `/layers/open/hla?south=${b.getSouth()}&west=${b.getWest()}` +
+        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
+      void apiJson<GeoJSON.FeatureCollection>(path)
+        .then((data) => {
+          if (cancelled) return;
+          (map.getSource("hla-overlay") as GeoJSONSource)?.setData(data);
+          setVis("visible");
+          setLayerNotice(null);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          setVis("none");
+          if (err instanceof ApiError && err.status === 503) {
+            // Prefer API detail when preserved; never fall back to Service busy.
+            const msg =
+              err.message.trim() === HLA_NOT_LOADED
+                ? err.message.trim()
+                : HLA_NOT_LOADED;
+            setLayerNotice(msg);
+          }
+        })
+        .finally(() => {
+          inFlight = false;
+          if (!cancelled) setLayerBusy(false);
+        });
+    };
+
+    const onMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadHla, 700);
+    };
+
+    loadHla();
+    map.on("moveend", onMove);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off("moveend", onMove);
+    };
+  }, [mapReady, showHla]);
 
   // LDP allocations (OGL Spatial Hub + authority seeds)
   useEffect(() => {
@@ -3694,7 +3799,11 @@ export default function ScotlandMap() {
                 {CES_AQUACULTURE_MIN_ZOOM}+.
               </p>
             )}
-            {layerNotice && <p className="layer-meta">{layerNotice}</p>}
+            {layerNotice && (
+              <p className="layer-meta" data-testid="layer-notice">
+                {layerNotice}
+              </p>
+            )}
             {contextNote && <p className="layer-meta">{contextNote}</p>}
             {CONTEXT_LAYERS.filter((layer) => contextOn[layer.id]).map((layer) => (
               <p key={layer.id} className="layer-meta">

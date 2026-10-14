@@ -79,8 +79,21 @@ test.describe("/developers/checks meanings", () => {
     const meanings = page.locator("span.check-meaning");
     await expect(meanings).toHaveCount(10);
 
-    for (let i = 0; i < LEDGER_CHECK_ORDER.length; i += 1) {
-      const id = LEDGER_CHECK_ORDER[i];
+    expect(CHECK_ORDER).toEqual([
+      "C-hectare",
+      "C-turbine",
+      "C-aqua",
+      "C-mineral",
+      "C-forest",
+      "C-planning",
+      "C-overlay",
+      "C-overlap",
+      "C-totals",
+      "C-cap",
+    ]);
+
+    for (let i = 0; i < CHECK_ORDER.length; i += 1) {
+      const id = CHECK_ORDER[i];
       const expected = EXACT_MEANINGS[i];
       expect(CHECK_MEANINGS[id]).toBe(expected);
 

@@ -25,6 +25,33 @@ const KNOWN_OPTIONAL_FAIL_URL = [
   /\/apple-touch-icon/i,
 ];
 
+/** 1×1 PNG — stub raster tiles so MapLibre never depends on live CDN in CI. */
+const TINY_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+/** Minimal style replacing OpenFreeMap positron (no glyphs → no font CDN). */
+const STUB_MAP_STYLE = {
+  version: 8,
+  name: "e2e-stub",
+  sources: {
+    stub: {
+      type: "raster",
+      tiles: ["https://tiles.openfreemap.org/e2e-stub/{z}/{x}/{y}.png"],
+      tileSize: 256,
+    },
+  },
+  layers: [
+    {
+      id: "background",
+      type: "background",
+      paint: { "background-color": "#e8eef4" },
+    },
+    { id: "stub-raster", type: "raster", source: "stub" },
+  ],
+};
+
 function isKnownOptionalFailUrl(url: string): boolean {
   return KNOWN_OPTIONAL_FAIL_URL.some((re) => re.test(url));
 }
@@ -36,6 +63,48 @@ function boxesOverlap(
   const overlapX = a.x < b.x + b.width && a.x + a.width > b.x;
   const overlapY = a.y < b.y + b.height && a.y + a.height > b.y;
   return overlapX && overlapY;
+}
+
+async function stubMapBasemap(page: Page) {
+  // One host handler: style JSON vs raster (LIFO would otherwise serve PNG for
+  // https://tiles.openfreemap.org/styles/positron).
+  await page.route("**/tiles.openfreemap.org/**", async (route) => {
+    const url = route.request().url();
+    if (/\/styles\//i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(STUB_MAP_STYLE),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: TINY_PNG,
+    });
+  });
+  await page.route("**/ArcGIS/rest/services/World_Imagery/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: TINY_PNG,
+    });
+  });
+  await page.route("**/api/parcels/tiles/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: TINY_PNG,
+    });
+  });
+  await page.route("**/api/context/**/tiles/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: TINY_PNG,
+    });
+  });
 }
 
 test.describe("SW-020 map logo vs Layers gap (390×844)", () => {
@@ -58,6 +127,9 @@ test.describe("SW-020 map logo vs Layers gap (390×844)", () => {
         resourceFails.push({ url: response.url(), status });
       }
     });
+
+    // Basemap first — MapLibre must not hit live CDN (CI pageerror "Error").
+    await stubMapBasemap(page);
 
     await page.route("**/backend/**", async (route) => {
       await route.fulfill({
@@ -200,9 +272,8 @@ async function openMapWithTiles(page: Page) {
       return (
         response.ok() &&
         (/openfreemap\.org/i.test(url) ||
-          /\/tiles\//i.test(url) ||
-          /\.pbf(?:\?|$)/i.test(url) ||
-          /styles\/positron/i.test(url))
+          /styles\/positron/i.test(url) ||
+          /\/e2e-stub\//i.test(url))
       );
     },
     { timeout: 60_000 },

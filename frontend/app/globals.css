@@ -1473,6 +1473,12 @@ input {
     display: none;
   }
 
+  /* SW-020: logo PNG already shows LAND — hide the text wordmark so it
+     cannot sit under the mark or leave stray letters at 390px. */
+  .site-nav-brand .site-nav-wordmark {
+    display: none;
+  }
+
   .hud-top .site-nav-map {
     order: 1;
     margin-left: auto;

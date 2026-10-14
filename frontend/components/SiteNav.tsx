@@ -164,7 +164,8 @@ export default function SiteNav({
         data-testid="site-nav-brand"
       >
         <img src="/scot-land-mark.png" alt="" width={40} height={40} />
-        <span>Scot-LAND</span>
+        {/* Logo mark already includes LAND; hide this text on mobile (SW-020). */}
+        <span className="site-nav-wordmark">Scot-LAND</span>
       </a>
       {mobileMenu}
     </nav>

@@ -1,9 +1,54 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+/**
+ * Quiet ContentPageFooter /health (and any other /backend traffic) so the
+ * Next proxy never returns 503 in CI. Console/pageerror traps stay strict —
+ * empty array; no 503 allow-list.
+ */
+async function stubContentBackend(page: Page) {
+  await page.route("**/backend/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({}),
+    });
+  });
+  await page.route("**/backend/health**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        status: "ok",
+        routers: {
+          "api.agr_routes": { loaded: true },
+          "api.platform_routes": { loaded: true },
+        },
+        stamp: null,
+      }),
+    });
+  });
+}
+
+function attachConsoleTraps(page: Page): string[] {
+  const consoleErrors: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") {
+      consoleErrors.push(msg.text());
+    }
+  });
+  page.on("pageerror", (err) => {
+    consoleErrors.push(String(err));
+  });
+  return consoleErrors;
+}
 
 test.describe("about and how-it-works pages", () => {
   test.use({ viewport: { width: 1100, height: 800 } });
 
   test("about follows rewrite section B copy", async ({ page }) => {
+    const consoleErrors = attachConsoleTraps(page);
+    await stubContentBackend(page);
+
     await page.goto("/about");
     const root = page.getByTestId("mission-page");
     await expect(root).toBeVisible();
@@ -22,23 +67,20 @@ test.describe("about and how-it-works pages", () => {
     );
     await expect(root).toContainText("I am Laurie Moffat");
     await expect(root).toContainText("Scottish Land Commission");
-    await expect(root).toContainText("Open data only at launch");
+    // Exact live copy (MissionContent): "We use open data only at launch."
+    await expect(root).toContainText("We use open data only at launch");
     await expect(root).not.toContainText(/£\s*[\d,]+/);
     await expect(page).toHaveTitle(/About \| Scot-LAND/);
+    expect(consoleErrors, `console errors: ${consoleErrors.join("; ")}`).toEqual(
+      [],
+    );
   });
 
   test("how it works covers valuation, roll-up, glossary, gaps", async ({
     page,
   }) => {
-    const consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
-    page.on("pageerror", (err) => {
-      consoleErrors.push(String(err));
-    });
+    const consoleErrors = attachConsoleTraps(page);
+    await stubContentBackend(page);
 
     await page.goto("/methodology");
     const root = page.getByTestId("methodology-page");

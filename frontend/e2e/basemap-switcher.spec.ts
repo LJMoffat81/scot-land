@@ -186,9 +186,14 @@ async function openMap(page: Page) {
   // React chrome (basemap tile) is independent of MapLibre tile load.
   await page.getByTestId("basemap-switcher").waitFor({ state: "attached" });
   await page.locator(".maplibregl-canvas").waitFor();
-  await page.locator(".maplibregl-ctrl-attrib").waitFor();
-  await page.locator(".maplibregl-ctrl-zoom-in").waitFor();
-  await page.locator(".maplibregl-ctrl-zoom-out").waitFor();
+  // App collapses MapLibre compact-show; <details> without open is not
+  // Playwright-visible (same as site-nav-banner 390×844). Wait for (i).
+  const attrib = page.locator(".maplibregl-ctrl-attrib");
+  await attrib.waitFor({ state: "attached" });
+  await expect(attrib).toHaveClass(/maplibregl-compact/);
+  await expect(page.locator(".maplibregl-ctrl-attrib-button")).toBeVisible();
+  await expect(page.locator(".maplibregl-ctrl-zoom-in")).toBeVisible();
+  await expect(page.locator(".maplibregl-ctrl-zoom-out")).toBeVisible();
   await expect(page.getByTestId("basemap-switcher")).toBeVisible();
 }
 

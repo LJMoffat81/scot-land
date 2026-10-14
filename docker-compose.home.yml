@@ -2,6 +2,9 @@
 # and Next proxies to the API container. Vercel and Railway stay on docker-compose.yml.
 # Needs a .env with POSTGRES_PASSWORD (URL-safe; no default, compose refuses to start without it).
 #
+# Live / auto-deploy: use scripts/ops/deploy-home.ps1 (health-gated canary swap).
+# Do not use bare `up -d --build` for production — see docs/HOME_DEPLOY.md.
+#
 #   docker compose -f docker-compose.home.yml up -d --build db api
 #   docker compose -f docker-compose.home.yml exec api python -m etl.load_processed
 #   # Data Zone boundaries are not in the repo. Put the boundaries/ dataset (manifest.csv +
@@ -33,6 +36,8 @@ services:
       start_period: 10s
 
   api:
+    # Named image so deploy-home.ps1 can build once, canary-test, then swap live.
+    image: scot-land-home-api:local
     build:
       context: .
       dockerfile: backend/Dockerfile
@@ -40,7 +45,7 @@ services:
         RAILWAY_GIT_COMMIT_SHA: ${GIT_COMMIT:-unknown}
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${HOME_API_PORT:-8000}:8000"
     volumes:
       - ./data:/app/data:ro
       # Machine-local datasets that are not in the repo (e.g. Data Zone boundaries), read-only.
@@ -70,13 +75,14 @@ services:
         condition: service_healthy
 
   frontend:
+    image: scot-land-home-frontend:local
     build:
       context: ./frontend
       args:
         NEXT_PUBLIC_API_URL: /backend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${HOME_FRONTEND_PORT:-3000}:3000"
     environment:
       NEXT_PUBLIC_API_URL: /backend
       API_PROXY_TARGET: http://api:8000

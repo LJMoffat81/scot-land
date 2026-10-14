@@ -1,5 +1,18 @@
 # Operating the professional tool
 
+## Home PC / Cloudflare Tunnel deploy
+
+Public origin is the office PC (`docker-compose.home.yml` + `cloudflared`).
+Use the health-gated swap — **never** a bare `docker compose up -d --build` for
+live deploys (that caused Cloudflare 530/1033 when builds took the origin down).
+
+```powershell
+.\scripts\ops\deploy-home.ps1 -Pull
+```
+
+Full sequence, rollback, last-good SHA, and the free 5-minute uptime probe:
+**`docs/HOME_DEPLOY.md`**.
+
 ## Mandatory post-deploy smoke
 
 After every production or preview deploy, run the smoke scripts before calling

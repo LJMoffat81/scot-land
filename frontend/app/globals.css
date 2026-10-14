@@ -1661,6 +1661,32 @@ input {
   max-width: 44rem;
 }
 
+.developers-glossary-list {
+  margin: 0;
+  padding: 0;
+}
+
+.developers-glossary-item {
+  margin: 0 0 1rem;
+  padding: 0 0 0.85rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--slrg-navy) 10%, transparent);
+}
+
+.developers-glossary-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.developers-glossary-item h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}
+
+.developers-glossary-item p {
+  margin: 0;
+  line-height: 1.5;
+}
+
 .ledger-check-list {
   list-style: none;
   padding-left: 0;

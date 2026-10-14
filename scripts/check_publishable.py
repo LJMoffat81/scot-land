@@ -94,6 +94,7 @@ FORBIDDEN_PUBLIC_ROUTE_PROSE_WORDS = frozenset({
 PUBLIC_ROUTE_SCAN_PATHS = (
     "frontend/app/developers/page.tsx",
     "frontend/app/developers/checks/page.tsx",
+    "frontend/app/developers/glossary/page.tsx",
     "backend/layers/ledger.py",
     "backend/georgist/ledger.py",
     "backend/georgist/place_stack.py",

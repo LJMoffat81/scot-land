@@ -190,6 +190,7 @@ if (existsSync(nextHtml)) {
     { name: "ledger", re: /\bledger\b/i },
     { name: "headline/shadow", re: /headline\s*\/\s*shadow/i },
     // SW-015: ban each word alone in visitor prose (CSS box-shadow is in <style>).
+    // Glossary may define "shadow"; strip only [data-testid="developers-glossary"] first.
     { name: "headline", re: /\bheadline\b/i },
     { name: "shadow", re: /\bshadow\b/i },
     { name: "rates bill", re: /rates bill/i },
@@ -214,6 +215,17 @@ if (existsSync(nextHtml)) {
       re: /(?:\byield\b[\s\S]{0,80}?\d+(\.\d+)?\s*%|\d+(\.\d+)?\s*%[\s\S]{0,80}?\byield\b)/i,
     },
   ];
+  const stripDevelopersGlossaryBlock = (raw) =>
+    raw.replace(
+      /<div\b[^>]*\bdata-testid=["']developers-glossary["'][^>]*>[\s\S]*?<\/div>/gi,
+      " ",
+    );
+  const toProse = (raw) =>
+    raw
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<(pre|code)\b[\s\S]*?<\/\1>/gi, " ")
+      .replace(/<[^>]+>/g, " ");
   const violations = [];
   let methodologyProse = "";
   let developersProse = "";
@@ -227,18 +239,13 @@ if (existsSync(nextHtml)) {
       /<button\b[^>]*\baria-label\b[^>]*>[\s\S]*?<\/button>/gi,
       " ",
     );
-    const prose = html
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<(pre|code)\b[\s\S]*?<\/\1>/gi, " ")
-      .replace(/<[^>]+>/g, " ");
-    const proseForTimes = withoutAriaButtons
-      .replace(/<script[\s\S]*?<\/script>/gi, " ")
-      .replace(/<style[\s\S]*?<\/style>/gi, " ")
-      .replace(/<(pre|code)\b[\s\S]*?<\/\1>/gi, " ")
-      .replace(/<[^>]+>/g, " ");
+    const prose = toProse(html);
+    // Shadow ban stays global (including /developers); only the glossary block is exempt.
+    const proseForShadow = toProse(stripDevelopersGlossaryBlock(html));
+    const proseForTimes = toProse(withoutAriaButtons);
     for (const { name, re } of forbidden) {
-      if (re.test(prose)) {
+      const scan = name === "shadow" ? proseForShadow : prose;
+      if (re.test(scan)) {
         violations.push(`${rel}: ${name}`);
       }
     }

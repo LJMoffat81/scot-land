@@ -821,6 +821,9 @@ hla:
     https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/
   wfs_url: >-
     https://geo.spatialhub.scot/geoserver/sh_hls/wfs?service=wfs&typeName=sh_hls:pub_hls
+  # GeoServer gate: set SPATIALHUB_AUTHKEY in gitignored .env (never commit).
+  # Blank → layer stays "not loaded yet". docker-compose.home.yml passes it through.
+  api_env: SPATIALHUB_AUTHKEY
   # National SG ArcGIS FeatureServer exists but is PSGA/Digimap-restricted — not used.
   # Glasgow City Region OGL FeatureServer is regional only — not used as a national substitute.
   postgis_table: planning_sites
@@ -831,7 +834,8 @@ hla:
   raw_dir: data/external/spatialhub/hls   # gitignored — never commit raw downloads
   out_sr: 4326
   gaps:
-    - Spatial Hub anonymous WFS returns 403 from this host; load a local OGL extract into PostGIS
+    - Spatial Hub anonymous WFS returns 403; set SPATIALHUB_AUTHKEY for --from-wfs, or load a local OGL extract into PostGIS
+    - Without SPATIALHUB_AUTHKEY the overlay stays not loaded yet (never invent sites)
     - National ArcGIS “Housing Land Supply (Scotland)” FeatureServer is PSGA/Digimap — not OGL for this portal
     - Some site geometry is a buffer on a recorded easting/northing where polygons were unavailable
     - Audit capacity / remaining-homes fields are patchy by council and year

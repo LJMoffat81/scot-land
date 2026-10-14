@@ -61,6 +61,8 @@ assert.ok(
 assert.doesNotMatch(method, /residual method|Data Zone grain|configured land yield/i);
 assert.doesNotMatch(method, /4\.499%|4654e513|agr\.wide_range|× yield|→/);
 assert.doesNotMatch(method, /\(agr\.\w+\)/);
+assert.match(method, /about half to double\./);
+assert.doesNotMatch(method, /about half to double\s*\(/);
 
 const banner = readFileSync(join(frontendRoot, "lib/siteNav.ts"), "utf8");
 assert.match(
@@ -131,6 +133,7 @@ if (existsSync(nextHtml)) {
     { name: ".env", re: /\.env\b/ },
   ];
   // SW-017: add-only bans for public HTML outside /developers (yield details OK there).
+  // Scope narrowings (cleanup): × excludes aria-labelled buttons; \d+% only yield wording.
   const forbiddenOutsideDevelopers = [
     { name: "residual", re: /\bresidual\b/i },
     { name: "grain", re: /\bgrain\b/i },
@@ -139,7 +142,10 @@ if (existsSync(nextHtml)) {
     { name: "agr.*", re: /\bagr\.\w+/i },
     { name: "×", re: /×/ },
     { name: "→", re: /→/ },
-    { name: "yield %", re: /\d+(\.\d+)?\s*%/ },
+    {
+      name: "yield %",
+      re: /(?:\byield\b[\s\S]{0,80}?\d+(\.\d+)?\s*%|\d+(\.\d+)?\s*%[\s\S]{0,80}?\byield\b)/i,
+    },
   ];
   const violations = [];
   let methodologyProse = "";
@@ -148,7 +154,17 @@ if (existsSync(nextHtml)) {
     const html = readFileSync(file, "utf8");
     // Strip scripts/styles, then code samples (keep scanning /developers prose).
     // Styles removed first so CSS box-shadow never hits the shadow word ban.
+    // Aria-labelled buttons (close/dismiss ×) are stripped before the × ban only.
+    const withoutAriaButtons = html.replace(
+      /<button\b[^>]*\baria-label\b[^>]*>[\s\S]*?<\/button>/gi,
+      " ",
+    );
     const prose = html
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<(pre|code)\b[\s\S]*?<\/\1>/gi, " ")
+      .replace(/<[^>]+>/g, " ");
+    const proseForTimes = withoutAriaButtons
       .replace(/<script[\s\S]*?<\/script>/gi, " ")
       .replace(/<style[\s\S]*?<\/style>/gi, " ")
       .replace(/<(pre|code)\b[\s\S]*?<\/\1>/gi, " ")
@@ -161,7 +177,8 @@ if (existsSync(nextHtml)) {
     const isDevelopers = /(^|\/)developers(\/|$)/.test(rel);
     if (!isDevelopers) {
       for (const { name, re } of forbiddenOutsideDevelopers) {
-        if (re.test(prose)) {
+        const scan = name === "×" ? proseForTimes : prose;
+        if (re.test(scan)) {
           violations.push(`${rel}: ${name}`);
         }
       }

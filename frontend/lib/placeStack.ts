@@ -93,7 +93,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
   publication_note:
     "Per-hectare stack. Figures are being checked and aren't published yet. Planning uplift sits under land. Services of nature stay separate from Market and Modelled rows. Oil and gas sit outside the Scottish land total.",
   headline: {
-    label: "Scottish totals (Market + Modelled)",
+    label: "Scottish totals (Market and Modelled)",
     unit: "per hectare per year",
     sum_row_ids: ["1", "2", "3", "4"],
     total_placeholder: "—",
@@ -177,14 +177,14 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     sum_row_ids: ["5", "6", "7", "8", "10"],
     total_placeholder: "—",
     total_note:
-      "estimate stack total is separate from the Scottish totals. Totals per chip only, never across chips or price years.",
+      "Estimate stack total is separate from the Scottish totals. Totals per chip only, never across chips or price years.",
     rows: [
       {
         id: "5",
         label: "Aquaculture licence rent",
         tag: "shadow",
         status: "not_yet",
-        status_note: "estimate — total minus CES seabed paid. Separate stack.",
+        status_note: "Estimate — total minus CES seabed paid. Separate stack.",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -238,7 +238,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
         label: "Ecosystem services",
         tag: "shadow",
         status: "not_yet",
-        status_note: "estimate, later.",
+        status_note: "Estimate, later.",
         parent_id: null,
         nested: false,
         in_total: true,

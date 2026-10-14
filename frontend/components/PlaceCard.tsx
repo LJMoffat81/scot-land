@@ -142,7 +142,7 @@ export function PlaceCard({
           onClick={onClose}
           aria-label="Close place card"
         >
-          x
+          ×
         </button>
       ) : null}
 

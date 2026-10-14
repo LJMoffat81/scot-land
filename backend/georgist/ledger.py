@@ -221,7 +221,7 @@ def ledger_checks() -> list[dict[str, Any]]:
         _check(
             "C-totals",
             meaning=(
-                "Totals per chip only, never across chips or price years; estimate total "
+                "Totals per chip only, never across chips or price years; Estimate total "
                 "separate, never summed; oil & gas + benchmarks outside both"
             ),
             result="pass",
@@ -242,7 +242,7 @@ def ledger_checks() -> list[dict[str, Any]]:
                     "id": "shadow_never_summed",
                     "status": "pass",
                     "detail": (
-                        "estimate stack is separate and never added into the "
+                        "Estimate stack is separate and never added into the "
                         "Scottish totals."
                     ),
                 },
@@ -501,7 +501,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="estimate stack; total licence rent minus CES seabed paid (C-aqua).",
+            note="Estimate stack; total licence rent minus CES seabed paid (C-aqua).",
             stack="shadow",
         ),
         _row(
@@ -575,7 +575,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="Later — estimate stack; not yet modelled.",
+            note="Later — Estimate stack; not yet modelled.",
             stack="shadow",
         ),
     ]
@@ -621,7 +621,7 @@ def ledger_totals_policy(*, rows: list[dict[str, Any]] | None = None) -> dict[st
             "range": None,
             "never_summed_into_headline": True,
             "note": (
-                "estimate stack drawn separately; never added into the Scottish totals."
+                "Estimate stack drawn separately; never added into the Scottish totals."
             ),
         },
         "outside": {

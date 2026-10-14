@@ -72,9 +72,9 @@ export default function MethodologyContent() {
           With other sensible assumptions, a Data Zone rent range in most
           councils could be anywhere from about half to 1.3 times our central
           estimate. Where house prices are low compared with rebuild costs, the
-          range is wider: about half to double (council home-plot sensitivity
-          table). This covers home Data Zones, not farmland, and never a
-          single-property figure. Figures will be checked by an independent
+          range is wider: about half to double. This covers home Data Zones, not
+          farmland, and never a single-property figure. Figures will be checked
+          by an independent
           valuation step before anything is published. That check is part of
           the Scot-LAND model.
         </p>

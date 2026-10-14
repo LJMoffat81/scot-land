@@ -9,7 +9,10 @@ export type DownloadBundle = {
   whats_in_it: string;
   format: string;
   licence: string;
+  /** Data vintage (e.g. VDL survey year 2025) — not the Data Zone set. */
   updated: string;
+  /** Data Zone boundary set when distinct from updated (e.g. "2022" / "2011"). */
+  zone_set?: string;
   file: string | null;
   bytes: number | null;
   api_anchor: string;

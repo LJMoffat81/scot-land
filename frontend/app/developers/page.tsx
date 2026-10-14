@@ -149,6 +149,12 @@ export default function DevelopersPage() {
                     <dt>Updated</dt>
                     <dd>{bundle.updated}</dd>
                   </div>
+                  {bundle.zone_set ? (
+                    <div>
+                      <dt>Zone set</dt>
+                      <dd>{bundle.zone_set}</dd>
+                    </div>
+                  ) : null}
                 </dl>
                 {hasFile && bundle.href ? (
                   <a

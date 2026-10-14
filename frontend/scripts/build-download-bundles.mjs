@@ -42,7 +42,10 @@ const {
 const OGL = "OGL v3.0";
 const ESTIMATE_NA =
   "not applicable: hectares and counts, not a value";
-const ESTIMATE_CATALOGUE = "not applicable: source list, not a value";
+/** In-file label for source-catalogue.csv rows (not a value estimate). */
+const ESTIMATE_CATALOGUE = "not applicable: catalogue entry";
+/** SVDLS survey year — distinct from Data Zone vintage (zone_set). */
+const VDL_SURVEY_YEAR = "2025";
 
 /** Public VDL attribution (zone rollup — matches README_svdls_hls.md). */
 const VDL_LICENCE_ATTRIBUTION =
@@ -65,7 +68,7 @@ const CATALOGUE_ROWS = [
     licence_url:
       "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
     licence_attribution: INSPIRE_LICENCE_ATTRIBUTION,
-    estimate_label: ESTIMATE_NA,
+    estimate_label: ESTIMATE_CATALOGUE,
     status: "on_map",
     vintage: String(INSPIRE_HARVEST_YEAR),
   },
@@ -78,7 +81,7 @@ const CATALOGUE_ROWS = [
       "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
     licence_attribution:
       `${OGL} — Scottish Government Data Zones 2022; contains OS data © Crown copyright and database right 2026`,
-    estimate_label: ESTIMATE_NA,
+    estimate_label: ESTIMATE_CATALOGUE,
     status: "on_map",
     vintage: "2022",
   },
@@ -90,7 +93,7 @@ const CATALOGUE_ROWS = [
     licence_url:
       "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
     licence_attribution: `${OGL} — UK House Price Index (ONS / Land Registry)`,
-    estimate_label: ESTIMATE_NA,
+    estimate_label: ESTIMATE_CATALOGUE,
     status: "on_map",
     vintage: "2025",
   },
@@ -102,9 +105,9 @@ const CATALOGUE_ROWS = [
     licence_url:
       "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
     licence_attribution: VDL_LICENCE_ATTRIBUTION,
-    estimate_label: ESTIMATE_NA,
+    estimate_label: ESTIMATE_CATALOGUE,
     status: "on_map",
-    vintage: "2025",
+    vintage: VDL_SURVEY_YEAR,
   },
   {
     id: "ldp_allocations",
@@ -116,7 +119,7 @@ const CATALOGUE_ROWS = [
       "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
     licence_attribution:
       `${OGL} — Local Development Plans (Spatial Hub / Improvement Service / councils)`,
-    estimate_label: ESTIMATE_NA,
+    estimate_label: ESTIMATE_CATALOGUE,
     status: "on_map",
     vintage: "2024",
   },
@@ -128,7 +131,7 @@ const CATALOGUE_ROWS = [
     licence_url:
       "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
     licence_attribution: `${OGL} — SEPA hydropower sites and CAR water licences`,
-    estimate_label: ESTIMATE_NA,
+    estimate_label: ESTIMATE_CATALOGUE,
     status: "on_map",
     vintage: "2024",
   },
@@ -141,7 +144,7 @@ const CATALOGUE_ROWS = [
     licence_url:
       "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
     licence_attribution: `${OGL} — NatureScot protected sites (SSSI, SPA, SAC, NNR)`,
-    estimate_label: ESTIMATE_NA,
+    estimate_label: ESTIMATE_CATALOGUE,
     status: "on_map",
     vintage: "2024",
   },
@@ -154,7 +157,7 @@ const CATALOGUE_ROWS = [
       "https://www.hutton.ac.uk/wp-content/uploads/2024/05/The-James-Hutton-Institute-Open-Data-Licence-download.pdf",
     licence_attribution:
       "James Hutton Open Data Licence — Land Capability for Agriculture (James Hutton Institute)",
-    estimate_label: ESTIMATE_NA,
+    estimate_label: ESTIMATE_CATALOGUE,
     status: "on_map",
     vintage: "2017",
   },
@@ -167,7 +170,7 @@ const CATALOGUE_ROWS = [
       "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
     licence_attribution:
       `${OGL} — Crofting Commission Register of Crofts and common grazings lists`,
-    estimate_label: ESTIMATE_NA,
+    estimate_label: ESTIMATE_CATALOGUE,
     status: "on_map",
     vintage: "2024",
   },
@@ -296,11 +299,12 @@ const bundles = [];
         name: pack.name,
         whats_in_it:
           `Data Zone ${pack.vintage} rollup of vacant and derelict land hectares ` +
-          `(SVDLS 2025 / OGL inputs). Zone level only — not single sites as a title plan.` +
+          `(SVDLS ${VDL_SURVEY_YEAR} / OGL inputs). Zone level only — not single sites as a title plan.` +
           (pack.main ? " Main download (DZ2022)." : ""),
         format: "CSV",
         licence: OGL,
-        updated: pack.vintage,
+        updated: VDL_SURVEY_YEAR,
+        zone_set: pack.vintage,
         file: pack.outName,
         bytes,
         api_anchor: "api-vdl",
@@ -321,7 +325,8 @@ const bundles = [];
           "Packaged CSV is not available in this build.",
         format: "CSV",
         licence: OGL,
-        updated: pack.vintage,
+        updated: VDL_SURVEY_YEAR,
+        zone_set: pack.vintage,
         file: null,
         bytes: null,
         api_anchor: "api-vdl",
@@ -392,6 +397,12 @@ bundles.push(
   writeCsv(dest, headers, CATALOGUE_ROWS);
   assertCreditColumns(dest);
   const text = readFileSync(dest, "utf8");
+  assert.match(text, /not applicable: catalogue entry/);
+  assert.equal(
+    text.includes("not applicable: hectares and counts"),
+    false,
+    "catalogue rows must not reuse the hectares/counts estimate_label",
+  );
   assert.match(
     text,
     /Contains OS data © Crown copyright and database right 2026/,
@@ -429,19 +440,21 @@ bundles.push(
   console.log(`catalog: wrote ${relative(frontendRoot, dest)} (${bytes} bytes)`);
 }
 
-const packagedUpdated = bundles
-  .filter((b) => b.file)
+// Top-level updated = packaged data vintage (VDL survey year), not zone_set
+// and not catalogue row harvest years (e.g. INSPIRE 2026).
+const packagedDataYears = bundles
+  .filter((b) => b.file && b.id.startsWith("vdl-"))
   .map((b) => String(b.updated));
 const manifestUpdated =
-  packagedUpdated.sort().at(-1) ??
-  String(Math.max(...bundles.map((b) => Number(b.updated) || 0)));
+  packagedDataYears.sort().at(-1) ?? VDL_SURVEY_YEAR;
 
 const manifest = {
   version: 1,
   updated: manifestUpdated,
   note:
     "Open downloads only. Missing files show as JSON (for developers) on /developers#downloads. " +
-    "Each CSV carries estimate_label and licence_attribution columns inside the file.",
+    "Each CSV carries estimate_label and licence_attribution columns inside the file. " +
+    "VDL bundles use updated for the survey year and zone_set for the Data Zone vintage (2022/2011).",
   bundles,
 };
 

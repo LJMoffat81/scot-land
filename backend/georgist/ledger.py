@@ -6,7 +6,7 @@ machine-readable catalogue the Data section and place stack consume. It is not
 a map-panel layer dump and never publishes plot-level £.
 
 Public modelled AGR / rent £ stay withheld until ECONOMIC_RULES is approved.
-``not_yet`` rows never emit a £0 range. Blocked zones publish nothing.
+``not_yet`` rows never emit a zero-money range. Blocked zones publish nothing.
 """
 
 from __future__ import annotations
@@ -172,27 +172,36 @@ def ledger_checks() -> list[dict[str, Any]]:
         ),
         _check(
             "C-planning",
-            meaning="Planning uplift nested in 1, never added",
+            meaning="Planning uplift already included in Surface site rent, never added",
             result="pass",
             definition={"rule": "planning_uplift_nested_1a"},
             test_log=[
                 {
                     "id": "nested_1a",
                     "status": "pass",
-                    "detail": "Row 1a planning uplift is nested under row 1 and never summed as a sibling.",
+                    "detail": (
+                        "Row 1a planning uplift is already included in Surface "
+                        "site rent and never summed as a sibling."
+                    ),
                 }
             ],
         ),
         _check(
             "C-overlay",
-            meaning="Constraints £0 (designations, flood, crofting, LCA)",
+            meaning=(
+                "Constraints: Limits use (not a money value) "
+                "(designations, flood, crofting, LCA)"
+            ),
             result="pass",
             definition={"rule": "constraints_zero_rent"},
             test_log=[
                 {
                     "id": "constraints_zero",
                     "status": "pass",
-                    "detail": "Constraints change best use only; no rent row; £0.",
+                    "detail": (
+                        "Constraints change best use only; no rent row; "
+                        "Limits use (not a money value)."
+                    ),
                 }
             ],
         ),
@@ -212,8 +221,8 @@ def ledger_checks() -> list[dict[str, Any]]:
         _check(
             "C-totals",
             meaning=(
-                "Headline = market+proxy; shadow total separate, never summed; "
-                "oil & gas + benchmarks outside both"
+                "Headline = separate market and proxy totals; shadow total "
+                "separate, never summed; oil & gas + benchmarks outside both"
             ),
             result="pass",
             definition={
@@ -225,7 +234,9 @@ def ledger_checks() -> list[dict[str, Any]]:
                 {
                     "id": "headline_market_proxy",
                     "status": "pass",
-                    "detail": "Headline totals use market+proxy only.",
+                    "detail": (
+                        "Headline totals use separate market and proxy totals only."
+                    ),
                 },
                 {
                     "id": "shadow_never_summed",
@@ -353,9 +364,11 @@ def _row(
     if stack not in ("headline", "shadow", "outside"):
         raise ValueError(f"unknown stack for row {row_id}: {stack}")
     if status == "not_yet" and range_band is not None:
-        raise ValueError(f"row {row_id}: not_yet must not carry a £ range (never £0)")
+        raise ValueError(
+            f"row {row_id}: not_yet must not carry a £ range (never a money value)"
+        )
     if status == "not_yet" and range_band is None:
-        # Explicit null — UI must not invent £0.
+        # Explicit null — UI must not invent a money value.
         pass
     out: dict[str, Any] = {
         "id": row_id,
@@ -382,10 +395,10 @@ def _row(
 
 
 def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
-    """Rows 1–10 (+ nested 1a). Public: no modelled AGR £ until ECONOMIC_RULES approved.
+    """Rows 1–10 (+ 1a already included in surface). Public: no modelled AGR £.
 
     ``internal`` is reserved for attaching zone valuation bands once approved;
-    today both paths keep ``range`` null so not_yet is never shown as £0.
+    today both paths keep ``range`` null so not_yet is never shown as a money value.
     """
     del internal  # no GBP bands wired yet; keep signature for callers/tests
 
@@ -419,7 +432,10 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="NESTED in row 1 — never added as a sibling total (C-planning).",
+            note=(
+                "Already included in Surface site rent — never added as a "
+                "sibling total (C-planning)."
+            ),
             nested_under="1",
             stack="headline",
         ),
@@ -509,7 +525,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             range_band=None,
             note=(
                 "Accounting position ~0 when modelled — status remains not_yet so "
-                "the UI never shows a placeholder £0."
+                "the UI never shows a placeholder money value."
             ),
             stack="shadow",
         ),
@@ -564,7 +580,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
 
 
 def ledger_totals_policy(*, rows: list[dict[str, Any]] | None = None) -> dict[str, Any]:
-    """Headline = market+proxy; shadow separate; oil & gas + benchmarks outside both."""
+    """Headline = separate market and proxy totals; shadow separate; outside both."""
     rows = rows if rows is not None else ledger_rows()
     headline_ids = [
         r["id"]
@@ -574,7 +590,7 @@ def ledger_totals_policy(*, rows: list[dict[str, Any]] | None = None) -> dict[st
     shadow_ids = [r["id"] for r in rows if r.get("stack") == "shadow"]
     outside_ids = [r["id"] for r in rows if r.get("stack") == "outside" or r.get("outside_scottish_total")]
 
-    # Until any counted market/proxy range exists, totals stay not_yet (never £0).
+    # Until any counted market/proxy range exists, totals stay not_yet (never a money value).
     headline_ready = any(
         r["status"] == "counted" and r.get("range") is not None and r["id"] in headline_ids for r in rows
     )
@@ -587,8 +603,11 @@ def ledger_totals_policy(*, rows: list[dict[str, Any]] | None = None) -> dict[st
             "tiers": ["market", "proxy"],
             "row_ids": headline_ids,
             "status": "counted" if headline_ready else "not_yet",
-            "range": None,  # never invent £0 for not_yet
-            "note": "Sum of market+proxy rows only; nested 1a never added.",
+            "range": None,  # never invent a money value for not_yet
+            "note": (
+                "Sum of separate market and proxy totals only; "
+                "row 1a already included in Surface site rent — never added."
+            ),
         },
         "shadow": {
             "row_ids": shadow_ids,
@@ -655,7 +674,7 @@ def ledger_zone_payload(
     *,
     zone_status: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Zone-level ledger. Blocked zones return an empty published=false stub — no £0."""
+    """Zone-level ledger. Blocked zones return an empty published=false stub."""
     code, vin = resolve_ledger_zone(zone_id, vintage)
     status = dict(zone_status) if zone_status is not None else _zone_surface_status(code, vin)
     pub = status.get("publication_status") or "ok"
@@ -704,8 +723,9 @@ def ledger_catalog_base() -> dict[str, Any]:
         "version": 2,
         "kind": "natural_capital_ledger",
         "brief": (
-            "Natural capital ledger rows (1–10 + nested 1a), checks, and exclusions. "
-            "Driven by this catalog — not a map-panel layer dump."
+            "Natural capital ledger rows (1–10 + 1a already included in surface), "
+            "checks, and exclusions. Driven by this catalog — not a map-panel "
+            "layer dump."
         ),
         "spec": "georgist-ledger-accounting-rules (ROWS / CHECKS / SCEPTIC NEEDS)",
         "grain": "zone-level only; never plots; nothing published for blocked zones",
@@ -715,7 +735,7 @@ def ledger_catalog_base() -> dict[str, Any]:
             "modelled_agr_gbp_public": ECONOMIC_RULES_APPROVED,
             "note": (
                 "Public responses carry row metadata and null ranges until "
-                "ECONOMIC_RULES is approved; not_yet is never shown as £0."
+                "ECONOMIC_RULES is approved; not_yet is never shown as a money value."
             ),
         },
         "benchmark_label": "benchmark only, not inputs",

@@ -11,6 +11,7 @@ export type PlaceStackTag =
   | "shadow"
   | "market_or_proxy"
   | "reported"
+  | "already_included"
   | "nested";
 
 export type PlaceStackRowStatus =
@@ -116,9 +117,10 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
       {
         id: "1a",
         label: "Planning uplift",
-        tag: "nested",
+        tag: "already_included",
         status: "not_yet",
-        status_note: "Of which under surface land — never added as a sibling total.",
+        status_note:
+          "Already included in Surface site rent — never added as a sibling total.",
         parent_id: "1",
         nested: true,
         in_total: false,
@@ -175,7 +177,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     sum_row_ids: ["5", "6", "7", "8", "10"],
     total_placeholder: "—",
     total_note:
-      "Shadow stack total is separate from the headline (C-totals). Never added into market+proxy.",
+      "Shadow stack total is separate from the headline (C-totals). Never added into market or proxy totals.",
     rows: [
       {
         id: "5",
@@ -386,8 +388,10 @@ export function tagLabel(tag: string): string {
       return "market / proxy";
     case "reported":
       return "outside";
+    case "already_included":
+      return "already included";
     case "nested":
-      return "of which";
+      return "already included";
     default: {
       const _exhaustive: string = tag;
       return _exhaustive;

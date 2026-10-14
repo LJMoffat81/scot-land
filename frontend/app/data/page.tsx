@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import GlossaryBox from "@/components/GlossaryBox";
 import HashRedirect from "@/components/HashRedirect";
 import ResearchBanner from "@/components/ResearchBanner";
@@ -25,10 +25,16 @@ type CatalogPayload = {
   layers?: CatalogLayer[];
 };
 
+function asText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value == null) return "";
+  return String(value);
+}
+
 /**
- * Data & sources — site rewrite section B (wording pending Laurie approval).
+ * Data & sources — grouped Land / Resources / Nature / Limits.
  * Sources table reads /api/catalog.json; rows need a licence_url.
- * Grouped into collapsible Land / Resources / Nature / Limits.
+ * Hardened against catalogue shape surprises (site-watch PR B item 7).
  */
 export default function DataChecksPage() {
   const [layers, setLayers] = useState<CatalogLayer[]>([]);
@@ -37,9 +43,13 @@ export default function DataChecksPage() {
   useEffect(() => {
     void apiJson<CatalogPayload>("/api/catalog.json")
       .then((body) => {
-        const withLicence = (body.layers ?? []).filter(
-          (layer) => Boolean(layer.licence_url?.trim()),
-        );
+        const raw = Array.isArray(body?.layers) ? body.layers : [];
+        const withLicence = raw.filter((layer) => {
+          if (!layer || typeof layer !== "object") return false;
+          const id = asText((layer as CatalogLayer).id).trim();
+          const licenceUrl = asText((layer as CatalogLayer).licence_url).trim();
+          return Boolean(id && licenceUrl);
+        }) as CatalogLayer[];
         setLayers(withLicence);
         setError(null);
       })
@@ -49,7 +59,14 @@ export default function DataChecksPage() {
       });
   }, []);
 
-  const groups = groupCatalogSources(layers);
+  const groups = useMemo(() => {
+    try {
+      return groupCatalogSources(layers);
+    } catch (err) {
+      console.error("data sources grouping failed", err);
+      return [];
+    }
+  }, [layers]);
 
   return (
     <main className="downloads-page data-ledger-page methodology-page">
@@ -99,26 +116,26 @@ export default function DataChecksPage() {
                 </thead>
                 <tbody>
                   {bucket.layers.map((layer) => (
-                    <tr key={layer.id} data-source-id={layer.id}>
-                      <td>{layer.label}</td>
-                      <td>{layer.description || "—"}</td>
+                    <tr key={asText(layer.id)} data-source-id={asText(layer.id)}>
+                      <td>{asText(layer.label) || asText(layer.id)}</td>
+                      <td>{asText(layer.description) || "—"}</td>
                       <td>
-                        {layer.licence_url ? (
+                        {asText(layer.licence_url) ? (
                           <a
-                            href={layer.licence_url}
+                            href={asText(layer.licence_url)}
                             target="_blank"
                             rel="noreferrer"
                           >
-                            {layer.licence || "Licence"}
+                            {asText(layer.licence) || "Licence"}
                           </a>
                         ) : (
-                          layer.licence || "—"
+                          asText(layer.licence) || "—"
                         )}
                       </td>
                       <td>
-                        {layer.source_url ? (
+                        {asText(layer.source_url) ? (
                           <a
-                            href={layer.source_url}
+                            href={asText(layer.source_url)}
                             target="_blank"
                             rel="noreferrer"
                           >
@@ -145,9 +162,7 @@ export default function DataChecksPage() {
 
       <h2>Left out, and why</h2>
       <ul>
-        <li>
-          Who Owns Scotland and other paid ownership data: paid.
-        </li>
+        <li>Who Owns Scotland and other paid ownership data: paid.</li>
         <li>Full British Geological Survey minerals data: paid.</li>
         <li>
           Property website listings (Zoopla, Rightmove and others): not allowed.

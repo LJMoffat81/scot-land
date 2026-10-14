@@ -37,7 +37,12 @@ def test_ledger_route_returns_rows_and_constraints():
     body = r.json()
     assert [row["id"] for row in body["rows"]] == EXPECTED_ROW_IDS
     assert [c["id"] for c in body["constraints"]] == EXPECTED_CONSTRAINT_IDS
-    assert "£0, changes best use" in body["constraints"][0]["rule"]
+    assert "Limits use (not a money value)" in body["constraints"][0]["rule"]
+    assert "£0" not in body["constraints"][0]["rule"]
+    assert "market+proxy" not in body.get("brief", "")
+    dumped = str(body)
+    assert "£0" not in dumped
+    assert "market+proxy" not in dumped
     # No modelled rent figures in the public ledger body.
     dumped = r.text
     assert "annual_ground_rent" not in dumped

@@ -159,6 +159,7 @@ export type LedgerTag =
   | "shadow"
   | "market_or_proxy"
   | "reported"
+  | "already_included"
   | "nested";
 
 export type LedgerRow = {
@@ -213,9 +214,10 @@ export const LEDGER_FIXTURE_ROWS: LedgerRow[] = [
     label: "Planning uplift",
     parent_id: "1",
     nested: true,
-    tag: "nested",
+    tag: "already_included",
     status: "not_yet",
-    status_note: "Of which under surface land — never added as a sibling total.",
+    status_note:
+      "Already included in Surface site rent — never added as a sibling total.",
     amount_placeholder: "—",
   },
   {
@@ -395,8 +397,10 @@ export function tagLabel(tag: LedgerTag): string {
       return "market / proxy";
     case "reported":
       return "outside";
+    case "already_included":
+      return "already included";
     case "nested":
-      return "of which";
+      return "already included";
     default: {
       const _exhaustive: never = tag;
       return _exhaustive;

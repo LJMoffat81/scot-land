@@ -208,11 +208,12 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
     id: "data_zones",
     group: "boundaries",
     label: "Data zones",
-    description: "Scottish Government Data Zone boundaries (2022).",
+    description: "Data Zone boundaries 2022.",
     licence: "Open Government Licence v3.0",
     licenceUrl: OGL_V3,
   },
 ];
+
 
 export function mapDrawerLayersByGroup(): Array<{
   key: MapLayerGroupKey;

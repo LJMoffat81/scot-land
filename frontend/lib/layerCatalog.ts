@@ -89,7 +89,7 @@ export const LAYER_ATTRIBUTION: Record<
     licence: "Not published on the public map yet",
   },
   data_zones: {
-    source: "Scottish Government Data Zone boundaries 2011",
+    source: "Scottish Government Data Zone boundaries 2022",
     licence:
       "Open Government Licence v3.0 — outlines + open rollups; no AGR £",
     sourceUrl:

@@ -79,7 +79,8 @@ class Lookup:
 
     def to_dict(self) -> dict[str, Any]:
         by_vintage = {z["vintage"]: z for z in self.zones}
-        primary = by_vintage.get(2011) or by_vintage.get(2022)
+        # Default public grain is DZ2022; 2011 only when that vintage alone is present.
+        primary = by_vintage.get(2022) or by_vintage.get(2011)
         return {
             # Back-compat with the old /layers/context/data-zones/at shape:
             "code": primary["code"] if primary else None,

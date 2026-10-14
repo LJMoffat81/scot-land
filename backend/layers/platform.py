@@ -27,6 +27,8 @@ from layers.registers import registers_for_council
 from layers.cadastral import OGL_V3_LICENCE_PHRASE as PARCELS_OGL_PHRASE
 from layers.cadastral import OGL_V3_URL as PARCELS_OGL_URL
 from layers.cadastral import parcel_source_meta
+from layers.iz_names import iz_name
+from layers.nrs_places import lookup_at as nrs_place_at
 from layers.scotwind import OGL_LICENCE_URL as SCOTWIND_LICENCE_URL
 from layers.scotwind import source_meta as scotwind_source_meta
 from layers.vdl import query_point as vdl_at_point
@@ -172,10 +174,10 @@ def platform_catalog() -> dict[str, Any]:
                 "status": "live",
                 "label": "Data Zone boundaries",
                 "description": (
-                    "2011 Data Zone outlines from PostGIS dz_boundaries when loaded "
-                    "(Georgist/Valuation), else SG StatisticalUnits viewport query. "
-                    "Hover/click: code, name, council, population and dwellings. "
-                    "No AGR £ or Surface Rent on the map."
+                    "Data Zone boundaries 2022 outlines from PostGIS dz_boundaries "
+                    "when loaded (Georgist/Valuation), else SG StatisticalUnits "
+                    "viewport query. Hover/click: code, name, council, population "
+                    "and dwellings. No AGR £ or Surface Rent on the map."
                 ),
                 "endpoint": "/layers/open/data-zones",
                 "licence": "Open Government Licence v3.0",
@@ -184,7 +186,7 @@ def platform_catalog() -> dict[str, Any]:
                     "open-government-licence/version/3/"
                 ),
                 "attribution": (
-                    "Scottish Government Data Zone boundaries 2011 (OGL). "
+                    "Scottish Government Data Zone boundaries 2022 (OGL). "
                     "Outlines only — not a rent."
                 ),
                 "minzoom": 10,
@@ -270,9 +272,9 @@ def platform_catalog() -> dict[str, Any]:
                 "description": (
                     "Spatial Hub Housing Land Supply (Housing Land Audit sites). "
                     "PostGIS ingest of the OGL open product (503 when unloaded). "
-                    "Natural capital ledger row 1a (planning uplift, nested) — "
-                    "not a LayersPanel toggle. Audit polygons, not a title. "
-                    "No public AGR £."
+                    "Natural capital ledger row 1a (planning uplift, already "
+                    "included in surface) — not a LayersPanel toggle. Audit "
+                    "polygons, not a title. No public AGR £."
                 ),
                 "endpoint": "/layers/open/hla",
                 "licence": "OGL-3.0",
@@ -349,7 +351,8 @@ def platform_catalog() -> dict[str, Any]:
                 "description": (
                     "NatureScot SSSI boundaries (OGL-3.0). Indicative designations "
                     "from PostGIS ingest — not a title plan. Natural capital Constraint "
-                    "(£0, no rent row); changes best use only. 503 when unloaded."
+                    "(Limits use (not a money value), no rent row); changes best use "
+                    "only. 503 when unloaded."
                 ),
                 "endpoint": "/layers/open/sssi",
                 "licence": "OGL-3.0",
@@ -367,8 +370,8 @@ def platform_catalog() -> dict[str, Any]:
                 "label": "NatureScot designations",
                 "description": (
                     "NatureScot SPA, SAC and NNR boundaries (OGL-3.0). "
-                    "SSSI is a separate layer. Constraint (£0, no rent row). "
-                    "Indicative — 503 when unloaded."
+                    "SSSI is a separate layer. Constraint (Limits use (not a money "
+                    "value), no rent row). Indicative — 503 when unloaded."
                 ),
                 "endpoint": "/layers/open/naturescot-designations",
                 "licence": "OGL-3.0",
@@ -475,9 +478,9 @@ def platform_catalog() -> dict[str, Any]:
                 "label": "Land capability for agriculture",
                 "description": (
                     "James Hutton Institute LCA 1:250,000 — soil and climate "
-                    "capability classes. Ledger constraint (£0) — changes best "
-                    "permitted use only; not a rent or title. BBox from PostGIS "
-                    "ingest (503 when unloaded)."
+                    "capability classes. Ledger constraint (Limits use (not a "
+                    "money value)) — changes best permitted use only; not a rent "
+                    "or title. BBox from PostGIS ingest (503 when unloaded)."
                 ),
                 "endpoint": "/layers/open/lca",
                 "licence": "James Hutton Institute Open Data Licence",
@@ -867,7 +870,11 @@ def _square_reference(lat: float, lng: float) -> str:
 
 
 def _intermediate_zone_for(data_zone: dict[str, Any]) -> dict[str, Any]:
-    """Intermediate Zone name for a Data Zone. Honest No data when name unknown."""
+    """Intermediate Zone from zone_spine + official NRS/SG name lookup.
+
+    Never show \"No data\" when the IZ code is known — prefer the official name,
+    else the code itself.
+    """
     code = data_zone.get("code")
     vintage = data_zone.get("vintage")
     if not code or vintage is None:
@@ -889,13 +896,52 @@ def _intermediate_zone_for(data_zone: dict[str, Any]) -> dict[str, Any]:
     if not row:
         return {"status": "no_data", "code": None, "name": None, "note": "No data"}
     iz_code = row.get("iz_code") if isinstance(row, dict) else row[0]
-    # IZ names are not yet loaded (roll-up gap) — show code under No data.
+    if not iz_code:
+        return {"status": "no_data", "code": None, "name": None, "note": "No data"}
+    name = iz_name(str(iz_code), int(vintage))
+    if name:
+        return {
+            "status": "ok",
+            "code": iz_code,
+            "name": name,
+            "note": None,
+            "licence": "OGL v3.0 — NRS/Scottish Government Intermediate Zones",
+        }
+    # Code known but official name not in the lookup yet — never "No data".
     return {
-        "status": "no_data",
+        "status": "ok",
         "code": iz_code,
         "name": None,
-        "note": "No data",
+        "note": "name not loaded yet",
+        "licence": "OGL v3.0 — NRS/Scottish Government Intermediate Zones",
     }
+
+
+def _place_label_from_nrs(
+    lat: float,
+    lng: float,
+    *,
+    council_name: str | None,
+    postcode: str | None,
+) -> str:
+    """Title from NRS locality/settlement; fall back to council then postcode."""
+    locality = nrs_place_at("localities", lat, lng)
+    settlement = nrs_place_at("settlements", lat, lng)
+    loc_name = (locality or {}).get("name") if isinstance(locality, dict) else None
+    set_name = (settlement or {}).get("name") if isinstance(settlement, dict) else None
+    loc_name = str(loc_name).strip() if loc_name else None
+    set_name = str(set_name).strip() if set_name else None
+    if set_name and loc_name and set_name.lower() != loc_name.lower():
+        return f"{set_name}, {loc_name}"
+    if loc_name:
+        return loc_name
+    if set_name:
+        return set_name
+    if council_name:
+        return str(council_name).strip()
+    if postcode:
+        return str(postcode).strip()
+    return "This place"
 
 
 def _agr_rows() -> list[dict[str, Any]]:
@@ -1337,7 +1383,9 @@ def place_context(
     outline = _land_register_outline(lat, lng)
     if outline is not None:
         card["land_register_outline"] = outline
-    card["place_label"] = council_name or postcode
+    card["place_label"] = _place_label_from_nrs(
+        lat, lng, council_name=council_name, postcode=postcode
+    )
     card["square_reference"] = _square_reference(lat, lng)
     card["intermediate_zone"] = _intermediate_zone_for(card["data_zone"])
     card["agr_rows"] = _agr_rows()
@@ -1345,4 +1393,19 @@ def place_context(
     card["holder"] = _holder_for(card)
     card["layers"] = _layers_at_point(card)
     card["links"] = _place_links(card)
+    # Land outline for the place card — never expose parcel ID on the public card.
+    parcel_block = card.get("parcel") or {}
+    card["land_outline"] = {
+        "status": (outline or {}).get("status") if outline else (
+            "inside_outline" if parcel_block.get("found") else "unknown"
+        ),
+        "label": "Land outline",
+        "area_sqm": parcel_block.get("area_sqm"),
+        "note": (
+            (outline or {}).get("note")
+            or parcel_block.get("note")
+            or "Registered extent outline only — not a title sheet."
+        ),
+        # Explicitly omit inspire_id / national_reference from public card field.
+    }
     return card

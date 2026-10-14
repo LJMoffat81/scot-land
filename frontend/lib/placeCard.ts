@@ -114,6 +114,13 @@ export type PlaceCardPayload = {
     area_sqm?: number | null;
     note?: string | null;
   } | null;
+  /** Public land-outline block — never carries parcel ID. */
+  land_outline?: {
+    status?: string | null;
+    label?: string | null;
+    area_sqm?: number | null;
+    note?: string | null;
+  } | null;
   public_or_crown?: {
     on_this_point?: boolean | null;
     holdings?: Array<{
@@ -302,6 +309,12 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
     note: "Private names and Sasine extents stay on ScotLIS / paid products.",
   },
   land_register_outline: { status: "inside_outline" },
+  land_outline: {
+    status: "inside_outline",
+    label: "Land outline",
+    area_sqm: 240,
+    note: "Registered extent outline only — not a title sheet.",
+  },
   layers: [
     {
       id: "boundaries",

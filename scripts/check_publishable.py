@@ -68,6 +68,34 @@ FORBIDDEN_PUBLIC_AGR_PROPERTIES = frozenset({
 FORBIDDEN_PUBLIC_FILL_TOKENS = frozenset({
     "model_fill_dz2022",
 })
+# Additive: banned visitor wording on public developers / catalog / ledger routes.
+# Does not weaken FORBIDDEN_PUBLIC_AGR_PROPERTIES.
+# "nested" is only flagged inside visitor prose (strings with whitespace), so the
+# machine boolean key ``nested`` / ``nested_under`` is allowed.
+FORBIDDEN_PUBLIC_ROUTE_PHRASES = frozenset({
+    "£0",
+    "market+proxy",
+})
+FORBIDDEN_PUBLIC_ROUTE_PROSE_WORDS = frozenset({
+    "nested",
+})
+# Source modules / pages that feed /developers, /developers/checks, catalog.json, ledger.json.
+PUBLIC_ROUTE_SCAN_PATHS = (
+    "frontend/app/developers/page.tsx",
+    "frontend/app/developers/checks/page.tsx",
+    "backend/layers/ledger.py",
+    "backend/georgist/ledger.py",
+    "backend/georgist/place_stack.py",
+)
+NESTED_WORD = re.compile(r"(?i)\bnested\b")
+# Prefer triple-quoted bodies, then single-line quotes (non-greedy).
+QUOTED_STRING = re.compile(
+    r'"""(?P<tbody>.*?)"""|'
+    r"'''(?P<tbody2>.*?)'''|"
+    r'"(?P<body>(?:\\.|[^"\\])*)"|'
+    r"'(?P<body2>(?:\\.|[^'\\])*)'",
+    re.DOTALL,
+)
 JSON_DATA_SUFFIXES = {".json", ".geojson"}
 JSON_SCAN_PREFIXES = ("data/processed/", "frontend/public/")
 # Top-level app segments that look like Dev/QA previews (no hard-coded route list).
@@ -146,6 +174,54 @@ def forbidden_json_fill_values(obj: object) -> list[str]:
             if token in obj:
                 found.append(token)
     return found
+
+
+def _phrase_hits_in_sample(sample: str) -> list[str]:
+    """Flag forbidden phrases in one visitor-facing text sample."""
+    hits: list[str] = []
+    if sample in FORBIDDEN_PUBLIC_ROUTE_PHRASES:
+        hits.append(sample)
+        return hits
+    if not re.search(r"\s", sample):
+        return hits
+    if "£0" in sample:
+        hits.append("£0")
+    if "market+proxy" in sample:
+        hits.append("market+proxy")
+    if NESTED_WORD.search(sample) and "nested" in FORBIDDEN_PUBLIC_ROUTE_PROSE_WORDS:
+        hits.append("nested")
+    return hits
+
+
+def public_route_phrase_hits(text: str) -> list[str]:
+    """Return forbidden visitor phrases found in quoted / JSX text values.
+
+    Exact ``£0`` / ``market+proxy`` values are flagged. Prose strings (with
+    whitespace) are also scanned for those tokens and the word ``nested``.
+    Machine keys such as ``nested`` / ``nested_under`` stay allowed.
+    Additive coverage only — does not weaken AGR property rules.
+    """
+    cleaned = LINE_COMMENT.sub("", BLOCK_COMMENT.sub("", text))
+    # Also drop Python # comments so doc/comment asides are not scanned.
+    cleaned = re.sub(r"(?m)^\s*#.*?$", "", cleaned)
+    hits: list[str] = []
+    for match in QUOTED_STRING.finditer(cleaned):
+        body = (
+            match.group("tbody")
+            or match.group("tbody2")
+            or match.group("body")
+            or match.group("body2")
+        )
+        if body is None:
+            continue
+        sample = body.replace("\\n", " ").replace("\\t", " ").replace('\\"', '"')
+        hits.extend(_phrase_hits_in_sample(sample))
+    # JSX / HTML text nodes: >visitor copy<
+    for match in re.finditer(r">([^<>{]+)<", cleaned):
+        sample = re.sub(r"\s+", " ", match.group(1)).strip()
+        if sample:
+            hits.extend(_phrase_hits_in_sample(sample))
+    return hits
 
 
 def strip_ts_comments(text: str) -> str:
@@ -263,6 +339,18 @@ def check(files: list[str]) -> list[str]:
             fill_vals = sorted(set(forbidden_json_fill_values(payload)))
             if fill_vals:
                 problems.append(f"{f}: forbidden public DZ2022 fill token value(s) {fill_vals}")
+
+    # 4b. banned visitor wording on public developers / ledger / catalog sources
+    for f in PUBLIC_ROUTE_SCAN_PATHS:
+        if f not in fileset:
+            continue
+        phrase_hits = sorted(set(public_route_phrase_hits(index_text(f))))
+        if phrase_hits:
+            problems.append(
+                f"{f}: forbidden public-route wording {phrase_hits} "
+                "(use Limits use (not a money value); separate market/proxy totals; "
+                "already included in <parent>)"
+            )
 
     # 5. discovered preview app routes must actually gate via layout.tsx
     for route in sorted(discover_preview_routes(files)):

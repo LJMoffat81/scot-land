@@ -262,3 +262,31 @@ def test_guard_forbids_model_fill_dz2022_in_public_json(tmp_path):
         ),
     }) is None else None
     assert any("model_fill_dz2022" in p and "value" in p for p in problems_val), problems_val
+
+
+def test_guard_forbids_banned_public_route_wording(tmp_path):
+    """Additive: £0 / market+proxy / nested prose banned on public route sources."""
+    g = _guard()
+    assert "£0" in g.FORBIDDEN_PUBLIC_ROUTE_PHRASES
+    assert "market+proxy" in g.FORBIDDEN_PUBLIC_ROUTE_PHRASES
+    assert "nested" in g.FORBIDDEN_PUBLIC_ROUTE_PROSE_WORDS
+
+    problems = _problems(tmp_path) if _repo(tmp_path, {
+        "frontend/app/developers/page.tsx": (
+            'export default function Page() {\n'
+            '  return <p>Constraints are £0 and headline is market+proxy with nested 1a.</p>;\n'
+            '}\n'
+        ),
+    }) is None else None
+    assert any("£0" in p for p in problems), problems
+    assert any("market+proxy" in p for p in problems), problems
+    assert any("nested" in p for p in problems), problems
+
+    # Machine boolean key ``nested`` alone is allowed (not visitor prose).
+    clean = _problems(tmp_path / "ok") if _repo(tmp_path / "ok", {
+        "backend/layers/ledger.py": (
+            'CONSTRAINT_RULE = "Limits use (not a money value)"\n'
+            'ROW = {"id": "1a", "nested": True, "tag": "already_included"}\n'
+        ),
+    }) is None else None
+    assert not any("forbidden public-route wording" in p for p in clean), clean

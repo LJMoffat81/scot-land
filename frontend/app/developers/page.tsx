@@ -158,9 +158,17 @@ function DevelopersPageInner() {
                     <dd>{bundle.updated}</dd>
                   </div>
                   {bundle.zone_set ? (
-                    <div>
-                      <dt>Zone set</dt>
-                      <dd>{bundle.zone_set}</dd>
+                    <div data-testid={`download-zone-set-${bundle.id}`}>
+                      <dt title="Which Data Zone map these figures use">
+                        Zone set
+                      </dt>
+                      <dd>
+                        <span>{bundle.zone_set}</span>
+                        <span className="download-path">
+                          {" "}
+                          — Which Data Zone map these figures use
+                        </span>
+                      </dd>
                     </div>
                   ) : null}
                 </dl>

@@ -102,6 +102,7 @@ jobs:
       - run: npm run check:download-bundles-fresh
       - run: npm run test:site-rewrite-pr3
       - run: npm run test:designer-live-check
+      - run: npm run test:site-watch-pr-b
       - run: npm run check:developers-links
       - run: npx tsc --noEmit
       - run: npm run build

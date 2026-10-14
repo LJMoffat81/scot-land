@@ -203,9 +203,9 @@ def catalog_crofting_register() -> dict[str, Any]:
         "description": (
             "Crofting Commission Register of Crofts — OGL-3.0 lists only "
             "(holdings CSV → PostGIS). No boundary polygons. Never ingest List "
-            "of Individuals. Constraint (£0, no rent row) — changes best use "
-            "only. Map extents: RoS Crofting Register search (not OGL "
-            "redistributable). No LayersPanel toggle."
+            "of Individuals. Constraint (Limits use (not a money value), no rent "
+            "row) — changes best use only. Map extents: RoS Crofting Register "
+            "search (not OGL redistributable). No LayersPanel toggle."
         ),
         "endpoint": "/api/crofting.json",
         "licence": "OGL-3.0",
@@ -235,7 +235,8 @@ def catalog_common_grazings() -> dict[str, Any]:
             "Crofting Commission List of Grazings — OGL-3.0 lists only "
             "(extent ha → PostGIS). No national OGL polygon overlay; RoS "
             "Crofting Register map holds definitive common-land extents. "
-            "Constraint (£0, no rent row). No LayersPanel toggle."
+            "Constraint (Limits use (not a money value), no rent row). "
+            "No LayersPanel toggle."
         ),
         "endpoint": "/api/crofting.json",
         "licence": "OGL-3.0",

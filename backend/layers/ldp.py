@@ -164,8 +164,8 @@ def catalog_layer() -> dict[str, Any]:
             "Local Development Plan allocation polygons from OGL Spatial Hub / "
             "authority portals, loaded into PostGIS. National coverage is fragmented "
             "(Edinburgh missing; some authorities portal-only). Natural capital ledger "
-            "nested row 1a (planning uplift) — not a LayersPanel toggle. Planning "
-            "extents, not a title. No public AGR £."
+            "row 1a (planning uplift, already included in surface) — not a "
+            "LayersPanel toggle. Planning extents, not a title. No public AGR £."
         ),
         "endpoint": "/layers/open/ldp",
         "licence": meta["licence"],

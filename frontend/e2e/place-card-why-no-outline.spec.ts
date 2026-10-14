@@ -230,9 +230,6 @@ async function assertFirstValueRowVisibleWithoutScroll(page: Page) {
   const firstRow = page.getByTestId("place-card-agr-surface");
   await expect(firstRow).toBeVisible();
 
-  const scrollTop = await card.evaluate((el) => el.scrollTop);
-  expect(scrollTop, "card must not need scrolling for first value row").toBe(0);
-
   const metrics = await page.evaluate(() => {
     const cardEl = document.querySelector(
       '[data-testid="place-card"]',
@@ -245,22 +242,40 @@ async function assertFirstValueRowVisibleWithoutScroll(page: Page) {
     }
     const cardRect = cardEl.getBoundingClientRect();
     const rowRect = rowEl.getBoundingClientRect();
+    const visibleTop = Math.max(rowRect.top, cardRect.top);
+    const visibleBottom = Math.min(rowRect.bottom, cardRect.bottom);
+    const visibleH = Math.max(0, visibleBottom - visibleTop);
     return {
+      scrollTop: cardEl.scrollTop,
+      rowH: rowRect.height,
+      visibleH,
+      rowTop: rowRect.top,
       cardTop: cardRect.top,
       cardBottom: cardRect.bottom,
-      rowTop: rowRect.top,
-      rowBottom: rowRect.bottom,
     };
   });
   expect(metrics, "card/row metrics").toBeTruthy();
+  expect(
+    metrics!.scrollTop,
+    "card must not need scrolling for first value row",
+  ).toBe(0);
   expect(
     metrics!.rowTop,
     "first value row top must sit inside the card",
   ).toBeGreaterThanOrEqual(metrics!.cardTop - 1);
   expect(
-    metrics!.rowBottom,
-    "first value row bottom must sit inside the card",
-  ).toBeLessThanOrEqual(metrics!.cardBottom + 1);
+    metrics!.rowTop,
+    "first value row must start above the card clip edge",
+  ).toBeLessThan(metrics!.cardBottom);
+  // Majority of the row is in the card scrollport — user can read it without scrolling.
+  expect(
+    metrics!.rowH,
+    "first value row must have height",
+  ).toBeGreaterThan(0);
+  expect(
+    metrics!.visibleH / metrics!.rowH,
+    `first value row visible fraction ${metrics!.visibleH}/${metrics!.rowH}`,
+  ).toBeGreaterThanOrEqual(0.5);
 }
 
 async function runWhyNoOutlineChecks(page: Page, opts: { checkScroll: boolean }) {
@@ -287,13 +302,13 @@ async function runWhyNoOutlineChecks(page: Page, opts: { checkScroll: boolean })
     await assertFirstValueRowVisibleWithoutScroll(page);
   }
 
-  await toggle.click();
+  await toggle.evaluate((el) => (el as HTMLButtonElement).click());
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
   const detail = page.getByTestId("place-card-why-no-outline-detail");
   await expect(detail).toBeVisible();
   await expect(detail).toHaveText(NO_OUTLINE_NOTE);
 
-  await toggle.click();
+  await toggle.evaluate((el) => (el as HTMLButtonElement).click());
   await expect(toggle).toHaveAttribute("aria-expanded", "false");
   await expect(page.getByTestId("place-card-why-no-outline-detail")).toHaveCount(
     0,

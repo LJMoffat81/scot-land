@@ -382,19 +382,29 @@ input {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.25rem;
-  margin: 0.1rem 0 0;
+  gap: 0.2rem;
+  margin: 0;
+}
+
+.place-card-outline-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.55rem;
+  margin: 0;
 }
 
 .place-card-why-no-outline-btn {
+  display: inline-block;
+  flex: 0 0 auto;
   margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--slrg-navy);
   font: inherit;
-  font-size: 0.82rem;
-  line-height: 1.35;
+  font-size: inherit;
+  line-height: inherit;
   text-decoration: underline;
   cursor: pointer;
 }

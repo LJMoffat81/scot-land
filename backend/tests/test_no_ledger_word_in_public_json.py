@@ -31,6 +31,8 @@ _HEADLINE_WORD = re.compile(r"\bheadline\b", re.IGNORECASE)
 _SHADOW_WORD = re.compile(r"\bshadow\b", re.IGNORECASE)
 # £ figure = currency symbol with a numeric amount (not unit labels / "£ withheld").
 _POUND_FIGURE = re.compile(r"£\s*[\d,]+(?:\.\d+)?|[\d,]+\s*£")
+# SW-032 add-only: bare £ on public visitor surfaces (unit keys skipped below).
+_POUND_SYMBOL = re.compile(r"£")
 _DOT_ENV = re.compile(r"\.env\b")
 
 # Machine / non-prose keys — not shown as visitor copy in the UI.
@@ -62,6 +64,9 @@ _SKIP_KEYS = frozenset(
     }
 )
 
+# Machine legend units (house-price context may be "£") — not visitor prose.
+_SKIP_BARE_POUND_KEYS = frozenset({"unit"})
+
 # Public API JSON builders exercised without BACKEND_URL / PostGIS.
 _PUBLIC_API_JSON_BUILDERS: list[tuple[str, Any]] = [
     ("/api/ledger.json", lambda: ledger_catalog()),
@@ -87,6 +92,25 @@ def _visitor_strings(obj: Any, *, key: str | None = None) -> list[str]:
         out = []
         for item in obj:
             out.extend(_visitor_strings(item, key=key))
+        return out
+    return []
+
+
+def _visitor_strings_for_bare_pound(obj: Any, *, key: str | None = None) -> list[str]:
+    """Like ``_visitor_strings`` but also skips machine ``unit`` legend keys."""
+    if key is not None and (key in _SKIP_KEYS or key in _SKIP_BARE_POUND_KEYS):
+        return []
+    if isinstance(obj, str):
+        return [obj]
+    if isinstance(obj, dict):
+        out: list[str] = []
+        for child_key, value in obj.items():
+            out.extend(_visitor_strings_for_bare_pound(value, key=str(child_key)))
+        return out
+    if isinstance(obj, list):
+        out = []
+        for item in obj:
+            out.extend(_visitor_strings_for_bare_pound(item, key=key))
         return out
     return []
 
@@ -141,6 +165,13 @@ def _assert_public_visitor_copy(payload: dict[str, Any], label: str) -> None:
     assert not pound_hits, (
         f"{label} visitor text contains a £ figure:\n"
         + "\n".join(repr(h[:200]) for h in pound_hits)
+    )
+    # SW-032: bare £ banned in visitor prose (machine unit keys skipped).
+    bare_texts = _visitor_strings_for_bare_pound(payload)
+    bare_pound = [t for t in bare_texts if _POUND_SYMBOL.search(t)]
+    assert not bare_pound, (
+        f"{label} visitor text contains '£':\n"
+        + "\n".join(repr(h[:200]) for h in bare_pound)
     )
     env_hits = [t for t in texts if _DOT_ENV.search(t)]
     assert not env_hits, (

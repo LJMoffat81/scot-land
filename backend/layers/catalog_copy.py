@@ -25,8 +25,8 @@ PLAIN_DESCRIPTIONS: dict[str, str] = {
     ),
     "data_zones": (
         "Small-area Data Zone boundaries (2022). Hover or click for the zone "
-        "code, name, council, population and dwellings. Not a rent figure — "
-        "no AGR £ on the map."
+        "code, name, council, population and dwellings. Not a rent figure; "
+        "no Annual Ground Rent figures on the map."
     ),
     "settlements": (
         "Places of 500 people or more from the Census 2022 settlements map. "
@@ -78,7 +78,7 @@ PLAIN_DESCRIPTIONS: dict[str, str] = {
     "sepa_car": (
         "SEPA Controlled Activities Regulations licences for water use "
         "(Simple 194 and Registration 195). Inventory only — never proxies "
-        "live map services. No £ rent; not surface rent."
+        "live map services. No money figures; not surface rent."
     ),
     "sssi": (
         "Sites of Special Scientific Interest. "
@@ -134,7 +134,7 @@ PLAIN_DESCRIPTIONS: dict[str, str] = {
     ),
     "ces_aquaculture": (
         "Aquaculture seabed leases from Crown Estate Scotland. Licence rent "
-        "evidence — not a title. No £ rent; never added to surface rent "
+        "evidence — not a title. No money figures; never added to surface rent "
         "(Annual Ground Rent breakdown row 5)."
     ),
     "nsta_oil_gas": (

@@ -83,7 +83,7 @@ def source_meta() -> dict[str, Any]:
         or [
             "UK-wide register — map shows Scotland onshore wind only",
             "Coordinates are planning-site points, not lease polygons",
-            "No £ rent on this layer — natural-capital evidence only",
+            "No money figures on this layer — resource evidence only",
             "Status and capacity change with each quarterly extract",
         ],
     }

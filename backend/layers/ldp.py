@@ -167,7 +167,7 @@ def catalog_layer() -> dict[str, Any]:
         ),
         "developer_note": (
             "LDP polygons from OGL Spatial Hub / authority portals into PostGIS. "
-            "National coverage fragmented. Ledger row 1a planning uplift."
+            "National coverage fragmented. Annual Ground Rent breakdown row 1a planning uplift."
         ),
         "endpoint": "/layers/open/ldp",
         "licence": meta["licence"],

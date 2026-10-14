@@ -95,7 +95,7 @@ def layer_open_dz_context(
 
     Attributes always load from the staged GIS metrics table. Zone polygons are
     included only when ``dz_boundaries`` is loaded — never invented. No modelled
-    AGR £ is attached.
+    money figures are attached.
     """
     if vintage not in (2011, 2022):
         raise HTTPException(
@@ -162,8 +162,8 @@ def layer_open_scotwind_intog(
 ) -> JSONResponse:
     """ScotWind / INTOG option polygons from PostGIS (CES Spatial Hub ingest).
 
-    Geometry + award descriptors only. **No surface rent / la-calc £.** Option-fee
-    £ are HOLD (``data/config/scotwind_option_fees.yaml``) — not layer attributes.
+    Geometry + award descriptors only. **No surface rent / la-calc money figures.** Option-fee
+    figures are HOLD (``data/config/scotwind_option_fees.yaml``) — not layer attributes.
     Returns **503** when ``ces_scotwind_intog`` is missing or empty.
     """
     _scottish_waters_bounds_check((south + north) / 2.0, (west + east) / 2.0)
@@ -190,7 +190,7 @@ def layer_open_repd_onshore_wind(
 ) -> JSONResponse:
     """DESNZ REPD onshore wind sites (Scotland) — MW and status only.
 
-    Natural-capital overlay from PostGIS after OGL CSV ingest. **No £ rent.**
+    Resource overlay from PostGIS after OGL CSV ingest. **No money figures.**
     **503** when unloaded. Empty FeatureCollection with meta.ok=true means no
     sites in view.
     """
@@ -222,8 +222,8 @@ def layer_open_ces_aquaculture(
 ) -> JSONResponse:
     """CES aquaculture seabed leases in the viewport (OGL → PostGIS).
 
-    Natural-capital lease polygons only — attributes/status, **no £ rent**
-    or fee on features; never added to Surface Rent or AGR. Ledger row 5.
+    Resource lease polygons only — attributes/status, **no money figures**
+    or fee on features; never added to Surface Rent or AGR. Annual Ground Rent breakdown row 5.
     Served from PostGIS after `python -m etl.ingest_ces_aquaculture`.
     **503** when unloaded.
     """
@@ -255,7 +255,7 @@ def layer_open_data_zones(
 ) -> JSONResponse:
     """Data Zone boundaries (2022 by default) in the viewport (simplified GeoJSON).
 
-    Outlines only — code and name, no AGR £ / Surface Rent. Returns **503**
+    Outlines only — code and name, no money figures / Surface Rent. Returns **503**
     when the upstream SG StatisticalUnits service is unavailable. An empty
     FeatureCollection with meta.ok=true means no zones in view.
     """
@@ -339,7 +339,7 @@ def layer_open_hydro(
 ) -> JSONResponse:
     """SEPA hydropower CAR sites in the viewport (OGL → PostGIS).
 
-    Natural-capital site inventory only — **no £ rent**. Served from PostGIS
+    Resource site inventory only — **no money figures**. Served from PostGIS
     after `python -m etl.ingest_hydro_sites`. **503** when unloaded.
     """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
@@ -369,7 +369,7 @@ def layer_open_sepa_car(
 
     Ingest loads Open/SEPA_Reference layers into PostGIS with
     `python -m etl.ingest_sepa_car`. This route serves **PostGIS only —
-    never proxies MapServer**. **No £ rent**. **503** until loaded.
+    never proxies MapServer**. **No money figures**. **503** until loaded.
     """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     payload = sepa_car_bbox(south, west, north, east, max_features=max_features)
@@ -400,7 +400,7 @@ def layer_open_ldp(
     Returns **503** when ``ldp_allocations`` is not loaded — never invents
     missing authorities. An empty FeatureCollection with meta.ok=true means
     no allocations in view (national fragmentation stays visible).
-    Feeds ledger nested row 1a (planning) — no £ rent.
+    Feeds Annual Ground Rent breakdown nested row 1a (planning) — no money figures.
     """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     payload = ldp_bbox(south, west, north, east, max_features=max_features)
@@ -425,7 +425,7 @@ def layer_open_sssi(
     east: float = Query(..., description="BBox east longitude"),
     max_features: int = Query(default=80, ge=1, le=80),
 ) -> JSONResponse:
-    """NatureScot SSSI polygons (OGL-3.0). Constraint overlay — £0, no rent row."""
+    """NatureScot SSSI polygons (OGL-3.0). Constraint overlay — no money figures, no rent row."""
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     try:
         payload = sssi_bbox(south, west, north, east, max_features=max_features)
@@ -442,7 +442,7 @@ def layer_open_naturescot_designations(
     east: float = Query(..., description="BBox east longitude"),
     max_features: int = Query(default=80, ge=1, le=80),
 ) -> JSONResponse:
-    """NatureScot SPA/SAC/NNR polygons (OGL-3.0). Constraint overlay — £0, no rent row."""
+    """NatureScot SPA/SAC/NNR polygons (OGL-3.0). Constraint overlay — no money figures, no rent row."""
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     try:
         payload = naturescot_designations_bbox(
@@ -453,9 +453,12 @@ def layer_open_naturescot_designations(
     return JSONResponse(payload)
 
 
-@router.get("/ledger")
+@router.get(
+    "/ledger",
+    summary="Land rent by Data Zone (developer)",
+)
 def natural_capital_ledger() -> dict:
-    """Annual Ground Rent breakdown rows + constraints (no published AGR £).
+    """Annual Ground Rent breakdown rows + constraints (no published money figures).
 
     Contract: ROWS 1–10 + 1a already included in surface; Constraints =
     Limits use (not a money value). Amounts are placeholders until
@@ -506,7 +509,7 @@ def layer_open_nfi(
 
     Returns **503** when ``nfi_woodland`` is missing or empty — never invents
     woodland. An empty FeatureCollection with meta.ok=true means no polygons
-    in view. Ledger row 1 land-use overlay — no rent.
+    in view. Annual Ground Rent breakdown row 1 land-use overlay — no rent.
     """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     try:
@@ -535,7 +538,7 @@ def layer_open_native_woodland(
 
     Returns **503** when ``native_woodland`` is missing or empty — never invents
     survey polygons. An empty FeatureCollection with meta.ok=true means none
-    in view. Ledger row 1 land-use overlay — no rent.
+    in view. Annual Ground Rent breakdown row 1 land-use overlay — no rent.
     """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     try:
@@ -566,7 +569,7 @@ def layer_open_repd(
 
     Served from PostGIS after `python -m etl.ingest_repd`. **503** when the
     table is missing or empty — never invents sites. Empty FeatureCollection
-    with meta.ok=true means no sites in view. Ledger row 3 — no £ rent.
+    with meta.ok=true means no sites in view. Annual Ground Rent breakdown row 3 — no money figures.
     """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     payload = repd_bbox(south, west, north, east, max_features=max_features)
@@ -595,7 +598,7 @@ def layer_open_crown_estate_leases(
 
     Served from PostGIS after `python -m etl.ingest_crown_estate_leases`.
     Offshore wind / wave / tidal / CCS only. **503** when missing/empty —
-    never invents leases. Ledger row 4 — no £ rent.
+    never invents leases. Annual Ground Rent breakdown row 4 — no money figures.
     """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     payload = crown_estate_leases_bbox(
@@ -629,8 +632,8 @@ def layer_open_lca(
     James Hutton Institute Open Data Licence (accepted; not OGL-3.0; PSI clause
     under OGL v2.0). Returns **503** when ``lca_agriculture`` is missing or
     empty — never invents capability polygons. An empty FeatureCollection with
-    meta.ok=true means no polygons in view. Ledger constraint (£0) — changes
-    best use only.
+    meta.ok=true means no polygons in view. Constraint: changes best use, adds no value —
+    changes best use only.
     """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     if south >= north or west >= east:
@@ -656,7 +659,7 @@ def platform_place(
     """Public place card for one clicked spot (place_card_v1).
 
     Council, data zone, intersecting layers, and official links.
-    No modelled AGR £ — residual plot rent stays on /internal/agr/*.
+    No modelled money figures — residual plot rent stays on /internal/agr/*.
     """
     _scotland_bounds_check(lat, lng)
     return place_context(lat, lng, postcode=postcode)
@@ -679,7 +682,10 @@ def api_catalog() -> dict:
     return with_stamp(catalog_json())
 
 
-@router.get("/api/ledger.json")
+@router.get(
+    "/api/ledger.json",
+    summary="Annual Ground Rent breakdown JSON (developer)",
+)
 def api_ledger(
     zone_id: str | None = Query(
         default=None,
@@ -695,7 +701,7 @@ def api_ledger(
 
     National catalog when zone_id is omitted. With zone_id, returns the
     zone-level stack (nothing published for blocked zones). No map-panel
-    layer dump and no modelled plot £ until ECONOMIC_RULES is approved.
+    layer dump and no modelled money figures until ECONOMIC_RULES is approved.
     """
     if zone_id is None:
         return with_stamp(ledger_catalog())
@@ -739,7 +745,7 @@ def api_ledger(
                 "reason": exc.reason,
                 "detail": exc.detail,
                 "message": (
-                    "Zone ledger needs the wealth database to check publication_status; "
+                    "Zone rent breakdown needs the wealth database to check publication_status; "
                     "nothing was estimated."
                 ),
             },
@@ -756,7 +762,7 @@ def api_place_stack(
 
     Zone grain only. Nested 1a indented (never added). Shadow stack separate.
     Oil & gas + benchmarks outside. Nothing for blocked zones. Public amounts
-    are placeholders — no modelled AGR £ until ECONOMIC_RULES / calibration.
+    are placeholders — no modelled money figures until ECONOMIC_RULES / calibration.
     """
     zone_code = (zone or "").strip().upper() or None
     zone_name: str | None = None
@@ -812,12 +818,12 @@ def api_ldp() -> dict:
 def api_vdl_councils(
     scenario: str = Query(default="full_agr"),
 ) -> dict:
-    """Blocked: vacant-land residual AGR £ is not a public download."""
+    """Blocked: vacant-land residual money figures are not a public download."""
     del scenario  # signature kept for clients that still pass ?scenario=
     raise HTTPException(
         status_code=403,
         detail={
-            "message": "Modelled vacant-land AGR £ is not published on public routes.",
+            "message": "Modelled vacant-land money figures are not published on public routes.",
             "publication_status": "blocked",
         },
     )
@@ -825,12 +831,12 @@ def api_vdl_councils(
 
 @router.get("/api/roll.json")
 def api_roll(scenario: str = Query(default="full_agr")) -> dict:
-    """Blocked: council AGR roll £ is not a public download."""
+    """Blocked: council AGR roll money figures are not a public download."""
     del scenario
     raise HTTPException(
         status_code=403,
         detail={
-            "message": "Modelled council AGR roll £ is not published on public routes.",
+            "message": "Modelled council AGR roll money figures are not published on public routes.",
             "publication_status": "blocked",
         },
     )
@@ -838,12 +844,12 @@ def api_roll(scenario: str = Query(default="full_agr")) -> dict:
 
 @router.get("/api/roll.csv")
 def api_roll_csv(scenario: str = Query(default="full_agr")) -> dict:
-    """Blocked: council AGR roll £ is not a public download."""
+    """Blocked: council AGR roll money figures are not a public download."""
     del scenario
     raise HTTPException(
         status_code=403,
         detail={
-            "message": "Modelled council AGR roll £ is not published on public routes.",
+            "message": "Modelled council AGR roll money figures are not published on public routes.",
             "publication_status": "blocked",
         },
     )
@@ -855,7 +861,7 @@ def api_place(
     lat: float | None = Query(default=None),
     lng: float | None = Query(default=None),
 ) -> dict:
-    """Place card download (place_card_v1). No modelled AGR £."""
+    """Place card download (place_card_v1). No modelled money figures."""
     result: dict = {}
     if pc:
         import httpx
@@ -944,7 +950,7 @@ def open_downloads() -> dict:
                     "5750f8e5-d51b-4e75-a8d6-403a0d1ded81/hydropower_sites"
                 ),
                 "endpoint": "/layers/open/hydro",
-                "note": "PostGIS after ATOM ingest. value_tier=proxy. No £ rent.",
+                "note": "PostGIS after ATOM ingest. value_tier=proxy. No money figures.",
             },
             {
                 "id": "sepa_car",
@@ -954,7 +960,7 @@ def open_downloads() -> dict:
                 "endpoint": "/layers/open/sepa-car",
                 "note": (
                     "MapServer 194/195 → PostGIS via python -m etl.ingest_sepa_car; "
-                    "API never proxies. value_tier=market. No £ rent."
+                    "API never proxies. value_tier=market. No money figures."
                 ),
             },
             {
@@ -998,7 +1004,7 @@ def open_downloads() -> dict:
                     "downloads/Hutton_LCA250K_OpenData.zip"
                 ),
                 "note": (
-                    "PostGIS ingest of Hutton LCA 1:250k. Ledger constraint "
+                    "PostGIS ingest of Hutton LCA 1:250k. Constraint "
                     "(Limits use (not a money value)) — not a rent or title. "
                     "Redistribution / derived data on equivalent Hutton terms "
                     "with required attribution. 503 when unloaded."
@@ -1011,7 +1017,7 @@ def open_downloads() -> dict:
                 "endpoint": "/layers/open/data-zones",
                 "note": (
                     "Data Zone boundaries 2022 (default). Simplified GeoJSON "
-                    "by bbox. Outlines only — no AGR £."
+                    "by bbox. Outlines only — no money figures."
                 ),
             },
             {
@@ -1019,7 +1025,7 @@ def open_downloads() -> dict:
                 "label": "Data Zone HPI / SIMD / population density",
                 "licence": "OGL v3.0",
                 "endpoint": "/layers/open/dz-context",
-                "note": "Ledger-frame surface inputs for row 1; no modelled AGR £",
+                "note": "Surface-rent frame inputs for row 1; no modelled money figures",
             },
             {
                 "id": "ldp_allocations",
@@ -1069,7 +1075,7 @@ def open_downloads() -> dict:
                 ),
                 "note": (
                     "PostGIS ingest of CES ScotWind Offers + INTOG Application Areas. "
-                    "Polygons only. Option-fee £ HOLD in data/config/scotwind_option_fees.yaml. "
+                    "Polygons only. Option-fee figures HOLD in data/config/scotwind_option_fees.yaml. "
                     "Does not add to surface rent."
                 ),
             },

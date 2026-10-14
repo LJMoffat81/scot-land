@@ -129,12 +129,62 @@ assert.match(
 );
 assert.doesNotMatch(developers, /£/);
 
+// SW-031: GET /ledger OpenAPI summary renamed (source pin; backend also asserts schema).
+const platformRoutes = readFileSync(
+  join(frontendRoot, "..", "backend/api/platform_routes.py"),
+  "utf8",
+);
+assert.match(
+  platformRoutes,
+  /summary\s*=\s*["']Land rent by Data Zone \(developer\)["']/,
+);
+assert.doesNotMatch(
+  platformRoutes,
+  /summary\s*=\s*["']Natural Capital Ledger["']/,
+);
+
+// SW-031/032: OpenAPI summaries (when a schema is available locally / in CI).
+const openapiCandidates = [
+  join(frontendRoot, "public/openapi.json"),
+  join(frontendRoot, ".next/openapi.json"),
+  process.env.OPENAPI_JSON_PATH,
+].filter(Boolean);
+for (const openapiPath of openapiCandidates) {
+  if (!existsSync(openapiPath)) continue;
+  const schema = JSON.parse(readFileSync(openapiPath, "utf8"));
+  const openapiViolations = [];
+  for (const [path, methods] of Object.entries(schema.paths || {})) {
+    for (const [method, op] of Object.entries(methods || {})) {
+      if (!op || typeof op !== "object") continue;
+      const summary = String(op.summary || "");
+      if (!summary) continue;
+      for (const { name, re } of [
+        { name: "natural capital", re: /natural capital/i },
+        { name: "ledger", re: /\bledger\b/i },
+        { name: "£", re: /£/ },
+      ]) {
+        if (re.test(summary)) {
+          openapiViolations.push(`${method.toUpperCase()} ${path}: ${name} in summary`);
+        }
+      }
+    }
+  }
+  assert.equal(
+    openapiViolations.length,
+    0,
+    `OpenAPI summary bans (${openapiPath}):\n${openapiViolations.join("\n")}`,
+  );
+}
+
 // Built HTML acceptance (when present after next build).
 const nextHtml = join(frontendRoot, ".next");
 if (existsSync(nextHtml)) {
   const htmlFiles = walk(join(nextHtml, "server")).filter((f) =>
     f.endsWith(".html"),
   );
+  // SW-031/032: £ / natural capital / ledger banned case-insensitively on every
+  // rendered public page (including /developers/api). No path exemptions.
+  // OpenAPI *summaries* are checked below (and in backend test_openapi_public_summaries).
   const forbidden = [
     { name: "natural capital", re: /natural capital/i },
     { name: "ledger", re: /\bledger\b/i },

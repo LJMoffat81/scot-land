@@ -23,8 +23,18 @@ assert.match(
 
 const map = readSrc("components/ScotlandMap.tsx");
 assert.match(map, /clearSuggestions[\s\S]*setSuggesting\(false\)/);
+assert.match(
+  map,
+  /const clearSuggestions = \(\) => \{[\s\S]*?suggestTimer\.current[\s\S]*?clearTimeout[\s\S]*?suggestAbort\.current\?\.abort/,
+  "clearSuggestions must cancel debounce timer and AbortController",
+);
 assert.match(map, /AbortController/);
 assert.match(map, /,\s*250\)/);
+assert.match(
+  map,
+  /scheduleSuggest[\s\S]*?suggestAbort\.current\?\.abort\(\)[\s\S]*?setTimeout\(\(\) => \{[\s\S]*?loadSuggestions[\s\S]*?\},\s*250\)/,
+  "scheduleSuggest must abort stale requests before the 250ms debounce",
+);
 assert.match(
   map,
   /event\.key === "Escape" &&\s*\(suggestions\.length \|\| suggestNote \|\| suggesting\)/,
@@ -34,6 +44,11 @@ assert.match(
   map,
   /onBlur[\s\S]*clearSuggestions/,
   "blur must clear Looking…",
+);
+assert.match(
+  map,
+  /No matches/,
+  "empty suggest results must use No matches",
 );
 
 const dataPage = readSrc("app/data/page.tsx");

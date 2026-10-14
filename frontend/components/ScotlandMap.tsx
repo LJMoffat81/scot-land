@@ -1010,6 +1010,11 @@ export default function ScotlandMap() {
   };
 
   const clearSuggestions = () => {
+    // Cancel debounce + in-flight so "Looking…" cannot reappear after blur/Escape.
+    if (suggestTimer.current) {
+      clearTimeout(suggestTimer.current);
+      suggestTimer.current = null;
+    }
     suggestAbort.current?.abort();
     suggestAbort.current = null;
     setSuggestions([]);
@@ -1229,6 +1234,16 @@ export default function ScotlandMap() {
       clearSuggestions();
       return;
     }
+    // Drop stale in-flight work while waiting for the new debounce window.
+    suggestAbort.current?.abort();
+    suggestAbort.current = null;
+    suggestGen.current += 1;
+    // Pending "Looking…" for the debounce + fetch window (cleared on results /
+    // empty / error / blur / Escape). Clear prior rows so the note can show.
+    setSuggestions([]);
+    setSuggestNote(null);
+    setActiveSuggest(-1);
+    setSuggesting(true);
     suggestTimer.current = setTimeout(() => {
       void loadSuggestions(text);
     }, 250);
@@ -1246,6 +1261,8 @@ export default function ScotlandMap() {
   useEffect(() => {
     return () => {
       if (suggestTimer.current) clearTimeout(suggestTimer.current);
+      suggestAbort.current?.abort();
+      suggestAbort.current = null;
     };
   }, []);
 

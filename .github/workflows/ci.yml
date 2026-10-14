@@ -128,8 +128,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run Playwright e2e (rewrite / search / chrome gate)
         # Full map/GIS suite still needs a live API for many specs; gate the
-        # site-rewrite + nav/chrome specs that are stub-safe on this branch.
-        # (search-looking.spec.ts lives on #90; omitted until that merges.)
+        # site-rewrite + Looking… + nav/chrome specs that are stub-safe.
         run: npm run test:e2e:ci
         env:
           CI: "true"

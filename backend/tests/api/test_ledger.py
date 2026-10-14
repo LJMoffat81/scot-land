@@ -91,6 +91,15 @@ def test_ledger_totals_headline_shadow_outside():
     assert "9" not in totals["shadow"]["row_ids"]
 
 
+def test_c_totals_estimate_mid_sentence_lowercase():
+    """After a semicolon, estimate total stays lower case (not a new sentence)."""
+    payload = ledger_catalog()
+    totals = next(c for c in payload["checks"] if c["id"] == "C-totals")
+    meaning = totals["meaning"]
+    assert "; estimate total " in meaning
+    assert "; Estimate total" not in meaning
+
+
 def test_ledger_run_hashes_stable():
     a = ledger_catalog()
     b = ledger_catalog()

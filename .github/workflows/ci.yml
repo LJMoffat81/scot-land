@@ -106,6 +106,7 @@ jobs:
       - run: npm run test:site-watch-pr-b
       - run: npm run test:site-watch-pr-c
       - run: npm run test:methodology-nits
+      - run: npm run test:site-watch-d3-sea-click
       - run: npm run test:prereview-rent-groups
       - run: npm run check:developers-links
       - run: npx tsc --noEmit

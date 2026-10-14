@@ -3,7 +3,7 @@
  * Ledger redesign IA — value / limits sections; DZ2022; no £ figures.
  */
 
-import { apiJson } from "./api";
+import { apiJson, isOutsideScotlandError } from "./api";
 import { preferDz2022, type PlaceDataZoneVintage } from "./placeCardDz";
 import { defaultAgrGroupRows } from "./rentGroupAgrRows.mjs";
 import { RENT_GROUP_NAME, RENT_GROUP_NAMES } from "./rentGroupNames.mjs";
@@ -32,6 +32,19 @@ export const PLACE_CARD_HOLDER_COPY =
 
 export const PLACE_CARD_SCOTLIS_LABEL =
   "Check the official title record on ScotLIS";
+
+/**
+ * Sea / outside Scotland map click — one plain line (site-watch D3 / SW-019).
+ */
+export const PLACE_CARD_OUT_OF_SCOTLAND_LINE =
+  "This spot is outside Scotland's land map. Tap on land to see a place.";
+
+/** True when the place has no Scottish data zone (e.g. at sea). */
+export function isPlaceCardSeaMiss(
+  zone: { status?: string | null } | null | undefined,
+): boolean {
+  return zone?.status === "miss";
+}
 
 export type PlaceRentTag = "market" | "proxy" | "shadow";
 
@@ -378,7 +391,39 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
   },
 };
 
-export function fetchPlaceCard({
+/** place_card_v1 miss payload for a point outside Scotland's land map (SW-019). */
+export function outsideScotlandPlaceCard(
+  lat: number,
+  lng: number,
+): PlaceCardPayload {
+  return {
+    contract: "place_card_v1",
+    lat,
+    lng,
+    place_label: null,
+    council_name: null,
+    data_zone: {
+      status: "miss",
+      code: null,
+      name: null,
+      vintage: null,
+      note: PLACE_CARD_OUT_OF_SCOTLAND_LINE,
+    },
+    intermediate_zone: { status: "no_data", name: null, note: null },
+    square_reference: scotLandSquareReference(lat, lng),
+    agr_rows: defaultAgrRows(),
+    constraints: [],
+    layers: [],
+    links: [],
+  };
+}
+
+/**
+ * Public place card for a map point.
+ * SW-019: `/platform/place` and `/api/place.json` 400 "outside Scotland"
+ * become a sea-miss card so the spinner clears and the plain line shows.
+ */
+export async function fetchPlaceCard({
   lat,
   lng,
   postcode,
@@ -388,7 +433,16 @@ export function fetchPlaceCard({
     lng: String(lng),
   });
   if (postcode) params.set("postcode", postcode);
-  return apiJson<PlaceCardPayload>(`/platform/place?${params.toString()}`);
+  try {
+    return await apiJson<PlaceCardPayload>(
+      `/platform/place?${params.toString()}`,
+    );
+  } catch (err) {
+    if (isOutsideScotlandError(err)) {
+      return outsideScotlandPlaceCard(lat, lng);
+    }
+    throw err;
+  }
 }
 
 function normalizeAgrRow(row: PlaceAgrRow): PlaceAgrRow {

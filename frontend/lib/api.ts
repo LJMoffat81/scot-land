@@ -72,11 +72,24 @@ export function isServiceFailure(err: unknown): boolean {
   return err instanceof ApiError && (err.status == null || err.status >= 500);
 }
 
+/**
+ * Bounds / place 400 from `/platform/place` or `/api/place.json`
+ * (`Coordinates appear to be outside Scotland.`).
+ */
+export function isOutsideScotlandError(err: unknown): boolean {
+  if (!(err instanceof ApiError) || err.status !== 400) return false;
+  return err.message.toLowerCase().includes("outside scotland");
+}
+
 /** Copy safe to show a visitor. Service failures never include dev or exception text. */
 export function visitorFacingError(err: unknown): string {
   const message = err instanceof Error ? err.message.trim() : "";
-  if (message.toLowerCase().includes("outside scotland")) {
-    return "That point is outside Scotland. Search a Scottish postcode or click the map.";
+  if (
+    isOutsideScotlandError(err) ||
+    message.toLowerCase().includes("outside scotland")
+  ) {
+    // Keep in sync with PLACE_CARD_OUT_OF_SCOTLAND_LINE (placeCard.ts).
+    return "This spot is outside Scotland's land map. Tap on land to see a place.";
   }
   if (!message || isDevFacing(message) || isServiceFailure(err)) return SERVICE_BUSY;
   return message;
@@ -193,8 +206,10 @@ export function parseCoordinates(
   const lat = Number(m[1]);
   const lng = Number(m[2]);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  // Rough Scotland envelope — same spirit as backend bounds checks.
-  if (lat < 54.4 || lat > 61.0 || lng < -9.0 || lng > 0.2) return null;
+  // Wider than the API Scotland bounds check so near-offshore / west-of-bounds
+  // pastes (SW-019, e.g. lng=-9.196485) still open selectPlace and show the
+  // outside-Scotland plain line instead of "No place matched".
+  if (lat < 54.0 || lat > 61.5 || lng < -11.0 || lng > 1.0) return null;
   return { lat, lng };
 }
 

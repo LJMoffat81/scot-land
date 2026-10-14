@@ -11,7 +11,10 @@ import { MapStampFooter } from "./MapStampFooter";
 import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
 import ResearchBanner from "./ResearchBanner";
 import SiteNav from "./SiteNav";
-import { fetchPlaceCard } from "@/lib/placeCard";
+import {
+  fetchPlaceCard,
+  outsideScotlandPlaceCard,
+} from "@/lib/placeCard";
 import MapLayersDrawer from "./MapLayersDrawer";
 import MapLicenceCredits from "./MapLicenceCredits";
 import MapRangeLegend from "./MapRangeLegend";
@@ -21,6 +24,7 @@ import {
   SERVICE_BUSY,
   apiFetch,
   apiJson,
+  isOutsideScotlandError,
   isServiceFailure,
   pingApi,
   fetchCapabilities,
@@ -863,30 +867,37 @@ export default function ScotlandMap() {
       setPlaceLoading(true);
       try {
         if (!knownCode) {
-          const data = await apiJson<{
-            code?: string;
-            name?: string;
-            vintage?: number;
-          }>(
-            `/layers/context/data-zones/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
-            { cache: "no-store" },
-          );
-          if (gen !== lookupGen.current) return;
-          const code = data.code?.trim() || null;
-          const name = data.name?.trim() || null;
-          setPlaceStub((prev) =>
-            prev && prev.lat === lat && prev.lng === lng
-              ? {
-                  ...prev,
-                  dataZoneCode: code,
-                  dataZoneName: name,
-                  dataZoneVintage:
-                    typeof data.vintage === "number" ? data.vintage : null,
-                }
-              : prev,
-          );
+          try {
+            const data = await apiJson<{
+              code?: string;
+              name?: string;
+              vintage?: number;
+            }>(
+              `/layers/context/data-zones/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
+              { cache: "no-store" },
+            );
+            if (gen !== lookupGen.current) return;
+            const code = data.code?.trim() || null;
+            const name = data.name?.trim() || null;
+            setPlaceStub((prev) =>
+              prev && prev.lat === lat && prev.lng === lng
+                ? {
+                    ...prev,
+                    dataZoneCode: code,
+                    dataZoneName: name,
+                    dataZoneVintage:
+                      typeof data.vintage === "number" ? data.vintage : null,
+                  }
+                : prev,
+            );
+          } catch {
+            // Sea / outside Scotland (404 no_data_zone_at_point) or boundaries
+            // unavailable: still load place_card_v1 so miss/unavailable is honest
+            // and the UI can show one plain line instead of No-data rows.
+          }
         }
         // Designer place card (place_card_v1) — ownership / sources; no £.
+        // SW-019: fetchPlaceCard turns outside-Scotland 400 into a sea-miss card.
         const card = await fetchPlaceCard({
           lat,
           lng,
@@ -912,8 +923,17 @@ export default function ScotlandMap() {
               }
             : prev,
         );
-      } catch {
-        /* zone / place card are best-effort; stub still shows coordinates */
+      } catch (err) {
+        // SW-019 belt-and-suspenders: clear spinner and show the plain line
+        // if an outside-Scotland 400 still surfaces (e.g. /api/place.json).
+        if (isOutsideScotlandError(err) && gen === lookupGen.current) {
+          setPlaceStub((prev) =>
+            prev && prev.lat === lat && prev.lng === lng
+              ? { ...prev, card: outsideScotlandPlaceCard(lat, lng) }
+              : prev,
+          );
+        }
+        /* other zone / place card failures are best-effort */
       } finally {
         if (gen === lookupGen.current) setPlaceLoading(false);
       }

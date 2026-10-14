@@ -6,8 +6,10 @@ import {
   PLACE_CARD_HOLDER_COPY,
   PLACE_CARD_HOW_WE_VALUE_LABEL,
   PLACE_CARD_LIMITS_HEADING,
+  PLACE_CARD_OUT_OF_SCOTLAND_LINE,
   PLACE_CARD_SCOTLIS_LABEL,
   dataZoneFieldLabel,
+  isPlaceCardSeaMiss,
   sanitizePlaceCard,
   valueStatusLabel,
   type PlaceCardPayload,
@@ -78,8 +80,10 @@ export function PlaceCard({
   className,
 }: PlaceCardProps) {
   const card = data ? sanitizePlaceCard(data) : null;
+  const seaMiss = Boolean(card && isPlaceCardSeaMiss(card.data_zone));
   const shellClass = [
     floating ? "hud-card hud-place place-card" : "place-card place-card-standalone",
+    seaMiss ? "place-card-sea-miss" : null,
     className,
   ]
     .filter(Boolean)
@@ -158,7 +162,16 @@ export function PlaceCard({
         </p>
       ) : null}
 
-      {!isLoading && !error && card ? (
+      {!isLoading && !error && card && seaMiss ? (
+        <p
+          className="place-card-sea-line"
+          data-testid="place-card-out-of-scotland"
+        >
+          {PLACE_CARD_OUT_OF_SCOTLAND_LINE}
+        </p>
+      ) : null}
+
+      {!isLoading && !error && card && !seaMiss ? (
         <div className="place-card-body">
           <header className="place-card-header">
             <p className="place-card-kicker">Place</p>

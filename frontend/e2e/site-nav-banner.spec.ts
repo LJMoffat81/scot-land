@@ -317,11 +317,10 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
 
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor();
-    // Dismiss research banner if it still overlaps the search row.
-    const dismiss = page.getByTestId("research-banner-dismiss");
-    if (await dismiss.isVisible().catch(() => false)) {
-      await dismiss.click();
-    }
+    // Keep the research banner: SW-014 asserts suggest stacks above it (do not dismiss).
+    const banner = page.getByTestId("research-banner");
+    await expect(banner).toBeVisible({ timeout: 15_000 });
+
     const input = page.locator("#place-query");
     await input.fill("EH1 1YZ");
     // Wait for debounce (250ms) + suggest response.
@@ -331,8 +330,9 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
 
     // Suggestion must sit above the research banner (clickable).
     const suggestBox = await first.boundingBox();
-    const bannerBox = await page.getByTestId("research-banner").boundingBox();
+    const bannerBox = await banner.boundingBox();
     expect(suggestBox).toBeTruthy();
+    expect(bannerBox).toBeTruthy();
     if (suggestBox && bannerBox) {
       const mid = {
         x: suggestBox.x + suggestBox.width / 2,

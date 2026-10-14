@@ -331,8 +331,10 @@ def test_postgis_zone_lookup(pg, client):
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["source"] == "postgis:dz_boundaries"
-    assert (body["code"], body["vintage"], body["name"]) == ("S01008677", 2011, "Synthetic A")
+    # Public default grain is DZ2022; 2011 remains available under dz2011.
+    assert (body["code"], body["vintage"], body["name"]) == ("S01016000", 2022, "Synthetic B")
     assert body["dz2022"]["code"] == "S01016000"
+    assert body["dz2011"]["code"] == "S01008677"
     assert body["dz2011"]["on_boundary"] is False
 
     # Miss -> 404 (boundaries loaded, nothing there)

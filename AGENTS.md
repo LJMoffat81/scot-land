@@ -43,6 +43,18 @@ Annual Ground Rent remains first: residual site value on a What3Words 3×3 m gri
 | `docs/PROFESSIONAL_STANDARD.md` | Build standard |
 | `docs/methodology.md` | Public methodology |
 
+## Pre-review checklist
+
+Every PR must self-check against this list **before asking for review**. CI enforces the same rules (see `backend/tests/test_no_ledger_word_in_public_json.py` and frontend site-watch scripts). Fail the PR if any item fails.
+
+1. **Banned visitor words** — Fail on visible `ledger` or `natural capital` in public pages or visitor-facing JSON. Code samples on `/developers` are excluded.
+2. **No £ figures** — Fail on any £ amount in public pages or public JSON (placeholders and unit labels only; never published money figures).
+3. **Group names** — Value/rent group headings must be exactly **Land** / **Natural resource rents** / **Services of nature**. Fail on any other name for those buckets (e.g. “Natural capital”).
+4. **Spatial grain** — Fail on anything finer than Data Zone for published modelled/proxy values (no plot / UPRN / parcel / building grain).
+5. **Required wording / test follow-ups**
+   - `backend/georgist/place_stack.py` outside note must say `outside the Scottish totals`.
+   - Runtime public-JSON tests must also ban `natural capital` (extend `test_no_ledger_word_in_public_json.py`).
+
 ## Tests
 ```powershell
 cd backend

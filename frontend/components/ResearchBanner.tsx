@@ -53,6 +53,20 @@ export default function ResearchBanner({
     return () => mq.removeEventListener("change", sync);
   }, []);
 
+  // SW-016: expanded strip must not cover the place card — collapse when open.
+  useEffect(() => {
+    if (!stripMode) return;
+    const shell = document.querySelector(".app-shell");
+    if (!shell) return;
+    const syncPlace = () => {
+      if (shell.classList.contains("place-open")) setExpanded(false);
+    };
+    syncPlace();
+    const observer = new MutationObserver(syncPlace);
+    observer.observe(shell, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, [stripMode]);
+
   if (hidden) return null;
 
   const stripCollapsed = stripMode && !expanded;
@@ -81,7 +95,17 @@ export default function ResearchBanner({
           data-testid="research-banner-toggle"
           aria-expanded={expanded}
           aria-controls={bodyId}
-          onClick={() => setExpanded((value) => !value)}
+          onClick={() => {
+            const placeOpen = document
+              .querySelector(".app-shell")
+              ?.classList.contains("place-open");
+            // Keep the strip collapsed while a place card is open.
+            if (placeOpen) {
+              setExpanded(false);
+              return;
+            }
+            setExpanded((value) => !value);
+          }}
         >
           <span className="research-banner-text">
             <strong>{RESEARCH_BANNER_LEAD}</strong>

@@ -107,15 +107,25 @@ test.describe("SW-016 mobile research banner strip", () => {
     await page.locator(".hud-search-go").click();
     const card = page.getByTestId("place-card");
     await expect(card).toBeVisible({ timeout: 30_000 });
+    // Opening a place collapses the strip so it cannot cover the card.
+    await expect(banner).toHaveAttribute("data-expanded", "false");
 
     const cardBox = await card.boundingBox();
     const bannerWithCard = await banner.boundingBox();
     expect(cardBox).toBeTruthy();
     expect(bannerWithCard).toBeTruthy();
+    expect(bannerWithCard!.height).toBeLessThan(52);
     expect(
       overlaps(bannerWithCard!, cardBox!),
       "banner must not cover the place card",
     ).toBe(false);
+
+    // Expand is blocked while the place card is open (must not cover it).
+    await toggle.click();
+    await expect(banner).toHaveAttribute("data-expanded", "false");
+    const still = await banner.boundingBox();
+    expect(still).toBeTruthy();
+    expect(overlaps(still!, cardBox!)).toBe(false);
   });
 });
 
@@ -128,11 +138,13 @@ async function openMap(page: Page) {
 function overlaps(
   a: { x: number; y: number; width: number; height: number },
   b: { x: number; y: number; width: number; height: number },
+  epsilon = 1,
 ): boolean {
+  // 1px tolerance for subpixel layout rounding.
   return !(
-    a.x + a.width <= b.x ||
-    b.x + b.width <= a.x ||
-    a.y + a.height <= b.y ||
-    b.y + b.height <= a.y
+    a.x + a.width <= b.x + epsilon ||
+    b.x + b.width <= a.x + epsilon ||
+    a.y + a.height <= b.y + epsilon ||
+    b.y + b.height <= a.y + epsilon
   );
 }

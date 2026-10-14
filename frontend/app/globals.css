@@ -1396,7 +1396,7 @@ input {
     margin-bottom: 0.65rem;
   }
 
-  /* Place card and search stay above the strip */
+  /* Place card / search / burger stay above the strip in stacking order. */
   .app-shell.place-open .hud-place,
   .app-shell.place-open .place-card-stub,
   .app-shell.place-open .hud-place.place-card {
@@ -2912,6 +2912,19 @@ button.linkish:disabled {
   .hud-scotland-foot {
     margin-top: 0.2rem;
     padding-top: 0.15rem;
+  }
+}
+
+/* SW-016: after the ≤900 place-card rules — keep the card below the strip. */
+@media (max-width: 768px) {
+  .app-shell.place-open .hud-place,
+  .app-shell.place-open .place-card-stub,
+  .app-shell.place-open .hud-place.place-card {
+    /* header + strip offset (0.35rem) + one-line strip (~2.4rem) + gap */
+    top: calc(var(--hud-height, 8rem) + 2.9rem);
+    max-height: calc(
+      100dvh - var(--hud-height, 8rem) - 2.9rem - 7.4rem
+    );
   }
 }
 

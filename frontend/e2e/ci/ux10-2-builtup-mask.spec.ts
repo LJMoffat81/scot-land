@@ -250,16 +250,21 @@ async function ensureLegendOpen(page: Page) {
   // Layers can cover the × at 390; clear it so closePlaceCard can click or Esc.
   await closeTools(page);
   await closePlaceCard(page);
-  await expect(page.getByTestId("map-legend-panel")).toHaveAttribute(
-    "data-legend-compact",
-    "false",
-    { timeout: 15_000 },
-  );
+  const panel = page.getByTestId("map-legend-panel");
+  await expect(panel).toHaveAttribute("data-legend-compact", "false", {
+    timeout: 15_000,
+  });
   const credits = page.getByTestId("map-licence-credits");
-  if (await credits.isVisible().catch(() => false)) return;
-  const show = page.locator("button.hud-scotland-fold");
-  await expect(show).toBeVisible({ timeout: 15_000 });
-  await show.click();
+  // Place-card close restores legendOpen=true — do not toggle the fold shut.
+  const alreadyOpen = await panel.evaluate((el) =>
+    el.classList.contains("legend-open"),
+  );
+  if (!alreadyOpen) {
+    const show = page.locator("button.hud-scotland-fold");
+    await expect(show).toBeVisible({ timeout: 15_000 });
+    await show.click();
+  }
+  await expect(panel).toHaveClass(/legend-open/, { timeout: 15_000 });
   await expect(credits).toBeVisible({ timeout: 15_000 });
 }
 

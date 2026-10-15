@@ -523,6 +523,8 @@ input {
   .place-card-stub.place-card {
     display: flex;
     flex-direction: column;
+    /* Section scroll (peek / sheet); keep first value row in the card clip. */
+    overflow: hidden;
   }
 
   .hud-place .place-card-body,
@@ -540,10 +542,18 @@ input {
     padding-bottom: 0.35rem;
   }
 
-  /* SW-047: value block (AGR + surface row) stays outside the scrollable sheet. */
+  /* SW-047: value block (AGR + surface row) stays outside the scrollable sheet.
+     Peek may shrink so the coming-soon line never clips the first value row. */
+  .hud-place .place-card-peek,
+  .place-card-stub .place-card-peek {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
   .hud-place .place-card-value-block,
   .place-card-stub .place-card-value-block {
-    flex-shrink: 0;
+    flex: 0 0 auto;
   }
 
   .hud-place .place-card-experimental-footer-peek,
@@ -648,9 +658,9 @@ input {
 
 .place-card-land-values-coming-soon,
 .hud-scotland-coming-soon {
-  margin: 0.35rem 0 0;
-  font-size: 0.88rem;
-  line-height: 1.4;
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.3;
   color: var(--slrg-muted);
 }
 

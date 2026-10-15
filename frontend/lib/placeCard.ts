@@ -657,6 +657,7 @@ export async function fetchPlaceCard({
   try {
     return await apiJson<PlaceCardPayload>(
       `/platform/place?${params.toString()}`,
+      { retryStatuses: [502, 503, 504], maxAttempts: 3 },
     );
   } catch (err) {
     if (isOutsideScotlandError(err)) {

@@ -34,6 +34,7 @@ import httpx
 import psycopg2
 import yaml
 
+from etl.receipt_write import write_receipt
 from spatial.geoserver_auth import ENV_NAME as SPATIALHUB_AUTHKEY_ENV
 from spatial.geoserver_auth import is_configured as spatialhub_auth_configured
 from spatial.geoserver_auth import not_loaded_message
@@ -322,7 +323,8 @@ def load_feature_collection(
     return inserted
 
 
-def write_local_stamp(input_path: Path, count: int, vintage: str) -> Path:
+def write_local_stamp(input_path: Path, count: int, vintage: str) -> Path | None:
+    """Write HLA receipt next to input; non-fatal when /app/data is read-only."""
     stamp_path = input_path.with_suffix(input_path.suffix + ".ingest.json")
     stamp = {
         "layer": "hla",
@@ -340,8 +342,11 @@ def write_local_stamp(input_path: Path, count: int, vintage: str) -> Path:
             "Synthetic fixtures under data/fixtures/hla/ are for tests only."
         ),
     }
-    stamp_path.write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
-    return stamp_path
+    return write_receipt(
+        stamp_path,
+        stamp,
+        fallback_name=stamp_path.name or "hla.ingest.json",
+    )
 
 
 def main() -> None:

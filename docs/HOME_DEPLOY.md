@@ -40,11 +40,14 @@ Run on the home PC from the repo root (PowerShell):
 4. Ensure live **db** is up (API/frontend keep serving the previous images).
 5. Snapshot `:local` → `:last-good` when last-good is known and `-Pull` was not
    used (so a build cannot erase the restore tags).
-6. `docker compose -f docker-compose.home.yml build` — new `scot-land-home-*:local`
-   images; live containers untouched.
+6. `docker compose -f docker-compose.home.yml build api frontend` — new
+   `scot-land-home-*:local` images; live containers untouched. Never a bare
+   full-project `build` / `up` that recreates every service.
 7. Start canary project `scot-land-canary` on `:8001` / `:3001` (shares live DB via `host.docker.internal:5433`).
 8. Require canary `http://127.0.0.1:8001/health` **and** `http://127.0.0.1:3001/backend/health`.
-9. Only then `docker compose … up -d --no-build` to swap live to the new images.
+9. Only then `docker compose … up -d --no-build --no-deps api frontend` to swap
+   the app services. **Never** recreate `cloudflared` (not in this compose;
+   stay out of its process/service too).
 10. Require live `http://127.0.0.1:3000/backend/health`.
 11. Tear down canary; write `.deploy/last-good-sha`; retag new `:local` as `:last-good`.
 
@@ -56,8 +59,9 @@ Run on the home PC from the repo root (PowerShell):
 - Retag `scot-land-home-*:last-good` → `scot-land-home-*:local`.
 - If the live stack was **not** swapped yet (canary failed): leave live containers
   running; git + image tags are restored for the next attempt.
-- If live **was** swapped and then failed health: `up -d --no-build` using the
-  retagged `:local` images (no rebuild).
+- If live **was** swapped and then failed health:
+  `up -d --no-build --no-deps api frontend` using the retagged `:local` images
+  (no rebuild; no full-stack recreate).
 - Log the rollback to `.deploy/deploy.log`.
 - **Do not** stop or restart `cloudflared`.
 

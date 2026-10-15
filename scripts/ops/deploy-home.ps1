@@ -223,8 +223,8 @@ function Invoke-Rollback {
     }
 
     try {
-        # Images already retagged to :local — recreate live from those tags (no rebuild).
-        Invoke-Compose -f $ComposePath up -d --no-build
+        # Images already retagged to :local — recreate app services only (never cloudflared/db).
+        Invoke-Compose -f $ComposePath up -d --no-build --no-deps api frontend
         $ok = Wait-HttpOk -Url "$LiveFrontendUrl$HealthPath" -TimeoutSec $HealthTimeoutSec -Label "live $HealthPath after rollback"
         Assert-CloudflaredUntouched
         if ($ok) {
@@ -284,8 +284,8 @@ try {
     Write-DeployLog "Ensuring live db is up (old api/frontend keep serving)"
     Invoke-Compose -f $ComposePath up -d db
 
-    Write-DeployLog "Building new images (live containers keep running)"
-    Invoke-Compose -f $ComposePath build
+    Write-DeployLog "Building new api/frontend images (live containers keep running; cloudflared untouched)"
+    Invoke-Compose -f $ComposePath build api frontend
 
     Write-DeployLog "Starting canary on alternate ports (live + tunnel keep running)"
     Invoke-Compose -p $CanaryProject -f $CanaryPath up -d --no-build
@@ -302,8 +302,8 @@ try {
         exit 1
     }
 
-    Write-DeployLog "Canary healthy — swapping live stack to new images"
-    Invoke-Compose -f $ComposePath up -d --no-build
+    Write-DeployLog "Canary healthy — swapping live api/frontend only (no cloudflared, no bare full-stack up)"
+    Invoke-Compose -f $ComposePath up -d --no-build --no-deps api frontend
 
     $liveOk = Wait-HttpOk -Url "$LiveFrontendUrl$HealthPath" -TimeoutSec $HealthTimeoutSec -Label "live $HealthPath"
     if (-not $liveOk) {

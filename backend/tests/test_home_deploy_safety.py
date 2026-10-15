@@ -27,6 +27,9 @@ def test_compose_home_publishes_named_images_for_canary_reuse():
     data = yaml.safe_load(text)
     assert data["services"]["api"]["image"] == "scot-land-home-api:local"
     assert data["services"]["frontend"]["image"] == "scot-land-home-frontend:local"
+    # Tunnel stays outside compose — a shared project up/down must never list it.
+    assert "cloudflared" not in data["services"]
+    assert set(data["services"]) == {"db", "api", "frontend"}
 
 
 def test_canary_compose_uses_alternate_loopback_ports_not_live():
@@ -111,9 +114,50 @@ def test_deploy_home_rollback_retags_last_good_images_to_local():
         next_fn = rollback_fn.find("\nfunction ", 1)
     rollback_body = rollback_fn[: next_fn if next_fn > 0 else len(rollback_fn)]
     assert "Restore-LastGoodImages" in rollback_body
-    assert "up -d --no-build" in rollback_body
+    assert "up -d --no-build --no-deps api frontend" in rollback_body
     # Must not rebuild during rollback restore (retag is the restore).
     assert "Invoke-Compose -f $ComposePath build" not in rollback_body
+
+
+def test_deploy_commands_never_stop_or_recreate_cloudflared():
+    """Live compose ups must name api/frontend only; never full-stack or tunnel."""
+    text = DEPLOY_PS1.read_text(encoding="utf-8")
+    lower = text.lower()
+    canary = yaml.safe_load(COMPOSE_CANARY.read_text(encoding="utf-8"))
+    assert "cloudflared" not in canary["services"]
+
+    # Forbidden: stop/kill tunnel, or recreate everything in the live project.
+    assert "stop-process" not in lower
+    assert "stop-service" not in lower
+    assert "systemctl stop cloudflared" not in lower
+    assert "--force-recreate" not in lower
+    assert "invoke-compose -f $composepath down" not in lower
+    # Bare full-project live up (no service names) would recreate every service.
+    assert "Invoke-Compose -f $ComposePath up -d --no-build\n" not in text
+    assert "Invoke-Compose -f $ComposePath up -d --build\n" not in text
+    assert "Invoke-Compose -f $ComposePath up -d --build" not in text
+    assert "Invoke-Compose -f $ComposePath build\n" not in text
+
+    app_swap = "up -d --no-build --no-deps api frontend"
+    assert app_swap in text
+    assert text.count(app_swap) >= 2  # live swap + rollback restack
+    assert "build api frontend" in text
+
+    for line in text.splitlines():
+        stripped = line.strip()
+        if "Invoke-Compose" not in stripped:
+            continue
+        if "$CanaryPath" in stripped or "$CanaryProject" in stripped:
+            continue
+        if "up -d" in stripped:
+            if stripped.endswith("up -d db") or " up -d db" in stripped:
+                assert "cloudflared" not in stripped.lower()
+                continue
+            assert "--no-deps api frontend" in stripped, stripped
+            assert "cloudflared" not in stripped.lower()
+        if " build" in stripped:
+            assert "api frontend" in stripped, stripped
+            assert "cloudflared" not in stripped.lower()
 
 
 def test_rebuild_home_delegates_to_deploy_home():

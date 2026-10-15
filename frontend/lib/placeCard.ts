@@ -194,8 +194,8 @@ export type PlaceAgrRow = {
   of_which?: Array<{ id: string; label: string }>;
   /** GBP-LIVE visitor estimate label (Measured / Partly estimated / Fully estimated). */
   estimate_label?: string | null;
-  /** GBP-LIVE yield wording ("up to …"). */
-  yield_wording?: string | null;
+  /** GBP-LIVE rent-rate wording (signed-off; never "yield"). */
+  rent_rate_wording?: string | null;
   amount_label?: string | null;
 };
 
@@ -288,7 +288,11 @@ export type PlaceCardPayload = {
   /** UX-10 card state override for no-match. */
   card_state?: "ok" | "no_match" | "sea" | "no_homes" | string | null;
   /** GBP-LIVE-V1 flag mirror (default OFF). */
-  gbp_live?: { enabled?: boolean; banner?: string | null; yield_wording?: string | null } | null;
+  gbp_live?: {
+    enabled?: boolean;
+    banner?: string | null;
+    rent_rate_wording?: string | null;
+  } | null;
   /** GBP-LIVE surface rent display for this Data Zone (absent when flag OFF). */
   surface_rent_display?: {
     state?: string | null;
@@ -298,7 +302,7 @@ export type PlaceCardPayload = {
     low?: number | null;
     central?: number | null;
     high?: number | null;
-    yield_wording?: string | null;
+    rent_rate_wording?: string | null;
     grain?: string | null;
   } | null;
 };

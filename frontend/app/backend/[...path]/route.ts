@@ -32,7 +32,7 @@ function visitorAddress(request: Request): string {
 const GBP_LIVE_FLAG_OFF = {
   enabled: false,
   banner: null,
-  yield_wording: null,
+  rent_rate_wording: null,
 } as const;
 
 async function proxy(request: Request, context: Ctx): Promise<Response> {

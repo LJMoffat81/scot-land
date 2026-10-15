@@ -190,9 +190,9 @@ function PartRow({
     gbpLive && row.id === "surface" && display?.state === "ok"
       ? display.estimate_label || row.estimate_label
       : null;
-  const yieldWording =
+  const rentRateWording =
     gbpLive && row.id === "surface" && display?.state === "ok"
-      ? display.yield_wording || row.yield_wording
+      ? display.rent_rate_wording || row.rent_rate_wording
       : null;
   return (
     <li
@@ -227,12 +227,12 @@ function PartRow({
           {estimateLabel}
         </p>
       ) : null}
-      {yieldWording ? (
+      {rentRateWording ? (
         <p
-          className="place-card-yield-wording"
-          data-testid={`place-card-yield-${row.id}`}
+          className="place-card-rent-rate-wording"
+          data-testid={`place-card-rent-rate-${row.id}`}
         >
-          Yield {yieldWording}
+          {rentRateWording}
         </p>
       ) : null}
       {row.of_which?.length ? (

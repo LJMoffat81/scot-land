@@ -34,8 +34,11 @@ ESTIMATE_VISITOR: dict[str, str] = {
 
 UNDER_REVIEW_LABEL = "Under review"
 EARLY_ESTIMATES_BANNER = "Early estimates; ranges are wide and will change."
-# Yield high of the signed-off band (surface.yaml) — visitor wording uses "up to".
-YIELD_UP_TO_PCT = 4.50
+# Signed-off visitor rent-rate lines (Scot-LAND) — never the banned word "yield".
+RENT_RATE_WORDING_CARD = "Yearly rent: up to 4.5% of the land's value"
+RENT_RATE_WORDING_HOW_IT_WORKS = (
+    "We turn land value into a yearly rent of up to 4.5% of that value."
+)
 
 
 class GbpLiveConfigError(ValueError):
@@ -105,10 +108,14 @@ def visitor_estimate_label(machine: str) -> str:
     return ESTIMATE_VISITOR.get(machine, ESTIMATE_VISITOR[ESTIMATE_FULLY])
 
 
-def yield_up_to_wording(pct: float = YIELD_UP_TO_PCT) -> str:
-    """Visitor yield line — always 'up to' (never a bare central %)."""
-    rendered = f"{pct:.2f}".rstrip("0").rstrip(".")
-    return f"up to {rendered}%"
+def rent_rate_wording_card() -> str:
+    """Place-card rent-rate line (signed off; no 'yield')."""
+    return RENT_RATE_WORDING_CARD
+
+
+def rent_rate_wording_how_it_works() -> str:
+    """How it works rent-rate line (signed off; no 'yield')."""
+    return RENT_RATE_WORDING_HOW_IT_WORKS
 
 
 def _money_fields(row: Mapping[str, Any]) -> dict[str, float] | None:
@@ -149,7 +156,7 @@ def surface_rent_display_for_row(
             "low": None,
             "central": None,
             "high": None,
-            "yield_wording": None,
+            "rent_rate_wording": None,
         }
     if row is None or not publicly_served(row):
         return {
@@ -159,7 +166,7 @@ def surface_rent_display_for_row(
             "low": None,
             "central": None,
             "high": None,
-            "yield_wording": None,
+            "rent_rate_wording": None,
         }
     if row.get("quality") == "placeholder":
         return {
@@ -169,7 +176,7 @@ def surface_rent_display_for_row(
             "low": None,
             "central": None,
             "high": None,
-            "yield_wording": None,
+            "rent_rate_wording": None,
         }
     money = _money_fields(row)
     if money is None:
@@ -180,7 +187,7 @@ def surface_rent_display_for_row(
             "low": None,
             "central": None,
             "high": None,
-            "yield_wording": None,
+            "rent_rate_wording": None,
         }
     machine = resolve_estimate_label(row)
     return {
@@ -191,7 +198,7 @@ def surface_rent_display_for_row(
         "low": money["low"],
         "central": money["central"],
         "high": money["high"],
-        "yield_wording": yield_up_to_wording(),
+        "rent_rate_wording": rent_rate_wording_card(),
         "grain": "data_zone",
     }
 
@@ -202,7 +209,9 @@ def public_settings(path: Path | str | None = None) -> dict[str, Any]:
     return {
         "enabled": bool(cfg["enabled"]),
         "banner": EARLY_ESTIMATES_BANNER if cfg["enabled"] else None,
-        "yield_wording": yield_up_to_wording() if cfg["enabled"] else None,
+        "rent_rate_wording": (
+            rent_rate_wording_how_it_works() if cfg["enabled"] else None
+        ),
     }
 
 
@@ -262,7 +271,7 @@ def attach_gbp_live_to_place_card(
         return card
 
     card["gbp_live"]["banner"] = settings["banner"]
-    card["gbp_live"]["yield_wording"] = settings["yield_wording"]
+    card["gbp_live"]["rent_rate_wording"] = settings["rent_rate_wording"]
 
     zone = card.get("data_zone") or {}
     # Prefer the card's preferred vintage/code (DZ2022 when present).
@@ -290,6 +299,6 @@ def attach_gbp_live_to_place_card(
         elif display["state"] == "ok":
             agr["estimate_label"] = display["estimate_label"]
             agr["amount_label"] = display["estimate_label"]
-            agr["yield_wording"] = display["yield_wording"]
+            agr["rent_rate_wording"] = display["rent_rate_wording"]
         break
     return card

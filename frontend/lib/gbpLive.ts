@@ -11,13 +11,18 @@ export const GBP_LIVE_EARLY_BANNER =
 
 export const GBP_LIVE_UNDER_REVIEW = "Under review";
 
-/** Yield visitor wording — always "up to" (high of signed-off band). */
-export const GBP_LIVE_YIELD_UP_TO = "up to 4.5%";
+/** Place-card rent-rate line (signed off; never the banned word "yield"). */
+export const GBP_LIVE_RENT_RATE_CARD =
+  "Yearly rent: up to 4.5% of the land's value";
+
+/** How it works rent-rate line (signed off; never the banned word "yield"). */
+export const GBP_LIVE_RENT_RATE_HOW_IT_WORKS =
+  "We turn land value into a yearly rent of up to 4.5% of that value.";
 
 export type GbpLiveSettings = {
   enabled: boolean;
   banner?: string | null;
-  yield_wording?: string | null;
+  rent_rate_wording?: string | null;
 };
 
 export type SurfaceRentDisplayState = "ok" | "under_review" | "hidden";
@@ -30,7 +35,7 @@ export type SurfaceRentDisplay = {
   low?: number | null;
   central?: number | null;
   high?: number | null;
-  yield_wording?: string | null;
+  rent_rate_wording?: string | null;
   grain?: string | null;
 };
 
@@ -88,7 +93,7 @@ export async function fetchGbpLiveSettings(): Promise<GbpLiveSettings> {
       return {
         enabled: Boolean(body?.enabled),
         banner: body?.banner ?? null,
-        yield_wording: body?.yield_wording ?? null,
+        rent_rate_wording: body?.rent_rate_wording ?? null,
       } satisfies GbpLiveSettings;
     })
     .catch(() => ({ enabled: false }) satisfies GbpLiveSettings)

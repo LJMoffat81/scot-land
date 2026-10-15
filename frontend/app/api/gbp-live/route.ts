@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 const FLAG_OFF = {
   enabled: false,
   banner: null,
-  yield_wording: null,
+  rent_rate_wording: null,
 } as const;
 
 function apiOrigin(): string {
@@ -38,13 +38,13 @@ export async function GET(): Promise<Response> {
     const body = (await upstream.json()) as {
       enabled?: boolean;
       banner?: string | null;
-      yield_wording?: string | null;
+      rent_rate_wording?: string | null;
     };
     return Response.json(
       {
         enabled: Boolean(body?.enabled),
         banner: body?.banner ?? null,
-        yield_wording: body?.yield_wording ?? null,
+        rent_rate_wording: body?.rent_rate_wording ?? null,
       },
       { status: 200 },
     );

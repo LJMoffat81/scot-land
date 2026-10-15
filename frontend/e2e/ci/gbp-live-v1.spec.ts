@@ -2,11 +2,18 @@ import { expect, test, type Page } from "@playwright/test";
 
 /**
  * GBP-LIVE-V1 — flag OFF: no £. Flag ON (mocked): range + estimate label;
- * under-review hides £; placeholder hidden; no total.
+ * under-review hides £; placeholder hidden; no total; rent-rate wording;
+ * API class "shadow" never appears as visible visitor text.
  */
 
 const PRE_POUND =
   "We're not showing amounts yet while we check our method.";
+
+const RENT_RATE_CARD =
+  "Yearly rent: up to 4.5% of the land's value";
+
+const RENT_RATE_HOW_IT_WORKS =
+  "We turn land value into a yearly rent of up to 4.5% of that value.";
 
 const HEALTH_OK = {
   status: "ok",
@@ -112,9 +119,9 @@ async function stubShell(page: Page, place: Record<string, unknown>, gbpLiveEnab
     ? {
         enabled: true,
         banner: "Early estimates; ranges are wide and will change.",
-        yield_wording: "up to 4.5%",
+        rent_rate_wording: RENT_RATE_HOW_IT_WORKS,
       }
-    : { enabled: false, banner: null, yield_wording: null };
+    : { enabled: false, banner: null, rent_rate_wording: null };
   // Same-origin probe + backend path both return 200 (never 404 when flag off).
   await page.route("**/api/gbp-live**", async (route) => {
     await route.fulfill({
@@ -182,7 +189,7 @@ test.describe("GBP-LIVE-V1 flag ON", () => {
       gbp_live: {
         enabled: true,
         banner: "Early estimates; ranges are wide and will change.",
-        yield_wording: "up to 4.5%",
+        rent_rate_wording: RENT_RATE_HOW_IT_WORKS,
       },
       surface_rent_display: {
         state: "ok",
@@ -190,7 +197,7 @@ test.describe("GBP-LIVE-V1 flag ON", () => {
         central: 12000,
         high: 18000,
         estimate_label: "Partly estimated",
-        yield_wording: "up to 4.5%",
+        rent_rate_wording: RENT_RATE_CARD,
         grain: "data_zone",
       },
     });
@@ -213,11 +220,42 @@ test.describe("GBP-LIVE-V1 flag ON", () => {
     await expect(card.getByTestId("place-card-estimate-label-surface")).toHaveText(
       "Partly estimated",
     );
-    await expect(card.getByTestId("place-card-yield-surface")).toContainText(
-      "up to",
+    await expect(card.getByTestId("place-card-rent-rate-surface")).toHaveText(
+      RENT_RATE_CARD,
     );
     // No total line.
     await expect(card).not.toContainText(/Scotland total|national total/i);
+    // Banned visitor word "yield" must never appear.
+    await expect(card).not.toContainText(/\byield\b/i);
+  });
+
+  test("API class shadow never shows as visible text", async ({ page }) => {
+    const place = placeFixture({
+      gbp_live: {
+        enabled: true,
+        banner: "Early estimates; ranges are wide and will change.",
+        rent_rate_wording: RENT_RATE_HOW_IT_WORKS,
+      },
+      surface_rent_display: {
+        state: "ok",
+        low: 6000,
+        central: 12000,
+        high: 18000,
+        estimate_label: "Partly estimated",
+        rent_rate_wording: RENT_RATE_CARD,
+        grain: "data_zone",
+      },
+    });
+    // Fixture includes nature row with tag/class "shadow" — visitor chip must be Estimate.
+    await stubShell(page, place, true);
+    await openPlaceCard(page);
+    const card = page.getByTestId("place-card");
+    const nature = card.getByTestId("place-card-agr-nature");
+    await expect(nature.getByTestId("place-tag-estimate")).toHaveText("Estimate");
+    await expect(nature).not.toContainText(/\bshadow\b/i);
+    await expect(card).not.toContainText(/\bshadow\b/i);
+    // Tone attribute must be remapped too (data-class on the row).
+    await expect(nature).toHaveAttribute("data-class", "estimate");
   });
 
   test("under-review zone shows label and no £", async ({ page }) => {

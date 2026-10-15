@@ -145,7 +145,7 @@ def test_public_settings_flag_off():
     settings = gl.public_settings()
     assert settings["enabled"] is False
     assert settings["banner"] is None
-    assert settings["yield_wording"] is None
+    assert settings["rent_rate_wording"] is None
 
 
 def test_public_settings_flag_on(tmp_path):
@@ -153,13 +153,19 @@ def test_public_settings_flag_on(tmp_path):
     settings = gl.public_settings(path)
     assert settings["enabled"] is True
     assert settings["banner"] == gl.EARLY_ESTIMATES_BANNER
-    assert settings["yield_wording"] == gl.yield_up_to_wording()
-    assert settings["yield_wording"].startswith("up to ")
+    assert settings["rent_rate_wording"] == gl.rent_rate_wording_how_it_works()
+    assert "yield" not in settings["rent_rate_wording"].lower()
 
 
-def test_yield_wording_says_up_to():
-    assert gl.yield_up_to_wording() == "up to 4.5%"
-    assert "up to" in gl.yield_up_to_wording(4.5)
+def test_rent_rate_wording_signed_off():
+    assert gl.rent_rate_wording_card() == (
+        "Yearly rent: up to 4.5% of the land's value"
+    )
+    assert gl.rent_rate_wording_how_it_works() == (
+        "We turn land value into a yearly rent of up to 4.5% of that value."
+    )
+    assert "yield" not in gl.rent_rate_wording_card().lower()
+    assert "yield" not in gl.rent_rate_wording_how_it_works().lower()
 
 
 def test_platform_gbp_live_route_default_off(monkeypatch):
@@ -171,6 +177,7 @@ def test_platform_gbp_live_route_default_off(monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["enabled"] is False
+    assert "yield_wording" not in body
     assert "£" not in str(body)
 
 
@@ -185,6 +192,10 @@ def test_place_card_flag_off_no_pound(monkeypatch):
     assert body["gbp_live"]["enabled"] is False
     assert "surface_rent_display" not in body
     assert "£" not in str(body)
+    assert "yield" not in str(body).lower() or "yield" in str(
+        # allow internal-only keys never present on public card
+        []
+    )
 
 
 def test_place_card_flag_on_shows_range_and_label(monkeypatch, tmp_path):
@@ -207,7 +218,9 @@ def test_place_card_flag_on_shows_range_and_label(monkeypatch, tmp_path):
     assert display["central"] == 12000.0
     assert display["high"] == 18000.0
     assert display["estimate_label"] == "Measured"
-    assert display["yield_wording"].startswith("up to ")
+    assert display["rent_rate_wording"] == gl.rent_rate_wording_card()
+    assert "yield_wording" not in display
+    assert "yield" not in display["rent_rate_wording"].lower()
     assert display["grain"] == "data_zone"
     assert "total" not in display
     assert "scotland_total" not in str(card).lower()

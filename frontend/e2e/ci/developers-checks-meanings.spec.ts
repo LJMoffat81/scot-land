@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { CHECK_MEANINGS, type CheckMeaningId } from "../lib/checkMeanings";
+import { CHECK_MEANINGS, type CheckMeaningId } from "../../lib/checkMeanings";
 
 /**
  * /developers/checks — public “what the checks mean” lines (class check-meaning).

@@ -4,7 +4,7 @@
  * Run: npm run test:site-watch-d3-sea-click
  */
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,6 +13,10 @@ const frontendRoot = join(here, "..");
 
 function readSrc(relPath) {
   return readFileSync(join(frontendRoot, relPath), "utf8");
+}
+
+function exists(relPath) {
+  return existsSync(join(frontendRoot, relPath));
 }
 
 const LINE =
@@ -160,7 +164,7 @@ assert.doesNotMatch(
   "synthetic miss must not use No data note",
 );
 
-const e2e = readSrc("e2e/sea-click-plain-line.spec.ts");
+const e2e = readSrc("e2e/ci/sea-click-plain-line.spec.ts");
 assert.match(e2e, /place-card-out-of-scotland/);
 assert.match(
   e2e,
@@ -213,13 +217,22 @@ assert.match(
 const pkg = readSrc("package.json");
 assert.match(
   pkg,
-  /test:e2e:ci[\s\S]*sea-click-plain-line\.spec\.ts/,
-  "sea-click-plain-line.spec.ts must be in test:e2e:ci",
+  /"test:e2e:ci":\s*"playwright test -c playwright\.ci\.config\.ts"/,
+  "test:e2e:ci must auto-discover via playwright.ci.config.ts",
 );
+assert.ok(
+  exists("e2e/ci/sea-click-plain-line.spec.ts"),
+  "sea-click-plain-line.spec.ts must live under e2e/ci/ for CI auto-discover",
+);
+assert.ok(
+  exists("e2e/ci/sea-stub-card.spec.ts"),
+  "sea-stub-card.spec.ts must live under e2e/ci/ for CI auto-discover",
+);
+const ciConfig = readSrc("playwright.ci.config.ts");
 assert.match(
-  pkg,
-  /test:e2e:ci[\s\S]*sea-stub-card\.spec\.ts/,
-  "sea-stub-card.spec.ts must be in test:e2e:ci",
+  ciConfig,
+  /testDir:\s*["']e2e\/ci["']/,
+  "playwright.ci.config.ts must discover e2e/ci/",
 );
 
 const chrome = readSrc("app/map-chrome.css");
@@ -229,7 +242,7 @@ assert.match(
   "SW-028 sea stub must not stretch with bottom:auto",
 );
 
-const e2eStub = readSrc("e2e/sea-stub-card.spec.ts");
+const e2eStub = readSrc("e2e/ci/sea-stub-card.spec.ts");
 assert.match(e2eStub, /Show me Scotland/);
 assert.match(e2eStub, /1280/);
 assert.match(e2eStub, /390/);

@@ -4,7 +4,7 @@ import {
   RESEARCH_BANNER_BODY,
   RESEARCH_BANNER_LEAD,
   RESEARCH_BANNER_STRIP_COLLAPSED,
-} from "../lib/siteNav";
+} from "../../lib/siteNav";
 
 /**
  * SW-016 — ≤768px research banner is a one-line strip under the header;

@@ -105,18 +105,115 @@ function filterNoise(errors: string[]): string[] {
 }
 
 async function stubMapBackend(page: Page) {
-  await page.route("**/backend/health**", async (route) => {
+  // Single handler so Playwright LIFO cannot let a catch-all steal
+  // /layers/catalog or dz2022-masked (credits would never mount).
+  await page.route("**/backend/**", async (route) => {
+    const url = route.request().url();
+    if (/\/health(?:\?|$)/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(HEALTH_OK),
+      });
+      return;
+    }
+    if (/\/layers\/catalog/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(CATALOG),
+      });
+      return;
+    }
+    if (/\/platform\/place/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          contract: "place_card_v1",
+          lat: 55.86,
+          lng: -4.25,
+          place_label: "Glasgow",
+        }),
+      });
+      return;
+    }
+    if (/\/place(?:\?|$)/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ kind: "places", matches: [] }),
+      });
+      return;
+    }
+    if (/\/layers\/open\/dz2022-masked/i.test(url)) {
+      if (/\/tiles\//i.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/vnd.mapbox-vector-tile",
+          body: Buffer.alloc(0),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(MASK_FC),
+      });
+      return;
+    }
+    if (/\/layers\/open\/builtup-mask/i.test(url)) {
+      if (/\/tiles\//i.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/vnd.mapbox-vector-tile",
+          body: Buffer.alloc(0),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(EMPTY_FC),
+      });
+      return;
+    }
+    if (/\/layers\/context\/data-zones\/at/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code: "S01014567",
+          name: "City Centre South",
+          vintage: 2022,
+        }),
+      });
+      return;
+    }
+    if (/\/platform\/gbp-live/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          enabled: false,
+          banner: null,
+          rent_rate_wording: null,
+        }),
+      });
+      return;
+    }
+    if (/\/layers\//i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(EMPTY_FC),
+      });
+      return;
+    }
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(HEALTH_OK),
-    });
-  });
-  await page.route("**/backend/layers/catalog**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(CATALOG),
+      body: JSON.stringify({}),
     });
   });
   await page.route("**/layers/catalog**", async (route) => {
@@ -124,89 +221,6 @@ async function stubMapBackend(page: Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(CATALOG),
-    });
-  });
-  await page.route("**/backend/place**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ kind: "places", matches: [] }),
-    });
-  });
-  await page.route("**/backend/platform/place**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        contract: "place_card_v1",
-        lat: 55.86,
-        lng: -4.25,
-        place_label: "Glasgow",
-      }),
-    });
-  });
-  await page.route("**/backend/layers/open/dz2022-masked**", async (route) => {
-    const url = route.request().url();
-    if (/\/tiles\//i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/vnd.mapbox-vector-tile",
-        body: Buffer.alloc(0),
-      });
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(MASK_FC),
-    });
-  });
-  await page.route("**/backend/layers/open/builtup-mask**", async (route) => {
-    const url = route.request().url();
-    if (/\/tiles\//i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/vnd.mapbox-vector-tile",
-        body: Buffer.alloc(0),
-      });
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
-  await page.route("**/backend/layers/open/data-zones**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
-  await page.route("**/backend/layers/context/data-zones/at**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        code: "S01014567",
-        name: "City Centre South",
-        vintage: 2022,
-      }),
-    });
-  });
-  await page.route("**/backend/layers/**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
-  await page.route("**/backend/platform/gbp-live**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ enabled: false, banner: null, rent_rate_wording: null }),
     });
   });
 }
@@ -255,16 +269,20 @@ async function ensureLegendOpen(page: Page) {
     timeout: 15_000,
   });
   const credits = page.getByTestId("map-licence-credits");
-  // Place-card close restores legendOpen=true — do not toggle the fold shut.
-  const alreadyOpen = await panel.evaluate((el) =>
-    el.classList.contains("legend-open"),
-  );
-  if (!alreadyOpen) {
+  // Narrow: body is display:none without .legend-open — open the fold only then.
+  // Desktop: body is already visible; place-card close restores legendOpen — do
+  // not click the fold (it would toggle shut) and do not require the class when
+  // the fold is display:none.
+  const needsFold = await panel.evaluate((el) => {
+    const narrow = window.matchMedia("(max-width: 640px)").matches;
+    return narrow && !el.classList.contains("legend-open");
+  });
+  if (needsFold) {
     const show = page.locator("button.hud-scotland-fold");
     await expect(show).toBeVisible({ timeout: 15_000 });
     await show.click();
+    await expect(panel).toHaveClass(/legend-open/, { timeout: 15_000 });
   }
-  await expect(panel).toHaveClass(/legend-open/, { timeout: 15_000 });
   await expect(credits).toBeVisible({ timeout: 15_000 });
 }
 

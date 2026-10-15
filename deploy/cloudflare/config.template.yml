@@ -1,13 +1,24 @@
+<<<<<<< HEAD
 # Cloudflare named-tunnel config template for Scot-LAND (HOME-TUNNEL).
+=======
+# Cloudflare named-tunnel config template for Scot-LAND.
+>>>>>>> 99afed5 (feat: gate parcels behind PARCELS_PUBLIC (default off))
 # Copy to the home PC (outside the repo), replace placeholders, never commit secrets.
 #
 # Placeholders:
 #   REPLACE_WITH_TUNNEL_ID          — Cloudflare tunnel UUID
 #   REPLACE_WITH_CREDENTIALS_FILE   — absolute path to the tunnel credentials JSON
 #
+<<<<<<< HEAD
 # Routing (order matters — nothing else):
 #   1. apex + www → frontend on localhost:3000
 #   2. http_status:404 catch-all last
+=======
+# Routing (order matters):
+#   1. Parcel paths → http_status:404 on both hostnames (PARCELS-OFF; ahead of front-end)
+#   2. apex + www → frontend on localhost:3000
+#   3. http_status:404 catch-all last
+>>>>>>> 99afed5 (feat: gate parcels behind PARCELS_PUBLIC (default off))
 #
 # No /api → :8000 rule. The API listens at the container root (/health, …);
 # the Next front end already proxies it at /backend (live through this tunnel).
@@ -17,6 +28,23 @@ tunnel: REPLACE_WITH_TUNNEL_ID
 credentials-file: REPLACE_WITH_CREDENTIALS_FILE
 
 ingress:
+<<<<<<< HEAD
+=======
+  # PARCELS-OFF — return 404 before the front-end proxy can serve parcels.
+  - hostname: scot-land.scot
+    path: ^/backend/layers/parcels.*
+    service: http_status:404
+  - hostname: scot-land.scot
+    path: ^/api/parcels.*
+    service: http_status:404
+  - hostname: www.scot-land.scot
+    path: ^/backend/layers/parcels.*
+    service: http_status:404
+  - hostname: www.scot-land.scot
+    path: ^/api/parcels.*
+    service: http_status:404
+
+>>>>>>> 99afed5 (feat: gate parcels behind PARCELS_PUBLIC (default off))
   - hostname: scot-land.scot
     service: http://localhost:3000
   - hostname: www.scot-land.scot

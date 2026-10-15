@@ -25,16 +25,17 @@ const CATALOG = {
   version: 2,
   layers: [
     {
-      id: "boundaries",
+      id: "data_zones",
       group: "spatial",
       status: "live",
-      label: "ROS INSPIRE parcels",
+      label: "Data zones",
       licence: "OGL-3.0",
       licence_url:
         "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
       attribution:
-        "© Crown copyright. Reproduced with the permission of Registers of Scotland.",
-      source_url: "https://www.ros.gov.uk/open-data",
+        "Scottish Government Data Zone boundaries 2022 (OGL).",
+      source_url:
+        "https://www.spatialdata.gov.scot/geonetwork/srv/eng/catalog.search",
     },
   ],
 };
@@ -186,8 +187,8 @@ test.describe("UX-04 a11y names and landmarks at 1280", () => {
       page.getByRole("complementary", { name: "Land rent", exact: true }),
     ).toHaveCount(0);
 
-    // Enable parcels so MapLicenceCredits mounts (unique group name, not a landmark).
-    await page.getByTestId("layer-toggle-boundaries").click();
+    // Enable data zones so MapLicenceCredits mounts (parcels toggle is off by default).
+    await page.getByTestId("layer-toggle-data_zones").click();
     await expect(page.getByTestId("map-licence-credits")).toBeVisible({
       timeout: 15_000,
     });

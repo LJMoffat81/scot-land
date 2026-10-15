@@ -64,6 +64,7 @@ import {
   paintForMetricWithNoData,
   rangeLegendFromStops,
 } from "../lib/mapLicenceCredits";
+import { parcelsPublic } from "../lib/parcelsPublic";
 
 type ParcelFeature = GeoJSON.Feature<
   GeoJSON.Polygon | GeoJSON.MultiPolygon,
@@ -533,7 +534,8 @@ export default function ScotlandMap() {
     // Catalog boundary / VDL toggles from the right-hand Layers drawer.
     if ("boundaries" in next) {
       boundariesTouched.current = true;
-      setShowBoundaries(Boolean(next.boundaries));
+      // Parcel layer stays off unless PARCELS_PUBLIC=true.
+      setShowBoundaries(parcelsPublic() && Boolean(next.boundaries));
     }
     if ("data_zones" in next) {
       dataZonesTouched.current = true;

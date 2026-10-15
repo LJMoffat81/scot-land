@@ -10,6 +10,12 @@ import pytest
 URL = os.getenv("WEALTH_TEST_DATABASE_URL") or os.getenv("DATABASE_URL") or ""
 pytestmark = pytest.mark.skipif(not URL, reason="WEALTH_TEST_DATABASE_URL not set")
 
+
+@pytest.fixture(autouse=True)
+def _parcels_public_on(monkeypatch):
+    """PostGIS parcel suite needs the public flag (default is off)."""
+    monkeypatch.setenv("PARCELS_PUBLIC", "true")
+
 FIXTURE = (
     Path(__file__).resolve().parent
     / "fixtures"

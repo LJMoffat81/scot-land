@@ -1119,8 +1119,9 @@ export default function ScotlandMap() {
             if (gen !== lookupGen.current) return;
             const code = data.code?.trim() || null;
             const name = data.name?.trim() || null;
-            setPlaceStub((prev) =>
-              prev && prev.lat === lat && prev.lng === lng
+            setPlaceStub((prev) => {
+              if (gen !== lookupGen.current) return prev;
+              return prev && prev.lat === lat && prev.lng === lng
                 ? {
                     ...prev,
                     dataZoneCode: code,
@@ -1128,8 +1129,8 @@ export default function ScotlandMap() {
                     dataZoneVintage:
                       typeof data.vintage === "number" ? data.vintage : null,
                   }
-                : prev,
-            );
+                : prev;
+            });
           } catch {
             // Sea / outside Scotland (404 no_data_zone_at_point) or boundaries
             // unavailable: still load place_card_v1 so miss/unavailable is honest
@@ -1144,8 +1145,9 @@ export default function ScotlandMap() {
           postcode: opts.postcode,
         });
         if (gen !== lookupGen.current) return;
-        setPlaceStub((prev) =>
-          prev && prev.lat === lat && prev.lng === lng
+        setPlaceStub((prev) => {
+          if (gen !== lookupGen.current) return prev;
+          return prev && prev.lat === lat && prev.lng === lng
             ? {
                 ...prev,
                 card,
@@ -1161,17 +1163,18 @@ export default function ScotlandMap() {
                 laName: prev.laName || card.council_name || null,
                 label: prev.label || card.place_label || null,
               }
-            : prev,
-        );
+            : prev;
+        });
       } catch (err) {
         // SW-019 belt-and-suspenders: clear spinner and show the plain line
         // if an outside-Scotland 400 still surfaces (e.g. /api/place.json).
         if (isOutsideScotlandError(err) && gen === lookupGen.current) {
-          setPlaceStub((prev) =>
-            prev && prev.lat === lat && prev.lng === lng
+          setPlaceStub((prev) => {
+            if (gen !== lookupGen.current) return prev;
+            return prev && prev.lat === lat && prev.lng === lng
               ? { ...prev, card: outsideScotlandPlaceCard(lat, lng) }
-              : prev,
-          );
+              : prev;
+          });
         }
         /* other zone / place card failures are best-effort */
       } finally {

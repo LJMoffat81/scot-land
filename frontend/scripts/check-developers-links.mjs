@@ -26,6 +26,7 @@ const pages = [
   "app/developers/page.tsx",
   "app/developers/checks/page.tsx",
   "app/developers/api/page.tsx",
+  "app/developers/glossary/page.tsx",
 ];
 
 const knownRoutes = new Set([
@@ -36,6 +37,7 @@ const knownRoutes = new Set([
   "/developers",
   "/developers/api",
   "/developers/checks",
+  "/developers/glossary",
 ]);
 
 function publicExists(urlPath) {
@@ -134,5 +136,52 @@ const checks = readSrc("app/developers/checks/page.tsx");
 assert.doesNotMatch(checks, /<summary[\s\S]*?>\s*Pre-registered/);
 assert.match(checks, /check-test-log/);
 assert.match(checks, /Known issue/);
+
+// Glossary is developers-only — visitor pages must not link to it.
+const visitorPages = [
+  "app/page.tsx",
+  "app/about/page.tsx",
+  "app/methodology/page.tsx",
+  "app/data/page.tsx",
+  "components/MissionContent.tsx",
+  "components/MethodologyContent.tsx",
+  "lib/siteNav.ts",
+];
+for (const rel of visitorPages) {
+  const src = readSrc(rel);
+  assert.doesNotMatch(
+    src,
+    /\/developers\/glossary/,
+    `${rel}: must not link to /developers/glossary`,
+  );
+}
+assert.match(
+  readSrc("app/developers/page.tsx"),
+  /href=["']\/developers\/glossary["']/,
+  "developers page must link to glossary",
+);
+
+// docs/GLOSSARY.md must match frontend/lib/developersGlossary.ts (Residual wording locked).
+const glossaryMd = readFileSync(
+  join(frontendRoot, "..", "docs", "GLOSSARY.md"),
+  "utf8",
+);
+const glossaryTs = readSrc("lib/developersGlossary.ts");
+assert.match(
+  glossaryMd,
+  /\*\*Residual\*\*: what remains of a sale price after taking off the depreciated cost of rebuilding the home \(allowing for its age\)\. The residual is the land value\./,
+);
+assert.match(
+  glossaryTs,
+  /term:\s*"Residual"/,
+);
+assert.match(
+  glossaryTs,
+  /what remains of a sale price after taking off the depreciated cost of rebuilding the home \(allowing for its age\)\. The residual is the land value\./,
+);
+assert.match(glossaryMd, /\*\*shadow\*\*/);
+assert.match(glossaryMd, /\*\*Yield\*\*/);
+assert.doesNotMatch(glossaryMd, /£/);
+assert.doesNotMatch(glossaryTs, /£/);
 
 console.log("check-developers-links: ok");

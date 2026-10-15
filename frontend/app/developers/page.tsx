@@ -286,6 +286,8 @@ function DevelopersPageInner() {
           {" · "}
           <a href="/developers/checks">Technical checks</a>
           {" · "}
+          <a href="/developers/glossary">Glossary</a>
+          {" · "}
           <a href={GITHUB_REPO} target="_blank" rel="noreferrer">
             Source code
           </a>

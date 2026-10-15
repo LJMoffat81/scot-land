@@ -3626,6 +3626,51 @@ button.linkish:disabled {
   font-weight: 500;
 }
 
+.place-card-iz-code {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--slrg-muted);
+  font-weight: 500;
+}
+
+/* DZ-HIERARCHY / idea 40: fold DZ2011 + IZ code behind "More about this area" ≤600px. */
+.place-card-more-about {
+  border: 0;
+  padding: 0;
+  margin: 0.15rem 0 0;
+  background: transparent;
+}
+
+.place-card-more-about-summary {
+  cursor: pointer;
+  font-weight: 650;
+  font-size: 0.85rem;
+  color: var(--slrg-navy);
+  list-style: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.place-card-more-about-summary::-webkit-details-marker {
+  display: none;
+}
+
+.place-card-more-about-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0 0 0.25rem;
+}
+
+@media (min-width: 601px) {
+  /* Desktop: lines always shown; summary is for the mobile fold only. */
+  .place-card-more-about > .place-card-more-about-summary {
+    display: none;
+  }
+}
+
 /*
  * UX-01 — mobile tap targets ≥44×44 via padding / min box.
  * Glyph and type sizes stay put; box-sizing keeps the extra padding inside.

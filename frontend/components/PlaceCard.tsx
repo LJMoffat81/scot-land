@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   formatGbpCentralWithRangePerM2,
@@ -25,6 +25,7 @@ import {
   PLACE_CARD_MAP_REFERENCE_COPY_FAIL,
   PLACE_CARD_MAP_REFERENCE_ENABLED,
   PLACE_CARD_MAP_REFERENCE_LABEL,
+  PLACE_CARD_MORE_ABOUT_LABEL,
   PLACE_CARD_NEIGHBOURHOOD_NOT_ADDRESS,
   PLACE_CARD_NO_HOMES,
   PLACE_CARD_NO_MATCH,
@@ -40,6 +41,7 @@ import {
   PLACE_CARD_TYPICAL_HOME,
   isPlaceCardSeaMiss,
   mapReferenceNumbers,
+  placeCardTitle,
   placeClassChip,
   placeSalesBasisLine,
   placeUnitKind,
@@ -118,6 +120,20 @@ function MapReferenceCopy({ value }: { value: string }) {
  * open/closed choice is not lost mid-toggle under CI timing.
  */
 const whyNoOutlineExpandedByNote = new Map<string, boolean>();
+
+/** ≤600px: DZ2011 + IZ code start folded (DZ-HIERARCHY / idea 40). */
+function useNarrowHierarchyFold(maxWidthPx = 600): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia(`(max-width: ${maxWidthPx}px)`);
+    const apply = () => setNarrow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, [maxWidthPx]);
+  return narrow;
+}
 
 function WhyNoOutlineBlock({ note }: { note: string }) {
   const [expanded, setExpanded] = useState(
@@ -381,13 +397,20 @@ export function PlaceCard({
         ? card.parcel.area_sqm
         : null;
 
-  const placeName =
-    card?.place_label?.trim() ||
-    card?.data_zone?.name?.trim() ||
-    card?.council_name?.trim() ||
-    card?.postcode?.trim() ||
-    "This place";
+  const placeName = card ? placeCardTitle(card) : "This place";
   const councilLine = card?.council_name?.trim() || null;
+  const zone = card?.data_zone ?? null;
+  const dz2011Secondary = (zone?.zones ?? []).find((z) => z.vintage === 2011);
+  const showDz2011 =
+    Boolean(zone && zone.vintage !== 2011 && dz2011Secondary?.code) &&
+    // Strict zone_id — never invent or show "unknown".
+    String(dz2011Secondary?.code).toLowerCase() !== "unknown";
+  const izCodeRaw = card?.intermediate_zone?.code
+    ? String(card.intermediate_zone.code).trim()
+    : "";
+  const izCode =
+    izCodeRaw && izCodeRaw.toLowerCase() !== "unknown" ? izCodeRaw : null;
+  const hierarchyLines = showDz2011 || Boolean(izCode);
 
   const shellClass = [
     floating ? "hud-card hud-place place-card" : "place-card place-card-standalone",
@@ -399,6 +422,8 @@ export function PlaceCard({
     .filter(Boolean)
     .join(" ");
 
+  const narrowHierarchy = useNarrowHierarchyFold(600);
+  const [moreAboutOpen, setMoreAboutOpen] = useState(false);
   const gbpLive = gbpLiveFromCard(card);
   const surfaceDisplay = (card?.surface_rent_display ??
     null) as SurfaceRentDisplay | null;
@@ -714,6 +739,56 @@ export function PlaceCard({
           </div>
 
           <div className="place-card-sheet-body" data-testid="place-card-sheet-body">
+            {/* DZ-HIERARCHY: DZ2011 + IZ code — folded on ≤600px so value rows stay above. */}
+            {hierarchyLines ? (
+              <details
+                className="place-card-more-about"
+                data-testid="place-card-more-about"
+                open={narrowHierarchy ? moreAboutOpen : true}
+                onToggle={(event) => {
+                  if (!narrowHierarchy) return;
+                  setMoreAboutOpen(
+                    (event.currentTarget as HTMLDetailsElement).open,
+                  );
+                }}
+              >
+                <summary
+                  className="place-card-more-about-summary"
+                  data-testid="place-card-more-about-summary"
+                >
+                  {PLACE_CARD_MORE_ABOUT_LABEL}
+                </summary>
+                <div
+                  className="place-card-more-about-body"
+                  data-testid="place-card-more-about-body"
+                >
+                  {showDz2011 && dz2011Secondary?.code ? (
+                    <p
+                      className="place-card-dz-secondary"
+                      data-testid="place-card-dz-2011"
+                    >
+                      Also on 2011 map:{" "}
+                      <span className="place-card-dz-code">
+                        {dz2011Secondary.code}
+                      </span>
+                      {dz2011Secondary.name
+                        ? ` · ${dz2011Secondary.name}`
+                        : ""}
+                    </p>
+                  ) : null}
+                  {izCode ? (
+                    <p
+                      className="place-card-iz-code"
+                      data-testid="place-card-iz-code"
+                    >
+                      Intermediate Zone{" "}
+                      <span className="place-card-dz-code">{izCode}</span>
+                    </p>
+                  ) : null}
+                </div>
+              </details>
+            ) : null}
+
             <details
               className="place-card-parts"
               data-testid="place-card-parts"

@@ -43,7 +43,7 @@ const { preferDz2022, dataZoneFieldLabel } = await import(
   );
   assert.match(
     placeCardSrc,
-    /export \{ dataZoneFieldLabel, preferDz2022 \} from "\.\/placeCardDz"/,
+    /export \{\s*dataZoneFieldLabel,[\s\S]*?preferDz2022,[\s\S]*?\} from "\.\/placeCardDz"/,
     "preferDz2022 and dataZoneFieldLabel must remain re-exported from placeCard",
   );
   assert.match(

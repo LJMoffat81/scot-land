@@ -229,7 +229,12 @@ test.describe("GBP-LIVE-V1 flag OFF", () => {
     await stubShell(page, placeFixture(), false);
     await openPlaceCard(page);
     const card = page.getByTestId("place-card");
-    await expect(card.getByTestId("place-card-figure")).toHaveText(PRE_POUND);
+    // MAP-CARDS §5: status + pre-pound live in the answer row.
+    const figure = card.getByTestId("place-card-figure");
+    await expect(figure.getByTestId("place-card-figure-status")).toHaveText(
+      "Not published yet",
+    );
+    await expect(figure).toContainText(PRE_POUND);
     await expect(card).not.toContainText("£");
     await expect(card.getByTestId("place-card-figure-range")).toHaveCount(0);
   });
@@ -268,7 +273,10 @@ test.describe("GBP-LIVE-V1 flag ON", () => {
     await expect(card.getByTestId("place-card-figure")).not.toContainText(
       /^£12,000$/,
     );
-    await expect(card.getByTestId("place-tag-proxy")).toBeVisible();
+    // Chip on the answer row (parts accordion also tags Land as Modelled).
+    await expect(
+      card.getByTestId("place-card-figure").getByTestId("place-tag-proxy"),
+    ).toBeVisible();
     await expect(card).not.toContainText(/Scotland total|national total/i);
     await expect(card).not.toContainText(/\byield\b/i);
   });

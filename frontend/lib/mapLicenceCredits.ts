@@ -122,6 +122,11 @@ export type RangeLegendStop = {
   /** Exclusive upper bound label, or "and above" for the last stop. */
   to: string;
   color: string;
+  /**
+   * Optional plain label (SW-045 Land / categorical layers).
+   * When set, the legend shows this instead of from–to.
+   */
+  label?: string;
 };
 
 /**

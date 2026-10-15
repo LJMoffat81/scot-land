@@ -502,14 +502,14 @@
     right: auto;
     top: calc(var(--hud-height, 6.5rem) + 0.45rem);
     width: min(360px, calc(100vw - 2rem));
-    /*
-     * Cap so the Legend pill at bottom-left always clears the card box.
-     * Keep clearance above the pill (not SW-046 — legend stays bottom-left).
-     */
-    bottom: 5.25rem;
-    max-height: none;
-    overflow-x: hidden;
-    overflow-y: auto;
+  /*
+   * Cap so the Legend pill at bottom-left always clears the card box.
+   * SW-046: expanded legend sits below the shortened card (same column).
+   */
+  bottom: 5.25rem;
+  max-height: none;
+  overflow-x: hidden;
+  overflow-y: auto;
   }
 
   /* Sea / search miss still hug content (UX-05 / SW-028). */
@@ -526,21 +526,22 @@
   }
 
   /*
-   * Legend overlay open: shrink the card so the expanded legend fits below
-   * without covering the card.
+   * SW-046 / idea 54: with Show legend open, shorten the card so the full
+   * legend (title + bands) sits below it — no part under the card.
+   * Reserve room for the capped legend panel + gap above the fold.
    */
   .app-shell.place-open:has(.hud-scotland.legend-open)
     .hud-place.place-card:not(.place-card-sea-miss):not(.place-card-search-miss),
   .app-shell.place-open:has(.hud-scotland.legend-open)
     .place-card-stub:not(.place-card-sea-miss):not(.place-card-search-miss) {
-    bottom: min(48vh, 20rem);
+    bottom: calc(min(42vh, 17.5rem) + 1.25rem + 0.55rem);
   }
 
   /*
    * Legend pill / overlay stays bottom-left under the left card column.
    * z-index above the place card (14) so Show/Hide legend stays clickable
-   * when the card column and pill share the left edge (UX-02). Not SW-046:
-   * we do not dock the legend bottom-right.
+   * when the card column and pill share the left edge (UX-02).
+   * SW-046: cap height so the expanded panel cannot grow into the card.
    */
   .app-shell.place-open .hud-scotland {
     left: 1.1rem;
@@ -548,6 +549,20 @@
     bottom: 1.25rem;
     width: min(360px, calc(100vw - 2rem));
     z-index: 15;
+  }
+
+  .app-shell.place-open .hud-scotland.legend-open {
+    max-height: min(42vh, 17.5rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  /* Layers drawer open: keep legend clear of the drawer as well as the card. */
+  .app-shell.place-open.tools-open .hud-scotland {
+    max-width: min(
+      360px,
+      calc(100vw - 2rem - min(332px, calc(100vw - 2rem)) - 1.1rem - 0.75rem)
+    );
   }
 
   /* Basemap + MapLibre zoom/attrib: shift left while Layers drawer is open. */

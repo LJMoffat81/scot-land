@@ -52,18 +52,17 @@ import {
 } from "../lib/layerCatalog";
 import type { LedgerToggleState } from "../lib/ledger";
 import {
-  DEFAULT_PUBLIC_CONTEXT_METRIC_ID,
   POP_DENSITY_COLOURS_MIN_ZOOM,
-  POP_DENSITY_LEGEND_BLURB,
-  POP_DENSITY_LEGEND_SOURCE,
-  POP_DENSITY_ZOOM_HINT,
   type MetricDef,
   type MetricId,
   paintMetricForChoropleth,
-  publicContextMetric,
-  rangeLegendTitle,
 } from "../lib/mapColourRamps";
-import type { MapRangeLegendMode } from "./MapRangeLegend";
+import {
+  buildActiveLegendView,
+  isLegendLayerOff,
+  newlyEnabledLegendLayer,
+  resolveLegendFocusId,
+} from "../lib/mapActiveLegend";
 import {
   NO_DATA_HATCH_IMAGE,
   activeMapCredits,
@@ -537,6 +536,28 @@ export default function ScotlandMap() {
   const dzHoverPopupRef = useRef<maplibregl.Popup | null>(null);
 
   const onMapLayersChange = (next: LedgerToggleState) => {
+    const prevEnabled: Record<string, boolean> = {
+      ...ledgerEnabled,
+      data_zones: showDataZones,
+      vdl: showVdl,
+      hla: showHla,
+    };
+    const nextEnabled: Record<string, boolean> = {
+      ...next,
+      data_zones:
+        "data_zones" in next ? Boolean(next.data_zones) : showDataZones,
+      vdl: "vdl" in next ? Boolean(next.vdl) : showVdl,
+      hla: "hla" in next ? Boolean(next.hla) : showHla,
+    };
+    const activated = newlyEnabledLegendLayer(prevEnabled, nextEnabled);
+    if (activated) {
+      setLegendPreferredId(activated);
+    } else if (
+      legendPreferredId &&
+      isLegendLayerOff(legendPreferredId, nextEnabled)
+    ) {
+      setLegendPreferredId(null);
+    }
     setLedgerEnabled(next);
     // Catalog boundary / VDL toggles from the right-hand Layers drawer.
     if ("boundaries" in next) {
@@ -588,6 +609,13 @@ export default function ScotlandMap() {
   const [narrowLegendFold, setNarrowLegendFold] = useState(false);
   /** Map zoom for density legend bands vs zoom-hint (national vs local). */
   const [mapZoom, setMapZoom] = useState(5.7);
+  /**
+   * SW-045: most recently activated legend-capable layer (drawer id).
+   * Null → resolve from currently-on layers / density default.
+   */
+  const [legendPreferredId, setLegendPreferredId] = useState<string | null>(
+    null,
+  );
   const [catalogLayers, setCatalogLayers] = useState<CatalogLayer[]>([]);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const parcelLabelRef = useRef<maplibregl.Marker | null>(null);
@@ -615,26 +643,27 @@ export default function ScotlandMap() {
       contextOn,
     }),
   );
-  // Public range legend: active context colour ramp only (not AGR £).
-  // Density bands follow whether colours are drawable at this zoom; if the
-  // carrier layer is off, show no bands. Rent metrics stay band-labelled unless
-  // GBP-LIVE is on (surface rent £ legend mounts separately below).
-  const contextMetric = publicContextMetric(DEFAULT_PUBLIC_CONTEXT_METRIC_ID);
-  const contextLegend = rangeLegendFromStops(contextMetric.stops, {
-    metricId: contextMetric.id,
-    unit: contextMetric.unit,
+  // SW-045: legend follows the active layer only (Land / density / VDL / HLA).
+  // Density bands still gate on zoom + whether zones are drawable. GBP-LIVE
+  // surface-rent £ legend mounts separately below when the flag is on.
+  const legendEnabled: Record<string, boolean> = {
+    ...ledgerEnabled,
+    data_zones: showDataZones,
+    vdl: showVdl,
+    hla: showHla,
+  };
+  const legendFocusId = resolveLegendFocusId(
+    legendEnabled,
+    legendPreferredId,
+  );
+  const densityDrawable =
+    showDataZones || !dataZonesTouched.current;
+  const activeLegend = buildActiveLegendView({
+    focusId: legendFocusId,
+    mapZoom,
+    densityColoursMinZoom: POP_DENSITY_COLOURS_MIN_ZOOM,
+    densityDrawable,
   });
-  // Density legend follows the active context layer only. Below the drawable
-  // zoom → hint (no bands). At neighbourhood zoom with zones on (or still
-  // auto-enabling) → bands. If the user turned zones off → nothing drawn.
-  const densityLegendMode: MapRangeLegendMode =
-    contextMetric.id !== "pop_density"
-      ? "off"
-      : mapZoom < POP_DENSITY_COLOURS_MIN_ZOOM
-        ? "zoom-hint"
-        : showDataZones || !dataZonesTouched.current
-          ? "bands"
-          : "off";
 
   const [gbpLiveOn, setGbpLiveOn] = useState(false);
   useEffect(() => {
@@ -3815,6 +3844,8 @@ export default function ScotlandMap() {
       <aside
         className={legendOpen ? "hud-scotland legend-open" : "hud-scotland"}
         aria-label="Map legend"
+        data-testid="map-legend-panel"
+        data-legend-layer={activeLegend.layerId}
         ref={scotlandRef}
       >
         <div className="hud-scotland-stack">
@@ -3840,21 +3871,15 @@ export default function ScotlandMap() {
               we know about that area and where the data comes from.
             </p>
             <MapRangeLegend
-              title={rangeLegendTitle(contextMetric)}
-              blurb={
-                contextMetric.id === "pop_density"
-                  ? POP_DENSITY_LEGEND_BLURB
-                  : undefined
-              }
-              ranges={contextLegend.ranges}
-              showNoData
-              mode={densityLegendMode}
-              zoomHint={POP_DENSITY_ZOOM_HINT}
-              source={
-                contextMetric.id === "pop_density"
-                  ? POP_DENSITY_LEGEND_SOURCE
-                  : null
-              }
+              title={activeLegend.title}
+              blurb={activeLegend.blurb}
+              paler={activeLegend.paler}
+              ranges={activeLegend.ranges}
+              showNoData={activeLegend.showNoData}
+              mode={activeLegend.mode}
+              zoomHint={activeLegend.zoomHint}
+              source={activeLegend.source ?? null}
+              layerId={activeLegend.layerId}
             />
             {surfaceRentLegend ? (
               <MapRangeLegend

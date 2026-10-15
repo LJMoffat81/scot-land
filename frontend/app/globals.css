@@ -1342,6 +1342,13 @@ input {
   color: var(--slrg-muted);
 }
 
+.map-range-legend-paler {
+  margin: 0.22rem 0 0;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: var(--slrg-muted);
+}
+
 .map-range-legend-zoom-hint {
   margin: 0.4rem 0 0;
   font-size: 0.7rem;

@@ -9,6 +9,11 @@ export type MapRangeLegendProps = {
   title: string;
   /** Optional one-line explanation under the title. */
   blurb?: string;
+  /**
+   * Optional confidence line (SW-045 Land: "Paler = less sure").
+   * Shown under the title / blurb when present.
+   */
+  paler?: string;
   ranges: RangeLegendStop[];
   /** When true, show the hatched/grey no-data swatch (bands mode only). */
   showNoData?: boolean;
@@ -22,6 +27,8 @@ export type MapRangeLegendProps = {
   zoomHint?: string;
   /** Source / licence line under the bands. */
   source?: string | null;
+  /** Active layer id for tests (SW-045). */
+  layerId?: string;
   className?: string;
 };
 
@@ -34,11 +41,13 @@ export type MapRangeLegendProps = {
 export default function MapRangeLegend({
   title,
   blurb,
+  paler,
   ranges,
   showNoData = true,
   mode = "bands",
   zoomHint = "Zoom in to see colours",
   source = null,
+  layerId,
   className,
 }: MapRangeLegendProps) {
   // No active colour layer → hide the whole control (no bands).
@@ -54,6 +63,7 @@ export default function MapRangeLegend({
       role="group"
       aria-labelledby="map-range-legend-title"
       data-mode={mode}
+      data-layer-id={layerId || undefined}
     >
       <p
         className="map-range-legend-title"
@@ -67,6 +77,14 @@ export default function MapRangeLegend({
           {blurb}
         </p>
       ) : null}
+      {paler ? (
+        <p
+          className="map-range-legend-paler"
+          data-testid="map-range-legend-paler"
+        >
+          {paler}
+        </p>
+      ) : null}
       {showHint ? (
         <p
           className="map-range-legend-zoom-hint"
@@ -77,19 +95,29 @@ export default function MapRangeLegend({
       ) : null}
       {showBands ? (
         <ul className="map-range-legend-list" data-testid="map-range-legend-bands">
-          {ranges.map((row) => (
-            <li key={`${row.from}-${row.to}-${row.color}`}>
-              <span
-                className="map-range-legend-swatch"
-                style={{ background: row.color }}
-                aria-hidden
-              />
-              <span data-testid="map-range-legend-text">
-                {row.from}
-                {row.to === "and above" ? " and above" : `–${row.to}`}
-              </span>
-            </li>
-          ))}
+          {ranges.map((row) => {
+            const text =
+              row.label != null
+                ? row.label
+                : `${row.from}${
+                    row.to === "and above"
+                      ? " and above"
+                      : row.to
+                        ? `–${row.to}`
+                        : ""
+                  }`;
+            return (
+              <li key={`${row.label ?? row.from}-${row.to}-${row.color}`}>
+                <span
+                  className="map-range-legend-swatch"
+                  style={{ background: row.color }}
+                  data-swatch-color={row.color}
+                  aria-hidden
+                />
+                <span data-testid="map-range-legend-text">{text}</span>
+              </li>
+            );
+          })}
           {showNoData ? (
             <li data-testid="map-range-legend-no-data">
               <span

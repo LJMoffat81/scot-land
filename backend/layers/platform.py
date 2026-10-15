@@ -907,14 +907,37 @@ def _place_label_from_nrs(
     return "This place"
 
 
+# Public rent/value group headings (AGENTS.md / RENT_GROUP_NAMES). Never Surface/Resource/Nature.
+_RENT_GROUP_LABELS = {
+    "surface": "Land",
+    "resource": "Natural resource rents",
+    "nature": "Services of nature",
+}
+
+_PART_GLOSS = {
+    "surface": "The yearly value of the land under homes.",
+    "resource": "Rents from things like wind, minerals and fish farming.",
+    "nature": "Value from nature's services, such as peat holding carbon.",
+}
+
+# UX-10 / FP1: pre-£ range text until modules publish amounts.
+_PART_NOT_YET = "not yet estimated"
+
+
 def _agr_rows() -> list[dict[str, Any]]:
-    """Designer AGR rows: surface / resource / nature — ranges pending, no £."""
+    """AGR parts: land / resource rents / services of nature — FP1 schema, no £."""
     return [
         {
             "id": "surface",
-            "label": "Surface",
+            "label": _RENT_GROUP_LABELS["surface"],
             "tag": "proxy",
             "amount_label": _FIGURES_PENDING,
+            "gloss": _PART_GLOSS["surface"],
+            "range": _PART_NOT_YET,
+            "unit": None,
+            "confidence": None,
+            "method": None,
+            "class": "proxy",
             "of_which": [
                 {"id": "planning_uplift", "label": "of which: planning uplift"},
                 {
@@ -925,15 +948,27 @@ def _agr_rows() -> list[dict[str, Any]]:
         },
         {
             "id": "resource",
-            "label": "Resource",
+            "label": _RENT_GROUP_LABELS["resource"],
             "tag": "market",
             "amount_label": _FIGURES_PENDING,
+            "gloss": _PART_GLOSS["resource"],
+            "range": _PART_NOT_YET,
+            "unit": None,
+            "confidence": None,
+            "method": None,
+            "class": "market",
         },
         {
             "id": "nature",
-            "label": "Nature",
+            "label": _RENT_GROUP_LABELS["nature"],
             "tag": "shadow",
             "amount_label": _FIGURES_PENDING,
+            "gloss": _PART_GLOSS["nature"],
+            "range": _PART_NOT_YET,
+            "unit": None,
+            "confidence": None,
+            "method": None,
+            "class": "shadow",
         },
     ]
 

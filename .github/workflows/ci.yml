@@ -109,6 +109,7 @@ jobs:
       - run: npm run test:site-watch-d3-sea-click
       - run: npm run test:prereview-rent-groups
       - run: npm run test:check-meanings
+      - run: npm run test:ux10-agr-terminology
       - run: npm run check:developers-links
       - run: npx tsc --noEmit
       - run: npm run build

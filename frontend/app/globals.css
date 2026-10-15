@@ -339,6 +339,247 @@ input {
   color: var(--slrg-muted);
 }
 
+/* —— UX-10 place card skeleton —— */
+.place-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+.place-card-peek {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.place-card-council {
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.35;
+  color: var(--slrg-muted);
+}
+
+.place-card-figure {
+  margin: 0.35rem 0 0;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--slrg-navy);
+}
+
+.place-card-covers,
+.place-card-typical,
+.place-card-neighbourhood,
+.place-card-agr-subtitle,
+.place-card-sales-basis,
+.place-card-fact,
+.place-card-parts-note,
+.place-card-how-homes,
+.place-card-part-gloss,
+.place-card-part-range,
+.place-card-fully-estimated-marker {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--slrg-text);
+}
+
+.place-card-experimental-footer {
+  margin: 0.45rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--slrg-muted);
+}
+
+.place-card-experimental-footer-sticky {
+  display: none;
+}
+
+.place-card-sheet-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  min-height: 0;
+}
+
+.place-card-parts {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.35rem 0.65rem 0.55rem;
+  background: #fff;
+}
+
+.place-card-parts-summary {
+  cursor: pointer;
+  font-weight: 650;
+  color: var(--slrg-navy);
+  list-style: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+.place-card-parts-summary::-webkit-details-marker {
+  display: none;
+}
+
+.place-card-how {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.15rem 0 0;
+}
+
+.place-card-how-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 650;
+  color: var(--slrg-navy);
+  text-decoration: underline;
+}
+
+.place-card-why-no-outline {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  margin: 0;
+}
+
+.place-card-outline-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.55rem;
+  margin: 0;
+}
+
+.place-card-why-no-outline-btn {
+  display: inline-block;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--slrg-navy);
+  font: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.place-card-why-no-outline-btn:hover,
+.place-card-why-no-outline-btn:focus-visible {
+  color: var(--rugby-navy, var(--slrg-navy));
+}
+
+.place-card-why-no-outline-detail {
+  margin: 0;
+}
+
+.place-card-part-range {
+  color: var(--slrg-muted);
+  font-style: italic;
+}
+
+.place-card-fully-estimated-marker[data-wider-band="true"] {
+  border-left: 3px solid color-mix(in srgb, var(--slrg-navy) 45%, #c5ccd3);
+  padding-left: 0.55rem;
+}
+
+.place-card-show-scotland {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Desktop side panel: sticky experimental footer visible without scrolling. */
+@media (min-width: 901px) {
+  .hud-place.place-card,
+  .place-card-stub.place-card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .hud-place .place-card-body,
+  .place-card-stub .place-card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .hud-place .place-card-sheet-body,
+  .place-card-stub .place-card-sheet-body {
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding-bottom: 0.35rem;
+  }
+
+  .hud-place .place-card-experimental-footer-peek,
+  .place-card-stub .place-card-experimental-footer-peek {
+    display: none;
+  }
+
+  .hud-place .place-card-experimental-footer-sticky,
+  .place-card-stub .place-card-experimental-footer-sticky {
+    display: block;
+    flex-shrink: 0;
+    margin-top: auto;
+    padding-top: 0.55rem;
+    border-top: 1px solid var(--line);
+    background: #fff;
+  }
+}
+
+/*
+ * Mobile bottom sheet: peek = name + figure + disclaimer.
+ * Keep SW-023 chrome clear: bottom above basemap/zoom, right gutter for 64px tile
+ * (map-chrome.css sets right: 5.35rem — do not override to full-bleed).
+ */
+@media (max-width: 900px) {
+  .hud-place.place-card,
+  .app-shell.place-open .hud-place.place-card,
+  .app-shell.place-open .place-card-stub {
+    top: auto;
+    left: 0.55rem;
+    bottom: 7.4rem;
+    width: auto;
+    max-height: min(58dvh, calc(100dvh - var(--hud-height, 8rem) - 8rem));
+    border-radius: 16px 16px 0 0;
+    padding-bottom: 0.85rem;
+    box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.14);
+  }
+
+  /* Sea stub hugs content; still clear of basemap/zoom (SW-028). */
+  .hud-place.place-card.place-card-sea-miss,
+  .app-shell.place-open .hud-place.place-card.place-card-sea-miss,
+  .app-shell.place-open .place-card-stub.place-card-sea-miss {
+    bottom: 7.4rem;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+    box-shadow: var(--hud-shadow);
+    border-radius: 12px;
+  }
+
+  .hud-place .place-card-experimental-footer-sticky,
+  .place-card-stub .place-card-experimental-footer-sticky {
+    display: none;
+  }
+
+  .hud-place .place-card-sheet-body,
+  .place-card-stub .place-card-sheet-body {
+    overflow-y: auto;
+    max-height: min(36dvh, 18rem);
+  }
+}
+
 .place-card-grain {
   font-weight: 600;
 }
@@ -351,14 +592,22 @@ input {
 
 /* UX-05: hug like sea miss — flex gap only, no leftover <p> margins. */
 .place-card-search-miss .error-line,
-.place-card-search-miss .meta {
+.place-card-search-miss .meta,
+.place-card-search-miss .place-card-meta,
+.place-card-search-miss .place-card-body,
+.place-card-search-miss .place-card-state {
   margin: 0;
+}
+
+/* UX10-1 no-match body must not flex-grow into empty panel space (UX-05 hug). */
+.place-card-search-miss .place-card-body {
+  flex: 0 0 auto;
 }
 
 .place-card-sea-line {
   margin: 0;
-  /* SW-030: clear the absolute × (1.85rem) + 8px so "Tap" is not clipped. */
-  padding: 0.15rem calc(1.85rem + 8px) 0.15rem 0.25rem;
+  /* SW-030: clear the absolute × (UX-01/UX10-1 44px hit) + 8px so "Tap" is not clipped. */
+  padding: 0.15rem calc(44px + 8px) 0.15rem 0.25rem;
   font-size: 0.92rem;
   line-height: 1.45;
   color: var(--slrg-ink, #1a2332);
@@ -595,7 +844,8 @@ input {
   );
 }
 
-.place-tag.tone-shadow {
+/* Visitor tone — API class `shadow` maps to Estimate; never emit "shadow" in HTML. */
+.place-tag.tone-estimate {
   background: transparent;
   color: #166534;
   border: 2px solid #16a34a;
@@ -757,8 +1007,11 @@ input {
   position: absolute;
   top: 0.7rem;
   right: 0.7rem;
-  width: 1.85rem;
-  height: 1.85rem;
+  /* UX-01 / UX10-1: tap target ≥44px */
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border: 0;
   border-radius: 999px;
   background: #f3f5f7;
@@ -766,6 +1019,9 @@ input {
   font-size: 1.2rem;
   line-height: 1;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hud-place {

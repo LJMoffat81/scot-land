@@ -835,6 +835,8 @@ export default function ScotlandMap() {
         popYear?: number | null;
         dwellings?: number | null;
         dwYear?: number | null;
+        /** True after postcode / place / address search (UX-10 item 2). */
+        fromAddressSearch?: boolean;
         /** When the caller already owns lookupGen, reuse it (do not bump again). */
         generation?: number;
       } = {},
@@ -884,6 +886,8 @@ export default function ScotlandMap() {
         dwellings: opts.dwellings ?? null,
         dwYear: opts.dwYear ?? null,
         card: null,
+        noMatch: false,
+        fromAddressSearch: Boolean(opts.fromAddressSearch),
       });
       if (window.matchMedia("(max-width: 640px)").matches) {
         setLegendOpen(false);
@@ -1022,6 +1026,7 @@ export default function ScotlandMap() {
       fly: true,
       postcode: payload.postcode?.postcode ?? postcode,
       label: payload.postcode?.postcode ?? postcode,
+      fromAddressSearch: true,
       generation,
     });
   };
@@ -1037,6 +1042,7 @@ export default function ScotlandMap() {
       await inspectRef.current(body.lat, body.lng, {
         fly: true,
         label: body.label ?? `///${words}`,
+        fromAddressSearch: true,
         generation,
       });
       return;
@@ -1045,6 +1051,7 @@ export default function ScotlandMap() {
       await inspectRef.current(body.lat, body.lng, {
         fly: true,
         label: `///${body.words ?? words}`,
+        fromAddressSearch: true,
         generation,
       });
       return;
@@ -1086,6 +1093,7 @@ export default function ScotlandMap() {
       setQuery(body.postcode);
       void inspectRef.current(body.lat, body.lng, {
         fly: true,
+        fromAddressSearch: true,
         generation,
       });
     } catch (err) {
@@ -1115,6 +1123,7 @@ export default function ScotlandMap() {
         await inspectRef.current(coords.lat, coords.lng, {
           fly: true,
           label: `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`,
+          fromAddressSearch: true,
           generation,
         });
         if (generation === lookupGen.current) setApiOk(true);
@@ -1145,6 +1154,7 @@ export default function ScotlandMap() {
         await inspectRef.current(body.lat, body.lng, {
           fly: true,
           label: body.label ?? null,
+          fromAddressSearch: true,
           generation,
         });
       } else if (body.kind === "places" && body.matches && body.matches.length > 1) {
@@ -1161,14 +1171,19 @@ export default function ScotlandMap() {
         await inspectRef.current(match.lat, match.lng, {
           fly: true,
           label: match.label,
+          fromAddressSearch: true,
           generation,
         });
       } else {
-        clearPlace();
-        setError(
-          body.note ||
-            "No place matched. Try a postcode, place name, coordinates, or click the map.",
-        );
+        setError(null);
+        setResult(null);
+        setPlaceStub({
+          lat: 0,
+          lng: 0,
+          noMatch: true,
+          fromAddressSearch: true,
+          card: null,
+        });
       }
       if (generation === lookupGen.current) setApiOk(true);
     } catch (err) {
@@ -1201,6 +1216,7 @@ export default function ScotlandMap() {
         await inspectRef.current(item.lat, item.lng, {
           fly: true,
           label: item.label,
+          fromAddressSearch: true,
           generation,
         });
       }

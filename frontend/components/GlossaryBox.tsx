@@ -17,9 +17,9 @@ export const GLOSSARY_TERMS = [
   },
   {
     id: "tags",
-    term: "Market / Modelled / Estimate (no market price)",
+    term: "Market / Modelled / Estimate",
     definition:
-      "how a figure was found. Market = taken from real prices people paid. Modelled = worked out from related prices. Estimate (no market price) = used when there is no market price, like peat holding carbon. We never add different kinds together.",
+      "how a figure was found. Market = taken from real prices people paid. Modelled = worked out from related prices. Estimate = used when there is no market price, like peat holding carbon. We never add different kinds together.",
   },
   {
     id: "constraint",

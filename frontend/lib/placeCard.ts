@@ -1,15 +1,69 @@
 /**
  * Public place-card contract (place_card_v1).
- * Ledger redesign IA — value / limits sections; DZ2022; no £ figures.
+ * UX-10 place card skeleton — Annual Ground Rent; DZ2022; no £ figures.
  */
 
 import { apiJson, isOutsideScotlandError } from "./api";
 import { preferDz2022, type PlaceDataZoneVintage } from "./placeCardDz";
-import { defaultAgrGroupRows } from "./rentGroupAgrRows.mjs";
+import {
+  PLACE_CARD_PART_GLOSS,
+  PLACE_CARD_PART_NOT_YET,
+  defaultAgrGroupRows,
+} from "./rentGroupAgrRows.mjs";
 import { RENT_GROUP_NAME, RENT_GROUP_NAMES } from "./rentGroupNames.mjs";
 
 export { dataZoneFieldLabel, preferDz2022 } from "./placeCardDz";
 export { RENT_GROUP_NAME, RENT_GROUP_NAMES };
+export { PLACE_CARD_PART_GLOSS, PLACE_CARD_PART_NOT_YET };
+
+/** One public term for the figure (UX-10 terminology test). */
+export const PLACE_CARD_AGR_LABEL = "Annual Ground Rent";
+
+export const PLACE_CARD_AGR_SUBTITLE =
+  "What the land here is worth each year";
+
+/** Pre-£ figure line (UX-10 item 4). Rank band stays OFF. */
+export const PLACE_CARD_PRE_POUND =
+  "We're not showing amounts yet while we check our method.";
+
+/** Rank band UI — OFF until £ unblocked (UX-10). */
+export const PLACE_CARD_RANK_BAND_ENABLED = false;
+
+export const PLACE_CARD_TYPICAL_HOME =
+  "For a typical home in this neighbourhood, not your home.";
+
+export const PLACE_CARD_NEIGHBOURHOOD_NOT_ADDRESS =
+  "We show your neighbourhood, not your address.";
+
+export const PLACE_CARD_COVERS_HOMES_ONLY = "Covers land under homes only.";
+
+export const PLACE_CARD_HOW_WE_WORK_HOMES =
+  "This covers land under homes only. Shops, offices and industrial land aren't included yet.";
+
+export const PLACE_CARD_FACT_LINE =
+  "Land is worth more where there are jobs, good transport, schools and shops nearby. Most of that comes from the area, not the house.";
+
+export const PLACE_CARD_PARTS_NOTE =
+  "These are worked out differently, so we don't add them up.";
+
+export const PLACE_CARD_HOW_WE_WORK_LABEL = "How we work this out";
+
+export const PLACE_CARD_EXPERIMENTAL_FOOTER =
+  "Experimental estimate, not an official valuation. It is not a bill, and it does not change what you pay.";
+
+export const PLACE_CARD_NO_HOMES = "No homes here, so not applicable";
+
+export const PLACE_CARD_TOO_FEW_HOMES =
+  "Too few homes here for a typical figure.";
+
+export const PLACE_CARD_NO_MATCH =
+  "No place matched. Try a postcode, place name, coordinates, or click the map.";
+
+export const PLACE_CARD_FULLY_ESTIMATED =
+  "Mostly worked out from nearby areas: treat as a rough guide";
+
+/** Unit rule (v1): zones with fewer than this many dwellings are N/A, never 0. */
+export const PLACE_CARD_MIN_DWELLINGS_TYPICAL = 20;
 
 /** Per-row status until publication — keep exact wording (site rewrite PR2). */
 export const PLACE_CARD_FIGURE_STATUS = "Figure not published yet";
@@ -23,8 +77,10 @@ export const PLACE_CARD_RESEARCH_DISCLAIMER =
 export const PLACE_CARD_CONSTRAINT_LABEL =
   "Constraint: changes best use, adds no value";
 
-export const PLACE_CARD_LIMITS_HEADING = "What limits how it's used";
+/** Fourth public group name — same as Layers /data (SW-021). */
+export const PLACE_CARD_LIMITS_HEADING = "Limits";
 
+/** @deprecated UX-10 uses PLACE_CARD_HOW_WE_WORK_LABEL. */
 export const PLACE_CARD_HOW_WE_VALUE_LABEL = "How we value land";
 
 export const PLACE_CARD_HOLDER_COPY =
@@ -42,6 +98,37 @@ export const PLACE_CARD_OUT_OF_SCOTLAND_LINE =
 /** SW-028: link under the sea line — close card and reset to national map view. */
 export const PLACE_CARD_SHOW_SCOTLAND_LABEL = "Show me Scotland";
 
+/** Never show "No data" when a code is known (AGENTS.md). */
+export const PLACE_CARD_NAME_NOT_LOADED = "name not loaded yet";
+
+/** FP1 class → visitor chip (never "market price"). */
+export const PLACE_CARD_CLASS_CHIP = Object.freeze({
+  market: "Market",
+  proxy: "Modelled",
+  shadow: "Estimate",
+} as const);
+
+export type PlaceRentTag = "market" | "proxy" | "shadow";
+
+export type PlaceCardClass = keyof typeof PLACE_CARD_CLASS_CHIP;
+
+export type PlaceCardConfidence = "High" | "Medium" | "Low";
+
+export type PlaceUnitKind =
+  | "typical_home"
+  | "too_few_homes"
+  | "no_homes"
+  | "not_applicable";
+
+/** FP1 — one schema for every layer part on the card. */
+export type PlacePartSchema = {
+  range: string | null;
+  unit: string | null;
+  confidence: PlaceCardConfidence | null;
+  method: string | null;
+  class: PlaceCardClass | PlaceRentTag;
+};
+
 /** True when the place has no Scottish data zone (e.g. at sea). */
 export function isPlaceCardSeaMiss(
   zone: { status?: string | null } | null | undefined,
@@ -55,8 +142,6 @@ export const PLACE_CARD_MAP_REFERENCE_LABEL = "Map reference";
 /** Shown when the map-reference Copy button cannot write the clipboard. */
 export const PLACE_CARD_MAP_REFERENCE_COPY_FAIL =
   "Couldn't copy — select and copy the reference instead.";
-
-export type PlaceRentTag = "market" | "proxy" | "shadow";
 
 export type PlaceValueStatus = "coming_soon" | "in_progress";
 
@@ -98,6 +183,14 @@ export type PlaceAgrRow = {
   status: PlaceValueStatus;
   /** When false, row is omitted from the place card. */
   applies?: boolean;
+  /** Plain gloss under the part heading (UX-10 item 7). */
+  gloss?: string | null;
+  /** FP1 schema fields (pre-£ uses "not yet estimated" / nulls). */
+  range?: string | null;
+  unit?: string | null;
+  confidence?: PlaceCardConfidence | null;
+  method?: string | null;
+  class?: PlaceCardClass | PlaceRentTag | null;
   of_which?: Array<{ id: string; label: string }>;
 };
 
@@ -178,6 +271,17 @@ export type PlaceCardPayload = {
   } | null;
   /** Must never appear on public place cards; guarded in the UI. */
   agr?: unknown;
+  /** Dwelling count for the unit rule (v1). */
+  dwellings?: number | null;
+  /** Local sales year window for item 5. */
+  sales_year_from?: number | null;
+  sales_year_to?: number | null;
+  /** How sure we are (item 5) — High / Medium / Low. */
+  confidence?: PlaceCardConfidence | null;
+  /** When true, show the fully-estimated guide line (item 5). */
+  fully_estimated?: boolean;
+  /** UX-10 card state override for no-match. */
+  card_state?: "ok" | "no_match" | "sea" | "no_homes" | string | null;
 };
 
 export type FetchPlaceCardArgs = {
@@ -216,6 +320,59 @@ export function valueStatusLabel(status: PlaceValueStatus): string {
       return _exhaustive;
     }
   }
+}
+
+/** FP1 class chip label — Market / Modelled / Estimate. */
+export function placeClassChip(
+  tag: PlaceRentTag | PlaceCardClass | string,
+): string {
+  switch (tag) {
+    case "market":
+      return PLACE_CARD_CLASS_CHIP.market;
+    case "proxy":
+      return PLACE_CARD_CLASS_CHIP.proxy;
+    case "shadow":
+      return PLACE_CARD_CLASS_CHIP.shadow;
+    default:
+      return PLACE_CARD_CLASS_CHIP.shadow;
+  }
+}
+
+/**
+ * Unit rule (v1): ≥20 dwellings → typical home; &lt;20 (incl. 0) → too few homes.
+ * Never present a 0 figure. Explicit `card_state: "no_homes"` stays a separate path.
+ */
+export function placeUnitKind(
+  dwellings: number | null | undefined,
+): PlaceUnitKind {
+  if (dwellings == null || !Number.isFinite(dwellings)) {
+    return "typical_home";
+  }
+  if (dwellings < PLACE_CARD_MIN_DWELLINGS_TYPICAL) {
+    return "too_few_homes";
+  }
+  return "typical_home";
+}
+
+/**
+ * Sales-basis line (item 5) — only when the API sends all three fields.
+ * No Medium / year-window defaults; missing fields hide the line.
+ */
+export function placeSalesBasisLine(
+  from: number | null | undefined,
+  to: number | null | undefined,
+  confidence: PlaceCardConfidence | null | undefined,
+): string | null {
+  if (
+    from == null ||
+    to == null ||
+    !Number.isFinite(from) ||
+    !Number.isFinite(to) ||
+    confidence == null
+  ) {
+    return null;
+  }
+  return `Based on local home sales (${from}–${to}). How sure we are: ${confidence}`;
 }
 
 /** Value classes that may apply — plain words; no £. */
@@ -279,6 +436,11 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
     name: "City Centre",
   },
   square_reference: scotLandSquareReference(55.8642, -4.2518),
+  dwellings: 410,
+  // Demo fixture only — public API must send these; sanitize does not invent them.
+  sales_year_from: 2019,
+  sales_year_to: 2023,
+  confidence: "Medium",
   agr_rows: defaultAgrRows(),
   constraints: [
     { id: "flood", label: "Flood", applies: false },
@@ -397,7 +559,7 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
     },
     {
       id: "methodology",
-      label: PLACE_CARD_HOW_WE_VALUE_LABEL,
+      label: PLACE_CARD_HOW_WE_WORK_LABEL,
       url: "/methodology",
     },
   ],
@@ -463,6 +625,26 @@ export async function fetchPlaceCard({
   }
 }
 
+/** Map stable agr row ids → approved RENT_GROUP_NAMES (never Surface/Resource/Nature). */
+const AGR_ROW_LABEL_BY_ID: Record<string, string> = {
+  surface: RENT_GROUP_NAME.land,
+  resource: RENT_GROUP_NAME.resources,
+  nature: RENT_GROUP_NAME.nature,
+};
+
+/** Legacy API/fixture labels → approved headings (defence in depth). */
+const AGR_ROW_LABEL_BY_LEGACY: Record<string, string> = {
+  Surface: RENT_GROUP_NAME.land,
+  Resource: RENT_GROUP_NAME.resources,
+  Nature: RENT_GROUP_NAME.nature,
+};
+
+const AGR_ROW_GLOSS_BY_ID: Record<string, string> = {
+  surface: PLACE_CARD_PART_GLOSS.land,
+  resource: PLACE_CARD_PART_GLOSS.resources,
+  nature: PLACE_CARD_PART_GLOSS.nature,
+};
+
 function normalizeAgrRow(row: PlaceAgrRow): PlaceAgrRow {
   const legacyAmount = (row as PlaceAgrRow & { amount_label?: string })
     .amount_label;
@@ -472,8 +654,28 @@ function normalizeAgrRow(row: PlaceAgrRow): PlaceAgrRow {
       : legacyAmount
         ? "in_progress"
         : "coming_soon";
+  const approved =
+    AGR_ROW_LABEL_BY_ID[row.id] ??
+    AGR_ROW_LABEL_BY_LEGACY[row.label] ??
+    row.label;
+  const classTag: PlaceRentTag =
+    row.class === "market" ||
+    row.class === "proxy" ||
+    row.class === "shadow"
+      ? row.class
+      : row.tag === "market" || row.tag === "proxy" || row.tag === "shadow"
+        ? row.tag
+        : "shadow";
   return {
     ...row,
+    label: approved,
+    gloss: row.gloss?.trim() || AGR_ROW_GLOSS_BY_ID[row.id] || null,
+    range: row.range?.trim() || PLACE_CARD_PART_NOT_YET,
+    unit: row.unit ?? null,
+    confidence: row.confidence ?? null,
+    method: row.method ?? null,
+    class: classTag,
+    tag: classTag,
     status,
     applies: row.applies !== false,
     of_which: (row.of_which || []).filter(
@@ -491,6 +693,23 @@ export function sanitizePlaceCard(payload: PlaceCardPayload): PlaceCardPayload {
     .filter((row) => row.applies !== false);
   // Pass through every constraint row (true / false / null). Empty means a gap.
   const constraints = Array.isArray(rest.constraints) ? rest.constraints : [];
+  const iz = rest.intermediate_zone;
+  const izCode = iz?.code ? String(iz.code) : null;
+  const izName = iz?.name?.trim() || null;
+  const intermediate_zone = iz
+    ? {
+        ...iz,
+        // Never show "No data" when the IZ code is known.
+        note:
+          izCode && !izName
+            ? iz.note?.trim() || PLACE_CARD_NAME_NOT_LOADED
+            : iz.note ?? null,
+      }
+    : {
+        status: "no_data",
+        name: null,
+        note: "No data",
+      };
   return {
     ...rest,
     data_zone: zone,
@@ -501,10 +720,11 @@ export function sanitizePlaceCard(payload: PlaceCardPayload): PlaceCardPayload {
     agr_rows: agrRows,
     constraints,
     holder: deriveHolder(rest),
-    intermediate_zone: rest.intermediate_zone ?? {
-      status: "no_data",
-      name: null,
-      note: "No data",
-    },
+    intermediate_zone,
+    // Pass through only — never invent sales years or confidence.
+    sales_year_from: rest.sales_year_from ?? null,
+    sales_year_to: rest.sales_year_to ?? null,
+    confidence: rest.confidence ?? null,
+    fully_estimated: Boolean(rest.fully_estimated),
   };
 }

@@ -343,9 +343,16 @@ input {
   font-weight: 600;
 }
 
-.place-card-sea-miss {
+.place-card-sea-miss,
+.place-card-search-miss {
   max-width: min(22rem, calc(100vw - 1.5rem));
   height: auto;
+}
+
+/* UX-05: hug like sea miss — flex gap only, no leftover <p> margins. */
+.place-card-search-miss .error-line,
+.place-card-search-miss .meta {
+  margin: 0;
 }
 
 .place-card-sea-line {
@@ -420,7 +427,8 @@ input {
 }
 
 @media (min-width: 1024px) {
-  .hud-place.place-card-sea-miss {
+  .hud-place.place-card-sea-miss,
+  .hud-place.place-card-search-miss {
     padding-top: 1.65rem;
     padding-bottom: 0.75rem;
   }

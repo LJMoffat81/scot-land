@@ -3910,7 +3910,11 @@ export default function ScotlandMap() {
               onShowScotland={showScotlandNationalView}
             />
           ) : error ? (
-            <aside className="hud-card hud-place place-card-stub" aria-label="Place">
+            <aside
+              className="hud-card hud-place place-card-stub place-card-search-miss"
+              aria-label="Place"
+              data-testid="place-card"
+            >
               <button
                 type="button"
                 className="hud-close"
@@ -3920,7 +3924,9 @@ export default function ScotlandMap() {
               >
                 ×
               </button>
-              <p className="error-line">{error}</p>
+              <p className="error-line" data-testid="place-card-no-match" role="alert">
+                {error}
+              </p>
               <p className="meta">
                 Try a Scottish postcode, place name, coordinates, or click the map.
               </p>

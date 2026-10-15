@@ -13,7 +13,7 @@ const frontendRoot = join(here, "..");
 const TITLE = "Population density — people per km²";
 const BLURB = "Busier places tend to have a higher Annual Ground Rent.";
 const SOURCE =
-  "Source: National Records of Scotland mid-year estimates, Open Government Licence v3.0";
+  "Source: National Records of Scotland mid-year estimates (OGL v3.0)";
 const ZOOM_HINT = "Zoom in to see colours";
 
 const LAND_TITLE =

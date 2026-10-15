@@ -11,7 +11,7 @@ const GLASGOW = { lng: -4.2514, lat: 55.8609 };
 const TITLE = "Population density — people per km²";
 const BLURB = "Busier places tend to have a higher Annual Ground Rent.";
 const SOURCE =
-  "Source: National Records of Scotland mid-year estimates, Open Government Licence v3.0";
+  "Source: National Records of Scotland mid-year estimates (OGL v3.0)";
 const ZOOM_HINT = "Zoom in to see colours";
 
 const EMPTY_FC = {
@@ -197,10 +197,10 @@ test.describe("map legend density (1440x900)", () => {
     await expect(page.getByTestId("map-range-legend-source")).toHaveText(SOURCE);
     await expect(legend.getByText(/£\d/)).toHaveCount(0);
 
-    // Chip key stays off the permanent legend; only with chips (drawer / place card).
+    // SW-044: chip key once, in the legend only.
     await expect(
       page.locator("#hud-scotland-body").getByTestId("evidence-tag-legend"),
-    ).toHaveCount(0);
+    ).toHaveCount(1);
   });
 });
 

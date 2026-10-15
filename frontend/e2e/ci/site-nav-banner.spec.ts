@@ -495,14 +495,15 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
       timeout: 10_000,
     });
 
-    // Item 12: restore Find a place intro when the card closes.
+    // SW-044: intro stays hidden after the first search; legend remains.
     const close = placeCard.getByRole("button", { name: "Close place card" });
     await expect(close).toBeVisible();
     await close.click();
     await expect(placeCard).toHaveCount(0);
     await expect(page.locator(".app-shell")).not.toHaveClass(/place-open/);
-    await expect(page.locator(".hud-scotland-job")).toBeVisible();
-    await expect(page.locator(".hud-scotland-job")).toHaveText("Find a place");
+    await expect(page.locator(".app-shell")).toHaveClass(/find-intro-dismissed/);
+    await expect(page.locator(".hud-scotland-job")).toBeHidden();
+    await expect(page.getByTestId("map-legend-panel")).toBeVisible();
   });
 });
 

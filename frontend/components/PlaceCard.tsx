@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { EVIDENCE_TAG_GLOSS } from "@/components/ConfidenceTag";
 import {
   formatGbpCentralWithRange,
   GBP_LIVE_UNDER_REVIEW,
@@ -11,18 +12,18 @@ import {
 import {
   PLACE_CARD_AGR_LABEL,
   PLACE_CARD_AGR_SUBTITLE,
+  PLACE_CARD_AREA_DETAILS_LABEL,
   PLACE_CARD_COVERS_HOMES_ONLY,
   PLACE_CARD_EXPERIMENTAL_FOOTER,
   PLACE_CARD_FACT_LINE,
-  PLACE_CARD_FIGURE_STATUS,
-  PLACE_CARD_FIGURE_WHY_HREF,
-  PLACE_CARD_FIGURE_WHY_LABEL,
+  PLACE_CARD_FIGURES_NOT_PUBLISHED,
   PLACE_CARD_FULLY_ESTIMATED,
   PLACE_CARD_HOW_WE_WORK_HOMES,
   PLACE_CARD_HOW_WE_WORK_LABEL,
   PLACE_CARD_MAP_REFERENCE_COPY_FAIL,
   PLACE_CARD_MAP_REFERENCE_ENABLED,
   PLACE_CARD_MAP_REFERENCE_LABEL,
+  PLACE_CARD_NAME_NOT_LOADED,
   PLACE_CARD_NEIGHBOURHOOD_NOT_ADDRESS,
   PLACE_CARD_NO_HOMES,
   PLACE_CARD_NO_MATCH,
@@ -36,12 +37,14 @@ import {
   PLACE_CARD_SHOW_SCOTLAND_LABEL,
   PLACE_CARD_TOO_FEW_HOMES,
   PLACE_CARD_TYPICAL_HOME,
+  dataZoneFieldLabel,
   isPlaceCardSeaMiss,
   mapReferenceNumbers,
   placeClassChip,
   placeSalesBasisLine,
   placeUnitKind,
   sanitizePlaceCard,
+  scotLandSquareReference,
   type PlaceAgrRow,
   type PlaceCardPayload,
   type PlaceRentTag,
@@ -173,12 +176,50 @@ function placeTagTone(tag: PlaceRentTag): "market" | "proxy" | "estimate" {
 function ClassChip({ tag }: { tag: PlaceRentTag }) {
   const tone = placeTagTone(tag);
   const label = placeClassChip(tag);
+  const description = EVIDENCE_TAG_GLOSS[tag];
   return (
     <span
       className={`place-tag tone-${tone}`}
       data-testid={`place-tag-${tone}`}
+      title={description}
+      aria-description={description}
     >
       {label}
+    </span>
+  );
+}
+
+function MapReferenceCopy({ value }: { value: string }) {
+  const [copyFail, setCopyFail] = useState(false);
+  return (
+    <span className="place-card-map-reference" data-testid="place-card-map-reference">
+      <span data-testid="place-card-map-reference-value">{value}</span>
+      <button
+        type="button"
+        className="place-card-map-reference-copy"
+        data-testid="place-card-map-reference-copy"
+        onClick={() => {
+          void (async () => {
+            try {
+              await navigator.clipboard.writeText(value);
+              setCopyFail(false);
+            } catch {
+              setCopyFail(true);
+            }
+          })();
+        }}
+      >
+        Copy
+      </button>
+      {copyFail ? (
+        <span
+          className="place-card-map-reference-copy-fail"
+          data-testid="place-card-map-reference-copy-fail"
+          role="status"
+        >
+          {PLACE_CARD_MAP_REFERENCE_COPY_FAIL}
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -227,13 +268,13 @@ function PartRow({
   row,
   display,
   gbpLive,
-  showFigureWhy,
+  showRange,
 }: {
   row: PlaceAgrRow;
   display?: SurfaceRentDisplay | null;
   gbpLive: boolean;
-  /** Idea 17/24 — unpublished figure status + Why? on the first value row. */
-  showFigureWhy?: boolean;
+  /** When false, card-level "Figures not published yet" covers unpublished ranges. */
+  showRange: boolean;
 }) {
   const classTag = (row.class ?? row.tag) as PlaceRentTag;
   const tone = placeTagTone(classTag);
@@ -255,7 +296,7 @@ function PartRow({
     <li
       className="place-agr-row"
       data-testid={`place-card-agr-${row.id}`}
-      data-range={rangeText}
+      data-range={showRange ? rangeText : ""}
       data-unit={row.unit ?? ""}
       data-confidence={row.confidence ?? ""}
       data-method={row.method ?? ""}
@@ -270,24 +311,12 @@ function PartRow({
           {row.gloss}
         </p>
       ) : null}
-      <p
-        className="place-card-part-range"
-        data-testid={`place-card-range-${row.id}`}
-      >
-        {rangeText}
-      </p>
-      {showFigureWhy && !liveOk ? (
+      {showRange ? (
         <p
-          className="place-card-figure-status"
-          data-testid="place-card-figure-status"
+          className="place-card-part-range"
+          data-testid={`place-card-range-${row.id}`}
         >
-          {PLACE_CARD_FIGURE_STATUS}{" "}
-          <a
-            href={PLACE_CARD_FIGURE_WHY_HREF}
-            data-testid="place-card-figure-why"
-          >
-            {PLACE_CARD_FIGURE_WHY_LABEL}
-          </a>
+          {rangeText}
         </p>
       ) : null}
       {estimateLabel ? (
@@ -383,6 +412,22 @@ export function PlaceCard({
     card?.postcode?.trim() ||
     "This place";
   const councilLine = card?.council_name?.trim() || null;
+  const postcodeLine = card?.postcode?.trim() || null;
+  const zone = card?.data_zone ?? null;
+  const dzCode = zone?.code?.trim() || null;
+  const dzName = zone?.name?.trim() || null;
+  const dzVintage =
+    typeof zone?.vintage === "number" && Number.isFinite(zone.vintage)
+      ? zone.vintage
+      : null;
+  const dz2011 = (zone?.zones ?? []).find((z) => z.vintage === 2011) ?? null;
+  const iz = card?.intermediate_zone ?? null;
+  const izName = iz?.name?.trim() || null;
+  const izCode = iz?.code ? String(iz.code) : null;
+  const mapRef = mapReferenceNumbers(
+    card?.square_reference?.trim() ||
+      (card ? scotLandSquareReference(card.lat, card.lng) : ""),
+  );
 
   const shellClass = [
     floating ? "hud-card hud-place place-card" : "place-card place-card-standalone",
@@ -397,6 +442,11 @@ export function PlaceCard({
   const gbpLive = gbpLiveFromCard(card);
   const surfaceDisplay = (card?.surface_rent_display ??
     null) as SurfaceRentDisplay | null;
+  const showPublishedRanges = Boolean(
+    gbpLive &&
+      (surfaceDisplay?.state === "ok" ||
+        surfaceDisplay?.state === "under_review"),
+  );
   let figureText = figureCopy(unitEffective);
   let figureRange: string | null = null;
   let figureEstimate: string | null = null;
@@ -515,28 +565,97 @@ export function PlaceCard({
               <h2 className="place-card-title" data-testid="place-card-place">
                 {placeName}
               </h2>
+              {postcodeLine ? (
+                <p className="place-card-meta" data-testid="place-card-postcode">
+                  {postcodeLine}
+                </p>
+              ) : null}
               {councilLine ? (
                 <p className="place-card-council" data-testid="place-card-council">
                   {councilLine}
                 </p>
               ) : null}
-              {PLACE_CARD_MAP_REFERENCE_ENABLED && card.square_reference ? (
-                <p
-                  className="place-card-map-reference"
-                  data-testid="place-card-map-reference"
-                >
-                  <span className="place-card-map-reference-label">
-                    {PLACE_CARD_MAP_REFERENCE_LABEL}
-                  </span>{" "}
-                  <span data-testid="place-card-square-reference">
-                    {mapReferenceNumbers(card.square_reference)}
-                  </span>{" "}
-                  <MapReferenceCopy
-                    value={mapReferenceNumbers(card.square_reference)}
-                  />
+              {PLACE_CARD_MAP_REFERENCE_ENABLED && mapRef ? (
+                <p className="place-card-meta" data-testid="place-card-square-reference">
+                  <span className="place-card-meta-inline">
+                    {PLACE_CARD_MAP_REFERENCE_LABEL}{" "}
+                  </span>
+                  <MapReferenceCopy value={mapRef} />
                 </p>
               ) : null}
             </header>
+
+            <details
+              className="place-card-area-details"
+              data-testid="place-card-area-details"
+            >
+              <summary>{PLACE_CARD_AREA_DETAILS_LABEL}</summary>
+              <dl className="place-card-fields">
+                <div className="place-card-field">
+                  <dt>{dataZoneFieldLabel(dzVintage ?? 2022)}</dt>
+                  <dd data-testid="place-card-data-zone">
+                    {dzCode ? (
+                      <>
+                        <span className="place-card-dz-code">{dzCode}</span>
+                        {dzName ? (
+                          <span className="place-card-meta-inline">
+                            {" "}
+                            · {dzName}
+                          </span>
+                        ) : (
+                          <span className="place-card-meta-inline">
+                            {" "}
+                            · {PLACE_CARD_NAME_NOT_LOADED}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="place-card-no-data">
+                        {zone?.note?.trim() || PLACE_CARD_NAME_NOT_LOADED}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+                {dz2011?.code ? (
+                  <div className="place-card-field">
+                    <dt>{dataZoneFieldLabel(2011)}</dt>
+                    <dd data-testid="place-card-data-zone-2011">
+                      <span className="place-card-dz-code">{dz2011.code}</span>
+                      {dz2011.name ? (
+                        <span className="place-card-meta-inline">
+                          {" "}
+                          · {dz2011.name}
+                        </span>
+                      ) : null}
+                    </dd>
+                  </div>
+                ) : null}
+                <div className="place-card-field">
+                  <dt>Intermediate Zone</dt>
+                  <dd data-testid="place-card-intermediate-zone">
+                    {iz?.status === "ok" && izName ? (
+                      <>
+                        {izName}
+                        {izCode ? (
+                          <span className="place-card-meta-inline">
+                            {" "}
+                            · {izCode}
+                          </span>
+                        ) : null}
+                      </>
+                    ) : izCode ? (
+                      <span className="place-card-meta-inline">
+                        {izCode} · {PLACE_CARD_NAME_NOT_LOADED}
+                      </span>
+                    ) : (
+                      <span className="place-card-no-data">
+                        {iz?.note?.trim() || PLACE_CARD_NAME_NOT_LOADED}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              </dl>
+            </details>
 
             <p
               className="place-card-figure"
@@ -629,6 +748,14 @@ export function PlaceCard({
               >
                 {PLACE_CARD_AGR_SUBTITLE}
               </p>
+              {!showPublishedRanges ? (
+                <p
+                  className="place-card-figures-status"
+                  data-testid="place-card-figures-not-published"
+                >
+                  {PLACE_CARD_FIGURES_NOT_PUBLISHED}
+                </p>
+              ) : null}
             </section>
 
             {unitEffective === "typical_home" && !fullyEstimated && salesBasis ? (
@@ -667,7 +794,7 @@ export function PlaceCard({
                     row={row}
                     display={surfaceDisplay}
                     gbpLive={gbpLive}
-                    showFigureWhy
+                    showRange={showPublishedRanges}
                   />
                 ))}
             </ul>
@@ -690,6 +817,7 @@ export function PlaceCard({
                       row={row}
                       display={null}
                       gbpLive={false}
+                      showRange={false}
                     />
                   ))}
               </ul>

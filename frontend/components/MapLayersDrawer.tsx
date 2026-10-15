@@ -1,12 +1,6 @@
 "use client";
 
 import ConfidenceTag from "@/components/ConfidenceTag";
-import EvidenceTagLegend from "@/components/EvidenceTagLegend";
-import {
-  DRAWER_OGL_V3,
-  isOpenGovernmentLicenceDisplay,
-  mapDrawerLicenceDisplay,
-} from "@/lib/mapDrawerLicenceDisplay";
 import {
   mapDrawerLayersByGroup,
   type MapDrawerLayer,
@@ -36,7 +30,8 @@ function asUnavailableSet(
 
 /**
  * Right-side map layers drawer — Land / Natural resource rents / Services of
- * nature / Limits / Boundaries. Reuses ScotlandMap paint toggles via enabled ids.
+ * nature / Limits / Boundaries. Licence text lives in the map (i) and /data
+ * (SW-044); chip key lives in the left legend only.
  */
 export default function MapLayersDrawer({
   enabled = {},
@@ -47,10 +42,6 @@ export default function MapLayersDrawer({
 }: MapLayersDrawerProps) {
   const groups = mapDrawerLayersByGroup();
   const unavailable = asUnavailableSet(unavailableIds);
-  // Chip key only while Market / Modelled / Estimate chips are on screen.
-  const chipsOnScreen = groups.some(({ layers }) =>
-    layers.some((layer) => Boolean(layer.tag)),
-  );
 
   const setEnabled = (id: string, on: boolean) => {
     onEnabledChange?.({ ...enabled, [id]: on });
@@ -67,40 +58,20 @@ export default function MapLayersDrawer({
       data-drawer="map-layers"
     >
       <p className="hud-tools-title">{title}</p>
-      <p className="layer-meta">
-        Toggle map layers. Figures for land value are being checked and are not
-        published yet.
-      </p>
 
-      {chipsOnScreen ? <EvidenceTagLegend compact /> : null}
-
-      {groups.map(({ key, label, layers }) => {
-        const rows = layers.map((layer) => {
-          const forced = unavailable.has(layer.id);
-          return {
-            layer,
-            comingSoon: Boolean(layer.comingSoon) || forced,
-          };
-        });
-        const showGroupOgl = rows.some(({ layer }) =>
-          isOpenGovernmentLicenceDisplay(
-            mapDrawerLicenceDisplay(
-              layer.id,
-              layer.licence,
-              layer.licenceUrl,
-            ),
-          ),
-        );
-        return (
-          <section
-            key={key}
-            className="layers-panel-group"
-            aria-label={label}
-            data-testid={`layers-group-${key}`}
-          >
-            <label className="layer-select-label">{label}</label>
-            <ul className="layers-panel-list">
-              {rows.map(({ layer, comingSoon }) => (
+      {groups.map(({ key, label, layers }) => (
+        <section
+          key={key}
+          className="layers-panel-group"
+          aria-label={label}
+          data-testid={`layers-group-${key}`}
+        >
+          <label className="layer-select-label">{label}</label>
+          <ul className="layers-panel-list">
+            {layers.map((layer) => {
+              const comingSoon =
+                Boolean(layer.comingSoon) || unavailable.has(layer.id);
+              return (
                 <DrawerLayerRow
                   key={layer.id}
                   layer={layer}
@@ -111,30 +82,12 @@ export default function MapLayersDrawer({
                     setEnabled(layer.id, !enabled[layer.id]);
                   }}
                 />
-              ))}
-            </ul>
-            {showGroupOgl ? (
-              <p
-                className="layer-meta layers-group-ogl"
-                data-testid={`layers-group-ogl-${key}`}
-              >
-                Licence:{" "}
-                <a
-                  href={DRAWER_OGL_V3.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {DRAWER_OGL_V3.label}
-                </a>
-              </p>
-            ) : null}
-          </section>
-        );
-      })}
+              );
+            })}
+          </ul>
+        </section>
+      ))}
 
-      <p className="layer-meta" data-testid="map-layers-sources-licences">
-        <a href="/data#licences">Sources and licences</a>
-      </p>
       <p className="layer-meta" data-testid="map-layers-methodology-link">
         Full breakdown table and definitions:{" "}
         <a href="/methodology#calculation">How we value land</a>
@@ -154,12 +107,6 @@ function DrawerLayerRow({
   onToggle: () => void;
   comingSoon: boolean;
 }) {
-  const display = mapDrawerLicenceDisplay(
-    layer.id,
-    layer.licence,
-    layer.licenceUrl,
-  );
-  const showRowLicence = !isOpenGovernmentLicenceDisplay(display);
   return (
     <li
       className="layers-panel-row"
@@ -195,6 +142,15 @@ function DrawerLayerRow({
             Coming soon
           </span>
         ) : null}
+        <a
+          className="layers-panel-info"
+          href={`/data#${encodeURIComponent(layer.id)}`}
+          aria-label={`Source and licence for ${layer.label}`}
+          title="Source and licence"
+          data-testid={`layer-info-${layer.id}`}
+        >
+          i
+        </a>
       </div>
       <p
         className="layer-meta"
@@ -206,18 +162,6 @@ function DrawerLayerRow({
       >
         {layer.description}
       </p>
-      {showRowLicence ? (
-        <p className="layer-meta" data-testid={`layer-licence-${layer.id}`}>
-          Licence:{" "}
-          {display.url ? (
-            <a href={display.url} target="_blank" rel="noopener noreferrer">
-              {display.label}
-            </a>
-          ) : (
-            display.label
-          )}
-        </p>
-      ) : null}
     </li>
   );
 }

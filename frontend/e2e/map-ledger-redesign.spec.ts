@@ -26,7 +26,11 @@ test.describe("map ledger redesign", () => {
     const tools = page.locator("aside.hud-tools");
     await expect(tools).toBeVisible();
     await expect(tools.getByTestId("layers-panel")).toBeVisible();
-    await expect(tools.getByTestId("evidence-tag-legend")).toBeVisible();
+    // SW-044: chip key lives in the left legend, not the Layers drawer.
+    await expect(tools.getByTestId("evidence-tag-legend")).toHaveCount(0);
+    await expect(
+      page.locator("#hud-scotland-body").getByTestId("evidence-tag-legend"),
+    ).toHaveCount(1);
     for (const group of ["land", "resources", "nature", "limits", "boundaries"]) {
       await expect(page.getByTestId(`layers-group-${group}`)).toBeVisible();
     }

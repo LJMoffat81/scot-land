@@ -209,8 +209,11 @@ async function assertSkeletonCopy(page: Page) {
     TYPICAL_HOME,
   );
   await expect(page.getByTestId("place-card-agr-label")).toHaveText(AGR);
-  await expect(page.getByTestId("place-card-agr-subtitle")).toContainText(
-    "What the land here is worth each year",
+  await expect(page.getByTestId("place-card-agr-subtitle")).toHaveText(
+    "What gives this land value",
+  );
+  await expect(page.getByTestId("place-card-figures-not-published")).toHaveText(
+    "Figures not published yet",
   );
   await expect(page.getByTestId("place-card-sales-basis")).toContainText(
     "Based on local home sales (2019–2023)",
@@ -241,9 +244,7 @@ async function assertSkeletonCopy(page: Page) {
   await expect(page.getByTestId("place-card-agr-nature")).toContainText(
     "Services of nature",
   );
-  await expect(page.getByTestId("place-card-range-surface")).toHaveText(
-    "not yet estimated",
-  );
+  await expect(page.getByTestId("place-card-range-surface")).toHaveCount(0);
   await expect(page.getByTestId("place-card-of-which-planning_uplift")).toContainText(
     "of which: planning uplift",
   );

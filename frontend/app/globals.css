@@ -362,6 +362,55 @@ input {
   color: var(--slrg-muted);
 }
 
+.place-card-area-details {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--slrg-text);
+}
+
+.place-card-area-details > summary {
+  cursor: pointer;
+  font-weight: 650;
+  color: var(--slrg-navy);
+  list-style-position: outside;
+}
+
+.place-card-area-details[open] > summary {
+  margin-bottom: 0.35rem;
+}
+
+.place-card-figures-status {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--slrg-navy);
+}
+
+.layers-panel-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  min-height: 1.35rem;
+  margin-left: 0.2rem;
+  padding: 0 0.3rem;
+  border: 1px solid #c5d0dc;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1;
+  color: var(--slrg-navy);
+  text-decoration: none;
+  background: #fff;
+}
+
+.layers-panel-info:hover {
+  border-color: var(--slrg-navy);
+}
+
 .place-card-figure {
   margin: 0.35rem 0 0;
   font-size: 1rem;

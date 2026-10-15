@@ -23,8 +23,8 @@ import {
   LAND_VALUES_COMING_SOON_HOME,
   outsideScotlandPlaceCard,
 } from "@/lib/placeCard";
+import EvidenceTagLegend from "./EvidenceTagLegend";
 import MapLayersDrawer from "./MapLayersDrawer";
-import MapLicenceCredits from "./MapLicenceCredits";
 import MapRangeLegend from "./MapRangeLegend";
 import {
   ApiError,
@@ -67,7 +67,6 @@ import {
 } from "../lib/mapActiveLegend";
 import {
   NO_DATA_HATCH_IMAGE,
-  activeMapCredits,
   createNoDataHatchImageData,
   paintForMetricWithNoData,
   rangeLegendFromStops,
@@ -440,55 +439,6 @@ function paintForMetric(metric: MetricDef): ExpressionSpecification {
   ) as ExpressionSpecification;
 }
 
-/** Catalog layer ids currently painting / credited on the public map. */
-function activeCatalogLayerIds(opts: {
-  showBoundaries: boolean;
-  showDataZones: boolean;
-  showBuiltupMask: boolean;
-  showVdl: boolean;
-  showHla: boolean;
-  showCommunityOwnership: boolean;
-  showLdp: boolean;
-  showWoodland: boolean;
-  showRepd: boolean;
-  showRepdOnshoreWind: boolean;
-  showCrownLeases: boolean;
-  showCesAquaculture: boolean;
-  showLca: boolean;
-  showCroftingConstraint: boolean;
-  ledgerEnabled: LedgerToggleState;
-  contextOn: Record<string, boolean>;
-}): string[] {
-  const ids: string[] = [];
-  if (opts.showBoundaries) ids.push("boundaries");
-  if (opts.showDataZones) ids.push("data_zones");
-  if (opts.showBuiltupMask) ids.push("builtup_mask");
-  if (opts.showVdl) ids.push("vdl");
-  if (opts.showHla) ids.push("hla");
-  if (opts.showCommunityOwnership) ids.push("community_ownership");
-  if (opts.showLdp) ids.push("ldp_allocations");
-  if (opts.showWoodland) {
-    ids.push("nfi", "native_woodland");
-  }
-  if (opts.showRepd) ids.push("repd");
-  if (opts.showRepdOnshoreWind) ids.push("repd_onshore_wind");
-  if (opts.showCrownLeases) ids.push("crown_estate_leases");
-  if (opts.showCesAquaculture) ids.push("ces_aquaculture");
-  if (opts.showLca) ids.push("lca");
-  if (opts.showCroftingConstraint) {
-    ids.push("crofting_register", "common_grazings");
-  }
-  if (opts.ledgerEnabled.flood || opts.contextOn.flood) ids.push("flood");
-  if (opts.ledgerEnabled["8"]) ids.push("carbon_peatland");
-  if (opts.ledgerEnabled["9"] || opts.contextOn["oil-fields"]) {
-    ids.push("nsta_oil_gas");
-  }
-  if (opts.ledgerEnabled.designations) {
-    ids.push("sssi", "naturescot_designations");
-  }
-  return ids;
-}
-
 export default function ScotlandMap() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
@@ -750,33 +700,13 @@ export default function ScotlandMap() {
       return next;
     });
   }, []);
+  void catalogLayers; // SW-044: licence list left the legend; catalogue still drives mask gap.
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const parcelLabelRef = useRef<maplibregl.Marker | null>(null);
   const headerRef = useRef<HTMLElement | null>(null);
   const scotlandRef = useRef<HTMLElement | null>(null);
   const layersBtnRef = useRef<HTMLButtonElement | null>(null);
 
-  const mapCredits = activeMapCredits(
-    catalogLayers,
-    activeCatalogLayerIds({
-      showBoundaries,
-      showDataZones,
-      showBuiltupMask,
-      showVdl,
-      showHla,
-      showCommunityOwnership,
-      showLdp,
-      showWoodland,
-      showRepd,
-      showRepdOnshoreWind,
-      showCrownLeases,
-      showCesAquaculture,
-      showLca,
-      showCroftingConstraint,
-      ledgerEnabled,
-      contextOn,
-    }),
-  );
   // SW-045: legend follows the active layer only (Land / density / VDL / HLA).
   // Density bands still gate on zoom + whether zones are drawable. GBP-LIVE
   // surface-rent £ legend mounts separately below when the flag is on.
@@ -2532,9 +2462,9 @@ export default function ScotlandMap() {
     };
   }, []);
 
-  // Catalog licence fields drive the map credits control in the legend.
   // Idea 57: when the catalogue has loaded and builtup_mask is missing or not
   // live, mark it Coming soon (empty catalogue stubs leave toggles alone).
+  // SW-044: licence credits moved to the map (i); catalogue still drives mask gap.
   useEffect(() => {
     let cancelled = false;
     void fetchLayerCatalog()
@@ -3910,6 +3840,7 @@ export default function ScotlandMap() {
   }, [result]);
 
   const placeOpen = Boolean(placeStub || result || error);
+  const [findIntroDismissed, setFindIntroDismissed] = useState(false);
   const collapsedIntroForPlace = useRef(false);
   /** Idea 57 + SHARE-FIX — drawer Coming soon for unavailable tile layers. */
   const unavailableLayerIds = new Set<string>(tileUnavailableIds);
@@ -3919,9 +3850,10 @@ export default function ScotlandMap() {
   /** SW-047 / idea 56 — compact legend strip while a place card is open. */
   const legendCompact = placeOpen;
 
-  // Usability: collapse Find a place intro when a place card opens; restore on close.
+  // SW-044: hide Find a place intro after the first search or map click; legend stays.
   useEffect(() => {
     if (placeOpen) {
+      setFindIntroDismissed(true);
       setLegendOpen(false);
       collapsedIntroForPlace.current = true;
       return;
@@ -3952,6 +3884,7 @@ export default function ScotlandMap() {
     "squares-shell",
     toolsOpen ? "tools-open" : "",
     placeOpen ? "place-open" : "",
+    findIntroDismissed ? "find-intro-dismissed" : "",
     suggestOpen ? "suggest-open" : "",
   ]
     .filter(Boolean)
@@ -4200,16 +4133,12 @@ export default function ScotlandMap() {
                 className="map-range-legend-surface-rent"
               />
             ) : null}
-            {!legendCompact ? (
-              <MapLicenceCredits credits={mapCredits} />
-            ) : null}
-            {!legendCompact ? (
-              <p className="hud-scotland-foot">
-                <a href="/about">About</a>
-                {" · "}
-                <a href="/methodology">How it works</a>
-              </p>
-            ) : null}
+            <EvidenceTagLegend compact />
+            <p className="hud-scotland-foot">
+              <a href="/about">About</a>
+              {" · "}
+              <a href="/methodology">How it works</a>
+            </p>
           </div>
         </div>
       </aside>
@@ -4327,9 +4256,8 @@ export default function ScotlandMap() {
                 className="layer-meta"
                 data-testid="layer-ces-aquaculture-credit"
               >
-                Contains information from the Crown Estate Scotland licensed
-                under the Open Government Licence v3.0. Aquaculture seabed
-                lease polygons only — not a title. Zoom{" "}
+                Crown Estate Scotland aquaculture seabed lease polygons only —
+                not a title. See Sources and licences. Zoom{" "}
                 {CES_AQUACULTURE_MIN_ZOOM}+.
               </p>
             )}

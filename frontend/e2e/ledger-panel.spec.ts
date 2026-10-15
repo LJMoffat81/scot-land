@@ -88,6 +88,7 @@ test.describe("LedgerPanel (internal preview only)", () => {
     const tools = page.locator("aside.hud-tools");
     await expect(tools.getByTestId("layers-panel")).toBeVisible();
     await expect(tools.getByTestId("ledger-panel")).toHaveCount(0);
-    await expect(tools.getByTestId("evidence-tag-legend")).toBeVisible();
+    // SW-044: chip key is in the left legend, not the Layers drawer.
+    await expect(tools.getByTestId("evidence-tag-legend")).toHaveCount(0);
   });
 });

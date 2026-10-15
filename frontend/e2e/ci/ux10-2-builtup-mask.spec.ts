@@ -249,66 +249,23 @@ async function closePlaceCard(page: Page) {
 }
 
 /**
- * Narrow layout hides licence credits until the legend fold is open.
- * SW-047: MapLicenceCredits is unmounted while a place card keeps
- * legendCompact. Close overlays first — place / layers intercept Show legend
- * at 390. URL ?lat=&lng= can reopen the place card after dismiss — retry
- * dismiss + open. Do not click the fold when credits are already visible
- * (place-close restores legendOpen; another click would toggle shut).
+ * SW-044: attribution lives in the map (i) control, not a left-panel licence list.
+ * Close overlays first — place card / layers drawer can intercept clicks at 390.
  */
-async function ensureLegendOpen(page: Page) {
-  await closeTools(page);
-  // Boot inspect may still be mounting the place card — wait briefly then dismiss.
-  await page
-    .getByTestId("place-card")
-    .waitFor({ state: "visible", timeout: 5_000 })
-    .catch(() => {});
-  const credits = page.getByTestId("map-licence-credits");
-  const show = page.locator("button.hud-scotland-fold");
-  const panel = page.getByTestId("map-legend-panel");
-  for (let attempt = 0; attempt < 5; attempt++) {
-    await closePlaceCard(page);
-    await expect(panel).toHaveAttribute("data-legend-compact", "false", {
-      timeout: 10_000,
-    });
-    if (await credits.isVisible().catch(() => false)) return;
-    const foldVisible = await show.isVisible().catch(() => false);
-    if (!foldVisible) {
-      // Desktop: legend body shows without the fold control.
-      await expect(credits).toBeVisible({ timeout: 15_000 });
-      return;
-    }
-    if (await page.getByTestId("place-card").isVisible().catch(() => false)) {
-      continue;
-    }
-    // Only click Show legend when the fold is closed — place-close may have
-    // already restored legendOpen; clicking again would toggle the body shut.
-    const needsOpen = await panel.evaluate(
-      (el) => !el.classList.contains("legend-open"),
-    );
-    try {
-      if (needsOpen) {
-        await show.click({ timeout: 3_000, force: true });
-      }
-      await expect(credits).toBeVisible({ timeout: 15_000 });
-      return;
-    } catch {
-      // Place card likely reopened over the fold; dismiss and retry.
-    }
-  }
+async function ensureAttribReady(page: Page) {
   await closePlaceCard(page);
-  await expect(page.getByTestId("place-card")).toHaveCount(0);
-  await expect(panel).toHaveAttribute("data-legend-compact", "false", {
-    timeout: 10_000,
-  });
-  if (await credits.isVisible().catch(() => false)) return;
-  const needsOpen = await panel.evaluate(
-    (el) => !el.classList.contains("legend-open"),
-  );
-  if (needsOpen && (await show.isVisible().catch(() => false))) {
-    await show.click({ force: true });
+  await closeTools(page);
+  const attrib = page.locator(".maplibregl-ctrl-attrib");
+  await expect(attrib).toBeVisible({ timeout: 15_000 });
+  // Expand compact (i) so attribution text is readable for asserts.
+  if (await attrib.evaluate((el) => el.classList.contains("maplibregl-compact"))) {
+    const btn = attrib.locator("button, summary").first();
+    if (await btn.isVisible().catch(() => false)) {
+      await btn.click();
+    } else {
+      await attrib.click();
+    }
   }
-  await expect(credits).toBeVisible({ timeout: 15_000 });
 }
 
 for (const viewport of [
@@ -325,7 +282,7 @@ for (const viewport of [
 
       // lat/lng fly zooms past DATA_ZONE_MIN_ZOOM (10) so dz2022-masked can
       // paint and MapLibre surfaces the source attribution (NRS/OS). Place card
-      // is dismissed in ensureLegendOpen before Show legend.
+      // is dismissed in ensureAttribReady before credit asserts.
       await page.goto("/?lat=55.8609&lng=-4.2514");
       await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
 
@@ -345,26 +302,20 @@ for (const viewport of [
       const parcelTile = await page.request.get("/api/parcels/tiles/14/8045/5230");
       expect(parcelTile.status()).toBe(404);
 
-      await ensureLegendOpen(page);
-      const credits = page.getByTestId("map-licence-credits");
-      await expect(credits).toBeVisible({ timeout: 45_000 });
-      await expect(page.getByTestId("map-credit-builtup_mask")).toBeVisible({
-        timeout: 30_000,
-      });
-      await expect(credits).toContainText("NRS Settlements 2022");
-      await expect(credits).toContainText("OS data");
-      await expect(credits).toContainText(ATTRIBUTION);
+      await ensureAttribReady(page);
+      await expect(page.getByTestId("map-licence-credits")).toHaveCount(0);
 
       const bodyText = await page.locator("body").innerText();
       expect(bodyText).not.toMatch(/£\d/);
       expect(bodyText.toLowerCase()).not.toContain("natural capital");
       expect(bodyText.toLowerCase()).not.toMatch(/\bledger\b/);
 
-      // Source attribution also lands on MapLibre's attribution control.
+      // Source attribution lands on MapLibre's attribution control (map i).
       const attrib = page.locator(".maplibregl-ctrl-attrib");
       await expect(attrib).toContainText(/NRS Settlements 2022|OS data/i, {
         timeout: 45_000,
       });
+      await expect(attrib).toContainText(ATTRIBUTION, { timeout: 45_000 });
 
       expect(filterNoise(gate.consoleErrors)).toEqual([]);
       expect(filterNoise(gate.pageErrors)).toEqual([]);

@@ -84,15 +84,12 @@ test.describe("map licence credits (catalog-driven)", () => {
     );
     await expect(legend.getByText(/£\d/)).toHaveCount(0);
 
-    // Catalog-driven boundaries credit once parcels are on (zoom ≥ 14).
-    const credits = page.getByTestId("map-licence-credits");
-    await expect(credits).toBeVisible({ timeout: 45_000 });
-    await expect(page.getByTestId("map-credit-boundaries")).toBeVisible({
-      timeout: 30_000,
+    // SW-044: left-panel DATA LICENCES list removed; credits live in map (i).
+    await expect(page.getByTestId("map-licence-credits")).toHaveCount(0);
+    const attrib = page.locator(".maplibregl-ctrl-attrib");
+    await expect(attrib).toContainText(/Registers of Scotland|INSPIRE|OS data/i, {
+      timeout: 45_000,
     });
-    await expect(
-      page.getByTestId("map-credit-licence-link-boundaries"),
-    ).toHaveAttribute("href", /open-government-licence/);
 
     // Coordinate search still opens a place card (no public rent £).
     const search = page.locator("#place-query");
@@ -197,13 +194,14 @@ test.describe("map licence credits (catalog-driven)", () => {
     await expect(toggle).toBeVisible({ timeout: 20_000 });
     await toggle.click();
 
-    await expect(page.getByTestId("map-non-commercial-badge")).toBeVisible({
-      timeout: 15_000,
-    });
-    await expect(page.getByTestId("map-credit-nsta_oil_gas")).toBeVisible();
-    await expect(page.getByTestId("map-credit-nsta_oil_gas")).toHaveAttribute(
-      "data-non-commercial",
-      "1",
+    // SW-044: NC badge left with the DATA LICENCES block; layer still toggles.
+    await expect(page.getByTestId("map-licence-credits")).toHaveCount(0);
+    await expect(page.getByTestId("map-non-commercial-badge")).toHaveCount(0);
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    // Non-OGL source still named via the row (i) → /data.
+    await expect(page.getByTestId("layer-info-9")).toHaveAttribute(
+      "href",
+      /\/data#9/,
     );
   });
 });

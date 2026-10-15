@@ -187,20 +187,21 @@ test.describe("UX-04 a11y names and landmarks at 1280", () => {
       page.getByRole("complementary", { name: "Land rent", exact: true }),
     ).toHaveCount(0);
 
-    // Enable data zones so MapLicenceCredits mounts (parcels toggle is off by default).
+    // SW-044: licence list left the legend; map (i) + /data hold attribution.
     await page.getByTestId("layer-toggle-data_zones").click();
-    await expect(page.getByTestId("map-licence-credits")).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(page.getByTestId("map-licence-credits")).toHaveCount(0);
     await expect(
       page.getByRole("group", { name: "Map data licences", exact: true }),
-    ).toHaveCount(1);
+    ).toHaveCount(0);
     await expect(
       page.getByRole("complementary", {
         name: "Map data licences",
         exact: true,
       }),
     ).toHaveCount(0);
+    await expect(
+      page.locator("#hud-scotland-body").getByTestId("evidence-tag-legend"),
+    ).toHaveCount(1);
 
     // Search stays named while the control shows "…"
     await expect(page.getByRole("button", { name: "Search", exact: true })).toHaveCount(

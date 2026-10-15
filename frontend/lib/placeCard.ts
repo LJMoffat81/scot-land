@@ -19,8 +19,13 @@ export { PLACE_CARD_PART_GLOSS, PLACE_CARD_PART_NOT_YET };
 /** One public term for the figure (UX-10 terminology test). */
 export const PLACE_CARD_AGR_LABEL = "Annual Ground Rent";
 
-export const PLACE_CARD_AGR_SUBTITLE =
-  "What the land here is worth each year";
+export const PLACE_CARD_AGR_SUBTITLE = "What gives this land value";
+
+/** One card-level notice while amounts stay unpublished (SW-044). */
+export const PLACE_CARD_FIGURES_NOT_PUBLISHED = "Figures not published yet";
+
+/** Fold for DZ / Intermediate Zone lines on the place card (SW-044). */
+export const PLACE_CARD_AREA_DETAILS_LABEL = "Area details";
 
 /** Pre-£ figure line (UX-10 item 4). Rank band stays OFF. */
 export const PLACE_CARD_PRE_POUND =

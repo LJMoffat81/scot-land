@@ -1,13 +1,9 @@
 import ConfidenceTag, {
+  EVIDENCE_TAG_GLOSS,
   type ConfidenceTagKind,
 } from "@/components/ConfidenceTag";
 
-/** Redesign three-chip legend copy (drawer + place card); aligns with glossary. */
-export const EVIDENCE_TAG_GLOSS: Record<ConfidenceTagKind, string> = {
-  market: "taken from real prices people paid",
-  proxy: "worked out from related prices",
-  shadow: "used when there is no market price",
-};
+export { EVIDENCE_TAG_GLOSS };
 
 const ORDER: ConfidenceTagKind[] = ["market", "proxy", "shadow"];
 
@@ -18,7 +14,7 @@ export type EvidenceTagLegendProps = {
 };
 
 /**
- * Market / Modelled / Estimate legend — mount once in the layers drawer and place card.
+ * Market / Modelled / Estimate chip key — mount once in the map legend (SW-044).
  */
 export default function EvidenceTagLegend({
   className,

@@ -29,7 +29,7 @@ export const POP_DENSITY_LEGEND_BLURB =
 
 /** Source / licence line under density bands (SW-022). */
 export const POP_DENSITY_LEGEND_SOURCE =
-  "Source: National Records of Scotland mid-year estimates, Open Government Licence v3.0";
+  "Source: National Records of Scotland mid-year estimates (OGL v3.0)";
 
 /** Shown instead of bands when density colours are not drawn at this zoom. */
 export const POP_DENSITY_ZOOM_HINT = "Zoom in to see colours";

@@ -51,9 +51,10 @@ test.describe("place card (internal preview)", () => {
     await expect(page.getByTestId("place-card-of-which-planning_uplift")).toContainText(
       /of which: planning uplift/i,
     );
-    await expect(page.getByTestId("place-card-range-surface")).toHaveText(
-      "not yet estimated",
+    await expect(page.getByTestId("place-card-figures-not-published")).toHaveText(
+      "Figures not published yet",
     );
+    await expect(page.getByTestId("place-card-range-surface")).toHaveCount(0);
     await expect(page.getByTestId("place-tag-estimate")).toHaveText("Estimate");
     await expect(page.getByTestId("place-card-parts-note")).toContainText(
       "These are worked out differently, so we don't add them up.",

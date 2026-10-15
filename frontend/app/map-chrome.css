@@ -334,7 +334,9 @@
 
 .app-shell.place-open .hud-scotland .hud-scotland-job,
 .app-shell.place-open .hud-scotland .hud-scotland-lead,
-.app-shell.place-open .hud-scotland .hud-scotland-coming-soon {
+.app-shell.place-open .hud-scotland .hud-scotland-coming-soon,
+.app-shell.find-intro-dismissed .hud-scotland .hud-scotland-job,
+.app-shell.find-intro-dismissed .hud-scotland .hud-scotland-lead {
   display: none;
 }
 

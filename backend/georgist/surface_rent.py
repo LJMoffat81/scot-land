@@ -47,6 +47,7 @@ from typing import Iterable, Mapping, Sequence
 import yaml
 
 METHOD = "residual_drc_surface_v1"
+METHOD_V13 = "residual_drc_surface_v1_3"
 VALUE_TIER = "proxy"
 CONFIG_PATH = Path(__file__).resolve().parents[2] / "data" / "config" / "surface.yaml"
 
@@ -62,7 +63,7 @@ DWELLING_TYPES = (
     "flat_conversion",
     "other",
 )
-SCENARIOS = ("low", "central", "high")  # DRC scenarios: low = low rebuild x short life x low floor -> HIGH land (rules 6.2 v0.6 corners)
+SCENARIOS = ("low", "central", "high")  # DRC scenarios: low = low rebuild x high depreciation rate -> HIGH land (v1.3 corners)
 FILL_METHODS = ("observed_pooled", "shrunk_to_model", "model_filled", "no_residential", "not_applicable")
 
 # Rules v0.7: zones with zero dwellings get NO residential surface rent (null, never 0), whatever RoS says.
@@ -261,10 +262,60 @@ def rebuild_rates(config: Mapping, scenario: str = "central", price_year: int | 
     return {t: band[scenario] for t, band in rebuild_band(config, price_year).items()}
 
 
+def oncost_factor_v13(
+    rebuild_cfg: Mapping,
+    *,
+    externals: float | None = None,
+    contingency: float | None = None,
+    demolition: float | None = None,
+) -> float:
+    """v1.3 F2c additive on-cost: 1 + fees + externals + contingency + demolition.
+
+    Replaces the legacy 1.15 embedded in gbp_per_m2; never stack 1.15×1.425.
+    Sensitivities override externals / contingency / demolition when given.
+    """
+    factors = rebuild_cfg.get("factors") or {}
+    v13 = factors.get("on_costs_v13") or {}
+    if not v13:
+        # Fall back to the published on_costs.central scalar when v13 block absent.
+        return float((factors.get("on_costs") or {}).get("central", 1.425))
+    fees = float(v13["fees"])
+    ext = float(v13["externals"] if externals is None else externals)
+    cont = float(v13["contingency"] if contingency is None else contingency)
+    dem = float(v13.get("demolition", 0.0) if demolition is None else demolition)
+    return 1.0 + fees + ext + cont + dem
+
+
+def oncost_replace_factor(rebuild_cfg: Mapping, **kw) -> float:
+    """Factor that converts a legacy-1.15-embedded DRC into the v1.3 on-cost.
+
+    ``DRC_v13 = DRC(rates incl. 1.15) × oncost_replace_factor``. Equals
+    ``oncost_factor_v13 / legacy_embedded`` and must never be ``1.15 × 1.425``.
+    """
+    v13 = (rebuild_cfg.get("factors") or {}).get("on_costs_v13") or {}
+    legacy = float(v13.get("legacy_embedded", 1.15))
+    if legacy <= 0:
+        raise ValueError("on_costs_v13.legacy_embedded must be positive")
+    return oncost_factor_v13(rebuild_cfg, **kw) / legacy
+
+
 def derive_rebuild_band(rebuild_cfg: Mapping) -> dict[str, dict[str, int]]:
     """Recompute the published band from base rows x factors (audit of the derivation)."""
     loc = rebuild_cfg["factors"]["location_scotland"]
     on = rebuild_cfg["factors"]["on_costs"]
+    # Guard: when on_costs_v13 is present, central on_costs must equal the additive factor
+    # (never the legacy 1.15 stacked with 1.425). Low/high may be the former band shape
+    # scaled by 1.425/1.15 so uncertainty width is unchanged.
+    if "on_costs_v13" in (rebuild_cfg.get("factors") or {}):
+        expected = oncost_factor_v13(rebuild_cfg)
+        if abs(float(on["central"]) - expected) > 1e-12:
+            raise ValueError(
+                f"rebuild.factors.on_costs.central={on['central']} != oncost_factor_v13={expected} "
+                "(v1.3 F2c: replace 1.15, never stack)"
+            )
+        legacy = float((rebuild_cfg.get("factors") or {}).get("on_costs_v13", {}).get("legacy_embedded", 1.15))
+        if float(on["central"]) == legacy:
+            raise ValueError("on_costs.central still equals legacy 1.15; v1.3 must replace it with 1.425")
     out: dict[str, dict[str, int]] = {}
     for t, spec in rebuild_cfg["base_rows_gbp_per_m2"].items():
         rows = spec["rows"] if isinstance(spec, Mapping) else spec
@@ -280,6 +331,35 @@ def region_factor(config: Mapping, council_code: str | None) -> float:
     if "default" not in factors:
         raise PendingSourceError("rebuild.region_factors.default must be explicit")
     return float(factors.get(council_code or "", factors["default"]))
+
+
+def rural_uplift_factor(config: Mapping, ur6_class: int | None) -> float:
+    """v1.3 F6: SPICe AHSP remote/rural uplift by UR6 class (default 1.0)."""
+    uplift = (config.get("rebuild") or {}).get("rural_uplift") or {}
+    default = float(uplift.get("default", 1.0))
+    if ur6_class is None:
+        return default
+    key_int, key_str = int(ur6_class), str(int(ur6_class))
+    if key_int in uplift:
+        return float(uplift[key_int])
+    if key_str in uplift:
+        return float(uplift[key_str])
+    return default
+
+
+def flat_gia_factor(config: Mapping) -> float:
+    """v1.3 F4: flats EPC TFA → GIA multiplier (central 1.10; sensitivity 1.0)."""
+    sens = (config.get("rebuild") or {}).get("sensitivities") or {}
+    if sens.get("flat_gia") is not None:
+        return float(sens["flat_gia"])
+    factors = (config.get("rebuild") or {}).get("floor_area_factors") or {}
+    return float(factors.get("flat_gia", 1.10))
+
+
+def price_year_label(config: Mapping) -> str:
+    """v1.3 F9: display label for indexed prices (values unchanged)."""
+    pi = config.get("price_index") or {}
+    return str(pi.get("price_year_label") or "2025-04 indexed")
 
 
 def validate_drivers(drivers: Iterable[str], config: Mapping) -> list[str]:
@@ -620,12 +700,15 @@ class ZoneRebuildInputs:
     estate_bands: tuple[str, ...] = ()      # EPC age bands counted as post-1980
     oneoff_type: str = "detached"           # rate type for the non-estate detached share once a split is attached
 
-    def area_for(self, dwelling_type: str) -> float:
+    def area_for(self, dwelling_type: str, *, flat_gia: float = 1.0) -> float:
+        """Floor area for a dwelling type. v1.3 F4: flats × flat_gia (houses stay ×1.0)."""
         g = self.area_by_group or {}
         if dwelling_type.startswith("flat") and "flat" in g:
-            return float(g["flat"])
+            return float(g["flat"]) * float(flat_gia)
         if dwelling_type in ("detached", "detached_estate", "detached_one_off", "semi_detached", "terraced") and "house" in g:
             return float(g["house"])
+        if dwelling_type.startswith("flat"):
+            return float(self.floor_area_m2) * float(flat_gia)
         return float(self.floor_area_m2)
 
 
@@ -988,7 +1071,7 @@ def with_estate(inp: "ZoneRebuildInputs", estate_cfg: Mapping, *, mode: str = "p
 ALL_AGES = ("*",)
 
 
-def _zone_mix(inp: "ZoneRebuildInputs") -> list["MixComponent"]:
+def _zone_mix(inp: "ZoneRebuildInputs", *, flat_gia: float = 1.0) -> list["MixComponent"]:
     e = inp.estate_fraction or 0.0
     mix = []
     for t, st in inp.type_shares.items():
@@ -1006,7 +1089,7 @@ def _zone_mix(inp: "ZoneRebuildInputs") -> list["MixComponent"]:
             elif t == "detached" and split:
                 mix.append(MixComponent(oo, st * sa, inp.area_for(oo), a))
             else:
-                mix.append(MixComponent(t, st * sa, inp.area_for(t), a))
+                mix.append(MixComponent(t, st * sa, inp.area_for(t, flat_gia=flat_gia), a))
     tot = sum(c.share for c in mix)
     return [MixComponent(c.dwelling_type, c.share / tot, c.floor_area_m2, c.age_band) for c in mix]
 
@@ -1021,45 +1104,58 @@ def oneoff_detached_share(inp: "ZoneRebuildInputs") -> float:
 def zone_rebuild_band(
     inp: ZoneRebuildInputs, *, band: Mapping[str, Mapping[str, float]], depreciation: Mapping, valuation_year: int,
     region: float = 1.0, default_remaining_factor: float | None = None,
+    flat_gia: float = 1.0,
 ) -> dict[str, "RebuildResult"]:
     """Mean DRC per dwelling for low/central/high rebuild from zone mix x age x floor area.
 
     Floor area per type: house mean for detached/semi/terraced, flat mean for
-    flats, zone mean otherwise. Type and age are taken as independent within
-    the zone (the rollup has no cross-tab).
+    flats (× flat_gia under v1.3 F4), zone mean otherwise. Type and age are
+    taken as independent within the zone (the rollup has no cross-tab).
     """
     if inp.age_shares is None:
         if default_remaining_factor is None:
             raise PendingSourceError("zone has no age mix and no default_remaining_factor")
         out = {}
         for s in SCENARIOS:
-            new = sum(inp.type_shares[t] * inp.area_for(t) * band[t][s] for t in inp.type_shares) * region
+            new = sum(
+                inp.type_shares[t] * inp.area_for(t, flat_gia=flat_gia) * band[t][s]
+                for t in inp.type_shares
+            ) * region
             out[s] = RebuildResult(new, new * default_remaining_factor, default_remaining_factor)
         return out
-    mix = _zone_mix(inp)
+    mix = _zone_mix(inp, flat_gia=flat_gia)
     return depreciated_rebuild_band(mix, band=band, depreciation=depreciation, valuation_year=valuation_year, region=region)
 
 
-SWING_PARAMS = ("rebuild", "life_years", "remaining_min")
+SWING_PARAMS = ("rebuild", "rate_building")
 
 
 def zone_drc_at(inp: "ZoneRebuildInputs", *, band, depreciation, valuation_year: int, rebuild: str = "central",
-                life: str = "central", floor: str = "central", region: float = 1.0,
-                default_remaining_factor: float | None = None) -> "RebuildResult":
+                rate: str = "central", region: float = 1.0,
+                default_remaining_factor: float | None = None,
+                flat_gia: float = 1.0,
+                # legacy aliases (v1.2 tests / callers)
+                life: str | None = None, floor: str | None = None,
+) -> "RebuildResult":
     """DRC per dwelling at one explicit setting of each parameter (no corner logic)."""
+    if life is not None or floor is not None:
+        # Pre-v1.3 callers passed life/floor; map to rate_building level when present.
+        rate = life or floor or rate
     fixed = {t: {s: b[rebuild] for s in SCENARIOS} for t, b in band.items()}
-    dep = {**depreciation_at(depreciation, life=life, floor=floor), "band_combination": {"rule": "corner"}}
-    return zone_rebuild_band(inp, band=fixed, depreciation=dep, valuation_year=valuation_year, region=region,
-                             default_remaining_factor=default_remaining_factor)["central"]
+    dep = {**depreciation_at(depreciation, rate=rate), "band_combination": {"rule": "corner"}}
+    return zone_rebuild_band(
+        inp, band=fixed, depreciation=dep, valuation_year=valuation_year, region=region,
+        default_remaining_factor=default_remaining_factor, flat_gia=flat_gia,
+    )["central"]
 
 
 def one_at_a_time_drc(inp: "ZoneRebuildInputs", **kw) -> dict[str, float]:
-    """Rules 6.2 v0.7: each parameter's swing, low and high with the others central.
+    """Rules 6.2 v0.7 / v1.3: each parameter's swing, low and high with the others central.
     Keys '<param>_<low|high>' -> DRC per dwelling (internal diagnostic)."""
     out = {"central": zone_drc_at(inp, **kw).drc_gbp}
     for p in SWING_PARAMS:
         for lvl in ("low", "high"):
-            arg = {"rebuild": "rebuild", "life_years": "life", "remaining_min": "floor"}[p]
+            arg = {"rebuild": "rebuild", "rate_building": "rate"}[p]
             out[f"{p}_{lvl}"] = zone_drc_at(inp, **{**kw, arg: lvl}).drc_gbp
     return out
 
@@ -1071,35 +1167,44 @@ class RebuildResult:
     remaining_factor: float  # DRC / rebuild_new (mix-weighted)
 
 
-DEPRECIATION_PARAMS = ("life_years", "remaining_min")
+DEPRECIATION_PARAMS = ("rate_building",)
 BAND_COMBINATION_RULES = ("corner",)
-# DRC scenario -> which end of each input band it takes. DRC rises with rebuild
-# £/m2, with building life (slower write-down) and with the remaining-value floor,
-# so the HIGHEST DRC (= LOWEST land value) is high rebuild x long life x high floor.
+# DRC scenario -> which end of each input band it takes (v1.3 F7).
+# DRC rises with rebuild £/m2 and with remaining value (falls with rate_building),
+# so the HIGHEST DRC (= LOWEST land value) is high rebuild × maintained (rate 0).
+# rate_building band is intentionally NOT ordered low<=central<=high
+# (low=unmaintained 0.011179, central=0.0027565, high=maintained 0).
 CORNERS = {
-    "low": {"rebuild": "low", "life_years": "low", "remaining_min": "low"},       # land_value_high
-    "central": {"rebuild": "central", "life_years": "central", "remaining_min": "central"},
-    "high": {"rebuild": "high", "life_years": "high", "remaining_min": "high"},    # land_value_low
+    "low": {"rebuild": "low", "rate_building": "low"},       # land_value_high
+    "central": {"rebuild": "central", "rate_building": "central"},
+    "high": {"rebuild": "high", "rate_building": "high"},    # land_value_low
 }
+AGE_CAP_BANDS = ("before 1919", "1919-1929", "1930-1949")  # F7: cap binds for these
 
 
 def depreciation_param(depreciation: Mapping, key: str, level: str = "central") -> float:
     """A depreciation input at `level` (low|central|high). Scalars are the central
-    value with no band (older configs); bands are {low, central, high}, low <= central <= high."""
+    value with no band. ``rate_building`` is exempt from low<=central<=high
+    (higher rate => lower remaining). Other bands still require that order."""
     v = depreciation[key]
     if isinstance(v, Mapping):
         lo, c, hi = (float(v[k]) for k in SCENARIOS)
-        if not lo <= c <= hi:
+        if key != "rate_building" and not lo <= c <= hi:
             raise ValueError(f"depreciation.{key} band must satisfy low <= central <= high, got {dict(v)}")
+        if key == "rate_building" and not lo >= c >= hi:
+            raise ValueError(
+                f"depreciation.rate_building must satisfy low >= central >= high "
+                f"(unmaintained >= central >= maintained), got {dict(v)}"
+            )
         return float(v[level])
     return float(v)
 
 
 def band_corners(depreciation: Mapping) -> dict[str, dict[str, str]]:
-    """Validated corner map (rules 6.2 v0.6). Only corner combination is supported:
-    the two extremes of the land value band are the joint extremes of rebuild cost,
-    life and floor. A config that pairs them the other way round is rejected,
-    because DRC is monotone increasing in all three."""
+    """Validated corner map (v1.3 F7). Only corner combination is supported:
+    the two extremes of the land value band are the joint extremes of rebuild cost
+    and depreciation rate. A config that pairs them the other way round is rejected,
+    because DRC rises with rebuild and falls with rate_building."""
     comb = depreciation.get("band_combination", {"rule": "corner"})
     rule = comb.get("rule", "corner") if isinstance(comb, Mapping) else comb
     if rule not in BAND_COMBINATION_RULES:
@@ -1108,22 +1213,87 @@ def band_corners(depreciation: Mapping) -> dict[str, dict[str, str]]:
     if isinstance(comb, Mapping):
         for name, s in (("drc_low_land_high", "low"), ("drc_high_land_low", "high")):
             if name in comb and dict(comb[name]) != CORNERS[s]:
-                raise ValueError(f"band_combination.{name} must be {CORNERS[s]} (DRC rises with rebuild, life and floor)")
+                raise ValueError(
+                    f"band_combination.{name} must be {CORNERS[s]} "
+                    "(DRC rises with rebuild, falls with rate_building)"
+                )
     return corners
 
 
-def depreciation_at(depreciation: Mapping, level: str = "central", *, life: str | None = None, floor: str | None = None) -> dict:
-    """Scalar depreciation config at a band level (life/floor may be set separately for sensitivity runs)."""
+def depreciation_at(
+    depreciation: Mapping,
+    level: str = "central",
+    *,
+    rate: str | None = None,
+    life: str | None = None,
+    floor: str | None = None,
+) -> dict:
+    """Scalar depreciation config at a band level.
+
+    v1.3 uses ``rate_building``. Legacy ``life``/``floor`` kwargs are accepted as
+    aliases for the rate level when callers have not been updated.
+    """
     out = dict(depreciation)
-    out["life_years"] = depreciation_param(depreciation, "life_years", life or level)
-    out["remaining_min"] = depreciation_param(depreciation, "remaining_min", floor or level)
+    rate_level = rate or life or floor or level
+    if "rate_building" in depreciation:
+        out["rate_building"] = depreciation_param(depreciation, "rate_building", rate_level)
+    # life_years kept for yield path; resolve when present
+    if "life_years" in depreciation:
+        out["life_years"] = depreciation_param(depreciation, "life_years", life or level)
+    if "remaining_min" in depreciation:
+        out["remaining_min"] = depreciation_param(depreciation, "remaining_min", floor or level)
     return out
 
 
-def remaining_factor(age_band: str, valuation_year: int, depreciation: Mapping) -> float:
+def building_rate(depreciation: Mapping) -> float:
+    """Annual building-value depreciation rate for the (possibly scalarised) config."""
+    if "rate_building" in depreciation and not isinstance(depreciation["rate_building"], Mapping):
+        return float(depreciation["rate_building"])
+    if "rate_building" in depreciation:
+        return depreciation_param(depreciation, "rate_building")
+    # Derive central from property rate / s_b when only those are set.
+    sb = float(depreciation.get("building_share_sb", 0.497))
+    prop = float(depreciation.get("property_rate_central", 0.00137))
+    if sb <= 0:
+        raise ValueError("building_share_sb must be positive")
+    return prop / sb
+
+
+def capped_age(age_band: str, valuation_year: int, depreciation: Mapping) -> float:
+    """F7: age_c = min(valuation_year - midpoint, age_cap). Cap binds for pre-1950 bands.
+
+    Sensitivity ``uncapped_interwar`` leaves 1919-1929 and 1930-1949 uncapped
+    (ages 101 and 85 at valuation_year 2025).
+    """
     midpoints = depreciation["age_band_midpoint_year"]
     if age_band not in midpoints:
         raise KeyError(f"unknown EPC age band {age_band!r}; add it to config")
+    age = max(0.0, float(valuation_year) - float(midpoints[age_band]))
+    cap = float(depreciation.get("age_cap_years", 68))
+    uncapped = bool(depreciation.get("uncapped_interwar", False))
+    if uncapped and age_band in ("1919-1929", "1930-1949"):
+        return age
+    return min(age, cap)
+
+
+def remaining_factor(age_band: str, valuation_year: int, depreciation: Mapping) -> float:
+    """Building remaining-value factor.
+
+    v1.3 compounding (method compounding_v13): ``(1 - r_b) ** age_c`` with
+    ``age_c = min(year - midpoint, 68)``. No floor. Falls back to the legacy
+    straight-line life/floor form only when method is absent or ``straight_line``.
+    """
+    midpoints = depreciation["age_band_midpoint_year"]
+    if age_band not in midpoints:
+        raise KeyError(f"unknown EPC age band {age_band!r}; add it to config")
+    method = str(depreciation.get("method") or "compounding_v13")
+    if method == "compounding_v13" or "rate_building" in depreciation:
+        age_c = capped_age(age_band, valuation_year, depreciation)
+        r_b = building_rate(depreciation)
+        if r_b < 0 or r_b >= 1:
+            raise ValueError(f"rate_building must be in [0, 1), got {r_b}")
+        return (1.0 - r_b) ** age_c
+    # Legacy straight-line (kept for synthetic historical tests only).
     life = depreciation_param(depreciation, "life_years")
     floor = depreciation_param(depreciation, "remaining_min")
     age = max(0.0, valuation_year - float(midpoints[age_band]))
@@ -1177,10 +1347,11 @@ def depreciated_rebuild_band(
     out = {}
     for s in SCENARIOS:
         c = corners[s]
+        rate_lvl = c.get("rate_building", c.get("life_years", "central"))
         out[s] = depreciated_rebuild(
             mix,
             rates_gbp_per_m2={t: b[c["rebuild"]] for t, b in band.items()},
-            depreciation=depreciation_at(depreciation, life=c["life_years"], floor=c["remaining_min"]),
+            depreciation=depreciation_at(depreciation, rate=rate_lvl),
             valuation_year=valuation_year,
             region=region,
         )

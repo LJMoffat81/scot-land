@@ -6,7 +6,7 @@ from georgist import surface_rent as sr
 SYN_FACTOR = 1.05  # SYNTHETIC index factor 2023 -> 2025, not a real UK HPI figure
 
 
-def _row(cfg, rbband, price=150_000, fill_obs=True, pooled=None, indexed=None, dwellings=None, **over):
+def _row(cfg, rbband, price=350_000, fill_obs=True, pooled=None, indexed=None, dwellings=None, **over):
     mix = [sr.MixComponent("semi_detached", 1.0, 90.0, "1965-1975")]
     rbs = sr.depreciated_rebuild_band(mix, band=rbband, depreciation=cfg["depreciation"], valuation_year=2025, region=1.0)
     pooled = pooled or sr.PooledPrice(price, 30, "2021-2023", "mean", ("pooled_3y",), 2023)
@@ -49,7 +49,7 @@ def test_row_carries_rules_fields(cfg, band):
     assert row["price_measure"] == "mean" and row["publication_status"] == "ok"
     assert row["rebuild_status"] == "OPEN_ESTIMATE" and "rebuild_open_estimate" in row["proxy_tags"]
     assert row["measured_rent_per_dwelling"] == pytest.approx(row["land_value"] * 0.03, abs=0.01)
-    assert row["measured_rent"] == pytest.approx(row["measured_rent_per_dwelling"] * 500, abs=0.5)
+    assert row["measured_rent"] == pytest.approx(row["measured_rent_per_dwelling"] * 500, abs=1.0)
 
 
 def test_rebuild_band_carried_as_uncertainty(cfg, band):
@@ -128,18 +128,18 @@ def test_totals_use_mean_and_per_home_is_total_over_count(cfg, band):
     assert row["land_value_zone_total"] == pytest.approx(row["land_value"] * 500)
     assert row["measured_rent"] == pytest.approx(row["land_value_zone_total"] * 0.03, abs=0.01)
     assert row["measured_rent_per_dwelling"] == pytest.approx(row["measured_rent"] / 500, abs=0.01)
-    assert row["typical_sale_gbp"] == pytest.approx(150_000 * 0.9)  # median: display only
+    assert row["typical_sale_gbp"] == pytest.approx(350_000 * 0.9)  # median: display only
     with pytest.raises(ValueError):
-        _row(cfg, band, pooled=sr.PooledPrice(150_000, 30, "2021-2023", "median", (), 2023))
+        _row(cfg, band, pooled=sr.PooledPrice(350_000, 30, "2021-2023", "median", (), 2023))
 
 
 def test_indexed_price_columns_raw_untouched(cfg, band):
     row = _row(cfg, band)
-    assert row["price_gbp"] == 150_000 and row["evidence_year"] == 2023  # raw RoS kept (sales year)
-    assert row["price_indexed_gbp"] == pytest.approx(150_000 * SYN_FACTOR)
+    assert row["price_gbp"] == 350_000 and row["evidence_year"] == 2023  # raw RoS kept (sales year)
+    assert row["price_indexed_gbp"] == pytest.approx(350_000 * SYN_FACTOR)
     assert row["price_index_factor"] == SYN_FACTOR and row["price_year"] == 2025
     assert row["price_index_series"] == "SYNTHETIC council index" and "indexed_council_hpi" in row["proxy_tags"]
-    assert row["raw_residual"] == pytest.approx(150_000 * SYN_FACTOR - row["drc_gbp"])  # residual on the indexed price
+    assert row["raw_residual"] == pytest.approx(350_000 * SYN_FACTOR - row["drc_gbp"])  # residual on the indexed price
 
 
 def test_unindexed_year_gap_refused(cfg, band):

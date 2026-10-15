@@ -166,8 +166,12 @@ def zone_cost_rebuilds(
     band: Mapping,
     valuation_year: int,
     defaults: Mapping[str, float],
+    ur6_class: int | None = None,
 ) -> dict[str, sr.RebuildResult]:
-    """Per-dwelling rebuild band for one zone (same rates/depreciation as every other)."""
+    """Per-dwelling rebuild band for one zone (same rates/depreciation as every other).
+
+    v1.3: applies rural_uplift by UR6 class (F6) and flat GIA ×1.10 (F4).
+    """
     ri = cfg["rebuild_inputs"]
     oc = cfg["epc_overcount"]
     ecfg = cfg["estate"]
@@ -185,12 +189,15 @@ def zone_cost_rebuilds(
         flag_column=oc["prefer_flag_column"],
     )
     inp = sr.with_estate(inp, ecfg, mode=str(ecfg["mode"]), estate_row=estate_row)
+    region = sr.rural_uplift_factor(cfg, ur6_class)
     return sr.zone_rebuild_band(
         inp,
         band=band,
         depreciation=cfg["depreciation"],
         valuation_year=int(valuation_year),
+        region=region,
         default_remaining_factor=float(defaults["default_remaining_factor"]),
+        flat_gia=sr.flat_gia_factor(cfg),
     )
 
 
@@ -277,6 +284,7 @@ def build_cost_rows(
             band=band,
             valuation_year=base_year,
             defaults=defaults,
+            ur6_class=ur6.get(code),
         )
         rows.append(
             _cost_row(code, n, rebuilds=rebuilds, rebuild_status=rebuild_status)

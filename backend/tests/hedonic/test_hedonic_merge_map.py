@@ -263,9 +263,25 @@ def test_production_pins_counts_and_ur() -> None:
     )
     assert pins["ur"]["vintage"] == "DZ2011 URC 2020"
     assert pins["ur"]["path"] == "scotland-rules/ur6/dz2011_urban_rural_6fold_2020.csv"
+    assert pins["ur"]["columns"] == ["code", "ur6_class"]
     assert pins["merge_map"]["sha256"] == (
         "581b0aa1647c5af7ce5b9617e35fcfa73982bc8712a42eb63242243ee6a95947"
     )
+
+
+def test_load_ur6_pinned_code_ur6_class_header(tmp_path: Path) -> None:
+    """Pinned freeze file header is code,ur6_class (extra cols allowed)."""
+    p = tmp_path / "dz2011_urban_rural_6fold_2020.csv"
+    _write_csv(
+        p,
+        [
+            {"code": "S01006506", "ur6_class": 1, "ur6_name": "Large Urban Areas"},
+            {"code": "S01006507", "ur6_class": 6, "ur6_name": "Remote Rural"},
+        ],
+        ["code", "ur6_class", "ur6_name"],
+    )
+    got = hmm.load_ur6_lookup(p)
+    assert got == {"S01006506": 1, "S01006507": 6}
 
 
 def test_merge_ladder_assigns_levels(synth: dict[str, Path], seed: int) -> None:

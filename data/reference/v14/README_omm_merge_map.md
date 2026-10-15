@@ -13,7 +13,7 @@
 | Role | Path | sha256 | Notes |
 |------|------|--------|-------|
 | Sale **counts** only | `data/processed/methods_code_1/pr1/ros_dz2011_sales_n_2019_2023.csv` | `37fe46da5e647b29a966bd70713de21ae8514b95dfbe1e95b43a62e060eeeb50` | Columns: `code,year,sales_n,suppressed` only. |
-| Urban–rural | `scotland-rules/ur6/dz2011_urban_rural_6fold_2020.csv` | `1f32a81532912334e3cd071e2f12f523e66068d14c73e5db4ae51add239b1a92` | **DZ2011 URC 2020** (freeze `inputs.ur6_dz2011`). |
+| Urban–rural | `scotland-rules/ur6/dz2011_urban_rural_6fold_2020.csv` | `1f32a81532912334e3cd071e2f12f523e66068d14c73e5db4ae51add239b1a92` | **DZ2011 URC 2020**; columns `code,ur6_class` (extra cols OK). |
 | Plot split | Project store `omm-inputs/dz2022_plot_split_v13.csv` | `09e2082d801b15203794974aea802cc7e5c5c403761365b69bd4b695d7a0638c` | |
 | UPRN weights | Project store `omm-inputs/dz2011_dz2022_uprn_weights.csv` | `7690bcbebf9968ca9b02cf898832aa9be8fca56f3eb9af70b20e25b5d23e13e4` | |
 | SPD 2026/2 | `data/external/raw/spd_postcodeindex_cut_26_2_csv.zip` | `4e93069ddb9c39c211cafdc56eeb16c4b0ed4872c9a95c20e23ec73c3b499057` | |

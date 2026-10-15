@@ -234,38 +234,52 @@ def load_ca_itl3_from_spd(
 
 
 def load_ur6_lookup(path: Path) -> dict[str, int]:
-    """DZ2011 → UR6. Accepts D13 (DataZone/UR6FOLD) or processed dz2011/ur8."""
+    """DZ2011 → UR6.
+
+    Accepts the pinned freeze file
+    ``scotland-rules/ur6/dz2011_urban_rural_6fold_2020.csv`` (``code``, ``ur6_class``),
+    SG download shape (``DataZone``/``UR6FOLD``), or processed ``dz2011``/``ur6``/``ur8``.
+    """
     with path.open(newline="", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
         cols = assert_no_price_columns(reader.fieldnames or [])
-        colset = set(cols)
+        # Case-insensitive column match; preserve original names for reading.
+        lower = {c.lower(): c for c in cols}
         out: dict[str, int] = {}
-        if {"DataZone", "UR6FOLD"} <= colset:
+
+        def _col(*names: str) -> str | None:
+            for n in names:
+                if n.lower() in lower:
+                    return lower[n.lower()]
+            return None
+
+        code_col = _col("code", "DataZone", "dz2011")
+        # Prefer pinned ur6_class, then SG UR6FOLD, then ur6.
+        ur6_col = _col("ur6_class", "UR6FOLD", "ur6")
+        ur8_col = _col("ur8", "UR8FOLD")
+
+        if code_col and ur6_col:
             for row in reader:
-                code = (row.get("DataZone") or "").strip()
+                code = (row.get(code_col) or "").strip()
                 if not code:
                     continue
-                out[code] = int(row["UR6FOLD"])
+                out[code] = int(row[ur6_col])
             return out
-        if {"dz2011", "ur8"} <= colset:
+
+        if code_col and ur8_col:
             for row in reader:
-                code = (row.get("dz2011") or "").strip()
+                code = (row.get(code_col) or "").strip()
                 if not code:
                     continue
-                ur8 = int(row["ur8"])
+                ur8 = int(row[ur8_col])
                 if ur8 not in UR8_TO_UR6:
                     raise ValueError(f"UR8 class {ur8} out of range for {code}")
                 out[code] = UR8_TO_UR6[ur8]
             return out
-        if {"dz2011", "ur6"} <= colset:
-            for row in reader:
-                code = (row.get("dz2011") or "").strip()
-                if not code:
-                    continue
-                out[code] = int(row["ur6"])
-            return out
+
     raise ValueError(
-        f"urban-rural lookup {path} needs DataZone/UR6FOLD, dz2011/ur6, or dz2011/ur8"
+        f"urban-rural lookup {path} needs code/ur6_class "
+        "(pinned), DataZone/UR6FOLD, dz2011/ur6, or dz2011/ur8"
     )
 
 
@@ -657,9 +671,10 @@ PRODUCTION_INPUT_PINS: dict[str, dict[str, object]] = {
         "path": "scotland-rules/ur6/dz2011_urban_rural_6fold_2020.csv",
         "sha256": "1f32a81532912334e3cd071e2f12f523e66068d14c73e5db4ae51add239b1a92",
         "vintage": "DZ2011 URC 2020",
+        "columns": ["code", "ur6_class"],
         "note": (
             "Pinned in v14_prereg_freeze.json inputs.ur6_dz2011 (DRAFT_NOT_FROZEN). "
-            "SG Urban Rural Classification 2020 for DZ2011."
+            "Header code,ur6_class (extra columns allowed)."
         ),
     },
     "plot_split": {

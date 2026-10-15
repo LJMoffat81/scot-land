@@ -39,13 +39,8 @@ DEFAULTS = {
     "plot_split": Path("/workspace/scotland-rules/v13_plot_split/dz2022_plot_split_v13.csv"),
     "plot_split_repo": REPO_ROOT / "data" / "reference" / "v13" / "dz2022_plot_split_v13.csv",
     "uprn_weights": Path("/workspace/scotland-gis/out/dz2011_dz2022_uprn_weights.csv"),
+    # Pinned freeze path only (code,ur6_class). Do not silently prefer repo ur8 fallback.
     "ur": Path("/workspace/scotland-rules/ur6/dz2011_urban_rural_6fold_2020.csv"),
-    "ur_official": REPO_ROOT
-    / "data"
-    / "external"
-    / "hedonic"
-    / "dz2011_urban_rural_6fold_2020_urc2020.csv",
-    "ur_fallback": REPO_ROOT / "data" / "processed" / "dz2011_urban_rural_2020.csv",
     "spd": Path("/workspace/scotland-gis/raw/spd_postcodeindex_cut_26_2_csv.zip"),
     "spd_fallback": REPO_ROOT / "data" / "external" / "raw" / "spd_postcodeindex_cut_26_2_csv.zip",
 }
@@ -98,9 +93,7 @@ def main(argv: list[str] | None = None) -> int:
         DEFAULTS["plot_split"], DEFAULTS["plot_split_repo"]
     )
     uprn = args.uprn_weights or DEFAULTS["uprn_weights"]
-    ur = args.ur or _resolve(
-        DEFAULTS["ur"], DEFAULTS["ur_official"], DEFAULTS["ur_fallback"]
-    )
+    ur = args.ur or DEFAULTS["ur"]
     spd = args.spd_zip or _resolve(DEFAULTS["spd"], DEFAULTS["spd_fallback"])
 
     missing = [

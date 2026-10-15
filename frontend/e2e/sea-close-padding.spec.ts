@@ -189,27 +189,34 @@ async function assertCloseClearsSeaLineText(page: Page) {
   await stubMapChrome(page);
   await stubSeaMissPlaceApis(page);
 
-  const { line, text } = await openSeaStub(page);
-  const close = page.getByRole("button", { name: "Close place card" });
-  await expect(close).toBeVisible();
-  await close.scrollIntoViewIfNeeded();
-  await text.scrollIntoViewIfNeeded();
+  await openSeaStub(page);
 
-  // Wait for layout-stable boxes (CI can return null once while visible).
-  // Asserts stay strict: non-null boxes, pad ≥ ×width+8, no overlap.
+  // Re-query inside toPass — remounts detach prior handles (scrollIntoView
+  // threw "not attached"). Asserts stay strict: pad ≥ ×width+8, no overlap.
   await expect(async () => {
+    const line = page.getByTestId("place-card-out-of-scotland");
+    const text = page.getByTestId("place-card-sea-line-text");
+    const close = page.getByRole("button", { name: "Close place card" });
+    await expect(page.getByTestId("place-card-loading")).toHaveCount(0);
+    await expect(close).toBeVisible();
+    await expect(line).toBeVisible();
+    await expect(text).toBeVisible();
+
     const closeBox = await close.boundingBox();
     expect(closeBox, "close × bounding box").toBeTruthy();
 
-    const padRight = await line.evaluate((el) =>
-      parseFloat(getComputedStyle(el).paddingRight),
+    const padRight = await line.evaluate((el) => {
+      if (!el.isConnected) return Number.NaN;
+      return parseFloat(getComputedStyle(el).paddingRight);
+    });
+    expect(Number.isFinite(padRight), "sea-line padding-right finite").toBe(
+      true,
     );
     expect(
       padRight,
       `sea-line padding-right ${padRight} < × width ${closeBox!.width} + 8`,
     ).toBeGreaterThanOrEqual(closeBox!.width + 8);
 
-    // Inner span wraps the glyphs only (excludes padding reserved for ×).
     const textBox = await text.boundingBox();
     expect(textBox, "sea-line text bounding box").toBeTruthy();
 

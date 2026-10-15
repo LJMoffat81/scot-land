@@ -224,7 +224,7 @@ async function assertSkeletonCopy(page: Page) {
   await expect(parts).toBeVisible();
   await expect(parts).not.toHaveAttribute("open", "");
   await expect(parts.locator("summary")).toHaveText(
-    "Natural resource rents & services of nature",
+    "Natural resource rents and services of nature",
   );
   await expect(page.getByTestId("place-card-figure-status")).toContainText(
     "Figure not published yet",

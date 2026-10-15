@@ -29,6 +29,7 @@ import {
   PLACE_CARD_PARTS_NOTE,
   PLACE_CARD_PARTS_SUMMARY,
   PLACE_CARD_PART_NOT_YET,
+  PLACE_CARD_LAND_VALUES_COMING_SOON,
   PLACE_CARD_PRE_POUND,
   PLACE_CARD_RANK_BAND_ENABLED,
   PLACE_CARD_SHOW_SCOTLAND_LABEL,
@@ -472,7 +473,11 @@ export function PlaceCard({
 
       {!isLoading && isNoMatch ? (
         <div className="place-card-body place-card-state" data-testid="place-card-no-match">
-          <p className="place-card-meta">{PLACE_CARD_NO_MATCH}</p>
+          <p className="place-card-meta place-card-no-match-line">
+            <span data-testid="place-card-no-match-text">
+              {PLACE_CARD_NO_MATCH}
+            </span>
+          </p>
         </div>
       ) : null}
 
@@ -547,6 +552,14 @@ export function PlaceCard({
                 </span>
               ) : null}
             </p>
+            {figureText === PLACE_CARD_PRE_POUND ? (
+              <p
+                className="place-card-land-values-coming-soon"
+                data-testid="place-card-land-values-coming-soon"
+              >
+                {PLACE_CARD_LAND_VALUES_COMING_SOON}
+              </p>
+            ) : null}
             {figureEstimate ? (
               <p
                 className="place-card-figure-estimate"

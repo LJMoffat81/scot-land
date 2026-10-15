@@ -20,6 +20,7 @@ import {
 } from "@/lib/gbpLive";
 import {
   fetchPlaceCard,
+  LAND_VALUES_COMING_SOON_HOME,
   outsideScotlandPlaceCard,
 } from "@/lib/placeCard";
 import MapLayersDrawer from "./MapLayersDrawer";
@@ -1200,7 +1201,7 @@ export default function ScotlandMap() {
         `/geocode/postcode?q=${encodeURIComponent(q)}`,
       );
       if (generation !== lookupGen.current) return;
-      setQuery(body.postcode);
+      // SW-051: keep the user's postcode formatting (e.g. EH1 1YZ), not API compact.
       void inspectRef.current(body.lat, body.lng, {
         fly: true,
         fromAddressSearch: true,
@@ -1314,7 +1315,13 @@ export default function ScotlandMap() {
     suggestGen.current += 1;
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
     clearSuggestions();
-    setQuery(item.label);
+    // SW-051: if the pick is the same postcode the user typed, keep their spacing.
+    const typed = query.trim();
+    const pickPc = (item.postcode || item.label || "").replace(/\s+/g, "").toUpperCase();
+    const typedPc = typed.replace(/\s+/g, "").toUpperCase();
+    if (!(item.kind === "postcode" && pickPc && pickPc === typedPc && /\s/.test(typed))) {
+      setQuery(item.label);
+    }
     setError(null);
     setLoading(true);
     try {
@@ -4041,6 +4048,12 @@ export default function ScotlandMap() {
                   Type a postcode or place name, or tap the map. You&apos;ll see
                   what we know about that area and where the data comes from.
                 </p>
+                <p
+                  className="hud-scotland-coming-soon"
+                  data-testid="land-values-coming-soon"
+                >
+                  {LAND_VALUES_COMING_SOON_HOME}
+                </p>
               </>
             ) : null}
             <MapRangeLegend
@@ -4236,10 +4249,10 @@ export default function ScotlandMap() {
               >
                 ×
               </button>
-              <p className="error-line" data-testid="place-card-no-match" role="alert">
-                {error}
+              <p className="error-line place-card-no-match-line" data-testid="place-card-no-match" role="alert">
+                <span data-testid="place-card-no-match-text">{error}</span>
               </p>
-              <p className="meta">
+              <p className="meta place-card-no-match-line">
                 Try a Scottish postcode, place name, coordinates, or click the map.
               </p>
             </aside>

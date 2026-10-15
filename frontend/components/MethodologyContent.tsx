@@ -18,11 +18,13 @@ export default function MethodologyContent() {
       <ResearchBanner variant="methodology" />
       <GbpLiveBannerNote />
 
-      <p>
-        <strong>What is Annual Ground Rent?</strong> It is the yearly rental
-        value of a site, the land without its buildings. Buildings are left out,
-        because whoever built them made that value. The land&apos;s value is
-        created by the community around it and by nature, not by the owner.
+      <p data-testid="methodology-agr-definition">
+        <strong>What is Annual Ground Rent?</strong>
+        {" "}
+        It is the yearly rental value of a site, the land without its buildings.
+        Buildings are left out, because whoever built them made that value. The
+        land&apos;s value is created by the community around it and by nature,
+        not by the owner.
       </p>
 
       <section id="calculation">

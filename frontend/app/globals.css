@@ -639,6 +639,25 @@ input {
   color: var(--slrg-ink, #1a2332);
 }
 
+/* SW-042: no-match toast — × must not overlap text (same clearance as sea line). */
+.place-card-search-miss .place-card-no-match-line,
+.place-card-search-miss .error-line.place-card-no-match-line {
+  padding-right: calc(44px + 8px);
+  box-sizing: border-box;
+}
+
+.place-card-land-values-coming-soon,
+.hud-scotland-coming-soon {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--slrg-muted);
+}
+
+.hud-scotland-coming-soon {
+  margin-top: 0.45rem;
+}
+
 /* SW-028: link under the sea plain line — closes card + national view. */
 .place-card-show-scotland {
   display: inline-block;
@@ -3557,6 +3576,12 @@ button.linkish:disabled {
 
   /* SW-030 sea line: clear the enlarged mobile × (44px) + 8px. */
   .place-card-sea-line {
+    padding-right: 52px;
+  }
+
+  /* SW-042: no-match toast — same × clearance on mobile. */
+  .place-card-search-miss .place-card-no-match-line,
+  .place-card-search-miss .error-line.place-card-no-match-line {
     padding-right: 52px;
   }
 

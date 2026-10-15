@@ -15,6 +15,9 @@ test.describe("place card (internal preview)", () => {
     await expect(page.getByTestId("place-card-figure")).toContainText(
       "We're not showing amounts yet while we check our method.",
     );
+    await expect(
+      page.getByTestId("place-card-land-values-coming-soon"),
+    ).toHaveText("Land values coming soon.");
     await expect(page.getByTestId("place-card-agr-label")).toHaveText(
       "Annual Ground Rent",
     );
@@ -28,7 +31,7 @@ test.describe("place card (internal preview)", () => {
 
     const parts = page.getByTestId("place-card-parts");
     await expect(parts.locator("summary")).toHaveText(
-      "Natural resource rents & services of nature",
+      "Natural resource rents and services of nature",
     );
     await parts.locator("summary").click();
     await expect(page.getByTestId("place-card-agr-surface")).toContainText(

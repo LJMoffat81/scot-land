@@ -12,7 +12,13 @@ const BANNED =
 const MASK_COPY =
   "Shows where towns and villages are (for later map colour). Display only — not a rent.";
 
-const PARTS_SUMMARY = "Natural resource rents & services of nature";
+const PARTS_SUMMARY = "Natural resource rents and services of nature";
+
+const LAND_VALUES_HOME =
+  "Land values coming soon — our method is still being tested.";
+const LAND_VALUES_CARD = "Land values coming soon.";
+const PRE_POUND =
+  "We're not showing amounts yet while we check our method.";
 
 const HEALTH_OK = {
   status: "ok",
@@ -354,6 +360,11 @@ test.describe("WORDING-BATCH-1 place card + SW-047 (1280)", () => {
     ).toHaveText("Copy");
     await expect(card).not.toContainText(/Square reference/i);
 
+    await expect(card.getByTestId("place-card-figure")).toContainText(PRE_POUND);
+    await expect(
+      card.getByTestId("place-card-land-values-coming-soon"),
+    ).toHaveText(LAND_VALUES_CARD);
+
     await expect(card.getByTestId("place-card-figure-status")).toContainText(
       "Figure not published yet",
     );
@@ -426,6 +437,10 @@ test.describe("WORDING-BATCH-1 place card (390)", () => {
     await expect(card.getByTestId("place-card-map-reference")).toContainText(
       "Map reference",
     );
+    await expect(card.getByTestId("place-card-figure")).toContainText(PRE_POUND);
+    await expect(
+      card.getByTestId("place-card-land-values-coming-soon"),
+    ).toHaveText(LAND_VALUES_CARD);
     await expect(card.getByTestId("place-card-figure-why")).toHaveAttribute(
       "href",
       "/methodology#how-sure",
@@ -440,6 +455,197 @@ test.describe("WORDING-BATCH-1 place card (390)", () => {
     expect(filterNoise(gate.pageErrors)).toEqual([]);
   });
 });
+
+function boxesOverlap(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): boolean {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
+}
+
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 390, height: 844 },
+]) {
+  test.describe(`WORDING-BATCH-1 addendum 17:40 ${viewport.width}`, () => {
+    test.use({ viewport });
+
+    test("A1 home coming-soon; A2 Rent? It; A4 postcode space; A5 legend pill", async ({
+      page,
+    }) => {
+      test.setTimeout(120_000);
+      const gate = attachConsoleGate(page);
+      await stubMapBackend(page);
+
+      await page.goto("/");
+      await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
+      await expect(page.getByTestId("land-values-coming-soon")).toHaveText(
+        LAND_VALUES_HOME,
+      );
+      await expect(page.locator("body")).not.toContainText(/£\d/);
+      await expect(page.locator("body")).not.toContainText(BANNED);
+
+      await page.goto("/methodology");
+      const agrDef = page.getByTestId("methodology-agr-definition");
+      await expect(agrDef).toBeVisible();
+      const agrText = await agrDef.innerText();
+      expect(agrText).toMatch(/Rent\?\s+It/);
+      expect(agrText).not.toMatch(/Rent\?It/);
+
+      await page.goto("/");
+      await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
+      await page.route("**/backend/geocode/postcode**", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            postcode: "EH11YZ",
+            lat: 55.9533,
+            lng: -3.1883,
+            kind: "postcode_centroid",
+          }),
+        });
+      });
+      await page.route("**/backend/place**", async (route) => {
+        const url = route.request().url();
+        if (/[?&]q=/i.test(url)) {
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ kind: "postcode", postcode: "EH11YZ" }),
+          });
+          return;
+        }
+        await route.continue();
+      });
+      await page.route("**/backend/postcode/**", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            postcode: { postcode: "EH11YZ" },
+            lat: 55.9533,
+            lng: -3.1883,
+            status: "location_only",
+          }),
+        });
+      });
+      await page.route("**/backend/platform/place**", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(PLACE_STUB),
+        });
+      });
+
+      const input = page.locator("#place-query");
+      await input.fill("EH1 1YZ");
+      await page.locator(".hud-search-go").click();
+      await expect(page.getByTestId("place-card")).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(input).toHaveValue("EH1 1YZ");
+
+      const pill = page.getByRole("button", { name: "Show legend" });
+      await expect(pill).toBeVisible({ timeout: 15_000 });
+      const card = page.getByTestId("place-card");
+      const pillBox = await pill.boundingBox();
+      const cardBox = await card.boundingBox();
+      expect(pillBox, "legend pill box").toBeTruthy();
+      expect(cardBox, "place card box").toBeTruthy();
+      expect(
+        boxesOverlap(pillBox!, cardBox!),
+        "SW-049: closed legend pill must not sit under the place card",
+      ).toBe(false);
+      await pill.click();
+      await expect(page.locator(".hud-scotland.legend-open")).toBeVisible({
+        timeout: 10_000,
+      });
+
+      expect(filterNoise(gate.consoleErrors)).toEqual([]);
+      expect(filterNoise(gate.pageErrors)).toEqual([]);
+    });
+
+    test("A3 SW-042 no-match × pad; 390 clears Layers", async ({ page }) => {
+      test.setTimeout(120_000);
+      const gate = attachConsoleGate(page);
+      await stubMapBackend(page);
+      await page.route("**/backend/place**", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ kind: "none", note: "No place matched" }),
+        });
+      });
+      await page.route("**/backend/geocode/postcode**", async (route) => {
+        await route.fulfill({
+          status: 404,
+          contentType: "application/json",
+          body: JSON.stringify({ detail: "not found" }),
+        });
+      });
+
+      await page.goto("/");
+      await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
+      await page.locator("#place-query").fill("zzzznotaplace");
+      await page.locator(".hud-search-go").click();
+
+      const card = page.getByTestId("place-card");
+      await expect(card).toBeVisible({ timeout: 30_000 });
+      await expect(card).toHaveClass(/place-card-search-miss/);
+      const text = page.getByTestId("place-card-no-match-text");
+      await expect(text).toBeVisible();
+      const close = page.getByRole("button", { name: "Close place card" });
+      await expect(close).toBeVisible();
+
+      await expect(async () => {
+        const closeBox = await close.boundingBox();
+        const textBox = await text.boundingBox();
+        expect(closeBox).toBeTruthy();
+        expect(textBox).toBeTruthy();
+        const padRight = await page
+          .locator(".place-card-no-match-line")
+          .first()
+          .evaluate((el) => parseFloat(getComputedStyle(el).paddingRight));
+        expect(padRight).toBeGreaterThanOrEqual(closeBox!.width + 8 - 0.5);
+        expect(
+          boxesOverlap(closeBox!, textBox!),
+          "SW-042: × must not overlap no-match text",
+        ).toBe(false);
+      }).toPass({ timeout: 15_000 });
+
+      if (viewport.width === 390) {
+        const layers = page.getByTestId("hud-layers-btn");
+        await expect(layers).toBeVisible();
+        const layersBox = await layers.boundingBox();
+        const cardBox = await card.boundingBox();
+        expect(layersBox).toBeTruthy();
+        expect(cardBox).toBeTruthy();
+        expect(
+          boxesOverlap(cardBox!, layersBox!),
+          "SW-042: no-match toast must not cover Layers at 390",
+        ).toBe(false);
+        const zoom = page.locator(".maplibregl-ctrl-zoom-in");
+        if (await zoom.isVisible().catch(() => false)) {
+          const zoomBox = await zoom.boundingBox();
+          expect(zoomBox).toBeTruthy();
+          expect(
+            boxesOverlap(cardBox!, zoomBox!),
+            "SW-042: no-match toast must not cover zoom at 390",
+          ).toBe(false);
+        }
+      }
+
+      expect(filterNoise(gate.consoleErrors)).toEqual([]);
+      expect(filterNoise(gate.pageErrors)).toEqual([]);
+    });
+  });
+}
 
 test.describe("WORDING-BATCH-1 developers", () => {
   for (const viewport of [

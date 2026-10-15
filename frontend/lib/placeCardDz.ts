@@ -18,6 +18,45 @@ export type PlaceDataZoneVintage = {
   reasons?: string[];
 };
 
+export type PlaceIntermediateZoneTitle = {
+  status?: string | null;
+  code?: string | null;
+  name?: string | null;
+  note?: string | null;
+};
+
+/** Mobile (≤600px) fold label (DZ-HIERARCHY / idea 40) — exact visitor wording. */
+export const PLACE_CARD_MORE_ABOUT_LABEL = "More about this area";
+
+/** Link inside the fold — zone codes live on Data & sources, not the card. */
+export const PLACE_CARD_DATA_SOURCES_LABEL = "Data & sources";
+export const PLACE_CARD_DATA_SOURCES_HREF = "/data";
+
+/**
+ * Place-card title: Intermediate Zone name first (DZ-HIERARCHY / idea 37),
+ * then NRS locality (`place_label`), Data Zone name, council, postcode.
+ * Never invent a zone id; never return "unknown".
+ */
+export function placeCardTitle(card: {
+  place_label?: string | null;
+  postcode?: string | null;
+  council_name?: string | null;
+  data_zone?: PlaceDataZoneVintage | null;
+  intermediate_zone?: PlaceIntermediateZoneTitle | null;
+}): string {
+  const izName = card.intermediate_zone?.name?.trim() || null;
+  if (izName) return izName;
+  const locality = card.place_label?.trim() || null;
+  if (locality) return locality;
+  const dzName = card.data_zone?.name?.trim() || null;
+  if (dzName) return dzName;
+  const council = card.council_name?.trim() || null;
+  if (council) return council;
+  const postcode = card.postcode?.trim() || null;
+  if (postcode) return postcode;
+  return "This place";
+}
+
 /**
  * Prefer a real DZ2022 entry from `zones[]` when present.
  * Never invent vintage 2022 — keep API vintage (2011 / null) otherwise.

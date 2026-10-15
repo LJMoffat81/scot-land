@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   formatGbpCentralWithRangePerM2,
@@ -22,9 +22,12 @@ import {
   PLACE_CARD_FULLY_ESTIMATED,
   PLACE_CARD_HOW_WE_WORK_HOMES,
   PLACE_CARD_HOW_WE_WORK_LABEL,
+  PLACE_CARD_DATA_SOURCES_HREF,
+  PLACE_CARD_DATA_SOURCES_LABEL,
   PLACE_CARD_MAP_REFERENCE_COPY_FAIL,
   PLACE_CARD_MAP_REFERENCE_ENABLED,
   PLACE_CARD_MAP_REFERENCE_LABEL,
+  PLACE_CARD_MORE_ABOUT_LABEL,
   PLACE_CARD_NEIGHBOURHOOD_NOT_ADDRESS,
   PLACE_CARD_NO_HOMES,
   PLACE_CARD_NO_MATCH,
@@ -40,6 +43,7 @@ import {
   PLACE_CARD_TYPICAL_HOME,
   isPlaceCardSeaMiss,
   mapReferenceNumbers,
+  placeCardTitle,
   placeClassChip,
   placeSalesBasisLine,
   placeUnitKind,
@@ -118,6 +122,20 @@ function MapReferenceCopy({ value }: { value: string }) {
  * open/closed choice is not lost mid-toggle under CI timing.
  */
 const whyNoOutlineExpandedByNote = new Map<string, boolean>();
+
+/** ≤600px: DZ2011 + IZ code start folded (DZ-HIERARCHY / idea 40). */
+function useNarrowHierarchyFold(maxWidthPx = 600): boolean {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia(`(max-width: ${maxWidthPx}px)`);
+    const apply = () => setNarrow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, [maxWidthPx]);
+  return narrow;
+}
 
 function WhyNoOutlineBlock({ note }: { note: string }) {
   const [expanded, setExpanded] = useState(
@@ -381,13 +399,22 @@ export function PlaceCard({
         ? card.parcel.area_sqm
         : null;
 
-  const placeName =
-    card?.place_label?.trim() ||
-    card?.data_zone?.name?.trim() ||
-    card?.council_name?.trim() ||
-    card?.postcode?.trim() ||
-    "This place";
+  const placeName = card ? placeCardTitle(card) : "This place";
   const councilLine = card?.council_name?.trim() || null;
+  // Show the fold when hierarchy ids exist in the payload — never render those
+  // codes on the card; the fold links to Data & sources instead.
+  const izCodeRaw = card?.intermediate_zone?.code
+    ? String(card.intermediate_zone.code).trim()
+    : "";
+  const hasIzCode =
+    Boolean(izCodeRaw) && izCodeRaw.toLowerCase() !== "unknown";
+  const hasDz2011 = (card?.data_zone?.zones ?? []).some(
+    (z) =>
+      z.vintage === 2011 &&
+      Boolean(z.code) &&
+      String(z.code).toLowerCase() !== "unknown",
+  );
+  const showMoreAbout = hasIzCode || hasDz2011;
 
   const shellClass = [
     floating ? "hud-card hud-place place-card" : "place-card place-card-standalone",
@@ -399,6 +426,8 @@ export function PlaceCard({
     .filter(Boolean)
     .join(" ");
 
+  const narrowHierarchy = useNarrowHierarchyFold(600);
+  const [moreAboutOpen, setMoreAboutOpen] = useState(false);
   const gbpLive = gbpLiveFromCard(card);
   const surfaceDisplay = (card?.surface_rent_display ??
     null) as SurfaceRentDisplay | null;
@@ -712,6 +741,45 @@ export function PlaceCard({
                 ))}
             </ul>
           </div>
+
+          {/*
+            DZ-HIERARCHY: fold → Data & sources; never show DZ2011 / IZ codes.
+            Keep outside the scrollable sheet (with SW-047 value block) so the
+            summary stays in the mobile sheet chrome and is not covered by the
+            map canvas or value-block figure-status when the sheet scrolls.
+          */}
+          {showMoreAbout ? (
+            <details
+              className="place-card-more-about"
+              data-testid="place-card-more-about"
+              open={narrowHierarchy ? moreAboutOpen : true}
+              onToggle={(event) => {
+                if (!narrowHierarchy) return;
+                setMoreAboutOpen(
+                  (event.currentTarget as HTMLDetailsElement).open,
+                );
+              }}
+            >
+              <summary
+                className="place-card-more-about-summary"
+                data-testid="place-card-more-about-summary"
+              >
+                {PLACE_CARD_MORE_ABOUT_LABEL}
+              </summary>
+              <div
+                className="place-card-more-about-body"
+                data-testid="place-card-more-about-body"
+              >
+                <a
+                  href={PLACE_CARD_DATA_SOURCES_HREF}
+                  className="place-card-data-sources-link"
+                  data-testid="place-card-data-sources-link"
+                >
+                  {PLACE_CARD_DATA_SOURCES_LABEL}
+                </a>
+              </div>
+            </details>
+          ) : null}
 
           <div className="place-card-sheet-body" data-testid="place-card-sheet-body">
             <details

@@ -5,7 +5,10 @@
 
 import { apiJson, isOutsideScotlandError } from "./api";
 import { osgb36MapReference } from "./osgb36";
-import { preferDz2022, type PlaceDataZoneVintage } from "./placeCardDz";
+import {
+  preferDz2022,
+  type PlaceDataZoneVintage,
+} from "./placeCardDz";
 import {
   PLACE_CARD_PART_GLOSS,
   PLACE_CARD_PART_NOT_YET,
@@ -13,7 +16,14 @@ import {
 } from "./rentGroupAgrRows.mjs";
 import { RENT_GROUP_NAME, RENT_GROUP_NAMES } from "./rentGroupNames.mjs";
 
-export { dataZoneFieldLabel, preferDz2022 } from "./placeCardDz";
+export {
+  dataZoneFieldLabel,
+  placeCardTitle,
+  preferDz2022,
+  PLACE_CARD_DATA_SOURCES_HREF,
+  PLACE_CARD_DATA_SOURCES_LABEL,
+  PLACE_CARD_MORE_ABOUT_LABEL,
+} from "./placeCardDz";
 export { RENT_GROUP_NAME, RENT_GROUP_NAMES };
 export { PLACE_CARD_PART_GLOSS, PLACE_CARD_PART_NOT_YET };
 

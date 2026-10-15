@@ -590,6 +590,9 @@ input {
     border-radius: 16px 16px 0 0;
     padding-bottom: 0.85rem;
     box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.14);
+    /* Chrome (peek / value / more-about) stays painted; only sheet scrolls.
+       Do not let the whole card scroll under the map (DZ-HIERARCHY click). */
+    overflow: hidden;
   }
 
   /* Sea stub hugs content; still clear of basemap/zoom (SW-028). */
@@ -609,9 +612,35 @@ input {
     display: none;
   }
 
+  .hud-place .place-card-body,
+  .place-card-stub .place-card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /*
+   * UX10-1: peek (name / figure / disclaimer) must stay visible — never
+   * flex-shrink under the sheet. SW-047 value block + DZ more-about also
+   * keep their height; only .place-card-sheet-body yields space.
+   */
+  .hud-place .place-card-peek,
+  .place-card-stub .place-card-peek,
+  .hud-place .place-card-value-block,
+  .place-card-stub .place-card-value-block,
+  .hud-place .place-card-more-about,
+  .place-card-stub .place-card-more-about {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
   .hud-place .place-card-sheet-body,
   .place-card-stub .place-card-sheet-body {
     overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
+    /* Cap so chrome wins inside the 52dvh card; flex may shrink further. */
     max-height: min(36dvh, 18rem);
   }
 }
@@ -3624,6 +3653,59 @@ button.linkish:disabled {
   font-size: 0.78rem;
   color: var(--slrg-muted);
   font-weight: 500;
+}
+
+.place-card-data-sources-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 650;
+  font-size: 0.85rem;
+  color: var(--slrg-navy);
+  text-decoration: underline;
+}
+
+/* DZ-HIERARCHY / idea 40: "More about this area" fold (≤600px) → Data & sources.
+   Sibling of the SW-047 value block (not inside .place-card-sheet-body). */
+.place-card-more-about {
+  border: 0;
+  padding: 0;
+  margin: 0.15rem 0 0;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.place-card-more-about-summary {
+  cursor: pointer;
+  font-weight: 650;
+  font-size: 0.85rem;
+  color: var(--slrg-navy);
+  list-style: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  /* Hit target stays above neighbouring value-block / map chrome. */
+  isolation: isolate;
+}
+
+.place-card-more-about-summary::-webkit-details-marker {
+  display: none;
+}
+
+.place-card-more-about-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0 0 0.25rem;
+}
+
+@media (min-width: 601px) {
+  /* Desktop: lines always shown; summary is for the mobile fold only. */
+  .place-card-more-about > .place-card-more-about-summary {
+    display: none;
+  }
 }
 
 /*

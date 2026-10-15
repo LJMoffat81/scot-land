@@ -137,7 +137,15 @@ def main(argv: list[str] | None = None) -> int:
         "prereg_sha256": v13.PREREG_SHA256,
         "price_year_label": sr.price_year_label(cfg),
         "holdout_label": v13.holdout_gating_label(cfg),
+        "holdout": {
+            "gating": "temporal_2023",
+            "hold_year": v13.temporal_holdout_year(cfg),
+            "n_min": int((cfg.get("v13") or {}).get("holdout", {}).get("n_min", 5)),
+            "fit": "observations_excluding_hold_year (pool/fit without hold_year)",
+            "score": "zones with sales_n >= n_min in hold_year (H4_temporal_year)",
+        },
         "inputs": {
+
             "plot_split": plot_meta,
             "bedroom_bands": bed_meta,
             "other_land_lca": other_meta,

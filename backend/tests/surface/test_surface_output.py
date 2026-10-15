@@ -40,7 +40,10 @@ def test_no_rent_by_area_field(cfg, band):
 
 
 def test_row_carries_rules_fields(cfg, band):
-    row = _row(cfg, band)
+    # Fewer dwellings than the default 500 so pence-rounding of per-dwelling rent
+    # stays within abs=0.5 of zone rent (never loosen the tolerance).
+    dwellings = sr.DwellingCount(100, 2025, 2011, ("dwellings_datazones_by_year",), "SYNTHETIC")
+    row = _row(cfg, band, dwellings=dwellings)
     for col in ("commons_class", "value_tier", "uncertainty_low", "uncertainty_high", "net_of", "use_basis",
                 "crosswalk_method", "source_id", "licence", "price_year", "quality", "publish_level", "raw_residual"):
         assert row[col] not in (None, ""), col
@@ -49,7 +52,7 @@ def test_row_carries_rules_fields(cfg, band):
     assert row["price_measure"] == "mean" and row["publication_status"] == "ok"
     assert row["rebuild_status"] == "OPEN_ESTIMATE" and "rebuild_open_estimate" in row["proxy_tags"]
     assert row["measured_rent_per_dwelling"] == pytest.approx(row["land_value"] * 0.03, abs=0.01)
-    assert row["measured_rent"] == pytest.approx(row["measured_rent_per_dwelling"] * 500, abs=1.0)
+    assert row["measured_rent"] == pytest.approx(row["measured_rent_per_dwelling"] * 100, abs=0.5)
 
 
 def test_rebuild_band_carried_as_uncertainty(cfg, band):

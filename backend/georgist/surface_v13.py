@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
 
+from georgist import surface_holdout as ho
 from georgist import surface_rent as sr
 from georgist.surface_paths import REPO_ROOT
 
@@ -270,3 +271,45 @@ def assert_prereg_sha(cfg: Mapping | None = None) -> str:
     if got != PREREG_SHA256:
         raise ValueError(f"v13.prereg_sha256 {got!r} != {PREREG_SHA256}")
     return got
+
+
+def temporal_holdout_year(cfg: Mapping | None = None) -> int:
+    """Hold-year for the v1.3 gating temporal split (default 2023)."""
+    v13 = v13_config(cfg)
+    hold = (v13.get("holdout") or {}).get("gating")
+    if hold == "temporal_2023":
+        return 2023
+    if isinstance(hold, str) and hold.startswith("temporal_"):
+        return int(hold.split("_", 1)[1])
+    return int((v13.get("holdout") or {}).get("hold_year", 2023))
+
+
+def fit_observations_without_hold_year(
+    observations: Sequence,
+    cfg: Mapping | None = None,
+) -> list:
+    """v1.3 fit/pool input: drop the gating hold-year (2023) entirely."""
+    return ho.observations_excluding_hold_year(
+        observations, hold_year=temporal_holdout_year(cfg)
+    )
+
+
+def gating_temporal_split(
+    zone_years: Mapping[str, Sequence[Mapping]],
+    cfg: Mapping | None = None,
+    *,
+    n_min: int | None = None,
+) -> ho.Split:
+    """Build the v1.3 gating H4 split from config (fit without hold-year; score ≥n_min)."""
+    c = cfg if cfg is not None else sr.load_config()
+    price = c.get("price") or {}
+    hold_cfg = (c.get("v13") or {}).get("holdout") or {}
+    return ho.temporal_year_holdout(
+        zone_years,
+        hold_year=temporal_holdout_year(c),
+        n_min=int(
+            n_min
+            if n_min is not None
+            else hold_cfg.get("n_min", price.get("n_min", 5))
+        ),
+    )

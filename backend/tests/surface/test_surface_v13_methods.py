@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from georgist import surface_holdout as ho
 from georgist import surface_rent as sr
 from georgist import surface_v13 as v13
 
@@ -137,6 +138,57 @@ def test_check4_plus4_mapping_and_factor():
 def test_price_year_label(cfg):
     assert sr.price_year_label(cfg) == "2025-04 indexed"
     assert v13.holdout_gating_label(cfg) == "temporal holdout, seen in v1.2, not out-of-sample"
+
+
+def test_temporal_2023_holdout_fit_excludes_score_filters(cfg):
+    """v1.3 H4: fit without 2023; score only zones with ≥5 sales in 2023."""
+    assert cfg["v13"]["holdout"]["gating"] == "temporal_2023"
+    assert v13.temporal_holdout_year(cfg) == 2023
+    zone_years = {
+        # score yes (≥5 in 2023), also in train (has 2022)
+        "S01013401": [
+            {"year": 2021, "sales_n": 8},
+            {"year": 2022, "sales_n": 6},
+            {"year": 2023, "sales_n": 10},
+        ],
+        # score no (<5 in 2023), still in train
+        "S01013402": [
+            {"year": 2022, "sales_n": 12},
+            {"year": 2023, "sales_n": 3},
+        ],
+        # score yes, not in train (2023-only)
+        "S01013403": [{"year": 2023, "sales_n": 7}],
+        # neither (suppressed 2023, no earlier)
+        "S01013404": [{"year": 2023, "sales_n": None}],
+    }
+    split = v13.gating_temporal_split(zone_years, cfg)
+    assert split.design == "H4_temporal_year"
+    assert split.test == ["S01013401", "S01013403"]
+    assert split.train == ["S01013401", "S01013402"]
+    # Fit observations never include 2023
+    obs = [
+        sr.YearPrice(2021, 5, 100_000.0, 95_000.0),
+        sr.YearPrice(2022, 6, 110_000.0, 105_000.0),
+        sr.YearPrice(2023, 10, 120_000.0, 115_000.0),
+    ]
+    fit = v13.fit_observations_without_hold_year(obs, cfg)
+    assert [o.year for o in fit] == [2021, 2022]
+    assert all(o.year != 2023 for o in fit)
+    # Pooling on fit-only rows uses latest pre-hold year
+    pooled = sr.pool_prices(
+        fit,
+        latest_year=2022,
+        measure="mean",
+        pool_years=3,
+        pool_years_max=5,
+        n_min=5,
+        index_factor={2021: 1.0, 2022: 1.0},
+        index_to_year=2022,
+    )
+    assert pooled.evidence_year == 2022
+    assert pooled.sales_n == 11
+    # Direct H4 helper matches
+    assert ho.scoring_zones_for_hold_year(zone_years, hold_year=2023, n_min=5) == split.test
 
 
 def test_rural_uplift_f6(cfg):

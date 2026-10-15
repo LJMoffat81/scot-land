@@ -620,7 +620,12 @@ surface_rent:
     prereg_sha256: "ce9404455134c3dd96828bdc200832629a2c4e8932ad4bea2438e7a938907ead"
     holdout:
       gating: temporal_2023
+      hold_year: 2023
+      n_min: 5                                              # score zones with ≥5 sales in hold_year
       label: "temporal holdout, seen in v1.2, not out-of-sample"
+      # Fit: pool/fit WITHOUT hold_year (surface_holdout.observations_excluding_hold_year /
+      # surface_v13.fit_observations_without_hold_year). Score: H4 test set
+      # (surface_holdout.temporal_year_holdout / surface_v13.gating_temporal_split).
       zone_holdout_label: "fresh draw, data seen in v1.2"   # information only; NOT gating
       zone_holdout_n: 680
       zone_holdout_seed: 1015202613

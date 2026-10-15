@@ -242,11 +242,12 @@ async function closePlaceCard(page: Page) {
 
 /**
  * Narrow layout hides licence credits until the legend fold is open.
- * SW-047: compact legend (no Data licences) while a place card is open —
- * close the card first, then wait for data-legend-compact=false.
+ * SW-047: data-legend-compact stays "true" while a place card is open —
+ * close the place card first, then wait for data-legend-compact="false"
+ * before opening credits.
  */
 async function ensureLegendOpen(page: Page) {
-  // Close Layers first so the place-card × is hittable at 390.
+  // Layers can cover the × at 390; clear it so closePlaceCard can click or Esc.
   await closeTools(page);
   await closePlaceCard(page);
   await expect(page.getByTestId("map-legend-panel")).toHaveAttribute(

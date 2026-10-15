@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { OG_IMAGES } from "@/lib/socialMeta";
+
 export const metadata: Metadata = {
   title: "Glossary | Scot-LAND",
   description:
@@ -8,6 +10,7 @@ export const metadata: Metadata = {
     title: "Glossary | Scot-LAND",
     description:
       "Developer glossary for Scot-LAND valuation terms. For developers and reviewers.",
+    images: [...OG_IMAGES],
   },
 };
 

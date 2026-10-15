@@ -1755,14 +1755,21 @@ input {
   flex-direction: column;
   align-items: flex-start;
   gap: 0.05rem;
-  line-height: 1.15;
+  line-height: 1.2;
+}
+
+.site-nav-wordmark {
+  display: block;
+  line-height: 1.2;
 }
 
 .site-nav-tagline {
+  display: block;
   color: #546579;
   font-weight: 500;
   font-size: 0.72rem;
   letter-spacing: 0.01em;
+  line-height: 1.2;
 }
 
 .site-nav-page .site-nav-links {

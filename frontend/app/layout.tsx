@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+
+import { OG_IMAGES } from "@/lib/socialMeta";
+
 import "./globals.css";
 import "./platform.css";
 import "./map-chrome.css";
@@ -32,14 +35,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Map | Scot-LAND",
     description: OG_DESCRIPTION,
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Scot-LAND — Land value we all create",
-      },
-    ],
+    images: [...OG_IMAGES],
   },
   twitter: {
     card: "summary_large_image",

@@ -68,13 +68,6 @@ const CATALOG = {
       endpoint: "/layers/open/dz2022-masked",
       tile_endpoint: "/layers/open/dz2022-masked/tiles/{z}/{x}/{y}",
     },
-    {
-      id: "boundaries",
-      group: "spatial",
-      status: "live",
-      label: "ROS INSPIRE parcels",
-      licence: "OGL-3.0",
-    },
   ],
 };
 

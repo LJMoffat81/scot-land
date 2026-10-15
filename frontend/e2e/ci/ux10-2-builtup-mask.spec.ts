@@ -212,20 +212,42 @@ async function stubMapBackend(page: Page) {
 }
 
 async function openTools(page: Page) {
-  const tools = page.getByRole("button", { name: /Map layers|Layers/i }).first();
-  if (await tools.isVisible().catch(() => false)) {
-    await tools.click();
+  const layersBtn = page.getByTestId("hud-layers-btn");
+  await expect(layersBtn).toBeVisible({ timeout: 30_000 });
+  if ((await layersBtn.getAttribute("aria-pressed")) !== "true") {
+    await layersBtn.click();
+  }
+  await expect(page.getByTestId("layers-panel")).toBeVisible({ timeout: 15_000 });
+}
+
+async function closeTools(page: Page) {
+  const panel = page.getByTestId("layers-panel");
+  if (!(await panel.isVisible().catch(() => false))) return;
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden({ timeout: 10_000 });
+}
+
+async function closePlaceCard(page: Page) {
+  const close = page.getByRole("button", { name: "Close place card" });
+  if (await close.isVisible().catch(() => false)) {
+    await close.click();
+    await expect(close).toBeHidden({ timeout: 10_000 });
   }
 }
 
-/** Narrow layout hides licence credits until the legend fold is open. */
+/**
+ * Narrow layout hides licence credits until the legend fold is open.
+ * Close overlays first — place card / layers drawer intercept the fold click at 390.
+ */
 async function ensureLegendOpen(page: Page) {
+  await closePlaceCard(page);
+  await closeTools(page);
   const credits = page.getByTestId("map-licence-credits");
   if (await credits.isVisible().catch(() => false)) return;
-  const show = page.getByRole("button", { name: /Show legend/i });
-  if (await show.isVisible().catch(() => false)) {
-    await show.click();
-  }
+  const show = page.locator("button.hud-scotland-fold");
+  await expect(show).toBeVisible({ timeout: 15_000 });
+  await show.click();
+  await expect(credits).toBeVisible({ timeout: 15_000 });
 }
 
 for (const viewport of [

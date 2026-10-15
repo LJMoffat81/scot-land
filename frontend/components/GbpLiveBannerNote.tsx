@@ -6,6 +6,7 @@ import {
   fetchGbpLiveSettings,
   GBP_LIVE_EARLY_BANNER,
   GBP_LIVE_RENT_RATE_HOW_IT_WORKS,
+  GBP_LIVE_UNIT_WORDING,
 } from "@/lib/gbpLive";
 
 /**
@@ -18,6 +19,7 @@ export default function GbpLiveBannerNote() {
   const [rentRateWording, setRentRateWording] = useState(
     GBP_LIVE_RENT_RATE_HOW_IT_WORKS,
   );
+  const [unitWording, setUnitWording] = useState(GBP_LIVE_UNIT_WORDING);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,6 +30,7 @@ export default function GbpLiveBannerNote() {
       if (settings.rent_rate_wording) {
         setRentRateWording(settings.rent_rate_wording);
       }
+      if (settings.unit_wording) setUnitWording(settings.unit_wording);
     });
     return () => {
       cancelled = true;
@@ -46,6 +49,10 @@ export default function GbpLiveBannerNote() {
         {banner}
       </p>
       <p data-testid="gbp-live-rent-rate-wording">{rentRateWording}</p>
+      <p data-testid="gbp-live-unit-wording">
+        Figures are shown as {unitWording}, with a low–high range, a most likely
+        central figure, and an estimate label.
+      </p>
       <p>
         Every figure is for a Data Zone only; we do not publish a Scotland total
         here. Each figure carries an estimate label (Measured, Partly estimated,

@@ -33,6 +33,8 @@ const GBP_LIVE_FLAG_OFF = {
   enabled: false,
   banner: null,
   rent_rate_wording: null,
+  unit: null,
+  unit_wording: null,
 } as const;
 
 async function proxy(request: Request, context: Ctx): Promise<Response> {

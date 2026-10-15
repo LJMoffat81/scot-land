@@ -3,8 +3,10 @@
 import { useState } from "react";
 
 import {
-  formatGbpCentralWithRange,
+  formatGbpCentralWithRangePerM2,
+  GBP_LIVE_CENTRAL_LABEL,
   GBP_LIVE_UNDER_REVIEW,
+  GBP_LIVE_UNIT_WORDING,
   gbpLiveFromCard,
   type SurfaceRentDisplay,
 } from "../lib/gbpLive";
@@ -216,8 +218,11 @@ function surfacePartRange(
     display.central != null &&
     display.high != null
   ) {
-    return formatGbpCentralWithRange(display.low, display.central, display.high)
-      .range;
+    return formatGbpCentralWithRangePerM2(
+      display.low,
+      display.central,
+      display.high,
+    ).range;
   }
   // Placeholder / hidden — never show £.
   return row.range ?? PLACE_CARD_PART_NOT_YET;
@@ -400,6 +405,8 @@ export function PlaceCard({
   let figureText = figureCopy(unitEffective);
   let figureRange: string | null = null;
   let figureEstimate: string | null = null;
+  let figureCentralLabel: string | null = null;
+  let figureUnitWording: string | null = null;
   if (gbpLive && unitEffective === "typical_home") {
     if (surfaceDisplay?.state === "under_review") {
       figureText = surfaceDisplay.label?.trim() || GBP_LIVE_UNDER_REVIEW;
@@ -409,7 +416,7 @@ export function PlaceCard({
       surfaceDisplay.central != null &&
       surfaceDisplay.high != null
     ) {
-      const formatted = formatGbpCentralWithRange(
+      const formatted = formatGbpCentralWithRangePerM2(
         surfaceDisplay.low,
         surfaceDisplay.central,
         surfaceDisplay.high,
@@ -417,6 +424,10 @@ export function PlaceCard({
       figureText = formatted.central;
       figureRange = formatted.range;
       figureEstimate = surfaceDisplay.estimate_label ?? null;
+      figureCentralLabel =
+        surfaceDisplay.central_label?.trim() || GBP_LIVE_CENTRAL_LABEL;
+      figureUnitWording =
+        surfaceDisplay.unit_wording?.trim() || GBP_LIVE_UNIT_WORDING;
     }
     // placeholder / hidden → keep PRE_POUND (no £).
   }
@@ -574,12 +585,28 @@ export function PlaceCard({
                 {PLACE_CARD_LAND_VALUES_COMING_SOON}
               </p>
             ) : null}
+            {figureCentralLabel ? (
+              <p
+                className="place-card-figure-central-label"
+                data-testid="place-card-figure-central-label"
+              >
+                {figureCentralLabel}
+              </p>
+            ) : null}
             {figureEstimate ? (
               <p
                 className="place-card-figure-estimate"
                 data-testid="place-card-figure-estimate"
               >
                 {figureEstimate}
+              </p>
+            ) : null}
+            {figureUnitWording ? (
+              <p
+                className="place-card-figure-unit"
+                data-testid="place-card-figure-unit"
+              >
+                {figureUnitWording}
               </p>
             ) : null}
             {gbpLive && surfaceDisplay?.state === "under_review" ? (

@@ -312,11 +312,13 @@ export type PlaceCardPayload = {
   fully_estimated?: boolean;
   /** UX-10 card state override for no-match. */
   card_state?: "ok" | "no_match" | "sea" | "no_homes" | string | null;
-  /** GBP-LIVE-V1 flag mirror (default OFF). */
+  /** GBP-LIVE flag mirror (default OFF). */
   gbp_live?: {
     enabled?: boolean;
     banner?: string | null;
     rent_rate_wording?: string | null;
+    unit?: string | null;
+    unit_wording?: string | null;
   } | null;
   /** GBP-LIVE surface rent display for this Data Zone (absent when flag OFF). */
   surface_rent_display?: {
@@ -328,6 +330,9 @@ export type PlaceCardPayload = {
     central?: number | null;
     high?: number | null;
     rent_rate_wording?: string | null;
+    unit?: string | null;
+    unit_wording?: string | null;
+    central_label?: string | null;
     grain?: string | null;
   } | null;
 };

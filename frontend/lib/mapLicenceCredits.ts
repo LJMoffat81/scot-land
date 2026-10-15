@@ -194,7 +194,12 @@ function formatStopValue(value: number, unit?: string): string {
       ? n.toLocaleString("en-GB", { maximumFractionDigits: 0 })
       : String(n);
   // Context house-price metrics may use £ — that is market context, not AGR rent.
-  if (unit === "£" || unit?.startsWith("£")) return `£${formatted}`;
+  // GBP-LIVE surface legend may pass "£ per m²" so every £ label carries the unit.
+  if (unit === "£") return `£${formatted}`;
+  if (unit?.startsWith("£")) {
+    const suffix = unit.slice(1); // e.g. " per m²"
+    return `£${formatted}${suffix}`;
+  }
   return formatted;
 }
 

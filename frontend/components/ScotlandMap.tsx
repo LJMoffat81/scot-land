@@ -817,7 +817,7 @@ export default function ScotlandMap() {
   const surfaceRentLegend = gbpLiveOn
     ? rangeLegendFromStops(SURFACE_RENT_LEGEND_STOPS, {
         metricId: "surface_rent",
-        unit: "£",
+        unit: "£ per m²",
         allowRentGbp: true,
       })
     : null;

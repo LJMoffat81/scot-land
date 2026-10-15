@@ -14,6 +14,8 @@ const FLAG_OFF = {
   enabled: false,
   banner: null,
   rent_rate_wording: null,
+  unit: null,
+  unit_wording: null,
 } as const;
 
 function apiOrigin(): string {
@@ -39,12 +41,16 @@ export async function GET(): Promise<Response> {
       enabled?: boolean;
       banner?: string | null;
       rent_rate_wording?: string | null;
+      unit?: string | null;
+      unit_wording?: string | null;
     };
     return Response.json(
       {
         enabled: Boolean(body?.enabled),
         banner: body?.banner ?? null,
         rent_rate_wording: body?.rent_rate_wording ?? null,
+        unit: body?.unit ?? null,
+        unit_wording: body?.unit_wording ?? null,
       },
       { status: 200 },
     );

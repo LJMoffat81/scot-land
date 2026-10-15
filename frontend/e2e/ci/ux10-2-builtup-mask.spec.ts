@@ -125,16 +125,15 @@ async function stubMapBackend(page: Page) {
       });
       return;
     }
+    // Attribution under test does not need a live place card. A 200 place
+    // payload lets ?lat=&lng= boot (and accidental map hits) keep a sheet
+    // open that covers Show legend at 390 and keeps legendCompact so
+    // map-licence-credits never mounts.
     if (/\/platform\/place/i.test(url)) {
       await route.fulfill({
-        status: 200,
+        status: 404,
         contentType: "application/json",
-        body: JSON.stringify({
-          contract: "place_card_v1",
-          lat: 55.86,
-          lng: -4.25,
-          place_label: "Glasgow",
-        }),
+        body: JSON.stringify({ detail: "e2e stub: no place card" }),
       });
       return;
     }
@@ -180,13 +179,9 @@ async function stubMapBackend(page: Page) {
     }
     if (/\/layers\/context\/data-zones\/at/i.test(url)) {
       await route.fulfill({
-        status: 200,
+        status: 404,
         contentType: "application/json",
-        body: JSON.stringify({
-          code: "S01014567",
-          name: "City Centre South",
-          vintage: 2022,
-        }),
+        body: JSON.stringify({ detail: "e2e stub: no data zone" }),
       });
       return;
     }
@@ -242,46 +237,83 @@ async function closeTools(page: Page) {
 }
 
 async function closePlaceCard(page: Page) {
-  const card = page.getByTestId("place-card");
-  if ((await card.count()) === 0) return;
-  const close = page.getByRole("button", { name: "Close place card" });
-  if (await close.isVisible().catch(() => false)) {
-    await close.click();
-  } else {
-    // Layers drawer can cover the × at 390 — Esc clears the place card.
-    await page.keyboard.press("Escape");
-  }
-  await expect(card).toHaveCount(0, { timeout: 15_000 });
+  // Click × until the card is gone. Escape alone can leave a loading stub up;
+  // a single click can race an in-flight ?lat=&lng= inspect that remounts.
+  // force is only on × (sheet covers the hit target at 390) — not on asserts.
+  await expect(async () => {
+    const card = page.getByTestId("place-card");
+    if ((await card.count()) === 0) return;
+    const close = page.getByRole("button", { name: "Close place card" });
+    if ((await close.count()) > 0) {
+      await close.click({ force: true });
+    } else {
+      await page.keyboard.press("Escape");
+    }
+    await expect(page.getByTestId("place-card")).toHaveCount(0, {
+      timeout: 3_000,
+    });
+  }).toPass({ timeout: 20_000 });
 }
 
 /**
  * Narrow layout hides licence credits until the legend fold is open.
- * SW-047: data-legend-compact stays "true" while a place card is open —
- * close the place card first, then wait for data-legend-compact="false"
- * before opening credits.
+ * SW-047: MapLicenceCredits is unmounted while a place card keeps
+ * legendCompact. Close overlays first — place / layers intercept Show legend
+ * at 390. URL ?lat=&lng= can reopen the place card after dismiss — retry
+ * dismiss + open. Do not click the fold when credits are already visible
+ * (place-close restores legendOpen; another click would toggle shut).
  */
 async function ensureLegendOpen(page: Page) {
-  // Layers can cover the × at 390; clear it so closePlaceCard can click or Esc.
   await closeTools(page);
-  await closePlaceCard(page);
-  const panel = page.getByTestId("map-legend-panel");
-  await expect(panel).toHaveAttribute("data-legend-compact", "false", {
-    timeout: 15_000,
-  });
+  // Boot inspect may still be mounting the place card — wait briefly then dismiss.
+  await page
+    .getByTestId("place-card")
+    .waitFor({ state: "visible", timeout: 5_000 })
+    .catch(() => {});
   const credits = page.getByTestId("map-licence-credits");
-  // Narrow: body is display:none without .legend-open — open the fold only then.
-  // Desktop: body is already visible; place-card close restores legendOpen — do
-  // not click the fold (it would toggle shut) and do not require the class when
-  // the fold is display:none.
-  const needsFold = await panel.evaluate((el) => {
-    const narrow = window.matchMedia("(max-width: 640px)").matches;
-    return narrow && !el.classList.contains("legend-open");
+  const show = page.locator("button.hud-scotland-fold");
+  const panel = page.getByTestId("map-legend-panel");
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await closePlaceCard(page);
+    await expect(panel).toHaveAttribute("data-legend-compact", "false", {
+      timeout: 10_000,
+    });
+    if (await credits.isVisible().catch(() => false)) return;
+    const foldVisible = await show.isVisible().catch(() => false);
+    if (!foldVisible) {
+      // Desktop: legend body shows without the fold control.
+      await expect(credits).toBeVisible({ timeout: 15_000 });
+      return;
+    }
+    if (await page.getByTestId("place-card").isVisible().catch(() => false)) {
+      continue;
+    }
+    // Only click Show legend when the fold is closed — place-close may have
+    // already restored legendOpen; clicking again would toggle the body shut.
+    const needsOpen = await panel.evaluate(
+      (el) => !el.classList.contains("legend-open"),
+    );
+    try {
+      if (needsOpen) {
+        await show.click({ timeout: 3_000, force: true });
+      }
+      await expect(credits).toBeVisible({ timeout: 15_000 });
+      return;
+    } catch {
+      // Place card likely reopened over the fold; dismiss and retry.
+    }
+  }
+  await closePlaceCard(page);
+  await expect(page.getByTestId("place-card")).toHaveCount(0);
+  await expect(panel).toHaveAttribute("data-legend-compact", "false", {
+    timeout: 10_000,
   });
-  if (needsFold) {
-    const show = page.locator("button.hud-scotland-fold");
-    await expect(show).toBeVisible({ timeout: 15_000 });
-    await show.click();
-    await expect(panel).toHaveClass(/legend-open/, { timeout: 15_000 });
+  if (await credits.isVisible().catch(() => false)) return;
+  const needsOpen = await panel.evaluate(
+    (el) => !el.classList.contains("legend-open"),
+  );
+  if (needsOpen && (await show.isVisible().catch(() => false))) {
+    await show.click({ force: true });
   }
   await expect(credits).toBeVisible({ timeout: 15_000 });
 }
@@ -298,6 +330,9 @@ for (const viewport of [
       const gate = attachConsoleGate(page);
       await stubMapBackend(page);
 
+      // lat/lng fly zooms past DATA_ZONE_MIN_ZOOM (10) so dz2022-masked can
+      // paint and MapLibre surfaces the source attribution (NRS/OS). Place card
+      // is dismissed in ensureLegendOpen before Show legend.
       await page.goto("/?lat=55.8609&lng=-4.2514");
       await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
 

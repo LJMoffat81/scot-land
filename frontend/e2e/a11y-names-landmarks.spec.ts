@@ -214,7 +214,7 @@ test.describe("UX-04 a11y names and landmarks at 1280", () => {
       results.violations,
       results.violations
         .map(
-          (v) =>
+          (v: { id: string; nodes: Array<{ target: string[] }> }) =>
             `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join("; ")}`,
         )
         .join("\n") || "axe violations",

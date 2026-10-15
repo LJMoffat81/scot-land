@@ -3479,9 +3479,9 @@ button.linkish:disabled {
     justify-content: center;
   }
 
-  /* SW-030 sea line: clear the enlarged mobile × (+ 8px). */
+  /* SW-030 sea line: clear the enlarged mobile × (44px) + 8px. */
   .place-card-sea-line {
-    padding-right: calc(44px + 8px);
+    padding-right: 52px;
   }
 
   .hud-search-go,

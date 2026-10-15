@@ -1,7 +1,8 @@
 """DZ2022 empty-zone fill (internal / blocked / proxy).
 
 Signed-off spec (Georgist 14 Oct 2026): Project store
-``docs/scot-land-dz2022-fill-spec.md``. Fills 2022 zones that receive
+``docs/scot-land-dz2022-fill-spec.md``. FILL-POOLED: run fill on pooled 2011
+rent tables (``docs/fill-pooled.md``). Fills 2022 zones that receive
 address-point mass from empty 2011 zones via methods A/B/C; zero-dwelling
 sources are D (``not_applicable``).
 
@@ -17,8 +18,10 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import json
+import logging
 import math
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Mapping, MutableMapping, Sequence
@@ -26,6 +29,8 @@ from typing import Iterable, Mapping, MutableMapping, Sequence
 from georgist import surface_dz2022 as dz22
 from georgist import surface_rent as sr
 from georgist.surface_paths import REPO_ROOT, data_dir
+
+LOG = logging.getLogger(__name__)
 
 # --------------------------------------------------------------------------- stamps / labels
 
@@ -47,12 +52,36 @@ CLASS_B = "B"
 CLASS_C = "C"
 CLASS_D = "D"
 
-# fill_step values recorded on every B or C zone
+# Per-zone fill_step (FILL-POOLED C4). C sub-steps stay on c_sub_step.
+STEP_MEASURED_2023 = "measured_2023"
+STEP_POOLED_3Y = "pooled_3y"
+STEP_POOLED_5Y = "pooled_5y"
+STEP_A_RESCALE = "A_rescale"
+STEP_B_BLEND = "B_blend"
+STEP_C_MODEL = "C_model"
+STEP_NA = "not_applicable"
+
+# C (and B empty-part) borrowing sub-steps — method unchanged.
 STEP_OWN = "own_council_class"
 STEP_NEXT_UR = "next_ur_class"
 STEP_NEIGHBOUR = "neighbouring_council"
 STEP_ISLAND = "island_group"
 STEP_SCOTLAND = "scotland_ur_class"
+
+C_SUB_STEPS = frozenset(
+    {STEP_OWN, STEP_NEXT_UR, STEP_NEIGHBOUR, STEP_ISLAND, STEP_SCOTLAND}
+)
+TOP_LEVEL_STEPS = frozenset(
+    {
+        STEP_MEASURED_2023,
+        STEP_POOLED_3Y,
+        STEP_POOLED_5Y,
+        STEP_A_RESCALE,
+        STEP_B_BLEND,
+        STEP_C_MODEL,
+        STEP_NA,
+    }
+)
 
 MEASURED_FILLS = frozenset({"observed_pooled", "shrunk_to_model"})
 
@@ -60,15 +89,29 @@ CLASS_MIN_TRAINING = 10
 EMPTY_SHARE_A_MAX = 0.50
 MEASURED_SHARE_FULLY_BELOW = 0.05
 
-# Reconciled facts (spec): 723 suppressed + 4 not in price file + 3 zero-dwellings.
-SUPPRESSED_N = 723
+# Post-pooling model-fill target (FILL-POOLED / M3). Pre-pooling baseline was 727.
+# Prefer surface.yaml model_fill.null_dz_fill_target_n; this default matches config.
+DEFAULT_NULL_DZ_FILL_TARGET_N = 129
+PRE_POOLING_EMPTY_TO_FILL_N = 727  # historical only — gates must not expect this
+PRE_POOLING_SUPPRESSED_N = 723
+
 NOT_IN_PRICE_FILE_CODES = frozenset(
     {"S01007788", "S01010462", "S01010493", "S01011598"}
-)  # all filled under C
+)  # all filled under C; inside the 129 model-fill set
 ZERO_DWELLING_CODES = frozenset(sr.ZERO_DWELLINGS_FALLBACK)  # 3; all D
 # GIS also flagged S01010206 / S01010226 as absent; reconciled: they are D (zero dwellings),
 # not among the 4 C-filled "not in price file" codes.
-RECONCILED_EMPTY_TO_FILL_N = SUPPRESSED_N + len(NOT_IN_PRICE_FILE_CODES)  # 727
+
+# Evidence windows written by the pooled rent-table entrypoint.
+EVIDENCE_WINDOWS = frozenset({"2023", "pooled_3y", "pooled_5y"})
+POOLING_CONFIG_HASH_KEYS = (
+    "measure",
+    "pool_years",
+    "pool_years_max",
+    "n_min",
+    "n_full",
+    "shrinkage_k",
+)
 
 # Island group (DECIDED): no land neighbours; borrow within group before mainland.
 ISLAND_COUNCILS = frozenset({"S12000013", "S12000023", "S12000027"})
@@ -94,6 +137,10 @@ class FillError(ValueError):
 
 class MissingLookupError(FillError):
     """A required input path is not available yet (do not invent production data)."""
+
+
+class UnpooledTableError(FillError):
+    """2011 rent table lacks a pooling stamp (evidence_window + config hash)."""
 
 
 # --------------------------------------------------------------------------- helpers
@@ -256,8 +303,54 @@ def load_zone_spine_councils(
     return out
 
 
+def pooling_config_payload(config: Mapping | None = None) -> dict:
+    """Canonical price/pooling knobs hashed into the rent-table stamp."""
+    cfg = config if config is not None else sr.load_config()
+    price = cfg.get("price") or {}
+    out = {}
+    for key in POOLING_CONFIG_HASH_KEYS:
+        if key not in price:
+            raise FillError(f"surface.yaml price.{key} required for pooling stamp")
+        val = price[key]
+        out[key] = float(val) if key == "shrinkage_k" else (
+            int(val) if key != "measure" else str(val)
+        )
+    return out
+
+
+def pooling_config_sha256(config: Mapping | None = None) -> str:
+    payload = pooling_config_payload(config)
+    canon = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canon.encode("utf-8")).hexdigest()
+
+
+def null_dz_fill_target_from_config(config: Mapping | None = None) -> int:
+    """Post-pooling model-fill target (includes the 4 not-in-price-file codes)."""
+    cfg = config if config is not None else sr.load_config()
+    section = cfg.get("model_fill") or {}
+    return int(section.get("null_dz_fill_target_n", DEFAULT_NULL_DZ_FILL_TARGET_N))
+
+
+def evidence_window_to_step(window: str | None) -> str:
+    """Map rent-table evidence_window → top-level fill_step for measured zones."""
+    w = str(window or "").strip()
+    if w in ("2023", STEP_MEASURED_2023):
+        return STEP_MEASURED_2023
+    if w == "pooled_3y":
+        return STEP_POOLED_3Y
+    if w == "pooled_5y":
+        return STEP_POOLED_5Y
+    if not w:
+        return STEP_MEASURED_2023
+    raise FillError(f"unknown evidence_window {window!r}")
+
+
 def load_2011_rent_table(path: Path | str) -> list[dict]:
-    """Load 2011-zone rent table (zone_id, central, low, high, status). Never commit."""
+    """Load 2011-zone rent table (zone_id, central, low, high, status). Never commit.
+
+    Pooled tables also carry ``evidence_window``, ``evidence_oldest_year``,
+    ``sales_n``, and ``pooling_config_sha256`` (FILL-POOLED stamp).
+    """
     p = Path(path)
     if not p.is_file():
         raise MissingLookupError(
@@ -265,7 +358,9 @@ def load_2011_rent_table(path: Path | str) -> list[dict]:
         )
     rows: list[dict] = []
     with p.open(encoding="utf-8-sig", newline="") as fh:
-        for i, raw in enumerate(csv.DictReader(fh)):
+        reader = csv.DictReader(fh)
+        fieldnames = set(reader.fieldnames or ())
+        for i, raw in enumerate(reader):
             code = str(raw.get("zone_id") or raw.get("code") or "").strip()
             if not code:
                 raise FillError(f"{p.name} row {i}: missing zone_id/code")
@@ -275,43 +370,107 @@ def load_2011_rent_table(path: Path | str) -> list[dict]:
             status = str(raw.get("status") or raw.get("fill_method") or "").strip()
             if not status:
                 status = "observed_pooled" if central and central > 0 else "model_fill_pending"
-            rows.append(
-                {
-                    "code": code,
-                    "vintage": 2011,
-                    "measured_rent": central,
-                    "uncertainty_low": low if low is not None else central,
-                    "uncertainty_high": high if high is not None else central,
-                    "fill_method": status,
-                    "dwellings": int(raw["dwellings"]) if raw.get("dwellings") not in (None, "") else None,
-                    "la_code": str(raw["la_code"]).strip() if raw.get("la_code") else None,
-                    "ur6_class": int(raw["ur6_class"]) if raw.get("ur6_class") not in (None, "") else None,
-                    "sales_n": int(raw["sales_n"]) if raw.get("sales_n") not in (None, "") else None,
-                    "flags": str(raw.get("flags") or ""),
-                    "value_tier": VALUE_TIER,
-                    "publication_status": PUBLICATION_STATUS,
-                    "publish_level": PUBLISH_LEVEL,
-                }
-            )
+            row = {
+                "code": code,
+                "vintage": 2011,
+                "measured_rent": central,
+                "uncertainty_low": low if low is not None else central,
+                "uncertainty_high": high if high is not None else central,
+                "fill_method": status,
+                "dwellings": int(raw["dwellings"]) if raw.get("dwellings") not in (None, "") else None,
+                "la_code": str(raw["la_code"]).strip() if raw.get("la_code") else None,
+                "ur6_class": int(raw["ur6_class"]) if raw.get("ur6_class") not in (None, "") else None,
+                "sales_n": int(raw["sales_n"]) if raw.get("sales_n") not in (None, "") else None,
+                "flags": str(raw.get("flags") or ""),
+                "value_tier": VALUE_TIER,
+                "publication_status": PUBLICATION_STATUS,
+                "publish_level": PUBLISH_LEVEL,
+            }
+            if "evidence_window" in fieldnames:
+                row["evidence_window"] = str(raw.get("evidence_window") or "").strip()
+            if "evidence_oldest_year" in fieldnames:
+                ey = str(raw.get("evidence_oldest_year") or "").strip()
+                if not ey:
+                    row["evidence_oldest_year"] = None
+                else:
+                    try:
+                        row["evidence_oldest_year"] = int(ey)
+                    except ValueError as exc:
+                        raise FillError(
+                            f"{p.name} row {i}: bad evidence_oldest_year {ey!r}"
+                        ) from exc
+            if "pooling_config_sha256" in fieldnames:
+                row["pooling_config_sha256"] = str(
+                    raw.get("pooling_config_sha256") or ""
+                ).strip()
+            rows.append(row)
     if not rows:
         raise FillError(f"2011 rent table empty: {p}")
     return rows
 
 
-def reconciled_facts() -> dict:
-    """Documented reconciled zone counts from the signed-off spec."""
+def table_has_pooling_stamp(
+    rows: Sequence[Mapping], *, config: Mapping | None = None
+) -> bool:
+    """True when every row carries evidence_window + matching pooling_config_sha256."""
+    if not rows:
+        return False
+    expected = pooling_config_sha256(config)
+    for r in rows:
+        if "evidence_window" not in r:
+            return False
+        digest = str(r.get("pooling_config_sha256") or "").strip()
+        if digest != expected:
+            return False
+    return True
+
+
+def ensure_pooling_stamp(
+    rows: Sequence[Mapping],
+    *,
+    config: Mapping | None = None,
+    override: bool = False,
+    reason: str | None = None,
+    logger: logging.Logger | None = None,
+) -> None:
+    """Refuse an unpooled 2011 table unless ``override`` + non-empty ``reason``."""
+    if table_has_pooling_stamp(rows, config=config):
+        return
+    if override:
+        if not reason or not str(reason).strip():
+            raise FillError("pooling-stamp override requires a non-empty reason")
+        (logger or LOG).warning(
+            "FILL-POOLED override: accepting unpooled 2011 rent table (%s)",
+            reason,
+        )
+        return
+    raise UnpooledTableError(
+        "2011 rent table missing pooling stamp "
+        "(evidence_window column + pooling_config_sha256); "
+        "refuse unpooled input (pass --override --reason to force)"
+    )
+
+
+def reconciled_facts(config: Mapping | None = None) -> dict:
+    """Post-pooling reconciled zone counts (config target + fixed code lists)."""
+    target = null_dz_fill_target_from_config(config)
     return {
-        "suppressed_n": SUPPRESSED_N,
+        "model_fill_n": target,
+        "suppressed_after_pooling_n": target - len(NOT_IN_PRICE_FILE_CODES),
         "not_in_price_file": sorted(NOT_IN_PRICE_FILE_CODES),
         "not_in_price_file_n": len(NOT_IN_PRICE_FILE_CODES),
         "not_in_price_file_fill": CLASS_C,
         "zero_dwellings": sorted(ZERO_DWELLING_CODES),
         "zero_dwellings_n": len(ZERO_DWELLING_CODES),
         "zero_dwellings_fill": CLASS_D,
-        "empty_to_fill_n": RECONCILED_EMPTY_TO_FILL_N,
+        "empty_to_fill_n": target,
+        "pre_pooling_empty_to_fill_n": PRE_POOLING_EMPTY_TO_FILL_N,
         "note": (
-            "723 suppressed + 4 not in price file (C) + 3 zero-dwellings (D). "
-            "S01010206/S01010226 are zero-dwellings (D), not among the 4 C codes."
+            f"{target} model-fill after pooling (includes "
+            f"{len(NOT_IN_PRICE_FILE_CODES)} not-in-price-file) + "
+            f"{len(ZERO_DWELLING_CODES)} zero-dwellings (D). "
+            "S01010206/S01010226 are zero-dwellings (D), not among the 4 C codes. "
+            f"Pre-pooling baseline was {PRE_POOLING_EMPTY_TO_FILL_N}."
         ),
     }
 
@@ -695,6 +854,7 @@ def _base_2022_row(
     extra_tags: Iterable[str] = (),
     borrowed_class: Sequence[str] = (),
     fill_step: str | None = None,
+    c_sub_step: str | None = None,
 ) -> dict:
     row: dict = {
         "code": code,
@@ -726,8 +886,36 @@ def _base_2022_row(
     if fill_step is not None:
         row["fill_step"] = fill_step
         tags.append(f"fill_step={fill_step}")
+    if c_sub_step is not None:
+        row["c_sub_step"] = c_sub_step
+        tags.append(f"c_sub_step={c_sub_step}")
     _stamp_blocked(row, estimate_label=estimate_label, extra_tags=tags)
     return row
+
+
+def _measured_step_for_edges(
+    edges: Sequence[Mapping], by_2011: Mapping[str, Mapping]
+) -> str:
+    """UPRN-weighted evidence_window among measured 2011 sources → top-level step."""
+    votes: Counter[str] = Counter()
+    for e in edges:
+        src = by_2011.get(str(e["dz2011"]).strip())
+        if src is None or not _is_measured(src):
+            continue
+        n = int(e.get("uprn_count") or 0)
+        if n <= 0:
+            continue
+        step = evidence_window_to_step(src.get("evidence_window"))
+        votes[step] += n
+    if not votes:
+        return STEP_MEASURED_2023
+    # Prefer weaker evidence on ties: pooled_5y > pooled_3y > measured_2023.
+    order = (STEP_POOLED_5Y, STEP_POOLED_3Y, STEP_MEASURED_2023)
+    best_n = max(votes.values())
+    for step in order:
+        if votes.get(step, 0) == best_n:
+            return step
+    return votes.most_common(1)[0][0]
 
 
 def fill_dz2022_empty_zones(
@@ -745,8 +933,19 @@ def fill_dz2022_empty_zones(
     class_min: int = CLASS_MIN_TRAINING,
     band_widen: Mapping[str, Sequence[float]] | None = None,
     scotland_holdout_errors_by_ur6: Mapping[int, Sequence[float]] | None = None,
+    require_pooling_stamp: bool = True,
+    override_unpooled: bool = False,
+    override_reason: str | None = None,
+    config: Mapping | None = None,
 ) -> FillResult:
     """Classify and fill DZ2022 empty-zone mass (A/B/C/D). Every zone is filled."""
+    if require_pooling_stamp:
+        ensure_pooling_stamp(
+            dz2011_rows,
+            config=config,
+            override=override_unpooled,
+            reason=override_reason,
+        )
     zero = set(zero_codes)
     enriched_2011: list[dict] = []
     for raw in dz2011_rows:
@@ -831,11 +1030,13 @@ def fill_dz2022_empty_zones(
                     la_code=la,
                     ur6_class=ur6,
                     extra_tags=("zero_dwellings",),
+                    fill_step=STEP_NA,
                 )
             )
             continue
 
         if klass.fill_class == CLASS_UNAFFECTED:
+            measured_step = _measured_step_for_edges(edges, by_2011)
             row = _base_2022_row(
                 dst,
                 rent=measured_rent,
@@ -847,6 +1048,7 @@ def fill_dz2022_empty_zones(
                 la_code=la,
                 ur6_class=ur6,
                 extra_tags=("unaffected_empty_share_0",),
+                fill_step=measured_step,
             )
             row["quality"] = "derived"
             out_rows.append(row)
@@ -875,6 +1077,7 @@ def fill_dz2022_empty_zones(
                     la_code=la,
                     ur6_class=ur6,
                     extra_tags=(f"fill_class=A", f"empty_share={klass.empty_share:.6f}"),
+                    fill_step=STEP_A_RESCALE,
                 )
             )
             continue
@@ -910,7 +1113,8 @@ def fill_dz2022_empty_zones(
                     ur6_class=ur6,
                     extra_tags=(f"fill_class=C",),
                     borrowed_class=model.borrowed_class,
-                    fill_step=model.fill_step,
+                    fill_step=STEP_C_MODEL,
+                    c_sub_step=model.fill_step,
                 )
             )
             continue
@@ -953,7 +1157,8 @@ def fill_dz2022_empty_zones(
                     f"measured_share={klass.measured_share:.6f}",
                 ),
                 borrowed_class=model.borrowed_class,
-                fill_step=model.fill_step,
+                fill_step=STEP_B_BLEND,
+                c_sub_step=model.fill_step,
             )
         )
 
@@ -974,16 +1179,19 @@ def fill_dz2022_empty_zones(
         rr["measured_rent"] = float(attributed.get(r["code"], 0.0))
         rows_2011_cons.append(rr)
 
+    step_counts = count_fill_steps(out_rows)
     stats = {
         "n_2022": len(out_rows),
         "by_class": {
             c: sum(1 for z in classifications.values() if z.fill_class == c)
             for c in (CLASS_UNAFFECTED, CLASS_A, CLASS_B, CLASS_C, CLASS_D)
         },
+        "by_fill_step": dict(step_counts["by_fill_step"]),
+        "by_c_sub_step": dict(step_counts["by_c_sub_step"]),
         "publication_status": PUBLICATION_STATUS,
         "value_tier": VALUE_TIER,
         "proxy_tag": PROXY_TAG,
-        "reconciled": reconciled_facts(),
+        "reconciled": reconciled_facts(config),
     }
     return FillResult(
         rows_2022=out_rows,
@@ -994,12 +1202,87 @@ def fill_dz2022_empty_zones(
     )
 
 
+def count_fill_steps(rows_2022: Sequence[Mapping]) -> dict:
+    """Per-zone step inventory: exactly one top-level step; C sub-steps sum to C."""
+    by_step: Counter[str] = Counter()
+    by_c_sub: Counter[str] = Counter()
+    missing = []
+    for r in rows_2022:
+        step = str(r.get("fill_step") or "").strip()
+        if not step:
+            missing.append(str(r.get("code") or ""))
+            continue
+        by_step[step] += 1
+        if step == STEP_C_MODEL:
+            sub = str(r.get("c_sub_step") or "").strip()
+            if not sub:
+                missing.append(str(r.get("code") or ""))
+                continue
+            by_c_sub[sub] += 1
+    return {
+        "by_fill_step": by_step,
+        "by_c_sub_step": by_c_sub,
+        "missing_step_codes": missing,
+        "n_rows": len(rows_2022),
+        "n_with_step": sum(by_step.values()),
+        "c_model_n": by_step.get(STEP_C_MODEL, 0),
+        "c_sub_step_sum": sum(by_c_sub.values()),
+    }
+
+
+def format_step_count_table(rows_2022: Sequence[Mapping]) -> str:
+    """Counts-only table printed at end of a fill run (no £)."""
+    counts = count_fill_steps(rows_2022)
+    lines = ["fill_step,count"]
+    for step in sorted(counts["by_fill_step"]):
+        lines.append(f"{step},{counts['by_fill_step'][step]}")
+    lines.append("c_sub_step,count")
+    for sub in sorted(counts["by_c_sub_step"]):
+        lines.append(f"{sub},{counts['by_c_sub_step'][sub]}")
+    return "\n".join(lines)
+
+
+def print_step_count_table(
+    rows_2022: Sequence[Mapping], *, file=None
+) -> dict:
+    text = format_step_count_table(rows_2022)
+    print(text, file=file)
+    return count_fill_steps(rows_2022)
+
+
+def assert_fill_step_inventory(rows_2022: Sequence[Mapping]) -> None:
+    """T4: every zone one step; C sub-step counts sum to C total."""
+    counts = count_fill_steps(rows_2022)
+    if counts["missing_step_codes"]:
+        raise FillError(
+            f"fill_step missing for zones: {counts['missing_step_codes'][:10]}"
+        )
+    if counts["n_with_step"] != counts["n_rows"]:
+        raise FillError(
+            f"fill_step inventory {counts['n_with_step']} != n_rows {counts['n_rows']}"
+        )
+    if counts["c_sub_step_sum"] != counts["c_model_n"]:
+        raise FillError(
+            f"c_sub_step sum {counts['c_sub_step_sum']} != "
+            f"C_model total {counts['c_model_n']}"
+        )
+    for step in counts["by_fill_step"]:
+        if step not in TOP_LEVEL_STEPS:
+            raise FillError(f"unknown fill_step {step!r}")
+    for sub in counts["by_c_sub_step"]:
+        if sub not in C_SUB_STEPS:
+            raise FillError(f"unknown c_sub_step {sub!r}")
+
+
 def count_reconciled_sources(dz2011_rows: Sequence[Mapping]) -> dict[str, int]:
-    """Count suppressed / not-in-price-file / zero-dwellings on a 2011 inventory."""
+    """Count model-fill / not-in-price-file / zero-dwellings on a 2011 inventory.
+
+    ``model_fill_n`` includes the 4 not-in-price-file codes (post-pooling target).
+    """
     zero = set(ZERO_DWELLING_CODES)
     n_zero = 0
     n_not_in_price = 0
-    n_suppressed = 0
+    n_model_fill = 0
     for r in dz2011_rows:
         code = str(r.get("code") or "").strip()
         if _is_zero_dwellings(r, zero) or code in zero:
@@ -1011,28 +1294,53 @@ def count_reconciled_sources(dz2011_rows: Sequence[Mapping]) -> dict[str, int]:
             # Reconciled: the 4 C-filled codes (not the zero-dwelling absents).
             if code in NOT_IN_PRICE_FILE_CODES:
                 n_not_in_price += 1
+                n_model_fill += 1
+            elif _is_empty_to_fill(r, zero):
+                n_model_fill += 1
             continue
         if _is_empty_to_fill(r, zero):
-            n_suppressed += 1
+            n_model_fill += 1
     return {
-        "suppressed_n": n_suppressed,
+        "model_fill_n": n_model_fill,
         "not_in_price_file_n": n_not_in_price,
         "zero_dwellings_n": n_zero,
     }
 
 
-def assert_reconciled_source_counts(dz2011_rows: Sequence[Mapping]) -> None:
-    """Real-run gate: inventory must match reconciled 723 / 4 / 3."""
-    counts = count_reconciled_sources(dz2011_rows)
-    expected = {
-        "suppressed_n": SUPPRESSED_N,
+def expected_reconciled_counts(config: Mapping | None = None) -> dict[str, int]:
+    """Expected post-pooling gate counts from config + fixed code lists."""
+    return {
+        "model_fill_n": null_dz_fill_target_from_config(config),
         "not_in_price_file_n": len(NOT_IN_PRICE_FILE_CODES),
         "zero_dwellings_n": len(ZERO_DWELLING_CODES),
     }
+
+
+def assert_reconciled_source_counts(
+    dz2011_rows: Sequence[Mapping], *, config: Mapping | None = None
+) -> None:
+    """Real-run gate: inventory must match post-pooling config target / 4 / 3.
+
+    Feeding the pre-pooling 723/727 inventory must fail once config is 129.
+    """
+    counts = count_reconciled_sources(dz2011_rows)
+    expected = expected_reconciled_counts(config)
     if counts != expected:
         raise FillError(
             f"reconciled source counts {counts} != expected {expected} "
-            "(723 suppressed + 4 not in price file + 3 zero-dwellings)"
+            f"(post-pooling model-fill {expected['model_fill_n']} includes "
+            f"{expected['not_in_price_file_n']} not-in-price-file; "
+            f"{expected['zero_dwellings_n']} zero-dwellings; "
+            f"pre-pooling {PRE_POOLING_EMPTY_TO_FILL_N} must not pass)"
+        )
+    # Hard refuse the retired pre-pooling constants if someone reintroduces them.
+    if expected["model_fill_n"] in (
+        PRE_POOLING_EMPTY_TO_FILL_N,
+        PRE_POOLING_SUPPRESSED_N,
+    ):
+        raise FillError(
+            f"null_dz_fill_target_n must be post-pooling "
+            f"(not {PRE_POOLING_EMPTY_TO_FILL_N}/{PRE_POOLING_SUPPRESSED_N})"
         )
 
 
@@ -1042,17 +1350,18 @@ def assert_post_fill_gate(
     *,
     require_reconciled_counts: bool = False,
     source_2011: Sequence[Mapping] | None = None,
+    config: Mapping | None = None,
 ) -> None:
     """Gate: Scotland total conserved; every 2022 zone rent > 0 except N/A.
 
     On a real run pass ``require_reconciled_counts=True`` and the original 2011
-    rent-table inventory as ``source_2011`` to assert the signed-off
-    723 suppressed / 4 not-in-price-file / 3 zero-dwellings counts.
+    rent-table inventory as ``source_2011`` to assert the post-pooling
+    model-fill target / 4 not-in-price-file / 3 zero-dwellings counts.
     """
     dz22.assert_scotland_total_conserved(rows_2011, rows_2022, field="measured_rent")
     if require_reconciled_counts:
         inventory = source_2011 if source_2011 is not None else rows_2011
-        assert_reconciled_source_counts(inventory)
+        assert_reconciled_source_counts(inventory, config=config)
     for r in rows_2022:
         label = str(r.get("estimate_label") or "")
         fm = str(r.get("fill_method") or "")

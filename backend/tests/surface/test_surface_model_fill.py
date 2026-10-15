@@ -32,8 +32,9 @@ def _observed(n=80, ur6=(1, 2, 3), seed=11):
 
 
 def test_null_dz_fill_target_documented(cfg):
-    assert sm.null_dz_fill_target_n() == 727
-    assert cfg["model_fill"]["null_dz_fill_target_n"] == 727
+    assert sm.null_dz_fill_target_n() == 129
+    assert cfg["model_fill"]["null_dz_fill_target_n"] == 129
+    assert sm.PRE_POOLING_NULL_DZ_FILL_TARGET_N == 727
     assert cfg["model_fill"]["publication"] == "internal_calibration_only"
     assert cfg["model_fill"]["status"] == "research_estimate"
     # Valuation owns r−g; model-fill must not rewrite the calibrated central yield.
@@ -59,7 +60,7 @@ def test_fill_null_zones_never_copies_neighbour(cfg):
     c = {**cfg, "model_fill": {**cfg["model_fill"], "drivers": []}}
     out = sm.fill_null_zones(observed_rows=observed, null_rows=nulls, config=c)
     assert out["n_filled"] == 12
-    assert out["null_dz_fill_target_n"] == 727
+    assert out["null_dz_fill_target_n"] == 129
     assert out["publication"] == "internal_calibration_only"
     assert out["quality"] == "research_estimate"
     # Never copies a neighbour: each fill is a model prediction (tag + own interval), not a donor code.

@@ -22,11 +22,12 @@ import numpy as np
 from georgist import surface_rent as sr
 
 # RoS 2023 DZ2011 spine accounting (docs/surface_rent_spec.md §12.4):
-# 6,976 zones = 6,246 priced (≥5 sales) + 724 suppressed + 6 absent from file.
-# Zero-dwelling zones (3) get fill_method not_applicable, not model fill.
-# Null fill target = 724 + 6 − 3 = 727. Research count from open RoS/spine facts —
-# not an invented official figure.
-NULL_DZ_FILL_TARGET_N = 727
+# Pre-pooling: 6,976 zones = 6,246 priced (≥5 sales) + 724 suppressed + 6 absent;
+# null fill = 724 + 6 − 3 zero-dwellings = 727.
+# FILL-POOLED / M3: after 3y+5y pooling the remaining model-fill target is 129
+# (includes 4 not-in-price-file). Prefer surface.yaml model_fill.null_dz_fill_target_n.
+NULL_DZ_FILL_TARGET_N = 129
+PRE_POOLING_NULL_DZ_FILL_TARGET_N = 727
 
 DEFAULT_DELTA = 1.0  # log(L + δ); ASSUMPTION, config-overridable
 DEFAULT_INTERVAL_Z = 1.2815515655446004  # ~80% normal interval on the log scale
@@ -62,9 +63,11 @@ class ModelPrediction:
     borrowed_from: tuple[int, ...]
 
 
-def null_dz_fill_target_n() -> int:
-    """Documented null-zone fill target (suppressed ∪ absent − zero dwellings)."""
-    return NULL_DZ_FILL_TARGET_N
+def null_dz_fill_target_n(config: Mapping | None = None) -> int:
+    """Post-pooling null-zone fill target from surface.yaml (default 129)."""
+    cfg = config if config is not None else sr.load_config()
+    section = cfg.get("model_fill") or {}
+    return int(section.get("null_dz_fill_target_n", NULL_DZ_FILL_TARGET_N))
 
 
 def _log_target(land_value: float, delta: float) -> float:
@@ -288,7 +291,7 @@ def fill_null_zones(
         "fills": fills,
         "n_filled": len(fills),
         "n_null_input": len(null_rows),
-        "null_dz_fill_target_n": NULL_DZ_FILL_TARGET_N,
+        "null_dz_fill_target_n": null_dz_fill_target_n(config),
         "quality": "research_estimate",
         "publication": "internal_calibration_only",
     }

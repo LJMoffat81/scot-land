@@ -963,6 +963,9 @@ export default function ScotlandMap() {
   );
 
   const clearPlace = useCallback(() => {
+    // Invalidate in-flight selectPlace/inspect so a late fetch cannot repaint
+    // the stub after × / Escape dismiss (UX10-2 Show legend intercept at 390).
+    lookupGen.current += 1;
     setResult(null);
     setError(null);
     setAddressLine(null);

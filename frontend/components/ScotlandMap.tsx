@@ -580,7 +580,22 @@ export default function ScotlandMap() {
       if (builtupMask503 || builtupMaskCatalogGap) {
         setShowBuiltupMask(false);
       } else {
-        setShowBuiltupMask(Boolean(next.builtup_mask));
+        const turnOn = Boolean(next.builtup_mask);
+        setShowBuiltupMask(turnOn);
+        // Availability check on enable (works at any zoom; loadMasked may skip
+        // the geo fetch below DATA_ZONE_MIN_ZOOM).
+        if (turnOn) {
+          const path =
+            "/layers/open/dz2022-masked?south=55.85&west=-4.27&north=55.87&east=-4.24&max_features=1";
+          void apiJson<GeoJSON.FeatureCollection>(path).catch(
+            (err: unknown) => {
+              if (err instanceof ApiError && err.status === 503) {
+                setBuiltupMask503(true);
+                setShowBuiltupMask(false);
+              }
+            },
+          );
+        }
       }
     }
     if ("vdl" in next) setShowVdl(Boolean(next.vdl));
@@ -2440,26 +2455,8 @@ export default function ScotlandMap() {
     };
   }, []);
 
-  // Idea 57 — probe built-up mask once; 503 → Coming soon / disabled.
-  useEffect(() => {
-    let cancelled = false;
-    const path =
-      "/layers/open/dz2022-masked?south=55.85&west=-4.27&north=55.87&east=-4.24&max_features=1";
-    void apiJson<GeoJSON.FeatureCollection>(path)
-      .then(() => {
-        if (!cancelled) setBuiltupMask503(false);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        if (err instanceof ApiError && err.status === 503) {
-          setBuiltupMask503(true);
-          setShowBuiltupMask(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Idea 57 — 503 is detected when the mask is turned on (loadMasked), not via a
+  // mount-time probe (that 404s in CI stubs that never route dz2022-masked).
 
   // Public shell: never fetch /layers/councils (council AGR £ and rent £/m² stay internal).
   // Keep fill/hatch expressions on a public context ramp so hidden paint is never AGR £.

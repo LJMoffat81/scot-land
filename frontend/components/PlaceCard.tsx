@@ -577,7 +577,11 @@ export function PlaceCard({
             </p>
           </div>
 
-          <div className="place-card-sheet-body" data-testid="place-card-sheet-body">
+          {/* SW-047: value rows stay outside the scrollable sheet so height is kept. */}
+          <div
+            className="place-card-value-block"
+            data-testid="place-card-value-block"
+          >
             {unitEffective === "typical_home" ? (
               <>
                 <p
@@ -653,7 +657,9 @@ export function PlaceCard({
                   />
                 ))}
             </ul>
+          </div>
 
+          <div className="place-card-sheet-body" data-testid="place-card-sheet-body">
             <details
               className="place-card-parts"
               data-testid="place-card-parts"

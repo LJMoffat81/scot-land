@@ -316,10 +316,13 @@ for (const viewport of [
 
       const toggle = page.getByTestId("layer-toggle-builtup_mask");
       await expect(toggle).toBeVisible({ timeout: 30_000 });
-      await expect(toggle).toBeDisabled();
+      // Toggle starts enabled; turning it on hits 503 → Coming soon / disabled.
+      await expect(toggle).toBeEnabled();
+      await toggle.click();
       await expect(
         page.getByTestId("layer-coming-soon-builtup_mask"),
-      ).toHaveText("Coming soon");
+      ).toHaveText("Coming soon", { timeout: 15_000 });
+      await expect(toggle).toBeDisabled();
       await expect(page.getByTestId("map-layer-builtup_mask")).toHaveAttribute(
         "data-coming-soon",
         "true",
@@ -376,20 +379,22 @@ test.describe("WORDING-BATCH-1 place card + SW-047 (1280)", () => {
 
     const valueRows = card.getByTestId("place-card-value-rows");
     await expect(valueRows).toBeVisible();
-    const scroll = await valueRows.evaluate((el) => {
-      const host =
-        el.closest(".place-card-sheet-body") ||
-        el.closest(".place-card-body") ||
-        el;
-      return {
-        scrollHeight: host.scrollHeight,
-        clientHeight: host.clientHeight,
-      };
-    });
+    // SW-047: value rows live outside the scrollable sheet — fully painted.
+    const valueBox = await valueRows.boundingBox();
+    expect(valueBox, "value rows box").toBeTruthy();
+    expect(valueBox!.height, "value-row height kept").toBeGreaterThan(20);
+    const inSheet = await valueRows.evaluate((el) =>
+      Boolean(el.closest(".place-card-sheet-body")),
+    );
+    expect(inSheet, "value rows not inside scrollable sheet").toBe(false);
+    const rowScroll = await valueRows.evaluate((el) => ({
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+    }));
     expect(
-      scroll.scrollHeight,
-      "value rows must not need inner scrolling",
-    ).toBeLessThanOrEqual(scroll.clientHeight + 1);
+      rowScroll.scrollHeight,
+      "value rows list itself does not scroll",
+    ).toBeLessThanOrEqual(rowScroll.clientHeight + 1);
 
     const bodyText = await page.locator("body").innerText();
     expect(bodyText).not.toMatch(/£\d/);

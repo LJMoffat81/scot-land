@@ -410,6 +410,13 @@ input {
   display: none;
 }
 
+.place-card-value-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  flex-shrink: 0;
+}
+
 .place-card-sheet-body {
   display: flex;
   flex-direction: column;
@@ -533,13 +540,10 @@ input {
     padding-bottom: 0.35rem;
   }
 
-  /* SW-047: value rows stay in view without inner scroll when legend is compact. */
-  .app-shell.place-open .hud-place .place-agr-list-surface {
+  /* SW-047: value block (AGR + surface row) stays outside the scrollable sheet. */
+  .hud-place .place-card-value-block,
+  .place-card-stub .place-card-value-block {
     flex-shrink: 0;
-  }
-
-  .app-shell.place-open .hud-place .place-card-sheet-body {
-    overflow-y: visible;
   }
 
   .hud-place .place-card-experimental-footer-peek,

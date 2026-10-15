@@ -168,6 +168,21 @@
   z-index: 14;
 }
 
+/*
+ * SW-026: while the place card is open on desktop (≥1024), the research
+ * banner must stop ≥16px short of the card’s left edge (never cover it).
+ * Card width/right match globals `.hud-place`. Closed → default centred layout.
+ */
+@media (min-width: 1024px) {
+  .app-shell.place-open .research-banner-map {
+    left: 1rem;
+    right: calc(min(360px, calc(100vw - 2rem)) + 1.1rem + 1rem);
+    transform: none;
+    width: auto;
+    max-width: none;
+  }
+}
+
 @media (min-width: 901px) {
   .app-shell.place-open .hud-place.place-card,
   .app-shell.place-open .place-card-stub {
@@ -206,9 +221,25 @@
 
 /* —— Find a place intro collapses when place card is open (all widths) —— */
 @media (min-width: 641px) {
+  /* Match mobile / site nav pill look (not the default browser button). */
   .app-shell.place-open .hud-scotland-fold {
     display: inline-block;
     pointer-events: auto;
+    border: 0;
+    background: rgba(255, 255, 255, 0.96);
+    color: var(--slrg-navy);
+    font-weight: 700;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    padding: 0.4rem 0.7rem;
+    border-radius: 999px;
+    box-shadow: var(--hud-shadow);
+    cursor: pointer;
+  }
+
+  .app-shell.place-open .hud-scotland-fold:focus-visible {
+    outline: 3px solid #0076d3;
+    outline-offset: 2px;
   }
 
   .app-shell.place-open .hud-scotland {

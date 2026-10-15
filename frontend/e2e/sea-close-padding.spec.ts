@@ -192,27 +192,32 @@ async function assertCloseClearsSeaLineText(page: Page) {
   const { line, text } = await openSeaStub(page);
   const close = page.getByRole("button", { name: "Close place card" });
   await expect(close).toBeVisible();
+  await close.scrollIntoViewIfNeeded();
+  await text.scrollIntoViewIfNeeded();
 
-  const closeBox = await close.boundingBox();
-  expect(closeBox, "close × bounding box").toBeTruthy();
+  // Wait for layout-stable boxes (CI can return null once while visible).
+  // Asserts stay strict: non-null boxes, pad ≥ ×width+8, no overlap.
+  await expect(async () => {
+    const closeBox = await close.boundingBox();
+    expect(closeBox, "close × bounding box").toBeTruthy();
 
-  // Spec: right padding ≥ × width + 8px (finite numbers only — CI-safe).
-  const padRight = await line.evaluate((el) =>
-    parseFloat(getComputedStyle(el).paddingRight),
-  );
-  expect(
-    padRight,
-    `sea-line padding-right ${padRight} < × width ${closeBox!.width} + 8`,
-  ).toBeGreaterThanOrEqual(closeBox!.width + 8);
+    const padRight = await line.evaluate((el) =>
+      parseFloat(getComputedStyle(el).paddingRight),
+    );
+    expect(
+      padRight,
+      `sea-line padding-right ${padRight} < × width ${closeBox!.width} + 8`,
+    ).toBeGreaterThanOrEqual(closeBox!.width + 8);
 
-  // Inner span wraps the glyphs only (excludes padding reserved for ×).
-  const textBox = await text.boundingBox();
-  expect(textBox, "sea-line text bounding box").toBeTruthy();
+    // Inner span wraps the glyphs only (excludes padding reserved for ×).
+    const textBox = await text.boundingBox();
+    expect(textBox, "sea-line text bounding box").toBeTruthy();
 
-  expect(
-    boxesOverlap(closeBox!, textBox!),
-    `× overlaps sea-line text: close=${JSON.stringify(closeBox)} text=${JSON.stringify(textBox)}`,
-  ).toBe(false);
+    expect(
+      boxesOverlap(closeBox!, textBox!),
+      `× overlaps sea-line text: close=${JSON.stringify(closeBox)} text=${JSON.stringify(textBox)}`,
+    ).toBe(false);
+  }).toPass({ timeout: 15_000 });
 
   assertConsoleClean(gate);
 }

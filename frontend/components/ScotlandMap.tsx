@@ -582,6 +582,7 @@ export default function ScotlandMap() {
   const parcelLabelRef = useRef<maplibregl.Marker | null>(null);
   const headerRef = useRef<HTMLElement | null>(null);
   const scotlandRef = useRef<HTMLElement | null>(null);
+  const layersBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const mapCredits = activeMapCredits(
     catalogLayers,
@@ -977,6 +978,8 @@ export default function ScotlandMap() {
       if (event.key !== "Escape") return;
       if (toolsOpen) {
         setToolsOpen(false);
+        // UX-03: return focus to the Layers toggle that opened the drawer.
+        layersBtnRef.current?.focus();
         return;
       }
       if (placeStub || result || error) clearPlace();
@@ -3596,6 +3599,7 @@ export default function ScotlandMap() {
           </a>
         </div>
         <button
+          ref={layersBtnRef}
           type="button"
           className={toolsOpen ? "hud-layers-btn on" : "hud-layers-btn"}
           aria-pressed={toolsOpen}

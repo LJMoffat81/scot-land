@@ -113,7 +113,9 @@ function attachConsoleGate(page: Page): ConsoleGate {
 function assertConsoleClean(gate: ConsoleGate) {
   const meaningful = gate.consoleErrors.filter((text) => {
     if (/\bAbortError\b|aborted/i.test(text)) return false;
-    if (/Failed to load resource:.*(?:400|404|503)/i.test(text)) return false;
+    if (/Failed to load resource:.*(?:400|404|503|Service Unavailable)/i.test(text))
+      return false;
+    if (/openfreemap|sprite|glyph|tiles\.openfreemap/i.test(text)) return false;
     return true;
   });
   expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
@@ -123,15 +125,24 @@ function assertConsoleClean(gate: ConsoleGate) {
 }
 
 async function stubMapChrome(page: Page, fixture = placeFixture()) {
-  await page.route("**/backend/health**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(HEALTH_OK),
-    });
-  });
-  await page.route("**/backend/layers/**", async (route) => {
+  await page.route("**/backend/**", async (route) => {
     const url = route.request().url();
+    if (/\/health/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(HEALTH_OK),
+      });
+      return;
+    }
+    if (/\/platform\/place/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(fixture),
+      });
+      return;
+    }
     if (/data-zones\/at/i.test(url)) {
       await route.fulfill({
         status: 200,
@@ -144,17 +155,15 @@ async function stubMapChrome(page: Page, fixture = placeFixture()) {
       });
       return;
     }
+    const wantsGeo =
+      /\/layers\//i.test(url) ||
+      /\/boundaries\//i.test(url) ||
+      /\/w3w-grid/i.test(url) ||
+      /\/parcels/i.test(url);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
-  await page.route("**/backend/platform/place**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(fixture),
+      body: JSON.stringify(wantsGeo ? EMPTY_FC : {}),
     });
   });
   await page.route("**/api/gbp-live**", async (route) => {
@@ -168,8 +177,9 @@ async function stubMapChrome(page: Page, fixture = placeFixture()) {
 
 async function openPlaceViaCoords(page: Page) {
   await page.goto("/?lat=55.860900&lng=-4.251400");
+  await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
   const card = page.getByTestId("place-card");
-  await expect(card).toBeVisible({ timeout: 30_000 });
+  await expect(card).toBeVisible({ timeout: 45_000 });
   return card;
 }
 

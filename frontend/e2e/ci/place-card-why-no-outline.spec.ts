@@ -73,7 +73,7 @@ async function stubBackend(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(/\/layers\//i.test(url) ? EMPTY_FC : {}),
+      body: JSON.stringify(/\/layers\//i.test(url) || /\/boundaries\//i.test(url) ? EMPTY_FC : {}),
     });
   });
   await page.route("**/api/gbp-live**", async (route) => {

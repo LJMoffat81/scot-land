@@ -96,6 +96,7 @@ async function stubMapBackend(page: Page) {
     const url = route.request().url();
     const wantsGeo =
       /\/layers\//i.test(url) ||
+      /\/boundaries\//i.test(url) ||
       /\/w3w-grid/i.test(url) ||
       /\/parcels/i.test(url);
     await route.fulfill({

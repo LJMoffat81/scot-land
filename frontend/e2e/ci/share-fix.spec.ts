@@ -69,7 +69,7 @@ test.describe("MAP-CARDS deferred layers not in drawer", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(/\/layers\//i.test(url) ? EMPTY_FC : {}),
+        body: JSON.stringify(/\/layers\//i.test(url) || /\/boundaries\//i.test(url) ? EMPTY_FC : {}),
       });
     });
     await page.route("**/api/gbp-live**", async (route) => {
@@ -133,7 +133,7 @@ test.describe("SHARE-FIX place lookup Try again", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(/\/layers\//i.test(url) ? EMPTY_FC : {}),
+        body: JSON.stringify(/\/layers\//i.test(url) || /\/boundaries\//i.test(url) ? EMPTY_FC : {}),
       });
     });
 

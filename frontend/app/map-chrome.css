@@ -1053,7 +1053,13 @@
   }
 }
 
-/* Place card inside panel slot: no floating positioning */
+/*
+ * Place card inside panel slot: no floating positioning.
+ * Scroll lives on `.map-panel-slot-scroll` — do not keep the old flex
+ * column + overflow:hidden + flex:1/min-height:0 body, or the card
+ * collapses to a 0×0 box (Playwright toBeVisible fails while a11y still
+ * sees the text).
+ */
 .map-panel-slot .place-card,
 .map-panel-slot .place-card-stub,
 .map-panel-slot .hud-place {
@@ -1069,6 +1075,26 @@
   max-height: none !important;
   box-shadow: none !important;
   border: 0 !important;
+  display: block !important;
+  overflow: visible !important;
+}
+
+.map-panel-slot .place-card .place-card-body,
+.map-panel-slot .place-card .place-card-sheet-body,
+.map-panel-slot .place-card .place-card-peek,
+.map-panel-slot .hud-place .place-card-body,
+.map-panel-slot .hud-place .place-card-sheet-body,
+.map-panel-slot .hud-place .place-card-peek {
+  flex: none !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.map-panel-slot .place-card .place-card-experimental-footer-sticky,
+.map-panel-slot .hud-place .place-card-experimental-footer-sticky {
+  display: block !important;
+  position: static !important;
 }
 
 .map-panel-slot .layers-panel {

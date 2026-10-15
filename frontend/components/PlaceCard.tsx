@@ -322,7 +322,10 @@ export function PlaceCard({
             className="place-card-sea-line"
             data-testid="place-card-out-of-scotland"
           >
-            {PLACE_CARD_OUT_OF_SCOTLAND_LINE}
+            {/* Inner span = line text box for SW-030 (excludes × padding). */}
+            <span data-testid="place-card-sea-line-text">
+              {PLACE_CARD_OUT_OF_SCOTLAND_LINE}
+            </span>
           </p>
           {onShowScotland ? (
             <button
@@ -431,15 +434,26 @@ export function PlaceCard({
               {PLACE_CARD_FACT_LINE}
             </p>
 
+            {/* Surface row always visible (Suggestion 31 first-value-row). */}
+            <ul className="place-agr-list place-agr-list-surface">
+              {valueRows
+                .filter((row) => row.id === "surface")
+                .map((row) => (
+                  <PartRow key={row.id} row={row} />
+                ))}
+            </ul>
+
             <details
               className="place-card-parts"
               data-testid="place-card-parts"
             >
               <summary className="place-card-parts-summary">Parts</summary>
               <ul className="place-agr-list">
-                {valueRows.map((row) => (
-                  <PartRow key={row.id} row={row} />
-                ))}
+                {valueRows
+                  .filter((row) => row.id !== "surface")
+                  .map((row) => (
+                    <PartRow key={row.id} row={row} />
+                  ))}
               </ul>
               <p
                 className="place-card-parts-note"

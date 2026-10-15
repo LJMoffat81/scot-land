@@ -2,29 +2,26 @@
 
 Plain-English queue for maintainers (Laurie and agents). Update on main after merges — not in feature PRs (avoids serial conflict churn). Dedicated QUEUE-only follow-up is OK when nothing else is ready to piggyback.
 
-**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: 2 open non-draft ([#144](https://github.com/LJMoffat81/scot-land/pull/144), [#146](https://github.com/LJMoffat81/scot-land/pull/146)).
+**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: 1 open non-draft ([#152](https://github.com/LJMoffat81/scot-land/pull/152)).
 
 ## In progress
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| GBP-LIVE-V1 | Public £ surface rent on place card / legend / How it works (flag default OFF) | [#144](https://github.com/LJMoffat81/scot-land/pull/144) | Open (not draft); tip `db67606` — Scot-LAND FAIL on yield wording being fixed on same branch |
+| V13-METHODS | Methods v1.3 cost basis, depreciation, checks | [#152](https://github.com/LJMoffat81/scot-land/pull/152) | Open (not draft); CI green; FAIL fix in flight; awaiting Scot-LAND |
 
 ## Next up (in order)
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| GBP-LIVE-V1b | Follow-on after GBP-LIVE-V1 (flag / surface polish) | — | After GBP-LIVE-V1 (#144) merges; one PR only |
-| SW-045 + SW-046 | Legend follows the active layer (HIGH) + legend clash dock when place card open; one combined PR | — | After GBP-LIVE-V1b; no PR yet; one PR only |
-| SW-044 | Slim the map view (licences out of left panel, chip key once, etc.) | — | After SW-045+046; no PR yet; one PR only |
-
-SURFACE-COSTS-STRICT (strict fixture equality + CI always runs the 20-row exact match) may appear when opened — follow-up after SURFACE-COSTS-ALL (#147); not part of the UI train above.
+| GBP-LIVE-V1b | Per-m² unit for £ behind the flag (flag still default OFF); one PR only | — | Frozen ready; after V13-METHODS; no PR yet |
+| WORDING-BATCH-1 | Map-view wording/layout batch: SW-047 + ideas 56/57 (and the frozen batch items in the WORDING-BATCH-1 card); one PR only | — | Frozen ready; after GBP-LIVE-V1b; no PR yet |
+| DZ-HIERARCHY | Intermediate Zone / council on the place card (ideas 37 / 40); one PR only | — | Frozen ready; after WORDING-BATCH-1; no PR yet |
 
 ### Frozen backlog
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| SW-033 / SW-034 + ideas 37 / 38 / 40 / 41 / 44 | Polish batch: developers/api titles + scroll, mobile `/data` cards, place-card IZ title, catalogue notes, related small fixes | — | Frozen; open only when cap allows; after the Next-up train |
 | Suggestion 44 | Deploy SHA / git commit surface; park with SW-037 if it needs `main.py` | — | Parked with SW-037 (next `main.py` change) |
 | UX-00 … UX-05 | Mobile hit areas, legend aria, Esc focus, landmarks, place-card hug, desktop search | [#130](https://github.com/LJMoffat81/scot-land/pull/130) … [#136](https://github.com/LJMoffat81/scot-land/pull/136) | UX train done — all merged (incl. UX-00 #130 and UX10-1 #134) |
 | SW-031 / SW-032 | Scrub banned wording and public money figures from public surfaces | [#133](https://github.com/LJMoffat81/scot-land/pull/133) | Merged |
@@ -36,6 +33,12 @@ Newest first.
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
+| UX10-2 | Built-up mask (`map_builtup_mask`, `dz2022_masked`) | [#151](https://github.com/LJMoffat81/scot-land/pull/151) | Merged (`0e539c5`) |
+| SURFACE-COSTS-STRICT | Exact fixture match in CI (20-row equality always runs) | [#148](https://github.com/LJMoffat81/scot-land/pull/148) | Merged (`c162243`) |
+| QUEUE sync | Sync after SURFACE-COSTS-ALL / PARCELS-OFF merges | [#146](https://github.com/LJMoffat81/scot-land/pull/146) | Merged (`96ba57a`) |
+| SW-045 + SW-046 | Legend follows the active layer; legend clear of place card | [#150](https://github.com/LJMoffat81/scot-land/pull/150) | Merged (`205040b`) |
+| GBP-LIVE-V1 | Public £ surface rent on place card / legend / How it works (flag default OFF) | [#144](https://github.com/LJMoffat81/scot-land/pull/144) | Merged (`0791bd5`) |
+| FILL-MEASURED-ZERO | Keep floored measured zeros (blocks £ gate) | [#149](https://github.com/LJMoffat81/scot-land/pull/149) | Merged (`16f467f`) |
 | PARCELS-OFF | Gate parcel API/UI behind `PARCELS_PUBLIC` (default false); HIGH | [#145](https://github.com/LJMoffat81/scot-land/pull/145) | Merged (`fc5e1f1`) |
 | SURFACE-COSTS-ALL | Rebuild surface costs for every DZ2011 zone | [#147](https://github.com/LJMoffat81/scot-land/pull/147) | Merged (`d98b513`) |
 | HOME-TUNNEL step 2 | Named tunnel, offline Worker, backups | [#142](https://github.com/LJMoffat81/scot-land/pull/142) | Merged (`b41d2c6`) |

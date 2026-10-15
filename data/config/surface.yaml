@@ -355,6 +355,8 @@ surface_rent:
       suppressed_after_pooling_n: 125
       not_in_price_file: [S01007788, S01010462, S01010493, S01011598]  # filled under C; inside 129
       zero_dwellings_n: 3
+      # FILL-MEASURED-ZERO: pooled price present but residual floors to £0 (cost >= price).
+      measured_zeros_n: 27
       pre_pooling_empty_to_fill_n: 727
     holdout:
       seed: 20261014

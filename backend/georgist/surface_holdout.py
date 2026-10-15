@@ -255,6 +255,28 @@ def gradient_check(
     return out
 
 
+def _zone_at_zero_or_negative(row: Mapping) -> bool:
+    """True for negative residuals and measured zeros (cost >= price).
+
+    FILL-MEASURED-ZERO: measured zeros count towards the share-at-zero cap
+    (check 5 / rules 12.2 negative-by-class share). Never drop them from the
+    share because rent floored to 0.
+    """
+    if bool(row.get("negative_residual")):
+        return True
+    tags = row.get("proxy_tags") or row.get("tags") or ()
+    if isinstance(tags, str):
+        tags = [t for t in tags.split(";") if t]
+    if _sr.COST_AT_OR_ABOVE_PRICE_TAG in tags:
+        return True
+    lv = row.get("land_value")
+    if lv is not None and lv != "" and float(lv) == 0.0:
+        fm = str(row.get("fill_method") or "").strip()
+        if fm in ("observed_pooled", "shrunk_to_model"):
+            return True
+    return False
+
+
 def negative_by_class_check(
     rows: Sequence[Mapping], *, high_demand_ur6: Iterable[int], max_share_high_demand: float
 ) -> dict:
@@ -262,18 +284,19 @@ def negative_by_class_check(
     classes count against that part of the rebuild band. Negatives in weak
     remote or post-industrial markets can be real and are reported, not failed.
 
-    Each row: {ur6_class, negative_residual}.
+    Each row: {ur6_class, negative_residual} (optional proxy_tags / land_value /
+    fill_method so measured zeros also count toward the share-at-zero cap).
     """
     by: dict[int, list[bool]] = {}
     for r in rows:
         if r.get("ur6_class") is not None:
-            by.setdefault(int(r["ur6_class"]), []).append(bool(r.get("negative_residual")))
+            by.setdefault(int(r["ur6_class"]), []).append(_zone_at_zero_or_negative(r))
     shares = {c: sum(v) / len(v) for c, v in by.items() if v}
     hd = set(int(c) for c in high_demand_ur6)
     breaches = {c: s for c, s in shares.items() if c in hd and s > max_share_high_demand}
     return {"check": "negative_by_class", "share_negative_by_ur6": shares, "high_demand_ur6": sorted(hd),
             "threshold": max_share_high_demand, "breaches": breaches, "pass": not breaches,
-            "note": "If used to narrow the rebuild band this is calibration: document it and re-run on held-out zones (rules 12.2)."}
+            "note": "If used to narrow the rebuild band this is calibration: document it and re-run on held-out zones (rules 12.2). Measured zeros (cost_at_or_above_price) count toward the share."}
 
 
 def national_share_check(

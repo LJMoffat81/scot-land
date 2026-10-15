@@ -304,9 +304,49 @@ def write_cost_table(rows: Sequence[Mapping], path: Path | str) -> Path:
             row = {k: raw.get(k, "") for k in COST_COLUMNS}
             for k in COST_COLUMNS:
                 if row[k] is None:
+                    # Zero-dwelling rows keep rebuild_status as the literal "n/a";
+                    # numeric cost cells stay empty (not the string n/a).
                     row[k] = ""
             writer.writerow(row)
     return out
+
+
+def read_cost_table(path: Path | str) -> list[dict]:
+    """Read a cost CSV; literal ``n/a`` must round-trip (never become NaN).
+
+    Pandas treats ``n/a`` as NA by default. Use ``keep_default_na=False`` so
+    ``rebuild_status == "n/a"`` survives for zero-dwelling zones.
+    """
+    p = Path(path)
+    df = pd.read_csv(p, dtype=str, keep_default_na=False)
+    rows: list[dict] = []
+    for raw in df.to_dict("records"):
+        status = str(raw.get("rebuild_status") or "")
+        dwellings_raw = str(raw.get("dwellings") or "").strip()
+        if dwellings_raw == "" or dwellings_raw.lower() == NA_STATUS:
+            dwellings: int | None = 0 if status == NA_STATUS else None
+        else:
+            dwellings = int(float(dwellings_raw))
+
+        def _cost_cell(key: str) -> float | None:
+            val = str(raw.get(key) or "").strip()
+            if val == "" or val.lower() == NA_STATUS:
+                return None
+            return float(val)
+
+        rows.append(
+            {
+                "code": str(raw.get("code") or "").strip(),
+                "dwellings": dwellings,
+                "rebuild_status": status,
+                "rebuild_new_gbp": _cost_cell("rebuild_new_gbp"),
+                "remaining_factor": _cost_cell("remaining_factor"),
+                "drc_gbp": _cost_cell("drc_gbp"),
+                "drc_low_gbp": _cost_cell("drc_low_gbp"),
+                "drc_high_gbp": _cost_cell("drc_high_gbp"),
+            }
+        )
+    return rows
 
 
 def default_output_path() -> Path:

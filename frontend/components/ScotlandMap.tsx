@@ -442,6 +442,7 @@ function paintForMetric(metric: MetricDef): ExpressionSpecification {
 function activeCatalogLayerIds(opts: {
   showBoundaries: boolean;
   showDataZones: boolean;
+  showBuiltupMask: boolean;
   showVdl: boolean;
   showHla: boolean;
   showCommunityOwnership: boolean;
@@ -459,6 +460,7 @@ function activeCatalogLayerIds(opts: {
   const ids: string[] = [];
   if (opts.showBoundaries) ids.push("boundaries");
   if (opts.showDataZones) ids.push("data_zones");
+  if (opts.showBuiltupMask) ids.push("builtup_mask");
   if (opts.showVdl) ids.push("vdl");
   if (opts.showHla) ids.push("hla");
   if (opts.showCommunityOwnership) ids.push("community_ownership");
@@ -509,6 +511,9 @@ export default function ScotlandMap() {
   // SG 2024 public/Crown dashboard: licence unverified/not open — never paint
   const showPublicLand = false;
   const [showDataZones, setShowDataZones] = useState(false);
+  /** UX10-2 built-up display mask (dz2022_masked); display only — no value colour. */
+  const [showBuiltupMask, setShowBuiltupMask] = useState(false);
+  const builtupMaskTouched = useRef(false);
   /** Ledger row + constraint toggles (paint where the rent class / constraint applies). */
   const [ledgerEnabled, setLedgerEnabled] = useState<LedgerToggleState>({});
   /** LDP allocations paint when nested ledger row 1a (planning) is on. */
@@ -569,6 +574,10 @@ export default function ScotlandMap() {
       dataZonesTouched.current = true;
       setShowDataZones(Boolean(next.data_zones));
     }
+    if ("builtup_mask" in next) {
+      builtupMaskTouched.current = true;
+      setShowBuiltupMask(Boolean(next.builtup_mask));
+    }
     if ("vdl" in next) setShowVdl(Boolean(next.vdl));
     if ("hla" in next) setShowHla(Boolean(next.hla));
     // Constraint flood paints the existing flood context overlay when available.
@@ -628,6 +637,7 @@ export default function ScotlandMap() {
     activeCatalogLayerIds({
       showBoundaries,
       showDataZones,
+      showBuiltupMask,
       showVdl,
       showHla,
       showCommunityOwnership,
@@ -1667,6 +1677,40 @@ export default function ScotlandMap() {
         },
       });
 
+      // UX10-2: dz2022_masked fill under faint full DZ outlines (click stays on data-zones).
+      map.addSource("dz2022-masked-overlay", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution: "NRS Settlements 2022 (OGL v3), contains OS data",
+      });
+      map.addLayer(
+        {
+          id: "dz2022-masked-fill",
+          type: "fill",
+          source: "dz2022-masked-overlay",
+          layout: { visibility: "none" },
+          paint: {
+            "fill-color": "#1a4a6e",
+            "fill-opacity": 0.12,
+          },
+        },
+        "data-zones-fill",
+      );
+      map.addLayer(
+        {
+          id: "dz2022-masked-line",
+          type: "line",
+          source: "dz2022-masked-overlay",
+          layout: { visibility: "none" },
+          paint: {
+            "line-color": "#1a4a6e",
+            "line-width": 0.6,
+            "line-opacity": 0.35,
+          },
+        },
+        "data-zones-line",
+      );
+
       map.addSource("repd-onshore-wind-overlay", {
         type: "geojson",
         data: emptyCollection,
@@ -2536,6 +2580,67 @@ export default function ScotlandMap() {
       map.off("moveend", onMove);
     };
   }, [mapReady, showDataZones]);
+
+  // UX10-2 built-up mask (dz2022_masked) — display only; full DZ outlines stay clickable
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    const setVis = (vis: "visible" | "none") => {
+      if (!map.getLayer("dz2022-masked-fill")) return;
+      map.setLayoutProperty("dz2022-masked-fill", "visibility", vis);
+      map.setLayoutProperty("dz2022-masked-line", "visibility", vis);
+    };
+
+    if (!showBuiltupMask) {
+      setVis("none");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const loadMasked = () => {
+      if (cancelled || !mapRef.current || inFlight) return;
+      if (map.getZoom() < DATA_ZONE_MIN_ZOOM) {
+        setVis("none");
+        return;
+      }
+      const b = map.getBounds();
+      inFlight = true;
+      const path =
+        `/layers/open/dz2022-masked?south=${b.getSouth()}&west=${b.getWest()}` +
+        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=400`;
+      void apiJson<GeoJSON.FeatureCollection>(path)
+        .then((data) => {
+          if (cancelled) return;
+          (map.getSource("dz2022-masked-overlay") as GeoJSONSource)?.setData(data);
+          setVis("visible");
+        })
+        .catch(() => {
+          // Unloaded (503) or empty — keep outlines; do not invent mask geometry.
+          if (!cancelled) setVis("none");
+        })
+        .finally(() => {
+          inFlight = false;
+        });
+    };
+
+    const onMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadMasked, 700);
+    };
+
+    loadMasked();
+    map.on("moveend", onMove);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off("moveend", onMove);
+    };
+  }, [mapReady, showBuiltupMask]);
 
   // DESNZ REPD onshore wind (MW/status only, no £ rent)
   useEffect(() => {
@@ -3920,7 +4025,14 @@ export default function ScotlandMap() {
           <div className="layer-panel">
             <MapLayersDrawer
               className="layers-panel-in-shell"
-              enabled={ledgerEnabled}
+              enabled={{
+                ...ledgerEnabled,
+                data_zones: showDataZones,
+                builtup_mask: showBuiltupMask,
+                boundaries: showBoundaries,
+                vdl: showVdl,
+                hla: showHla,
+              }}
               onEnabledChange={onMapLayersChange}
             />
             {showBoundaries && (

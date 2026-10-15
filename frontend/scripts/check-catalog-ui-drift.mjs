@@ -42,6 +42,7 @@ const FIXTURE_PANEL_LIVE_IDS = [
   "boundaries",
   "cell_grid",
   "data_zones",
+  "builtup_mask",
   "vdl",
   "hydro_sites",
   "sepa_car",

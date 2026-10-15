@@ -227,6 +227,15 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
     licence: "Open Government Licence v3.0",
     licenceUrl: OGL_V3,
   },
+  {
+    id: "builtup_mask",
+    group: "boundaries",
+    label: "Built-up display mask",
+    description:
+      "Built-up extent for map colour later. Display only — not a rent.",
+    licence: "OGL-3.0",
+    licenceUrl: OGL_V3,
+  },
 ];
 
 

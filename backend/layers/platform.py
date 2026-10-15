@@ -193,6 +193,36 @@ def platform_catalog() -> dict[str, Any]:
                 ),
             },
             {
+                "id": "builtup_mask",
+                "group": "spatial",
+                "status": "live",
+                "label": "Built-up display mask",
+                "description": (
+                    "Built-up extent used to clip map colour later (NRS Settlements 2022 "
+                    "plus buffers around address points outside them). Display only — "
+                    "not a rent, and not ownership."
+                ),
+                "developer_note": (
+                    "UX10-2: PostGIS map_builtup_mask + dz2022_masked. Vector tiles at "
+                    "/layers/open/builtup-mask/tiles/{z}/{x}/{y} and "
+                    "/layers/open/dz2022-masked/tiles/{z}/{x}/{y}; bbox GeoJSON siblings. "
+                    "503 when unloaded. Faint full Data Zone outlines stay clickable. "
+                    "No value colouring (UX10-3)."
+                ),
+                "endpoint": "/layers/open/dz2022-masked",
+                "tile_endpoint": "/layers/open/dz2022-masked/tiles/{z}/{x}/{y}",
+                "licence": "OGL-3.0",
+                "licence_url": (
+                    "https://www.nationalarchives.gov.uk/doc/"
+                    "open-government-licence/version/3/"
+                ),
+                "attribution": "NRS Settlements 2022 (OGL v3), contains OS data",
+                "minzoom": 10,
+                "source_url": (
+                    "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer"
+                ),
+            },
+            {
                 "id": "settlements",
                 "group": "spatial",
                 "status": "live",

@@ -198,6 +198,30 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     "/layers/open/data-zones": LayerRule(
         "zone", "zone", "none", note="Data Zone outlines by bbox; code/name only, no rent"
     ),
+    "/layers/open/builtup-mask": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="UX10-2 national built-up display mask (bbox); display only, no rent",
+    ),
+    "/layers/open/dz2022-masked": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="UX10-2 DZ2022 ∩ built-up mask (bbox); display only, no rent",
+    ),
+    "/layers/open/builtup-mask/tiles/{z}/{x}/{y}": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="UX10-2 map_builtup_mask MVT; display only, no rent",
+    ),
+    "/layers/open/dz2022-masked/tiles/{z}/{x}/{y}": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="UX10-2 dz2022_masked MVT; display only, no rent",
+    ),
     "/layers/open/dz-context": LayerRule(
         "zone",
         "zone",

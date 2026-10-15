@@ -1,0 +1,7 @@
+{
+  "dz2022_masked_rows": 2,
+  "masked_codes_unique": true,
+  "uprn_inside_mask_pct": 100.0,
+  "fixture": true,
+  "note": "CI fixture only \u2014 full national QA is scripts/data/builtup-mask/qa_builtup_mask.json"
+}

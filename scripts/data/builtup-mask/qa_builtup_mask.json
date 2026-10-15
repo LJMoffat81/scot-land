@@ -1,0 +1,36 @@
+{
+ "uprn_scotland": 3886588,
+ "uprn_outside_settlements": 575598,
+ "uprn_patched_2m": 553,
+ "dz2022_total": 7392,
+ "dz2022_with_uprn": 7392,
+ "dz2022_masked_rows": 7392,
+ "dz_with_uprn_missing_masked_geom": [],
+ "masked_codes_unique": true,
+ "masked_codes_subset_of_dz2022": true,
+ "uprn_inside_mask_pct": 100.0,
+ "uprn_outside_mask": 0,
+ "mask_area_ha": 405530.9,
+ "scotland_area_ha": 7790085.4,
+ "mask_area_pct_scotland": 5.206,
+ "mask_polygons": 179548,
+ "build_date": "2026-10-15",
+ "files": {
+  "dz2022_masked.4326.geojson": {
+   "bytes": 76774592,
+   "sha256": "49142a45e9f21a881a1e0d761e9c4931da570782c19dbc59debf89e75eae24c1"
+  },
+  "dz2022_masked.gpkg": {
+   "bytes": 53645312,
+   "sha256": "1f1fde1c445db0fdf79b6e32e42517c1f7871f2d89766eb22f4cb429709b00bd"
+  },
+  "map_builtup_mask.4326.geojson": {
+   "bytes": 51877043,
+   "sha256": "15e8e80117552773b72ff0a04a56df19ec8987faf2a17bf8ae8358e3f5b62eea"
+  },
+  "map_builtup_mask.gpkg": {
+   "bytes": 33775616,
+   "sha256": "5f5120e77800ae11dfe63864e6f884b9b62fef91e1b083ca3560d8b4854a2240"
+  }
+ }
+}

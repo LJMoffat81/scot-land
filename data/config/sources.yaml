@@ -608,6 +608,44 @@ nrs_settlements_localities:
     - Localities are not a land-ownership or title product
     - Small rural clusters below the settlement threshold are not drawn
     - Population counts are Census 2022 figures, not a land rent
+
+map_builtup_mask:
+  name: Built-up display mask (UX10-2)
+  role: map_display_mask_dz2022_only
+  licence: OGL-3.0
+  attribution: NRS Settlements 2022 (OGL v3), contains OS data
+  attribution_long: >-
+    Contains NRS data © Crown copyright and database right 2026.
+    Contains OS data © Crown copyright and database right 2026.
+    Contains public sector information licensed under the Open Government
+    Licence v3.0.
+  source_url: https://www.nrscotland.gov.uk/statistics-and-data/geography
+  vintage: Census 2022
+  ingest: >-
+    python -m etl.ingest_builtup_mask --replace
+    (or BUILTUP_MASK_DIR=… / --fixture in CI)
+  raw_dir: data/external/builtup
+  env_dir: BUILTUP_MASK_DIR
+  refresh_doc: scripts/data/README-builtup-mask.md
+  build_script: scripts/data/builtup-mask/build_builtup_mask.py
+  qa: scripts/data/builtup-mask/qa_builtup_mask.json
+  layers:
+    builtup_mask:
+      name: National built-up display mask
+      product: map_builtup_mask
+      postgis_table: map_builtup_mask
+      bbox_endpoint: /layers/open/builtup-mask
+      tile_endpoint: /layers/open/builtup-mask/tiles/{z}/{x}/{y}
+    dz2022_masked:
+      name: Data Zone 2022 ∩ built-up mask
+      product: dz2022_masked
+      postgis_table: dz2022_masked
+      bbox_endpoint: /layers/open/dz2022-masked
+      tile_endpoint: /layers/open/dz2022-masked/tiles/{z}/{x}/{y}
+  gaps:
+    - Display mask only — never changes Annual Ground Rent or any figure
+    - Does not include parcel or title polygons
+    - Full GeoJSON/GPKG (~50–75 MB) are not committed; mount via BUILTUP_MASK_DIR
 repd:
   name: Renewable Energy Planning Database (REPD)
   role: renewable_planning_sites_overlay

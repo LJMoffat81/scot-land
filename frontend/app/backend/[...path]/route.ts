@@ -29,6 +29,12 @@ function visitorAddress(request: Request): string {
   return own || "unknown";
 }
 
+const GBP_LIVE_FLAG_OFF = {
+  enabled: false,
+  banner: null,
+  yield_wording: null,
+} as const;
+
 async function proxy(request: Request, context: Ctx): Promise<Response> {
   try {
     const { path } = await context.params;
@@ -38,6 +44,30 @@ async function proxy(request: Request, context: Ctx): Promise<Response> {
     }
 
     const joined = segments.map(encodeURIComponent).join("/");
+    // GBP-LIVE-V1: flag-off probe must never 404/503 — public £ stays hidden.
+    if (joined === "platform/gbp-live" && request.method === "GET") {
+      try {
+        const upstream = await fetch(`${apiOrigin()}/platform/gbp-live`, {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          signal: AbortSignal.timeout(5_000),
+          cache: "no-store",
+        });
+        if (!upstream.ok) {
+          return Response.json(GBP_LIVE_FLAG_OFF, { status: 200 });
+        }
+        const buf = await upstream.arrayBuffer();
+        return new Response(buf, {
+          status: 200,
+          headers: {
+            "Content-Type":
+              upstream.headers.get("Content-Type") || "application/json",
+          },
+        });
+      } catch {
+        return Response.json(GBP_LIVE_FLAG_OFF, { status: 200 });
+      }
+    }
     const incoming = new URL(request.url);
     const target = `${apiOrigin()}/${joined}${incoming.search}`;
 

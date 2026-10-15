@@ -74,6 +74,19 @@ assert.equal(formatted.range, "\u00a36,000\u2013\u00a318,000");
   assert.match(banner, /GBP_LIVE_EARLY_BANNER/);
 }
 
+// Flag-off probe always HTTP 200 (never 404) via same-origin /api/gbp-live
+{
+  const probe = readSrc("app/api/gbp-live/route.ts");
+  assert.match(probe, /enabled:\s*false/);
+  assert.match(probe, /status:\s*200/);
+  assert.match(probe, /platform\/gbp-live/);
+  const client = readSrc("lib/gbpLive.ts");
+  assert.match(client, /\/api\/gbp-live/);
+  const proxy = readSrc("app/backend/[...path]/route.ts");
+  assert.match(proxy, /platform\/gbp-live/);
+  assert.match(proxy, /GBP_LIVE_FLAG_OFF/);
+}
+
 // Rank band stays OFF; pre-£ copy preserved for flag-off path
 {
   const placeCard = readSrc("lib/placeCard.ts");

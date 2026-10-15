@@ -66,25 +66,35 @@ export function clearGbpLiveSettingsCache(): void {
   _inflight = null;
 }
 
-/** Fetch public GBP-LIVE settings (cached). Default OFF on failure. */
+/**
+ * Fetch public GBP-LIVE settings (cached).
+ * Uses same-origin ``/api/gbp-live`` which always returns HTTP 200
+ * (``enabled: false`` when the backend flag is off or unreachable) so e2e
+ * console/404 traps never see a failed ``/backend/platform/gbp-live`` probe.
+ */
 export async function fetchGbpLiveSettings(): Promise<GbpLiveSettings> {
   if (_cached) return _cached;
   if (_inflight) return _inflight;
-  _inflight = import("./api")
-    .then(({ apiJson }) => apiJson<GbpLiveSettings>("/platform/gbp-live"))
-    .then((body) => {
-      const settings: GbpLiveSettings = {
+  _inflight = fetch("/api/gbp-live", {
+    method: "GET",
+    headers: { Accept: "application/json" },
+    cache: "no-store",
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        return { enabled: false } satisfies GbpLiveSettings;
+      }
+      const body = (await res.json()) as GbpLiveSettings;
+      return {
         enabled: Boolean(body?.enabled),
         banner: body?.banner ?? null,
         yield_wording: body?.yield_wording ?? null,
-      };
+      } satisfies GbpLiveSettings;
+    })
+    .catch(() => ({ enabled: false }) satisfies GbpLiveSettings)
+    .then((settings) => {
       _cached = settings;
       return settings;
-    })
-    .catch(() => {
-      const fallback: GbpLiveSettings = { enabled: false };
-      _cached = fallback;
-      return fallback;
     })
     .finally(() => {
       _inflight = null;

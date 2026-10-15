@@ -108,19 +108,26 @@ async function stubShell(page: Page, place: Record<string, unknown>, gbpLiveEnab
       body: JSON.stringify(HEALTH_OK),
     });
   });
-  await page.route("**/platform/gbp-live", async (route) => {
+  const gbpLiveBody = gbpLiveEnabled
+    ? {
+        enabled: true,
+        banner: "Early estimates; ranges are wide and will change.",
+        yield_wording: "up to 4.5%",
+      }
+    : { enabled: false, banner: null, yield_wording: null };
+  // Same-origin probe + backend path both return 200 (never 404 when flag off).
+  await page.route("**/api/gbp-live**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(
-        gbpLiveEnabled
-          ? {
-              enabled: true,
-              banner: "Early estimates; ranges are wide and will change.",
-              yield_wording: "up to 4.5%",
-            }
-          : { enabled: false, banner: null, yield_wording: null },
-      ),
+      body: JSON.stringify(gbpLiveBody),
+    });
+  });
+  await page.route("**/platform/gbp-live**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(gbpLiveBody),
     });
   });
   await page.route("**/platform/place**", async (route) => {

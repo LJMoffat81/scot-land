@@ -8,8 +8,7 @@ Plain-English queue for maintainers (Laurie and agents). Update this file in eac
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| FILL-POOLED | Run DZ2011/DZ2022 empty-zone fill on **pooled** inputs (fill after pooling); entrypoint + stamp + post-pooling 129 gate | this PR | In progress — backend Track A; parallel with UI track |
-| SW-036 v2 | Desktop layout (≥1024): place card left, Layers right, legend pill below the card | [#139](https://github.com/LJMoffat81/scot-land/pull/139) | Draft (UI track); then GBP-LIVE-V1 → SW-045 → SW-044; one PR only |
+| SW-036 v2 | Desktop layout (≥1024): place card left, Layers right, legend pill below the card | [#139](https://github.com/LJMoffat81/scot-land/pull/139) | Tip `fa3488d` — CI green; ready for review (not merged) |
 
 ## Next up (in order)
 
@@ -36,6 +35,7 @@ Newest first.
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
+| FILL-POOLED | Run DZ2011/DZ2022 empty-zone fill on pooled inputs (target 129) | [#141](https://github.com/LJMoffat81/scot-land/pull/141) | Merged |
 | NEIGHBOURS-2022 | Council neighbours CSV at `data/reference/council_neighbours_2022.csv` (reason column + invariants) | [#140](https://github.com/LJMoffat81/scot-land/pull/140) | Merged (`d49651a`) |
 | SW/UX e2e auto-discovery | Playwright CI auto-discovers specs under `e2e/ci/` | [#138](https://github.com/LJMoffat81/scot-land/pull/138) | Merged (`cec7e41`) |
 | UX-01 | Mobile tap targets ≥44×44 | [#136](https://github.com/LJMoffat81/scot-land/pull/136) | Merged |

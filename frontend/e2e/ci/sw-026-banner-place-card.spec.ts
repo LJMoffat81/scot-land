@@ -209,10 +209,10 @@ for (const vp of VIEWPORTS) {
         boxesOverlap(bannerBox!, cardBox!),
         `banner and place card must not overlap at ${vp.name}: banner=${JSON.stringify(bannerBox)} card=${JSON.stringify(cardBox)}`,
       ).toBe(false);
-      // Spec fix: ≥16px clearance between banner right and card left.
+      // SW-036: card is left panel; ≥16px clearance between card right and banner left.
       expect(
-        cardBox!.x - (bannerBox!.x + bannerBox!.width),
-        `banner→card gap at ${vp.name}`,
+        bannerBox!.x - (cardBox!.x + cardBox!.width),
+        `card→banner gap at ${vp.name}`,
       ).toBeGreaterThanOrEqual(16);
 
       await assertFullyVisible(banner, "research banner");

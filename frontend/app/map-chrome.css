@@ -186,17 +186,22 @@
 }
 
 /*
- * SW-026: while the place card is open on desktop (≥1024), the research
- * banner must stop ≥16px short of the card’s left edge (never cover it).
- * Card width/right match globals `.hud-place`. Closed → default centred layout.
+ * SW-026 + SW-036 v2: place card is the left panel (≥1024). Research banner
+ * sits in the remaining strip to the right of the card (≥16px gap). Closed →
+ * default centred layout.
  */
 @media (min-width: 1024px) {
   .app-shell.place-open .research-banner-map {
-    left: 1rem;
-    right: calc(min(360px, calc(100vw - 2rem)) + 1.1rem + 1rem);
+    left: calc(min(360px, calc(100vw - 2rem)) + 1.1rem + 1rem);
+    right: 1rem;
     transform: none;
     width: auto;
     max-width: none;
+  }
+
+  /* Banner strip stays between left card and right Layers drawer. */
+  .app-shell.place-open.tools-open .research-banner-map {
+    right: calc(min(332px, calc(100vw - 2rem)) + 1.1rem + 1rem);
   }
 }
 
@@ -208,10 +213,11 @@
 }
 
 /*
- * SW-023: desktop place card must leave the bottom-right chrome clear
+ * SW-023: mid-desktop place card (901–1023) leaves bottom-right chrome clear
  * (basemap tile beside zoom, zoom +/- , attribution (i)).
+ * ≥1024 uses SW-036 left-panel clearance (end of this file).
  */
-@media (min-width: 901px) {
+@media (min-width: 901px) and (max-width: 1023px) {
   .app-shell.place-open .hud-place.place-card,
   .app-shell.place-open .place-card-stub {
     bottom: 9rem;
@@ -480,5 +486,77 @@
   .app-shell.place-open .hud-place.place-card,
   .app-shell.place-open .place-card-stub {
     right: 5.35rem;
+  }
+}
+
+/*
+ * SW-036 v2 — desktop (≥1024): place card left panel; Layers stays right;
+ * legend collapses to a pill below the card; basemap/zoom shift when drawer open.
+ * Mobile (≤900) and mid (901–1023) layouts are unchanged. Last in this file so
+ * it wins over earlier ≥901 place-card chrome rules.
+ */
+@media (min-width: 1024px) {
+  .app-shell.place-open .hud-place.place-card,
+  .app-shell.place-open .place-card-stub {
+    left: 1.1rem;
+    right: auto;
+    top: calc(var(--hud-height, 6.5rem) + 0.45rem);
+    width: min(360px, calc(100vw - 2rem));
+    /* Cap so the Legend pill at bottom-left always shows below the card. */
+    bottom: 4.5rem;
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  /* Sea / search miss still hug content (UX-05 / SW-028). */
+  .app-shell.place-open .hud-place.place-card.place-card-sea-miss,
+  .app-shell.place-open .hud-place.place-card.place-card-search-miss,
+  .app-shell.place-open .place-card-stub.place-card-sea-miss,
+  .app-shell.place-open .place-card-stub.place-card-search-miss {
+    bottom: auto;
+    height: auto;
+    max-height: calc(
+      100% - var(--hud-height, 6.5rem) - 0.45rem - 4.5rem
+    );
+    overflow: visible;
+  }
+
+  /*
+   * Legend overlay open: shrink the card so the expanded legend fits below
+   * without covering the card.
+   */
+  .app-shell.place-open:has(.hud-scotland.legend-open)
+    .hud-place.place-card:not(.place-card-sea-miss):not(.place-card-search-miss),
+  .app-shell.place-open:has(.hud-scotland.legend-open)
+    .place-card-stub:not(.place-card-sea-miss):not(.place-card-search-miss) {
+    bottom: min(48vh, 20rem);
+  }
+
+  /* Legend pill / overlay stays bottom-left under the left card column. */
+  .app-shell.place-open .hud-scotland {
+    left: 1.1rem;
+    right: auto;
+    bottom: 1.25rem;
+    width: min(360px, calc(100vw - 2rem));
+    z-index: 5;
+  }
+
+  /* Basemap + MapLibre zoom/attrib: shift left while Layers drawer is open. */
+  .app-shell.tools-open .basemap-switcher {
+    right: calc(
+      3.15rem + min(332px, calc(100vw - 2rem)) + 1.1rem + 0.5rem
+    );
+  }
+
+  .app-shell.tools-open .map-stage .maplibregl-ctrl-bottom-right {
+    right: calc(min(332px, calc(100vw - 2rem)) + 1.1rem + 0.5rem);
+  }
+
+  /* Keep the right drawer within the map stage so it cannot paint over chrome. */
+  .app-shell.tools-open .hud-tools {
+    max-height: calc(100% - 8.5rem);
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 }

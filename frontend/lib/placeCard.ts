@@ -62,10 +62,6 @@ export const PLACE_CARD_NO_MATCH =
 export const PLACE_CARD_FULLY_ESTIMATED =
   "Mostly worked out from nearby areas: treat as a rough guide";
 
-/** RoS multi-year pool window used for the sales line until card payload overrides. */
-export const PLACE_CARD_SALES_YEAR_FROM = 2019;
-export const PLACE_CARD_SALES_YEAR_TO = 2023;
-
 /** Unit rule (v1): zones with fewer than this many dwellings are N/A, never 0. */
 export const PLACE_CARD_MIN_DWELLINGS_TYPICAL = 20;
 
@@ -345,8 +341,8 @@ export function placeClassChip(
 }
 
 /**
- * Unit rule (v1): ≥20 dwellings → typical home; &lt;20 (incl. 0) → too few / no homes.
- * Never present a 0 figure.
+ * Unit rule (v1): ≥20 dwellings → typical home; &lt;20 (incl. 0) → too few homes.
+ * Never present a 0 figure. Explicit `card_state: "no_homes"` stays a separate path.
  */
 export function placeUnitKind(
   dwellings: number | null | undefined,
@@ -354,22 +350,31 @@ export function placeUnitKind(
   if (dwellings == null || !Number.isFinite(dwellings)) {
     return "typical_home";
   }
-  if (dwellings <= 0) {
-    return "no_homes";
-  }
   if (dwellings < PLACE_CARD_MIN_DWELLINGS_TYPICAL) {
     return "too_few_homes";
   }
   return "typical_home";
 }
 
+/**
+ * Sales-basis line (item 5) — only when the API sends all three fields.
+ * No Medium / year-window defaults; missing fields hide the line.
+ */
 export function placeSalesBasisLine(
-  from: number = PLACE_CARD_SALES_YEAR_FROM,
-  to: number = PLACE_CARD_SALES_YEAR_TO,
-  confidence: PlaceCardConfidence | null = "Medium",
-): string {
-  const sure = confidence ?? "Medium";
-  return `Based on local home sales (${from}–${to}). How sure we are: ${sure}`;
+  from: number | null | undefined,
+  to: number | null | undefined,
+  confidence: PlaceCardConfidence | null | undefined,
+): string | null {
+  if (
+    from == null ||
+    to == null ||
+    !Number.isFinite(from) ||
+    !Number.isFinite(to) ||
+    confidence == null
+  ) {
+    return null;
+  }
+  return `Based on local home sales (${from}–${to}). How sure we are: ${confidence}`;
 }
 
 /** Value classes that may apply — plain words; no £. */
@@ -434,8 +439,9 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
   },
   square_reference: scotLandSquareReference(55.8642, -4.2518),
   dwellings: 410,
-  sales_year_from: PLACE_CARD_SALES_YEAR_FROM,
-  sales_year_to: PLACE_CARD_SALES_YEAR_TO,
+  // Demo fixture only — public API must send these; sanitize does not invent them.
+  sales_year_from: 2019,
+  sales_year_to: 2023,
   confidence: "Medium",
   agr_rows: defaultAgrRows(),
   constraints: [
@@ -555,7 +561,7 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
     },
     {
       id: "methodology",
-      label: PLACE_CARD_HOW_WE_VALUE_LABEL,
+      label: PLACE_CARD_HOW_WE_WORK_LABEL,
       url: "/methodology",
     },
   ],
@@ -717,9 +723,10 @@ export function sanitizePlaceCard(payload: PlaceCardPayload): PlaceCardPayload {
     constraints,
     holder: deriveHolder(rest),
     intermediate_zone,
-    sales_year_from: rest.sales_year_from ?? PLACE_CARD_SALES_YEAR_FROM,
-    sales_year_to: rest.sales_year_to ?? PLACE_CARD_SALES_YEAR_TO,
-    confidence: rest.confidence ?? "Medium",
+    // Pass through only — never invent sales years or confidence.
+    sales_year_from: rest.sales_year_from ?? null,
+    sales_year_to: rest.sales_year_to ?? null,
+    confidence: rest.confidence ?? null,
     fully_estimated: Boolean(rest.fully_estimated),
   };
 }

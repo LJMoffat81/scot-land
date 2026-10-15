@@ -37,13 +37,14 @@ test.describe("place card (internal preview)", () => {
     await expect(page.getByTestId("place-card-range-surface")).toHaveText(
       "not yet estimated",
     );
-    await expect(page.getByTestId("place-tag-shadow")).toHaveText("Estimate");
+    await expect(page.getByTestId("place-tag-estimate")).toHaveText("Estimate");
     await expect(page.getByTestId("place-card-parts-note")).toContainText(
       "These are worked out differently, so we don't add them up.",
     );
 
-    const how = page.getByTestId("place-card-how-we-work");
-    await how.locator("summary").click();
+    const howLink = page.getByTestId("place-card-methodology-link");
+    await expect(howLink).toHaveText("How we work this out");
+    await expect(howLink).toHaveAttribute("href", "/methodology");
     await expect(page.getByTestId("place-card-how-homes-only")).toContainText(
       "Shops, offices and industrial land aren't included yet.",
     );
@@ -52,5 +53,7 @@ test.describe("place card (internal preview)", () => {
     await expect(card).not.toContainText(/£\d/);
     await expect(card).not.toContainText(/what3words/i);
     await expect(card).not.toContainText(/Estimate \(no market price\)/);
+    await expect(card).not.toContainText(/ECONOMIC_RULES|NESTED|REPORTED/i);
+    expect(await card.innerHTML()).not.toMatch(/\bshadow\b/i);
   });
 });

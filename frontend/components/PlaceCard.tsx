@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import {
   PLACE_CARD_AGR_LABEL,
   PLACE_CARD_AGR_SUBTITLE,
@@ -50,10 +52,78 @@ export type PlaceCardProps = {
   noMatch?: boolean;
 };
 
-function ClassChip({ tag }: { tag: PlaceRentTag }) {
+/** Suggestion 31 — fold the Sasine / no-outline explanation behind a short control. */
+const WHY_NO_OUTLINE_LABEL = "Why no outline?";
+const NO_OUTLINE_STATUS_LINE = "No registered outline at this point";
+
+/**
+ * Survive PlaceCard body remounts (loading flicker / stub→card swap) so the
+ * open/closed choice is not lost mid-toggle under CI timing.
+ */
+const whyNoOutlineExpandedByNote = new Map<string, boolean>();
+
+function WhyNoOutlineBlock({ note }: { note: string }) {
+  const [expanded, setExpanded] = useState(
+    () => whyNoOutlineExpandedByNote.get(note) ?? false,
+  );
+
   return (
-    <span className={`place-tag tone-${tag}`} data-testid={`place-tag-${tag}`}>
-      {placeClassChip(tag)}
+    <div className="place-card-why-no-outline" data-testid="place-card-why-no-outline">
+      <p className="place-card-meta place-card-outline-status-row">
+        <span data-testid="place-card-outline-status">{NO_OUTLINE_STATUS_LINE}</span>{" "}
+        <button
+          type="button"
+          className="place-card-why-no-outline-btn"
+          data-testid="place-card-why-no-outline-btn"
+          aria-expanded={expanded}
+          onClick={() => {
+            // Write the Map before setState so a remount mid-click still
+            // rehydrates the intended open/closed value.
+            const next = !(whyNoOutlineExpandedByNote.get(note) ?? expanded);
+            whyNoOutlineExpandedByNote.set(note, next);
+            setExpanded(next);
+          }}
+        >
+          {WHY_NO_OUTLINE_LABEL}
+        </button>
+      </p>
+      {expanded ? (
+        <p
+          className="place-card-meta place-card-why-no-outline-detail"
+          data-testid="place-card-why-no-outline-detail"
+        >
+          {note}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** Visitor-safe CSS tone — never emit the raw API class string `shadow` in HTML. */
+function placeTagTone(tag: PlaceRentTag): "market" | "proxy" | "estimate" {
+  switch (tag) {
+    case "market":
+      return "market";
+    case "proxy":
+      return "proxy";
+    case "shadow":
+      return "estimate";
+    default: {
+      const _exhaustive: never = tag;
+      return _exhaustive;
+    }
+  }
+}
+
+function ClassChip({ tag }: { tag: PlaceRentTag }) {
+  const tone = placeTagTone(tag);
+  const label = placeClassChip(tag);
+  return (
+    <span
+      className={`place-tag tone-${tone}`}
+      data-testid={`place-tag-${tone}`}
+    >
+      {label}
     </span>
   );
 }
@@ -76,6 +146,7 @@ function figureCopy(unit: PlaceUnitKind): string {
 
 function PartRow({ row }: { row: PlaceAgrRow }) {
   const classTag = (row.class ?? row.tag) as PlaceRentTag;
+  const tone = placeTagTone(classTag);
   return (
     <li
       className="place-agr-row"
@@ -84,7 +155,7 @@ function PartRow({ row }: { row: PlaceAgrRow }) {
       data-unit={row.unit ?? ""}
       data-confidence={row.confidence ?? ""}
       data-method={row.method ?? ""}
-      data-class={classTag}
+      data-class={tone}
     >
       <div className="place-agr-row-main">
         <span className="place-agr-label">{row.label}</span>
@@ -147,13 +218,29 @@ export function PlaceCard({
         ? card.dwellings
         : null;
   const unit = placeUnitKind(dwellingCount);
-  const noHomes =
-    unit === "no_homes" ||
-    card?.card_state === "no_homes" ||
-    (card?.flags || []).includes("zero_dwellings");
-  const unitEffective: PlaceUnitKind = noHomes ? "no_homes" : unit;
+  // Explicit API state only — dwellings ≤ 0 uses too_few_homes via placeUnitKind.
+  const unitEffective: PlaceUnitKind =
+    card?.card_state === "no_homes" ? "no_homes" : unit;
   const fullyEstimated = Boolean(card?.fully_estimated);
   const valueRows = (card?.agr_rows || []).filter((row) => row.applies !== false);
+  const salesBasis = placeSalesBasisLine(
+    card?.sales_year_from,
+    card?.sales_year_to,
+    card?.confidence,
+  );
+
+  const landOutline = card?.land_outline ?? null;
+  const outlineStatus =
+    landOutline?.status || card?.land_register_outline?.status;
+  const outlineNote =
+    landOutline?.note || card?.land_register_outline?.note || null;
+  const outlineArea =
+    typeof landOutline?.area_sqm === "number" && Number.isFinite(landOutline.area_sqm)
+      ? landOutline.area_sqm
+      : typeof card?.parcel?.area_sqm === "number" &&
+          Number.isFinite(card.parcel.area_sqm)
+        ? card.parcel.area_sqm
+        : null;
 
   const placeName =
     card?.place_label?.trim() ||
@@ -321,16 +408,12 @@ export function PlaceCard({
               </p>
             </section>
 
-            {unitEffective === "typical_home" && !fullyEstimated ? (
+            {unitEffective === "typical_home" && !fullyEstimated && salesBasis ? (
               <p
                 className="place-card-sales-basis"
                 data-testid="place-card-sales-basis"
               >
-                {placeSalesBasisLine(
-                  card.sales_year_from ?? undefined,
-                  card.sales_year_to ?? undefined,
-                  card.confidence ?? "Medium",
-                )}
+                {salesBasis}
               </p>
             ) : null}
 
@@ -366,25 +449,57 @@ export function PlaceCard({
               </p>
             </details>
 
-            <details
-              className="place-card-how"
-              data-testid="place-card-how-we-work"
-            >
-              <summary className="place-card-how-summary">
+            {(outlineStatus || outlineArea != null || outlineNote) && (
+              <section
+                className="place-card-land-outline"
+                aria-label="Land outline"
+                data-testid="place-card-land-outline"
+              >
+                <h3 className="place-card-section">Land outline</h3>
+                {outlineStatus === "no_outline" && outlineNote ? (
+                  <WhyNoOutlineBlock note={outlineNote} />
+                ) : (
+                  <>
+                    {outlineStatus ? (
+                      <p
+                        className="place-card-meta"
+                        data-testid="place-card-outline-status"
+                      >
+                        {outlineStatus === "inside_outline"
+                          ? "Inside a registered land outline"
+                          : outlineStatus === "no_outline"
+                            ? NO_OUTLINE_STATUS_LINE
+                            : outlineStatus}
+                      </p>
+                    ) : null}
+                    {outlineNote ? (
+                      <p className="place-card-meta">{outlineNote}</p>
+                    ) : null}
+                  </>
+                )}
+                {outlineArea != null ? (
+                  <p className="place-card-meta" data-testid="place-card-outline-area">
+                    About {Math.round(outlineArea).toLocaleString("en-GB")} m²
+                  </p>
+                ) : null}
+              </section>
+            )}
+
+            <div className="place-card-how" data-testid="place-card-how-we-work">
+              <a
+                href="/methodology"
+                className="place-card-how-link"
+                data-testid="place-card-methodology-link"
+              >
                 {PLACE_CARD_HOW_WE_WORK_LABEL}
-              </summary>
+              </a>
               <p
                 className="place-card-how-homes"
                 data-testid="place-card-how-homes-only"
               >
                 {PLACE_CARD_HOW_WE_WORK_HOMES}
               </p>
-              <p className="place-card-meta">
-                <a href="/methodology#glossary" data-testid="place-card-methodology-link">
-                  More on /methodology
-                </a>
-              </p>
-            </details>
+            </div>
           </div>
 
           <p

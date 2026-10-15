@@ -15,6 +15,7 @@ const AGR = "Annual Ground Rent";
 const COVERS = "Covers land under homes only.";
 const HOW_HOMES =
   "This covers land under homes only. Shops, offices and industrial land aren't included yet.";
+const HOW_LINK = "How we work this out";
 const PARTS_NOTE =
   "These are worked out differently, so we don't add them up.";
 const FACT =
@@ -236,19 +237,27 @@ async function assertSkeletonCopy(page: Page) {
   await expect(page.getByTestId("place-card-of-which-planning_uplift")).toContainText(
     "of which: planning uplift",
   );
-  await expect(page.getByTestId("place-tag-shadow")).toHaveText("Estimate");
+  await expect(page.getByTestId("place-tag-estimate")).toHaveText("Estimate");
   await expect(page.getByTestId("place-card-parts-note")).toHaveText(PARTS_NOTE);
 
-  const how = page.getByTestId("place-card-how-we-work");
-  await how.locator("summary").click();
+  const howLink = page.getByTestId("place-card-methodology-link");
+  await expect(howLink).toHaveText(HOW_LINK);
+  await expect(howLink).toHaveAttribute("href", "/methodology");
   await expect(page.getByTestId("place-card-how-homes-only")).toHaveText(
     HOW_HOMES,
+  );
+  await expect(page.getByTestId("place-card-how-we-work").locator("summary")).toHaveCount(
+    0,
   );
 
   await expect(card).not.toContainText("£");
   await expect(card).not.toContainText(/Land Value Tax|\bLVT\b/);
   await expect(card).not.toContainText(/Estimate \(no market price\)/);
   await expect(card).not.toContainText(/rank|out of 10 neighbourhoods/i);
+  await expect(card).not.toContainText(/ECONOMIC_RULES|NESTED|REPORTED/i);
+  // Raw API class string must not appear in rendered HTML (chip is Estimate).
+  const cardHtml = await card.innerHTML();
+  expect(cardHtml).not.toMatch(/\bshadow\b/i);
 
   await expect(page.getByTestId("research-banner")).toHaveCount(1);
 }
@@ -294,15 +303,42 @@ test.describe("UX10-1 place card desktop 1280", () => {
     assertConsoleClean(gate);
   });
 
-  test("no homes is not applicable, never 0", async ({ page }) => {
+  test("dwellings <= 0 is too few homes, never 0", async ({ page }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
     await stubMapChrome(page, placeFixture({ dwellings: 0 }));
     await openPlaceViaCoords(page);
     await expect(page.getByTestId("place-card-figure")).toHaveText(
+      "Too few homes here for a typical figure.",
+    );
+    await expect(page.getByTestId("place-card")).not.toContainText(
       "No homes here, so not applicable",
     );
     await expect(page.getByTestId("place-card")).not.toContainText("£0");
+    assertConsoleClean(gate);
+  });
+
+  test("sales basis line hidden when API omits sales years or confidence", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    const gate = attachConsoleGate(page);
+    await stubMapChrome(
+      page,
+      placeFixture({
+        sales_year_from: null,
+        sales_year_to: null,
+        confidence: null,
+      }),
+    );
+    await openPlaceViaCoords(page);
+    await expect(page.getByTestId("place-card-sales-basis")).toHaveCount(0);
+    await expect(page.getByTestId("place-card")).not.toContainText(
+      "Based on local home sales",
+    );
+    await expect(page.getByTestId("place-card")).not.toContainText(
+      "How sure we are",
+    );
     assertConsoleClean(gate);
   });
 
@@ -320,6 +356,43 @@ test.describe("UX10-1 place card desktop 1280", () => {
     await expect(page.getByTestId("place-card-fully-estimated")).toHaveAttribute(
       "data-wider-band",
       "true",
+    );
+    assertConsoleClean(gate);
+  });
+
+  test("Why no outline? folds Sasine note", async ({ page }) => {
+    test.setTimeout(90_000);
+    const gate = attachConsoleGate(page);
+    const note =
+      "We found no Land Register boundary at this point. Its title may still be in " +
+      "the older Sasine register, or the land may not be registered at all. We estimate " +
+      "it by area and land type, and show no boundaries, titles or owners.";
+    await stubMapChrome(
+      page,
+      placeFixture({
+        land_register_outline: { status: "no_outline", note },
+        land_outline: {
+          status: "no_outline",
+          label: "Land outline",
+          area_sqm: null,
+          note,
+        },
+      }),
+    );
+    await openPlaceViaCoords(page);
+    await expect(page.getByTestId("place-card-outline-status")).toHaveText(
+      "No registered outline at this point",
+    );
+    const btn = page.getByTestId("place-card-why-no-outline-btn");
+    await expect(btn).toHaveText("Why no outline?");
+    await expect(btn).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByTestId("place-card-why-no-outline-detail")).toHaveCount(
+      0,
+    );
+    await btn.click();
+    await expect(btn).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByTestId("place-card-why-no-outline-detail")).toHaveText(
+      note,
     );
     assertConsoleClean(gate);
   });
@@ -350,6 +423,9 @@ test.describe("UX10-1 place card mobile 390", () => {
 
     await expect(page.getByTestId("research-banner")).toHaveCount(1);
     await expect(page.getByTestId("place-card")).not.toContainText("£");
+    await expect(page.getByTestId("place-card")).not.toContainText(
+      /ECONOMIC_RULES|NESTED|REPORTED/i,
+    );
     assertConsoleClean(gate);
   });
 });

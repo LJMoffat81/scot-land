@@ -405,16 +405,14 @@ input {
   min-height: 0;
 }
 
-.place-card-parts,
-.place-card-how {
+.place-card-parts {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0.35rem 0.65rem 0.55rem;
   background: #fff;
 }
 
-.place-card-parts-summary,
-.place-card-how-summary {
+.place-card-parts-summary {
   cursor: pointer;
   font-weight: 650;
   color: var(--slrg-navy);
@@ -424,9 +422,65 @@ input {
   align-items: center;
 }
 
-.place-card-parts-summary::-webkit-details-marker,
-.place-card-how-summary::-webkit-details-marker {
+.place-card-parts-summary::-webkit-details-marker {
   display: none;
+}
+
+.place-card-how {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.15rem 0 0;
+}
+
+.place-card-how-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 650;
+  color: var(--slrg-navy);
+  text-decoration: underline;
+}
+
+.place-card-why-no-outline {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  margin: 0;
+}
+
+.place-card-outline-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.55rem;
+  margin: 0;
+}
+
+.place-card-why-no-outline-btn {
+  display: inline-block;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--slrg-navy);
+  font: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.place-card-why-no-outline-btn:hover,
+.place-card-why-no-outline-btn:focus-visible {
+  color: var(--rugby-navy, var(--slrg-navy));
+}
+
+.place-card-why-no-outline-detail {
+  margin: 0;
 }
 
 .place-card-part-range {
@@ -782,7 +836,8 @@ input {
   );
 }
 
-.place-tag.tone-shadow {
+/* Visitor tone — API class `shadow` maps to Estimate; never emit "shadow" in HTML. */
+.place-tag.tone-estimate {
   background: transparent;
   color: #166534;
   border: 2px solid #16a34a;

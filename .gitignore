@@ -111,3 +111,6 @@ data/**/*postcode*
 data/**/*uprn*
 data/**/*udprn*
 *.ingest.json
+
+# Local valuation data mounts (never commit)
+scotland-rules/

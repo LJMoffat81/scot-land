@@ -168,7 +168,7 @@ assert.match(layout, /validatorUrl:null/);
 assert.match(layout, /SwaggerUIBundle/);
 assert.match(layout, /map-chrome\.css/);
 
-// —— Item 7: drawer licences never research-estimate ——
+// —— Item 7 / SW-044: drawer has no Licence lines; (i) → /data; helper stays honest ——
 const {
   mapDrawerLicenceDisplay,
 } = await import(
@@ -188,12 +188,20 @@ for (const layer of MAP_DRAWER_LAYERS) {
   assert.doesNotMatch(
     display.label,
     /research\s*estimate/i,
-    `drawer licence for ${layer.id} must not be research-estimate text`,
+    `licence helper for ${layer.id} must not be research-estimate text`,
   );
 }
 
 const drawer = readSrc("components/MapLayersDrawer.tsx");
-assert.match(drawer, /mapDrawerLicenceDisplay/);
+// SW-044: licences live in map (i) and /data — not as Licence: rows in the drawer.
+assert.doesNotMatch(drawer, /mapDrawerLicenceDisplay/);
+assert.doesNotMatch(drawer, /Licence:\s*/);
+assert.doesNotMatch(
+  drawer,
+  /Figures for land value are being checked/,
+);
+assert.match(drawer, /layer-info-\$\{layer\.id\}/);
+assert.match(drawer, /\/data#\$\{encodeURIComponent\(layer\.id\)\}/);
 
 // —— Built HTML (when present) ——
 const htmlFiles = walkHtml(join(frontendRoot, ".next/server"));

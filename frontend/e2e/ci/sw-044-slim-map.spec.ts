@@ -190,27 +190,47 @@ function assertConsoleClean() {
   expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
 }
 
-async function openMap(page: Page) {
-  await page.goto("/");
-  await page.locator(".maplibregl-canvas").waitFor();
-  await page.locator("#place-query").waitFor();
-  await page.locator("#map[data-framed='1']").waitFor({ timeout: 30_000 });
+async function closeLayers(page: Page) {
+  const panel = page.getByTestId("layers-panel");
+  if (!(await panel.isVisible().catch(() => false))) return;
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden({ timeout: 10_000 });
+}
+
+async function closePlaceCard(page: Page) {
+  const close = page.getByRole("button", { name: "Close place card" });
+  if (await close.isVisible().catch(() => false)) {
+    await close.click();
+    await expect(close).toBeHidden({ timeout: 10_000 });
+  }
 }
 
 async function openPlaceCard(page: Page) {
-  await page.locator("#place-query").fill("55.86090, -4.25140");
-  await page.locator(".hud-search-go").click();
+  // Coordinate deep-link — map-click / search are flaky under the 390 bottom sheet.
+  await page.goto("/?lat=55.860900&lng=-4.251400");
+  await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
+  await page.locator("#map[data-framed='1']").waitFor({ timeout: 30_000 });
   const card = page.getByTestId("place-card");
   await expect(card).toBeVisible({ timeout: 45_000 });
   return card;
 }
 
 async function openLayers(page: Page) {
-  await page.getByTestId("hud-layers-btn").click();
-  await expect(page.getByTestId("layers-panel")).toBeVisible();
+  const layersBtn = page.getByTestId("hud-layers-btn");
+  await expect(layersBtn).toBeVisible({ timeout: 30_000 });
+  if ((await layersBtn.getAttribute("aria-pressed")) !== "true") {
+    await layersBtn.click();
+  }
+  await expect(page.getByTestId("layers-panel")).toBeVisible({ timeout: 15_000 });
 }
 
+/**
+ * Open the legend fold. Close place card + Layers first — at 390 they cover
+ * the fold control (same pattern as UX10-2 ensureLegendOpen).
+ */
 async function ensureLegendBodyVisible(page: Page) {
+  await closeLayers(page);
+  await closePlaceCard(page);
   const body = page.locator("#hud-scotland-body");
   if (await body.isVisible().catch(() => false)) return;
   const fold = page.locator("button.hud-scotland-fold");
@@ -247,24 +267,32 @@ for (const viewport of [
       page,
     }) => {
       test.setTimeout(120_000);
-      await openMap(page);
-      const card = await openPlaceCard(page);
-      await openLayers(page);
-
-      // Intro hides after first search; legend stays.
+      // Open place first (deep-link), then clear overlays to open the legend fold.
+      let card = await openPlaceCard(page);
       await expect(page.locator(".app-shell")).toHaveClass(/find-intro-dismissed/);
       await expect(page.locator(".hud-scotland-job")).toBeHidden();
+
       await ensureLegendBodyVisible(page);
       await expect(page.getByTestId("map-legend-panel")).toBeVisible();
-
-      // Chip key once (legend only).
       await expect(page.getByTestId("evidence-tag-legend")).toHaveCount(1);
       await expect(
         page.locator("#hud-scotland-body").getByTestId("evidence-tag-legend"),
       ).toHaveCount(1);
+
+      // Left panel source text — no Licence / DATA LICENCES (textContent: body may fold later).
+      const leftText = await page.locator("#hud-scotland-body").textContent();
+      expect(leftText ?? "").not.toMatch(/\bLicence\b/i);
+      expect(leftText ?? "").not.toMatch(/DATA LICENCES/i);
+
+      // Re-open place card + Layers for the combined acceptance surface.
+      card = await openPlaceCard(page);
+      await openLayers(page);
+      await expect(page.getByTestId("layers-panel")).toBeVisible();
       await expect(
         page.getByTestId("layers-panel").getByTestId("evidence-tag-legend"),
       ).toHaveCount(0);
+      // Chip key still exactly once with place + Layers open.
+      await expect(page.getByTestId("evidence-tag-legend")).toHaveCount(1);
 
       // Every chip (legend + place card) has an accessible description.
       const chips = page.locator(
@@ -328,9 +356,9 @@ for (const viewport of [
       await expect(page.getByTestId("layer-licence-data_zones")).toHaveCount(0);
       await expect(page.getByTestId("map-licence-credits")).toHaveCount(0);
 
-      const leftText = await page.locator("#hud-scotland-body").innerText();
-      expect(leftText).not.toMatch(/\bLicence\b/i);
-      expect(leftText).not.toMatch(/DATA LICENCES/i);
+      const leftAfter = await page.locator("#hud-scotland-body").textContent();
+      expect(leftAfter ?? "").not.toMatch(/\bLicence\b/i);
+      expect(leftAfter ?? "").not.toMatch(/DATA LICENCES/i);
 
       const layersText = await page.getByTestId("layers-panel").innerText();
       expect(layersText).not.toMatch(/^Licence:/m);

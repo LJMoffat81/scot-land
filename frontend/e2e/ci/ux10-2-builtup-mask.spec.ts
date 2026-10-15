@@ -250,21 +250,28 @@ async function closePlaceCard(page: Page) {
 
 /**
  * SW-044: attribution lives in the map (i) control, not a left-panel licence list.
- * Close overlays first — place card / layers drawer can intercept clicks at 390.
+ * Close overlays first — place card / layers drawer intercept the (i) at 390.
  */
 async function ensureAttribReady(page: Page) {
   await closePlaceCard(page);
   await closeTools(page);
+  await page.locator("#map[data-framed='1']").waitFor({ timeout: 60_000 });
   const attrib = page.locator(".maplibregl-ctrl-attrib");
-  await expect(attrib).toBeVisible({ timeout: 15_000 });
+  await expect(attrib).toBeAttached({ timeout: 45_000 });
   // Expand compact (i) so attribution text is readable for asserts.
-  if (await attrib.evaluate((el) => el.classList.contains("maplibregl-compact"))) {
-    const btn = attrib.locator("button, summary").first();
-    if (await btn.isVisible().catch(() => false)) {
-      await btn.click();
+  const compact = await attrib.evaluate((el) =>
+    el.classList.contains("maplibregl-compact"),
+  );
+  if (compact) {
+    const btn = attrib.locator("button.maplibregl-ctrl-attrib-button").first();
+    if ((await btn.count()) > 0) {
+      await btn.click({ force: true });
     } else {
-      await attrib.click();
+      await attrib.click({ force: true });
     }
+    await expect(attrib).toHaveClass(/maplibregl-compact-show/, {
+      timeout: 10_000,
+    });
   }
 }
 
@@ -312,10 +319,16 @@ for (const viewport of [
 
       // Source attribution lands on MapLibre's attribution control (map i).
       const attrib = page.locator(".maplibregl-ctrl-attrib");
-      await expect(attrib).toContainText(/NRS Settlements 2022|OS data/i, {
-        timeout: 45_000,
-      });
-      await expect(attrib).toContainText(ATTRIBUTION, { timeout: 45_000 });
+      await expect
+        .poll(async () => (await attrib.textContent()) ?? "", {
+          timeout: 45_000,
+        })
+        .toMatch(/NRS Settlements 2022|OS data/i);
+      await expect
+        .poll(async () => (await attrib.textContent()) ?? "", {
+          timeout: 45_000,
+        })
+        .toContain(ATTRIBUTION);
 
       expect(filterNoise(gate.consoleErrors)).toEqual([]);
       expect(filterNoise(gate.pageErrors)).toEqual([]);

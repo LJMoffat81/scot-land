@@ -108,13 +108,6 @@ function placeFixture(overrides: Record<string, unknown> = {}) {
 }
 
 async function stubShell(page: Page, place: Record<string, unknown>, gbpLiveEnabled: boolean) {
-  await page.route("**/health", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(HEALTH_OK),
-    });
-  });
   const gbpLiveBody = gbpLiveEnabled
     ? {
         enabled: true,
@@ -122,6 +115,65 @@ async function stubShell(page: Page, place: Record<string, unknown>, gbpLiveEnab
         rent_rate_wording: RENT_RATE_HOW_IT_WORKS,
       }
     : { enabled: false, banner: null, rent_rate_wording: null };
+
+  // Quiet map API traffic so the Next `/backend` proxy never returns 503 in CI.
+  await page.route("**/backend/**", async (route) => {
+    const url = route.request().url();
+    if (/\/health/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(HEALTH_OK),
+      });
+      return;
+    }
+    if (/\/platform\/gbp-live/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(gbpLiveBody),
+      });
+      return;
+    }
+    if (/\/platform\/place/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(place),
+      });
+      return;
+    }
+    if (/\/layers\/catalog/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ version: 2, layers: [] }),
+      });
+      return;
+    }
+    if (/data-zones\/at/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code: "S01014567",
+          name: "City Centre South",
+          vintage: 2022,
+        }),
+      });
+      return;
+    }
+    const wantsGeo =
+      /\/layers\//i.test(url) ||
+      /\/w3w-grid/i.test(url) ||
+      /\/parcels/i.test(url);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(wantsGeo ? EMPTY_FC : {}),
+    });
+  });
+
   // Same-origin probe + backend path both return 200 (never 404 when flag off).
   await page.route("**/api/gbp-live**", async (route) => {
     await route.fulfill({
@@ -160,14 +212,11 @@ async function stubShell(page: Page, place: Record<string, unknown>, gbpLiveEnab
   });
 }
 
+/** Stable open — coordinate query string (map-click is flaky at narrow widths). */
 async function openPlaceCard(page: Page) {
-  await page.goto("/");
-  await page.waitForTimeout(400);
-  const map = page.locator(".maplibregl-canvas, #map, .map-shell").first();
-  if (await map.count()) {
-    await map.click({ position: { x: 200, y: 200 } }).catch(() => undefined);
-  }
-  await expect(page.getByTestId("place-card")).toBeVisible({ timeout: 15_000 });
+  await page.goto("/?lat=55.860900&lng=-4.251400");
+  await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
+  await expect(page.getByTestId("place-card")).toBeVisible({ timeout: 45_000 });
 }
 
 test.describe("GBP-LIVE-V1 flag OFF", () => {

@@ -45,6 +45,8 @@ ESTIMATE_MEASURED = dz22.ESTIMATE_MEASURED
 ESTIMATE_PARTLY = dz22.ESTIMATE_PARTLY
 ESTIMATE_FULLY = dz22.ESTIMATE_FULLY
 ESTIMATE_NA = "not_applicable"
+# v1.4 O-G1: negative residual / model-failure zones (stay in gate 1d at 0%).
+ESTIMATE_UNAVAILABLE = sr.ESTIMATE_LABEL_UNAVAILABLE
 
 CLASS_UNAFFECTED = "unaffected"
 CLASS_A = "A"
@@ -354,11 +356,25 @@ def pooling_config_sha256(config: Mapping | None = None) -> str:
     return hashlib.sha256(canon.encode("utf-8")).hexdigest()
 
 
-def null_dz_fill_target_from_config(config: Mapping | None = None) -> int:
-    """Post-pooling model-fill target (includes the 4 not-in-price-file codes)."""
+def computed_model_fill_n(config: Mapping | None = None) -> int:
+    """Compute post-pooling model-fill count from reconciled parts (not a magic 129).
+
+    ``suppressed_after_pooling_n`` + ``len(not_in_price_file)``. Falls back to the
+    ``model_fill.null_dz_fill_target_n`` config key when parts are absent.
+    """
     cfg = config if config is not None else sr.load_config()
+    recon = (cfg.get("dz2022_empty_fill") or {}).get("reconciled") or {}
+    if "suppressed_after_pooling_n" in recon and "not_in_price_file" in recon:
+        return int(recon["suppressed_after_pooling_n"]) + len(recon["not_in_price_file"])
+    if "suppressed_after_pooling_n" in recon:
+        return int(recon["suppressed_after_pooling_n"]) + len(NOT_IN_PRICE_FILE_CODES)
     section = cfg.get("model_fill") or {}
     return int(section.get("null_dz_fill_target_n", DEFAULT_NULL_DZ_FILL_TARGET_N))
+
+
+def null_dz_fill_target_from_config(config: Mapping | None = None) -> int:
+    """Post-pooling model-fill target (includes the 4 not-in-price-file codes)."""
+    return computed_model_fill_n(config)
 
 
 def evidence_window_to_step(window: str | None) -> str:
@@ -1410,7 +1426,11 @@ def assert_post_fill_gate(
 
     FILL-MEASURED-ZERO: a zero passes ONLY when the row is a measured zero with
     price evidence. A zero with no price evidence still FAILs. Expected model-fill
-    count stays 129 (measured zeros are not filled).
+    count is the **computed** post-pooling target (measured zeros are not filled).
+
+    v1.4 O-G1: ``estimate_label=unavailable`` rows are kept in the conservation
+    total and accepted here (land/rent at 0 for gating); they are not skipped as
+    N/A and must not raise.
 
     On a real run pass ``require_reconciled_counts=True`` and the original 2011
     rent-table inventory as ``source_2011`` to assert the post-pooling
@@ -1426,12 +1446,20 @@ def assert_post_fill_gate(
         rent = _num(r.get("measured_rent"))
         if label == ESTIMATE_NA or fm == FILL_METHOD_NA:
             continue
-        if rent is None or rent < 0:
+        unavailable = label == ESTIMATE_UNAVAILABLE
+        if unavailable:
+            # O-G1: stay in the conserved total; accept zero / null rent; still
+            # require blocked/proxy publication stamps when present.
+            if rent is not None and rent < 0:
+                raise FillError(
+                    f"post-fill gate: DZ2022 {r.get('code')} unavailable with rent {rent}"
+                )
+        elif rent is None or rent < 0:
             raise FillError(
                 f"post-fill gate: DZ2022 {r.get('code')} has rent {rent}; "
                 "expected > 0 or measured zero with price evidence"
             )
-        if rent == 0:
+        elif rent == 0:
             if not is_measured_zero(r):
                 raise FillError(
                     f"post-fill gate: DZ2022 {r.get('code')} has rent 0 without "

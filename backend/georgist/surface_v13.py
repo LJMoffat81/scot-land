@@ -7,6 +7,7 @@ Synthetic fixtures only in tests. Farmland/LCA rates are never committed or publ
 from __future__ import annotations
 
 import hashlib
+import math
 import os
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
@@ -215,20 +216,79 @@ def capitalised_rent_land(monthly_rent: float, *, yield_rate: float = 0.045) -> 
     return (12.0 * float(monthly_rent)) / float(yield_rate)
 
 
+def two_route_relative_gap(residual_land: float, capitalised_land: float) -> float:
+    """Relative gap (residual − capitalised) / capitalised for check 4.
+
+    Non-finite when either side is non-finite or the capitalised route is zero
+    while the residual route is not.
+    """
+    r = float(residual_land)
+    c = float(capitalised_land)
+    if not math.isfinite(r) or not math.isfinite(c):
+        return float("nan")
+    if c == 0.0:
+        return 0.0 if r == 0.0 else float("nan")
+    return (r - c) / c
+
+
+def _median(values: Sequence[float]) -> float:
+    ordered = sorted(float(v) for v in values)
+    n = len(ordered)
+    mid = n // 2
+    return ordered[mid] if n % 2 else 0.5 * (ordered[mid - 1] + ordered[mid])
+
+
 def check_4_two_route_gap(
     gaps: Sequence[float],
     *,
     class_gaps: Mapping[int, Sequence[float]] | None = None,
     national_max_abs: float = 0.25,
     class_max_abs: float = 0.40,
+    residual_median: float | None = None,
+    class_residual_medians: Mapping[int, float] | None = None,
 ) -> dict:
-    """Check 4: national median gap within ±25%; each UR6 class within ±40%."""
+    """Check 4: national median gap within ±25%; each UR6 class within ±40%.
+
+    v1.4 fidelity: if the residual-route median (national or class) is ≤ 0, or
+    any gap is non-finite, status is ``fail`` — never pending/undefined.
+    """
+    base = {
+        "check": "4",
+        "national_max_abs": float(national_max_abs),
+        "class_max_abs": float(class_max_abs),
+        "residual_median": residual_median,
+        "class_residual_medians": {
+            int(k): float(v) for k, v in (class_residual_medians or {}).items()
+        },
+    }
+    if residual_median is not None and float(residual_median) <= 0:
+        return {
+            **base,
+            "pass": False,
+            "status": "fail",
+            "reason": "residual_route_median_non_positive",
+            "national_median_gap": None,
+        }
+    for ur6, med in (class_residual_medians or {}).items():
+        if med is not None and float(med) <= 0:
+            return {
+                **base,
+                "pass": False,
+                "status": "fail",
+                "reason": f"residual_route_median_non_positive_ur6_{int(ur6)}",
+                "national_median_gap": None,
+            }
     if not gaps:
-        return {"check": "4", "pass": None, "status": "pending"}
-    ordered = sorted(float(g) for g in gaps)
-    n = len(ordered)
-    mid = n // 2
-    national = ordered[mid] if n % 2 else 0.5 * (ordered[mid - 1] + ordered[mid])
+        return {**base, "pass": None, "status": "pending"}
+    if any(not math.isfinite(float(g)) for g in gaps):
+        return {
+            **base,
+            "pass": False,
+            "status": "fail",
+            "reason": "non_finite_gap",
+            "national_median_gap": None,
+        }
+    national = _median(gaps)
     nat_ok = abs(national) <= float(national_max_abs)
     class_out = {}
     class_ok = True
@@ -236,22 +296,26 @@ def check_4_two_route_gap(
         if not gs:
             class_out[int(ur6)] = {"median": None, "pass": None}
             continue
-        o = sorted(float(x) for x in gs)
-        m = len(o) // 2
-        med = o[m] if len(o) % 2 else 0.5 * (o[m - 1] + o[m])
+        if any(not math.isfinite(float(x)) for x in gs):
+            return {
+                **base,
+                "pass": False,
+                "status": "fail",
+                "reason": f"non_finite_gap_ur6_{int(ur6)}",
+                "national_median_gap": national,
+            }
+        med = _median(gs)
         ok = abs(med) <= float(class_max_abs)
-        class_out[int(ur6)] = {"median": med, "pass": ok, "n": len(o)}
+        class_out[int(ur6)] = {"median": med, "pass": ok, "n": len(gs)}
         class_ok = class_ok and ok
     ok = nat_ok and class_ok
     return {
-        "check": "4",
+        **base,
         "pass": ok,
         "status": "pass" if ok else "fail",
         "national_median_gap": national,
-        "national_max_abs": float(national_max_abs),
         "national_pass": nat_ok,
         "by_ur6": class_out,
-        "class_max_abs": float(class_max_abs),
     }
 
 

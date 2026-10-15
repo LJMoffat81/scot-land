@@ -1113,15 +1113,16 @@ def zone_rebuild_band(
     taken as independent within the zone (the rollup has no cross-tab).
     """
     if inp.age_shares is None:
-        if default_remaining_factor is None:
-            raise PendingSourceError("zone has no age mix and no default_remaining_factor")
+        remaining = no_age_mix_remaining_factor(
+            depreciation, fallback=default_remaining_factor
+        )
         out = {}
         for s in SCENARIOS:
             new = sum(
                 inp.type_shares[t] * inp.area_for(t, flat_gia=flat_gia) * band[t][s]
                 for t in inp.type_shares
             ) * region
-            out[s] = RebuildResult(new, new * default_remaining_factor, default_remaining_factor)
+            out[s] = RebuildResult(new, new * remaining, remaining)
         return out
     mix = _zone_mix(inp, flat_gia=flat_gia)
     return depreciated_rebuild_band(mix, band=band, depreciation=depreciation, valuation_year=valuation_year, region=region)
@@ -1179,42 +1180,57 @@ CORNERS = {
     "central": {"rebuild": "central", "rate_building": "central"},
     "high": {"rebuild": "high", "rate_building": "high"},    # land_value_low
 }
+# v1.4 straight_line also corners max_depreciation with rate (higher max_dep → lower remaining).
+CORNERS_V14 = {
+    "low": {"rebuild": "low", "rate_building": "low", "max_depreciation": "low"},
+    "central": {"rebuild": "central", "rate_building": "central", "max_depreciation": "central"},
+    "high": {"rebuild": "high", "rate_building": "high", "max_depreciation": "high"},
+}
 AGE_CAP_BANDS = ("before 1919", "1919-1929", "1930-1949")  # F7: cap binds for these
+
+
+# Keys where the DRC-low corner takes the *higher* numeric end (lower remaining).
+_INVERTED_DEP_BANDS = frozenset({"rate_building", "max_depreciation"})
 
 
 def depreciation_param(depreciation: Mapping, key: str, level: str = "central") -> float:
     """A depreciation input at `level` (low|central|high). Scalars are the central
-    value with no band. ``rate_building`` is exempt from low<=central<=high
-    (higher rate => lower remaining). Other bands still require that order."""
+    value with no band. ``rate_building`` and ``max_depreciation`` are exempt from
+    low<=central<=high (higher value => lower remaining). Other bands still require
+    that order."""
     v = depreciation[key]
     if isinstance(v, Mapping):
         lo, c, hi = (float(v[k]) for k in SCENARIOS)
-        if key != "rate_building" and not lo <= c <= hi:
+        if key in _INVERTED_DEP_BANDS:
+            if not lo >= c >= hi:
+                raise ValueError(
+                    f"depreciation.{key} must satisfy low >= central >= high "
+                    f"(unmaintained >= central >= maintained), got {dict(v)}"
+                )
+        elif not lo <= c <= hi:
             raise ValueError(f"depreciation.{key} band must satisfy low <= central <= high, got {dict(v)}")
-        if key == "rate_building" and not lo >= c >= hi:
-            raise ValueError(
-                f"depreciation.rate_building must satisfy low >= central >= high "
-                f"(unmaintained >= central >= maintained), got {dict(v)}"
-            )
         return float(v[level])
     return float(v)
 
 
 def band_corners(depreciation: Mapping) -> dict[str, dict[str, str]]:
-    """Validated corner map (v1.3 F7). Only corner combination is supported:
-    the two extremes of the land value band are the joint extremes of rebuild cost
-    and depreciation rate. A config that pairs them the other way round is rejected,
-    because DRC rises with rebuild and falls with rate_building."""
+    """Validated corner map (v1.3 F7 / v1.4 straight_line). Only corner combination
+    is supported: the two extremes of the land value band are the joint extremes of
+    rebuild cost and depreciation rate (and max_depreciation for v1.4). A config
+    that pairs them the other way round is rejected, because DRC rises with rebuild
+    and falls with rate_building / max_depreciation."""
     comb = depreciation.get("band_combination", {"rule": "corner"})
     rule = comb.get("rule", "corner") if isinstance(comb, Mapping) else comb
     if rule not in BAND_COMBINATION_RULES:
         raise ValueError(f"band_combination {rule!r} not supported; use one of {BAND_COMBINATION_RULES}")
-    corners = {s: dict(CORNERS[s]) for s in SCENARIOS}
+    method = str(depreciation.get("method") or "")
+    base = CORNERS_V14 if method == "straight_line_v14" else CORNERS
+    corners = {s: dict(base[s]) for s in SCENARIOS}
     if isinstance(comb, Mapping):
         for name, s in (("drc_low_land_high", "low"), ("drc_high_land_low", "high")):
-            if name in comb and dict(comb[name]) != CORNERS[s]:
+            if name in comb and dict(comb[name]) != base[s]:
                 raise ValueError(
-                    f"band_combination.{name} must be {CORNERS[s]} "
+                    f"band_combination.{name} must be {base[s]} "
                     "(DRC rises with rebuild, falls with rate_building)"
                 )
     return corners
@@ -1227,16 +1243,22 @@ def depreciation_at(
     rate: str | None = None,
     life: str | None = None,
     floor: str | None = None,
+    max_dep: str | None = None,
 ) -> dict:
     """Scalar depreciation config at a band level.
 
-    v1.3 uses ``rate_building``. Legacy ``life``/``floor`` kwargs are accepted as
-    aliases for the rate level when callers have not been updated.
+    v1.3 uses ``rate_building``. v1.4 straight_line also uses ``max_depreciation``.
+    Legacy ``life``/``floor`` kwargs are accepted as aliases for the rate level
+    when callers have not been updated.
     """
     out = dict(depreciation)
     rate_level = rate or life or floor or level
     if "rate_building" in depreciation:
         out["rate_building"] = depreciation_param(depreciation, "rate_building", rate_level)
+    if "max_depreciation" in depreciation:
+        out["max_depreciation"] = depreciation_param(
+            depreciation, "max_depreciation", max_dep or rate_level
+        )
     # life_years kept for yield path; resolve when present
     if "life_years" in depreciation:
         out["life_years"] = depreciation_param(depreciation, "life_years", life or level)
@@ -1276,28 +1298,85 @@ def capped_age(age_band: str, valuation_year: int, depreciation: Mapping) -> flo
     return min(age, cap)
 
 
+def max_depreciation_rate(depreciation: Mapping) -> float:
+    """Maximum depreciation share of rebuild (v1.4 floor = 1 − this)."""
+    if "max_depreciation" not in depreciation:
+        return 0.55
+    v = depreciation["max_depreciation"]
+    if isinstance(v, Mapping):
+        return depreciation_param(depreciation, "max_depreciation")
+    return float(v)
+
+
 def remaining_factor(age_band: str, valuation_year: int, depreciation: Mapping) -> float:
     """Building remaining-value factor.
 
-    v1.3 compounding (method compounding_v13): ``(1 - r_b) ** age_c`` with
-    ``age_c = min(year - midpoint, 68)``. No floor. Falls back to the legacy
-    straight-line life/floor form only when method is absent or ``straight_line``.
+    Method is resolved **first** (v1.4 fidelity): presence of ``rate_building``
+    alone must not force compounding when ``method: straight_line_v14``.
+
+    - ``straight_line_v14``: ``max(1 − r_b×age_c, 1 − max_depreciation)`` with
+      ``age_c = min(year − midpoint, age_cap)``. No compounding.
+    - ``compounding_v13``: ``(1 - r_b) ** age_c``. No floor.
+    - Legacy ``straight_line`` / absent: life/floor form (synthetic tests only).
     """
     midpoints = depreciation["age_band_midpoint_year"]
     if age_band not in midpoints:
         raise KeyError(f"unknown EPC age band {age_band!r}; add it to config")
     method = str(depreciation.get("method") or "compounding_v13")
-    if method == "compounding_v13" or "rate_building" in depreciation:
+    if method == "straight_line_v14":
+        age_c = capped_age(age_band, valuation_year, depreciation)
+        r_b = building_rate(depreciation)
+        if r_b < 0 or r_b >= 1:
+            raise ValueError(f"rate_building must be in [0, 1), got {r_b}")
+        max_dep = max_depreciation_rate(depreciation)
+        if max_dep < 0 or max_dep > 1:
+            raise ValueError(f"max_depreciation must be in [0, 1], got {max_dep}")
+        # Equivalent: 1 − min(r_b×age_c, max_dep)
+        return max(1.0 - r_b * age_c, 1.0 - max_dep)
+    if method == "compounding_v13":
         age_c = capped_age(age_band, valuation_year, depreciation)
         r_b = building_rate(depreciation)
         if r_b < 0 or r_b >= 1:
             raise ValueError(f"rate_building must be in [0, 1), got {r_b}")
         return (1.0 - r_b) ** age_c
     # Legacy straight-line (kept for synthetic historical tests only).
+    # Older configs omitted method but carried rate_building — treat as compounding.
+    if "rate_building" in depreciation:
+        age_c = capped_age(age_band, valuation_year, depreciation)
+        r_b = building_rate(depreciation)
+        if r_b < 0 or r_b >= 1:
+            raise ValueError(f"rate_building must be in [0, 1), got {r_b}")
+        return (1.0 - r_b) ** age_c
     life = depreciation_param(depreciation, "life_years")
     floor = depreciation_param(depreciation, "remaining_min")
     age = max(0.0, valuation_year - float(midpoints[age_band]))
     return max(floor, 1.0 - age / life)
+
+
+def central_remaining_factor_v14(depreciation: Mapping) -> float:
+    """Frozen central remaining factor for no-age-mix zones (not 0.55).
+
+    At the central rate and age cap: ``1 − min(r_b×age_cap, max_depreciation)``.
+    """
+    dep = depreciation_at(depreciation, "central")
+    r_b = building_rate(dep)
+    cap = float(dep.get("age_cap_years", 68))
+    max_dep = max_depreciation_rate(dep)
+    return max(1.0 - r_b * cap, 1.0 - max_dep)
+
+
+def no_age_mix_remaining_factor(depreciation: Mapping, *, fallback: float | None = None) -> float:
+    """Remaining factor when a zone has no EPC age mix.
+
+    v1.4 straight_line uses the frozen central remaining factor. Other methods
+    keep the caller-supplied fallback (historically ``rebuild_inputs.default_remaining_factor``).
+    """
+    method = str(depreciation.get("method") or "")
+    if method == "straight_line_v14":
+        return central_remaining_factor_v14(depreciation)
+    if fallback is None:
+        raise PendingSourceError("zone has no age mix and no default_remaining_factor")
+    return float(fallback)
 
 
 def depreciated_rebuild(
@@ -1348,10 +1427,11 @@ def depreciated_rebuild_band(
     for s in SCENARIOS:
         c = corners[s]
         rate_lvl = c.get("rate_building", c.get("life_years", "central"))
+        max_lvl = c.get("max_depreciation", rate_lvl)
         out[s] = depreciated_rebuild(
             mix,
             rates_gbp_per_m2={t: b[c["rebuild"]] for t, b in band.items()},
-            depreciation=depreciation_at(depreciation, rate=rate_lvl),
+            depreciation=depreciation_at(depreciation, rate=rate_lvl, max_dep=max_lvl),
             valuation_year=valuation_year,
             region=region,
         )
@@ -1371,6 +1451,9 @@ class Residual:
 
 # FILL-MEASURED-ZERO: internal tag when rebuild cost >= price (floored residual).
 COST_AT_OR_ABOVE_PRICE_TAG = "cost_at_or_above_price"
+# v1.4 O-G1: negative primary residual → estimate unavailable (gate sees 0% share).
+ESTIMATE_LABEL_UNAVAILABLE = "unavailable"
+ESTIMATE_LABEL_TAG_PREFIX = "estimate_label="
 
 
 def residual_land_value(price_gbp: float, drc_gbp: float) -> Residual:
@@ -1379,15 +1462,58 @@ def residual_land_value(price_gbp: float, drc_gbp: float) -> Residual:
     When cost >= price the published land value is 0 and the internal tag
     ``cost_at_or_above_price`` is set (not visitor wording). ``negative_residual``
     remains True only when raw < 0 (raw == 0 is not negative).
+
+    v1.4 O-G1: a negative primary residual is also tagged
+    ``estimate_label=unavailable`` (publication wording; gating uses share 0).
     """
     raw = float(price_gbp) - float(drc_gbp)
     if raw < 0:
         return Residual(
-            raw, 0.0, True, ("negative_residual", COST_AT_OR_ABOVE_PRICE_TAG)
+            raw,
+            0.0,
+            True,
+            (
+                "negative_residual",
+                COST_AT_OR_ABOVE_PRICE_TAG,
+                f"{ESTIMATE_LABEL_TAG_PREFIX}{ESTIMATE_LABEL_UNAVAILABLE}",
+            ),
         )
     if raw == 0:
         return Residual(raw, 0.0, False, (COST_AT_OR_ABOVE_PRICE_TAG,))
     return Residual(raw, raw, False, ())
+
+
+def estimate_label_for_residual(residual: Residual | Mapping | None) -> str | None:
+    """Return ``unavailable`` for a negative primary residual, else None."""
+    if residual is None:
+        return None
+    if isinstance(residual, Residual):
+        if residual.negative_residual:
+            return ESTIMATE_LABEL_UNAVAILABLE
+        return None
+    if bool(residual.get("negative_residual")):
+        return ESTIMATE_LABEL_UNAVAILABLE
+    label = residual.get("estimate_label")
+    if label == ESTIMATE_LABEL_UNAVAILABLE:
+        return ESTIMATE_LABEL_UNAVAILABLE
+    tags = residual.get("proxy_tags") or residual.get("tags") or ()
+    if isinstance(tags, str):
+        tags = [t for t in tags.split(";") if t]
+    marker = f"{ESTIMATE_LABEL_TAG_PREFIX}{ESTIMATE_LABEL_UNAVAILABLE}"
+    if marker in tags:
+        return ESTIMATE_LABEL_UNAVAILABLE
+    return None
+
+
+def gating_land_share_for_row(row: Mapping, *, price_key: str = "price_indexed_gbp") -> float:
+    """Land share for checks 1 / 1b / 1d. Unavailable zones enter at 0% (O-G1)."""
+    if estimate_label_for_residual(row) == ESTIMATE_LABEL_UNAVAILABLE:
+        return 0.0
+    price = float(row.get(price_key) or row.get("price_gbp") or 0.0)
+    if price <= 0:
+        raise ValueError("price must be positive for land share")
+    land = float(row.get("land_value") or 0.0)
+    return min(1.0, max(0.0, land / price))
 
 
 @dataclass(frozen=True)

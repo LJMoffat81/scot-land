@@ -55,16 +55,21 @@ function readSrc(relPath) {
   assert.doesNotMatch(ui, /Estimate \(no market price\)/);
 }
 
-// --- Map empty-state + search placeholder ---
+// --- Map empty-state + search placeholder (MAP-CARDS: no map reference) ---
 {
   const map = readSrc("components/ScotlandMap.tsx");
   assert.match(
     map,
-    /placeholder="Search a postcode, place or map reference"/,
+    /placeholder="Search a postcode or place"/,
+  );
+  assert.doesNotMatch(
+    map,
+    /map reference/i,
+    "search chrome must not say map reference",
   );
   assert.match(
     map,
-    /Type a postcode or place name, or tap the map/,
+    /Search a place or pick a layer/,
   );
   assert.doesNotMatch(
     map,

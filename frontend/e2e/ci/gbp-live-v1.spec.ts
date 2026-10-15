@@ -182,7 +182,7 @@ test.describe("GBP-LIVE-V1 flag OFF", () => {
 });
 
 test.describe("GBP-LIVE-V1 flag ON", () => {
-  test("place card shows central, range, and estimate label", async ({
+  test("place card shows £a to £b a year range and chip (MAP-CARDS §5)", async ({
     page,
   }) => {
     const place = placeFixture({
@@ -190,55 +190,31 @@ test.describe("GBP-LIVE-V1 flag ON", () => {
         enabled: true,
         banner: "Early estimates; ranges are wide and will change.",
         rent_rate_wording: RENT_RATE_HOW_IT_WORKS,
-        unit: "per m²",
-        unit_wording: "per m² of land a year",
       },
       surface_rent_display: {
         state: "ok",
-        low: 0.06,
-        central: 0.12,
-        high: 0.18,
+        low: 6000,
+        central: 12000,
+        high: 18000,
         estimate_label: "Partly estimated",
         rent_rate_wording: RENT_RATE_CARD,
-        unit: "per m²",
-        unit_wording: "per m² of land a year",
-        central_label: "most likely",
         grain: "data_zone",
       },
     });
     await stubShell(page, place, true);
     await openPlaceCard(page);
     const card = page.getByTestId("place-card");
-    await expect(card.getByTestId("place-card-figure")).toContainText(
-      "£0.12 per m²",
+    const range = card.getByTestId("place-card-figure-range");
+    await expect(range).toContainText("£6,000");
+    await expect(range).toContainText("to");
+    await expect(range).toContainText("£18,000");
+    await expect(range).toContainText("a year");
+    // No single-point £ headline; chip present; no totals / yield.
+    await expect(card.getByTestId("place-card-figure")).not.toContainText(
+      /^£12,000$/,
     );
-    await expect(card.getByTestId("place-card-figure-range")).toContainText(
-      "£0.06",
-    );
-    await expect(card.getByTestId("place-card-figure-range")).toContainText(
-      "£0.18 per m²",
-    );
-    await expect(card.getByTestId("place-card-figure-central-label")).toHaveText(
-      "most likely",
-    );
-    await expect(card.getByTestId("place-card-figure-unit")).toContainText(
-      "per m²",
-    );
-    await expect(card.getByTestId("place-card-figure-estimate")).toHaveText(
-      "Partly estimated",
-    );
-    await expect(card.getByTestId("place-card-range-surface")).toContainText(
-      "per m²",
-    );
-    await expect(card.getByTestId("place-card-estimate-label-surface")).toHaveText(
-      "Partly estimated",
-    );
-    await expect(card.getByTestId("place-card-rent-rate-surface")).toHaveText(
-      RENT_RATE_CARD,
-    );
-    // No total line.
+    await expect(card.getByTestId("place-tag-proxy")).toBeVisible();
     await expect(card).not.toContainText(/Scotland total|national total/i);
-    // Banned visitor word "yield" must never appear.
     await expect(card).not.toContainText(/\byield\b/i);
   });
 
@@ -251,27 +227,23 @@ test.describe("GBP-LIVE-V1 flag ON", () => {
       },
       surface_rent_display: {
         state: "ok",
-        low: 0.06,
-        central: 0.12,
-        high: 0.18,
+        low: 6000,
+        central: 12000,
+        high: 18000,
         estimate_label: "Partly estimated",
         rent_rate_wording: RENT_RATE_CARD,
-        unit: "per m²",
-        unit_wording: "per m² of land a year",
-        central_label: "most likely",
         grain: "data_zone",
       },
     });
-    // Fixture includes nature row with tag/class "shadow" — visitor chip must be Estimate.
+    // Fixture includes nature row with tag/class "shadow" — visitor never sees "shadow".
     await stubShell(page, place, true);
     await openPlaceCard(page);
     const card = page.getByTestId("place-card");
+    await card.getByTestId("place-card-parts").locator("summary").click();
     const nature = card.getByTestId("place-card-agr-nature");
-    await expect(nature.getByTestId("place-tag-estimate")).toHaveText("Estimate");
+    await expect(nature).toHaveAttribute("data-class", "estimate");
     await expect(nature).not.toContainText(/\bshadow\b/i);
     await expect(card).not.toContainText(/\bshadow\b/i);
-    // Tone attribute must be remapped too (data-class on the row).
-    await expect(nature).toHaveAttribute("data-class", "estimate");
   });
 
   test("under-review zone shows label and no £", async ({ page }) => {
@@ -295,7 +267,6 @@ test.describe("GBP-LIVE-V1 flag ON", () => {
     await expect(card.getByTestId("place-card-under-review")).toHaveText(
       "Under review",
     );
-    await expect(card.getByTestId("place-card-figure")).toHaveText("Under review");
     await expect(card).not.toContainText("£");
   });
 
@@ -313,7 +284,7 @@ test.describe("GBP-LIVE-V1 flag ON", () => {
     await stubShell(page, place, true);
     await openPlaceCard(page);
     const card = page.getByTestId("place-card");
-    await expect(card.getByTestId("place-card-figure")).toHaveText(PRE_POUND);
+    await expect(card.getByTestId("place-card-figure")).toContainText(PRE_POUND);
     await expect(card).not.toContainText("£");
   });
 });

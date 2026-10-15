@@ -87,11 +87,15 @@ assert.match(
   /\.app-shell\.place-open[\s\S]*\.place-card-stub[\s\S]*z-index:\s*14/,
 );
 
-// —— Find a place collapses when place-open ——
-assert.match(chrome, /\.app-shell\.place-open[\s\S]*\.hud-scotland-job/);
+// —— Research banner collapses when place card is open (MAP-CARDS §3.6) ——
 assert.match(
   readSrc("components/ScotlandMap.tsx"),
-  /collapsedIntroForPlace/,
+  /collapseForSuggest=\{suggestOpen \|\| placeOpen\}/,
+);
+assert.doesNotMatch(
+  readSrc("components/ScotlandMap.tsx"),
+  /hud-scotland-job|map-legend-panel/,
+  "floating Find a place / legend panel must be gone",
 );
 
 // —— SW-013: Downloads has moved here ——

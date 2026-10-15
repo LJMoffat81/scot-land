@@ -48,15 +48,21 @@ assert.match(dzAttr, /dz2022Attribution\.json/);
 const catalog = read(join(frontendRoot, "lib/layerCatalog.ts"));
 assert.match(catalog, /Data Zone boundaries 2022/);
 
-// --- 2. No separate Cadastral parcel popup by default ---
+// --- 2. No plot-level parcels / w3w on the public map (MAP-CARDS GIS 16) ---
 assert.doesNotMatch(
   mapSrc,
   /<strong>Cadastral parcel<\/strong>/,
   "no Cadastral parcel popup HTML",
 );
-assert.match(
+assert.doesNotMatch(
   mapSrc,
-  /Parcels stay a toggleable outline layer \(off by default\)/,
+  /\.addSource\(\s*["'](?:parcels|w3w|selected-parcel|selected-square)/,
+  "plot-level parcel / w3w sources must not be added on the public map",
+);
+assert.doesNotMatch(
+  mapSrc,
+  /\.addLayer\(\s*\{[^}]*["'](?:parcels-wms|w3w-grid)/,
+  "plot-level parcel / w3w layers must not be added on the public map",
 );
 
 // --- 3. Place card: council row; no parcel ID; land_outline stays on payload (UX10-4 moves diagnostics) ---

@@ -253,7 +253,8 @@ export function PlaceCard({
   const shellClass = [
     floating ? "hud-card hud-place place-card" : "place-card place-card-standalone",
     seaMiss ? "place-card-sea-miss" : null,
-    isNoMatch && !isLoading ? "place-card-no-match" : null,
+    // UX-05 hug CSS + e2e still key on place-card-search-miss; keep no-match as alias.
+    isNoMatch && !isLoading ? "place-card-no-match place-card-search-miss" : null,
     className,
   ]
     .filter(Boolean)

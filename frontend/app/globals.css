@@ -592,8 +592,16 @@ input {
 
 /* UX-05: hug like sea miss — flex gap only, no leftover <p> margins. */
 .place-card-search-miss .error-line,
-.place-card-search-miss .meta {
+.place-card-search-miss .meta,
+.place-card-search-miss .place-card-meta,
+.place-card-search-miss .place-card-body,
+.place-card-search-miss .place-card-state {
   margin: 0;
+}
+
+/* UX10-1 no-match body must not flex-grow into empty panel space (UX-05 hug). */
+.place-card-search-miss .place-card-body {
+  flex: 0 0 auto;
 }
 
 .place-card-sea-line {

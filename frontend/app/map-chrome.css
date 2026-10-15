@@ -211,6 +211,7 @@
  */
 @media (min-width: 901px) {
   .app-shell.place-open .hud-place.place-card.place-card-sea-miss,
+  .app-shell.place-open .hud-place.place-card.place-card-search-miss,
   .app-shell.place-open .place-card-stub.place-card-sea-miss,
   .app-shell.place-open .place-card-stub.place-card-search-miss {
     bottom: auto;

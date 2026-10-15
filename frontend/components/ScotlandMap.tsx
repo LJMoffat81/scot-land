@@ -552,10 +552,6 @@ export default function ScotlandMap() {
     if ("data_zones" in next) {
       dataZonesTouched.current = true;
       setShowDataZones(Boolean(next.data_zones));
-      // Mask follows Data Zones unless the user toggled it separately.
-      if (!builtupMaskTouched.current) {
-        setShowBuiltupMask(Boolean(next.data_zones));
-      }
     }
     if ("builtup_mask" in next) {
       builtupMaskTouched.current = true;
@@ -3436,11 +3432,7 @@ export default function ScotlandMap() {
       // Land parcels stay off until the user toggles them (no auto-enable on zoom).
       // public_crown stays off: SG 2024 dashboard licence is unverified/not open
       if (!dataZonesTouched.current) {
-        const on = zoom >= DATA_ZONE_MIN_ZOOM;
-        setShowDataZones(on);
-        if (!builtupMaskTouched.current) {
-          setShowBuiltupMask(on);
-        }
+        setShowDataZones(zoom >= DATA_ZONE_MIN_ZOOM);
       }
     };
     sync();

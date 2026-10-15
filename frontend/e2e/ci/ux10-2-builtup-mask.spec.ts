@@ -218,6 +218,16 @@ async function openTools(page: Page) {
   }
 }
 
+/** Narrow layout hides licence credits until the legend fold is open. */
+async function ensureLegendOpen(page: Page) {
+  const credits = page.getByTestId("map-licence-credits");
+  if (await credits.isVisible().catch(() => false)) return;
+  const show = page.getByRole("button", { name: /Show legend/i });
+  if (await show.isVisible().catch(() => false)) {
+    await show.click();
+  }
+}
+
 for (const viewport of [
   { width: 1280, height: 800 },
   { width: 390, height: 844 },
@@ -249,6 +259,7 @@ for (const viewport of [
       const parcelTile = await page.request.get("/api/parcels/tiles/14/8045/5230");
       expect(parcelTile.status()).toBe(404);
 
+      await ensureLegendOpen(page);
       const credits = page.getByTestId("map-licence-credits");
       await expect(credits).toBeVisible({ timeout: 45_000 });
       await expect(page.getByTestId("map-credit-builtup_mask")).toBeVisible({
@@ -263,6 +274,7 @@ for (const viewport of [
       expect(bodyText.toLowerCase()).not.toContain("natural capital");
       expect(bodyText.toLowerCase()).not.toMatch(/\bledger\b/);
 
+      // Source attribution also lands on MapLibre's attribution control.
       const attrib = page.locator(".maplibregl-ctrl-attrib");
       await expect(attrib).toContainText(/NRS Settlements 2022|OS data/i, {
         timeout: 45_000,

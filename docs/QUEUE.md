@@ -16,7 +16,8 @@ Plain-English queue for maintainers (Laurie and agents). Update this file in eac
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
 | FILL-ORDER-V12 | Mainland borrow order: drop next-UR step (own → neighbour → Scotland); weakest 2022 label rule | — | Frozen; start **only after FILL-POOLED merges**; one PR only |
-| SW-045 | Legend follows the active layer (HIGH — Laurie-flagged); diagnose first | — | After SW-036; no PR yet; one PR only |
+| GBP-LIVE-V1 | Live £ figures on map / place card (UI train item after SW-036) | — | After SW-036; before SW-045; one PR only |
+| SW-045 | Legend follows the active layer (HIGH — Laurie-flagged); diagnose first | — | After GBP-LIVE-V1; no PR yet; one PR only |
 | SW-044 | Slim the map view (licences out of left panel, chip key once, etc.) | — | After SW-045; no PR yet; one PR only |
 
 ### Frozen backlog

@@ -305,7 +305,20 @@ export async function openLayers(page: Page) {
 
 /** Raise map zoom so in-range legends show Lower/Higher (not the zoom gate). */
 export async function ensureMapZoomAtLeast(page: Page, minZoom: number) {
-  await waitForMap(page);
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() => {
+          const map = (
+            window as unknown as {
+              __map?: { setZoom(n: number): void; getZoom(): number };
+            }
+          ).__map;
+          return Boolean(map && typeof map.getZoom === "function");
+        }),
+      { timeout: 60_000 },
+    )
+    .toBe(true);
   await page.evaluate((z) => {
     const map = (
       window as unknown as {
@@ -315,7 +328,9 @@ export async function ensureMapZoomAtLeast(page: Page, minZoom: number) {
     if (!map) throw new Error("window.__map missing");
     if (map.getZoom() < z) map.setZoom(z);
   }, minZoom);
-  await expect.poll(async () => getMapZoom(page)).toBeGreaterThanOrEqual(minZoom);
+  await expect
+    .poll(async () => getMapZoom(page), { timeout: 15_000 })
+    .toBeGreaterThanOrEqual(minZoom);
 }
 
 export async function openPlaceViaCoords(

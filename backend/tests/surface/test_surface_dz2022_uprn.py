@@ -255,7 +255,8 @@ def test_estimate_labels_measured_partly_fully():
         ],
         mix_pairs,
     )
-    assert out[0]["estimate_label"] == "partly_estimated"
+    # Methods v1.2: weakest of 2011 pieces (measured + fully → fully).
+    assert out[0]["estimate_label"] == "fully_estimated"
 
 
 def test_estimate_label_carried_through_rollup_to_scotland():
@@ -292,8 +293,9 @@ def test_estimate_label_carried_through_rollup_to_scotland():
     rolled = roll.rollup_surface_rent_dz2022(dz, spine)
     scotland = next(r for r in rolled if r["geo_level"] == "scotland")
     council = next(r for r in rolled if r["geo_level"] == "council")
-    assert scotland["estimate_label"] == "partly_estimated"
-    assert council["estimate_label"] == "partly_estimated"
+    # Council mixes measured + fully → weakest (fully); Scotland same.
+    assert scotland["estimate_label"] == "fully_estimated"
+    assert council["estimate_label"] == "fully_estimated"
 
 
 def test_scotland_total_exact_to_penny(uprn_pairs_filtered):

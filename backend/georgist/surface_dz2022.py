@@ -144,16 +144,24 @@ def estimate_label_for_fill(fill_method: str | None) -> str:
     return ESTIMATE_FULLY
 
 
+# Weakest → strongest (Methods v1.2): a 2022 zone never looks stronger than its
+# weakest 2011 piece (partly-estimated never shows as measured; measured + fully
+# → fully_estimated).
+_ESTIMATE_WEAKNESS = {
+    ESTIMATE_FULLY: 0,
+    ESTIMATE_PARTLY: 1,
+    ESTIMATE_MEASURED: 2,
+}
+
+
 def combine_estimate_labels(labels: Sequence[str]) -> str:
-    """Any estimated 2011 part keeps the 2022 zone estimated (partly or fully)."""
+    """2022 zone label = weakest estimate label among its 2011 pieces."""
     if not labels:
         return ESTIMATE_FULLY
-    uniq = set(labels)
-    if uniq == {ESTIMATE_MEASURED}:
-        return ESTIMATE_MEASURED
-    if uniq == {ESTIMATE_FULLY}:
+    ranked = [lbl for lbl in labels if lbl in _ESTIMATE_WEAKNESS]
+    if not ranked:
         return ESTIMATE_FULLY
-    return ESTIMATE_PARTLY
+    return min(ranked, key=lambda lbl: _ESTIMATE_WEAKNESS[lbl])
 
 
 def _normalize_pair_method(raw: str | None, *, default: str = CROSSWALK_METHOD) -> str:
@@ -683,8 +691,7 @@ def crosswalk_surface_to_dz2022(
         if dwellings is not None and dwellings > 0 and row.get("measured_rent") is not None:
             row["measured_rent_per_dwelling"] = round(float(row["measured_rent"]) / dwellings, 2)
         labels = [str(p["_estimate_label"]) for p in parts]
-        # Multi-part merge from measured sources is still measured; estimated
-        # 2011 parts force partly/fully estimated on the 2022 zone.
+        # Methods v1.2: 2022 zone takes the weakest 2011 piece label.
         if multi and all(lbl == ESTIMATE_MEASURED for lbl in labels):
             # Split of measured rent is still measured (weights are address shares).
             est = ESTIMATE_MEASURED

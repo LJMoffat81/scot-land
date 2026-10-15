@@ -12,13 +12,13 @@ Do not touch backend/api/main.py, AGENTS.md or the guard's existing rules. Pull 
 - Neighbouring councils: commit data/reference/council_neighbours_2022.csv exactly as given in the appendix (60 pairs, all 32 councils; built by GIS by merging DZ2022 zones into councils using the NRS postcode index council, Crown copyright, OGL v3). Add a README with that provenance. The code must not work neighbours out at run time.
 - Island rule (DECIDED, Georgist 14 Oct): Na h-Eileanan Siar (S12000013), Orkney (S12000023) and Shetland (S12000027) have no land neighbours, so they borrow from each other as one island group within the same urban-rural class, before any mainland borrowing.
 - Final fallback (DECIDED, for every group, island or mainland): if a group still has fewer than 10 measured zones after its earlier steps, borrow from the same urban-rural class across all of Scotland. Zones filled this way get a band widened from that class's holdout errors and are labelled fully_estimated. Every zone is filled.
-- Borrowing order for C. Mainland: own council and class, then the next class, then a neighbouring council, then the same class Scotland-wide. Islands: own council and class, then the island group in the same class, then the same class Scotland-wide. Record fill_step (which step filled the zone) on every C or B zone.
+- Borrowing order for C (Methods v1.2). Mainland: own council and class, then a neighbouring council in the same class until class_min, then the same class Scotland-wide (no next urban-rural class). Islands: own council and class, then the island group in the same class, then the same class Scotland-wide. Record fill_step (which step filled the zone) on every C or B zone.
 
 ## Classification of 2022 zones (from address-point mass coming from empty 2011 zones)
 - Not affected (empty share 0): pass through unchanged.
 - A, empty share at most 50%: scale up from the measured part (rent per address point of the measured parts times the zone's total address points). Label partly_estimated, and widen the range by the empty share.
 - B, empty share over 50%: model the empty part with method C and blend by address-point share. Label partly_estimated, or fully_estimated if under 5% is measured.
-- C, fully empty: a council-by-urban-rural model on log land rent per dwelling, fitted on measured 2011 zones. When a group has fewer than 10 training zones, borrow from the next urban-rural class, then from a neighbouring council (from the lookup), and tag the zone borrowed_class with what was borrowed. Report low/central/high as P10/P50/P90 from the group's residual spread. Label fully_estimated.
+- C, fully empty: a council-by-urban-rural model on log land rent per dwelling, fitted on measured 2011 zones. When a group has fewer than 10 training zones, borrow from a neighbouring council in the same class (from the lookup), then Scotland-wide same class, and tag the zone borrowed_class with what was borrowed. Report low/central/high as P10/P50/P90 from the group's residual spread. Label fully_estimated.
 - D, zero-dwelling source zones (3): rent 0 with label not_applicable under v0.7 rules. This is NOT an error and NOT a gap to fill. The #71 raise-an-error rule stays only for rent landing on a 2022 zone with no address points.
 
 Every filled zone carries an estimate_label and a range. A council or Scotland roll-up is still refused if any zone lacks a label (existing rule).
@@ -34,7 +34,7 @@ Every filled zone carries an estimate_label and a range. A council or Scotland r
 - Rerun on the real output: the Scotland total is conserved from 2011 to 2022 (assert_scotland_total_conserved), and every 2022 zone has rent above 0 except not_applicable ones. That pass is the gate; figures stay blocked even then until Laurie approves the rules doc.
 
 ## Tests (CI, fixture data, exact money with no approx)
-A small fixture covering each of the not-affected case, A, B (including the under-5% fully_estimated case), C (including borrowing from the next class and from a neighbouring council), D and the label refusal. Also cover the run guard refusing a second scored run, the fail path widening bands without re-fitting, and the guard showing no £ leaks.
+A small fixture covering each of the not-affected case, A, B (including the under-5% fully_estimated case), C (including borrowing from a neighbouring council, never another UR class), D and the label refusal. Also cover the run guard refusing a second scored run, the fail path widening bands without re-fitting, and the guard showing no £ leaks.
 
 ## Reconciled facts
 - 723 suppressed, 4 not in the price file (S01007788, S01010462, S01010493, S01011598, all filled under C), and 3 zero-dwelling (including S01010206 and S01010226; all D, not_applicable).

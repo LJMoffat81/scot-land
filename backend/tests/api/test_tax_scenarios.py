@@ -369,9 +369,10 @@ def test_dz2022_uprn_rollup_councils_sum_to_scotland_spine_council():
     assert rollup["vintage"] == 2022
     out = aggregate_by_council(rows, scenario_id="S2", defaults=_mini_defaults(1.0, 1.0))
     assert out["surface_path"]["rollup_pin_vintage"] == 2022
-    assert out["national"]["estimate_label"] == "partly_estimated"
+    # Weakest label: Glasgow measured+fully → fully; Edinburgh partly; Scotland fully.
+    assert out["national"]["estimate_label"] == "fully_estimated"
     by_la = {c["la_code"]: c for c in out["by_council"]}
-    assert by_la["S12000049"]["estimate_label"] == "partly_estimated"
+    assert by_la["S12000049"]["estimate_label"] == "fully_estimated"
     assert by_la["S12000036"]["estimate_label"] == "partly_estimated"
     assert set(by_la["S12000049"]["zone_codes"]) == {"S01020870", "S01020871"}
 
@@ -805,9 +806,9 @@ def test_estimate_label_on_zones_and_combined_for_council_scotland():
     assert by_code["S01008678"]["estimate_label"] == "fully_estimated"
     edi = next(c for c in out["by_council"] if c["la_code"] == "S12000036")
     gla = next(c for c in out["by_council"] if c["la_code"] == "S12000049")
-    assert edi["estimate_label"] == "partly_estimated"  # measured + fully
+    assert edi["estimate_label"] == "fully_estimated"  # measured + fully → weakest
     assert gla["estimate_label"] == "measured"
-    assert out["national"]["estimate_label"] == "partly_estimated"
+    assert out["national"]["estimate_label"] == "fully_estimated"
 
 
 def test_council_scotland_estimate_label_refuses_zones_with_no_label():

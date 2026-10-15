@@ -227,7 +227,8 @@ def test_rollup_dz_iz_council_scotland_no_double_count():
     assert by[("scotland", roll.SCOTLAND_CODE)]["measured_rent"] == pytest.approx(450.0)
     assert by[("council", "S12000036")]["estimate_label"] == "measured"
     assert by[("council", "S12000049")]["estimate_label"] == "fully_estimated"
-    assert by[("scotland", roll.SCOTLAND_CODE)]["estimate_label"] == "partly_estimated"
+    # Methods v1.2 weakest: Scotland mixes measured + fully → fully_estimated.
+    assert by[("scotland", roll.SCOTLAND_CODE)]["estimate_label"] == "fully_estimated"
     for r in out:
         assert r["publish_level"] == "internal"
         assert r["vintage"] == 2022

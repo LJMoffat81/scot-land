@@ -3444,3 +3444,84 @@ button.linkish:disabled {
   color: var(--slrg-muted);
   font-weight: 500;
 }
+
+/*
+ * UX-01 — mobile tap targets ≥44×44 via padding / min box.
+ * Glyph and type sizes stay put; box-sizing keeps the extra padding inside.
+ */
+@media (max-width: 900px) {
+  .map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-in,
+  .map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-out {
+    width: 44px;
+    height: 44px;
+    box-sizing: border-box;
+  }
+
+  button.chip,
+  .layer-chips .chip {
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.55rem 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hud-close {
+    box-sizing: border-box;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* SW-030 sea line: clear the enlarged mobile × (+ 8px). */
+  .place-card-sea-line {
+    padding-right: calc(44px + 8px);
+  }
+
+  .hud-search-go,
+  .squares-shell .hud-search-go {
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.55rem 1.05rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .site-nav-panel a {
+    box-sizing: border-box;
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0.65rem 0.75rem;
+  }
+
+  .map-footer a {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.55rem 0.35rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .hud-scotland-fold {
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.65rem 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}

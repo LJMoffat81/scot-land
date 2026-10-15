@@ -39,9 +39,19 @@
     z-index: 3;
   }
 
+  /* UX-01: whole strip toggle is the hit target (≥44×44).
+   * Keep strip padding tight so collapsed banner height stays <52 (SW-016 e2e). */
+  .research-banner-toggle {
+    box-sizing: border-box;
+    align-items: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0;
+  }
+
   .research-banner-map.research-banner-strip {
     margin: 0;
-    padding: 0.4rem 0.65rem;
+    padding: 0.15rem 0.65rem;
     border-radius: 10px;
     align-items: center;
     gap: 0.4rem;

@@ -148,17 +148,21 @@
   }
 
   .map-footer {
-    padding: 0.12rem 0.55rem 0.14rem;
+    /* UX-01: allow Sources link hit area (≥44px); keep one-line chrome. */
+    padding: 0 0.55rem;
     font-size: 0.62rem;
     line-height: 1.25;
-    max-height: 2.1rem;
-    overflow: hidden;
+    max-height: none;
+    overflow: visible;
   }
 
   .map-footer p {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    white-space: normal;
   }
 }
 
@@ -449,10 +453,10 @@
   .basemap-switcher {
     right: 0.55rem;
     /*
-     * Above zoom group (~58px) + collapsed (i) (~24px) + MapLibre margins.
-     * Measured against the resting collapsed-(i) layout (not expanded attrib).
+     * UX-01: zoom +/- are 44×44 (~88px group) + collapsed (i) (~24px)
+     * + MapLibre margins. Keep tile clear of the taller zoom stack.
      */
-    bottom: 7.35rem;
+    bottom: 9.25rem;
   }
 
   /*

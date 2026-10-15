@@ -590,8 +590,8 @@ input {
     border-radius: 16px 16px 0 0;
     padding-bottom: 0.85rem;
     box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.14);
-    /* Match desktop SW-047: card chrome (peek/value/more-about) does not
-       scroll under the map; only .place-card-sheet-body scrolls. */
+    /* Chrome (peek / value / more-about) stays painted; only sheet scrolls.
+       Do not let the whole card scroll under the map (DZ-HIERARCHY click). */
     overflow: hidden;
   }
 
@@ -619,14 +619,13 @@ input {
     overflow: hidden;
   }
 
-  /* SW-047 + DZ-HIERARCHY: peek may shrink; value + more-about stay painted. */
+  /*
+   * UX10-1: peek (name / figure / disclaimer) must stay visible — never
+   * flex-shrink under the sheet. SW-047 value block + DZ more-about also
+   * keep their height; only .place-card-sheet-body yields space.
+   */
   .hud-place .place-card-peek,
-  .place-card-stub .place-card-peek {
-    flex: 0 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-  }
-
+  .place-card-stub .place-card-peek,
   .hud-place .place-card-value-block,
   .place-card-stub .place-card-value-block,
   .hud-place .place-card-more-about,
@@ -641,6 +640,7 @@ input {
     overflow-y: auto;
     flex: 1 1 auto;
     min-height: 0;
+    /* Cap so chrome wins inside the 52dvh card; flex may shrink further. */
     max-height: min(36dvh, 18rem);
   }
 }

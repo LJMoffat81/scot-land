@@ -158,6 +158,9 @@ input {
   border-radius: 12px;
   box-shadow: var(--hud-shadow);
   text-decoration: none;
+  /* LOGO-H2: ≥44×44 CSS px tap/click target on mobile. */
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .hud-wordmark img {
@@ -1734,6 +1737,9 @@ input {
   font-weight: 700;
   font-size: 1rem;
   margin-right: 0.25rem;
+  /* LOGO-H2: ≥44×44 CSS px tap target (mark may be ~40px inside). */
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .site-nav-brand img {
@@ -1741,6 +1747,22 @@ input {
   width: 40px;
   height: 40px;
   object-fit: contain;
+  flex-shrink: 0;
+}
+
+.site-nav-brand-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  line-height: 1.15;
+}
+
+.site-nav-tagline {
+  color: #546579;
+  font-weight: 500;
+  font-size: 0.72rem;
+  letter-spacing: 0.01em;
 }
 
 .site-nav-page .site-nav-links {
@@ -1914,9 +1936,9 @@ input {
     display: none;
   }
 
-  /* SW-020: logo PNG already shows LAND — hide the text wordmark so it
-     cannot sit under the mark or leave stray letters at 390px. */
-  .site-nav-brand .site-nav-wordmark {
+  /* SW-020 / LOGO-H2: mark only on mobile — hide wordmark and tagline. */
+  .site-nav-brand .site-nav-wordmark,
+  .site-nav-brand .site-nav-tagline {
     display: none;
   }
 

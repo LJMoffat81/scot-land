@@ -62,18 +62,43 @@ const CATALOG = {
 
 const SOURCE_IDS = CATALOG.layers.map((layer) => layer.id);
 
+function isCatalogRequest(url: string): boolean {
+  return /\/(?:backend\/)?api\/catalog\.json(?:\?|$)/i.test(url);
+}
+
 async function mockCatalog(page: Page) {
-  await page.route("**/api/catalog.json", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(CATALOG),
-    });
-  });
+  // Browser fetch is /backend/api/catalog.json on localhost; also cover /api/.
+  await page.route(
+    (url) => isCatalogRequest(url.href),
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(CATALOG),
+      });
+    },
+  );
+}
+
+async function gotoDataWithCatalog(page: Page) {
+  const catalogOk = page.waitForResponse(
+    (res) => isCatalogRequest(res.url()) && res.ok(),
+  );
+  await page.goto("/data");
+  await catalogOk;
+  await expect(
+    page.getByRole("heading", { name: "Data & sources" }),
+  ).toBeVisible();
+  await expect(page.getByTestId("data-sources-groups")).toBeVisible();
 }
 
 async function openAllGroups(page: Page) {
   const groups = page.locator("[data-testid^='data-sources-group-']");
+  // count() does not wait — groups render after the catalog fetch.
+  await expect(
+    groups.first(),
+    "sources groups should render after catalog load",
+  ).toBeVisible({ timeout: 15_000 });
   const count = await groups.count();
   expect(count).toBeGreaterThan(0);
   for (let i = 0; i < count; i += 1) {
@@ -108,10 +133,7 @@ test.describe("SW-034 /data mobile source cards", () => {
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await mockCatalog(page);
-    await page.goto("/data");
-    await expect(
-      page.getByRole("heading", { name: "Data & sources" }),
-    ).toBeVisible();
+    await gotoDataWithCatalog(page);
     await openAllGroups(page);
 
     // Table hidden; cards shown.
@@ -149,16 +171,13 @@ test.describe("SW-034 /data mobile source cards", () => {
   test("1280: desktop table with all columns", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await mockCatalog(page);
-    await page.goto("/data");
-    await expect(
-      page.getByRole("heading", { name: "Data & sources" }),
-    ).toBeVisible();
+    await gotoDataWithCatalog(page);
     await openAllGroups(page);
 
-    await expect(page.getByTestId("data-sources-table-land")).toBeVisible();
+    const landTable = page.getByTestId("data-sources-table-land");
+    await expect(landTable).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("data-source-card-vdl")).toBeHidden();
 
-    const landTable = page.getByTestId("data-sources-table-land");
     await expect(landTable.getByRole("columnheader", { name: "Source" })).toBeVisible();
     await expect(
       landTable.getByRole("columnheader", { name: "What it shows" }),

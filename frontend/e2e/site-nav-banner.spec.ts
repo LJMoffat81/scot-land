@@ -310,6 +310,7 @@ test.describe("site-watch PR A — SW-013 downloads moved note", () => {
     await expect(
       page.getByTestId("developers-downloads").getByTestId("developers-moved-note"),
     ).toHaveCount(1);
+    await expect(page.getByTestId("developers-api-moved-note")).toHaveCount(0);
   });
 
   test("/downloads redirect shows visible moved note", async ({ page }) => {
@@ -319,11 +320,51 @@ test.describe("site-watch PR A — SW-013 downloads moved note", () => {
     const note = page.getByTestId("developers-moved-note");
     await expect(note).toHaveText("Downloads has moved here.");
     await expect(note).toBeInViewport();
+    await expect(page.getByTestId("developers-api-moved-note")).toHaveCount(0);
   });
 
   test("/developers without moved=1 hides the note", async ({ page }) => {
     await page.setViewportSize({ width: 1100, height: 800 });
     await page.goto("/developers");
+    await expect(page.getByTestId("developers-moved-note")).toHaveCount(0);
+    await expect(page.getByTestId("developers-api-moved-note")).toHaveCount(0);
+  });
+
+  test("/developers?moved=1#api shows API note in viewport", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1100, height: 800 });
+    await page.goto("/developers?moved=1#api");
+    const note = page.getByTestId("developers-api-moved-note");
+    await expect(note).toHaveText("The API page has moved here.");
+    await expect(note).toBeInViewport();
+    await expect(
+      page.getByTestId("developers-api").getByTestId("developers-api-moved-note"),
+    ).toHaveCount(1);
+    await expect(page.getByTestId("developers-moved-note")).toHaveCount(0);
+  });
+
+  test("/open-api redirect shows API moved note", async ({ page }) => {
+    await page.setViewportSize({ width: 1100, height: 800 });
+    await page.goto("/open-api");
+    await expect(page).toHaveURL(/\/developers\?moved=1/);
+    await expect(page).toHaveURL(/#api/);
+    const note = page.getByTestId("developers-api-moved-note");
+    await expect(note).toHaveText("The API page has moved here.");
+    await expect(note).toBeInViewport();
+    await expect(page.getByTestId("developers-moved-note")).toHaveCount(0);
+  });
+
+  test("/open-api redirect shows API moved note at 390x844", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/open-api");
+    await expect(page).toHaveURL(/\/developers\?moved=1/);
+    await expect(page).toHaveURL(/#api/);
+    const note = page.getByTestId("developers-api-moved-note");
+    await expect(note).toHaveText("The API page has moved here.");
+    await expect(note).toBeInViewport();
     await expect(page.getByTestId("developers-moved-note")).toHaveCount(0);
   });
 });

@@ -309,6 +309,17 @@ async function runBasemapChecks(page: Page) {
   const switcher = page.getByTestId("basemap-switcher");
   await expect(switcher).toBeVisible();
   await expect(switcher).toHaveAttribute("type", "button");
+  // SW-023 tile is ~64×64 (small device-pixel tolerance; do not loosen further).
+  const tileBox = await switcher.boundingBox();
+  expect(tileBox, "basemap tile box").toBeTruthy();
+  expect(
+    Math.abs(tileBox!.width - 64),
+    `basemap tile width ≈ 64 (got ${tileBox!.width})`,
+  ).toBeLessThanOrEqual(4);
+  expect(
+    Math.abs(tileBox!.height - 64),
+    `basemap tile height ≈ 64 (got ${tileBox!.height})`,
+  ).toBeLessThanOrEqual(4);
   await expectStreetsState(page, switcher);
 
   // Click toggles streets → satellite.

@@ -9,7 +9,7 @@ import { expect, test, type Page } from "@playwright/test";
 const GLASGOW = { lng: -4.2514, lat: 55.8609 };
 
 const TITLE = "Population density — people per km²";
-const BLURB = "Busier places tend to have higher land rents.";
+const BLURB = "Busier places tend to have a higher Annual Ground Rent.";
 const SOURCE =
   "Source: National Records of Scotland mid-year estimates, Open Government Licence v3.0";
 const ZOOM_HINT = "Zoom in to see colours";

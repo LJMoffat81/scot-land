@@ -243,6 +243,9 @@ test.describe("SW-016 research banner strip 390x844", () => {
       mapBox!.y,
     );
     expect(aboutBox!.y, "About should stay near the top").toBeLessThan(280);
+    // Topmost hit-test: nothing covers Map / About at their centres.
+    await assertLinkTopmost(menuLinks.nth(0), "Map");
+    await assertLinkTopmost(menuLinks.nth(1), "About");
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
 
@@ -287,6 +290,33 @@ test.describe("SW-016 research banner strip 390x844", () => {
     await assertCenterTappable(cardClose, "place card close");
     await assertBannerClears(banner, burger, "burger with place card open");
     await assertBannerClears(banner, search, "search with place card open");
+  });
+
+  test("methodology strip expands and shows experimental", async ({ page }) => {
+    test.setTimeout(90_000);
+    await page.goto("/methodology");
+
+    const banner = page.getByTestId("research-banner");
+    await expect(banner).toBeVisible({ timeout: 15_000 });
+    await expect(banner).toHaveAttribute("data-strip", "1");
+    await expect(banner).toHaveAttribute("data-banner-variant", "methodology");
+    await expect(banner).toHaveAttribute("data-expanded", "0");
+    await expect(banner.locator(".research-banner-text")).toHaveText(
+      RESEARCH_BANNER_STRIP_COLLAPSED,
+    );
+    await expect(banner).not.toContainText("experimental");
+
+    const toggle = page.getByTestId("research-banner-toggle");
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await toggle.click();
+
+    await expect(banner).toHaveAttribute("data-expanded", "1");
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(banner).toContainText("experimental");
+    await expect(banner.locator(".research-banner-text")).toContainText(
+      "Scot-LAND is experimental",
+    );
   });
 
   test("suggestions open collapse expanded strip so first result is tappable", async ({
@@ -408,6 +438,32 @@ async function assertBannerClears(
     overlaps(bannerBox!, targetBox!),
     `${label} overlaps research banner`,
   ).toBe(false);
+}
+
+/**
+ * Centre of a menu link must be the topmost hit (elementFromPoint → that link).
+ */
+async function assertLinkTopmost(locator: Locator, label: string) {
+  await expect(locator, label).toBeVisible();
+  const result = await locator.evaluate((el, expected) => {
+    const box = el.getBoundingClientRect();
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+    const hit = document.elementFromPoint(x, y);
+    const link = hit?.closest?.("a") as HTMLAnchorElement | null;
+    const text = link?.textContent?.trim() ?? "";
+    return {
+      text,
+      ok: text === expected,
+      x,
+      y,
+      tag: hit?.tagName ?? "none",
+    };
+  }, label);
+  expect(
+    result.ok,
+    `${label} centre not topmost (hit "${result.text || result.tag}" at ${result.x.toFixed(1)}, ${result.y.toFixed(1)})`,
+  ).toBe(true);
 }
 
 /**

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from fastapi.testclient import TestClient
 
 
@@ -143,8 +145,9 @@ def test_platform_place_contract_shape(monkeypatch):
     assert by_id["vdl"]["licence_url"]
     assert "unverified" in by_id["public_crown"]["licence"].lower()
 
-    # Designer v3.1 fields
-    assert body["square_reference"].startswith("Scot-LAND square reference")
+    # Designer v3.1 fields — map reference is grid indices only (no label prefix).
+    assert re.fullmatch(r"-?\d+,-?\d+", body["square_reference"])
+    assert "Scot-LAND" not in body["square_reference"]
     assert "what3words" not in body["square_reference"].lower()
     assert "agr_rows" in body
     assert [r["id"] for r in body["agr_rows"]] == ["surface", "resource", "nature"]

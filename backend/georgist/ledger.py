@@ -221,7 +221,7 @@ def ledger_checks() -> list[dict[str, Any]]:
         _check(
             "C-totals",
             meaning=(
-                "Totals per chip only, never across chips or price years; Estimate total "
+                "Totals per chip only, never across chips or price years; estimate total "
                 "separate, never summed; oil & gas + benchmarks outside both"
             ),
             result="pass",

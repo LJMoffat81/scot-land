@@ -3178,6 +3178,80 @@ button.linkish:disabled {
   font-weight: 650;
 }
 
+/* SW-034: mobile /data source cards (<640px). Desktop keeps the table. */
+.sources-card-list {
+  display: none;
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.sources-card {
+  border: 1px solid color-mix(in srgb, var(--slrg-navy) 12%, transparent);
+  border-radius: 10px;
+  background: #fafbfc;
+  padding: 0.75rem 0.85rem;
+  margin: 0 0 0.65rem;
+}
+
+.sources-card:last-child {
+  margin-bottom: 0;
+}
+
+.sources-card-name {
+  margin: 0 0 0.25rem;
+  font-weight: 650;
+  color: var(--slrg-navy);
+  font-size: 0.95rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.sources-card-group {
+  margin: 0 0 0.55rem;
+  color: var(--slrg-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.sources-card-licence,
+.sources-card-link {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.sources-card-licence a,
+.sources-card-link a {
+  color: var(--slrg-navy);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  word-break: break-word;
+}
+
+@media (max-width: 639px) {
+  .data-ledger-page.downloads-page {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
+  .sources-table-wrap {
+    display: none;
+  }
+
+  .sources-card-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sources-group {
+    padding-left: 0.7rem;
+    padding-right: 0.7rem;
+  }
+}
+
 .lineage-list {
   padding-left: 1.25rem;
 }

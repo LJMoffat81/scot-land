@@ -72,26 +72,55 @@ def test_tunnel_ingress_hostnames_to_frontend_only_then_404():
     assert data["tunnel"] == "REPLACE_WITH_TUNNEL_ID"
     assert data["credentials-file"] == "REPLACE_WITH_CREDENTIALS_FILE"
     ingress = data["ingress"]
-    assert len(ingress) == 3
-    assert ingress[0] == {
-        "hostname": "scot-land.scot",
-        "service": "http://localhost:3000",
+    # PARCELS-OFF: four path 404s (both hosts × two paths) ahead of front-end.
+    parcel_paths = {
+        "^/backend/layers/parcels.*",
+        "^/api/parcels.*",
     }
-    assert ingress[1] == {
-        "hostname": "www.scot-land.scot",
-        "service": "http://localhost:3000",
-    }
-    assert ingress[2] == {"service": "http_status:404"}
-    # DROP any /api → :8000 rule; Postgres never exposed (yaml values only).
+    hosts = {"scot-land.scot", "www.scot-land.scot"}
+    parcel_rules = [
+        r
+        for r in ingress
+        if r.get("path") in parcel_paths and r.get("service") == "http_status:404"
+    ]
+    assert len(parcel_rules) == 4, parcel_rules
+    assert {r["hostname"] for r in parcel_rules} == hosts
+    assert {r["path"] for r in parcel_rules} == parcel_paths
+
+    frontend_rules = [
+        r
+        for r in ingress
+        if r.get("hostname") in hosts
+        and r.get("service") == "http://localhost:3000"
+        and "path" not in r
+    ]
+    assert frontend_rules == [
+        {"hostname": "scot-land.scot", "service": "http://localhost:3000"},
+        {"hostname": "www.scot-land.scot", "service": "http://localhost:3000"},
+    ]
+    assert ingress[-1] == {"service": "http_status:404"}
+    assert len(ingress) == 7  # 4 parcel 404 + 2 frontend + catch-all
+
+    last_parcel = max(i for i, r in enumerate(ingress) if r in parcel_rules)
+    first_frontend = min(i for i, r in enumerate(ingress) if r in frontend_rules)
+    assert last_parcel < first_frontend
+
+    # DROP any /api → :8000 service rule; Postgres never exposed (yaml values).
+    # Path rules are only the PARCELS-OFF 404s above — never proxy to :8000.
     for rule in ingress:
-        assert "path" not in rule
         svc = str(rule.get("service", ""))
         assert ":8000" not in svc
         assert "5432" not in svc
         assert "5433" not in svc
         assert "postgres" not in svc.lower()
-    assert "^/api" not in text
+        if "path" in rule:
+            assert rule["path"] in parcel_paths
+            assert rule["service"] == "http_status:404"
     assert "REPLACE_WITH_" in text  # placeholders, no live secrets
+    # Comment may mention :8000 as the dropped pattern; no ingress service uses it.
+    assert not any(
+        ":8000" in str(r.get("service", "")) for r in ingress
+    )
 
 
 def test_access_template_covers_admin_and_docs_admin():

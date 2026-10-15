@@ -2,7 +2,11 @@
  * Resilient parcel tile proxy for MapLibre.
  * Upstream timeouts / errors become a transparent PNG (200) so the console
  * does not fill with AJAXError 500 from the Next rewrite proxy.
+ *
+ * Gated by PARCELS_PUBLIC=true (default off) — 404 when the flag is off.
  */
+
+import { parcelsPublic } from "@/lib/parcelsPublic";
 
 const TRANSPARENT_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
@@ -31,6 +35,9 @@ function transparent(): Response {
 type Ctx = { params: Promise<{ z: string; x: string; y: string }> };
 
 export async function GET(_request: Request, context: Ctx) {
+  if (!parcelsPublic()) {
+    return new Response("Not Found", { status: 404 });
+  }
   try {
     const { z, x, y } = await context.params;
     const yy = y.replace(/\.png$/i, "");

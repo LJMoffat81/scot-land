@@ -14,6 +14,7 @@ import {
   type CatalogLayer,
   type LayerCatalog,
 } from "@/lib/layerCatalog";
+import { parcelsPublic } from "@/lib/parcelsPublic";
 
 export type LayerToggleState = Record<string, boolean>;
 
@@ -165,7 +166,11 @@ export default function LayersPanel({
             <ul className="layers-panel-list">
               {layers.map((layer) => {
                 const isLive = layer.status === "live";
-                const hasToggle = isLive && toggleSet.has(layer.id);
+                // Parcel (boundaries) toggle stays off the public UI unless flagged.
+                const parcelsAllowed =
+                  layer.id !== "boundaries" || parcelsPublic();
+                const hasToggle =
+                  isLive && toggleSet.has(layer.id) && parcelsAllowed;
                 const withheld = PUBLIC_WITHHELD_LAYER_IDS.has(layer.id);
                 const on = Boolean(enabled[layer.id]);
                 const sourceLabel = layerSourceLabel(layer);

@@ -3,6 +3,7 @@
  * Limits / Boundaries). Each row reuses an existing paint toggle (catalog id).
  */
 
+import { parcelsPublic } from "./parcelsPublic.mjs";
 import { RENT_GROUP_NAME } from "./rentGroupNames.mjs";
 
 export type MapLayerGroupKey =
@@ -234,9 +235,15 @@ export function mapDrawerLayersByGroup(): Array<{
   label: string;
   layers: MapDrawerLayer[];
 }> {
+  const parcelsOn = parcelsPublic();
   return MAP_LAYER_GROUP_ORDER.map((key) => ({
     key,
     label: mapLayerGroupLabel(key),
-    layers: MAP_DRAWER_LAYERS.filter((layer) => layer.group === key),
+    layers: MAP_DRAWER_LAYERS.filter((layer) => {
+      if (layer.group !== key) return false;
+      // Hide Land parcels toggle unless PARCELS_PUBLIC=true (default off).
+      if (layer.id === "boundaries" && !parcelsOn) return false;
+      return true;
+    }),
   }));
 }

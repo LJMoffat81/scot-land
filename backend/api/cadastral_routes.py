@@ -3,18 +3,25 @@
 Always mounted with the Wealth core so cadastral layers work even when the
 legacy AGR router is skipped for missing publication declarations.
 Plain shapes only — no value or rent attached (publication geometry rule).
+
+Public access is gated by PARCELS_PUBLIC=true (default off) via a router
+dependency — do not change main.py for this flag.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, Response
 
 from api.common import _scotland_bounds_check
+from api.parcels_public import require_parcels_public
 from layers.cadastral import LayerUnavailable, query_bbox as parcels_bbox
 from spatial.parcels import TRANSPARENT_PNG, fetch_parcel_tile_png, lookup_parcel_geojson
 
-router = APIRouter(tags=["cadastral"])
+router = APIRouter(
+    tags=["cadastral"],
+    dependencies=[Depends(require_parcels_public)],
+)
 
 
 def _parcel_tile_response(z: int, x: int, y: int) -> Response:

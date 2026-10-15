@@ -20,7 +20,8 @@ test.describe("cadastral and public land layers", () => {
     const panel = page.locator("aside.hud-tools");
     await expect(panel).toBeVisible();
     await expect(panel.getByTestId("layers-panel")).toBeVisible();
-    await expect(panel.getByTestId("layer-toggle-boundaries")).toBeVisible();
+    // PARCELS_PUBLIC default off — Land parcels toggle stays hidden.
+    await expect(panel.getByTestId("layer-toggle-boundaries")).toHaveCount(0);
     await expect(panel.getByTestId("ledger-panel")).toHaveCount(0);
     await expect(panel.getByTestId("layer-toggle-public_crown")).toHaveCount(0);
     await expect(panel.getByText("The charge")).toHaveCount(0);

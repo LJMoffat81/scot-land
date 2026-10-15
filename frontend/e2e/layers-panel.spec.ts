@@ -150,14 +150,17 @@ test.describe("LayersPanel (catalog-driven, Dev/QA /layers-panel)", () => {
       .map((layer) => layer.id);
 
     for (const id of liveIds) {
-      await expect(page.getByTestId(`layer-toggle-${id}`)).toBeVisible();
+      // Parcel toggle is gated by PARCELS_PUBLIC (default off).
+      if (id === "boundaries") {
+        await expect(page.getByTestId(`layer-toggle-${id}`)).toHaveCount(0);
+      } else {
+        await expect(page.getByTestId(`layer-toggle-${id}`)).toBeVisible();
+      }
       await expect(page.getByTestId(`layer-source-${id}`)).toBeVisible();
       await expect(page.getByTestId(`layer-licence-${id}`)).toBeVisible();
     }
 
-    await expect(page.getByTestId("layer-toggle-boundaries")).toHaveText(
-      /ROS INSPIRE parcels/i,
-    );
+    await expect(page.getByTestId("layer-toggle-boundaries")).toHaveCount(0);
     await expect(page.getByTestId("layer-licence-boundaries")).toContainText(
       "Open Government Licence v3.0",
     );

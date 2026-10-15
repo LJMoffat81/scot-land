@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from layers.cadastral import LayerUnavailable
 from layers.platform import platform_catalog
 from layers.public_land import DASHBOARD_URL, LICENCE
@@ -13,6 +15,12 @@ GLASGOW_BBOX = {
     "north": 55.88,
     "east": -4.22,
 }
+
+
+@pytest.fixture(autouse=True)
+def _parcels_public_on(monkeypatch):
+    """These tests exercise parcel handlers; enable the public flag."""
+    monkeypatch.setenv("PARCELS_PUBLIC", "true")
 
 
 def test_public_crown_catalog_is_gap_unverified_not_open():

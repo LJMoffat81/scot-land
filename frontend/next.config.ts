@@ -31,6 +31,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone",
   poweredByHeader: false,
+  // Expose PARCELS_PUBLIC to client bundles (default false). Only "true" enables
+  // parcel tile proxy routes and the Land parcels layer toggle.
+  env: {
+    PARCELS_PUBLIC: process.env.PARCELS_PUBLIC ?? "false",
+  },
   // Next 16 blocks HMR/dev assets when the page is opened on a different host
   // (localhost vs 127.0.0.1). Allow both so local browsing does not break.
   allowedDevOrigins: ["127.0.0.1", "localhost"],

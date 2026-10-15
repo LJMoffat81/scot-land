@@ -14,9 +14,8 @@ const MASK_COPY =
 
 const PARTS_SUMMARY = "Natural resource rents and services of nature";
 
-const LAND_VALUES_HOME =
+const LAND_VALUES_COMING_SOON =
   "Land values coming soon — our method is still being tested.";
-const LAND_VALUES_CARD = "Land values coming soon.";
 const PRE_POUND =
   "We're not showing amounts yet while we check our method.";
 
@@ -363,7 +362,7 @@ test.describe("WORDING-BATCH-1 place card + SW-047 (1280)", () => {
     await expect(card.getByTestId("place-card-figure")).toContainText(PRE_POUND);
     await expect(
       card.getByTestId("place-card-land-values-coming-soon"),
-    ).toHaveText(LAND_VALUES_CARD);
+    ).toHaveText(LAND_VALUES_COMING_SOON);
 
     await expect(card.getByTestId("place-card-figure-status")).toContainText(
       "Figure not published yet",
@@ -440,7 +439,7 @@ test.describe("WORDING-BATCH-1 place card (390)", () => {
     await expect(card.getByTestId("place-card-figure")).toContainText(PRE_POUND);
     await expect(
       card.getByTestId("place-card-land-values-coming-soon"),
-    ).toHaveText(LAND_VALUES_CARD);
+    ).toHaveText(LAND_VALUES_COMING_SOON);
     await expect(card.getByTestId("place-card-figure-why")).toHaveAttribute(
       "href",
       "/methodology#how-sure",
@@ -485,7 +484,7 @@ for (const viewport of [
       await page.goto("/");
       await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
       await expect(page.getByTestId("land-values-coming-soon")).toHaveText(
-        LAND_VALUES_HOME,
+        LAND_VALUES_COMING_SOON,
       );
       await expect(page.locator("body")).not.toContainText(/£\d/);
       await expect(page.locator("body")).not.toContainText(BANNED);

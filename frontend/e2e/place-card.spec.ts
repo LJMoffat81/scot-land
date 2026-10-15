@@ -17,7 +17,9 @@ test.describe("place card (internal preview)", () => {
     );
     await expect(
       page.getByTestId("place-card-land-values-coming-soon"),
-    ).toHaveText("Land values coming soon.");
+    ).toHaveText(
+      "Land values coming soon — our method is still being tested.",
+    );
     await expect(page.getByTestId("place-card-agr-label")).toHaveText(
       "Annual Ground Rent",
     );

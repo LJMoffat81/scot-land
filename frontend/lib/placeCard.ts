@@ -26,12 +26,15 @@ export const PLACE_CARD_AGR_SUBTITLE =
 export const PLACE_CARD_PRE_POUND =
   "We're not showing amounts yet while we check our method.";
 
-/** Place-card companion line (WORDING-BATCH-1 A1 / 17:40). */
-export const PLACE_CARD_LAND_VALUES_COMING_SOON = "Land values coming soon.";
-
-/** Home / Find-a-place intro line (WORDING-BATCH-1 A1 / 17:40). */
+/**
+ * Home + place-card coming-soon line (WORDING-BATCH-1 A1 / 17:40;
+ * Scot-LAND: same wording on home and card).
+ */
 export const LAND_VALUES_COMING_SOON_HOME =
   "Land values coming soon — our method is still being tested.";
+
+/** Same string as LAND_VALUES_COMING_SOON_HOME (shown under PRE_POUND). */
+export const PLACE_CARD_LAND_VALUES_COMING_SOON = LAND_VALUES_COMING_SOON_HOME;
 
 /** Rank band UI — OFF until £ unblocked (UX-10). */
 export const PLACE_CARD_RANK_BAND_ENABLED = false;

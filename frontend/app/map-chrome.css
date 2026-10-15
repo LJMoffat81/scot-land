@@ -502,8 +502,11 @@
     right: auto;
     top: calc(var(--hud-height, 6.5rem) + 0.45rem);
     width: min(360px, calc(100vw - 2rem));
-    /* Cap so the Legend pill at bottom-left always shows below the card. */
-    bottom: 4.5rem;
+    /*
+     * Cap so the Legend pill at bottom-left always clears the card box.
+     * Keep clearance above the pill (not SW-046 — legend stays bottom-left).
+     */
+    bottom: 5.25rem;
     max-height: none;
     overflow-x: hidden;
     overflow-y: auto;
@@ -517,7 +520,7 @@
     bottom: auto;
     height: auto;
     max-height: calc(
-      100% - var(--hud-height, 6.5rem) - 0.45rem - 4.5rem
+      100% - var(--hud-height, 6.5rem) - 0.45rem - 5.25rem
     );
     overflow: visible;
   }
@@ -533,13 +536,18 @@
     bottom: min(48vh, 20rem);
   }
 
-  /* Legend pill / overlay stays bottom-left under the left card column. */
+  /*
+   * Legend pill / overlay stays bottom-left under the left card column.
+   * z-index above the place card (14) so Show/Hide legend stays clickable
+   * when the card column and pill share the left edge (UX-02). Not SW-046:
+   * we do not dock the legend bottom-right.
+   */
   .app-shell.place-open .hud-scotland {
     left: 1.1rem;
     right: auto;
     bottom: 1.25rem;
     width: min(360px, calc(100vw - 2rem));
-    z-index: 5;
+    z-index: 15;
   }
 
   /* Basemap + MapLibre zoom/attrib: shift left while Layers drawer is open. */

@@ -273,7 +273,21 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
             "(Constraint: changes best use, adds no value); no rent"
         ),
     ),
-    "/platform/place": LayerRule("site", "site", "none", note="ownership/vacant/gap card; no modelled rent"),
+    "/platform/place": LayerRule(
+        "zone",
+        "zone",
+        "modelled",
+        note=(
+            "ownership/vacant/gap card; surface rent £ only when gbp_live.enabled "
+            "(Data Zone grain; default OFF)"
+        ),
+    ),
+    "/platform/gbp-live": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="GBP-LIVE-V1 settings flag (default OFF); no geometry payload",
+    ),
     "/platform/gaps": LayerRule("zone", "zone", "none", note="register gap catalogue"),
     "/api/catalog.json": LayerRule("zone", "zone", "none", note="open-data catalogue"),
     "/api/ledger.json": LayerRule(
@@ -315,7 +329,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="blocked public stub — council AGR roll £ not published",
     ),
-    "/api/place.json": LayerRule("site", "site", "none", note="place card download"),
+    "/api/place.json": LayerRule(
+        "zone",
+        "zone",
+        "modelled",
+        note="place card download; surface rent £ only when gbp_live.enabled (default OFF)",
+    ),
     "/api/registers.json": LayerRule("zone", "zone", "none", note="registers catalogue"),
     "/api/common-good.json": LayerRule(
         "zone",

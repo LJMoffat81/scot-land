@@ -1,4 +1,5 @@
 import ContentPageFooter from "@/components/ContentPageFooter";
+import GbpLiveBannerNote from "@/components/GbpLiveBannerNote";
 import GlossaryBox from "@/components/GlossaryBox";
 import HashRedirect from "@/components/HashRedirect";
 import ResearchBanner from "@/components/ResearchBanner";
@@ -6,6 +7,7 @@ import SiteNav from "@/components/SiteNav";
 
 /**
  * How it works page copy — SLRG wording (site-watch PR C / SW-017).
+ * GBP-LIVE £ copy mounts only when the backend flag is on (client note).
  */
 export default function MethodologyContent() {
   return (
@@ -14,6 +16,7 @@ export default function MethodologyContent() {
       <SiteNav current="how" />
       <h1>How it works</h1>
       <ResearchBanner variant="methodology" />
+      <GbpLiveBannerNote />
 
       <p>
         <strong>What is Annual Ground Rent?</strong> It is the yearly rental

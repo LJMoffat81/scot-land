@@ -98,6 +98,7 @@ jobs:
       - run: npm run test:quality-tags
       - run: npm run test:layer-licence-credits
       - run: npm run test:place-card-hotfix
+      - run: npm run test:gbp-live-v1
       - run: npm run test:site-rewrite-pr1
       - run: npm run test:site-rewrite-pr2
       - run: npm run check:download-bundles-fresh

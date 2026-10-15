@@ -24,6 +24,7 @@ from layers.open_stats import (
     vdl_json,
 )
 from layers.ledger import ledger_payload
+from georgist.gbp_live import public_settings as gbp_live_public_settings
 from layers.platform import place_context, platform_catalog
 from layers.registers import registers_payload
 from layers.data_zones import query_bbox as data_zones_bbox
@@ -659,10 +660,21 @@ def platform_place(
     """Public place card for one clicked spot (place_card_v1).
 
     Council, data zone, intersecting layers, and official links.
-    No modelled money figures — residual plot rent stays on /internal/agr/*.
+    Surface rent £ only when ``data/config/gbp_live.yaml`` enabled is true
+    (default OFF). Residual plot AGR stays on /internal/agr/*.
     """
     _scotland_bounds_check(lat, lng)
     return place_context(lat, lng, postcode=postcode)
+
+
+@router.get("/platform/gbp-live")
+def platform_gbp_live() -> dict:
+    """GBP-LIVE-V1 public settings — ONE flag, default OFF.
+
+    Frontend shells (banner, legend, How it works) read this for instant rollback.
+    Does not expose the under-review zone list (applied server-side on the place card).
+    """
+    return gbp_live_public_settings()
 
 
 @router.get("/platform/gaps")

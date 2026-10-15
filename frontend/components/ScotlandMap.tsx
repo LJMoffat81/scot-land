@@ -4245,6 +4245,7 @@ export default function ScotlandMap() {
           All sources
         </a>
       </div>
+      </div>{/* map-stage — panel stays outside so inert modal does not block close */}
 
       <MapPanelSlot
         kind={panelKind}
@@ -4320,7 +4321,6 @@ export default function ScotlandMap() {
           </ul>
         </div>
       ) : null}
-      </div>
       <MapStampFooter />
     </div>
   );

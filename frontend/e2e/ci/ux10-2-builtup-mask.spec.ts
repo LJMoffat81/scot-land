@@ -251,7 +251,8 @@ async function closePlaceCard(page: Page) {
 /**
  * SW-044: attribution lives in the map (i) control, not a left-panel licence list.
  * Close overlays first — place card / layers drawer cover the (i) at 390.
- * Expand compact via DOM (click is often outside the 390 viewport).
+ * Product CSS keeps bottom-right inset; expand compact via DOM so credits
+ * are readable without an off-viewport click.
  */
 async function ensureAttribReady(page: Page) {
   await closePlaceCard(page);
@@ -266,9 +267,20 @@ async function ensureAttribReady(page: Page) {
       el.setAttribute("open", "");
     }
   });
-  await expect(attrib).toHaveClass(/maplibregl-compact-show|maplibregl-ctrl-attrib/, {
+  await expect(attrib).toHaveClass(/maplibregl-compact-show/, {
     timeout: 10_000,
   });
+
+  const viewport = page.viewportSize();
+  expect(viewport).toBeTruthy();
+  const box = await attrib.boundingBox();
+  expect(box, "map (i) attribution must have a layout box").toBeTruthy();
+  expect(box!.width).toBeGreaterThan(0);
+  expect(box!.height).toBeGreaterThan(0);
+  expect(box!.x + box!.width).toBeGreaterThan(0);
+  expect(box!.y + box!.height).toBeGreaterThan(0);
+  expect(box!.x).toBeLessThan(viewport!.width);
+  expect(box!.y).toBeLessThan(viewport!.height);
 }
 
 for (const viewport of [

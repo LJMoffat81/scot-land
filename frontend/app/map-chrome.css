@@ -133,8 +133,28 @@
 
 /* —— Item 5: fold MapLibre attribution behind (i); compact footer —— */
 @media (max-width: 640px) {
+  /*
+   * SW-044: keep zoom + (i) inset inside the visible map stage at 390.
+   * Slim chrome / bottom sheet leftover space must not push the control
+   * below the viewport (Playwright + real taps need it on-screen).
+   */
+  .map-stage .maplibregl-ctrl-bottom-right {
+    bottom: 0.75rem;
+    right: 0.5rem;
+    z-index: 3;
+  }
+
   .map-stage .maplibregl-ctrl-attrib {
     max-width: 2.5rem;
+  }
+
+  .map-stage .maplibregl-ctrl-attrib.maplibregl-compact {
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .map-stage .maplibregl-ctrl-attrib:not(.maplibregl-compact-show) {

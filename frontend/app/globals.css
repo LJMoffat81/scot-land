@@ -377,6 +377,47 @@ input {
   color: var(--rugby-navy, var(--slrg-navy));
 }
 
+/* Suggestion 31: fold Sasine / no-outline explanation behind a short control. */
+.place-card-why-no-outline {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  margin: 0;
+}
+
+.place-card-outline-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.55rem;
+  margin: 0;
+}
+
+.place-card-why-no-outline-btn {
+  display: inline-block;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--slrg-navy);
+  font: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.place-card-why-no-outline-btn:hover,
+.place-card-why-no-outline-btn:focus-visible {
+  color: var(--rugby-navy, var(--slrg-navy));
+}
+
+.place-card-why-no-outline-detail {
+  margin: 0;
+}
+
 @media (min-width: 1024px) {
   .hud-place.place-card-sea-miss {
     padding-top: 1.65rem;

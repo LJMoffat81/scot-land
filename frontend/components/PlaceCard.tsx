@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import EvidenceTagLegend from "@/components/EvidenceTagLegend";
 import {
   PLACE_CARD_CONSTRAINT_LABEL,
@@ -18,6 +20,53 @@ import {
   type PlaceRentTag,
   type PlaceValueStatus,
 } from "../lib/placeCard";
+
+/** Suggestion 31 — fold the Sasine / no-outline explanation behind a short control. */
+const WHY_NO_OUTLINE_LABEL = "Why no outline?";
+const NO_OUTLINE_STATUS_LINE = "No registered outline at this point";
+
+/**
+ * Survive PlaceCard body remounts (loading flicker / stub→card swap) so the
+ * open/closed choice is not lost mid-toggle under CI timing.
+ */
+const whyNoOutlineExpandedByNote = new Map<string, boolean>();
+
+function WhyNoOutlineBlock({ note }: { note: string }) {
+  const [expanded, setExpanded] = useState(
+    () => whyNoOutlineExpandedByNote.get(note) ?? false,
+  );
+
+  return (
+    <div className="place-card-why-no-outline" data-testid="place-card-why-no-outline">
+      <p className="place-card-meta place-card-outline-status-row">
+        <span data-testid="place-card-outline-status">{NO_OUTLINE_STATUS_LINE}</span>{" "}
+        <button
+          type="button"
+          className="place-card-why-no-outline-btn"
+          data-testid="place-card-why-no-outline-btn"
+          aria-expanded={expanded}
+          onClick={() => {
+            // Write the Map before setState so a remount mid-click still
+            // rehydrates the intended open/closed value.
+            const next = !(whyNoOutlineExpandedByNote.get(note) ?? expanded);
+            whyNoOutlineExpandedByNote.set(note, next);
+            setExpanded(next);
+          }}
+        >
+          {WHY_NO_OUTLINE_LABEL}
+        </button>
+      </p>
+      {expanded ? (
+        <p
+          className="place-card-meta place-card-why-no-outline-detail"
+          data-testid="place-card-why-no-outline-detail"
+        >
+          {note}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 export type PlaceCardProps = {
   data: PlaceCardPayload | null;
@@ -310,22 +359,31 @@ export function PlaceCard({
               data-testid="place-card-land-outline"
             >
               <h3 className="place-card-section">Land outline</h3>
-              {outlineStatus ? (
-                <p className="place-card-meta" data-testid="place-card-outline-status">
-                  {outlineStatus === "inside_outline"
-                    ? "Inside a registered land outline"
-                    : outlineStatus === "no_outline"
-                      ? "No registered outline at this point"
-                      : outlineStatus}
-                </p>
-              ) : null}
+              {outlineStatus === "no_outline" && outlineNote ? (
+                <WhyNoOutlineBlock note={outlineNote} />
+              ) : (
+                <>
+                  {outlineStatus ? (
+                    <p
+                      className="place-card-meta"
+                      data-testid="place-card-outline-status"
+                    >
+                      {outlineStatus === "inside_outline"
+                        ? "Inside a registered land outline"
+                        : outlineStatus === "no_outline"
+                          ? NO_OUTLINE_STATUS_LINE
+                          : outlineStatus}
+                    </p>
+                  ) : null}
+                  {outlineNote ? (
+                    <p className="place-card-meta">{outlineNote}</p>
+                  ) : null}
+                </>
+              )}
               {outlineArea != null ? (
                 <p className="place-card-meta" data-testid="place-card-outline-area">
                   About {Math.round(outlineArea).toLocaleString("en-GB")} m²
                 </p>
-              ) : null}
-              {outlineNote ? (
-                <p className="place-card-meta">{outlineNote}</p>
               ) : null}
             </section>
           )}

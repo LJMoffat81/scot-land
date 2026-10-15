@@ -598,8 +598,8 @@ input {
 
 .place-card-sea-line {
   margin: 0;
-  /* SW-030: clear the absolute × (1.85rem) + 8px so "Tap" is not clipped. */
-  padding: 0.15rem calc(1.85rem + 8px) 0.15rem 0.25rem;
+  /* SW-030: clear the absolute × (UX-01/UX10-1 44px hit) + 8px so "Tap" is not clipped. */
+  padding: 0.15rem calc(44px + 8px) 0.15rem 0.25rem;
   font-size: 0.92rem;
   line-height: 1.45;
   color: var(--slrg-ink, #1a2332);

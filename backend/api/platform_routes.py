@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from agr.export_stamp import with_stamp
 from georgist import db
@@ -27,6 +27,9 @@ from layers.ledger import ledger_payload
 from georgist.gbp_live import public_settings as gbp_live_public_settings
 from layers.platform import place_context, platform_catalog
 from layers.registers import registers_payload
+from layers.builtup_mask import LayerUnavailable as BuiltupMaskUnavailable
+from layers.builtup_mask import query_bbox as builtup_mask_bbox
+from layers.builtup_mask import query_mvt as builtup_mask_mvt
 from layers.data_zones import query_bbox as data_zones_bbox
 from layers.flood import query_bbox as flood_bbox
 from layers.hydro import query_bbox as hydro_bbox
@@ -273,6 +276,90 @@ def layer_open_data_zones(
             ),
         )
     return JSONResponse(payload)
+
+
+def _builtup_bbox(
+    kind: str,
+    south: float,
+    west: float,
+    north: float,
+    east: float,
+    max_features: int,
+) -> JSONResponse:
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    if south >= north or west >= east:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid bbox: require south < north and west < east",
+        )
+    try:
+        return JSONResponse(
+            builtup_mask_bbox(kind, south, west, north, east, max_features=max_features)
+        )
+    except BuiltupMaskUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@router.get("/layers/open/builtup-mask")
+def layer_open_builtup_mask(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=400, ge=1, le=400),
+) -> JSONResponse:
+    """National built-up display mask parts in the viewport (PostGIS).
+
+    Display only — no rent. Returns **503** when ``map_builtup_mask`` is empty.
+    """
+    return _builtup_bbox("builtup_mask", south, west, north, east, max_features)
+
+
+@router.get("/layers/open/dz2022-masked")
+def layer_open_dz2022_masked(
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+    max_features: int = Query(default=400, ge=1, le=400),
+) -> JSONResponse:
+    """DZ2022 ∩ built-up mask polygons in the viewport (PostGIS).
+
+    Display only — no rent / no value colouring (UX10-3). **503** when unloaded.
+    """
+    return _builtup_bbox("dz2022_masked", south, west, north, east, max_features)
+
+
+@router.get("/layers/open/builtup-mask/tiles/{z}/{x}/{y}")
+def layer_open_builtup_mask_tiles(z: int, x: int, y: int) -> Response:
+    """Mapbox Vector Tile for ``map_builtup_mask`` (display only)."""
+    if z < 0 or z > 22 or x < 0 or y < 0:
+        raise HTTPException(status_code=400, detail="Invalid tile coordinates")
+    try:
+        payload = builtup_mask_mvt("builtup_mask", z, x, y)
+    except BuiltupMaskUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return Response(
+        content=payload,
+        media_type="application/vnd.mapbox-vector-tile",
+        headers={"Cache-Control": "public, max-age=300"},
+    )
+
+
+@router.get("/layers/open/dz2022-masked/tiles/{z}/{x}/{y}")
+def layer_open_dz2022_masked_tiles(z: int, x: int, y: int) -> Response:
+    """Mapbox Vector Tile for ``dz2022_masked`` (display only)."""
+    if z < 0 or z > 22 or x < 0 or y < 0:
+        raise HTTPException(status_code=400, detail="Invalid tile coordinates")
+    try:
+        payload = builtup_mask_mvt("dz2022_masked", z, x, y)
+    except BuiltupMaskUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return Response(
+        content=payload,
+        media_type="application/vnd.mapbox-vector-tile",
+        headers={"Cache-Control": "public, max-age=300"},
+    )
 
 
 @router.get("/layers/open/hla")

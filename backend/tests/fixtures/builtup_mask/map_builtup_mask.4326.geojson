@@ -1,0 +1,1 @@
+{"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"name": "map_builtup_mask"}, "geometry": {"type": "MultiPolygon", "coordinates": [[[[-4.26, 55.858], [-4.25, 55.858], [-4.25, 55.865], [-4.26, 55.865], [-4.26, 55.858]]], [[[-4.28, 55.85], [-4.275, 55.85], [-4.275, 55.853], [-4.28, 55.853], [-4.28, 55.85]]]]}}]}

@@ -96,6 +96,12 @@ export const LAYER_ATTRIBUTION: Record<
     sourceUrl:
       "https://www.spatialdata.gov.scot/geonetwork/srv/eng/catalog.search#/metadata/7d564e13-a967-495a-ae2f-048ffdfa4b03",
   },
+  builtup_mask: {
+    source: "NRS Settlements 2022 (OGL v3), contains OS data",
+    licence: "OGL-3.0",
+    sourceUrl:
+      "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer",
+  },
   settlements: {
     source: "National Records of Scotland — Census 2022 Settlements",
     licence: "OGL-3.0",

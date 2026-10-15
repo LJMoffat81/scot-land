@@ -305,7 +305,7 @@ for (const viewport of [
         expect(desc?.trim().length ?? 0).toBeGreaterThan(0);
       }
 
-      // Card header + Area details fold.
+      // Card header + More about this area fold.
       await expect(card.getByTestId("place-card-place")).toBeVisible();
       await expect(card.getByTestId("place-card-postcode")).toHaveText("G2 1DU");
       await expect(card.getByTestId("place-card-council")).toContainText(
@@ -317,7 +317,7 @@ for (const viewport of [
       await expect(card.getByTestId("place-card-map-reference-copy")).toBeVisible();
       const area = card.getByTestId("place-card-area-details");
       await expect(area).toBeVisible();
-      await expect(area.locator("summary")).toHaveText("Area details");
+      await expect(area.locator("summary")).toHaveText("More about this area");
       await area.locator("summary").click();
       await expect(card.getByTestId("place-card-data-zone")).toContainText(
         "S01014567",
@@ -330,13 +330,12 @@ for (const viewport of [
       );
 
       await expect(card.getByTestId("place-card-agr-subtitle")).toHaveText(
-        "What gives this land value",
+        "What the land here is worth each year",
       );
       await expect(card.getByTestId("place-card-figures-not-published")).toHaveText(
-        "Figures not published yet",
+        "Figure not published yet",
       );
       await expect(card.getByTestId("place-card-range-surface")).toHaveCount(0);
-      await expect(card.getByText("Figure not published yet")).toHaveCount(0);
 
       if (viewport.width >= 1280) {
         const valueHeading = card.getByTestId("place-card-agr-subtitle");

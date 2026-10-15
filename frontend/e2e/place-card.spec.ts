@@ -52,7 +52,7 @@ test.describe("place card (internal preview)", () => {
       /of which: planning uplift/i,
     );
     await expect(page.getByTestId("place-card-figures-not-published")).toHaveText(
-      "Figures not published yet",
+      "Figure not published yet",
     );
     await expect(page.getByTestId("place-card-range-surface")).toHaveCount(0);
     await expect(page.getByTestId("place-tag-estimate")).toHaveText("Estimate");

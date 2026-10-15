@@ -210,10 +210,10 @@ async function assertSkeletonCopy(page: Page) {
   );
   await expect(page.getByTestId("place-card-agr-label")).toHaveText(AGR);
   await expect(page.getByTestId("place-card-agr-subtitle")).toHaveText(
-    "What gives this land value",
+    "What the land here is worth each year",
   );
   await expect(page.getByTestId("place-card-figures-not-published")).toHaveText(
-    "Figures not published yet",
+    "Figure not published yet",
   );
   await expect(page.getByTestId("place-card-sales-basis")).toContainText(
     "Based on local home sales (2019–2023)",

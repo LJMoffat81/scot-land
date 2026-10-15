@@ -16,7 +16,7 @@ import {
   PLACE_CARD_COVERS_HOMES_ONLY,
   PLACE_CARD_EXPERIMENTAL_FOOTER,
   PLACE_CARD_FACT_LINE,
-  PLACE_CARD_FIGURES_NOT_PUBLISHED,
+  PLACE_CARD_FIGURE_STATUS,
   PLACE_CARD_FULLY_ESTIMATED,
   PLACE_CARD_HOW_WE_WORK_HOMES,
   PLACE_CARD_HOW_WE_WORK_LABEL,
@@ -273,7 +273,7 @@ function PartRow({
   row: PlaceAgrRow;
   display?: SurfaceRentDisplay | null;
   gbpLive: boolean;
-  /** When false, card-level "Figures not published yet" covers unpublished ranges. */
+  /** When false, card-level PLACE_CARD_FIGURE_STATUS covers unpublished ranges. */
   showRange: boolean;
 }) {
   const classTag = (row.class ?? row.tag) as PlaceRentTag;
@@ -753,7 +753,7 @@ export function PlaceCard({
                   className="place-card-figures-status"
                   data-testid="place-card-figures-not-published"
                 >
-                  {PLACE_CARD_FIGURES_NOT_PUBLISHED}
+                  {PLACE_CARD_FIGURE_STATUS}
                 </p>
               ) : null}
             </section>

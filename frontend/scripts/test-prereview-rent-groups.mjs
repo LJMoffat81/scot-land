@@ -23,7 +23,7 @@ const { defaultAgrGroupRows, PLACE_CARD_PART_NOT_YET } = await import(
   pathToFileURL(join(frontendRoot, "lib/rentGroupAgrRows.mjs")).href,
 );
 const { mapLayerGroupLabel } = await import(
-  pathToFileURL(join(frontendRoot, "lib/mapLayerGroups.ts")).href,
+  pathToFileURL(join(frontendRoot, "lib/mapLayerRegistry.ts")).href,
 );
 const { dataSourceGroupLabel } = await import(
   pathToFileURL(join(frontendRoot, "lib/dataSourceGroups.ts")).href,

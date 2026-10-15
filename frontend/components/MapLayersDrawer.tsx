@@ -1,12 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import ConfidenceTag from "@/components/ConfidenceTag";
-import EvidenceTagLegend from "@/components/EvidenceTagLegend";
 import {
-  DRAWER_OGL_V3,
-  isOpenGovernmentLicenceDisplay,
-  mapDrawerLicenceDisplay,
-} from "@/lib/mapDrawerLicenceDisplay";
+  buildInlineLegendFromRegistry,
+  getMapLayer,
+  type InlineLegendView,
+  type MapLayerGroupKey,
+} from "@/lib/mapLayerRegistry";
 import {
   mapDrawerLayersByGroup,
   type MapDrawerLayer,
@@ -18,10 +19,14 @@ export type MapLayersDrawerProps = {
   enabled?: MapLayerToggleState;
   onEnabledChange?: (next: MapLayerToggleState) => void;
   /**
-   * Layer ids forced to Coming soon / disabled (tiles unavailable or catalogue
-   * not ingested). Merged with static comingSoon on the curated row.
+   * Layer ids to omit from the panel (tiles unavailable / not ingested).
+   * Unavailable layers are not listed at all (roadmap handles deferred layers).
    */
   unavailableIds?: ReadonlySet<string> | ReadonlyArray<string>;
+  /** Current map zoom for inline legend zoom gates. */
+  mapZoom?: number;
+  /** Close control — parent owns open state (opening must not change layers). */
+  onClose?: () => void;
   className?: string;
   title?: string;
 };
@@ -34,30 +39,67 @@ function asUnavailableSet(
   return new Set(unavailableIds);
 }
 
+function chipLabel(
+  tag: MapDrawerLayer["tag"],
+): "Market" | "Modelled" | "Estimate" | null {
+  if (tag === "market") return "Market";
+  if (tag === "proxy") return "Modelled";
+  if (tag === "shadow") return "Estimate";
+  return null;
+}
+
+function initialOpenGroups(
+  groups: ReturnType<typeof mapDrawerLayersByGroup>,
+  enabled: MapLayerToggleState,
+): Set<MapLayerGroupKey> {
+  const open = new Set<MapLayerGroupKey>();
+  for (const { key, layers } of groups) {
+    if (layers.some((layer) => Boolean(enabled[layer.id]))) {
+      open.add(key);
+    }
+  }
+  return open;
+}
+
 /**
- * Right-side map layers drawer — Land / Natural resource rents / Services of
- * nature / Limits / Boundaries. Reuses ScotlandMap paint toggles via enabled ids.
+ * Map layers drawer — themed accordion groups with inline legends.
+ * Opening the panel never changes layer toggle state.
  */
 export default function MapLayersDrawer({
   enabled = {},
   onEnabledChange,
   unavailableIds,
+  mapZoom,
+  onClose,
   className,
-  title = "Layers",
+  title = "Map layers",
 }: MapLayersDrawerProps) {
-  const groups = mapDrawerLayersByGroup();
   const unavailable = asUnavailableSet(unavailableIds);
-  // Chip key only while Market / Modelled / Estimate chips are on screen.
-  const chipsOnScreen = groups.some(({ layers }) =>
-    layers.some((layer) => Boolean(layer.tag)),
+  const groups = mapDrawerLayersByGroup()
+    .map(({ key, label, layers }) => ({
+      key,
+      label,
+      layers: layers.filter((layer) => !unavailable.has(layer.id)),
+    }))
+    .filter(({ layers }) => layers.length > 0);
+
+  const [openGroups, setOpenGroups] = useState<Set<MapLayerGroupKey>>(() =>
+    initialOpenGroups(groups, enabled),
   );
 
   const setEnabled = (id: string, on: boolean) => {
     onEnabledChange?.({ ...enabled, [id]: on });
   };
 
-  // Outer ScotlandMap shell already exposes complementary "Map layers".
-  // Keep this a plain panel (not a second landmark) so names stay unique.
+  const toggleGroup = (key: MapLayerGroupKey) => {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
   return (
     <div
       className={["map-layers-drawer", "layers-panel", className]
@@ -66,31 +108,27 @@ export default function MapLayersDrawer({
       data-testid="layers-panel"
       data-drawer="map-layers"
     >
-      <p className="hud-tools-title">{title}</p>
-      <p className="layer-meta">
-        Toggle map layers. Figures for land value are being checked and are not
-        published yet.
+      <div className="layers-panel-header">
+        <p className="hud-tools-title">{title}</p>
+        {onClose ? (
+          <button
+            type="button"
+            className="layers-panel-close"
+            aria-label="Close map layers"
+            data-testid="layers-panel-close"
+            onClick={onClose}
+          >
+            ×
+          </button>
+        ) : null}
+      </div>
+
+      <p className="layer-meta" data-testid="map-layers-labels-link">
+        <a href="/methodology#glossary-tags">What the labels mean</a>
       </p>
 
-      {chipsOnScreen ? <EvidenceTagLegend compact /> : null}
-
       {groups.map(({ key, label, layers }) => {
-        const rows = layers.map((layer) => {
-          const forced = unavailable.has(layer.id);
-          return {
-            layer,
-            comingSoon: Boolean(layer.comingSoon) || forced,
-          };
-        });
-        const showGroupOgl = rows.some(({ layer }) =>
-          isOpenGovernmentLicenceDisplay(
-            mapDrawerLicenceDisplay(
-              layer.id,
-              layer.licence,
-              layer.licenceUrl,
-            ),
-          ),
-        );
+        const expanded = openGroups.has(key);
         return (
           <section
             key={key}
@@ -98,47 +136,53 @@ export default function MapLayersDrawer({
             aria-label={label}
             data-testid={`layers-group-${key}`}
           >
-            <label className="layer-select-label">{label}</label>
-            <ul className="layers-panel-list">
-              {rows.map(({ layer, comingSoon }) => (
-                <DrawerLayerRow
-                  key={layer.id}
-                  layer={layer}
-                  comingSoon={comingSoon}
-                  on={Boolean(enabled[layer.id]) && !comingSoon}
-                  onToggle={() => {
-                    if (comingSoon) return;
-                    setEnabled(layer.id, !enabled[layer.id]);
-                  }}
-                />
-              ))}
-            </ul>
-            {showGroupOgl ? (
-              <p
-                className="layer-meta layers-group-ogl"
-                data-testid={`layers-group-ogl-${key}`}
-              >
-                Licence:{" "}
-                <a
-                  href={DRAWER_OGL_V3.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {DRAWER_OGL_V3.label}
-                </a>
-              </p>
+            <button
+              type="button"
+              className="layers-panel-accordion"
+              aria-expanded={expanded}
+              data-testid={`layers-group-toggle-${key}`}
+              onClick={() => toggleGroup(key)}
+            >
+              <span className="layer-select-label">{label}</span>
+              <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
+            </button>
+            {expanded ? (
+              <ul className="layers-panel-list">
+                {layers.map((layer) => {
+                  const on = Boolean(enabled[layer.id]);
+                  return (
+                    <DrawerLayerRow
+                      key={layer.id}
+                      layer={layer}
+                      on={on}
+                      mapZoom={mapZoom}
+                      onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
+                    />
+                  );
+                })}
+              </ul>
             ) : null}
           </section>
         );
       })}
 
-      <p className="layer-meta" data-testid="map-layers-sources-licences">
-        <a href="/data#licences">Sources and licences</a>
-      </p>
-      <p className="layer-meta" data-testid="map-layers-methodology-link">
-        Full breakdown table and definitions:{" "}
-        <a href="/methodology#calculation">How we value land</a>
-      </p>
+      <div className="layers-panel-footer">
+        <p className="layer-meta" data-testid="map-layers-roadmap-link">
+          <a href="/roadmap#map-layers">{"What's coming next →"}</a>
+        </p>
+        <p className="layer-meta" data-testid="map-layers-sources-licences">
+          <a href="/data#licences">Sources and licences →</a>
+        </p>
+        <p
+          className="layer-meta layers-limits-explainer"
+          data-testid="map-layers-limits-explainer"
+        >
+          <strong>Limits on use</strong>
+          {" — "}
+          Protected nature sites, flood risk and crofting change best use and
+          add no value. They are not a rent.
+        </p>
+      </div>
     </div>
   );
 }
@@ -147,76 +191,98 @@ function DrawerLayerRow({
   layer,
   on,
   onToggle,
-  comingSoon,
+  mapZoom,
 }: {
   layer: MapDrawerLayer;
   on: boolean;
   onToggle: () => void;
-  comingSoon: boolean;
+  mapZoom?: number;
 }) {
-  const display = mapDrawerLicenceDisplay(
-    layer.id,
-    layer.licence,
-    layer.licenceUrl,
-  );
-  const showRowLicence = !isOpenGovernmentLicenceDisplay(display);
+  const registry = getMapLayer(layer.id);
+  const legend: InlineLegendView | null =
+    on && registry
+      ? buildInlineLegendFromRegistry(registry, { mapZoom })
+      : null;
+  const badge = legend ? chipLabel(legend.chip) : null;
+
   return (
     <li
       className="layers-panel-row"
       data-testid={`map-layer-${layer.id}`}
-      data-coming-soon={comingSoon ? "true" : "false"}
+      data-coming-soon="false"
     >
-      <div className="layers-panel-row-head">
-        <button
-          type="button"
-          className={on ? "chip active" : "chip"}
-          data-testid={`layer-toggle-${layer.id}`}
-          aria-pressed={on}
-          disabled={comingSoon}
-          title={layer.description}
-          onClick={onToggle}
-        >
-          {layer.label}
-        </button>
-        {layer.tag ? <ConfidenceTag kind={layer.tag} /> : null}
-        {layer.group === "limits" ? (
-          <span
-            className="layers-panel-status tone-other"
-            data-testid={`layer-tag-${layer.id}`}
-          >
-            Limit
-          </span>
-        ) : null}
-        {comingSoon ? (
-          <span
-            className="layers-panel-status tone-gap"
-            data-testid={`layer-coming-soon-${layer.id}`}
-          >
-            Coming soon
-          </span>
-        ) : null}
-      </div>
-      <p
-        className="layer-meta"
-        data-testid={
-          comingSoon
-            ? `layer-coming-soon-line-${layer.id}`
-            : `layer-desc-${layer.id}`
-        }
+      <button
+        type="button"
+        role="switch"
+        className="layers-panel-switch"
+        data-testid={`layer-toggle-${layer.id}`}
+        aria-checked={on}
+        aria-label={layer.label}
+        onClick={onToggle}
       >
-        {layer.description}
-      </p>
-      {showRowLicence ? (
-        <p className="layer-meta" data-testid={`layer-licence-${layer.id}`}>
-          Licence:{" "}
-          {display.url ? (
-            <a href={display.url} target="_blank" rel="noopener noreferrer">
-              {display.label}
-            </a>
+        <span className="layers-panel-switch-label">{layer.label}</span>
+        <span
+          className={
+            on ? "layers-panel-switch-track on" : "layers-panel-switch-track"
+          }
+          aria-hidden="true"
+        />
+      </button>
+
+      {legend ? (
+        <div
+          className="layers-inline-legend"
+          data-testid={`layer-inline-legend-${layer.id}`}
+        >
+          {badge ? (
+            <div className="layers-inline-legend-chip">
+              <ConfidenceTag kind={legend.chip!} />
+            </div>
+          ) : null}
+          {legend.nonCommercial ? (
+            <p
+              className="layer-meta"
+              data-testid={`layer-non-commercial-${layer.id}`}
+            >
+              Non-commercial
+            </p>
+          ) : null}
+          {legend.zoomGated ? (
+            <p
+              className="layer-meta"
+              data-testid={`layer-zoom-gate-${layer.id}`}
+            >
+              {legend.zoomHint}
+            </p>
           ) : (
-            display.label
+            <>
+              {legend.rampScale ? (
+                <p className="layers-inline-legend-scale">{legend.rampScale}</p>
+              ) : null}
+              <ul className="layer-legend" aria-label={`${layer.label} key`}>
+                {legend.classes.map((row) => (
+                  <li key={`${layer.id}-${row.label}-${row.color}`}>
+                    <span
+                      className={
+                        row.striped
+                          ? "layer-legend-swatch striped"
+                          : "layer-legend-swatch"
+                      }
+                      style={{ backgroundColor: row.color }}
+                    />
+                    <span>{row.label}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
-        </p>
+          <p
+            className="layer-meta layers-source-caption"
+            data-testid={`layer-source-caption-${layer.id}`}
+          >
+            {legend.sourceCaption}
+          </p>
+        </div>
       ) : null}
     </li>
   );

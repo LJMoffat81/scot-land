@@ -38,8 +38,12 @@ assert.doesNotMatch(
   /Data Zone boundaries 2011/,
   "map attribution must not default to 2011",
 );
-const layerGroups = read(join(frontendRoot, "lib/mapLayerGroups.ts"));
-assert.match(layerGroups, /Data Zone boundaries 2022/);
+const layerRegistry = read(join(frontendRoot, "lib/mapLayerRegistry.ts"));
+assert.match(layerRegistry, /Neighbourhood lines/);
+assert.match(layerRegistry, /DZ2022_EXTRACTION_YEAR/);
+const dzAttr = read(join(frontendRoot, "lib/dzAttribution.mjs"));
+assert.match(dzAttr, /Copyright Scottish Government/);
+assert.match(dzAttr, /dz2022Attribution\.json/);
 
 const catalog = read(join(frontendRoot, "lib/layerCatalog.ts"));
 assert.match(catalog, /Data Zone boundaries 2022/);

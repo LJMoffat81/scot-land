@@ -309,6 +309,7 @@ async function ensureLegendOpen(page: Page) {
     await show.click({ force: true });
   }
   await expect(credits).toBeVisible({ timeout: 15_000 });
+  await credits.scrollIntoViewIfNeeded();
 }
 
 for (const viewport of [
@@ -348,7 +349,9 @@ for (const viewport of [
       await ensureLegendOpen(page);
       const credits = page.getByTestId("map-licence-credits");
       await expect(credits).toBeVisible({ timeout: 45_000 });
-      await expect(page.getByTestId("map-credit-builtup_mask")).toBeVisible({
+      const maskCredit = page.getByTestId("map-credit-builtup_mask");
+      await maskCredit.scrollIntoViewIfNeeded();
+      await expect(maskCredit).toBeVisible({
         timeout: 30_000,
       });
       await expect(credits).toContainText("NRS Settlements 2022");

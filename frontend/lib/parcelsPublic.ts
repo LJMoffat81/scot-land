@@ -1,9 +1,6 @@
 /**
- * PARCELS_PUBLIC gate (default off).
- * Inlined for the client via next.config.ts `env.PARCELS_PUBLIC`.
- * Only the string "true" enables parcel routes and the Land parcels toggle.
+ * Typed re-export of the PARCELS_PUBLIC gate for TS/Next consumers.
+ * Implementation lives in parcelsPublic.mjs (Node-importable).
  */
 
-export function parcelsPublic(): boolean {
-  return process.env.PARCELS_PUBLIC === "true";
-}
+export { parcelsPublic } from "./parcelsPublic.mjs";

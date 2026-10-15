@@ -3,7 +3,7 @@
  * Limits / Boundaries). Each row reuses an existing paint toggle (catalog id).
  */
 
-import { parcelsPublic } from "./parcelsPublic";
+import { parcelsPublic } from "./parcelsPublic.mjs";
 import { RENT_GROUP_NAME } from "./rentGroupNames.mjs";
 
 export type MapLayerGroupKey =

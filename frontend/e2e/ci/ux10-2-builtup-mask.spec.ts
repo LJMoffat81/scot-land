@@ -228,21 +228,27 @@ async function closeTools(page: Page) {
 }
 
 async function closePlaceCard(page: Page) {
+  const card = page.getByTestId("place-card");
+  if ((await card.count()) === 0) return;
   const close = page.getByRole("button", { name: "Close place card" });
   if (await close.isVisible().catch(() => false)) {
     await close.click();
-    await expect(close).toBeHidden({ timeout: 10_000 });
+  } else {
+    // Layers drawer can cover the × at 390 — Esc clears the place card.
+    await page.keyboard.press("Escape");
   }
+  await expect(card).toHaveCount(0, { timeout: 15_000 });
 }
 
 /**
  * Narrow layout hides licence credits until the legend fold is open.
- * Close overlays first — place card / layers drawer intercept the fold click at 390.
+ * SW-047: compact legend (no Data licences) while a place card is open —
+ * close the card first, then wait for data-legend-compact=false.
  */
 async function ensureLegendOpen(page: Page) {
-  await closePlaceCard(page);
+  // Close Layers first so the place-card × is hittable at 390.
   await closeTools(page);
-  // SW-047 hides Data licences while a place card is open (compact legend).
+  await closePlaceCard(page);
   await expect(page.getByTestId("map-legend-panel")).toHaveAttribute(
     "data-legend-compact",
     "false",

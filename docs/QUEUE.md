@@ -2,29 +2,34 @@
 
 Plain-English queue for maintainers (Laurie and agents). Update on main after merges — not in feature PRs (avoids serial conflict churn). Dedicated QUEUE-only follow-up is OK when nothing else is ready to piggyback.
 
-**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: 1 open non-draft ([#152](https://github.com/LJMoffat81/scot-land/pull/152)).
+**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: 2 open non-draft ([#156](https://github.com/LJMoffat81/scot-land/pull/156), [#161](https://github.com/LJMoffat81/scot-land/pull/161)); draft [#163](https://github.com/LJMoffat81/scot-land/pull/163) does not count. This QUEUE sync opens as the 3rd non-draft.
 
 ## In progress
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| V13-METHODS | Methods v1.3 cost basis, depreciation, checks | [#152](https://github.com/LJMoffat81/scot-land/pull/152) | Open (not draft); CI green; FAIL fix in flight; awaiting Scot-LAND |
+| LOGO-H2 | Zone-grid loch mark, favicons, tagline | [#161](https://github.com/LJMoffat81/scot-land/pull/161) | Open (not draft); CI green; ready |
+| DZ-HIERARCHY | Intermediate Zone / council on the place card (ideas 37 / 40); mobile More-about fold | [#156](https://github.com/LJMoffat81/scot-land/pull/156) | Open (not draft); rebasing onto main |
+| MAP-CARDS-REDESIGN | Place card, Layers, legend redesign (+ ADDENDUM-1) | [#163](https://github.com/LJMoffat81/scot-land/pull/163) | Draft; e2e/CI in flight |
 
 ## Next up (in order)
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| GBP-LIVE-V1b | Per-m² unit for £ behind the flag (flag still default OFF); one PR only | — | Frozen ready; after V13-METHODS; no PR yet |
-| WORDING-BATCH-1 | Map-view wording/layout batch: SW-047 + ideas 56/57 (and the frozen batch items in the WORDING-BATCH-1 card); one PR only | — | Frozen ready; after GBP-LIVE-V1b; no PR yet |
-| DZ-HIERARCHY | Intermediate Zone / council on the place card (ideas 37 / 40); one PR only | — | Frozen ready; after WORDING-BATCH-1; no PR yet |
-| SW-034_data_mobile | Mobile `/data` sources as stacked cards (no horizontal scroll); one PR only | — | Frozen ready; after DZ-HIERARCHY; no PR yet |
-| SW-044_slim | Slim the map view (licences out of left panel, chip key once, etc.); one PR only | — | Frozen ready; after SW-034_data_mobile; no PR yet |
+| UI-TWEAKS-1 | Layers panel height/position and related map chrome tweaks on MAP-CARDS layout | — | Frozen ready; after #163 merges; no PR yet |
+| UI-FIX-1 | Tap targets ≥44×44 and related map chrome fixes on MAP-CARDS layout | — | Frozen ready; after #163; with/after UI-TWEAKS-1; no PR yet |
+| GRID-BASE-1 | Open 3 m BNG grid base layer (no values) | — | Frozen ready; after MAP-CARDS (#163); no PR yet |
+| HEALTH-TRIM | Trim `/health` response body (status + version only) | — | Frozen ready; after #161 LOGO-H2; no PR yet |
+| LAYERS-ADD-1 | Open context layers + licence-gated catalog | — | Frozen ready; after GRID-BASE-1; no PR yet |
+| LAYERS-ADD-2 | Open-data sweep layers (after LAYERS-ADD-1) | — | Frozen ready; after LAYERS-ADD-1; no PR yet |
+| GBP-LIVE-V1c | £ per m² follow-ups before any flag enable (flag still default OFF) | — | Frozen ready; after GRID-BASE-1; flag OFF; no PR yet |
 
 ### Frozen backlog
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| Suggestion 44 | Deploy SHA / git commit surface; park with SW-037 if it needs `main.py` | — | Parked with SW-037 (next `main.py` change) |
+| SW-044_slim | Slim the map view (licences out of left panel, chip key once, etc.) | [#157](https://github.com/LJMoffat81/scot-land/pull/157) | Closed / superseded by MAP-CARDS-REDESIGN (#163) |
+| Suggestion 44 | Deploy SHA / git commit surface; park with SW-037 if it needs `main.py` | — | Parked with SW-037 / HEALTH-TRIM (next `main.py` change) |
 | UX-00 … UX-05 | Mobile hit areas, legend aria, Esc focus, landmarks, place-card hug, desktop search | [#130](https://github.com/LJMoffat81/scot-land/pull/130) … [#136](https://github.com/LJMoffat81/scot-land/pull/136) | UX train done — all merged (incl. UX-00 #130 and UX10-1 #134) |
 | SW-031 / SW-032 | Scrub banned wording and public money figures from public surfaces | [#133](https://github.com/LJMoffat81/scot-land/pull/133) | Merged |
 | SW-039 + idea 45 | “Why no outline?” becomes a proper tap target; answer opens inline | [#136](https://github.com/LJMoffat81/scot-land/pull/136) | Done (with UX-01 mobile hit areas) |
@@ -35,6 +40,15 @@ Newest first.
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
+| GBP-LIVE-V1b | Per-m² unit for £ behind the flag (flag still default OFF) | [#155](https://github.com/LJMoffat81/scot-land/pull/155) | Merged (`0bb4cae`) |
+| V14-FIDELITY | Straight-line remaining, O-G1, check-4 fail | [#164](https://github.com/LJMoffat81/scot-land/pull/164) | Merged (`fe026b7`) |
+| O-MM | Hedonic cell merge map (v1.4) | [#162](https://github.com/LJMoffat81/scot-land/pull/162) | Merged (`cb3370c`) |
+| V13-METHODS | Methods v1.3 cost basis, depreciation, checks | [#152](https://github.com/LJMoffat81/scot-land/pull/152) | Merged (`5529e27`) |
+| POST-SHARE-1 | OSGB map ref, Coming soon layers, API badge, page width | [#160](https://github.com/LJMoffat81/scot-land/pull/160) | Merged (`f536b9f`) |
+| SW-034_data_mobile | Mobile `/data` sources as stacked cards (no horizontal scroll) | [#154](https://github.com/LJMoffat81/scot-land/pull/154) | Merged (`25d1a88`) |
+| MAPREF-HIDE | Omit Map reference row on place card | [#159](https://github.com/LJMoffat81/scot-land/pull/159) | Merged (`bf40bfc`) |
+| WORDING-BATCH-1 | Map/place-card/API wording + SHARE-FIX | [#158](https://github.com/LJMoffat81/scot-land/pull/158) | Merged (`217fa2a`) |
+| QUEUE sync | Refresh after #144–#151; drop ROS INSPIRE e2e mock | [#153](https://github.com/LJMoffat81/scot-land/pull/153) | Merged (`754119d`) |
 | UX10-2 | Built-up mask (`map_builtup_mask`, `dz2022_masked`) | [#151](https://github.com/LJMoffat81/scot-land/pull/151) | Merged (`0e539c5`) |
 | SURFACE-COSTS-STRICT | Exact fixture match in CI (20-row equality always runs) | [#148](https://github.com/LJMoffat81/scot-land/pull/148) | Merged (`c162243`) |
 | QUEUE sync | Sync after SURFACE-COSTS-ALL / PARCELS-OFF merges | [#146](https://github.com/LJMoffat81/scot-land/pull/146) | Merged (`96ba57a`) |

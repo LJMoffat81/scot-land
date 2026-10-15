@@ -27,9 +27,19 @@ test.describe("place card (internal preview)", () => {
     await expect(page.getByTestId("place-card-fact")).toBeVisible();
 
     const parts = page.getByTestId("place-card-parts");
+    await expect(parts.locator("summary")).toHaveText(
+      "Natural resource rents & services of nature",
+    );
     await parts.locator("summary").click();
     await expect(page.getByTestId("place-card-agr-surface")).toContainText(
       /Land/i,
+    );
+    await expect(page.getByTestId("place-card-map-reference")).toContainText(
+      "Map reference",
+    );
+    await expect(page.getByTestId("place-card-figure-why")).toHaveAttribute(
+      "href",
+      "/methodology#how-sure",
     );
     await expect(page.getByTestId("place-card-of-which-planning_uplift")).toContainText(
       /of which: planning uplift/i,

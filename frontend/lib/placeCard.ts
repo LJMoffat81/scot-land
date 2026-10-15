@@ -143,6 +143,14 @@ export const PLACE_CARD_MAP_REFERENCE_LABEL = "Map reference";
 export const PLACE_CARD_MAP_REFERENCE_COPY_FAIL =
   "Couldn't copy — select and copy the reference instead.";
 
+/** Parts disclosure summary before open (idea 52). */
+export const PLACE_CARD_PARTS_SUMMARY =
+  "Natural resource rents & services of nature";
+
+/** Why? beside unpublished figures — methodology certainty section. */
+export const PLACE_CARD_FIGURE_WHY_HREF = "/methodology#how-sure";
+export const PLACE_CARD_FIGURE_WHY_LABEL = "Why?";
+
 export type PlaceValueStatus = "coming_soon" | "in_progress";
 
 export type PlaceLayerStatus = "live" | "linked" | "gap" | string;

@@ -151,7 +151,7 @@ export default function ApiReferencePage() {
   return (
     <main className="downloads-page" data-testid="api-reference-page">
       <SiteNav current="developers" />
-      <h1>API reference</h1>
+      <h1 data-testid="api-reference-title">Scot-LAND API</h1>
       <ResearchBanner />
       <p>
         OpenAPI for the place and layer API. Assets are served from this site
@@ -162,12 +162,14 @@ export default function ApiReferencePage() {
         . Overview: <a href="/developers">Downloads &amp; API</a>.
       </p>
       {devNotes.length > 0 ? (
-        <section
+        <details
           className="api-dev-notes"
           data-testid="catalog-developer-notes"
           aria-label="Catalogue technical notes"
         >
-          <h2>Catalogue technical notes</h2>
+          <summary data-testid="catalog-developer-notes-summary">
+            Catalogue technical notes
+          </summary>
           <p className="downloads-note">
             Developer-only ingest detail from{" "}
             <code>/api/catalog.json</code> (<code>developer_note</code>). Visitor
@@ -181,7 +183,7 @@ export default function ApiReferencePage() {
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       ) : null}
       {error && <p className="downloads-note">{error}</p>}
       <div

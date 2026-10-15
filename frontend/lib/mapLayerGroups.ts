@@ -232,7 +232,7 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
     group: "boundaries",
     label: "Built-up display mask",
     description:
-      "Built-up extent for map colour later. Display only — not a rent.",
+      "Shows where towns and villages are (for later map colour). Display only — not a rent.",
     licence: "OGL-3.0",
     licenceUrl: OGL_V3,
   },

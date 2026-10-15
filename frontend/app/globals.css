@@ -380,11 +380,23 @@ input {
 .place-card-how-homes,
 .place-card-part-gloss,
 .place-card-part-range,
+.place-card-figure-status,
 .place-card-fully-estimated-marker {
   margin: 0.25rem 0 0;
   font-size: 0.85rem;
   line-height: 1.4;
   color: var(--slrg-text);
+}
+
+.place-card-figure-status a {
+  color: var(--slrg-navy);
+  font-weight: 650;
+  text-underline-offset: 0.12em;
+}
+
+.place-card-map-reference-label {
+  font-weight: 650;
+  color: var(--slrg-muted);
 }
 
 .place-card-experimental-footer {
@@ -519,6 +531,15 @@ input {
     flex: 1 1 auto;
     min-height: 0;
     padding-bottom: 0.35rem;
+  }
+
+  /* SW-047: value rows stay in view without inner scroll when legend is compact. */
+  .app-shell.place-open .hud-place .place-agr-list-surface {
+    flex-shrink: 0;
+  }
+
+  .app-shell.place-open .hud-place .place-card-sheet-body {
+    overflow-y: visible;
   }
 
   .hud-place .place-card-experimental-footer-peek,
@@ -1320,6 +1341,49 @@ input {
 
 .map-licence-credits-attribution {
   color: var(--slrg-muted);
+}
+
+/* SW-047 / idea 56 — compact strip: title + colour bands only. */
+.hud-scotland.legend-compact {
+  padding: 0.55rem 0.75rem 0.5rem;
+}
+
+.hud-scotland.legend-compact .map-range-legend {
+  margin-top: 0;
+}
+
+.layers-group-ogl {
+  margin-top: 0.35rem;
+}
+
+.api-dev-notes {
+  margin: 0.85rem 0 1rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line, #d8dee6);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.api-dev-notes > summary {
+  cursor: pointer;
+  font-weight: 650;
+  color: var(--slrg-navy);
+}
+
+.api-docs-swagger-host,
+.api-docs-swagger-host .swagger-ui {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.api-docs-swagger-host .swagger-ui .microlight,
+.api-docs-swagger-host .swagger-ui pre,
+.api-docs-swagger-host .swagger-ui code,
+.api-docs-swagger-host .swagger-ui .opblock-summary-path,
+.api-docs-swagger-host .swagger-ui .highlight-code {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .map-range-legend {

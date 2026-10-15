@@ -34,6 +34,24 @@ const LICENCE_BY_ID: Record<string, DrawerLicenceDisplay> = {
   crofting: { label: OGL_V3_LABEL, url: OGL_V3_URL },
   boundaries: { label: OGL_V3_LABEL, url: OGL_V3_URL },
   data_zones: { label: OGL_V3_LABEL, url: OGL_V3_URL },
+  builtup_mask: { label: OGL_V3_LABEL, url: OGL_V3_URL },
+};
+
+/** True when a drawer licence display is the Open Government Licence. */
+export function isOpenGovernmentLicenceDisplay(
+  display: DrawerLicenceDisplay,
+): boolean {
+  const label = display.label.trim();
+  return (
+    /open government licence/i.test(label) ||
+    /^OGL(-|\s)?3(\.0)?$/i.test(label) ||
+    /^OGL$/i.test(label)
+  );
+}
+
+export const DRAWER_OGL_V3: DrawerLicenceDisplay = {
+  label: OGL_V3_LABEL,
+  url: OGL_V3_URL,
 };
 
 function expandKnownAbbreviation(

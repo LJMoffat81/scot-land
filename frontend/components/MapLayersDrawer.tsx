@@ -2,7 +2,11 @@
 
 import ConfidenceTag from "@/components/ConfidenceTag";
 import EvidenceTagLegend from "@/components/EvidenceTagLegend";
-import { mapDrawerLicenceDisplay } from "@/lib/mapDrawerLicenceDisplay";
+import {
+  DRAWER_OGL_V3,
+  isOpenGovernmentLicenceDisplay,
+  mapDrawerLicenceDisplay,
+} from "@/lib/mapDrawerLicenceDisplay";
 import {
   mapDrawerLayersByGroup,
   type MapDrawerLayer,
@@ -13,9 +17,22 @@ export type MapLayerToggleState = Record<string, boolean>;
 export type MapLayersDrawerProps = {
   enabled?: MapLayerToggleState;
   onEnabledChange?: (next: MapLayerToggleState) => void;
+  /**
+   * Layer ids forced to Coming soon / disabled (tiles 503 or catalogue not
+   * ingested). Merged with static `comingSoon` on the curated row.
+   */
+  unavailableIds?: ReadonlySet<string> | ReadonlyArray<string>;
   className?: string;
   title?: string;
 };
+
+function asUnavailableSet(
+  unavailableIds?: ReadonlySet<string> | ReadonlyArray<string>,
+): Set<string> {
+  if (!unavailableIds) return new Set();
+  if (unavailableIds instanceof Set) return unavailableIds;
+  return new Set(unavailableIds);
+}
 
 /**
  * Right-side map layers drawer — Land / Natural resource rents / Services of
@@ -24,10 +41,12 @@ export type MapLayersDrawerProps = {
 export default function MapLayersDrawer({
   enabled = {},
   onEnabledChange,
+  unavailableIds,
   className,
   title = "Layers",
 }: MapLayersDrawerProps) {
   const groups = mapDrawerLayersByGroup();
+  const unavailable = asUnavailableSet(unavailableIds);
   // Chip key only while Market / Modelled / Estimate chips are on screen.
   const chipsOnScreen = groups.some(({ layers }) =>
     layers.some((layer) => Boolean(layer.tag)),
@@ -55,30 +74,67 @@ export default function MapLayersDrawer({
 
       {chipsOnScreen ? <EvidenceTagLegend compact /> : null}
 
-      {groups.map(({ key, label, layers }) => (
-        <section
-          key={key}
-          className="layers-panel-group"
-          aria-label={label}
-          data-testid={`layers-group-${key}`}
-        >
-          <label className="layer-select-label">{label}</label>
-          <ul className="layers-panel-list">
-            {layers.map((layer) => (
-              <DrawerLayerRow
-                key={layer.id}
-                layer={layer}
-                on={Boolean(enabled[layer.id])}
-                onToggle={() => {
-                  if (layer.comingSoon) return;
-                  setEnabled(layer.id, !enabled[layer.id]);
-                }}
-              />
-            ))}
-          </ul>
-        </section>
-      ))}
+      {groups.map(({ key, label, layers }) => {
+        const rows = layers.map((layer) => {
+          const forced = unavailable.has(layer.id);
+          return {
+            layer,
+            comingSoon: Boolean(layer.comingSoon) || forced,
+          };
+        });
+        const showGroupOgl = rows.some(({ layer }) =>
+          isOpenGovernmentLicenceDisplay(
+            mapDrawerLicenceDisplay(
+              layer.id,
+              layer.licence,
+              layer.licenceUrl,
+            ),
+          ),
+        );
+        return (
+          <section
+            key={key}
+            className="layers-panel-group"
+            aria-label={label}
+            data-testid={`layers-group-${key}`}
+          >
+            <label className="layer-select-label">{label}</label>
+            <ul className="layers-panel-list">
+              {rows.map(({ layer, comingSoon }) => (
+                <DrawerLayerRow
+                  key={layer.id}
+                  layer={layer}
+                  comingSoon={comingSoon}
+                  on={Boolean(enabled[layer.id]) && !comingSoon}
+                  onToggle={() => {
+                    if (comingSoon) return;
+                    setEnabled(layer.id, !enabled[layer.id]);
+                  }}
+                />
+              ))}
+            </ul>
+            {showGroupOgl ? (
+              <p
+                className="layer-meta layers-group-ogl"
+                data-testid={`layers-group-ogl-${key}`}
+              >
+                Licence:{" "}
+                <a
+                  href={DRAWER_OGL_V3.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {DRAWER_OGL_V3.label}
+                </a>
+              </p>
+            ) : null}
+          </section>
+        );
+      })}
 
+      <p className="layer-meta" data-testid="map-layers-sources-licences">
+        <a href="/data#licences">Sources and licences</a>
+      </p>
       <p className="layer-meta" data-testid="map-layers-methodology-link">
         Full breakdown table and definitions:{" "}
         <a href="/methodology#calculation">How we value land</a>
@@ -91,12 +147,19 @@ function DrawerLayerRow({
   layer,
   on,
   onToggle,
+  comingSoon,
 }: {
   layer: MapDrawerLayer;
   on: boolean;
   onToggle: () => void;
+  comingSoon: boolean;
 }) {
-  const comingSoon = Boolean(layer.comingSoon);
+  const display = mapDrawerLicenceDisplay(
+    layer.id,
+    layer.licence,
+    layer.licenceUrl,
+  );
+  const showRowLicence = !isOpenGovernmentLicenceDisplay(display);
   return (
     <li
       className="layers-panel-row"
@@ -143,27 +206,18 @@ function DrawerLayerRow({
       >
         {layer.description}
       </p>
-      <DrawerLicenceLine layer={layer} />
+      {showRowLicence ? (
+        <p className="layer-meta" data-testid={`layer-licence-${layer.id}`}>
+          Licence:{" "}
+          {display.url ? (
+            <a href={display.url} target="_blank" rel="noopener noreferrer">
+              {display.label}
+            </a>
+          ) : (
+            display.label
+          )}
+        </p>
+      ) : null}
     </li>
-  );
-}
-
-function DrawerLicenceLine({ layer }: { layer: MapDrawerLayer }) {
-  const display = mapDrawerLicenceDisplay(
-    layer.id,
-    layer.licence,
-    layer.licenceUrl,
-  );
-  return (
-    <p className="layer-meta" data-testid={`layer-licence-${layer.id}`}>
-      Licence:{" "}
-      {display.url ? (
-        <a href={display.url} target="_blank" rel="noopener noreferrer">
-          {display.label}
-        </a>
-      ) : (
-        display.label
-      )}
-    </p>
   );
 }

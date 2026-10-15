@@ -576,7 +576,12 @@ export default function ScotlandMap() {
     }
     if ("builtup_mask" in next) {
       builtupMaskTouched.current = true;
-      setShowBuiltupMask(Boolean(next.builtup_mask));
+      // Idea 57 — refuse on when Coming soon (503 / catalogue gap).
+      if (builtupMask503 || builtupMaskCatalogGap) {
+        setShowBuiltupMask(false);
+      } else {
+        setShowBuiltupMask(Boolean(next.builtup_mask));
+      }
     }
     if ("vdl" in next) setShowVdl(Boolean(next.vdl));
     if ("hla" in next) setShowHla(Boolean(next.hla));
@@ -626,6 +631,13 @@ export default function ScotlandMap() {
     null,
   );
   const [catalogLayers, setCatalogLayers] = useState<CatalogLayer[]>([]);
+  /** Idea 57 — built-up mask tiles/geo returned 503. */
+  const [builtupMask503, setBuiltupMask503] = useState(false);
+  /**
+   * Idea 57 — catalogue loaded with builtup_mask missing or not live.
+   * Empty catalogue stubs (common in e2e) leave this false.
+   */
+  const [builtupMaskCatalogGap, setBuiltupMaskCatalogGap] = useState(false);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const parcelLabelRef = useRef<maplibregl.Marker | null>(null);
   const headerRef = useRef<HTMLElement | null>(null);
@@ -2399,14 +2411,50 @@ export default function ScotlandMap() {
   }, []);
 
   // Catalog licence fields drive the map credits control in the legend.
+  // Idea 57: when the catalogue has loaded and builtup_mask is missing or not
+  // live, mark it Coming soon (empty catalogue stubs leave toggles alone).
   useEffect(() => {
     let cancelled = false;
     void fetchLayerCatalog()
       .then((payload) => {
-        if (!cancelled) setCatalogLayers(payload.layers ?? []);
+        if (cancelled) return;
+        const layers = payload.layers ?? [];
+        setCatalogLayers(layers);
+        if (layers.length === 0) {
+          setBuiltupMaskCatalogGap(false);
+          return;
+        }
+        const mask = layers.find((layer) => layer.id === "builtup_mask");
+        const maskReady = Boolean(mask && mask.status === "live");
+        setBuiltupMaskCatalogGap(!maskReady);
+        if (!maskReady) setShowBuiltupMask(false);
       })
       .catch(() => {
-        if (!cancelled) setCatalogLayers([]);
+        if (!cancelled) {
+          setCatalogLayers([]);
+          setBuiltupMaskCatalogGap(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Idea 57 — probe built-up mask once; 503 → Coming soon / disabled.
+  useEffect(() => {
+    let cancelled = false;
+    const path =
+      "/layers/open/dz2022-masked?south=55.85&west=-4.27&north=55.87&east=-4.24&max_features=1";
+    void apiJson<GeoJSON.FeatureCollection>(path)
+      .then(() => {
+        if (!cancelled) setBuiltupMask503(false);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.status === 503) {
+          setBuiltupMask503(true);
+          setShowBuiltupMask(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -2619,9 +2667,17 @@ export default function ScotlandMap() {
           (map.getSource("dz2022-masked-overlay") as GeoJSONSource)?.setData(data);
           setVis("visible");
         })
-        .catch(() => {
+        .catch((err: unknown) => {
           // Unloaded (503) or empty — keep outlines; do not invent mask geometry.
           if (!cancelled) setVis("none");
+          if (
+            !cancelled &&
+            err instanceof ApiError &&
+            err.status === 503
+          ) {
+            setBuiltupMask503(true);
+            setShowBuiltupMask(false);
+          }
         })
         .finally(() => {
           inFlight = false;
@@ -3732,6 +3788,13 @@ export default function ScotlandMap() {
 
   const placeOpen = Boolean(placeStub || result || error);
   const collapsedIntroForPlace = useRef(false);
+  /** Idea 57 — drawer Coming soon for built-up mask when 503 or not ingested. */
+  const unavailableLayerIds = new Set<string>();
+  if (builtupMask503 || builtupMaskCatalogGap) {
+    unavailableLayerIds.add("builtup_mask");
+  }
+  /** SW-047 / idea 56 — compact legend strip while a place card is open. */
+  const legendCompact = placeOpen;
 
   // Usability: collapse Find a place intro when a place card opens; restore on close.
   useEffect(() => {
@@ -3947,10 +4010,17 @@ export default function ScotlandMap() {
       <ResearchBanner dismissible collapseForSuggest={suggestOpen} />
 
       <aside
-        className={legendOpen ? "hud-scotland legend-open" : "hud-scotland"}
+        className={[
+          "hud-scotland",
+          legendOpen ? "legend-open" : "",
+          legendCompact ? "legend-compact" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         aria-label="Map legend"
         data-testid="map-legend-panel"
         data-legend-layer={activeLegend.layerId}
+        data-legend-compact={legendCompact ? "true" : "false"}
         ref={scotlandRef}
       >
         <div className="hud-scotland-stack">
@@ -3970,23 +4040,27 @@ export default function ScotlandMap() {
             </span>
           </button>
           <div className="hud-scotland-body" id="hud-scotland-body">
-            <p className="hud-scotland-job">Find a place</p>
-            <p className="hud-scotland-lead">
-              Type a postcode or place name, or tap the map. You&apos;ll see what
-              we know about that area and where the data comes from.
-            </p>
+            {!legendCompact ? (
+              <>
+                <p className="hud-scotland-job">Find a place</p>
+                <p className="hud-scotland-lead">
+                  Type a postcode or place name, or tap the map. You&apos;ll see
+                  what we know about that area and where the data comes from.
+                </p>
+              </>
+            ) : null}
             <MapRangeLegend
               title={activeLegend.title}
-              blurb={activeLegend.blurb}
-              paler={activeLegend.paler}
+              blurb={legendCompact ? undefined : activeLegend.blurb}
+              paler={legendCompact ? undefined : activeLegend.paler}
               ranges={activeLegend.ranges}
               showNoData={activeLegend.showNoData}
               mode={activeLegend.mode}
               zoomHint={activeLegend.zoomHint}
-              source={activeLegend.source ?? null}
+              source={legendCompact ? null : activeLegend.source ?? null}
               layerId={activeLegend.layerId}
             />
-            {surfaceRentLegend ? (
+            {!legendCompact && surfaceRentLegend ? (
               <MapRangeLegend
                 title={SURFACE_RENT_LEGEND_TITLE}
                 blurb={SURFACE_RENT_LEGEND_BLURB}
@@ -3997,12 +4071,16 @@ export default function ScotlandMap() {
                 className="map-range-legend-surface-rent"
               />
             ) : null}
-            <MapLicenceCredits credits={mapCredits} />
-            <p className="hud-scotland-foot">
-              <a href="/about">About</a>
-              {" · "}
-              <a href="/methodology">How it works</a>
-            </p>
+            {!legendCompact ? (
+              <MapLicenceCredits credits={mapCredits} />
+            ) : null}
+            {!legendCompact ? (
+              <p className="hud-scotland-foot">
+                <a href="/about">About</a>
+                {" · "}
+                <a href="/methodology">How it works</a>
+              </p>
+            ) : null}
           </div>
         </div>
       </aside>
@@ -4033,6 +4111,7 @@ export default function ScotlandMap() {
                 vdl: showVdl,
                 hla: showHla,
               }}
+              unavailableIds={unavailableLayerIds}
               onEnabledChange={onMapLayersChange}
             />
             {showBoundaries && (

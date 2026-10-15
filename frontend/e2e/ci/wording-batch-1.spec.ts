@@ -342,7 +342,7 @@ for (const viewport of [
 test.describe("WORDING-BATCH-1 place card + SW-047 (1280)", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test("map reference, parts label, Why?, compact legend, value rows", async ({
+  test("no map reference; parts label, Why?, compact legend, value rows", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -350,13 +350,12 @@ test.describe("WORDING-BATCH-1 place card + SW-047 (1280)", () => {
     await stubMapBackend(page);
     const card = await openPlaceCard(page);
 
-    await expect(card.getByTestId("place-card-map-reference")).toContainText(
-      "Map reference",
-    );
-    await expect(card.getByTestId("place-card-square-reference")).toBeVisible();
+    // MAPREF-HIDE — Map reference row + Copy omitted until OSGB fix.
+    await expect(card).not.toContainText("Map reference");
+    await expect(card.getByTestId("place-card-map-reference")).toHaveCount(0);
     await expect(
       card.getByTestId("place-card-map-reference-copy"),
-    ).toHaveText("Copy");
+    ).toHaveCount(0);
     await expect(card).not.toContainText(/Square reference/i);
 
     await expect(card.getByTestId("place-card-figure")).toContainText(PRE_POUND);
@@ -418,7 +417,7 @@ test.describe("WORDING-BATCH-1 place card + SW-047 (1280)", () => {
 test.describe("WORDING-BATCH-1 place card (390)", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("map reference, parts, Why?, Estimate chip", async ({ page }) => {
+  test("no map reference; parts, Why?, Estimate chip", async ({ page }) => {
     test.setTimeout(120_000);
     const gate = attachConsoleGate(page);
     await stubMapBackend(page);
@@ -433,9 +432,9 @@ test.describe("WORDING-BATCH-1 place card (390)", () => {
     }
     await expect(card).toBeVisible({ timeout: 30_000 });
 
-    await expect(card.getByTestId("place-card-map-reference")).toContainText(
-      "Map reference",
-    );
+    // MAPREF-HIDE — Map reference row + Copy omitted until OSGB fix.
+    await expect(card).not.toContainText("Map reference");
+    await expect(card.getByTestId("place-card-map-reference")).toHaveCount(0);
     await expect(card.getByTestId("place-card-figure")).toContainText(PRE_POUND);
     await expect(
       card.getByTestId("place-card-land-values-coming-soon"),

@@ -149,6 +149,12 @@ export function isPlaceCardSeaMiss(
 /** Place-card field label for the 3×3 m grid index. */
 export const PLACE_CARD_MAP_REFERENCE_LABEL = "Map reference";
 
+/**
+ * MAPREF-HIDE — visitor place card omits Map reference + Copy until OSGB fix
+ * (POST-SHARE-1). Flip to true to restore the row.
+ */
+export const PLACE_CARD_MAP_REFERENCE_ENABLED = false;
+
 /** Shown when the map-reference Copy button cannot write the clipboard. */
 export const PLACE_CARD_MAP_REFERENCE_COPY_FAIL =
   "Couldn't copy — select and copy the reference instead.";

@@ -21,6 +21,7 @@ import {
   PLACE_CARD_HOW_WE_WORK_HOMES,
   PLACE_CARD_HOW_WE_WORK_LABEL,
   PLACE_CARD_MAP_REFERENCE_COPY_FAIL,
+  PLACE_CARD_MAP_REFERENCE_ENABLED,
   PLACE_CARD_MAP_REFERENCE_LABEL,
   PLACE_CARD_NEIGHBOURHOOD_NOT_ADDRESS,
   PLACE_CARD_NO_HOMES,
@@ -519,7 +520,7 @@ export function PlaceCard({
                   {councilLine}
                 </p>
               ) : null}
-              {card.square_reference ? (
+              {PLACE_CARD_MAP_REFERENCE_ENABLED && card.square_reference ? (
                 <p
                   className="place-card-map-reference"
                   data-testid="place-card-map-reference"

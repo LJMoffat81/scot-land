@@ -8,7 +8,7 @@ Plain-English queue for maintainers (Laurie and agents). Update this file in eac
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| SW-036 v2 | Desktop layout (≥1024): place card left, Layers right, legend pill below the card | this PR | Building |
+| SW-036 v2 | Desktop layout (≥1024): place card left, Layers right, legend pill below the card | [#139](https://github.com/LJMoffat81/scot-land/pull/139) | Building (draft) |
 
 ## Next up (in order)
 

@@ -2,7 +2,8 @@
 #
 # Build new images first while the live stack keeps serving. Start a canary on
 # :8001/:3001, require /backend/health, then swap live. On failure: roll back to
-# the last good commit, log it, and never stop cloudflared.
+# the last good commit on branch main (not detached), retag last-good images to
+# :local, log it, and never stop cloudflared.
 #
 # Usage (from repo root, on the home PC):
 #   .\scripts\ops\deploy-home.ps1
@@ -10,6 +11,7 @@
 #   .\scripts\ops\rebuild-home.ps1   # thin wrapper → this script
 #
 # State (gitignored): .deploy/last-good-sha, .deploy/deploy.log
+# Image tags: scot-land-home-{api,frontend}:local and :last-good
 
 [CmdletBinding()]
 param(
@@ -35,6 +37,10 @@ $LogFile = Join-Path $DeployDir "deploy.log"
 $LastGoodFile = Join-Path $DeployDir "last-good-sha"
 $ComposePath = Join-Path $RepoRoot $ComposeFile
 $CanaryPath = Join-Path $RepoRoot $CanaryComposeFile
+$ApiImageLocal = "scot-land-home-api:local"
+$ApiImageLastGood = "scot-land-home-api:last-good"
+$FrontendImageLocal = "scot-land-home-frontend:local"
+$FrontendImageLastGood = "scot-land-home-frontend:last-good"
 
 function Write-DeployLog {
     param([string]$Message, [string]$Level = "INFO")
@@ -114,6 +120,52 @@ function Write-LastGoodSha {
     Write-DeployLog "Recorded last-good SHA: $Sha"
 }
 
+function Test-DockerImageExists {
+    param([string]$Image)
+    & docker image inspect $Image 2>$null | Out-Null
+    return ($LASTEXITCODE -eq 0)
+}
+
+function Save-LastGoodImages {
+    # Snapshot :local → :last-good before a build overwrites :local.
+    $pairs = @(
+        @{ Src = $ApiImageLocal; Dst = $ApiImageLastGood },
+        @{ Src = $FrontendImageLocal; Dst = $FrontendImageLastGood }
+    )
+    foreach ($p in $pairs) {
+        if (-not (Test-DockerImageExists -Image $p.Src)) {
+            Write-DeployLog "No $($p.Src) to snapshot as $($p.Dst) (first deploy or missing image)" "WARN"
+            continue
+        }
+        & docker tag $p.Src $p.Dst
+        if ($LASTEXITCODE -ne 0) {
+            throw "docker tag $($p.Src) $($p.Dst) failed with exit $LASTEXITCODE"
+        }
+        Write-DeployLog "Tagged $($p.Src) → $($p.Dst)"
+    }
+}
+
+function Restore-LastGoodImages {
+    # Retag preserved last-good images back to :local for compose reuse.
+    $pairs = @(
+        @{ Src = $ApiImageLastGood; Dst = $ApiImageLocal },
+        @{ Src = $FrontendImageLastGood; Dst = $FrontendImageLocal }
+    )
+    foreach ($p in $pairs) {
+        if (-not (Test-DockerImageExists -Image $p.Src)) {
+            Write-DeployLog "Missing $($p.Src); cannot retag to $($p.Dst)" "ERROR"
+            return $false
+        }
+        & docker tag $p.Src $p.Dst
+        if ($LASTEXITCODE -ne 0) {
+            Write-DeployLog "docker tag $($p.Src) $($p.Dst) failed with exit $LASTEXITCODE" "ERROR"
+            return $false
+        }
+        Write-DeployLog "Retagged $($p.Src) → $($p.Dst)"
+    }
+    return $true
+}
+
 function Stop-Canary {
     Write-DeployLog "Stopping canary project $CanaryProject (live + tunnel untouched)"
     & docker compose -p $CanaryProject -f $CanaryPath down --remove-orphans 2>$null
@@ -121,10 +173,16 @@ function Stop-Canary {
 
 function Invoke-GitLastGood {
     param([string]$LastGood)
-    Write-DeployLog "Checking out last-good commit $LastGood"
-    & git checkout --force $LastGood
+    # Stay on main: checkout the branch, then hard-reset to last-good (never detach).
+    Write-DeployLog "Checking out main and resetting to last-good $LastGood (not detached)"
+    & git checkout --force main
     if ($LASTEXITCODE -ne 0) {
-        Write-DeployLog "git checkout $LastGood failed" "ERROR"
+        Write-DeployLog "git checkout main failed" "ERROR"
+        return $false
+    }
+    & git reset --hard $LastGood
+    if ($LASTEXITCODE -ne 0) {
+        Write-DeployLog "git reset --hard $LastGood failed" "ERROR"
         return $false
     }
     $env:GIT_COMMIT = $LastGood
@@ -134,7 +192,7 @@ function Invoke-GitLastGood {
 function Invoke-Rollback {
     param(
         [string]$Reason,
-        # When $false, live was never swapped — only drop canary + reset git.
+        # When $false, live was never swapped — drop canary, reset main, retag images.
         [bool]$RestackLive = $true
     )
     $lastGood = Read-LastGoodSha
@@ -152,21 +210,27 @@ function Invoke-Rollback {
         return $false
     }
 
+    if (-not (Restore-LastGoodImages)) {
+        Write-DeployLog "Failed to retag last-good images to :local" "ERROR"
+        Assert-CloudflaredUntouched
+        return $false
+    }
+
     if (-not $RestackLive) {
-        Write-DeployLog "Live stack was not swapped; left running. Git reset to $lastGood. Tunnel untouched."
+        Write-DeployLog "Live stack was not swapped; left running. main reset to $lastGood; :local retagged from :last-good. Tunnel untouched."
         Assert-CloudflaredUntouched
         return $true
     }
 
     try {
-        Invoke-Compose -f $ComposePath build
+        # Images already retagged to :local — recreate live from those tags (no rebuild).
         Invoke-Compose -f $ComposePath up -d --no-build
         $ok = Wait-HttpOk -Url "$LiveFrontendUrl$HealthPath" -TimeoutSec $HealthTimeoutSec -Label "live $HealthPath after rollback"
         Assert-CloudflaredUntouched
         if ($ok) {
-            Write-DeployLog "Rollback restored live stack at $lastGood"
+            Write-DeployLog "Rollback restored live stack at $lastGood (retag :last-good → :local)"
         } else {
-            Write-DeployLog "Rollback completed git+compose but health still failing — tunnel left running" "ERROR"
+            Write-DeployLog "Rollback completed git+retag+compose but health still failing — tunnel left running" "ERROR"
         }
         return $ok
     } catch {
@@ -186,7 +250,12 @@ if (-not (Get-CloudflaredRunning)) {
     Write-DeployLog "WARNING: cloudflared not detected as a process/service. Continuing deploy; will still never stop it." "WARN"
 }
 
+# Required before any pull: record HEAD as last-good and snapshot :local images.
+$prePullSha = (& git rev-parse HEAD).Trim()
 if ($Pull) {
+    Write-DeployLog "Recording HEAD as last-good before pull: $prePullSha"
+    Write-LastGoodSha $prePullSha
+    Save-LastGoodImages
     Write-DeployLog "git pull origin main"
     & git pull origin main
     if ($LASTEXITCODE -ne 0) { throw "git pull failed" }
@@ -196,13 +265,19 @@ $targetSha = (& git rev-parse HEAD).Trim()
 $env:GIT_COMMIT = $targetSha
 Write-DeployLog "Deploy target SHA: $targetSha"
 
-# Seed last-good from a healthy live stack when the file is missing.
+# Seed last-good when the file is still missing (no -Pull, or first run).
 $existingGood = Read-LastGoodSha
 if (-not $existingGood) {
     if (Test-HttpOk -Url "$LiveFrontendUrl$HealthPath") {
-        Write-LastGoodSha $targetSha
-        Write-DeployLog "Seeded last-good from currently healthy live stack at $targetSha"
+        Write-LastGoodSha $prePullSha
+        Write-DeployLog "Seeded last-good from currently healthy live stack at $prePullSha"
     }
+}
+
+# Before build overwrites :local, snapshot current images when we have a last-good SHA
+# and have not already snapshotted in the -Pull path above.
+if ((Read-LastGoodSha) -and -not $Pull) {
+    Save-LastGoodImages
 }
 
 try {
@@ -239,6 +314,7 @@ try {
 
     Stop-Canary
     Write-LastGoodSha $targetSha
+    Save-LastGoodImages
     Assert-CloudflaredUntouched
     Write-DeployLog "Deploy SUCCESS at $targetSha"
     exit 0

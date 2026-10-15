@@ -11,6 +11,7 @@ This is the live origin — not Vercel/Railway.
 | Safe deploy | `scripts/ops/deploy-home.ps1` |
 | Legacy name | `scripts/ops/rebuild-home.ps1` → calls deploy-home |
 | Last good SHA | `.deploy/last-good-sha` (gitignored machine state) |
+| Last good images | `scot-land-home-api:last-good`, `scot-land-home-frontend:last-good` |
 | Deploy log | `.deploy/deploy.log` |
 | Uptime log | `.deploy/uptime.log` |
 
@@ -33,24 +34,31 @@ Run on the home PC from the repo root (PowerShell):
 ```
 
 1. Confirm `cloudflared` policy: **never stop the tunnel**.
-2. Optional `git pull origin main`.
-3. Ensure live **db** is up (API/frontend keep serving the previous images).
-4. `docker compose -f docker-compose.home.yml build` — new `scot-land-home-*:local` images; live containers untouched.
-5. Start canary project `scot-land-canary` on `:8001` / `:3001` (shares live DB via `host.docker.internal:5433`).
-6. Require canary `http://127.0.0.1:8001/health` **and** `http://127.0.0.1:3001/backend/health`.
-7. Only then `docker compose … up -d --no-build` to swap live to the new images.
-8. Require live `http://127.0.0.1:3000/backend/health`.
-9. Tear down canary; write `.deploy/last-good-sha`.
+2. Optional `-Pull`: **before** `git pull`, record current `HEAD` as
+   `.deploy/last-good-sha` and tag current `:local` images as `:last-good`.
+3. Optional `git pull origin main` (only after step 2).
+4. Ensure live **db** is up (API/frontend keep serving the previous images).
+5. Snapshot `:local` → `:last-good` when last-good is known and `-Pull` was not
+   used (so a build cannot erase the restore tags).
+6. `docker compose -f docker-compose.home.yml build` — new `scot-land-home-*:local`
+   images; live containers untouched.
+7. Start canary project `scot-land-canary` on `:8001` / `:3001` (shares live DB via `host.docker.internal:5433`).
+8. Require canary `http://127.0.0.1:8001/health` **and** `http://127.0.0.1:3001/backend/health`.
+9. Only then `docker compose … up -d --no-build` to swap live to the new images.
+10. Require live `http://127.0.0.1:3000/backend/health`.
+11. Tear down canary; write `.deploy/last-good-sha`; retag new `:local` as `:last-good`.
 
 ### On failure
 
 - Stop **canary only**.
-- Check out the SHA in `.deploy/last-good-sha` and log the rollback to
-  `.deploy/deploy.log`.
+- Check out **`main`**, then `git reset --hard` to the SHA in
+  `.deploy/last-good-sha` (never a detached checkout of the SHA alone).
+- Retag `scot-land-home-*:last-good` → `scot-land-home-*:local`.
 - If the live stack was **not** swapped yet (canary failed): leave live containers
-  running; only reset git to last-good.
-- If live **was** swapped and then failed health: rebuild last-good images and
-  `up -d --no-build` to restore.
+  running; git + image tags are restored for the next attempt.
+- If live **was** swapped and then failed health: `up -d --no-build` using the
+  retagged `:local` images (no rebuild).
+- Log the rollback to `.deploy/deploy.log`.
 - **Do not** stop or restart `cloudflared`.
 
 If there is no last-good file yet and canary fails before any swap, live stays on

@@ -62,6 +62,60 @@ def test_deploy_home_script_health_gates_and_never_stops_tunnel():
     assert "systemctl stop cloudflared" not in lower
 
 
+def test_deploy_home_records_last_good_before_pull():
+    """HEAD must be written to last-good-sha before git pull runs."""
+    text = DEPLOY_PS1.read_text(encoding="utf-8")
+    assert "Write-LastGoodSha $prePullSha" in text
+    assert "Recording HEAD as last-good before pull" in text
+    assert "Save-LastGoodImages" in text
+    assert "git pull origin main" in text
+    # Order inside the -Pull block: record SHA, snapshot images, then pull.
+    pull_if = text.find("if ($Pull)")
+    assert pull_if >= 0
+    write_idx = text.find("Write-LastGoodSha $prePullSha", pull_if)
+    save_idx = text.find("Save-LastGoodImages", pull_if)
+    pull_idx = text.find("git pull origin main", pull_if)
+    assert write_idx > pull_if
+    assert save_idx > write_idx
+    assert pull_idx > save_idx
+
+
+def test_deploy_home_rollback_resets_main_not_detached():
+    """Rollback must checkout main then reset --hard; never detach onto the SHA."""
+    text = DEPLOY_PS1.read_text(encoding="utf-8")
+    compact = "".join(text.split()).lower()
+    assert "git checkout --force main" in text.lower()
+    assert "gitreset--hard$lastgood" in compact
+    assert "not detached" in text.lower()
+    # Forbidden: detached checkout of the SHA alone.
+    assert "gitcheckout--force$lastgood" not in compact
+    assert "gitcheckout$lastgood" not in compact
+
+
+def test_deploy_home_rollback_retags_last_good_images_to_local():
+    """On rollback, retag :last-good images to :local; do not rebuild to restore."""
+    text = DEPLOY_PS1.read_text(encoding="utf-8")
+    assert "scot-land-home-api:last-good" in text
+    assert "scot-land-home-frontend:last-good" in text
+    assert "scot-land-home-api:local" in text
+    assert "scot-land-home-frontend:local" in text
+    assert "Restore-LastGoodImages" in text
+    assert "Save-LastGoodImages" in text
+    assert "docker tag" in text
+    # Rollback path must call retag and must not rebuild after retag for restore.
+    rollback_start = text.find("function Invoke-Rollback")
+    assert rollback_start >= 0
+    rollback_fn = text[rollback_start:]
+    next_fn = rollback_fn.find("\n# --- main")
+    if next_fn < 0:
+        next_fn = rollback_fn.find("\nfunction ", 1)
+    rollback_body = rollback_fn[: next_fn if next_fn > 0 else len(rollback_fn)]
+    assert "Restore-LastGoodImages" in rollback_body
+    assert "up -d --no-build" in rollback_body
+    # Must not rebuild during rollback restore (retag is the restore).
+    assert "Invoke-Compose -f $ComposePath build" not in rollback_body
+
+
 def test_rebuild_home_delegates_to_deploy_home():
     text = REBUILD_PS1.read_text(encoding="utf-8")
     assert "deploy-home.ps1" in text
@@ -87,5 +141,10 @@ def test_home_deploy_doc_and_gitignore_cover_state_dir():
     assert "cloudflared" in doc.lower()
     assert "530" in doc or "1033" in doc
     assert ".deploy/" in ignore
+    # Rollback contracts documented.
+    assert "before" in doc.lower() and "pull" in doc.lower()
+    assert "reset" in doc.lower() and "main" in doc.lower()
+    assert ":last-good" in doc or "last-good" in doc
+    assert ":local" in doc
     # Public surface: no £ figures in deploy docs.
     assert "£" not in doc

@@ -2,13 +2,13 @@
 
 Plain-English queue for maintainers (Laurie and agents). Update this file in each PR you open, or when queue order changes — piggyback on a real change; never open a PR just for `QUEUE.md`.
 
-**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: 0 open non-draft; [#139](https://github.com/LJMoffat81/scot-land/pull/139) (SW-036 v2) is draft. This PR adds NEIGHBOURS-2022.
+**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: 0 open non-draft; [#139](https://github.com/LJMoffat81/scot-land/pull/139) (SW-036 v2) and [#140](https://github.com/LJMoffat81/scot-land/pull/140) (NEIGHBOURS-2022) are draft.
 
 ## In progress
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| NEIGHBOURS-2022 | Council neighbours CSV at `data/reference/council_neighbours_2022.csv` (reason column + invariants test; one-way `a < b`) | this PR | Building — path sealed to `data/reference/` |
+| NEIGHBOURS-2022 | Council neighbours CSV at `data/reference/council_neighbours_2022.csv` (reason column + invariants test; one-way `a < b`) | [#140](https://github.com/LJMoffat81/scot-land/pull/140) | Draft — path sealed to `data/reference/` |
 | SW-036 v2 | Desktop layout (≥1024): place card left, Layers right, legend pill below the card | [#139](https://github.com/LJMoffat81/scot-land/pull/139) | Draft |
 
 ## Next up (in order)

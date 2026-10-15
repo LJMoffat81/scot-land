@@ -101,7 +101,13 @@ for (const viewport of [
       await expect(page.getByTestId("layers-panel")).toBeVisible();
       await expect(page.getByTestId("place-card")).toHaveCount(0);
 
-      await page.getByTestId("hud-layers-btn").click();
+      // Mobile full sheet covers the Layers toggle; close via panel chrome.
+      // Desktop still toggles via the HUD button.
+      if (viewport.width < 900) {
+        await page.getByTestId("map-panel-slot-close").click();
+      } else {
+        await page.getByTestId("hud-layers-btn").click();
+      }
       // Closing layers may restore place aside — still at most one.
       const placeVisible = (await page.getByTestId("place-card").count()) > 0;
       const layersVisible = (await page.getByTestId("layers-panel").count()) > 0;

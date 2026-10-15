@@ -238,11 +238,14 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
     }
     const wantsGeo =
       /\/layers\//i.test(url) ||
+      /\/boundaries\//i.test(url) ||
       /\/w3w-grid/i.test(url) ||
       /\/parcels/i.test(url);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
+      // Always a FeatureCollection for geo-ish paths; bare {} makes MapLibre
+      // console.error(Error) with text "Error" (invalid GeoJSON).
       body: JSON.stringify(wantsGeo ? EMPTY_FC : {}),
     });
   });
@@ -255,10 +258,8 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
     });
   });
   await page.route("**/health**", async (route) => {
-    if (/\/backend\/health/i.test(route.request().url())) {
-      await route.continue();
-      return;
-    }
+    // Fulfill all health probes (including /backend/health). Continuing to the
+    // Next rewrite yields 503 and noisy console errors in CI without an API.
     await route.fulfill({
       status: 200,
       contentType: "application/json",

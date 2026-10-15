@@ -218,6 +218,20 @@ const emptyCollection: GeoJSON.FeatureCollection = {
   features: [],
 };
 
+/** Avoid MapLibre console.error(Error) when API returns {} / non-GeoJSON. */
+function safeSetGeoJson(source: GeoJSONSource | undefined, data: unknown) {
+  if (!source) return;
+  if (
+    !data ||
+    typeof data !== "object" ||
+    (data as { type?: string }).type !== "FeatureCollection" ||
+    !Array.isArray((data as { features?: unknown }).features)
+  ) {
+    return;
+  }
+  source.setData(data as GeoJSON.FeatureCollection);
+}
+
 const PUBLIC_LAND_BODIES: Array<{ name: string; color: string }> = [
   { name: "Forestry and Land Scotland", color: "#66c2a5" },
   { name: "NatureScot", color: "#8da0cb" },
@@ -2750,7 +2764,10 @@ export default function ScotlandMap() {
     void apiJson<GeoJSON.FeatureCollection>("/boundaries/councils")
       .then((data) => {
         if (cancelled || !mapRef.current) return;
-        (map.getSource("council-metrics") as GeoJSONSource)?.setData(data);
+        safeSetGeoJson(
+          map.getSource("council-metrics") as GeoJSONSource | undefined,
+          data,
+        );
       })
       .catch(() => {
         /* boundaries optional — lines stay empty */
@@ -2811,7 +2828,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("data-zones-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("data-zones-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -2879,7 +2896,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("dz2022-masked-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("dz2022-masked-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
         })
         .catch((err: unknown) => {
@@ -2945,7 +2962,8 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("repd-onshore-wind-overlay") as GeoJSONSource)?.setData(
+          safeSetGeoJson(
+            map.getSource("repd-onshore-wind-overlay") as GeoJSONSource | undefined,
             data,
           );
           setVis("visible");
@@ -3022,7 +3040,8 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("ces-aquaculture-overlay") as GeoJSONSource)?.setData(
+          safeSetGeoJson(
+            map.getSource("ces-aquaculture-overlay") as GeoJSONSource | undefined,
             data,
           );
           setVis("visible");
@@ -3099,7 +3118,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("vdl-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("vdl-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3169,7 +3188,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("hla-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("hla-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3239,7 +3258,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("ldp-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("ldp-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3308,9 +3327,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (
-            map.getSource("community-ownership-overlay") as GeoJSONSource
-          )?.setData(data);
+          safeSetGeoJson(map.getSource("community-ownership-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3387,7 +3404,7 @@ export default function ScotlandMap() {
           apiJson<GeoJSON.FeatureCollection>(nfiUrl)
             .then((data) => {
               if (cancelled || !mapRef.current) return;
-              (map.getSource("nfi-overlay") as GeoJSONSource)?.setData(data);
+              safeSetGeoJson(map.getSource("nfi-overlay") as GeoJSONSource | undefined, data);
               setNfiVis("visible");
             })
             .catch((err: unknown) => {
@@ -3412,7 +3429,10 @@ export default function ScotlandMap() {
           apiJson<GeoJSON.FeatureCollection>(nativeUrl)
             .then((data) => {
               if (cancelled || !mapRef.current) return;
-              (map.getSource("native-woodland-overlay") as GeoJSONSource)?.setData(
+              safeSetGeoJson(
+                map.getSource("native-woodland-overlay") as
+                  | GeoJSONSource
+                  | undefined,
                 data,
               );
               setNativeVis("visible");
@@ -3484,7 +3504,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("repd-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("repd-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3563,7 +3583,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("crown-leases-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("crown-leases-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3632,7 +3652,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("public-land-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("public-land-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3702,7 +3722,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("lca-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("lca-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3799,7 +3819,7 @@ export default function ScotlandMap() {
           contextFlight.current.delete(layer.id);
           if (cancelled || data?.type !== "FeatureCollection") return;
           const source = map.getSource(`${layer.id}-src`) as GeoJSONSource | undefined;
-          source?.setData(data);
+          safeSetGeoJson(source, data);
           if (data.meta?.ok === false) {
             setContextNote(data.meta.note || "One layer did not load.");
             return;

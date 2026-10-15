@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 
 import {
+  fetchGbpLiveSettings,
+  GBP_LIVE_EARLY_BANNER,
+} from "@/lib/gbpLive";
+import {
   METHODOLOGY_RESEARCH_BANNER_BODY,
   RESEARCH_BANNER_BODY,
   RESEARCH_BANNER_LEAD,
@@ -56,6 +60,8 @@ export default function ResearchBanner({
   const [hidden, setHidden] = useState(false);
   const [strip, setStrip] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  /** GBP-LIVE early-estimates banner replaces research copy when flag is on. */
+  const [gbpLiveBanner, setGbpLiveBanner] = useState<string | null>(null);
 
   useEffect(() => {
     if (!dismissible) return;
@@ -65,6 +71,21 @@ export default function ResearchBanner({
       /* ignore */
     }
   }, [dismissible]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchGbpLiveSettings().then((settings) => {
+      if (cancelled) return;
+      if (settings.enabled) {
+        setGbpLiveBanner(settings.banner?.trim() || GBP_LIVE_EARLY_BANNER);
+      } else {
+        setGbpLiveBanner(null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia(`(max-width: ${STRIP_MAX_PX}px)`);
@@ -94,21 +115,25 @@ export default function ResearchBanner({
     "research-banner-collapsible",
     strip ? "research-banner-strip" : "",
     strip && expanded ? "research-banner-expanded" : "",
+    gbpLiveBanner ? "research-banner-gbp-live" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
-  const text =
-    strip && !expanded ? (
-      <p className="research-banner-text">{RESEARCH_BANNER_STRIP_COLLAPSED}</p>
-    ) : (
-      <p className="research-banner-text">
-        <strong>{RESEARCH_BANNER_LEAD}</strong>
-        {showBody ? (
-          <span className="research-banner-body"> {body}</span>
-        ) : null}
-      </p>
-    );
+  const text = gbpLiveBanner ? (
+    <p className="research-banner-text" data-testid="gbp-live-banner-text">
+      {gbpLiveBanner}
+    </p>
+  ) : strip && !expanded ? (
+    <p className="research-banner-text">{RESEARCH_BANNER_STRIP_COLLAPSED}</p>
+  ) : (
+    <p className="research-banner-text">
+      <strong>{RESEARCH_BANNER_LEAD}</strong>
+      {showBody ? (
+        <span className="research-banner-body"> {body}</span>
+      ) : null}
+    </p>
+  );
 
   return (
     <aside

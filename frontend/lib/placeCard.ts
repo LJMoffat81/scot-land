@@ -179,7 +179,7 @@ export type PlaceAgrRow = {
   id: "surface" | "resource" | "nature" | string;
   label: string;
   tag: PlaceRentTag;
-  /** Public status — never a £ amount. */
+  /** Public status — never a £ amount when GBP-LIVE is off. */
   status: PlaceValueStatus;
   /** When false, row is omitted from the place card. */
   applies?: boolean;
@@ -192,6 +192,11 @@ export type PlaceAgrRow = {
   method?: string | null;
   class?: PlaceCardClass | PlaceRentTag | null;
   of_which?: Array<{ id: string; label: string }>;
+  /** GBP-LIVE visitor estimate label (Measured / Partly estimated / Fully estimated). */
+  estimate_label?: string | null;
+  /** GBP-LIVE yield wording ("up to …"). */
+  yield_wording?: string | null;
+  amount_label?: string | null;
 };
 
 export type PlaceConstraintRow = {
@@ -282,6 +287,20 @@ export type PlaceCardPayload = {
   fully_estimated?: boolean;
   /** UX-10 card state override for no-match. */
   card_state?: "ok" | "no_match" | "sea" | "no_homes" | string | null;
+  /** GBP-LIVE-V1 flag mirror (default OFF). */
+  gbp_live?: { enabled?: boolean; banner?: string | null; yield_wording?: string | null } | null;
+  /** GBP-LIVE surface rent display for this Data Zone (absent when flag OFF). */
+  surface_rent_display?: {
+    state?: string | null;
+    label?: string | null;
+    estimate_label?: string | null;
+    estimate_label_key?: string | null;
+    low?: number | null;
+    central?: number | null;
+    high?: number | null;
+    yield_wording?: string | null;
+    grain?: string | null;
+  } | null;
 };
 
 export type FetchPlaceCardArgs = {
@@ -726,5 +745,8 @@ export function sanitizePlaceCard(payload: PlaceCardPayload): PlaceCardPayload {
     sales_year_to: rest.sales_year_to ?? null,
     confidence: rest.confidence ?? null,
     fully_estimated: Boolean(rest.fully_estimated),
+    // GBP-LIVE: pass through flag + display; never invent money here.
+    gbp_live: rest.gbp_live ?? { enabled: false },
+    surface_rent_display: rest.surface_rent_display ?? null,
   };
 }

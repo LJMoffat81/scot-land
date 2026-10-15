@@ -12,6 +12,13 @@ import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
 import ResearchBanner from "./ResearchBanner";
 import SiteNav from "./SiteNav";
 import {
+  fetchGbpLiveSettings,
+  SURFACE_RENT_LEGEND_BLURB,
+  SURFACE_RENT_LEGEND_SOURCE,
+  SURFACE_RENT_LEGEND_STOPS,
+  SURFACE_RENT_LEGEND_TITLE,
+} from "@/lib/gbpLive";
+import {
   fetchPlaceCard,
   outsideScotlandPlaceCard,
 } from "@/lib/placeCard";
@@ -610,7 +617,8 @@ export default function ScotlandMap() {
   );
   // Public range legend: active context colour ramp only (not AGR £).
   // Density bands follow whether colours are drawable at this zoom; if the
-  // carrier layer is off, show no bands. Rent metrics stay band-labelled.
+  // carrier layer is off, show no bands. Rent metrics stay band-labelled unless
+  // GBP-LIVE is on (surface rent £ legend mounts separately below).
   const contextMetric = publicContextMetric(DEFAULT_PUBLIC_CONTEXT_METRIC_ID);
   const contextLegend = rangeLegendFromStops(contextMetric.stops, {
     metricId: contextMetric.id,
@@ -627,6 +635,24 @@ export default function ScotlandMap() {
         : showDataZones || !dataZonesTouched.current
           ? "bands"
           : "off";
+
+  const [gbpLiveOn, setGbpLiveOn] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchGbpLiveSettings().then((settings) => {
+      if (!cancelled) setGbpLiveOn(Boolean(settings.enabled));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const surfaceRentLegend = gbpLiveOn
+    ? rangeLegendFromStops(SURFACE_RENT_LEGEND_STOPS, {
+        metricId: "surface_rent",
+        unit: "£",
+        allowRentGbp: true,
+      })
+    : null;
 
   useEffect(() => {
     const header = headerRef.current;
@@ -3825,6 +3851,17 @@ export default function ScotlandMap() {
                   : null
               }
             />
+            {surfaceRentLegend ? (
+              <MapRangeLegend
+                title={SURFACE_RENT_LEGEND_TITLE}
+                blurb={SURFACE_RENT_LEGEND_BLURB}
+                ranges={surfaceRentLegend.ranges}
+                showNoData
+                mode="bands"
+                source={SURFACE_RENT_LEGEND_SOURCE}
+                className="map-range-legend-surface-rent"
+              />
+            ) : null}
             <MapLicenceCredits credits={mapCredits} />
             <p className="hud-scotland-foot">
               <a href="/about">About</a>

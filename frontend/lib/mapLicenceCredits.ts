@@ -126,14 +126,15 @@ export type RangeLegendStop = {
 
 /**
  * Turn interpolate stops into range labels.
- * Rent / AGR / charge metrics are labelled as bands without publishing £ figures.
+ * Rent / AGR / charge metrics are labelled as bands without publishing £ figures,
+ * unless GBP-LIVE is on and the caller sets ``allowRentGbp`` (surface rent only).
  */
 export function rangeLegendFromStops(
   stops: Array<[number, string]>,
-  opts?: { metricId?: string; unit?: string },
+  opts?: { metricId?: string; unit?: string; allowRentGbp?: boolean },
 ): { ranges: RangeLegendStop[]; noData: { label: string; color: string } } {
   const metricId = opts?.metricId ?? "";
-  const withholdPounds = isRentMetricId(metricId);
+  const withholdPounds = isRentMetricId(metricId) && !opts?.allowRentGbp;
   const ranges: RangeLegendStop[] = [];
   for (let i = 0; i < stops.length; i += 1) {
     const [value, color] = stops[i];

@@ -11,6 +11,7 @@ from typing import Any
 
 import httpx
 
+from georgist.gbp_live import attach_gbp_live_to_place_card
 from layers.common_good import catalog_layer as common_good_catalog_layer
 from layers.common_good import place_common_good
 from layers.community_ownership import catalog_layer as community_ownership_catalog_layer
@@ -1406,4 +1407,5 @@ def place_context(
         ),
         # Explicitly omit inspire_id / national_reference from public card field.
     }
-    return card
+    # GBP-LIVE-V1: attach flag (default OFF). Money only when enabled in gbp_live.yaml.
+    return attach_gbp_live_to_place_card(card)

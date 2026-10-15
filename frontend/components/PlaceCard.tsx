@@ -3,6 +3,12 @@
 import { useState } from "react";
 
 import {
+  formatGbpCentralWithRange,
+  GBP_LIVE_UNDER_REVIEW,
+  gbpLiveFromCard,
+  type SurfaceRentDisplay,
+} from "../lib/gbpLive";
+import {
   PLACE_CARD_AGR_LABEL,
   PLACE_CARD_AGR_SUBTITLE,
   PLACE_CARD_COVERS_HOMES_ONLY,
@@ -144,14 +150,55 @@ function figureCopy(unit: PlaceUnitKind): string {
   }
 }
 
-function PartRow({ row }: { row: PlaceAgrRow }) {
+function surfacePartRange(
+  row: PlaceAgrRow,
+  display: SurfaceRentDisplay | null | undefined,
+  gbpLive: boolean,
+): string {
+  if (!gbpLive || row.id !== "surface") {
+    return row.range ?? PLACE_CARD_PART_NOT_YET;
+  }
+  if (display?.state === "under_review") {
+    return display.label?.trim() || GBP_LIVE_UNDER_REVIEW;
+  }
+  if (
+    display?.state === "ok" &&
+    display.low != null &&
+    display.central != null &&
+    display.high != null
+  ) {
+    return formatGbpCentralWithRange(display.low, display.central, display.high)
+      .range;
+  }
+  // Placeholder / hidden — never show £.
+  return row.range ?? PLACE_CARD_PART_NOT_YET;
+}
+
+function PartRow({
+  row,
+  display,
+  gbpLive,
+}: {
+  row: PlaceAgrRow;
+  display?: SurfaceRentDisplay | null;
+  gbpLive: boolean;
+}) {
   const classTag = (row.class ?? row.tag) as PlaceRentTag;
   const tone = placeTagTone(classTag);
+  const rangeText = surfacePartRange(row, display, gbpLive);
+  const estimateLabel =
+    gbpLive && row.id === "surface" && display?.state === "ok"
+      ? display.estimate_label || row.estimate_label
+      : null;
+  const yieldWording =
+    gbpLive && row.id === "surface" && display?.state === "ok"
+      ? display.yield_wording || row.yield_wording
+      : null;
   return (
     <li
       className="place-agr-row"
       data-testid={`place-card-agr-${row.id}`}
-      data-range={row.range ?? PLACE_CARD_PART_NOT_YET}
+      data-range={rangeText}
       data-unit={row.unit ?? ""}
       data-confidence={row.confidence ?? ""}
       data-method={row.method ?? ""}
@@ -170,8 +217,24 @@ function PartRow({ row }: { row: PlaceAgrRow }) {
         className="place-card-part-range"
         data-testid={`place-card-range-${row.id}`}
       >
-        {row.range ?? PLACE_CARD_PART_NOT_YET}
+        {rangeText}
       </p>
+      {estimateLabel ? (
+        <p
+          className="place-card-estimate-label"
+          data-testid={`place-card-estimate-label-${row.id}`}
+        >
+          {estimateLabel}
+        </p>
+      ) : null}
+      {yieldWording ? (
+        <p
+          className="place-card-yield-wording"
+          data-testid={`place-card-yield-${row.id}`}
+        >
+          Yield {yieldWording}
+        </p>
+      ) : null}
       {row.of_which?.length ? (
         <ul className="place-agr-of-which">
           {row.of_which.map((note) => (
@@ -260,7 +323,32 @@ export function PlaceCard({
     .filter(Boolean)
     .join(" ");
 
-  const figureText = figureCopy(unitEffective);
+  const gbpLive = gbpLiveFromCard(card);
+  const surfaceDisplay = (card?.surface_rent_display ??
+    null) as SurfaceRentDisplay | null;
+  let figureText = figureCopy(unitEffective);
+  let figureRange: string | null = null;
+  let figureEstimate: string | null = null;
+  if (gbpLive && unitEffective === "typical_home") {
+    if (surfaceDisplay?.state === "under_review") {
+      figureText = surfaceDisplay.label?.trim() || GBP_LIVE_UNDER_REVIEW;
+    } else if (
+      surfaceDisplay?.state === "ok" &&
+      surfaceDisplay.low != null &&
+      surfaceDisplay.central != null &&
+      surfaceDisplay.high != null
+    ) {
+      const formatted = formatGbpCentralWithRange(
+        surfaceDisplay.low,
+        surfaceDisplay.central,
+        surfaceDisplay.high,
+      );
+      figureText = formatted.central;
+      figureRange = formatted.range;
+      figureEstimate = surfaceDisplay.estimate_label ?? null;
+    }
+    // placeholder / hidden → keep PRE_POUND (no £).
+  }
   // Rank band stays OFF for UX10-1 (flag constant).
   void PLACE_CARD_RANK_BAND_ENABLED;
 
@@ -364,7 +452,32 @@ export function PlaceCard({
               data-testid="place-card-figure"
             >
               {figureText}
+              {figureRange ? (
+                <span
+                  className="place-card-figure-range"
+                  data-testid="place-card-figure-range"
+                >
+                  {" "}
+                  ({figureRange})
+                </span>
+              ) : null}
             </p>
+            {figureEstimate ? (
+              <p
+                className="place-card-figure-estimate"
+                data-testid="place-card-figure-estimate"
+              >
+                {figureEstimate}
+              </p>
+            ) : null}
+            {gbpLive && surfaceDisplay?.state === "under_review" ? (
+              <p
+                className="place-card-under-review"
+                data-testid="place-card-under-review"
+              >
+                {surfaceDisplay.label?.trim() || GBP_LIVE_UNDER_REVIEW}
+              </p>
+            ) : null}
             <p
               className="place-card-covers"
               data-testid="place-card-covers-homes"
@@ -443,7 +556,12 @@ export function PlaceCard({
               {valueRows
                 .filter((row) => row.id === "surface")
                 .map((row) => (
-                  <PartRow key={row.id} row={row} />
+                  <PartRow
+                    key={row.id}
+                    row={row}
+                    display={surfaceDisplay}
+                    gbpLive={gbpLive}
+                  />
                 ))}
             </ul>
 
@@ -456,7 +574,12 @@ export function PlaceCard({
                 {valueRows
                   .filter((row) => row.id !== "surface")
                   .map((row) => (
-                    <PartRow key={row.id} row={row} />
+                    <PartRow
+                      key={row.id}
+                      row={row}
+                      display={null}
+                      gbpLive={false}
+                    />
                   ))}
               </ul>
               <p

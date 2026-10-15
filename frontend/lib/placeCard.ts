@@ -20,6 +20,8 @@ export {
   dataZoneFieldLabel,
   placeCardTitle,
   preferDz2022,
+  PLACE_CARD_DATA_SOURCES_HREF,
+  PLACE_CARD_DATA_SOURCES_LABEL,
   PLACE_CARD_MORE_ABOUT_LABEL,
 } from "./placeCardDz";
 export { RENT_GROUP_NAME, RENT_GROUP_NAMES };

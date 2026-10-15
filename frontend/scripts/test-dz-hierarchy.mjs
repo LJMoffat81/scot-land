@@ -6,11 +6,18 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const frontendRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
-const { placeCardTitle, PLACE_CARD_MORE_ABOUT_LABEL } = await import(
+const {
+  placeCardTitle,
+  PLACE_CARD_MORE_ABOUT_LABEL,
+  PLACE_CARD_DATA_SOURCES_LABEL,
+  PLACE_CARD_DATA_SOURCES_HREF,
+} = await import(
   pathToFileURL(join(frontendRoot, "lib/placeCardDz.ts")).href
 );
 
 assert.equal(PLACE_CARD_MORE_ABOUT_LABEL, "More about this area");
+assert.equal(PLACE_CARD_DATA_SOURCES_LABEL, "Data & sources");
+assert.equal(PLACE_CARD_DATA_SOURCES_HREF, "/data");
 
 assert.equal(
   placeCardTitle({

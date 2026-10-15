@@ -22,6 +22,8 @@ import {
   PLACE_CARD_FULLY_ESTIMATED,
   PLACE_CARD_HOW_WE_WORK_HOMES,
   PLACE_CARD_HOW_WE_WORK_LABEL,
+  PLACE_CARD_DATA_SOURCES_HREF,
+  PLACE_CARD_DATA_SOURCES_LABEL,
   PLACE_CARD_MAP_REFERENCE_COPY_FAIL,
   PLACE_CARD_MAP_REFERENCE_ENABLED,
   PLACE_CARD_MAP_REFERENCE_LABEL,
@@ -399,18 +401,6 @@ export function PlaceCard({
 
   const placeName = card ? placeCardTitle(card) : "This place";
   const councilLine = card?.council_name?.trim() || null;
-  const zone = card?.data_zone ?? null;
-  const dz2011Secondary = (zone?.zones ?? []).find((z) => z.vintage === 2011);
-  const showDz2011 =
-    Boolean(zone && zone.vintage !== 2011 && dz2011Secondary?.code) &&
-    // Strict zone_id — never invent or show "unknown".
-    String(dz2011Secondary?.code).toLowerCase() !== "unknown";
-  const izCodeRaw = card?.intermediate_zone?.code
-    ? String(card.intermediate_zone.code).trim()
-    : "";
-  const izCode =
-    izCodeRaw && izCodeRaw.toLowerCase() !== "unknown" ? izCodeRaw : null;
-  const hierarchyLines = showDz2011 || Boolean(izCode);
 
   const shellClass = [
     floating ? "hud-card hud-place place-card" : "place-card place-card-standalone",
@@ -739,55 +729,37 @@ export function PlaceCard({
           </div>
 
           <div className="place-card-sheet-body" data-testid="place-card-sheet-body">
-            {/* DZ-HIERARCHY: DZ2011 + IZ code — folded on ≤600px so value rows stay above. */}
-            {hierarchyLines ? (
-              <details
-                className="place-card-more-about"
-                data-testid="place-card-more-about"
-                open={narrowHierarchy ? moreAboutOpen : true}
-                onToggle={(event) => {
-                  if (!narrowHierarchy) return;
-                  setMoreAboutOpen(
-                    (event.currentTarget as HTMLDetailsElement).open,
-                  );
-                }}
+            {/* DZ-HIERARCHY: fold links to Data & sources — no DZ2011 / IZ codes on the card. */}
+            <details
+              className="place-card-more-about"
+              data-testid="place-card-more-about"
+              open={narrowHierarchy ? moreAboutOpen : true}
+              onToggle={(event) => {
+                if (!narrowHierarchy) return;
+                setMoreAboutOpen(
+                  (event.currentTarget as HTMLDetailsElement).open,
+                );
+              }}
+            >
+              <summary
+                className="place-card-more-about-summary"
+                data-testid="place-card-more-about-summary"
               >
-                <summary
-                  className="place-card-more-about-summary"
-                  data-testid="place-card-more-about-summary"
+                {PLACE_CARD_MORE_ABOUT_LABEL}
+              </summary>
+              <div
+                className="place-card-more-about-body"
+                data-testid="place-card-more-about-body"
+              >
+                <a
+                  href={PLACE_CARD_DATA_SOURCES_HREF}
+                  className="place-card-data-sources-link"
+                  data-testid="place-card-data-sources-link"
                 >
-                  {PLACE_CARD_MORE_ABOUT_LABEL}
-                </summary>
-                <div
-                  className="place-card-more-about-body"
-                  data-testid="place-card-more-about-body"
-                >
-                  {showDz2011 && dz2011Secondary?.code ? (
-                    <p
-                      className="place-card-dz-secondary"
-                      data-testid="place-card-dz-2011"
-                    >
-                      Also on 2011 map:{" "}
-                      <span className="place-card-dz-code">
-                        {dz2011Secondary.code}
-                      </span>
-                      {dz2011Secondary.name
-                        ? ` · ${dz2011Secondary.name}`
-                        : ""}
-                    </p>
-                  ) : null}
-                  {izCode ? (
-                    <p
-                      className="place-card-iz-code"
-                      data-testid="place-card-iz-code"
-                    >
-                      Intermediate Zone{" "}
-                      <span className="place-card-dz-code">{izCode}</span>
-                    </p>
-                  ) : null}
-                </div>
-              </details>
-            ) : null}
+                  {PLACE_CARD_DATA_SOURCES_LABEL}
+                </a>
+              </div>
+            </details>
 
             <details
               className="place-card-parts"

@@ -25,8 +25,12 @@ export type PlaceIntermediateZoneTitle = {
   note?: string | null;
 };
 
-/** Mobile (≤600px) fold for DZ2011 + IZ code lines (DZ-HIERARCHY / idea 40). */
+/** Mobile (≤600px) fold label (DZ-HIERARCHY / idea 40) — exact visitor wording. */
 export const PLACE_CARD_MORE_ABOUT_LABEL = "More about this area";
+
+/** Link inside the fold — zone codes live on Data & sources, not the card. */
+export const PLACE_CARD_DATA_SOURCES_LABEL = "Data & sources";
+export const PLACE_CARD_DATA_SOURCES_HREF = "/data";
 
 /**
  * Place-card title: Intermediate Zone name first (DZ-HIERARCHY / idea 37),

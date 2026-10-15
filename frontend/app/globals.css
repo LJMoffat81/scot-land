@@ -3626,15 +3626,17 @@ button.linkish:disabled {
   font-weight: 500;
 }
 
-.place-card-iz-code {
-  margin: 0.2rem 0 0;
-  font-size: 0.78rem;
-  line-height: 1.35;
-  color: var(--slrg-muted);
-  font-weight: 500;
+.place-card-data-sources-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 650;
+  font-size: 0.85rem;
+  color: var(--slrg-navy);
+  text-decoration: underline;
 }
 
-/* DZ-HIERARCHY / idea 40: fold DZ2011 + IZ code behind "More about this area" ≤600px. */
+/* DZ-HIERARCHY / idea 40: "More about this area" fold (≤600px) → Data & sources. */
 .place-card-more-about {
   border: 0;
   padding: 0;

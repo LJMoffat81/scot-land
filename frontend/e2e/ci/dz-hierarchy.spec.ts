@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 /**
  * DZ-HIERARCHY — Intermediate Zone title, council second line;
- * mobile folds DZ2011 + IZ code behind "More about this area".
+ * "More about this area" links to Data & sources (no DZ2011 / IZ codes on card).
  * Widths: 390 and 1280. Console/pageerror gate.
  */
 
@@ -11,6 +11,7 @@ const IZ_CODE = "S02002727";
 const COUNCIL = "City of Edinburgh";
 const DZ2011_CODE = "S01008677";
 const MORE_ABOUT = "More about this area";
+const DATA_SOURCES = "Data & sources";
 
 const HEALTH_OK = {
   status: "ok",
@@ -197,10 +198,18 @@ async function openEh1Card(page: Page) {
   return card;
 }
 
+async function assertNoZoneCodesOnCard(card: ReturnType<Page["getByTestId"]>) {
+  await expect(card).not.toContainText(DZ2011_CODE);
+  await expect(card).not.toContainText(IZ_CODE);
+  await expect(card).not.toContainText("Also on 2011 map");
+  await expect(card.getByTestId("place-card-dz-2011")).toHaveCount(0);
+  await expect(card.getByTestId("place-card-iz-code")).toHaveCount(0);
+}
+
 test.describe("DZ-HIERARCHY place card desktop 1280", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test("EH1 1YZ title is IZ name; council second line; hierarchy lines open", async ({
+  test("EH1 1YZ IZ title; More about links to Data & sources; no zone codes", async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -210,18 +219,19 @@ test.describe("DZ-HIERARCHY place card desktop 1280", () => {
 
     await expect(page.getByTestId("place-card-place")).toHaveText(IZ_NAME);
     await expect(page.getByTestId("place-card-council")).toHaveText(COUNCIL);
-    // Locality must not be the title when IZ name is present.
     await expect(page.getByTestId("place-card-place")).not.toHaveText(
       "Edinburgh Old Town",
     );
 
     await expect(page.getByTestId("place-card-more-about-summary")).toBeHidden();
-    await expect(page.getByTestId("place-card-dz-2011")).toBeVisible();
-    await expect(page.getByTestId("place-card-dz-2011")).toContainText(
-      DZ2011_CODE,
+    await expect(page.getByTestId("place-card-more-about-summary")).toHaveText(
+      MORE_ABOUT,
     );
-    await expect(page.getByTestId("place-card-iz-code")).toBeVisible();
-    await expect(page.getByTestId("place-card-iz-code")).toContainText(IZ_CODE);
+    const dataLink = page.getByTestId("place-card-data-sources-link");
+    await expect(dataLink).toBeVisible();
+    await expect(dataLink).toHaveText(DATA_SOURCES);
+    await expect(dataLink).toHaveAttribute("href", "/data");
+    await assertNoZoneCodesOnCard(card);
     await expect(card).not.toContainText(/\bunknown\b/i);
     await expect(card).not.toContainText("£");
     assertConsoleClean(gate);
@@ -241,12 +251,13 @@ test.describe("DZ-HIERARCHY place card desktop 1280", () => {
         },
       }),
     );
-    await openEh1Card(page);
+    const card = await openEh1Card(page);
     await expect(page.getByTestId("place-card-place")).toHaveText(
       "Edinburgh Old Town",
     );
     await expect(page.getByTestId("place-card-council")).toHaveText(COUNCIL);
-    await expect(page.getByTestId("place-card")).not.toContainText(/\bunknown\b/i);
+    await assertNoZoneCodesOnCard(card);
+    await expect(card).not.toContainText(/\bunknown\b/i);
     assertConsoleClean(gate);
   });
 });
@@ -254,7 +265,7 @@ test.describe("DZ-HIERARCHY place card desktop 1280", () => {
 test.describe("DZ-HIERARCHY place card mobile 390", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("EH1 1YZ IZ title; More about closed; value rows above fold", async ({
+  test("EH1 1YZ IZ title; More about closed; Data & sources; value rows above fold", async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -267,17 +278,14 @@ test.describe("DZ-HIERARCHY place card mobile 390", () => {
 
     const more = page.getByTestId("place-card-more-about");
     await expect(more).toBeVisible();
-    // Summary is mobile-only; wait until matchMedia fold has applied.
     await expect(page.getByTestId("place-card-more-about-summary")).toBeVisible();
     await expect(page.getByTestId("place-card-more-about-summary")).toHaveText(
       MORE_ABOUT,
     );
-    // Starts closed — hierarchy lines not shown until opened.
     await expect
       .poll(async () => more.evaluate((el) => (el as HTMLDetailsElement).open))
       .toBe(false);
-    await expect(page.getByTestId("place-card-dz-2011")).toBeHidden();
-    await expect(page.getByTestId("place-card-iz-code")).toBeHidden();
+    await expect(page.getByTestId("place-card-data-sources-link")).toBeHidden();
 
     const valueRows = page.getByTestId("place-card-value-rows");
     await expect(valueRows).toBeVisible();
@@ -286,16 +294,15 @@ test.describe("DZ-HIERARCHY place card mobile 390", () => {
     const moreBox = await more.boundingBox();
     expect(valueBox).toBeTruthy();
     expect(moreBox).toBeTruthy();
-    // Value rows sit above the More-about fold in document order / layout.
     expect(valueBox!.y + valueBox!.height).toBeLessThanOrEqual(moreBox!.y + 1);
 
     await page.getByTestId("place-card-more-about-summary").click();
     await expect(more).toHaveAttribute("open", "");
-    await expect(page.getByTestId("place-card-dz-2011")).toBeVisible();
-    await expect(page.getByTestId("place-card-dz-2011")).toContainText(
-      DZ2011_CODE,
-    );
-    await expect(page.getByTestId("place-card-iz-code")).toContainText(IZ_CODE);
+    const dataLink = page.getByTestId("place-card-data-sources-link");
+    await expect(dataLink).toBeVisible();
+    await expect(dataLink).toHaveText(DATA_SOURCES);
+    await expect(dataLink).toHaveAttribute("href", "/data");
+    await assertNoZoneCodesOnCard(card);
 
     await expect(card).not.toContainText(/\bunknown\b/i);
     await expect(card).not.toContainText("£");

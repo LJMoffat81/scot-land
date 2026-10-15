@@ -22,6 +22,64 @@ function walk(dir, out = []) {
   return out;
 }
 
+/**
+ * Strip the whole [data-testid="developers-glossary"] element before the
+ * global \bshadow\b HTML ban. Must match nested <div> descendants — a
+ * non-greedy [\s\S]*?</div> stops at the first closer and leaves inner
+ * "shadow" prose in the scan.
+ */
+function stripDevelopersGlossaryBlock(raw) {
+  const openRe =
+    /<div\b[^>]*\bdata-testid=["']developers-glossary["'][^>]*>/gi;
+  let out = "";
+  let cursor = 0;
+  let match;
+  while ((match = openRe.exec(raw)) !== null) {
+    out += raw.slice(cursor, match.index);
+    let pos = match.index + match[0].length;
+    let depth = 1;
+    const tagRe = /<\/?div\b[^>]*>/gi;
+    tagRe.lastIndex = pos;
+    let end = raw.length;
+    let tag;
+    while ((tag = tagRe.exec(raw)) !== null) {
+      const token = tag[0];
+      if (/^<\//i.test(token)) {
+        depth -= 1;
+        if (depth === 0) {
+          end = tag.index + token.length;
+          break;
+        }
+      } else if (!/\/>$/.test(token)) {
+        depth += 1;
+      }
+    }
+    out += " ";
+    cursor = end;
+    openRe.lastIndex = end;
+  }
+  out += raw.slice(cursor);
+  return out;
+}
+
+// Strengthen: nested </div> inside the glossary must not truncate the strip.
+{
+  const nested =
+    '<main><div class="wrap" data-testid="developers-glossary">' +
+    '<div class="inner">the shadow word</div>' +
+    "<section><p>more shadow here</p></section>" +
+    "</div><p>keep-me-visible</p></main>";
+  const naive =
+    nested.replace(
+      /<div\b[^>]*\bdata-testid=["']developers-glossary["'][^>]*>[\s\S]*?<\/div>/gi,
+      " ",
+    );
+  assert.match(naive, /\bshadow\b/i, "fixture: naive strip must leave inner shadow");
+  const stripped = stripDevelopersGlossaryBlock(nested);
+  assert.doesNotMatch(stripped, /\bshadow\b/i);
+  assert.match(stripped, /keep-me-visible/);
+}
+
 // Source checks for approved public strings.
 const mission = readFileSync(
   join(frontendRoot, "components/MissionContent.tsx"),
@@ -215,11 +273,6 @@ if (existsSync(nextHtml)) {
       re: /(?:\byield\b[\s\S]{0,80}?\d+(\.\d+)?\s*%|\d+(\.\d+)?\s*%[\s\S]{0,80}?\byield\b)/i,
     },
   ];
-  const stripDevelopersGlossaryBlock = (raw) =>
-    raw.replace(
-      /<div\b[^>]*\bdata-testid=["']developers-glossary["'][^>]*>[\s\S]*?<\/div>/gi,
-      " ",
-    );
   const toProse = (raw) =>
     raw
       .replace(/<script[\s\S]*?<\/script>/gi, " ")

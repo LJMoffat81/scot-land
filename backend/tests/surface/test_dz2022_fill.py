@@ -105,6 +105,13 @@ def test_neighbours_committed_60_pairs_no_islands(neighbours):
     assert "S12000013" not in neighbours
 
 
+def test_methods_v12_no_next_ur_class_constant():
+    """FILL-ORDER-V12: next-UR step and constant removed."""
+    assert not hasattr(fill, "STEP_NEXT_UR")
+    assert "next_ur_class" not in fill.C_SUB_STEPS
+    assert not hasattr(fill, "DEFAULT_UR6_ADJACENCY")
+
+
 def test_reconciled_facts():
     facts = fill.reconciled_facts()
     assert facts["model_fill_n"] == 129
@@ -171,24 +178,24 @@ def test_class_c_fully_estimated_with_fill_step(filled):
     assert row["fill_step"] == fill.STEP_C_MODEL
     assert row["c_sub_step"] in {
         fill.STEP_OWN,
-        fill.STEP_NEXT_UR,
         fill.STEP_NEIGHBOUR,
         fill.STEP_SCOTLAND,
     }
     assert row["uncertainty_low"] <= row["measured_rent"] <= row["uncertainty_high"]
 
 
-def test_class_c_neighbour_or_next_class_borrow(filled):
-    # Edinburgh UR3 C zone has no own measured UR3 → must borrow.
+def test_class_c_borrows_without_next_ur_class(filled):
+    # Edinburgh UR3 C zone has no own measured UR3 → must borrow (never next UR).
     row = next(r for r in filled.rows_2022 if r["code"] == "S01020002")
     assert row["estimate_label"] == fill.ESTIMATE_FULLY
     assert row["fill_step"] == fill.STEP_C_MODEL
     assert row["c_sub_step"] != fill.STEP_OWN
-    assert row.get("borrowed_class") or row["c_sub_step"] in {
-        fill.STEP_NEXT_UR,
+    assert row["c_sub_step"] in {
         fill.STEP_NEIGHBOUR,
         fill.STEP_SCOTLAND,
     }
+    borrowed = row.get("borrowed_class") or []
+    assert not any(str(t).startswith("ur6:") for t in borrowed)
 
 
 def test_class_d_zero_dwellings_not_applicable(filled):
@@ -218,23 +225,33 @@ def _measured_row(code, la, ur6, rent, dwellings=20, sales_n=10):
     }
 
 
-def test_fill_step_next_ur_class_exactly(neighbours):
-    """Own class thin; adjacent class in same council reaches class_min → next_ur_class."""
-    la = "S12000049"
+def test_mainland_short_of_class_min_borrows_neighbour_never_other_ur_class(neighbours):
+    """Own thin; same-council other UR class plentiful; neighbour same class → neighbour only."""
+    # Glasgow UR2 thin; Glasgow UR1 has 10 (would have been next-UR under v1.1);
+    # Renfrewshire (neighbour) has 10 in UR2 → must borrow neighbour, never other UR.
+    glasgow, renfrew = "S12000049", "S12000038"
+    assert renfrew in neighbours[glasgow]
     measured = [
-        _measured_row(f"S0101{3200 + i}", la, 1, 200.0 + i, dwellings=20)
+        _measured_row(f"S0101{3200 + i}", glasgow, 1, 200.0 + i, dwellings=20)
         for i in range(10)
     ]
-    measured += [_measured_row("S01013250", la, 2, 150.0, dwellings=20)]  # thin own for UR2
+    measured += [
+        _measured_row(f"S0101{3300 + i}", renfrew, 2, 180.0 + i, dwellings=20)
+        for i in range(10)
+    ]
+    measured += [_measured_row("S01013250", glasgow, 2, 150.0, dwellings=20)]
     models = fill.fit_council_ur6_models(
-        measured, neighbours=neighbours, class_min=10, target_keys=[(la, 2)]
+        measured, neighbours=neighbours, class_min=10, target_keys=[(glasgow, 2)]
     )
-    assert models[(la, 2)].fill_step == fill.STEP_NEXT_UR
-    assert any(t.startswith("ur6:") for t in models[(la, 2)].borrowed_class)
+    model = models[(glasgow, 2)]
+    assert model.fill_step == fill.STEP_NEIGHBOUR
+    assert any(t.startswith("council:") for t in model.borrowed_class)
+    assert not any(str(t).startswith("ur6:") for t in model.borrowed_class)
+    assert "|ur6:" not in ",".join(model.borrowed_class)
 
 
 def test_fill_step_neighbouring_council_exactly(neighbours):
-    """Own+adjacent thin; neighbouring council same class fills → neighbouring_council."""
+    """Own thin; neighbouring council same class fills → neighbouring_council."""
     # Glasgow UR6=4 thin; Renfrewshire (neighbour of Glasgow) has 10 in UR4.
     glasgow, renfrew = "S12000049", "S12000038"
     assert renfrew in neighbours[glasgow]
@@ -248,6 +265,7 @@ def test_fill_step_neighbouring_council_exactly(neighbours):
     )
     assert models[(glasgow, 4)].fill_step == fill.STEP_NEIGHBOUR
     assert any(t.startswith("council:") for t in models[(glasgow, 4)].borrowed_class)
+    assert not any(str(t).startswith("ur6:") for t in models[(glasgow, 4)].borrowed_class)
 
 
 def test_fill_step_island_group_exactly():
@@ -272,7 +290,7 @@ def test_fill_step_island_group_exactly():
 
 
 def test_fill_step_scotland_mainland_exactly(neighbours):
-    """Mainland own/next/neighbour all thin; Scotland-wide same class → scotland_ur_class."""
+    """Mainland own/neighbour thin; Scotland-wide same class → scotland_ur_class."""
     # Target Fife UR5 with no local/neighbour pool; Glasgow has 10 in UR5.
     fife, glasgow = "S12000047", "S12000049"
     measured = [

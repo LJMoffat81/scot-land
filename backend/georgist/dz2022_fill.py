@@ -61,15 +61,14 @@ STEP_B_BLEND = "B_blend"
 STEP_C_MODEL = "C_model"
 STEP_NA = "not_applicable"
 
-# C (and B empty-part) borrowing sub-steps — method unchanged.
+# C (and B empty-part) borrowing sub-steps — Methods v1.2 (no next-UR class).
 STEP_OWN = "own_council_class"
-STEP_NEXT_UR = "next_ur_class"
 STEP_NEIGHBOUR = "neighbouring_council"
 STEP_ISLAND = "island_group"
 STEP_SCOTLAND = "scotland_ur_class"
 
 C_SUB_STEPS = frozenset(
-    {STEP_OWN, STEP_NEXT_UR, STEP_NEIGHBOUR, STEP_ISLAND, STEP_SCOTLAND}
+    {STEP_OWN, STEP_NEIGHBOUR, STEP_ISLAND, STEP_SCOTLAND}
 )
 TOP_LEVEL_STEPS = frozenset(
     {
@@ -116,15 +115,6 @@ POOLING_CONFIG_HASH_KEYS = (
 # Island group (DECIDED): no land neighbours; borrow within group before mainland.
 ISLAND_COUNCILS = frozenset({"S12000013", "S12000023", "S12000027"})
 # Na h-Eileanan Siar, Orkney, Shetland
-
-DEFAULT_UR6_ADJACENCY = {
-    1: (2,),
-    2: (1, 3),
-    3: (2, 4, 5),
-    4: (3, 6),
-    5: (3, 6),
-    6: (4, 5),
-}
 
 NEIGHBOURS_PATH = REPO_ROOT / "data" / "reference" / "council_neighbours_2022.csv"
 # Official filename; path is a setting (never commit the production extract).
@@ -631,11 +621,9 @@ def resolve_group_model(
     by_group: Mapping[tuple[str, int], Sequence[float]],
     *,
     neighbours: Mapping[str, Sequence[str]],
-    ur6_adjacency: Mapping[int, Sequence[int]],
     class_min: int = CLASS_MIN_TRAINING,
 ) -> GroupModel:
-    """Borrowing order per signed-off island / mainland rules; always fills."""
-    adj = {int(k): tuple(int(x) for x in v) for k, v in ur6_adjacency.items()}
+    """Borrowing order per Methods v1.2 island / mainland rules; always fills."""
     own = list(by_group.get((la, ur6)) or ())
     if len(own) >= class_min:
         return _fit_one(la, ur6, own, fill_step=STEP_OWN, borrowed=())
@@ -678,31 +666,19 @@ def resolve_group_model(
             scotland_fallback=True,
         )
 
-    # Mainland: own → next UR class → neighbouring council → Scotland-wide same class.
-    if len(logs) < class_min:
-        for other in adj.get(ur6, ()):
-            extra = by_group.get((la, int(other))) or ()
-            if extra:
-                logs.extend(extra)
-                borrowed.append(f"ur6:{other}")
-            if len(logs) >= class_min:
-                return _fit_one(
-                    la, ur6, logs, fill_step=STEP_NEXT_UR, borrowed=borrowed
-                )
-
+    # Mainland (Methods v1.2): own → neighbouring council same UR class →
+    # Scotland-wide same class. No next-UR-class borrow.
     if len(logs) < class_min:
         for nla in neighbours.get(la, ()):
-            for try_ur in (ur6, *adj.get(ur6, ())):
-                extra = by_group.get((nla, int(try_ur))) or ()
-                if not extra:
-                    continue
-                logs.extend(extra)
-                tag = f"council:{nla}" if int(try_ur) == int(ur6) else f"council:{nla}|ur6:{try_ur}"
-                borrowed.append(tag)
-                if len(logs) >= class_min:
-                    return _fit_one(
-                        la, ur6, logs, fill_step=STEP_NEIGHBOUR, borrowed=borrowed
-                    )
+            extra = by_group.get((nla, int(ur6))) or ()
+            if not extra:
+                continue
+            logs.extend(extra)
+            borrowed.append(f"council:{nla}")
+            if len(logs) >= class_min:
+                return _fit_one(
+                    la, ur6, logs, fill_step=STEP_NEIGHBOUR, borrowed=borrowed
+                )
 
     # Scotland-wide same UR class (final fallback — every zone is filled).
     scot: list[float] = []
@@ -722,8 +698,6 @@ def resolve_group_model(
     if len(logs) >= 1:
         if any(t.startswith("council:") for t in borrowed):
             step = STEP_NEIGHBOUR
-        elif any(t.startswith("ur6:") for t in borrowed):
-            step = STEP_NEXT_UR
         else:
             step = STEP_OWN
         return _fit_one(la, ur6, logs, fill_step=step, borrowed=borrowed)
@@ -736,14 +710,9 @@ def fit_council_ur6_models(
     measured_2011: Sequence[Mapping],
     *,
     neighbours: Mapping[str, Sequence[str]],
-    ur6_adjacency: Mapping[int, Sequence[int]] | None = None,
     class_min: int = CLASS_MIN_TRAINING,
     target_keys: Iterable[tuple[str, int]] | None = None,
 ) -> dict[tuple[str, int], GroupModel]:
-    adj = {
-        int(k): tuple(int(x) for x in v)
-        for k, v in (ur6_adjacency or DEFAULT_UR6_ADJACENCY).items()
-    }
     by_group: dict[tuple[str, int], list[float]] = defaultdict(list)
     for r in measured_2011:
         la = str(r.get("la_code") or "").strip()
@@ -768,7 +737,6 @@ def fit_council_ur6_models(
             ur6,
             by_group,
             neighbours=neighbours,
-            ur6_adjacency=adj,
             class_min=class_min,
         )
     return fitted
@@ -929,7 +897,6 @@ def fill_dz2022_empty_zones(
     neighbours: Mapping[str, Sequence[str]],
     dwellings_by_2022: Mapping[str, int] | None = None,
     zero_codes: Iterable[str] = sr.ZERO_DWELLINGS_FALLBACK,
-    ur6_adjacency: Mapping[int, Sequence[int]] | None = None,
     class_min: int = CLASS_MIN_TRAINING,
     band_widen: Mapping[str, Sequence[float]] | None = None,
     scotland_holdout_errors_by_ur6: Mapping[int, Sequence[float]] | None = None,
@@ -976,7 +943,6 @@ def fill_dz2022_empty_zones(
     models = fit_council_ur6_models(
         measured,
         neighbours=neighbours,
-        ur6_adjacency=ur6_adjacency,
         class_min=class_min,
         target_keys=target_keys,
     )

@@ -16,16 +16,19 @@ FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "dz2022_fill"
 RENT = FIXTURES / "rent_2011.csv"
 UR6 = FIXTURES / "ur6_dz2022.csv"
 
-# Deterministic held set for DEFAULT_SEED on the CI rent fixture (k=8).
+# Deterministic held set for DEFAULT_SEED on the CI rent fixture (k=10 after
+# FILL-ORDER-V12 Renfrewshire UR2 peer rows).
 FIXED_HELD_CODES = [
-    "S01013402",
+    "S01013401",
     "S01013413",
     "S01013414",
     "S01013417",
     "S01013418",
     "S01013421",
-    "S01013428",
-    "S01013429",
+    "S01013430",
+    "S01013431",
+    "S01013442",
+    "S01013445",
 ]
 
 
@@ -46,7 +49,7 @@ def test_fixed_split_is_seed_stable_and_k_equals_eight(measured):
     assert codes_a == codes_b
     assert codes_a == FIXED_HELD_CODES
     assert len(codes_a) == oneshot.EXPECTED_FIXTURE_HELD_N
-    assert len(codes_a) == 8  # k=8 tested
+    assert len(codes_a) == 10  # k=10 tested (FILL-ORDER-V12 fixture)
     # Different seed must not silently reuse the same split.
     other = oneshot.fixed_split_codes(measured, seed=ho.DEFAULT_SEED + 1)
     assert other != FIXED_HELD_CODES
@@ -113,15 +116,15 @@ def test_metric_output_exact_counts_coverage_bias_and_widen(log_path, measured):
         log_path=log_path,
         class_min=3,
     )
-    assert result["k"] == 8
-    assert result["held_n"] == 8
-    assert result["train_n"] == 18
+    assert result["k"] == 10
+    assert result["held_n"] == 10
+    assert result["train_n"] == 26
     assert result["held_codes"] == FIXED_HELD_CODES
 
     c = result["c_metrics"]
-    assert c["n"] == 6
-    # Exact coverage: 2 of 6 held-with-model zones inside P10–P90
-    assert c["coverage_p10_p90"] == 2 / 6
+    assert c["n"] == 8
+    # Exact coverage: 2 of 8 held-with-model zones inside P10–P90
+    assert c["coverage_p10_p90"] == 2 / 8
 
     # Sole lowest-sales-decile held zone with a model: S01013421 (sales_n=4)
     train, held = ho.stratified_mask(measured, seed=ho.DEFAULT_SEED)
@@ -138,6 +141,7 @@ def test_metric_output_exact_counts_coverage_bias_and_widen(log_path, measured):
     assert decision["pass"] is False
     assert "c_coverage" in decision["fails"]
     assert "c_low_sales_bias" in decision["fails"]
+    assert "a_coverage" in decision["fails"]
     assert decision["pass_bands"]["coverage_target"] == 0.80
     assert decision["pass_bands"]["coverage_tol"] == 0.05
     assert decision["pass_bands"]["bias_abs_max"] == 0.10
@@ -157,7 +161,7 @@ def test_metric_output_exact_counts_coverage_bias_and_widen(log_path, measured):
     assert lines[0]["phase"] == "preregister"
     assert lines[0]["metrics"] == {}
     assert lines[1]["phase"] == "result"
-    assert lines[1]["metrics"]["k"] == 8
+    assert lines[1]["metrics"]["k"] == 10
     assert lines[1]["metrics"]["held_codes"] == FIXED_HELD_CODES
     assert lines[1]["widening"][fill.CLASS_C] == c["abs_log_errors"]
 

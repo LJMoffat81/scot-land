@@ -32,8 +32,9 @@ from georgist.surface_paths import expand
 SCRIPT_PATH = Path(__file__).resolve()
 DEFAULT_SEED = ho.DEFAULT_SEED
 HOLDOUT_FRAC = ho.HOLDOUT_FRAC
-# Fixture / signed-off seed yields k=8 held zones on the CI rent table.
-EXPECTED_FIXTURE_HELD_N = 8
+# Fixture / signed-off seed yields k held zones on the CI rent table.
+# FILL-ORDER-V12 added Renfrewshire UR2 peers → k=10 (was 8).
+EXPECTED_FIXTURE_HELD_N = 10
 
 
 class NotPreRegisteredError(RuntimeError):

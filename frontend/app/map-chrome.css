@@ -529,10 +529,11 @@
   .basemap-switcher {
     right: 0.55rem;
     /*
-     * UX-01: zoom +/- are 44×44 (~88px group) + collapsed (i) (~24px)
-     * + MapLibre margins. Keep tile clear of the taller zoom stack.
+     * UX-01: zoom +/- are 44×44 (~88px group) + collapsed (i) (44×44, SW-044)
+     * + MapLibre margins. Raised from 9.25rem so the tile stays clear of the
+     * taller stack (basemap-switcher.spec overlap assert at 390).
      */
-    bottom: 9.25rem;
+    bottom: 10.75rem;
   }
 
   /*

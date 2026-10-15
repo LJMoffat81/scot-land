@@ -13,6 +13,13 @@ import pytest
 
 from georgist import hedonic_merge_map as hmm
 
+FIXTURE_FREEZE = (
+    Path(__file__).resolve().parents[1]
+    / "fixtures"
+    / "hedonic"
+    / "v14_prereg_freeze_seed_only.json"
+)
+
 
 def _write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -39,16 +46,6 @@ def _make_spd_zip(path: Path, rows: list[dict]) -> None:
         w.writerow(r)
     with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("SmallUser.csv", buf.getvalue())
-
-
-def _write_freeze(path: Path, seed: int = 20261015) -> Path:
-    """Minimal freeze fixture for tests only — not the Valuation freeze file."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps({"status": "TEST_FIXTURE_ONLY", "bootstrap_seed": seed}),
-        encoding="utf-8",
-    )
-    return path
 
 
 def _synthetic_tree(root: Path) -> dict[str, Path]:
@@ -150,7 +147,6 @@ def _synthetic_tree(root: Path) -> dict[str, Path]:
         )
     spd = root / "spd.zip"
     _make_spd_zip(spd, spd_rows)
-    freeze = _write_freeze(root / "v14_prereg_freeze.json")
 
     return {
         "counts": counts,
@@ -158,7 +154,6 @@ def _synthetic_tree(root: Path) -> dict[str, Path]:
         "uprn_weights": weights,
         "ur": ur,
         "spd": spd,
-        "freeze": freeze,
     }
 
 
@@ -168,25 +163,30 @@ def synth(tmp_path: Path) -> dict[str, Path]:
 
 
 @pytest.fixture()
-def seed(synth: dict[str, Path]) -> int:
-    return hmm.load_seed_from_prereg_freeze(synth["freeze"])
+def seed() -> int:
+    """Seed from the small test fixture — not hard-coded in the assertion path."""
+    return hmm.load_seed_from_prereg_freeze(FIXTURE_FREEZE)
 
 
-def test_seed_from_prereg_freeze(tmp_path: Path) -> None:
-    freeze = _write_freeze(tmp_path / "v14_prereg_freeze.json", seed=20261015)
-    assert hmm.load_seed_from_prereg_freeze(freeze) == 20261015
-
-    nested = tmp_path / "nested.json"
-    nested.write_text(json.dumps({"hedonic": {"bootstrap_seed": 20261015}}), encoding="utf-8")
-    assert hmm.load_seed_from_prereg_freeze(nested) == 20261015
-
-    missing = tmp_path / "absent" / "v14_prereg_freeze.json"
-    with pytest.raises(FileNotFoundError, match="v14_prereg_freeze.json missing"):
-        hmm.load_seed_from_prereg_freeze(missing)
-
+def test_seed_from_freeze_json_seeds_hedonic_cluster_bootstrap() -> None:
+    """Seed must come from JSON seeds.hedonic_cluster_bootstrap, not a module constant."""
+    assert FIXTURE_FREEZE.is_file()
+    got = hmm.load_seed_from_prereg_freeze(FIXTURE_FREEZE)
+    raw = json.loads(FIXTURE_FREEZE.read_text(encoding="utf-8"))
+    assert got == int(raw["seeds"]["hedonic_cluster_bootstrap"])
+    assert not hasattr(hmm, "SEED")
     assert hmm.DEFAULT_PREREG_FREEZE_PATH == Path(
         "/workspace/scotland-rules/v14_prereg_freeze.json"
     )
+
+    missing = Path("/tmp/omm-absent/v14_prereg_freeze.json")
+    with pytest.raises(FileNotFoundError, match="v14_prereg_freeze.json missing"):
+        hmm.load_seed_from_prereg_freeze(missing)
+
+    bad = Path("/tmp/omm-bad-freeze.json")
+    bad.write_text(json.dumps({"seeds": {"other": 1}}), encoding="utf-8")
+    with pytest.raises(ValueError, match="hedonic_cluster_bootstrap"):
+        hmm.load_seed_from_prereg_freeze(bad)
 
 
 def test_two_runs_identical_bytes_and_sha(synth: dict[str, Path], seed: int, tmp_path: Path) -> None:
@@ -242,7 +242,6 @@ def test_no_price_columns_loaded(tmp_path: Path) -> None:
             ["code", "dz_med2021", "sales_n", "Median", "value", "rent"]
         )
 
-    # Widened substring denylist (FAIL item 3)
     for col in ("median_price", "price_gbp", "annual_rent", "land_value", "price£"):
         with pytest.raises(ValueError, match="price/value/rent"):
             hmm.assert_no_price_columns(["code", "sales_n", col])
@@ -260,9 +259,10 @@ def test_production_pins_counts_and_ur() -> None:
     )
     assert pins["counts"]["columns"] == ["code", "year", "sales_n", "suppressed"]
     assert pins["ur"]["sha256"] == (
-        "0440de97902c393c2568780505901251dab9426f0781069fb9c6a3a383f04851"
+        "1f32a81532912334e3cd071e2f12f523e66068d14c73e5db4ae51add239b1a92"
     )
     assert pins["ur"]["vintage"] == "DZ2011 URC 2020"
+    assert pins["ur"]["path"] == "scotland-rules/ur6/dz2011_urban_rural_6fold_2020.csv"
     assert pins["merge_map"]["sha256"] == (
         "581b0aa1647c5af7ce5b9617e35fcfa73982bc8712a42eb63242243ee6a95947"
     )

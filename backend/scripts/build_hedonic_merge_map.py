@@ -4,8 +4,8 @@
 Writes the merge-map CSV under a gitignored path (default
 ``data/external/hedonic/merge_map_v14.csv``) and prints its sha256 to stdout.
 
-Never loads price/value/rent columns. Tie-break seed is read from
-``v14_prereg_freeze.json`` (``--prereg-freeze``), not hard-coded.
+Never loads price/value/rent columns. Tie-break seed is
+``seeds.hedonic_cluster_bootstrap`` from ``--freeze-json``.
 """
 
 from __future__ import annotations
@@ -68,10 +68,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--ur", type=Path, default=None, help="DZ2011 urban-rural lookup (URC 2020)")
     p.add_argument("--spd-zip", type=Path, default=None, help="SPD 2026/2 postcode index zip")
     p.add_argument(
-        "--prereg-freeze",
+        "--freeze-json",
         type=Path,
         default=DEFAULT_PREREG_FREEZE_PATH,
-        help=f"v14_prereg_freeze.json (seed source). Default: {DEFAULT_PREREG_FREEZE_PATH}",
+        help=(
+            "v14_prereg_freeze.json — reads seeds.hedonic_cluster_bootstrap. "
+            f"Default: {DEFAULT_PREREG_FREEZE_PATH}"
+        ),
     )
     p.add_argument(
         "--out",
@@ -82,16 +85,12 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     try:
-        seed = load_seed_from_prereg_freeze(args.prereg_freeze)
+        seed = load_seed_from_prereg_freeze(args.freeze_json)
     except FileNotFoundError as exc:
         print(str(exc), file=sys.stderr)
-        print(
-            "Valuation: place v14_prereg_freeze.json at that path (do not invent it here).",
-            file=sys.stderr,
-        )
         return 2
-    except (ValueError, json.JSONDecodeError) as exc:
-        print(f"prereg freeze seed error: {exc}", file=sys.stderr)
+    except (ValueError, json.JSONDecodeError, TypeError) as exc:
+        print(f"freeze-json seed error: {exc}", file=sys.stderr)
         return 2
 
     counts = args.counts or _resolve(DEFAULTS["counts"], DEFAULTS["counts_fallback"])
@@ -118,25 +117,16 @@ def main(argv: list[str] | None = None) -> int:
             print(f"  {line}", file=sys.stderr)
         return 2
 
-    # Record path + sha256 for counts and UR (FAIL item 2).
+    print(f"seed={seed} from seeds.hedonic_cluster_bootstrap in {args.freeze_json}", file=sys.stderr)
+    print(f"counts path={counts} sha256={file_sha256(counts)}", file=sys.stderr)
+    print(f"ur path={ur} sha256={file_sha256(ur)}", file=sys.stderr)
     print(
-        f"seed={seed} from {args.prereg_freeze}",
-        file=sys.stderr,
-    )
-    print(
-        f"counts path={counts} sha256={file_sha256(counts)}",
-        file=sys.stderr,
-    )
-    print(
-        f"ur path={ur} sha256={file_sha256(ur)} (expect DZ2011 URC 2020)",
+        f"pinned ur6_dz2011 sha256={PRODUCTION_INPUT_PINS['ur']['sha256']} "
+        f"(path {PRODUCTION_INPUT_PINS['ur']['path']})",
         file=sys.stderr,
     )
     print(
         f"pinned counts sha256={PRODUCTION_INPUT_PINS['counts']['sha256']}",
-        file=sys.stderr,
-    )
-    print(
-        f"pinned ur sha256={PRODUCTION_INPUT_PINS['ur']['sha256']}",
         file=sys.stderr,
     )
 

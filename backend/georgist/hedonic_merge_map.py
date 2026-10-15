@@ -20,7 +20,7 @@ import zipfile
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Iterable, Mapping, Sequence
 
 # Seed is read from v14_prereg_freeze.json (not hard-coded). Draft location per
 # v14_prereg_DRAFT.md § freeze note; file may be absent on CI / cloud VMs.
@@ -124,28 +124,12 @@ def file_sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def _dig_seed(obj: Any) -> int | None:
-    """Pull bootstrap/seed int from freeze JSON (several documented key shapes)."""
-    if not isinstance(obj, dict):
-        return None
-    for key in ("bootstrap_seed", "seed"):
-        if key in obj and obj[key] is not None:
-            return int(obj[key])
-    for nest in ("hedonic", "inference", "bootstrap", "omm"):
-        child = obj.get(nest)
-        if isinstance(child, dict):
-            found = _dig_seed(child)
-            if found is not None:
-                return found
-    return None
-
-
 def load_seed_from_prereg_freeze(path: Path | str) -> int:
-    """Read tie-break / bootstrap seed from ``v14_prereg_freeze.json``.
+    """Read tie-break seed from freeze JSON: ``seeds.hedonic_cluster_bootstrap``.
 
-    Does not invent a freeze file: the path must exist. Looks for
-    ``bootstrap_seed`` or ``seed`` at the top level or under
-    ``hedonic`` / ``inference`` / ``bootstrap`` / ``omm``.
+    The path must exist (default production path
+    ``/workspace/scotland-rules/v14_prereg_freeze.json``). Does not invent or
+    pin a freeze-file sha256 — seed field is authoritative.
     """
     p = Path(path)
     if not p.is_file():
@@ -155,13 +139,15 @@ def load_seed_from_prereg_freeze(path: Path | str) -> int:
         )
     with p.open(encoding="utf-8") as fh:
         data = json.load(fh)
-    seed = _dig_seed(data)
-    if seed is None:
+    if not isinstance(data, dict):
+        raise ValueError(f"{p} root must be a JSON object")
+    seeds = data.get("seeds")
+    if not isinstance(seeds, dict) or "hedonic_cluster_bootstrap" not in seeds:
         raise ValueError(
-            f"{p} has no bootstrap_seed/seed field "
-            "(top-level or under hedonic|inference|bootstrap|omm)"
+            f"{p} missing seeds.hedonic_cluster_bootstrap "
+            "(required for O-MM merge-map tie-break)"
         )
-    return int(seed)
+    return int(seeds["hedonic_cluster_bootstrap"])
 
 
 def assert_no_price_columns(columns: Iterable[str]) -> list[str]:
@@ -668,17 +654,12 @@ PRODUCTION_INPUT_PINS: dict[str, dict[str, object]] = {
         ),
     },
     "ur": {
-        "path": (
-            "data/external/hedonic/dz2011_urban_rural_6fold_2020_urc2020.csv"
-            " (SG DZ2011 URC 2020 lookup; also surface.yaml sg_urban_rural_2020_dz2011)"
-        ),
-        "sha256": "0440de97902c393c2568780505901251dab9426f0781069fb9c6a3a383f04851",
+        "path": "scotland-rules/ur6/dz2011_urban_rural_6fold_2020.csv",
+        "sha256": "1f32a81532912334e3cd071e2f12f523e66068d14c73e5db4ae51add239b1a92",
         "vintage": "DZ2011 URC 2020",
-        "columns": ["DataZone", "UR2FOLD", "UR3FOLD", "UR6FOLD", "UR8FOLD"],
         "note": (
-            "Official SG Urban Rural Classification 2020 Data Zone 2011 lookup. "
-            "UR6 from UR6FOLD. Equivalent UR6 to processed dz2011_urban_rural_2020.csv "
-            "(ur8→ur6 map) for all 6,976 zones."
+            "Pinned in v14_prereg_freeze.json inputs.ur6_dz2011 (DRAFT_NOT_FROZEN). "
+            "SG Urban Rural Classification 2020 for DZ2011."
         ),
     },
     "plot_split": {

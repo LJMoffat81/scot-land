@@ -640,12 +640,17 @@ export default function ScotlandMap() {
   useEffect(() => {
     let cancelled = false;
     void fetchGbpLiveSettings().then((settings) => {
-      if (!cancelled) setGbpLiveOn(Boolean(settings.enabled));
+      if (cancelled) return;
+      // Flag default OFF — only flip state when enabled is true so flag-off
+      // probes never grow the legend body or reflow the left column.
+      const on = Boolean(settings.enabled);
+      setGbpLiveOn((prev) => (prev === on ? prev : on));
     });
     return () => {
       cancelled = true;
     };
   }, []);
+  // Surface-rent £ legend mounts only when the yaml flag is on (never flag-off).
   const surfaceRentLegend = gbpLiveOn
     ? rangeLegendFromStops(SURFACE_RENT_LEGEND_STOPS, {
         metricId: "surface_rent",

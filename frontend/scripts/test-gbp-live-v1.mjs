@@ -97,4 +97,16 @@ assert.equal(formatted.range, "\u00a36,000\u2013\u00a318,000");
   assert.match(placeCard, /PLACE_CARD_RANK_BAND_ENABLED\s*=\s*false/);
 }
 
+// Desktop place-open: Legend pill stays clickable above the left card.
+{
+  const chrome = readSrc("app/map-chrome.css");
+  assert.match(chrome, /z-index:\s*15/);
+  assert.match(chrome, /bottom:\s*5\.25rem/);
+  // Still bottom-left under the card column — not docked bottom-right.
+  assert.match(
+    chrome,
+    /\.app-shell\.place-open \.hud-scotland\s*\{[^}]*left:\s*1\.1rem/s,
+  );
+}
+
 console.log("test-gbp-live-v1: ok");

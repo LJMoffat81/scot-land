@@ -2535,6 +2535,8 @@ export default function ScotlandMap() {
   // Catalog licence fields drive the map credits control in the legend.
   // Idea 57: when the catalogue has loaded and builtup_mask is missing or not
   // live, mark it Coming soon (empty catalogue stubs leave toggles alone).
+  // Coming-soon-up-front / LAYER-CATALOG-STATUS: lca + ces_aquaculture not-live
+  // → Coming soon before any tile request (no console 503).
   useEffect(() => {
     let cancelled = false;
     void fetchLayerCatalog()
@@ -2550,6 +2552,15 @@ export default function ScotlandMap() {
         const maskReady = Boolean(mask && mask.status === "live");
         setBuiltupMaskCatalogGap(!maskReady);
         if (!maskReady) setShowBuiltupMask(false);
+
+        const byId: Record<string, CatalogLayer> = {};
+        for (const layer of layers) {
+          byId[layer.id] = layer;
+        }
+        const aquaLive = byId.ces_aquaculture?.status === "live";
+        const lcaLive = byId.lca?.status === "live";
+        if (!aquaLive) markTileUnavailable("5");
+        if (!lcaLive) markTileUnavailable("lca");
       })
       .catch(() => {
         if (!cancelled) {
@@ -2560,7 +2571,7 @@ export default function ScotlandMap() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [markTileUnavailable]);
 
   // Idea 57 — service-unavailable is detected when the mask is turned on
   // (loadMasked / enable check), not via a mount-time probe.

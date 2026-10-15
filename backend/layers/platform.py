@@ -6,10 +6,11 @@ shown from open sources and makes remaining registers visible as gaps.
 
 from __future__ import annotations
 
-import math
+import os
 from typing import Any
 
 import httpx
+from pyproj import Transformer
 
 from georgist.gbp_live import attach_gbp_live_to_place_card
 from layers.common_good import catalog_layer as common_good_catalog_layer
@@ -90,12 +91,17 @@ REPD_PUBLICATION = (
 
 
 def _parcels_meta() -> dict[str, Any]:
-    """Catalog row for RoS INSPIRE parcels — shapes only; confirmed OGL v3 credit."""
+    """Catalog row for RoS INSPIRE parcels — shapes only; confirmed OGL v3 credit.
+
+    Public map keeps parcels off (PARCELS_PUBLIC default false) — catalog status
+    is gap until that flag is on so LAYER-CATALOG-STATUS matches reality.
+    """
     meta = parcel_source_meta()
+    parcels_on = os.getenv("PARCELS_PUBLIC", "").strip().lower() == "true"
     return {
         "id": "boundaries",
         "group": "spatial",
-        "status": "live",
+        "status": "live" if parcels_on else "gap",
         "label": "ROS INSPIRE parcels",
         "description": "Shapes of registered land parcels from Registers of Scotland. Outlines only — not titles, owners or prices.",
         "developer_note": "Registered cadastral extents (geometry only — no owners, titles or prices). BBox from PostGIS ingest (503 when unloaded; empty viewport is honest 200 when loaded, including fixture-scoped CI). Tiles via live WMS. Source CRS EPSG:27700; shapes only on the public map.",
@@ -473,7 +479,8 @@ def platform_catalog() -> dict[str, Any]:
             {
                 "id": "lca",
                 "group": "spatial",
-                "status": "live",
+                # Not ingested on public hosts yet — Coming soon until PostGIS load.
+                "status": "gap",
                 "label": "Land capability for agriculture",
                 "description": (
                     "Land Capability for Agriculture soil and climate classes "
@@ -574,7 +581,8 @@ def platform_catalog() -> dict[str, Any]:
             {
                 "id": "ces_aquaculture",
                 "group": "natural_capital",
-                "status": "live",
+                # Not ingested on public hosts yet — Coming soon until PostGIS load.
+                "status": "gap",
                 "label": "CES aquaculture seabed leases",
                 "description": (
                     "Aquaculture seabed leases from Crown Estate Scotland. Licence rent "
@@ -850,17 +858,15 @@ def _data_zone_at(lat: float, lng: float) -> dict[str, Any]:
 
 _FIGURES_PENDING = "figures pending sign-off"
 _CONSTRAINT_LABEL = "Constraint: changes best use, adds no value"
-_W3W_SQUARE_SIZE_M = 3.0
-_METERS_PER_DEGREE_LAT = 111_320.0
+
+# WGS84 → OSGB36 British National Grid (EPSG:27700). always_xy: lon, lat in.
+_TO_OSGB36 = Transformer.from_crs("EPSG:4326", "EPSG:27700", always_xy=True)
 
 
 def _square_reference(lat: float, lng: float) -> str:
-    """Map reference indices on the 3×3 m grid (numbers only; never what3words)."""
-    lat_rad = math.radians(lat)
-    meters_per_degree_lng = _METERS_PER_DEGREE_LAT * math.cos(lat_rad)
-    lat_index = round(lat * _METERS_PER_DEGREE_LAT / _W3W_SQUARE_SIZE_M)
-    lng_index = round(lng * meters_per_degree_lng / _W3W_SQUARE_SIZE_M)
-    return f"{lat_index},{lng_index}"
+    """Map reference as OSGB36 easting,northing (EPSG:27700); never what3words."""
+    easting, northing = _TO_OSGB36.transform(lng, lat)
+    return f"{int(round(easting))},{int(round(northing))}"
 
 
 def _intermediate_zone_for(data_zone: dict[str, Any]) -> dict[str, Any]:

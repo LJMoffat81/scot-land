@@ -118,7 +118,8 @@ async function openLayers(page: Page) {
   });
 }
 
-const COMING_SOON_CASES: Array<{
+/** Layers that still go live until tiles 503 (SHARE-FIX). */
+const COMING_SOON_ON_503: Array<{
   name: string;
   path: RegExp;
   toggle: string;
@@ -129,18 +130,18 @@ const COMING_SOON_CASES: Array<{
     path: /\/layers\/open\/repd-onshore-wind/i,
     toggle: "3",
   },
-  {
-    name: "aquaculture",
-    path: /\/layers\/open\/ces-aquaculture/i,
-    toggle: "5",
-  },
-  { name: "lca", path: /\/layers\/open\/lca/i, toggle: "lca" },
 ];
+
+/** POST-SHARE-1 — not ingested; Coming soon before any tile request. */
+const COMING_SOON_UP_FRONT = [
+  { name: "aquaculture", toggle: "5" },
+  { name: "lca", toggle: "lca" },
+] as const;
 
 test.describe("SHARE-FIX Coming soon on 503 tiles", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  for (const layer of COMING_SOON_CASES) {
+  for (const layer of COMING_SOON_ON_503) {
     test(`${layer.name} 503 → Coming soon / disabled`, async ({ page }) => {
       test.setTimeout(90_000);
       const gate = attachConsoleGate(page);
@@ -166,6 +167,57 @@ test.describe("SHARE-FIX Coming soon on 503 tiles", () => {
       await expect(page.locator("aside.hud-tools")).not.toContainText(
         /Service busy/i,
       );
+
+      expect(filterNoise(gate.consoleErrors)).toEqual([]);
+      expect(filterNoise(gate.pageErrors)).toEqual([]);
+    });
+  }
+});
+
+test.describe("POST-SHARE-1 Coming soon up front (no tile 503)", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+
+  for (const layer of COMING_SOON_UP_FRONT) {
+    test(`${layer.name} Coming soon / disabled without tile request`, async ({
+      page,
+    }) => {
+      test.setTimeout(90_000);
+      const gate = attachConsoleGate(page);
+      const hits: string[] = [];
+      await page.route("**/backend/**", async (route) => {
+        const url = route.request().url();
+        if (/ces-aquaculture|\/lca/i.test(url)) {
+          hits.push(url);
+        }
+        if (/\/health/i.test(url)) {
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify(HEALTH_OK),
+          });
+          return;
+        }
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(/\/layers\//i.test(url) ? EMPTY_FC : {}),
+        });
+      });
+
+      await page.goto("/?lat=55.8609&lng=-4.2514");
+      await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
+      await openLayers(page);
+
+      const toggle = page.getByTestId(`layer-toggle-${layer.toggle}`);
+      await expect(toggle).toBeVisible({ timeout: 30_000 });
+      await expect(toggle).toBeDisabled();
+      await expect(
+        page.getByTestId(`layer-coming-soon-${layer.toggle}`),
+      ).toHaveText("Coming soon");
+      await expect(
+        page.getByTestId(`map-layer-${layer.toggle}`),
+      ).toHaveAttribute("data-coming-soon", "true");
+      expect(hits).toEqual([]);
 
       expect(filterNoise(gate.consoleErrors)).toEqual([]);
       expect(filterNoise(gate.pageErrors)).toEqual([]);

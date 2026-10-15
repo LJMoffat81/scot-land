@@ -47,7 +47,8 @@ def _dsn() -> str | None:
 
 def test_catalog_lists_ces_aquaculture_ogl_market_no_rent():
     row = next(r for r in platform_catalog()["layers"] if r["id"] == "ces_aquaculture")
-    assert row["status"] == "live"
+    # LAYER-CATALOG-STATUS — not ingested on public hosts yet.
+    assert row["status"] == "gap"
     assert row["endpoint"] == "/layers/open/ces-aquaculture"
     assert row["licence"] == "OGL-3.0"
     assert row["licence_url"] == OGL_V3_URL

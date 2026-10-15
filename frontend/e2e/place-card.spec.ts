@@ -39,11 +39,9 @@ test.describe("place card (internal preview)", () => {
     await expect(page.getByTestId("place-card-agr-surface")).toContainText(
       /Land/i,
     );
-    // MAPREF-HIDE — Map reference row omitted until OSGB fix.
-    await expect(page.getByTestId("place-card")).not.toContainText(
-      "Map reference",
-    );
-    await expect(page.getByTestId("place-card-map-reference")).toHaveCount(0);
+    // MAPREF-FIX — Map reference restored (OSGB36).
+    await expect(page.getByTestId("place-card")).toContainText("Map reference");
+    await expect(page.getByTestId("place-card-map-reference")).toBeVisible();
     await expect(page.getByTestId("place-card-figure-why")).toHaveAttribute(
       "href",
       "/methodology#how-sure",

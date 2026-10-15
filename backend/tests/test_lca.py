@@ -17,7 +17,8 @@ GLASGOW_BBOX = {
 
 def test_catalog_lists_lca_live_with_hutton_licence():
     layer = next(row for row in platform_catalog()["layers"] if row["id"] == "lca")
-    assert layer["status"] == "live"
+    # LAYER-CATALOG-STATUS — not ingested on public hosts yet.
+    assert layer["status"] == "gap"
     assert layer["endpoint"] == "/layers/open/lca"
     assert "hutton" in (layer.get("source_url") or "").lower()
     licence = (layer.get("licence") or "").lower()

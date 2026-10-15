@@ -4,6 +4,7 @@
  */
 
 import { apiJson, isOutsideScotlandError } from "./api";
+import { osgb36MapReference } from "./osgb36";
 import { preferDz2022, type PlaceDataZoneVintage } from "./placeCardDz";
 import {
   PLACE_CARD_PART_GLOSS,
@@ -150,10 +151,10 @@ export function isPlaceCardSeaMiss(
 export const PLACE_CARD_MAP_REFERENCE_LABEL = "Map reference";
 
 /**
- * MAPREF-HIDE — visitor place card omits Map reference + Copy until OSGB fix
- * (POST-SHARE-1). Flip to true to restore the row.
+ * MAPREF-FIX — Map reference shows OSGB36 British National Grid
+ * easting,northing (EPSG:27700). Restored after MAPREF-HIDE.
  */
-export const PLACE_CARD_MAP_REFERENCE_ENABLED = false;
+export const PLACE_CARD_MAP_REFERENCE_ENABLED = true;
 
 /** Shown when the map-reference Copy button cannot write the clipboard. */
 export const PLACE_CARD_MAP_REFERENCE_COPY_FAIL =
@@ -246,7 +247,7 @@ export type PlaceCardPayload = {
   council_name?: string | null;
   data_zone?: PlaceDataZone | null;
   intermediate_zone?: PlaceIntermediateZone | null;
-  /** Map reference grid indices (`latIndex,lngIndex`) — never a what3words brand string. */
+  /** Map reference OSGB36 easting,northing (EPSG:27700) — never a what3words brand string. */
   square_reference?: string | null;
   agr_rows?: PlaceAgrRow[];
   constraints?: PlaceConstraintRow[];
@@ -337,16 +338,12 @@ export type FetchPlaceCardArgs = {
   postcode?: string | null;
 };
 
-const METERS_PER_DEGREE_LAT = 111_320.0;
-const SQUARE_SIZE_M = 3.0;
-
-/** Map reference indices from snapped 3×3 m grid (numbers only; no what3words). */
+/**
+ * Map reference: OSGB36 British National Grid easting,northing (EPSG:27700).
+ * Format `easting,northing` (metres, rounded). Never what3words.
+ */
 export function scotLandSquareReference(lat: number, lng: number): string {
-  const latRad = (lat * Math.PI) / 180;
-  const metersPerDegreeLng = METERS_PER_DEGREE_LAT * Math.cos(latRad);
-  const latIndex = Math.round((lat * METERS_PER_DEGREE_LAT) / SQUARE_SIZE_M);
-  const lngIndex = Math.round((lng * metersPerDegreeLng) / SQUARE_SIZE_M);
-  return `${latIndex},${lngIndex}`;
+  return osgb36MapReference(lat, lng);
 }
 
 /** Display/copy form: digits only (`1234,5678`), stripping any legacy label prefix. */
@@ -761,9 +758,9 @@ export function sanitizePlaceCard(payload: PlaceCardPayload): PlaceCardPayload {
   return {
     ...rest,
     data_zone: zone,
+    // Always recompute OSGB36 from lat/lng so a stale API index cannot show.
     square_reference: mapReferenceNumbers(
-      rest.square_reference?.trim() ||
-        scotLandSquareReference(rest.lat, rest.lng),
+      scotLandSquareReference(rest.lat, rest.lng),
     ),
     agr_rows: agrRows,
     constraints,

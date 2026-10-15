@@ -350,12 +350,12 @@ test.describe("WORDING-BATCH-1 place card + SW-047 (1280)", () => {
     await stubMapBackend(page);
     const card = await openPlaceCard(page);
 
-    // MAPREF-HIDE — Map reference row + Copy omitted until OSGB fix.
-    await expect(card).not.toContainText("Map reference");
-    await expect(card.getByTestId("place-card-map-reference")).toHaveCount(0);
+    // MAPREF-FIX — Map reference restored (OSGB36 easting,northing).
+    await expect(card).toContainText("Map reference");
+    await expect(card.getByTestId("place-card-map-reference")).toBeVisible();
     await expect(
       card.getByTestId("place-card-map-reference-copy"),
-    ).toHaveCount(0);
+    ).toBeVisible();
     await expect(card).not.toContainText(/Square reference/i);
 
     await expect(card.getByTestId("place-card-figure")).toContainText(PRE_POUND);
@@ -432,9 +432,9 @@ test.describe("WORDING-BATCH-1 place card (390)", () => {
     }
     await expect(card).toBeVisible({ timeout: 30_000 });
 
-    // MAPREF-HIDE — Map reference row + Copy omitted until OSGB fix.
-    await expect(card).not.toContainText("Map reference");
-    await expect(card.getByTestId("place-card-map-reference")).toHaveCount(0);
+    // MAPREF-FIX — Map reference restored (OSGB36 easting,northing).
+    await expect(card).toContainText("Map reference");
+    await expect(card.getByTestId("place-card-map-reference")).toBeVisible();
     await expect(card.getByTestId("place-card-figure")).toContainText(PRE_POUND);
     await expect(
       card.getByTestId("place-card-land-values-coming-soon"),

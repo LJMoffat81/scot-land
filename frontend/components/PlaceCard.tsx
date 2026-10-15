@@ -74,46 +74,6 @@ export type PlaceCardProps = {
 const WHY_NO_OUTLINE_LABEL = "Why no outline?";
 const NO_OUTLINE_STATUS_LINE = "No registered outline at this point";
 
-function MapReferenceCopy({ value }: { value: string }) {
-  const [done, setDone] = useState(false);
-  const [failMsg, setFailMsg] = useState<string | null>(null);
-
-  async function onCopy() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setFailMsg(null);
-      setDone(true);
-      window.setTimeout(() => setDone(false), 1500);
-    } catch {
-      setDone(false);
-      setFailMsg(PLACE_CARD_MAP_REFERENCE_COPY_FAIL);
-    }
-  }
-
-  return (
-    <>
-      <button
-        type="button"
-        className="place-card-map-reference-copy"
-        onClick={() => void onCopy()}
-        data-testid="place-card-map-reference-copy"
-        aria-label={`Copy ${PLACE_CARD_MAP_REFERENCE_LABEL}`}
-      >
-        {done ? "Copied" : "Copy"}
-      </button>
-      {failMsg ? (
-        <span
-          className="place-card-map-reference-copy-fail"
-          data-testid="place-card-map-reference-copy-fail"
-          role="status"
-        >
-          {failMsg}
-        </span>
-      ) : null}
-    </>
-  );
-}
-
 /**
  * Survive PlaceCard body remounts (loading flicker / stub→card swap) so the
  * open/closed choice is not lost mid-toggle under CI timing.

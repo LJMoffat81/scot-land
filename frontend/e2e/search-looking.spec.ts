@@ -16,6 +16,33 @@ const EMPTY_FC = JSON.stringify({
   features: [],
 });
 
+/** 1×1 PNG — stub raster tiles so MapLibre never depends on live CDN in CI. */
+const TINY_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+/** Minimal style replacing OpenFreeMap positron (no glyphs → no font CDN). */
+const STUB_MAP_STYLE = {
+  version: 8,
+  name: "e2e-stub",
+  sources: {
+    stub: {
+      type: "raster",
+      tiles: ["https://tiles.openfreemap.org/e2e-stub/{z}/{x}/{y}.png"],
+      tileSize: 256,
+    },
+  },
+  layers: [
+    {
+      id: "background",
+      type: "background",
+      paint: { "background-color": "#e8eef4" },
+    },
+    { id: "stub-raster", type: "raster", source: "stub" },
+  ],
+};
+
 /**
  * Fail the test on pageerror and console error, same pattern as data-page.spec.ts.
  * Chromium also logs intentional HTTP error stubs as console "error"; allow those
@@ -42,10 +69,54 @@ function attachConsoleTraps(
   return consoleErrors;
 }
 
+/** Stub basemap style/tiles so CDN flakes cannot throw bare pageerror "Error". */
+async function stubMapBasemap(page: Page) {
+  // One host handler: style JSON vs raster (LIFO would otherwise serve PNG for
+  // https://tiles.openfreemap.org/styles/positron).
+  await page.route("**/tiles.openfreemap.org/**", async (route) => {
+    const url = route.request().url();
+    if (/\/styles\//i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(STUB_MAP_STYLE),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: TINY_PNG,
+    });
+  });
+  await page.route("**/ArcGIS/rest/services/World_Imagery/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: TINY_PNG,
+    });
+  });
+  await page.route("**/api/parcels/tiles/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: TINY_PNG,
+    });
+  });
+  await page.route("**/api/context/**/tiles/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: TINY_PNG,
+    });
+  });
+}
+
 async function stubMapBackend(
   page: Page,
   place: "success" | "error",
 ) {
+  await stubMapBasemap(page);
   await page.route("**/backend/**", async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;

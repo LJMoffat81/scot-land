@@ -2,19 +2,20 @@
 
 Plain-English queue for maintainers (Laurie and agents). Update this file in each PR you open, or when queue order changes — piggyback on a real change; never open a PR just for `QUEUE.md`.
 
-**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: 1 open non-draft ([#138](https://github.com/LJMoffat81/scot-land/pull/138)); [#112](https://github.com/LJMoffat81/scot-land/pull/112) is draft.
+**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: 0 open non-draft; [#139](https://github.com/LJMoffat81/scot-land/pull/139) (SW-036 v2) and [#140](https://github.com/LJMoffat81/scot-land/pull/140) (NEIGHBOURS-2022) are draft.
 
 ## In progress
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| SW/UX e2e auto-discovery | Playwright CI auto-discovers specs under `e2e/ci/` so new gate specs need no `package.json` edits | [#138](https://github.com/LJMoffat81/scot-land/pull/138) | Tip `e47fe1c` — CI green + Scot-LAND PASS; ready to merge |
+| NEIGHBOURS-2022 | Council neighbours CSV at `data/reference/council_neighbours_2022.csv` (reason column + invariants test; one-way `a < b`) | [#140](https://github.com/LJMoffat81/scot-land/pull/140) | Draft — path sealed to `data/reference/` |
+| SW-036 v2 | Desktop layout (≥1024): place card left, Layers right, legend pill below the card | [#139](https://github.com/LJMoffat81/scot-land/pull/139) | Draft |
 
 ## Next up (in order)
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| SW-036 v2 | Desktop layout (≥1024): place card left, Layers right, legend pill below the card | — | Frozen until #138 merges; one PR only |
+| FILL-POOLED | DZ2011/DZ2022 empty-zone fill on pooled inputs (reads neighbours CSV) | — | Parallel backend track; after NEIGHBOURS-2022 merges; one PR only |
 | SW-045 | Legend follows the active layer (HIGH — Laurie-flagged); diagnose first | — | After SW-036; no PR yet; one PR only |
 | SW-044 | Slim the map view (licences out of left panel, chip key once, etc.) | — | After SW-045; no PR yet; one PR only |
 
@@ -30,10 +31,11 @@ Plain-English queue for maintainers (Laurie and agents). Update this file in eac
 
 ## Recently merged
 
-Newest first. After #138 merges, move it here.
+Newest first.
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
+| SW/UX e2e auto-discovery | Playwright CI auto-discovers specs under `e2e/ci/` | [#138](https://github.com/LJMoffat81/scot-land/pull/138) | Merged |
 | UX-01 | Mobile tap targets ≥44×44 | [#136](https://github.com/LJMoffat81/scot-land/pull/136) | Merged |
 | UX10-1 | Place card skeleton + FP1 schema | [#134](https://github.com/LJMoffat81/scot-land/pull/134) | Merged |
 | UX-04 | Unique landmarks and button accessible names | [#132](https://github.com/LJMoffat81/scot-land/pull/132) | Merged |

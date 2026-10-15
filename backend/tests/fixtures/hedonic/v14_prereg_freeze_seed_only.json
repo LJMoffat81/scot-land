@@ -1,0 +1,12 @@
+{
+  "status": "TEST_FIXTURE_ONLY",
+  "seeds": {
+    "hedonic_cluster_bootstrap": 20261015,
+    "hedonic_bootstrap_replicates": 1999,
+    "v13_zone_holdout_draw": 1015202613
+  },
+  "merge_map": {
+    "sha256": null,
+    "status": "PENDING (O-MM)"
+  }
+}

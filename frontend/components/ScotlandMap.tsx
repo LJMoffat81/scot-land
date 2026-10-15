@@ -872,22 +872,32 @@ export default function ScotlandMap() {
       setAddressLine(opts.label ?? null);
       const knownCode = opts.dataZoneCode?.trim() || null;
       const knownName = opts.dataZoneName?.trim() || null;
-      setPlaceStub({
-        lat,
-        lng,
-        label: opts.label ?? knownName ?? null,
-        postcode: opts.postcode ?? null,
-        dataZoneCode: knownCode,
-        dataZoneName: knownName,
-        dataZoneVintage: opts.dataZoneVintage ?? null,
-        laName: opts.laName ?? null,
-        population: opts.population ?? null,
-        popYear: opts.popYear ?? null,
-        dwellings: opts.dwellings ?? null,
-        dwYear: opts.dwYear ?? null,
-        card: null,
-        noMatch: false,
-        fromAddressSearch: Boolean(opts.fromAddressSearch),
+      // Keep the prior card when re-inspecting the same point so the sea-line
+      // (and its × padding) is not unmounted mid-paint (SW-030 / UX-01 e2e).
+      setPlaceStub((prev) => {
+        const samePoint =
+          prev != null && prev.lat === lat && prev.lng === lng;
+        return {
+          lat,
+          lng,
+          label: opts.label ?? knownName ?? prev?.label ?? null,
+          postcode: opts.postcode ?? prev?.postcode ?? null,
+          dataZoneCode: knownCode ?? (samePoint ? prev?.dataZoneCode ?? null : null),
+          dataZoneName: knownName ?? (samePoint ? prev?.dataZoneName ?? null : null),
+          dataZoneVintage:
+            opts.dataZoneVintage ??
+            (samePoint ? prev?.dataZoneVintage ?? null : null),
+          laName: opts.laName ?? (samePoint ? prev?.laName ?? null : null),
+          population:
+            opts.population ?? (samePoint ? prev?.population ?? null : null),
+          popYear: opts.popYear ?? (samePoint ? prev?.popYear ?? null : null),
+          dwellings:
+            opts.dwellings ?? (samePoint ? prev?.dwellings ?? null : null),
+          dwYear: opts.dwYear ?? (samePoint ? prev?.dwYear ?? null : null),
+          card: samePoint ? prev?.card ?? null : null,
+          noMatch: false,
+          fromAddressSearch: Boolean(opts.fromAddressSearch),
+        };
       });
       if (window.matchMedia("(max-width: 640px)").matches) {
         setLegendOpen(false);

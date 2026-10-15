@@ -13,16 +13,19 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import json
 import math
 import random
 import zipfile
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Mapping, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
-# Frozen from v14 prereg / hedonic estimator specs.
-SEED = 20261015
+# Seed is read from v14_prereg_freeze.json (not hard-coded). Draft location per
+# v14_prereg_DRAFT.md § freeze note; file may be absent on CI / cloud VMs.
+DEFAULT_PREREG_FREEZE_PATH = Path("/workspace/scotland-rules/v14_prereg_freeze.json")
+
 MIN_ZONES = 40
 MIN_IQR_LN_A = 0.30
 FIT_YEARS = (2021, 2022)
@@ -67,16 +70,8 @@ PRICE_VALUE_RENT_DENYLIST = frozenset(
     }
 )
 
-# Substrings that mark a column as a price/value/rent measure (counts allowed).
-_PRICE_SUBSTRINGS = (
-    "price - mean",
-    "price - median",
-    "price - lower",
-    "price - upper",
-    "dz_med",
-    "iz_med",
-    "ca_med",
-)
+# Any column whose lowercased name *contains* one of these is refused.
+_PRICE_RENT_VALUE_POUND_TOKENS = ("price", "rent", "value", "£")
 
 UR8_TO_UR6 = {1: 1, 2: 2, 3: 3, 4: 4, 5: 4, 6: 5, 7: 6, 8: 6}
 UR3_LABEL = {"urban": "urban", "towns": "towns", "rural": "rural"}
@@ -121,6 +116,54 @@ def cell_id(ca_or_itl_or_national: str, ur3: str) -> str:
     return f"{ca_or_itl_or_national}|{ur3}"
 
 
+def file_sha256(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _dig_seed(obj: Any) -> int | None:
+    """Pull bootstrap/seed int from freeze JSON (several documented key shapes)."""
+    if not isinstance(obj, dict):
+        return None
+    for key in ("bootstrap_seed", "seed"):
+        if key in obj and obj[key] is not None:
+            return int(obj[key])
+    for nest in ("hedonic", "inference", "bootstrap", "omm"):
+        child = obj.get(nest)
+        if isinstance(child, dict):
+            found = _dig_seed(child)
+            if found is not None:
+                return found
+    return None
+
+
+def load_seed_from_prereg_freeze(path: Path | str) -> int:
+    """Read tie-break / bootstrap seed from ``v14_prereg_freeze.json``.
+
+    Does not invent a freeze file: the path must exist. Looks for
+    ``bootstrap_seed`` or ``seed`` at the top level or under
+    ``hedonic`` / ``inference`` / ``bootstrap`` / ``omm``.
+    """
+    p = Path(path)
+    if not p.is_file():
+        raise FileNotFoundError(
+            "v14_prereg_freeze.json missing; seed cannot be loaded. "
+            f"Exact path needed: {p}"
+        )
+    with p.open(encoding="utf-8") as fh:
+        data = json.load(fh)
+    seed = _dig_seed(data)
+    if seed is None:
+        raise ValueError(
+            f"{p} has no bootstrap_seed/seed field "
+            "(top-level or under hedonic|inference|bootstrap|omm)"
+        )
+    return int(seed)
+
+
 def assert_no_price_columns(columns: Iterable[str]) -> list[str]:
     """Raise if any loaded column name matches the price/value/rent denylist."""
     kept: list[str] = []
@@ -132,11 +175,11 @@ def assert_no_price_columns(columns: Iterable[str]) -> list[str]:
         if key in PRICE_VALUE_RENT_DENYLIST:
             denied.append(name)
             continue
-        if any(s in key for s in _PRICE_SUBSTRINGS):
+        if any(tok in key for tok in _PRICE_RENT_VALUE_POUND_TOKENS):
             denied.append(name)
             continue
         # Bare measure names (exact), not household/population *Count* fields.
-        if key in {"mean", "median", "value", "rent", "gbp"}:
+        if key in {"mean", "median", "gbp"}:
             denied.append(name)
     if denied:
         raise ValueError(
@@ -146,7 +189,7 @@ def assert_no_price_columns(columns: Iterable[str]) -> list[str]:
     return kept
 
 
-def _pick_modal(weighted: Mapping[str, float], *, dz: str, seed: int = SEED) -> str:
+def _pick_modal(weighted: Mapping[str, float], *, dz: str, seed: int) -> str:
     """Household-weighted modal code; seeded tie-break among equal weights."""
     if not weighted:
         raise ValueError(f"no modal candidates for {dz}")
@@ -162,7 +205,7 @@ def load_ca_itl3_from_spd(
     spd_zip: Path,
     *,
     member: str = "SmallUser.csv",
-    seed: int = SEED,
+    seed: int,
 ) -> dict[str, tuple[str, str]]:
     """Modal CA2019 and ITL3 per DZ2011, weighted by CensusHouseholdCount2022."""
     need = {
@@ -602,7 +645,7 @@ def build_merge_map_from_paths(
     uprn_weights_path: Path,
     ur_path: Path,
     spd_zip: Path,
-    seed: int = SEED,
+    seed: int,
 ) -> list[dict[str, object]]:
     fit = load_fit_window_counts(counts_path)
     a_z = load_a_z_m2(plot_split_path, uprn_weights_path)
@@ -610,3 +653,48 @@ def build_merge_map_from_paths(
     ca_itl3 = load_ca_itl3_from_spd(spd_zip, seed=seed)
     zones = build_zone_rows(fit_counts=fit, a_z=a_z, ur6=ur6, ca_itl3=ca_itl3)
     return assign_merge_cells(zones)
+
+
+# Production pins for the merge-map run that produced sha256 581b0aa1…5947.
+# Paths are host/repo-relative as used on the build VM; sha256 is of file bytes.
+PRODUCTION_INPUT_PINS: dict[str, dict[str, object]] = {
+    "counts": {
+        "path": "data/processed/methods_code_1/pr1/ros_dz2011_sales_n_2019_2023.csv",
+        "sha256": "37fe46da5e647b29a966bd70713de21ae8514b95dfbe1e95b43a62e060eeeb50",
+        "columns": ["code", "year", "sales_n", "suppressed"],
+        "note": (
+            "Count columns only (no price/mean/median). Extract from RoS "
+            "house_sales.csv sha256 702c9ada0b26dad9904e97f00ea7aa3357e1bf449e724e83292b5265f0549cf2."
+        ),
+    },
+    "ur": {
+        "path": (
+            "data/external/hedonic/dz2011_urban_rural_6fold_2020_urc2020.csv"
+            " (SG DZ2011 URC 2020 lookup; also surface.yaml sg_urban_rural_2020_dz2011)"
+        ),
+        "sha256": "0440de97902c393c2568780505901251dab9426f0781069fb9c6a3a383f04851",
+        "vintage": "DZ2011 URC 2020",
+        "columns": ["DataZone", "UR2FOLD", "UR3FOLD", "UR6FOLD", "UR8FOLD"],
+        "note": (
+            "Official SG Urban Rural Classification 2020 Data Zone 2011 lookup. "
+            "UR6 from UR6FOLD. Equivalent UR6 to processed dz2011_urban_rural_2020.csv "
+            "(ur8→ur6 map) for all 6,976 zones."
+        ),
+    },
+    "plot_split": {
+        "path": "omm-inputs/dz2022_plot_split_v13.csv (Project store)",
+        "sha256": "09e2082d801b15203794974aea802cc7e5c5c403761365b69bd4b695d7a0638c",
+    },
+    "uprn_weights": {
+        "path": "omm-inputs/dz2011_dz2022_uprn_weights.csv (Project store)",
+        "sha256": "7690bcbebf9968ca9b02cf898832aa9be8fca56f3eb9af70b20e25b5d23e13e4",
+    },
+    "spd": {
+        "path": "data/external/raw/spd_postcodeindex_cut_26_2_csv.zip",
+        "sha256": "4e93069ddb9c39c211cafdc56eeb16c4b0ed4872c9a95c20e23ec73c3b499057",
+    },
+    "merge_map": {
+        "sha256": "581b0aa1647c5af7ce5b9617e35fcfa73982bc8712a42eb63242243ee6a95947",
+        "zones": 6188,
+    },
+}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import math
 import zipfile
 from pathlib import Path
@@ -11,8 +12,6 @@ from pathlib import Path
 import pytest
 
 from georgist import hedonic_merge_map as hmm
-
-FIX = Path(__file__).resolve().parents[1] / "fixtures" / "hedonic"
 
 
 def _write_csv(path: Path, rows: list[dict], fieldnames: list[str]) -> None:
@@ -42,13 +41,20 @@ def _make_spd_zip(path: Path, rows: list[dict]) -> None:
         zf.writestr("SmallUser.csv", buf.getvalue())
 
 
+def _write_freeze(path: Path, seed: int = 20261015) -> Path:
+    """Minimal freeze fixture for tests only — not the Valuation freeze file."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"status": "TEST_FIXTURE_ONLY", "bootstrap_seed": seed}),
+        encoding="utf-8",
+    )
+    return path
+
+
 def _synthetic_tree(root: Path) -> dict[str, Path]:
     """Build a tiny geography where one CA cell fails and merges to ITL3/national."""
     root.mkdir(parents=True, exist_ok=True)
 
-    # 45 urban zones in CA-A (estimable), 10 urban in CA-B (thin → merge).
-    # Shared ITL3 for both; thin CA-B merges into ITL3 pool with nothing else
-    # of substance → may go national depending on IQR.
     zones = []
     for i in range(45):
         zones.append(
@@ -57,7 +63,6 @@ def _synthetic_tree(root: Path) -> dict[str, Path]:
                 "ca": "S12000001",
                 "itl": "TLM71",
                 "ur6": 1,
-                # Spread ln A for IQR ≥ 0.30
                 "a": math.exp(4.0 + (i / 44.0) * 0.80),
                 "n21": 10,
                 "n22": 10,
@@ -70,12 +75,11 @@ def _synthetic_tree(root: Path) -> dict[str, Path]:
                 "ca": "S12000002",
                 "itl": "TLM71",
                 "ur6": 1,
-                "a": math.exp(4.2 + (i / 9.0) * 0.10),  # tiny IQR
+                "a": math.exp(4.2 + (i / 9.0) * 0.10),
                 "n21": 8,
                 "n22": 8,
             }
         )
-    # Rural national-merge case: 5 zones only
     for i in range(5):
         zones.append(
             {
@@ -97,19 +101,16 @@ def _synthetic_tree(root: Path) -> dict[str, Path]:
         counts_rows.append(
             {"code": z["dz"], "year": 2022, "sales_n": z["n22"], "suppressed": "false"}
         )
-        # Extra year must be ignored
         counts_rows.append(
             {"code": z["dz"], "year": 2023, "sales_n": 99, "suppressed": "false"}
         )
     counts = root / "counts.csv"
     _write_csv(counts, counts_rows, ["code", "year", "sales_n", "suppressed"])
 
-    # One DZ2022 per DZ2011 (1:1), house_plot_ha so A_z_m2 = a
     plot_rows = []
     weight_rows = []
     for z in zones:
-        j = z["dz"].replace("S010", "S0109")  # fake DZ2022
-        # A_z = ha * 10000 / homes  → homes=100, ha = a/100
+        j = z["dz"].replace("S010", "S0109")
         homes = 100.0
         ha = z["a"] * homes / 10_000.0
         plot_rows.append(
@@ -147,10 +148,9 @@ def _synthetic_tree(root: Path) -> dict[str, Path]:
                 "CensusHouseholdCount2022": 50,
             }
         )
-    # Tie-break fixture: equal household weights for two CAs on one extra zone
-    # (not in fit window — only exercises modal helper via SPD load).
     spd = root / "spd.zip"
     _make_spd_zip(spd, spd_rows)
+    freeze = _write_freeze(root / "v14_prereg_freeze.json")
 
     return {
         "counts": counts,
@@ -158,6 +158,7 @@ def _synthetic_tree(root: Path) -> dict[str, Path]:
         "uprn_weights": weights,
         "ur": ur,
         "spd": spd,
+        "freeze": freeze,
     }
 
 
@@ -166,14 +167,36 @@ def synth(tmp_path: Path) -> dict[str, Path]:
     return _synthetic_tree(tmp_path / "omm")
 
 
-def test_two_runs_identical_bytes_and_sha(synth: dict[str, Path], tmp_path: Path) -> None:
+@pytest.fixture()
+def seed(synth: dict[str, Path]) -> int:
+    return hmm.load_seed_from_prereg_freeze(synth["freeze"])
+
+
+def test_seed_from_prereg_freeze(tmp_path: Path) -> None:
+    freeze = _write_freeze(tmp_path / "v14_prereg_freeze.json", seed=20261015)
+    assert hmm.load_seed_from_prereg_freeze(freeze) == 20261015
+
+    nested = tmp_path / "nested.json"
+    nested.write_text(json.dumps({"hedonic": {"bootstrap_seed": 20261015}}), encoding="utf-8")
+    assert hmm.load_seed_from_prereg_freeze(nested) == 20261015
+
+    missing = tmp_path / "absent" / "v14_prereg_freeze.json"
+    with pytest.raises(FileNotFoundError, match="v14_prereg_freeze.json missing"):
+        hmm.load_seed_from_prereg_freeze(missing)
+
+    assert hmm.DEFAULT_PREREG_FREEZE_PATH == Path(
+        "/workspace/scotland-rules/v14_prereg_freeze.json"
+    )
+
+
+def test_two_runs_identical_bytes_and_sha(synth: dict[str, Path], seed: int, tmp_path: Path) -> None:
     rows1 = hmm.build_merge_map_from_paths(
         counts_path=synth["counts"],
         plot_split_path=synth["plot_split"],
         uprn_weights_path=synth["uprn_weights"],
         ur_path=synth["ur"],
         spd_zip=synth["spd"],
-        seed=hmm.SEED,
+        seed=seed,
     )
     rows2 = hmm.build_merge_map_from_paths(
         counts_path=synth["counts"],
@@ -181,7 +204,7 @@ def test_two_runs_identical_bytes_and_sha(synth: dict[str, Path], tmp_path: Path
         uprn_weights_path=synth["uprn_weights"],
         ur_path=synth["ur"],
         spd_zip=synth["spd"],
-        seed=hmm.SEED,
+        seed=seed,
     )
     b1 = hmm.serialize_merge_map(rows1)
     b2 = hmm.serialize_merge_map(rows2)
@@ -195,10 +218,6 @@ def test_two_runs_identical_bytes_and_sha(synth: dict[str, Path], tmp_path: Path
     assert d1 == d2
     assert out1.read_bytes() == out2.read_bytes()
     assert d1 == hmm.sha256_bytes(out1.read_bytes())
-
-
-def test_seed_constant() -> None:
-    assert hmm.SEED == 20261015
 
 
 def test_no_price_columns_loaded(tmp_path: Path) -> None:
@@ -218,11 +237,15 @@ def test_no_price_columns_loaded(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="price/value/rent"):
         hmm.load_fit_window_counts(bad)
 
-    # Columns-read vs denylist unit check
     with pytest.raises(ValueError, match="price/value/rent"):
         hmm.assert_no_price_columns(
             ["code", "dz_med2021", "sales_n", "Median", "value", "rent"]
         )
+
+    # Widened substring denylist (FAIL item 3)
+    for col in ("median_price", "price_gbp", "annual_rent", "land_value", "price£"):
+        with pytest.raises(ValueError, match="price/value/rent"):
+            hmm.assert_no_price_columns(["code", "sales_n", col])
 
     ok = hmm.assert_no_price_columns(
         ["code", "year", "sales_n", "CensusHouseholdCount2022", "uprn_count"]
@@ -230,34 +253,44 @@ def test_no_price_columns_loaded(tmp_path: Path) -> None:
     assert "sales_n" in ok
 
 
-def test_merge_ladder_assigns_levels(synth: dict[str, Path]) -> None:
+def test_production_pins_counts_and_ur() -> None:
+    pins = hmm.PRODUCTION_INPUT_PINS
+    assert pins["counts"]["sha256"] == (
+        "37fe46da5e647b29a966bd70713de21ae8514b95dfbe1e95b43a62e060eeeb50"
+    )
+    assert pins["counts"]["columns"] == ["code", "year", "sales_n", "suppressed"]
+    assert pins["ur"]["sha256"] == (
+        "0440de97902c393c2568780505901251dab9426f0781069fb9c6a3a383f04851"
+    )
+    assert pins["ur"]["vintage"] == "DZ2011 URC 2020"
+    assert pins["merge_map"]["sha256"] == (
+        "581b0aa1647c5af7ce5b9617e35fcfa73982bc8712a42eb63242243ee6a95947"
+    )
+
+
+def test_merge_ladder_assigns_levels(synth: dict[str, Path], seed: int) -> None:
     rows = hmm.build_merge_map_from_paths(
         counts_path=synth["counts"],
         plot_split_path=synth["plot_split"],
         uprn_weights_path=synth["uprn_weights"],
         ur_path=synth["ur"],
         spd_zip=synth["spd"],
-        seed=hmm.SEED,
+        seed=seed,
     )
     by_dz = {r["dz2011"]: r for r in rows}
-    # Large urban CA should stay at ca level
     assert by_dz["S01010000"]["merge_level"] == "ca"
     assert by_dz["S01010000"]["cell_final"].startswith("S12000001|")
-    # Thin urban CA should not stay at its own CA cell
     assert by_dz["S01020000"]["merge_level"] in {"itl3", "national"}
     assert by_dz["S01020000"]["cell_final"] != by_dz["S01020000"]["cell_ca"]
-    # Tiny rural set → national
     assert by_dz["S01030000"]["merge_level"] == "national"
     assert by_dz["S01030000"]["cell_final"] == "NATIONAL|rural"
-    # Stable sort
     assert [r["dz2011"] for r in rows] == sorted(r["dz2011"] for r in rows)
 
 
-def test_modal_tie_break_uses_seed() -> None:
-    a = hmm._pick_modal({"S12000001": 10.0, "S12000002": 10.0}, dz="S01009999", seed=hmm.SEED)
-    b = hmm._pick_modal({"S12000001": 10.0, "S12000002": 10.0}, dz="S01009999", seed=hmm.SEED)
+def test_modal_tie_break_uses_seed(seed: int) -> None:
+    a = hmm._pick_modal({"S12000001": 10.0, "S12000002": 10.0}, dz="S01009999", seed=seed)
+    b = hmm._pick_modal({"S12000001": 10.0, "S12000002": 10.0}, dz="S01009999", seed=seed)
     assert a == b
-    # Different seed can differ (not required, but same seed must match)
     c = hmm._pick_modal({"S12000001": 10.0, "S12000002": 10.0}, dz="S01009999", seed=1)
     d = hmm._pick_modal({"S12000001": 10.0, "S12000002": 10.0}, dz="S01009999", seed=1)
     assert c == d

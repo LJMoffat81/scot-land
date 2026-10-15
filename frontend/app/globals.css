@@ -851,8 +851,27 @@ input {
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.03em;
-  text-transform: uppercase;
+  /* MAP-CARDS §5/§6 — Annual Ground Rent stays sentence case, not all caps */
   color: var(--slrg-muted);
+}
+
+.place-card-status-pill {
+  display: inline-block;
+  margin: 0.35rem 0 0.25rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 650;
+  background: #e8eef5;
+  color: var(--slrg-navy, #1a2b4a);
+}
+
+.place-card-pre-pound {
+  margin: 0.25rem 0 0;
+}
+
+.place-card-try-again {
+  margin-top: 0.65rem;
 }
 
 .place-agr-list,

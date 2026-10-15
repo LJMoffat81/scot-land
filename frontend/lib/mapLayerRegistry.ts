@@ -5,7 +5,7 @@
  * Addendum A1: every entry has numeric minzoom, maxzoom, and non-empty group.
  */
 
-import { DZ2022_EXTRACTION_YEAR } from "./dzAttribution.mjs";
+import { DZ2022_EXTRACTION_YEAR } from "./dz2022ExtractionYear.mjs";
 import { RENT_GROUP_NAME } from "./rentGroupNames.mjs";
 
 /** Colour-blind-safe cividis samples — keep in sync with mapActiveLegend. */

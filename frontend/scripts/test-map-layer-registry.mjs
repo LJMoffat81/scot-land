@@ -3,6 +3,7 @@
  * Also locks live switch ids and banned row-name tokens.
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -146,10 +147,13 @@ const gated = buildInlineLegendFromRegistry(agr, { mapZoom: 3 });
 assert.equal(gated.zoomGated, true);
 assert.equal(gated.zoomHint, "Zoom in to see this layer");
 
-assert.equal(DZ2022_EXTRACTION_YEAR, 2022);
+const dzJson = JSON.parse(
+  readFileSync(join(frontendRoot, "lib/dz2022Attribution.json"), "utf8"),
+);
+assert.equal(DZ2022_EXTRACTION_YEAR, dzJson.extraction_year);
 assert.equal(
   dz2022CopyrightLine(),
-  "Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right 2022.",
+  `Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right ${dzJson.extraction_year}.`,
 );
 
 console.log("test-map-layer-registry: ok");

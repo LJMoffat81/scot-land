@@ -43,7 +43,17 @@ assert.match(layerRegistry, /Neighbourhood lines/);
 assert.match(layerRegistry, /DZ2022_EXTRACTION_YEAR/);
 const dzAttr = read(join(frontendRoot, "lib/dzAttribution.mjs"));
 assert.match(dzAttr, /Copyright Scottish Government/);
-assert.match(dzAttr, /dz2022Attribution\.json/);
+assert.match(dzAttr, /dz2022ExtractionYear\.mjs/);
+const dzYear = read(join(frontendRoot, "lib/dz2022ExtractionYear.mjs"));
+const dzJson = JSON.parse(
+  read(join(frontendRoot, "lib/dz2022Attribution.json")),
+);
+assert.match(dzYear, /DZ2022_EXTRACTION_YEAR/);
+assert.equal(
+  Number(dzYear.match(/DZ2022_EXTRACTION_YEAR\s*=\s*(\d+)/)?.[1]),
+  dzJson.extraction_year,
+  "extraction year export must match dz2022Attribution.json",
+);
 
 const catalog = read(join(frontendRoot, "lib/layerCatalog.ts"));
 assert.match(catalog, /Data Zone boundaries 2022/);

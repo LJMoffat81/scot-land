@@ -630,3 +630,432 @@
     overflow: hidden;
   }
 }
+
+/* —— MAP-CARDS: one panel slot, legend strip, basemap light/detailed —— */
+
+.map-cards-shell .hud-scotland,
+.map-cards-shell .hud-tools {
+  display: none !important;
+}
+
+.map-live-region-host {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.map-panel-slot {
+  position: absolute;
+  z-index: 14;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  color: var(--slrg-text, #0b1e3a);
+  box-shadow: 0 2px 12px rgba(11, 30, 58, 0.18);
+  overflow: hidden;
+}
+
+.map-panel-slot-chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  min-height: 44px;
+  padding: 0 0.35rem;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 2;
+  border-bottom: 1px solid rgba(11, 30, 58, 0.08);
+}
+
+.map-panel-handle {
+  flex: 1 1 auto;
+  min-height: 44px;
+  min-width: 44px;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+
+.map-panel-handle-bar {
+  display: block;
+  width: 2.5rem;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(11, 30, 58, 0.28);
+}
+
+.map-panel-slot-close {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+}
+
+.map-panel-slot-scroll {
+  flex: 1 1 auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.map-panel-slot-focus {
+  outline: none;
+}
+
+.map-panel-slot-focus:focus-visible {
+  outline: 3px solid #ffdd00;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 1px #0b1e3a;
+}
+
+/* Desktop left column */
+@media (min-width: 900px) {
+  .map-panel-slot {
+    left: 0.75rem;
+    top: calc(var(--hud-height, 6.5rem) + 0.45rem);
+    bottom: 1.75rem;
+    width: 380px;
+    max-width: calc(100vw - 1.5rem);
+    border-radius: 10px;
+  }
+
+  .map-panel-handle {
+    display: none;
+  }
+
+  .map-panel-collapse-tab-wrap {
+    position: absolute;
+    z-index: 14;
+    left: 0;
+    top: calc(var(--hud-height, 6.5rem) + 2rem);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .map-panel-collapse-tab {
+    min-height: 48px;
+    width: 48px;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    padding: 0.5rem 0.2rem;
+    border: 1px solid rgba(11, 30, 58, 0.2);
+    border-left: 0;
+    border-radius: 0 8px 8px 0;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(11, 30, 58, 0.16);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+
+  .map-panel-collapse-clear {
+    min-width: 44px;
+    min-height: 44px;
+    border: 1px solid rgba(11, 30, 58, 0.2);
+    border-left: 0;
+    border-radius: 0 8px 8px 0;
+    background: #fff;
+    cursor: pointer;
+    font-size: 1.2rem;
+  }
+}
+
+/* Mobile bottom sheet with detents (dvh + safe-area) */
+@media (max-width: 899px) {
+  .map-panel-slot {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    border-radius: 14px 14px 0 0;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .map-panel-slot--peek {
+    height: calc(180px + env(safe-area-inset-bottom, 0px));
+    max-height: calc(180px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .map-panel-slot--half {
+    height: 55dvh;
+    max-height: 55dvh;
+  }
+
+  .map-panel-slot--full {
+    height: calc(100dvh - 64px);
+    max-height: calc(100dvh - 64px);
+  }
+
+  .map-cards-shell.panel-open.map-narrow[data-detent="full"] .basemap-switcher,
+  .map-panel-slot--full ~ .basemap-switcher {
+    /* controls hide at full via shell class */
+  }
+
+  .map-cards-shell .map-panel-slot--full ~ .basemap-switcher,
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .basemap-switcher,
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .maplibregl-ctrl-bottom-right,
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .hud-layers-btn {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.legend-strip {
+  position: absolute;
+  z-index: 6;
+  left: 0.75rem;
+  bottom: 2.6rem;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid rgba(11, 30, 58, 0.18);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(11, 30, 58, 0.16);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--slrg-text, #0b1e3a);
+}
+
+@media (max-width: 899px) {
+  .legend-strip {
+    bottom: calc(180px + env(safe-area-inset-bottom, 0px) + 0.5rem);
+  }
+
+  .app-shell.panel-open .legend-strip {
+    /* above sheet at peek — parent places strip in map area */
+  }
+}
+
+.legend-strip-ramp {
+  display: inline-flex;
+  height: 10px;
+  width: 72px;
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.legend-strip-swatch {
+  flex: 1 1 0;
+  display: block;
+  height: 100%;
+}
+
+.legend-strip-chevron {
+  opacity: 0.55;
+}
+
+.map-attribution-line {
+  position: absolute;
+  z-index: 5;
+  left: 0.5rem;
+  right: 4.5rem;
+  bottom: 0.35rem;
+  font-size: 0.68rem;
+  line-height: 1.25;
+  color: rgba(11, 30, 58, 0.85);
+  background: rgba(255, 255, 255, 0.82);
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  pointer-events: auto;
+  max-width: calc(100% - 5rem);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-attribution-line a {
+  color: var(--slrg-navy, #0b1e3a);
+  font-weight: 600;
+}
+
+.map-rest-prompt {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: calc(var(--hud-height, 6.5rem) + 1rem);
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.55rem 0.9rem;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(11, 30, 58, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(11, 30, 58, 0.12);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.search-empty-hint,
+.search-no-match {
+  margin: 0.25rem 0 0;
+  padding: 0.4rem 0.55rem;
+  font-size: 0.85rem;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(11, 30, 58, 0.12);
+}
+
+.search-no-match {
+  color: #7a1f1f;
+}
+
+.identify-at-centre {
+  position: absolute;
+  z-index: 4;
+  left: 0.75rem;
+  bottom: 5.5rem;
+  min-height: 44px;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgba(11, 30, 58, 0.2);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Research banner height 0 when place card open */
+.app-shell.place-open .research-banner {
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Basemap light ↔ detailed previews */
+.basemap-switcher-preview.preview-detailed {
+  background-color: #dce8d4;
+  background-image:
+    linear-gradient(180deg, #b8d4a8 0%, #e8f0e0 45%, #c5d8b8 100%),
+    linear-gradient(90deg, transparent 40%, rgba(80, 120, 60, 0.25) 42%, transparent 44%),
+    linear-gradient(0deg, transparent 55%, rgba(180, 100, 60, 0.3) 57%, transparent 59%);
+}
+
+.basemap-switcher-preview.preview-light {
+  background-color: #e7eef3;
+  background-image:
+    linear-gradient(#ffffff 1px, transparent 1px),
+    linear-gradient(90deg, #ffffff 1px, transparent 1px),
+    linear-gradient(180deg, #dfe8ee 0%, #eef3f6 100%);
+  background-size: 16px 16px, 16px 16px, 100% 100%;
+}
+
+/* GOV.UK yellow focus ring on map chrome */
+.map-cards-shell .hud-layers-btn:focus-visible,
+.map-cards-shell .basemap-switcher:focus-visible,
+.map-cards-shell .legend-strip:focus-visible,
+.map-cards-shell .map-panel-handle:focus-visible,
+.map-cards-shell .map-panel-slot-close:focus-visible,
+.map-cards-shell .map-panel-collapse-tab:focus-visible,
+.map-cards-shell .identify-at-centre:focus-visible,
+.map-cards-shell .hud-search input:focus-visible,
+.map-cards-shell .hud-search-go:focus-visible {
+  outline: 3px solid #ffdd00;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 1px #0b1e3a;
+}
+
+.map-shortcuts-dialog {
+  position: absolute;
+  z-index: 20;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(360px, calc(100vw - 2rem));
+  padding: 1rem 1.1rem 1.2rem;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(11, 30, 58, 0.28);
+}
+
+.map-shortcuts-dialog h2 {
+  margin: 0 1.5rem 0.6rem 0;
+  font-size: 1.05rem;
+}
+
+.map-shortcuts-dialog ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.9rem;
+}
+
+.map-shortcuts-dialog kbd {
+  font-family: inherit;
+  font-weight: 700;
+  padding: 0.05rem 0.3rem;
+  border: 1px solid rgba(11, 30, 58, 0.25);
+  border-radius: 4px;
+  background: #f3f5f7;
+}
+
+.map-shortcuts-close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-panel-slot {
+    transition: none !important;
+  }
+}
+
+/* Place card inside panel slot: no floating positioning */
+.map-panel-slot .place-card,
+.map-panel-slot .place-card-stub,
+.map-panel-slot .hud-place {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+.map-panel-slot .layers-panel {
+  box-shadow: none;
+  border: 0;
+  max-height: none;
+}

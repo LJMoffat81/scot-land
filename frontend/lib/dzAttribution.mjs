@@ -21,3 +21,8 @@ export function dz2022CopyrightLine(year = DZ2022_EXTRACTION_YEAR) {
     `copyright and database right ${year}.`
   );
 }
+
+/** MAP-CARDS GIS 14 / addendum — alias used by the map attribution line. */
+export function dzAttributionText(year = DZ2022_EXTRACTION_YEAR) {
+  return dz2022CopyrightLine(year);
+}

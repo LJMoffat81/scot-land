@@ -1,0 +1,15 @@
+# Cloudflare Worker template (HOME-TUNNEL offline front).
+# Copy to wrangler.toml locally; replace account/zone placeholders.
+# Do not commit real account IDs or API tokens.
+
+name = "scot-land-offline"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+# Route every hostname on the zone through this Worker (operator fills zone_id).
+# routes = [
+#   { pattern = "scot-land.scot/*", zone_id = "REPLACE_WITH_ZONE_ID" },
+#   { pattern = "www.scot-land.scot/*", zone_id = "REPLACE_WITH_ZONE_ID" },
+# ]
+
+# account_id = "REPLACE_WITH_ACCOUNT_ID"

@@ -82,7 +82,8 @@ services:
         NEXT_PUBLIC_API_URL: /backend
     restart: unless-stopped
     ports:
-      - "${HOME_FRONTEND_PORT:-3000}:3000"
+      # Loopback only — matches API/db. Cloudflare Tunnel reaches this via cloudflared on the PC.
+      - "127.0.0.1:${HOME_FRONTEND_PORT:-3000}:3000"
     environment:
       NEXT_PUBLIC_API_URL: /backend
       API_PROXY_TARGET: http://api:8000

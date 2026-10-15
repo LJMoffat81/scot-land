@@ -61,7 +61,7 @@ export async function GET(_request: Request, context: Ctx) {
       status: 200,
       headers: {
         "Content-Type": "image/png",
-        "Cache-Control": "public, max-age=3600",
+        "Cache-Control": "public, max-age=86400",
         "X-Context-Tile": "ok",
       },
     });

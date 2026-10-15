@@ -71,8 +71,18 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
+    // HOME-TUNNEL: long cache for hashed Next assets and public static files.
+    const longImmutable = [
+      { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+    ];
+    const longStatic = [
+      { key: "Cache-Control", value: "public, max-age=86400" },
+    ];
     return [
       { source: "/:path*", headers: securityHeaders },
+      { source: "/_next/static/:path*", headers: longImmutable },
+      { source: "/scot-land-mark.png", headers: longStatic },
+      { source: "/swagger-ui/:path*", headers: longStatic },
       // Site rewrite PR3 item 5 — packaged downloads force save-as.
       // manifest.json is excluded so the developers page can fetch it as JSON.
       {

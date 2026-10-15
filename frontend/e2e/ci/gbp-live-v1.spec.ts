@@ -190,32 +190,45 @@ test.describe("GBP-LIVE-V1 flag ON", () => {
         enabled: true,
         banner: "Early estimates; ranges are wide and will change.",
         rent_rate_wording: RENT_RATE_HOW_IT_WORKS,
+        unit: "per m²",
+        unit_wording: "per m² of land a year",
       },
       surface_rent_display: {
         state: "ok",
-        low: 6000,
-        central: 12000,
-        high: 18000,
+        low: 0.06,
+        central: 0.12,
+        high: 0.18,
         estimate_label: "Partly estimated",
         rent_rate_wording: RENT_RATE_CARD,
+        unit: "per m²",
+        unit_wording: "per m² of land a year",
+        central_label: "most likely",
         grain: "data_zone",
       },
     });
     await stubShell(page, place, true);
     await openPlaceCard(page);
     const card = page.getByTestId("place-card");
-    await expect(card.getByTestId("place-card-figure")).toContainText("£12,000");
-    await expect(card.getByTestId("place-card-figure-range")).toContainText(
-      "£6,000",
+    await expect(card.getByTestId("place-card-figure")).toContainText(
+      "£0.12 per m²",
     );
     await expect(card.getByTestId("place-card-figure-range")).toContainText(
-      "£18,000",
+      "£0.06",
+    );
+    await expect(card.getByTestId("place-card-figure-range")).toContainText(
+      "£0.18 per m²",
+    );
+    await expect(card.getByTestId("place-card-figure-central-label")).toHaveText(
+      "most likely",
+    );
+    await expect(card.getByTestId("place-card-figure-unit")).toContainText(
+      "per m²",
     );
     await expect(card.getByTestId("place-card-figure-estimate")).toHaveText(
       "Partly estimated",
     );
     await expect(card.getByTestId("place-card-range-surface")).toContainText(
-      "£",
+      "per m²",
     );
     await expect(card.getByTestId("place-card-estimate-label-surface")).toHaveText(
       "Partly estimated",
@@ -238,11 +251,14 @@ test.describe("GBP-LIVE-V1 flag ON", () => {
       },
       surface_rent_display: {
         state: "ok",
-        low: 6000,
-        central: 12000,
-        high: 18000,
+        low: 0.06,
+        central: 0.12,
+        high: 0.18,
         estimate_label: "Partly estimated",
         rent_rate_wording: RENT_RATE_CARD,
+        unit: "per m²",
+        unit_wording: "per m² of land a year",
+        central_label: "most likely",
         grain: "data_zone",
       },
     });

@@ -1,10 +1,14 @@
-"""GBP-LIVE-V1 — public £ surface rent display behind one config flag (default OFF).
+"""GBP-LIVE — public £ surface rent display behind one config flag (default OFF).
 
 Reads ``data/config/gbp_live.yaml``. When disabled, place card / legend / How it
 works stay pre-£ (existing publishable guards). When enabled, Data Zone surface
-rent may show a low–central–high range and an estimate label; zones listed in
-``under_review_zones`` show under-review with no £. Placeholders never show £.
-Totals stay off; nothing finer than Data Zone.
+rent is shown as £ per m² of land a year (low–central–high + estimate label);
+zones listed in ``under_review_zones`` or missing a land-area denominator show
+under-review with no £. Placeholders never show £. Totals stay off; nothing
+finer than Data Zone.
+
+GBP-LIVE-V1b: display-layer only — divide zone rent by ``residential_land_ha``
+(existing field) × 10_000. Never touch the surface model.
 """
 
 from __future__ import annotations
@@ -39,6 +43,13 @@ RENT_RATE_WORDING_CARD = "Yearly rent: up to 4.5% of the land's value"
 RENT_RATE_WORDING_HOW_IT_WORKS = (
     "We turn land value into a yearly rent of up to 4.5% of that value."
 )
+# GBP-LIVE-V1b unit — API strings carry no £ glyph; frontend formats sterling.
+UNIT = "per m²"
+UNIT_WORDING = "per m² of land a year"
+CENTRAL_LABEL = "most likely"
+# Existing valuation/display area field (hectares of residential land).
+AREA_FIELD = "residential_land_ha"
+HA_TO_M2 = 10_000
 
 
 class GbpLiveConfigError(ValueError):
@@ -119,7 +130,7 @@ def rent_rate_wording_how_it_works() -> str:
 
 
 def _money_fields(row: Mapping[str, Any]) -> dict[str, float] | None:
-    """Return low/central/high when all three are finite numbers; else None."""
+    """Return low/central/high zone rent when all three are finite numbers; else None."""
     try:
         low = float(row["uncertainty_low"])
         central = float(row["measured_rent"])
@@ -135,6 +146,55 @@ def _finite(value: float) -> bool:
     return value == value and value not in (float("inf"), float("-inf"))
 
 
+def _area_ha(row: Mapping[str, Any]) -> float | None:
+    """Positive ``residential_land_ha`` from the existing valuation/display row, or None."""
+    raw = row.get(AREA_FIELD)
+    if raw is None or raw == "":
+        return None
+    try:
+        ha = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if not _finite(ha) or ha <= 0:
+        return None
+    return ha
+
+
+def _per_m2(zone_rent: float, area_ha: float) -> float:
+    """Zone £/year → £ per m² of land a year (display only)."""
+    return round(zone_rent / (area_ha * HA_TO_M2), 2)
+
+
+def _under_review_payload() -> dict[str, Any]:
+    return {
+        "state": "under_review",
+        "label": UNDER_REVIEW_LABEL,
+        "estimate_label": None,
+        "low": None,
+        "central": None,
+        "high": None,
+        "rent_rate_wording": None,
+        "unit": None,
+        "unit_wording": None,
+        "central_label": None,
+    }
+
+
+def _hidden_payload() -> dict[str, Any]:
+    return {
+        "state": "hidden",
+        "label": None,
+        "estimate_label": None,
+        "low": None,
+        "central": None,
+        "high": None,
+        "rent_rate_wording": None,
+        "unit": None,
+        "unit_wording": None,
+        "central_label": None,
+    }
+
+
 def surface_rent_display_for_row(
     row: Mapping[str, Any] | None,
     *,
@@ -144,61 +204,37 @@ def surface_rent_display_for_row(
     """Build the public place-card surface_rent_display block.
 
     States:
-      - under_review: zone in config list — label only, no £
+      - under_review: zone in config list, or land area missing — label only, no £
       - hidden: placeholder / not publishable / missing money — no £
-      - ok: low/central/high + estimate label (flag must already be on)
+      - ok: low/central/high as £ per m² + estimate label (flag must already be on)
     """
     if is_under_review(code, path):
-        return {
-            "state": "under_review",
-            "label": UNDER_REVIEW_LABEL,
-            "estimate_label": None,
-            "low": None,
-            "central": None,
-            "high": None,
-            "rent_rate_wording": None,
-        }
+        return _under_review_payload()
     if row is None or not publicly_served(row):
-        return {
-            "state": "hidden",
-            "label": None,
-            "estimate_label": None,
-            "low": None,
-            "central": None,
-            "high": None,
-            "rent_rate_wording": None,
-        }
+        return _hidden_payload()
     if row.get("quality") == "placeholder":
-        return {
-            "state": "hidden",
-            "label": None,
-            "estimate_label": None,
-            "low": None,
-            "central": None,
-            "high": None,
-            "rent_rate_wording": None,
-        }
+        return _hidden_payload()
     money = _money_fields(row)
     if money is None:
-        return {
-            "state": "hidden",
-            "label": None,
-            "estimate_label": None,
-            "low": None,
-            "central": None,
-            "high": None,
-            "rent_rate_wording": None,
-        }
+        return _hidden_payload()
+    area_ha = _area_ha(row)
+    if area_ha is None:
+        # GBP-LIVE-V1b: no area → Under review and no £ (display layer only).
+        return _under_review_payload()
     machine = resolve_estimate_label(row)
     return {
         "state": "ok",
         "label": None,
         "estimate_label": visitor_estimate_label(machine),
         "estimate_label_key": machine,
-        "low": money["low"],
-        "central": money["central"],
-        "high": money["high"],
+        "low": _per_m2(money["low"], area_ha),
+        "central": _per_m2(money["central"], area_ha),
+        "high": _per_m2(money["high"], area_ha),
         "rent_rate_wording": rent_rate_wording_card(),
+        "unit": UNIT,
+        "unit_wording": UNIT_WORDING,
+        "central_label": CENTRAL_LABEL,
+        "denominator": AREA_FIELD,
         "grain": "data_zone",
     }
 
@@ -206,18 +242,22 @@ def surface_rent_display_for_row(
 def public_settings(path: Path | str | None = None) -> dict[str, Any]:
     """Minimal public settings for frontend shells (no zone list required)."""
     cfg = load_gbp_live_config(path)
+    enabled = bool(cfg["enabled"])
     return {
-        "enabled": bool(cfg["enabled"]),
-        "banner": EARLY_ESTIMATES_BANNER if cfg["enabled"] else None,
+        "enabled": enabled,
+        "banner": EARLY_ESTIMATES_BANNER if enabled else None,
         "rent_rate_wording": (
-            rent_rate_wording_how_it_works() if cfg["enabled"] else None
+            rent_rate_wording_how_it_works() if enabled else None
         ),
+        "unit": UNIT if enabled else None,
+        "unit_wording": UNIT_WORDING if enabled else None,
     }
 
 
 _ZONE_ROW_SQL = (
     "SELECT DISTINCT ON (code) code, vintage, measured_rent, uncertainty_low, uncertainty_high, "
-    "quality, publish_level, publication_status, fill_method, proxy_tags, value_tier "
+    "residential_land_ha, quality, publish_level, publication_status, fill_method, proxy_tags, "
+    "value_tier "
     "FROM surface_rent_dz WHERE code = %s AND vintage = %s "
     "ORDER BY code, valuation_date DESC"
 )
@@ -272,6 +312,8 @@ def attach_gbp_live_to_place_card(
 
     card["gbp_live"]["banner"] = settings["banner"]
     card["gbp_live"]["rent_rate_wording"] = settings["rent_rate_wording"]
+    card["gbp_live"]["unit"] = settings["unit"]
+    card["gbp_live"]["unit_wording"] = settings["unit_wording"]
 
     zone = card.get("data_zone") or {}
     # Prefer the card's preferred vintage/code (DZ2022 when present).

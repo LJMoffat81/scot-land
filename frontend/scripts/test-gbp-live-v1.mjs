@@ -51,12 +51,29 @@ assert.match(formatted.range, /\u00a3.*\u2013\u00a3/);
 assert.equal(formatted.central, "\u00a312,000");
 assert.equal(formatted.range, "\u00a36,000\u2013\u00a318,000");
 
+// GBP-LIVE-V1b: every £ string includes "per m²"
+assert.equal(gbp.GBP_LIVE_UNIT, "per m²");
+assert.equal(gbp.GBP_LIVE_UNIT_WORDING, "per m² of land a year");
+assert.equal(gbp.GBP_LIVE_CENTRAL_LABEL, "most likely");
+const perM2 = gbp.formatGbpCentralWithRangePerM2(0.06, 0.12, 0.18);
+assert.match(perM2.central, /^\u00a3/);
+assert.match(perM2.central, /per m²/);
+assert.match(perM2.range, /\u00a3.*\u2013\u00a3/);
+assert.match(perM2.range, /per m²/);
+assert.equal(perM2.central, "\u00a30.12 per m²");
+assert.equal(perM2.range, "\u00a30.06\u2013\u00a30.18 per m²");
+assert.match(gbp.SURFACE_RENT_LEGEND_TITLE, /per m²/);
+assert.match(gbp.SURFACE_RENT_LEGEND_BLURB, /per m²/);
+assert.match(gbp.SURFACE_RENT_LEGEND_SOURCE, /per m²/);
+
 // Place card wires GBP-LIVE surfaces + rent-rate field (never yield_wording)
 {
   const ui = readSrc("components/PlaceCard.tsx");
-  assert.match(ui, /formatGbpCentralWithRange/);
+  assert.match(ui, /formatGbpCentralWithRangePerM2/);
   assert.match(ui, /place-card-figure-range/);
   assert.match(ui, /place-card-figure-estimate/);
+  assert.match(ui, /place-card-figure-central-label/);
+  assert.match(ui, /place-card-figure-unit/);
   assert.match(ui, /place-card-under-review/);
   assert.match(ui, /place-card-rent-rate-/);
   assert.match(ui, /rent_rate_wording/);
@@ -84,20 +101,25 @@ assert.equal(formatted.range, "\u00a36,000\u2013\u00a318,000");
   const map = readSrc("components/ScotlandMap.tsx");
   assert.match(map, /SURFACE_RENT_LEGEND_TITLE/);
   assert.match(map, /allowRentGbp:\s*true/);
+  assert.match(map, /unit:\s*"£ per m²"/);
   assert.match(map, /fetchGbpLiveSettings/);
 }
 
-// How it works + banner — signed-off rent-rate sentence
+// How it works + banner — signed-off rent-rate sentence + per m² unit
 {
   const method = readSrc("components/MethodologyContent.tsx");
   assert.match(method, /GbpLiveBannerNote/);
   const note = readSrc("components/GbpLiveBannerNote.tsx");
   assert.match(note, /GBP_LIVE_EARLY_BANNER/);
   assert.match(note, /GBP_LIVE_RENT_RATE_HOW_IT_WORKS/);
+  assert.match(note, /GBP_LIVE_UNIT_WORDING/);
   assert.match(note, /gbp-live-rent-rate-wording/);
+  assert.match(note, /gbp-live-unit-wording/);
   assert.match(note, /rent_rate_wording/);
   assert.doesNotMatch(note, /yield_wording/);
   assert.match(note, /Data Zone only/);
+  assert.match(note, /GBP_LIVE_UNIT_WORDING/);
+  assert.match(note, /most likely/);
   const banner = readSrc("components/ResearchBanner.tsx");
   assert.match(banner, /fetchGbpLiveSettings/);
   assert.match(banner, /GBP_LIVE_EARLY_BANNER/);
@@ -110,15 +132,18 @@ assert.equal(formatted.range, "\u00a36,000\u2013\u00a318,000");
   assert.match(probe, /status:\s*200/);
   assert.match(probe, /platform\/gbp-live/);
   assert.match(probe, /rent_rate_wording/);
+  assert.match(probe, /unit_wording/);
   assert.doesNotMatch(probe, /yield_wording/);
   const client = readSrc("lib/gbpLive.ts");
   assert.match(client, /\/api\/gbp-live/);
   assert.match(client, /rent_rate_wording/);
+  assert.match(client, /unit_wording/);
   assert.doesNotMatch(client, /yield_wording/);
   const proxy = readSrc("app/backend/[...path]/route.ts");
   assert.match(proxy, /platform\/gbp-live/);
   assert.match(proxy, /GBP_LIVE_FLAG_OFF/);
   assert.match(proxy, /rent_rate_wording/);
+  assert.match(proxy, /unit_wording/);
   assert.doesNotMatch(proxy, /yield_wording/);
 }
 
@@ -131,6 +156,8 @@ assert.equal(formatted.range, "\u00a36,000\u2013\u00a318,000");
   assert.match(e2e, /not\.toContainText\(\/\\bshadow\\b\/i\)/);
   assert.match(e2e, /place-tag-estimate/);
   assert.match(e2e, /rent_rate_wording/);
+  assert.match(e2e, /per m²/);
+  assert.match(e2e, /most likely/);
   assert.doesNotMatch(e2e, /yield_wording/);
   assert.match(
     e2e,
@@ -140,6 +167,17 @@ assert.equal(formatted.range, "\u00a36,000\u2013\u00a318,000");
     e2e,
     /We turn land value into a yearly rent of up to 4\.5% of that value\./,
   );
+}
+
+// GBP-LIVE-V1b e2e: per m² at 390 and 1280
+{
+  const e2e = readSrc("e2e/ci/gbp-live-v1b.spec.ts");
+  assert.match(e2e, /width:\s*1280/);
+  assert.match(e2e, /width:\s*390/);
+  assert.match(e2e, /per m²/);
+  assert.match(e2e, /most likely/);
+  assert.match(e2e, /assertEveryPoundHasPerM2/);
+  assert.doesNotMatch(e2e, /yield_wording/);
 }
 
 // Rank band stays OFF; pre-£ copy preserved for flag-off path

@@ -42,6 +42,8 @@ def _publishable_row(**overrides):
         "measured_rent": 12000.0,
         "uncertainty_low": 6000.0,
         "uncertainty_high": 18000.0,
+        # 10 ha → £1.20 / £0.60 / £1.80 per m² (GBP-LIVE-V1b display unit).
+        "residential_land_ha": 10.0,
         "quality": "modelled",
         "publish_level": "public_zone",
         "publication_status": "ok",
@@ -155,6 +157,9 @@ def test_public_settings_flag_on(tmp_path):
     assert settings["banner"] == gl.EARLY_ESTIMATES_BANNER
     assert settings["rent_rate_wording"] == gl.rent_rate_wording_how_it_works()
     assert "yield" not in settings["rent_rate_wording"].lower()
+    assert settings["unit"] == gl.UNIT
+    assert settings["unit_wording"] == gl.UNIT_WORDING
+    assert "£" not in str(settings)
 
 
 def test_rent_rate_wording_signed_off():
@@ -212,11 +217,18 @@ def test_place_card_flag_on_shows_range_and_label(monkeypatch, tmp_path):
 
     card = place_context(55.86, -4.25)
     assert card["gbp_live"]["enabled"] is True
+    assert card["gbp_live"]["unit"] == gl.UNIT
+    assert card["gbp_live"]["unit_wording"] == gl.UNIT_WORDING
     display = card["surface_rent_display"]
     assert display["state"] == "ok"
-    assert display["low"] == 6000.0
-    assert display["central"] == 12000.0
-    assert display["high"] == 18000.0
+    # Zone £12k / 10 ha / 10_000 = £0.12 per m² (etc.).
+    assert display["low"] == 0.06
+    assert display["central"] == 0.12
+    assert display["high"] == 0.18
+    assert display["unit"] == "per m²"
+    assert display["unit_wording"] == "per m² of land a year"
+    assert display["central_label"] == "most likely"
+    assert display["denominator"] == "residential_land_ha"
     assert display["estimate_label"] == "Measured"
     assert display["rent_rate_wording"] == gl.rent_rate_wording_card()
     assert "yield_wording" not in display
@@ -224,6 +236,42 @@ def test_place_card_flag_on_shows_range_and_label(monkeypatch, tmp_path):
     assert display["grain"] == "data_zone"
     assert "total" not in display
     assert "scotland_total" not in str(card).lower()
+    assert "£" not in str(display)
+
+
+def test_per_m2_uses_residential_land_ha(tmp_path):
+    path = _write_cfg(tmp_path, enabled=True)
+    row = _publishable_row(
+        measured_rent=20_000.0,
+        uncertainty_low=10_000.0,
+        uncertainty_high=30_000.0,
+        residential_land_ha=2.0,
+    )
+    display = gl.surface_rent_display_for_row(row, code=row["code"], path=path)
+    assert display["state"] == "ok"
+    assert display["central"] == 1.0  # 20000 / (2 * 10000)
+    assert display["low"] == 0.5
+    assert display["high"] == 1.5
+    assert display["denominator"] == "residential_land_ha"
+
+
+def test_missing_area_under_review_no_pound(tmp_path):
+    path = _write_cfg(tmp_path, enabled=True)
+    row = _publishable_row()
+    del row["residential_land_ha"]
+    display = gl.surface_rent_display_for_row(row, code=row["code"], path=path)
+    assert display["state"] == "under_review"
+    assert display["label"] == gl.UNDER_REVIEW_LABEL
+    assert display["central"] is None
+    assert "£" not in str(display)
+
+
+def test_zero_area_under_review(tmp_path):
+    path = _write_cfg(tmp_path, enabled=True)
+    row = _publishable_row(residential_land_ha=0.0)
+    display = gl.surface_rent_display_for_row(row, code=row["code"], path=path)
+    assert display["state"] == "under_review"
+    assert display["central"] is None
 
 
 def test_place_card_flag_on_under_review_no_pound(monkeypatch, tmp_path):

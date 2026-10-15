@@ -1,4 +1,4 @@
-# GBP-LIVE-V1 — public £ surface rent display.
+# GBP-LIVE — public £ surface rent display (per m² of land a year when enabled).
 # ONE flag for instant rollback. DEFAULT OFF — turning on is a separate one-line PR.
 # under_review_zones: Data Zone codes that show "Under review" and no £ even when enabled.
 

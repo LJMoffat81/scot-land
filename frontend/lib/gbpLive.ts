@@ -1,9 +1,11 @@
 /**
- * GBP-LIVE-V1 — public £ surface rent display behind ONE flag (default OFF).
+ * GBP-LIVE — public £ surface rent display behind ONE flag (default OFF).
  * Backend source of truth: data/config/gbp_live.yaml via GET /platform/gbp-live.
  *
- * Keep this module free of top-level ./api imports so Node unit scripts can load
- * the formatters without resolving the Next fetch stack.
+ * GBP-LIVE-V1b: every £ behind the flag is per m² of land a year (range +
+ * "most likely" central + estimate label). Keep this module free of top-level
+ * ./api imports so Node unit scripts can load the formatters without resolving
+ * the Next fetch stack.
  */
 
 export const GBP_LIVE_EARLY_BANNER =
@@ -19,10 +21,21 @@ export const GBP_LIVE_RENT_RATE_CARD =
 export const GBP_LIVE_RENT_RATE_HOW_IT_WORKS =
   "We turn land value into a yearly rent of up to 4.5% of that value.";
 
+/** GBP-LIVE-V1b unit suffix — every £ string behind the flag includes this. */
+export const GBP_LIVE_UNIT = "per m²";
+
+/** Full unit wording for place card / legend / How it works. */
+export const GBP_LIVE_UNIT_WORDING = "per m² of land a year";
+
+/** Central figure label (spec: "most likely" central). */
+export const GBP_LIVE_CENTRAL_LABEL = "most likely";
+
 export type GbpLiveSettings = {
   enabled: boolean;
   banner?: string | null;
   rent_rate_wording?: string | null;
+  unit?: string | null;
+  unit_wording?: string | null;
 };
 
 export type SurfaceRentDisplayState = "ok" | "under_review" | "hidden";
@@ -36,6 +49,9 @@ export type SurfaceRentDisplay = {
   central?: number | null;
   high?: number | null;
   rent_rate_wording?: string | null;
+  unit?: string | null;
+  unit_wording?: string | null;
+  central_label?: string | null;
   grain?: string | null;
 };
 
@@ -45,7 +61,25 @@ export function formatGbp(value: number): string {
   return `\u00a3${n.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`;
 }
 
-/** Central figure with low–high range beside it. */
+/** Format £ per m² (two decimal places) — every £ string includes the unit. */
+export function formatGbpPerM2(value: number): string {
+  const n = Number.isFinite(value) ? value : 0;
+  const formatted = n.toLocaleString("en-GB", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `\u00a3${formatted} ${GBP_LIVE_UNIT}`;
+}
+
+function formatGbpAmountPerM2(value: number): string {
+  const n = Number.isFinite(value) ? value : 0;
+  return `\u00a3${n.toLocaleString("en-GB", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+/** Central figure with low–high range beside it (legacy whole-pound helper). */
 export function formatGbpCentralWithRange(
   low: number,
   central: number,
@@ -54,6 +88,22 @@ export function formatGbpCentralWithRange(
   return {
     central: formatGbp(central),
     range: `${formatGbp(low)}\u2013${formatGbp(high)}`,
+  };
+}
+
+/**
+ * GBP-LIVE-V1b: central + range as £ per m².
+ * Each returned string that carries £ also carries "per m²".
+ */
+export function formatGbpCentralWithRangePerM2(
+  low: number,
+  central: number,
+  high: number,
+): { central: string; range: string } {
+  return {
+    central: formatGbpPerM2(central),
+    // Single unit suffix on the range so the string still contains "per m²".
+    range: `${formatGbpAmountPerM2(low)}\u2013${formatGbpAmountPerM2(high)} ${GBP_LIVE_UNIT}`,
   };
 }
 
@@ -94,6 +144,8 @@ export async function fetchGbpLiveSettings(): Promise<GbpLiveSettings> {
         enabled: Boolean(body?.enabled),
         banner: body?.banner ?? null,
         rent_rate_wording: body?.rent_rate_wording ?? null,
+        unit: body?.unit ?? null,
+        unit_wording: body?.unit_wording ?? null,
       } satisfies GbpLiveSettings;
     })
     .catch(() => ({ enabled: false }) satisfies GbpLiveSettings)
@@ -108,22 +160,22 @@ export async function fetchGbpLiveSettings(): Promise<GbpLiveSettings> {
 }
 
 /**
- * Illustrative Data Zone surface-rent legend stops (£ / year) for when the flag is on.
+ * Illustrative Data Zone surface-rent legend stops (£ per m² / year) when the flag is on.
  * Labels are ranges only — never a national total.
  */
 export const SURFACE_RENT_LEGEND_STOPS: Array<[number, string]> = [
-  [5_000, "#f7fcf5"],
-  [15_000, "#c7e9c0"],
-  [40_000, "#74c476"],
-  [80_000, "#238b45"],
-  [150_000, "#00441b"],
+  [0.5, "#f7fcf5"],
+  [1, "#c7e9c0"],
+  [2, "#74c476"],
+  [5, "#238b45"],
+  [10, "#00441b"],
 ];
 
 export const SURFACE_RENT_LEGEND_TITLE =
-  "Surface land rent — per year (Data Zone)";
+  "Surface land rent — per m² a year (Data Zone)";
 
 export const SURFACE_RENT_LEGEND_BLURB =
-  "Early estimates for land under homes. Ranges are wide and will change.";
+  "Early estimates for land under homes, shown per m² of land a year. Ranges are wide and will change.";
 
 export const SURFACE_RENT_LEGEND_SOURCE =
-  "Research estimate — Data Zone only; parts are not added into a total.";
+  "Research estimate — Data Zone only; parts are not added into a total. Figures are per m².";

@@ -550,7 +550,8 @@ input {
     left: 0.55rem;
     bottom: 7.4rem;
     width: auto;
-    max-height: min(58dvh, calc(100dvh - var(--hud-height, 8rem) - 8rem));
+    /* Cap peek height so sheet top stays in the lower half (UX10-1 y>200). */
+    max-height: min(52dvh, calc(100dvh - var(--hud-height, 8rem) - 8rem));
     border-radius: 16px 16px 0 0;
     padding-bottom: 0.85rem;
     box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.14);
@@ -3319,7 +3320,7 @@ button.linkish:disabled {
     right: 3.35rem;
     bottom: 7.4rem;
     width: auto;
-    max-height: min(58dvh, calc(100dvh - var(--hud-height, 8rem) - 8rem));
+    max-height: min(52dvh, calc(100dvh - var(--hud-height, 8rem) - 8rem));
     padding: 1.65rem 1rem 0.85rem;
   }
 
@@ -3508,9 +3509,14 @@ button.linkish:disabled {
     box-sizing: border-box;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     min-height: 44px;
     min-width: 44px;
-    padding: 0.55rem 0.35rem;
+    /* Expand the hit box without growing the 2.1rem footer chrome. */
+    margin-block: calc((2.1rem - 44px) / 2);
+    padding: 0 0.35rem;
+    position: relative;
+    z-index: 2;
   }
 }
 

@@ -16,8 +16,16 @@ const SOURCE =
   "Source: National Records of Scotland mid-year estimates, Open Government Licence v3.0";
 const ZOOM_HINT = "Zoom in to see colours";
 
+const LAND_TITLE =
+  "What the land is worth each year: lower to higher";
+const LAND_PALER = "Paler = less sure";
+
 const rampSource = readFileSync(
   join(frontendRoot, "lib/mapColourRamps.ts"),
+  "utf8",
+);
+const activeLegendSource = readFileSync(
+  join(frontendRoot, "lib/mapActiveLegend.ts"),
   "utf8",
 );
 const legendSource = readFileSync(
@@ -39,20 +47,43 @@ assert.ok(
   rampSource.includes(ZOOM_HINT),
   "mapColourRamps.ts must include zoom hint",
 );
+// SW-045: density wording is wired through mapActiveLegend → ScotlandMap.
 assert.ok(
-  mapSource.includes("POP_DENSITY_LEGEND_BLURB"),
-  "ScotlandMap must wire density blurb",
+  activeLegendSource.includes("POP_DENSITY_LEGEND_BLURB"),
+  "mapActiveLegend must wire density blurb",
 );
 assert.ok(
-  mapSource.includes("POP_DENSITY_LEGEND_SOURCE"),
-  "ScotlandMap must wire density source",
+  activeLegendSource.includes("POP_DENSITY_LEGEND_SOURCE"),
+  "mapActiveLegend must wire density source",
 );
 assert.ok(
-  mapSource.includes("POP_DENSITY_ZOOM_HINT"),
-  "ScotlandMap must wire density zoom hint",
+  activeLegendSource.includes("POP_DENSITY_ZOOM_HINT"),
+  "mapActiveLegend must wire density zoom hint",
 );
 assert.ok(
-  mapSource.includes("densityLegendMode"),
+  activeLegendSource.includes(LAND_TITLE),
+  "mapActiveLegend must include exact Land worth title",
+);
+assert.ok(
+  activeLegendSource.includes(LAND_PALER),
+  "mapActiveLegend must include exact Paler line",
+);
+assert.ok(
+  activeLegendSource.includes("cividis") ||
+    activeLegendSource.includes("LAND_WORTH_CIVIDIS"),
+  "mapActiveLegend must define cividis Land ramp",
+);
+assert.doesNotMatch(
+  activeLegendSource,
+  /£\d/,
+  "active legend source must not publish £ figures",
+);
+assert.ok(
+  mapSource.includes("buildActiveLegendView"),
+  "ScotlandMap must build the active-layer legend",
+);
+assert.ok(
+  mapSource.includes("activeLegend"),
   "ScotlandMap must gate legend mode by active layer / zoom",
 );
 
@@ -67,6 +98,10 @@ assert.ok(
 assert.ok(
   legendSource.includes("map-range-legend-swatch-nodata"),
   "MapRangeLegend must keep hatched No data swatch",
+);
+assert.ok(
+  legendSource.includes("map-range-legend-paler"),
+  "MapRangeLegend must expose Paler confidence line",
 );
 assert.doesNotMatch(rampSource, /£\d/, "density ramp source must not publish £ figures");
 assert.doesNotMatch(legendSource, /£\d/, "legend component must not publish £ figures");

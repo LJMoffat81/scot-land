@@ -2217,6 +2217,13 @@ export default function ScotlandMap() {
             .setLngLat([lng, lat])
             .setHTML(html)
             .addTo(map);
+          // MapLibre's default close control is a bare "×" with no accessible name.
+          const closeBtn = layerPopupRef.current
+            .getElement()
+            ?.querySelector("button.maplibregl-popup-close-button");
+          if (closeBtn instanceof HTMLElement) {
+            closeBtn.setAttribute("aria-label", "Close popup");
+          }
         }
       } catch {
         /* ignore popup failures */
@@ -3708,6 +3715,7 @@ export default function ScotlandMap() {
             type="button"
             className="hud-search-go"
             disabled={!query.trim()}
+            aria-label="Search"
             onClick={() => void runSearch()}
           >
             {loading ? "…" : "Search"}
@@ -3743,7 +3751,7 @@ export default function ScotlandMap() {
 
       <aside
         className={legendOpen ? "hud-scotland legend-open" : "hud-scotland"}
-        aria-label="Land rent"
+        aria-label="Map legend"
         ref={scotlandRef}
       >
         <div className="hud-scotland-stack">
@@ -3752,10 +3760,15 @@ export default function ScotlandMap() {
             className="hud-scotland-fold"
             aria-expanded={legendBodyExpanded}
             aria-controls="hud-scotland-body"
+            aria-label={legendOpen ? "Hide legend" : "Show legend"}
             onClick={() => setLegendOpen((open) => !open)}
           >
-            <span className="hud-scotland-fold-show">Show legend</span>
-            <span className="hud-scotland-fold-hide">Hide legend</span>
+            <span className="hud-scotland-fold-show" aria-hidden="true">
+              Show legend
+            </span>
+            <span className="hud-scotland-fold-hide" aria-hidden="true">
+              Hide legend
+            </span>
           </button>
           <div className="hud-scotland-body" id="hud-scotland-body">
             <p className="hud-scotland-job">Find a place</p>

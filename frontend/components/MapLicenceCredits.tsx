@@ -22,9 +22,12 @@ export default function MapLicenceCredits({
   if (credits.length === 0) return null;
   const showNc = anyNonCommercial(credits);
 
+  // Group (not complementary): the legend panel is already an aside landmark.
+  // Keeps "Map data licences" as a unique accessible name without a second landmark.
   return (
-    <aside
+    <div
       className={["map-licence-credits", className].filter(Boolean).join(" ")}
+      role="group"
       aria-label="Map data licences"
       data-testid="map-licence-credits"
     >
@@ -67,6 +70,6 @@ export default function MapLicenceCredits({
           </li>
         ))}
       </ul>
-    </aside>
+    </div>
   );
 }

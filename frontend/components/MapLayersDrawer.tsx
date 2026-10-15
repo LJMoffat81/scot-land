@@ -37,12 +37,13 @@ export default function MapLayersDrawer({
     onEnabledChange?.({ ...enabled, [id]: on });
   };
 
+  // Outer ScotlandMap shell already exposes complementary "Map layers".
+  // Keep this a plain panel (not a second landmark) so names stay unique.
   return (
-    <aside
+    <div
       className={["map-layers-drawer", "layers-panel", className]
         .filter(Boolean)
         .join(" ")}
-      aria-label={title}
       data-testid="layers-panel"
       data-drawer="map-layers"
     >
@@ -82,7 +83,7 @@ export default function MapLayersDrawer({
         Full breakdown table and definitions:{" "}
         <a href="/methodology#calculation">How we value land</a>
       </p>
-    </aside>
+    </div>
   );
 }
 

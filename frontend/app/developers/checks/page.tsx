@@ -5,6 +5,10 @@ import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
 import { apiJson } from "@/lib/api";
 import {
+  CHECK_MEANINGS,
+  type CheckMeaningId,
+} from "@/lib/checkMeanings";
+import {
   LEDGER_CHECK_ORDER,
   type LedgerCatalog,
   type LedgerCheck,
@@ -106,7 +110,10 @@ export default function DevelopersChecksPage() {
             {ordered.map((check) => (
               <tr key={check.id} data-check-id={check.id}>
                 <td>
-                  <code className="check-id">{check.id}</code>
+                  <code className="check-id">{check.id}</code>{" "}
+                  <span className="check-meaning">
+                    {CHECK_MEANINGS[check.id as CheckMeaningId]}
+                  </span>
                 </td>
                 <td>{check.meaning}</td>
                 <td>

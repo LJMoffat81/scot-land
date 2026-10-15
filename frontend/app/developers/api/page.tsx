@@ -119,8 +119,24 @@ export default function ApiReferencePage() {
           Boolean,
         );
 
+        // SW-033 / idea 60 — rewrite OpenAPI info so the swagger badge is
+        // "Scot-LAND API", never the legacy "wealth-api-boot" version stamp.
+        // Do not edit backend/api/main.py; patch the schema at the UI boundary.
+        const openapiRes = await fetch(OPENAPI_URL, { cache: "no-store" });
+        if (!openapiRes.ok) {
+          throw new Error(`OpenAPI schema failed (${openapiRes.status})`);
+        }
+        const openapi = (await openapiRes.json()) as {
+          info?: { title?: string; version?: string; [k: string]: unknown };
+          [k: string]: unknown;
+        };
+        const info = { ...(openapi.info ?? {}) };
+        info.title = "Scot-LAND API";
+        info.version = "Scot-LAND API";
+        const spec = { ...openapi, info };
+
         bundle({
-          url: OPENAPI_URL,
+          spec,
           dom_id: "#swagger-ui",
           deepLinking: true,
           presets,

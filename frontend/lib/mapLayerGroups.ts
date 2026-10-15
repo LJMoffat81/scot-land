@@ -132,6 +132,8 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
     label: "Aquaculture",
     description: "Aquaculture seabed leases (licence rent).",
     tag: "proxy",
+    // LAYER-CATALOG-STATUS / Coming-soon-up-front — not ingested yet.
+    comingSoon: true,
     licence: "OGL-3.0",
     licenceUrl: OGL_V3,
   },
@@ -207,6 +209,8 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
     group: "limits",
     label: "Land capability for agriculture",
     description: "Constraint: changes best use, adds no value.",
+    // LAYER-CATALOG-STATUS / Coming-soon-up-front — not ingested yet.
+    comingSoon: true,
     licence: "James Hutton Institute Open Data Licence",
     licenceUrl:
       "https://www.hutton.ac.uk/sites/default/files/files/soils/downloads/Hutton_LCA250K_OpenData.zip",

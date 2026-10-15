@@ -39,7 +39,7 @@ function checkCatalogUiDrift(panelLiveIds, toggleIds) {
  */
 const FIXTURE_PANEL_LIVE_IDS = [
   "agr_value",
-  "boundaries",
+  // boundaries / parcels: catalog gap while PARCELS_PUBLIC default off
   "cell_grid",
   "data_zones",
   "builtup_mask",

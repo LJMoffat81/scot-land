@@ -1,4 +1,4 @@
-"""PARCELS_PUBLIC default-off: parcel tile + bbox routes 404."""
+"""PARCELS_PUBLIC default-off: parcel tile + bbox routes 404; catalog gap."""
 
 from __future__ import annotations
 
@@ -22,6 +22,21 @@ BBOX = {
 def _parcels_public_off(monkeypatch):
     """Ensure the flag is unset for every test in this module (default off)."""
     monkeypatch.delenv("PARCELS_PUBLIC", raising=False)
+
+
+def test_catalog_boundaries_gap_when_flag_off():
+    from layers.platform import platform_catalog
+
+    row = next(r for r in platform_catalog()["layers"] if r["id"] == "boundaries")
+    assert row["status"] == "gap"
+
+
+def test_catalog_boundaries_live_when_flag_on(monkeypatch):
+    from layers.platform import platform_catalog
+
+    monkeypatch.setenv("PARCELS_PUBLIC", "true")
+    row = next(r for r in platform_catalog()["layers"] if r["id"] == "boundaries")
+    assert row["status"] == "live"
 
 
 def test_parcels_bbox_404_when_flag_off(client):

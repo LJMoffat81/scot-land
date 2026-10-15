@@ -20,6 +20,7 @@
     "test:quality-tags": "node scripts/test-quality-tags.mjs",
     "test:layer-licence-credits": "node scripts/test-layer-licence-credits.mjs",
     "test:place-card-hotfix": "node --experimental-strip-types scripts/test-place-card-hotfix.mjs",
+    "test:map-reference-osgb": "node --experimental-strip-types scripts/test-map-reference-osgb.mjs",
     "test:gbp-live-v1": "node --experimental-strip-types scripts/test-gbp-live-v1.mjs",
     "test:site-rewrite-pr1": "node --experimental-strip-types scripts/test-site-rewrite-pr1.mjs",
     "test:site-rewrite-pr2": "node --experimental-strip-types scripts/test-site-rewrite-pr2.mjs",

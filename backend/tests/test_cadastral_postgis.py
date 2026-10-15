@@ -144,6 +144,7 @@ def test_catalog_boundaries_lists_ogl30_and_endpoint(client):
     assert r.status_code == 200, r.text
     layers = {layer["id"]: layer for layer in r.json()["layers"]}
     boundaries = layers["boundaries"]
+    # PARCELS_PUBLIC=true in this module's fixture → catalog live.
     assert boundaries["status"] == "live"
     assert boundaries["endpoint"] == "/layers/parcels"
     assert boundaries["licence"] == (

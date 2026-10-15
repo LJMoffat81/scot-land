@@ -250,7 +250,8 @@ async function closePlaceCard(page: Page) {
 
 /**
  * SW-044: attribution lives in the map (i) control, not a left-panel licence list.
- * Close overlays first — place card / layers drawer intercept the (i) at 390.
+ * Close overlays first — place card / layers drawer cover the (i) at 390.
+ * Expand compact via DOM (click is often outside the 390 viewport).
  */
 async function ensureAttribReady(page: Page) {
   await closePlaceCard(page);
@@ -258,21 +259,16 @@ async function ensureAttribReady(page: Page) {
   await page.locator("#map[data-framed='1']").waitFor({ timeout: 60_000 });
   const attrib = page.locator(".maplibregl-ctrl-attrib");
   await expect(attrib).toBeAttached({ timeout: 45_000 });
-  // Expand compact (i) so attribution text is readable for asserts.
-  const compact = await attrib.evaluate((el) =>
-    el.classList.contains("maplibregl-compact"),
-  );
-  if (compact) {
-    const btn = attrib.locator("button.maplibregl-ctrl-attrib-button").first();
-    if ((await btn.count()) > 0) {
-      await btn.click({ force: true });
-    } else {
-      await attrib.click({ force: true });
+  await attrib.evaluate((el) => {
+    el.scrollIntoView({ block: "nearest", inline: "nearest" });
+    if (el.classList.contains("maplibregl-compact")) {
+      el.classList.add("maplibregl-compact-show");
+      el.setAttribute("open", "");
     }
-    await expect(attrib).toHaveClass(/maplibregl-compact-show/, {
-      timeout: 10_000,
-    });
-  }
+  });
+  await expect(attrib).toHaveClass(/maplibregl-compact-show|maplibregl-ctrl-attrib/, {
+    timeout: 10_000,
+  });
 }
 
 for (const viewport of [

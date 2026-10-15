@@ -213,10 +213,12 @@ test.describe("UX-04 a11y names and landmarks at 1280", () => {
     expect(
       results.violations,
       results.violations
-        .map(
-          (v: { id: string; nodes: Array<{ target: string[] }> }) =>
-            `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join("; ")}`,
-        )
+        .map((v) => {
+          const targets = v.nodes
+            .map((n) => (Array.isArray(n.target) ? n.target.join(" ") : String(n.target)))
+            .join("; ");
+          return `${v.id}: ${targets}`;
+        })
         .join("\n") || "axe violations",
     ).toEqual([]);
 

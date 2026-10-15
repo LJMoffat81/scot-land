@@ -3,10 +3,11 @@ import pytest
 from georgist import surface_rent as sr
 
 
-def test_remaining_factor_floor_and_new(cfg):
+def test_remaining_factor_compounding_v13(cfg):
     dep = cfg["depreciation"]
-    assert sr.remaining_factor("before 1919", 2025, dep) == pytest.approx(dep["remaining_min"]["central"])
-    assert sr.remaining_factor("2008 onwards", 2025, dep) == pytest.approx(1 - 9 / 100)
+    r = 0.00137 / 0.497
+    assert sr.remaining_factor("before 1919", 2025, dep) == pytest.approx((1 - r) ** 68)
+    assert sr.remaining_factor("2008 onwards", 2025, dep) == pytest.approx((1 - r) ** 9)
     with pytest.raises(KeyError):
         sr.remaining_factor("not a band", 2025, dep)
 
@@ -18,8 +19,10 @@ def test_depreciated_rebuild_mix_weighted(cfg, rates):
     ]
     out = sr.depreciated_rebuild(mix, rates_gbp_per_m2=rates, depreciation=cfg["depreciation"], valuation_year=2025, region=1.0)
     new_d, new_f = 100 * 2000, 60 * 1900
+    r = 0.00137 / 0.497
+    rem_new, rem_old = (1 - r) ** 9, (1 - r) ** 68
     assert out.rebuild_new_gbp == pytest.approx(0.5 * new_d + 0.5 * new_f)
-    assert out.drc_gbp == pytest.approx(0.5 * new_d * 0.91 + 0.5 * new_f * 0.30)
+    assert out.drc_gbp == pytest.approx(0.5 * new_d * rem_new + 0.5 * new_f * rem_old)
     with pytest.raises(ValueError):
         sr.depreciated_rebuild(mix[:1], rates_gbp_per_m2=rates, depreciation=cfg["depreciation"], valuation_year=2025, region=1.0)
 

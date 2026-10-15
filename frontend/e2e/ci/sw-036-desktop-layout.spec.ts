@@ -126,10 +126,15 @@ async function stubBackend(page: Page) {
 
 async function boxOf(locator: Locator, label: string): Promise<Box> {
   await expect(locator, label).toBeVisible();
-  const box = await locator.boundingBox();
-  expect(box, `${label} bounding box`).toBeTruthy();
-  expect(box!.width, `${label} width`).toBeGreaterThan(0);
-  expect(box!.height, `${label} height`).toBeGreaterThan(0);
+  // MapLibre markers can report visible before layout has a box (null bbox).
+  // Retry until a positive box exists — same width/height asserts, no loosen.
+  let box: Box | null = null;
+  await expect(async () => {
+    box = await locator.boundingBox();
+    expect(box, `${label} bounding box`).toBeTruthy();
+    expect(box!.width, `${label} width`).toBeGreaterThan(0);
+    expect(box!.height, `${label} height`).toBeGreaterThan(0);
+  }).toPass({ timeout: 15_000 });
   return box!;
 }
 

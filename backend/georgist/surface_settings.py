@@ -1,8 +1,11 @@
 """Engine view of Valuation's surface settings, READ from data/config/surface.yaml (never copied).
 
-Keys (Valuation / Georgist yield calibration v3):
-  surface_rent.depreciation.life_years.{low,central,high}
-  surface_rent.depreciation.remaining_min.{low,central,high}
+Keys (Valuation / Georgist yield calibration v3 / v1.3 methods):
+  surface_rent.depreciation.method
+  surface_rent.depreciation.rate_building.{low,central,high}
+  surface_rent.depreciation.age_cap_years
+  surface_rent.depreciation.building_share_sb
+  surface_rent.depreciation.life_years.{low,central,high}   # yield path only
   surface_rent.depreciation.band_combination.rule
   surface_rent.yield.central (+ band / v3 flags / result_hash)
 """
@@ -23,11 +26,28 @@ class SettingsError(ValueError):
 def depreciation_settings(config: dict | None = None) -> dict[str, Any]:
     dep = (config if config is not None else sr.load_config()).get("depreciation") or {}
     out: dict[str, Any] = {}
+    method = dep.get("method") or "compounding_v13"
+    out["method"] = method
+    if "rate_building" in dep:
+        band = dep["rate_building"]
+        if not isinstance(band, dict) or any(b not in band or band[b] is None for b in BAND):
+            raise SettingsError(f"surface_rent.depreciation.rate_building must have {BAND} in surface.yaml")
+        out["rate_building"] = {b: band[b] for b in BAND}
+    if "age_cap_years" in dep:
+        out["age_cap_years"] = int(dep["age_cap_years"])
+    if "building_share_sb" in dep:
+        out["building_share_sb"] = float(dep["building_share_sb"])
+    if "property_rate_central" in dep:
+        out["property_rate_central"] = float(dep["property_rate_central"])
+    # life_years kept for yield.building_depreciation = from_life_years
     for key in ("life_years", "remaining_min"):
         band = dep.get(key)
-        if not isinstance(band, dict) or any(b not in band or band[b] is None for b in BAND):
-            raise SettingsError(f"surface_rent.depreciation.{key} must have {BAND} in surface.yaml")
-        out[key] = {b: band[b] for b in BAND}
+        if isinstance(band, dict) and all(b in band and band[b] is not None for b in BAND):
+            out[key] = {b: band[b] for b in BAND}
+    if "rate_building" not in out and "life_years" not in out:
+        raise SettingsError(
+            "surface_rent.depreciation must have rate_building (v1.3) or life_years in surface.yaml"
+        )
     rule = (dep.get("band_combination") or {}).get("rule")
     if not rule:
         raise SettingsError("surface_rent.depreciation.band_combination.rule missing in surface.yaml")

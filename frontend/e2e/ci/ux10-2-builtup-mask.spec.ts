@@ -264,6 +264,7 @@ async function ensureLegendOpen(page: Page) {
     .waitFor({ state: "visible", timeout: 5_000 })
     .catch(() => {});
   const credits = page.getByTestId("map-licence-credits");
+  if (await credits.isVisible().catch(() => false)) return;
   const show = page.locator("button.hud-scotland-fold");
   const panel = page.getByTestId("map-legend-panel");
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -348,7 +349,11 @@ for (const viewport of [
       await ensureLegendOpen(page);
       const credits = page.getByTestId("map-licence-credits");
       await expect(credits).toBeVisible({ timeout: 45_000 });
-      await expect(page.getByTestId("map-credit-builtup_mask")).toBeVisible({
+      const maskCredit = page.getByTestId("map-credit-builtup_mask");
+      await maskCredit.evaluate((el) => {
+        el.scrollIntoView({ block: "nearest", inline: "nearest" });
+      });
+      await expect(maskCredit).toBeVisible({
         timeout: 30_000,
       });
       await expect(credits).toContainText("NRS Settlements 2022");

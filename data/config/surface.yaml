@@ -39,6 +39,7 @@ surface_rent:
     base: "annual mean of the 12 monthly index values in the raw RoS price year (RoS figures are calendar-year)"
     target_month: "2025-04"       # = rebuild price base (Apr-2025)
     price_year: 2025              # output `price_year` = year values are expressed in (= rebuild price base). RoS sales year -> `evidence_year`
+    price_year_label: "2025-04 indexed"   # F9: pooled values indexed to Apr-2025; label was wrongly "2023"
     type_weighting: "value-weighted (Laspeyres): sum s_t * P_t * f_t / sum s_t * P_t; s_t = zone type mix (NRS 2017 DZ2011 type counts until the EPC sold mix lands), P_t = council UKHPI average price by type in the base year"
     proxy_tag: indexed_council_hpi   # within-council zone trends can differ
     extreme_log_abs: 0.15         # ASSUMPTION: |ln factor| above this -> tag index_factor_extreme (e.g. Shetland 2023->Apr25 = 1.25)
@@ -60,9 +61,16 @@ surface_rent:
     #                 low = min row, central = mean of rows, high = max row
     #   x location  = Scotland factor: low 0.86 [S1 Aberdeenshire factor], central 0.93 (midpoint), high 1.00
     #                 [S2,S3 Lothian councils publish at ~UK level: Apr-2026 2-storey estate 1,424 / 1,506 vs UK Apr-2025 1,461]
-    #   x on-costs  = fees, externals, demolition/clearance: low 1.05, central 1.15, high 1.25 (ASSUMPTION;
-    #                 [S5] works costs >=83% of gross new-build cost => non-works ~<=20% of works, incl. acquisition)
-    #   rounded to £1. low = low x low x low; high = high x high x high (deliberately wide).
+    #   x on-costs  = v1.3 F2c ADDITIVE ×1.425 REPLACING the former 1.15 embedded in rates (NOT stacked):
+    #                 1 + fees 0.125 + externals 0.25 + contingency 0.05 = 1.425 (demolition OUT of central).
+    #                 BCIS SFCA 4th ed. §3.2.8 (quoted from isurv extracts): prelims + contractor OH&P IN;
+    #                 contingency, fees, demolition, VAT OUT; externals separate. Caveat: §3.2.8 was quoted
+    #                 from isurv extracts, not the SFCA PDF itself. Applied as DRC_v13 = DRC(rates incl.
+    #                 legacy 1.15) × 1.425/1.15, equivalently by de-embedding 1.15 and republishing gbp_per_m2.
+    #                 Central on-cost is pure additive 1.425. Low/high keep the former 1.05/1.25
+    #                 band shape scaled by 1.425/1.15 so uncertainty width is unchanged (not a stack).
+    #                 Sensitivities (default off): externals 15%, contingency 2.5%/15%, demolition +15%.
+    #   rounded to £1. low = low x low x oncost; high = high x high x oncost.
     #   BCIS rows used (UK median, Apr 2025, via [S1]):
     #     detached: estate generally 1-st 1718, 2-st 1461, 3-st 1562; one-off detached 1-st 2383, 2-st 2498
     #     semi_detached: estate semi 1-st 1718, 2-st 1482, 3-st 1504; one-off semi 1918
@@ -76,22 +84,22 @@ surface_rent:
     #   (range 776-3,771; 38 projects); SSHTPI 1Q2023 402 -> 1Q2025 389 (~-3%) => ~£2,080/m2 at 2025, inside
     #   every type's band (affordable spec is above average stock). Current agr.yaml 1950/1850 also inside.
     gbp_per_m2:
-      detached:           {low: 1319, central: 2058, high: 3122}
-      semi_detached:      {low: 1338, central: 1771, high: 2398}
-      terraced:           {low: 1314, central: 1672, high: 2131}
-      flat_purpose_built: {low: 1504, central: 1936, high: 2545}
-      flat_conversion:    {low: 1504, central: 1936, high: 2962}
-      other:              {low: 1314, central: 1880, high: 3122}
+      detached:           {low: 1635, central: 2550, high: 3869}
+      semi_detached:      {low: 1658, central: 2194, high: 2971}
+      terraced:           {low: 1628, central: 2071, high: 2641}
+      flat_purpose_built: {low: 1864, central: 2399, high: 3154}
+      flat_conversion:    {low: 1864, central: 2399, high: 3671}
+      other:              {low: 1628, central: 2329, high: 3869}
       # rules 6.2 v0.7 procurement route: post-1980 detached on estates. Rows = [S1] p.1 Table 1 "Estate housing
       # 4 units or more" (UK median BCIS, Apr 2025): single storey 1718, 2 storey 1461, 3 storey 1562 (1.5 storey
       # excluded: derived +30%). NO free source publishes a separate "estate housing - detached" row; this is the
       # generic estate row (built form not split): rate_basis generic_estate (rules 6.2 v0.7, Georgist-approved
       # 2026-10-06, rules sha256 933c3767...). Same low-high band (same factors) as the other rates.
-      detached_estate:    {low: 1319, central: 1690, high: 2148}
+      detached_estate:    {low: 1635, central: 2094, high: 2661}
       # one-off route: rate for the NON-estate detached share in the split modes. Rows = [S1] p.1 Table 1 "One off
       # detached houses 3 Units or less" (UK median BCIS, Apr 2025): single storey 2383, 2 storey 2498 (1.5 storey
       # excluded: derived +30%). rate_basis one_off_detached. Same low-high band (same factors) as the other rates.
-      detached_one_off:   {low: 2152, central: 2610, high: 3122}
+      detached_one_off:   {low: 2666, central: 3234, high: 3869}
     rate_basis:                   # rules 6.2 v0.7 field: how each rate was sourced (surface_rent.RATE_BASES)
       detached: bcis_median_type             # BCIS UK median rows for the type (estate + one-off detached)
       semi_detached: bcis_median_type
@@ -112,7 +120,19 @@ surface_rent:
       other: [1718, 1461, 1562, 2383, 2498, 1718, 1482, 1504, 1918, 1705, 1455, 1529, 1666, 1729, 2036]
     factors:
       location_scotland: {low: 0.86, central: 0.93, high: 1.00}
-      on_costs:          {low: 1.05, central: 1.15, high: 1.25}
+      # v1.3 F2c: additive on-cost REPLACES legacy 1.15 (never stack 1.15×1.425).
+      # Central = 1.425. Low/high = former 1.05/1.25 × (1.425/1.15) to keep band width.
+      on_costs:          {low: 1.3010869565217393, central: 1.425, high: 1.5489130434782612}
+      on_costs_v13:
+        fees: 0.125                 # F1 SG 2021 Annex 6(ii)
+        externals: 0.25             # F2 central SG 2021; sensitivity 0.15 (Costmodelling)
+        contingency: 0.05           # F5 central; sensitivity 0.025 / 0.15
+        demolition: 0.0             # F2b: sensitivity only (+0.15); OUT of central
+        legacy_embedded: 1.15       # former factor baked into pre-v1.3 gbp_per_m2; divided out
+        # BCIS SFCA 4th ed. §3.2.8 (isurv extracts): prelims+OH&P in; contingency, fees, demolition, VAT out; externals separate.
+    floor_area_factors:             # F4: EPC TFA -> GIA for flats
+      flat_gia: 1.10                # central; sensitivity 1.0. Houses stay 1.0.
+      house: 1.0
     sources:
       - id: S1
         title: "Aberdeenshire Council Building Standards - Aberdeenshire Cost Index 2025 (quotes BCIS online guide UK median £/m2; Aberdeenshire factor 0.86)"
@@ -139,7 +159,19 @@ surface_rent:
         url: "https://www.bcis.co.uk/news/rebuild-cost-models-update-shows-uplift-in-reinstatement-costs/"
         date: "2025-07"
     region_factors:
-      default: 1.0                # Scotland factor is inside the band; sub-Scotland factors not yet sourced (SSHTPI location indices are a candidate)
+      default: 1.0                # Scotland factor is inside the band; sub-Scotland BCIS factors not sourced
+    rural_uplift:                 # F6: SPICe SB 25-15 Table 4 (AHSP grant benchmarks; WEAK–MODERATE). UR6 class -> factor.
+      default: 1.0
+      5: 1.064                    # +6.4% other rural (class 5)
+      6: 1.224                    # +22.4% West Highland/islands/remote Argyll (class 6)
+    sensitivities:                # all default OFF; information only, never gate
+      demolition_pct: 0.0         # +0.15 when on (F2b)
+      externals_pct: null         # null = central 0.25; set 0.15 for sensitivity
+      contingency_pct: null       # null = central 0.05; set 0.025 or 0.15
+      building_share_sb: null     # null = 0.497; set 0.40 or 0.60
+      flat_gia: null              # null = 1.10; set 1.0 for flats×1.0
+      uncapped_interwar: false    # true = no age-68 cap on 1919-1929 / 1930-1949
+      check4_plus4_factor: null   # null = 1.15 in UR6 5/6 only; 1.00 unadjusted; 1.15 all classes
 
   estate:                         # rules 6.2 v0.7 procurement route + Georgist guard 2026-10-06 (weighted blend, no hard cut-off)
     status: APPROVED_GENERIC_ESTATE      # Georgist approved 2026-10-06; rate_basis generic_estate (rebuild.rate_basis)
@@ -217,19 +249,29 @@ surface_rent:
     assignment: population_weighted_centroid
 
   depreciation:
-    # Rules 6.2 (v0.6, signed off 6 Oct 2026): straight line on age at the valuation date, floored.
-    # Central with a low-high band; the band feeds the land value band TOGETHER with the rebuild band.
-    # Engine settings keys to mirror: surface_rent.depreciation.life_years.{low,central,high},
-    #   surface_rent.depreciation.remaining_min.{low,central,high}, surface_rent.depreciation.band_combination.rule
-    life_years: {low: 80, central: 100, high: 120}        # building life, years
-    remaining_min: {low: 0.20, central: 0.30, high: 0.40}  # remaining building value never below this share
+    # v1.3 F7: compounding remaining value. Replaces straight-line life/floor in the DRC central path.
+    # remaining = (1 - r_b)^age_c; age_c = min(valuation_year - midpoint, age_cap_years).
+    # Central r_b = property_rate_central / building_share_sb (= 0.00137/0.497).
+    # Band ends: low = unmaintained 1.118%/yr building; high = maintained 0%/yr (Francke & van de Minne).
+    # No remaining-value floor. life_years kept ONLY for yield.building_depreciation = from_life_years.
+    method: compounding_v13
+    age_cap_years: 68             # binds for before-1919, 1919-1929, 1930-1949 (1950-1964 midpoint 1957)
+    building_share_sb: 0.497      # Clapp & Salavei 2010; single-study gap (Francke share not retrieved)
+    property_rate_central: 0.00137  # Goodman & Thibodeau 1995: 0.137%/yr of PROPERTY value
+    # rate_building by DRC corner (NOT ordered low<=central<=high: higher rate => lower remaining):
+    #   low corner  = unmaintained = 1 - 0.57^(1/50) = 0.011179 (43% structure lost / 50 yr)
+    #   central     = 0.00137 / 0.497
+    #   high corner = maintained 0%/yr
+    rate_building: {low: 0.011179, central: 0.002756539235412475, high: 0.0}
+    life_years: {low: 80, central: 100, high: 120}        # yield path only (not DRC remaining)
+    remaining_min: {low: 0.0, central: 0.0, high: 0.0}    # v1.3: floor DROPPED (no cited source); kept as zeros for settings shape
     band_combination:
-      rule: corner                # joint extremes, NOT independent quadrature (see spec 12.4)
-      # DRC rises with rebuild GBP/m2, with life (slower write-down) and with the floor, so:
-      drc_high_land_low: {rebuild: high, life_years: high, remaining_min: high}   # -> land_value_low / drc_high_gbp
-      drc_low_land_high: {rebuild: low, life_years: low, remaining_min: low}      # -> land_value_high / drc_low_gbp
-      # central = central x central x central. The code rejects any other pairing (surface_rent.band_corners).
-    obsolescence_review:          # rules 6.2: large old homes with strong negatives -> review floor (not forced positive)
+      rule: corner                # joint extremes, NOT independent quadrature
+      # DRC rises with rebuild GBP/m2 and with remaining (falls with rate_building), so:
+      drc_high_land_low: {rebuild: high, rate_building: high}   # maintained -> land_value_low
+      drc_low_land_high: {rebuild: low, rate_building: low}     # unmaintained -> land_value_high
+      # central = central rebuild x central rate. The code rejects any other pairing.
+    obsolescence_review:          # rules 6.2: large old homes with strong negatives -> review (not forced positive)
       flag_pre1919_share_min: 0.40
       flag_mean_area_m2_min: 110
     # EPC construction age band -> representative build year (midpoint). ASSUMPTION.
@@ -433,13 +475,16 @@ surface_rent:
     rent_ceiling: mean_price_x_dwellings_x_gross_yield   # rules 4.2 v0.3 formula
     tolerance: 0.0
 
-  land_share_checks:              # rules 12
-    national_range: [0.49, 0.73]  # see validation note in surface_holdout.py; Georgist to confirm
-    national_tolerance: 0.10      # ASSUMPTION
+  land_share_checks:              # rules 12 / v1.3 check 1 (PL 15:35): gating band 10%–40%
+    national_range: [0.10, 0.40]  # v1.3 check 1 gating; 49% cap WITHDRAWN (PL 15:35)
+    national_tolerance: 0.0       # hard band; no extra tolerance on the gating check
+    zero_mass_max_share: 0.10     # check 1d: FAIL if >10% of priced zones clamped at 0% or 100%
+    check_1c_range: information_only   # [0%, 100%] cannot fail (shares clamped); 1d gates instead
     national_range_sources:
-      - "0.49 Wightman residential site share (repo data/config/agr.yaml site_share.residential_wightman; reference only)"
+      - "v1.3 check 1: 10%–40% (PL 15:35; v0.8 R-G). Former 0.49 Wightman / 0.60 SLRG / ~0.73 ONS UK refs are historical only."
+      - "0.49 Wightman residential site share (repo data/config/agr.yaml site_share.residential_wightman; reference only, NOT the gate)"
       - "0.60 SLRG residential site share (repo agr.yaml site_share.residential_slrg; reference only)"
-      - "~0.73 UK 2020: ONS land underlying dwellings 5.4tn (https://www.ons.gov.uk/economy/nationalaccounts/uksectoraccounts/articles/improvingestimatesoflandunderlyingdwellingsinthenationalbalancesheetuk/2022) / (5.4tn + dwellings AN.111 1.978tn, ONS NBS release 2026-06-10 https://www.ons.gov.uk/economy/nationalaccounts/uksectoraccounts/datasets/nationalbalancesheet/current). UK, London/SE weighted, mixed vintages: treated as an UPPER reference for Scotland."
+      - "~0.73 UK 2020: ONS land underlying dwellings 5.4tn / (5.4tn + dwellings AN.111 1.978tn). UK upper reference only."
     # rules 12.2 (v0.6): land share is used ONLY in the national plausibility check above.
     ur6_expected_order: [[1, 2], [2, 3], [3, 4], [3, 5], [4, 6], [5, 6]]   # (a, b): median GBP per RESIDENTIAL ha in a >= b
     gradient_tolerance: 0.0
@@ -567,3 +612,46 @@ surface_rent:
     run_guard:                                              # the scored run happens ONCE per dz_access checksum
       log: "{valuation_out_dir}/run_log/gradient_v07_runs.jsonl"   # internal, never committed
       refuse_repeat_without_override: true
+
+  # ------------------------------------------------------------------------------------------------------------
+  # v1.3 methods (prereg sha256 ce9404455134c3dd96828bdc200832629a2c4e8932ad4bea2438e7a938907ead)
+  # ------------------------------------------------------------------------------------------------------------
+  v13:
+    prereg_sha256: "ce9404455134c3dd96828bdc200832629a2c4e8932ad4bea2438e7a938907ead"
+    holdout:
+      gating: temporal_2023
+      hold_year: 2023
+      n_min: 5                                              # score zones with ≥5 sales in hold_year
+      label: "temporal holdout, seen in v1.2, not out-of-sample"
+      # Fit: pool/fit WITHOUT hold_year (surface_holdout.observations_excluding_hold_year /
+      # surface_v13.fit_observations_without_hold_year). Score: H4 test set
+      # (surface_holdout.temporal_year_holdout / surface_v13.gating_temporal_split).
+      zone_holdout_label: "fresh draw, data seen in v1.2"   # information only; NOT gating
+      zone_holdout_n: 680
+      zone_holdout_seed: 1015202613
+      zone_list_sha256: "19ac927ba3e9f6c3c9795f9f577273ba7b55b64ba61ad702ffc5a089a4c84c0a"
+      zone_list_path: "data/reference/v13/v13_holdout_zones.txt"   # optional commit; verify sha when present
+      manifest_sha256: "5c627f12286695bfd4c0e2d3583196029d796a3fb6bd14e01cf6f08f2c464efd"
+      ros_2024_confirmation: once_when_published              # no date promised
+    check3:
+      plot_split_path: "data/reference/v13/dz2022_plot_split_v13.csv"
+      plot_split_sha256: "09e2082d801b15203794974aea802cc7e5c5c403761365b69bd4b695d7a0638c"
+      decide_radius_m: 30                   # pass/fail ONLY at 30 m
+      report_radii_m: [20, 40]              # information; FRAGILE if result flips 20↔40
+      min_pass_share: 0.80
+      other_land_lca_path_env: "V13_OTHER_LAND_LCA_PATH"   # gitignored local path; absent in CI → skip
+      other_land_lca_sha256: "852958b5e83a74bdd408134afd4d689d4ea893fe7cd5842ae6612eb22bd20d16"
+      other_land_never_publish: true
+      other_land_never_commit: true
+    check4:
+      bedroom_bands_path: "data/reference/v13/dz2022_bedroom_bands.csv"
+      bedroom_bands_sha256: "6d15b887bf7bea4b96488e5374a7ea75f9e2beaa3f2544f275072de674cfa603"
+      bands: [1, 2, 3, "4+"]
+      rent_beds_map: {"1": "1 Bedroom", "2": "2 Bedroom", "3": "3 Bedroom", "4+": "4 Bedroom"}
+      exclude_shared_room: true
+      plus4_factor_classes_5_6: 1.15        # PL placeholder; FLAG: no published 5+ ratio
+      capitalisation_yield: 0.045           # v0.8 R-B central
+      rent_year: 2025
+      rent_measure: Median
+      national_max_abs_gap: 0.25
+      class_max_abs_gap: 0.40

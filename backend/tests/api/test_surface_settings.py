@@ -12,9 +12,13 @@ from georgist.surface_settings import SettingsError, depreciation_settings, yiel
 def test_read_from_surface_yaml():
     raw = yaml.safe_load(Path(sr.CONFIG_PATH).read_text())["surface_rent"]["depreciation"]
     s = depreciation_settings()
-    assert s["life_years"] == {b: raw["life_years"][b] for b in ("low", "central", "high")}
-    assert s["remaining_min"] == {b: raw["remaining_min"][b] for b in ("low", "central", "high")}
+    assert s["method"] == "compounding_v13"
+    assert s["rate_building"] == {b: raw["rate_building"][b] for b in ("low", "central", "high")}
+    assert s["age_cap_years"] == 68
+    assert s["building_share_sb"] == pytest.approx(0.497)
     assert s["band_combination"]["rule"] == raw["band_combination"]["rule"]
+    # life_years still present for the yield path
+    assert s["life_years"] == {b: raw["life_years"][b] for b in ("low", "central", "high")}
 
 
 def test_missing_keys_refused():

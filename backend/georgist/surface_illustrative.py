@@ -230,19 +230,39 @@ def zone_land_shares(zones: Iterable[Mapping], scenario: str) -> dict[int, list[
 
 def obsolescence_grid(
     inp: "sr.ZoneRebuildInputs", price: float, *, band, depreciation, valuation_year: int, rebuild: str = "high",
-    floors=("low", "central", "high"), lives=("low", "central", "high"),
+    rates=("low", "central", "high"),
+    # legacy aliases
+    floors=None, lives=None,
 ) -> dict:
-    """Rules 6.2 (v0.6) review for large old homes: residual per dwelling at one rebuild level across
-    remaining-value floor x building life. Returns {(life, floor): {floor, life, drc, residual}}."""
+    """v1.3 F7 review for large old homes: residual per dwelling at one rebuild level
+    across rate_building corners (unmaintained / central / maintained).
+
+    Returns {(rate, rate): {rate_building, remaining, drc, residual}}. Legacy
+    ``floors``/``lives`` kwargs are accepted as aliases for ``rates``.
+    """
+    levels = tuple(rates)
+    if lives is not None:
+        levels = tuple(lives)
+    if floors is not None and lives is None:
+        levels = tuple(floors)
     out = {}
-    for lv in lives:
-        for fl in floors:
-            dep = sr.depreciation_at(depreciation, life=lv, floor=fl)
-            scalar = {**dep, "band_combination": {"rule": "corner"}}
-            r = sr.zone_rebuild_band(inp, band={t: {s: b[rebuild] for s in sr.SCENARIOS} for t, b in band.items()},
-                                     depreciation=scalar, valuation_year=valuation_year, default_remaining_factor=None)
-            out[(lv, fl)] = {"life_years": dep["life_years"], "floor": dep["remaining_min"], "drc": r["central"].drc_gbp,
-                             "residual": price - r["central"].drc_gbp}
+    for rate in levels:
+        dep = sr.depreciation_at(depreciation, rate=rate)
+        scalar = {**dep, "band_combination": {"rule": "corner"}}
+        r = sr.zone_rebuild_band(
+            inp,
+            band={t: {s: b[rebuild] for s in sr.SCENARIOS} for t, b in band.items()},
+            depreciation=scalar,
+            valuation_year=valuation_year,
+            default_remaining_factor=None,
+        )
+        rem = r["central"].remaining_factor
+        out[(rate, rate)] = {
+            "rate_building": dep.get("rate_building"),
+            "remaining": rem,
+            "drc": r["central"].drc_gbp,
+            "residual": price - r["central"].drc_gbp,
+        }
     return out
 
 

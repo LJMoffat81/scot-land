@@ -81,6 +81,83 @@ def block_holdout(parent: Mapping[str, str], *, frac: float, seed: int, exclude:
     return Split("H3_iz_block", train, test, seed)
 
 
+def temporal_year_holdout(
+    zone_years: Mapping[str, Sequence[Mapping]],
+    *,
+    hold_year: int = 2023,
+    n_min: int = 5,
+    exclude: Iterable[str] = ZERO,
+    seed: int = 0,
+) -> Split:
+    """H4 / v1.3 gating: hold out one calendar year.
+
+    Fit population = zones with at least one usable observation in a year other
+    than ``hold_year`` (pooling from hold_year-1 back). Score population = zones
+    with ``sales_n >= n_min`` in ``hold_year`` (RoS suppression threshold).
+
+    Each zone maps to a sequence of year rows: ``{year, sales_n, ...}``.
+    Label (v1.3): ``temporal holdout, seen in v1.2, not out-of-sample``.
+    """
+    zone_years = _sr.sample_for("holdout", dict(zone_years), exclude)
+    hold = int(hold_year)
+    n_min = int(n_min)
+    test: list[str] = []
+    train: list[str] = []
+    for code in sorted(zone_years):
+        rows = list(zone_years[code] or ())
+        hold_n = None
+        has_pre = False
+        for r in rows:
+            y = int(r["year"])
+            n = r.get("sales_n")
+            if n is None:
+                continue
+            n = int(n)
+            if y == hold and n >= n_min:
+                hold_n = n
+            if y != hold and n > 0:
+                has_pre = True
+        if hold_n is not None:
+            test.append(code)
+        if has_pre:
+            train.append(code)
+    return Split("H4_temporal_year", train, test, seed)
+
+
+def observations_excluding_hold_year(
+    observations: Sequence["_sr.YearPrice"] | Sequence[Mapping],
+    *,
+    hold_year: int = 2023,
+) -> list:
+    """Drop the hold-year rows so v1.3 pooling/fit never sees that year."""
+    hold = int(hold_year)
+    out = []
+    for obs in observations:
+        if isinstance(obs, Mapping):
+            y = int(obs["year"])
+            if y == hold:
+                continue
+            out.append(obs)
+        else:
+            if int(obs.year) == hold:
+                continue
+            out.append(obs)
+    return out
+
+
+def scoring_zones_for_hold_year(
+    zone_years: Mapping[str, Sequence[Mapping]],
+    *,
+    hold_year: int = 2023,
+    n_min: int = 5,
+    exclude: Iterable[str] = ZERO,
+) -> list[str]:
+    """Zones with ≥ ``n_min`` sales in ``hold_year`` (v1.3 check population)."""
+    return temporal_year_holdout(
+        zone_years, hold_year=hold_year, n_min=n_min, exclude=exclude
+    ).test
+
+
 # --------------------------------------------------------------------------- metrics
 
 

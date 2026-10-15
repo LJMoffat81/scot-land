@@ -84,7 +84,8 @@ def test_zone_rebuild_band_uses_type_areas(cfg, band):
         sr.zone_rebuild_band(inp, band=band, depreciation=cfg["depreciation"], valuation_year=2025)
     aged = sr.ZoneRebuildInputs(inp.type_shares, {"2008 onwards": 1.0}, 90.0, "mean", "all_stock", "x", (), inp.area_by_group)
     r2 = sr.zone_rebuild_band(aged, band=band, depreciation=cfg["depreciation"], valuation_year=2025)
-    assert r2["central"].drc_gbp == pytest.approx(new_c * (1 - 9 / 100))
+    r_b = 0.00137 / 0.497
+    assert r2["central"].drc_gbp == pytest.approx(new_c * (1 - r_b) ** 9)
 
 
 def _gis_dir(tmp_path, rows, key="(code, vintage)", tamper=False):
@@ -150,11 +151,13 @@ def test_internal_table_manifest(tmp_path):
     assert m.loc[0, "sha256"] == hashlib.sha256((tmp_path / "diag_SYNTHETIC.csv").read_bytes()).hexdigest()
 
 
-def test_obsolescence_grid_moves_old_stock_with_floor(cfg, band):
+def test_obsolescence_grid_moves_old_stock_with_rate(cfg, band):
     old = sr.ZoneRebuildInputs({**dict.fromkeys(sr.DWELLING_TYPES, 0.0), "terraced": 1.0}, {"before 1919": 1.0}, 120.0, "mean",
                                "all_stock", "epc_all_time", (), None)
     g = si.obsolescence_grid(old, 200_000, band=band, depreciation=cfg["depreciation"], valuation_year=2025, rebuild="high")
     new_cost = 120.0 * band["terraced"]["high"]
-    assert g[("central", "low")]["residual"] == pytest.approx(200_000 - 0.20 * new_cost)
-    assert g[("central", "high")]["residual"] == pytest.approx(200_000 - 0.40 * new_cost)
-    assert g[("low", "central")]["residual"] == g[("high", "central")]["residual"]   # pre-1919 sits on the floor at any life
+    r_c = 0.00137 / 0.497
+    # Cap 68: unmaintained < central < maintained (remaining 1.0)
+    assert g[("high", "high")]["residual"] == pytest.approx(200_000 - 1.0 * new_cost)
+    assert g[("central", "central")]["residual"] == pytest.approx(200_000 - (1 - r_c) ** 68 * new_cost)
+    assert g[("low", "low")]["residual"] > g[("central", "central")]["residual"]  # lower DRC → higher residual

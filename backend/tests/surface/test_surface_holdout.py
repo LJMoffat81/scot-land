@@ -90,11 +90,15 @@ def test_gradient_monotone_and_reversed(cfg):
 
 def test_national_share_check(cfg):
     c = cfg["land_share_checks"]
-    zones = [{"land_value": 60_000, "mean_price": 120_000, "dwellings": 100}, {"land_value": 50_000, "mean_price": 100_000, "dwellings": 50}]
+    # v1.3 check 1 band is 10%–40% (PL 15:35); former 49–73% refs are historical only.
+    assert c["national_range"] == [0.10, 0.40]
+    zones = [{"land_value": 30_000, "mean_price": 120_000, "dwellings": 100}, {"land_value": 25_000, "mean_price": 100_000, "dwellings": 50}]
     out = sh.national_share_check(zones, plausible_range=c["national_range"], tolerance=c["national_tolerance"], sources=c["national_range_sources"])
-    assert out["share"] == pytest.approx(0.5) and out["pass"] and out["within_core_range"] and out["range_sources"]
+    assert out["share"] == pytest.approx(0.25) and out["pass"] and out["within_core_range"] and out["range_sources"]
     low = sh.national_share_check([{"land_value": 1, "mean_price": 100, "dwellings": 1}], plausible_range=c["national_range"], tolerance=c["national_tolerance"])
     assert not low["pass"]
+    high = sh.national_share_check([{"land_value": 60_000, "mean_price": 100_000, "dwellings": 1}], plausible_range=c["national_range"], tolerance=c["national_tolerance"])
+    assert not high["pass"]
 
 
 def test_rebuild_sensitivity_report():

@@ -4,6 +4,8 @@ import path from "path";
 import {
   assertConsoleClean,
   attachConsoleGate,
+  ensureLayersGroupOpen,
+  ensureMapZoomAtLeast,
   LIVE_LAYER_IDS,
   openLayers,
   openMap,
@@ -49,11 +51,7 @@ for (const viewport of [
 
       // Expand every group so all switches exist in the DOM.
       for (const key of ["land", "resources", "nature", "places"]) {
-        const t = page.getByTestId(`layers-group-toggle-${key}`);
-        if ((await t.count()) === 0) continue;
-        if ((await t.getAttribute("aria-expanded")) !== "true") {
-          await t.click();
-        }
+        await ensureLayersGroupOpen(page, key);
       }
 
       for (const id of LIVE_LAYER_IDS) {
@@ -146,11 +144,9 @@ for (const viewport of [
       const body = await page.locator("body").innerText();
       expect(body).not.toMatch(/coming soon/i);
 
+      await ensureMapZoomAtLeast(page, 11);
       await openLayers(page);
-      const landToggle = page.getByTestId("layers-group-toggle-land");
-      if ((await landToggle.getAttribute("aria-expanded")) !== "true") {
-        await landToggle.click();
-      }
+      await ensureLayersGroupOpen(page, "land");
       await page.getByTestId("layer-toggle-1").click();
       const legend = page.getByTestId("layer-inline-legend-1");
       await expect(legend).toContainText("Lower");

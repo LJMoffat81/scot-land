@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ConfidenceTag from "@/components/ConfidenceTag";
 import {
   buildInlineLegendFromRegistry,
@@ -86,6 +86,30 @@ export default function MapLayersDrawer({
   const [openGroups, setOpenGroups] = useState<Set<MapLayerGroupKey>>(() =>
     initialOpenGroups(groups, enabled),
   );
+
+  // Stable serialization — groups is rebuilt each render; only reopen when an
+  // enabled layer appears (GBP-LIVE / default boot). §3.4: group with an
+  // active layer starts open.
+  const enabledGroupKeys = groups
+    .filter(({ layers }) => layers.some((layer) => Boolean(enabled[layer.id])))
+    .map(({ key }) => key)
+    .join(",");
+
+  useEffect(() => {
+    if (!enabledGroupKeys) return;
+    const keys = enabledGroupKeys.split(",") as MapLayerGroupKey[];
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      for (const key of keys) {
+        if (!next.has(key)) {
+          next.add(key);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [enabledGroupKeys]);
 
   const setEnabled = (id: string, on: boolean) => {
     onEnabledChange?.({ ...enabled, [id]: on });

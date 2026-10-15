@@ -905,6 +905,23 @@
   text-overflow: ellipsis;
 }
 
+/* Clear of the 380px left panel column when place/Layers is open (desktop). */
+@media (min-width: 900px) {
+  .app-shell.panel-open .map-attribution-line,
+  .app-shell.place-open .map-attribution-line {
+    left: calc(380px + 1.5rem);
+    max-width: calc(100% - 380px - 6rem);
+  }
+}
+
+/* Lift above the mobile sheet at peek so "All sources" does not sit under it. */
+@media (max-width: 899px) {
+  .app-shell.panel-open:has(.map-panel-slot--peek) .map-attribution-line,
+  .app-shell.place-open:has(.map-panel-slot--peek) .map-attribution-line {
+    bottom: calc(180px + env(safe-area-inset-bottom, 0px) + 0.35rem);
+  }
+}
+
 .map-attribution-line a {
   color: var(--slrg-navy, #0b1e3a);
   font-weight: 600;

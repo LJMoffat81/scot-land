@@ -274,6 +274,21 @@ export async function openMap(page: Page, path = "/") {
   await page.locator("#place-query").waitFor();
 }
 
+/**
+ * Expand a Layers accordion group if it exists and is collapsed.
+ * Re-queries the toggle so a remount mid-click does not hang Playwright.
+ */
+export async function ensureLayersGroupOpen(page: Page, key: string) {
+  const toggle = page.getByTestId(`layers-group-toggle-${key}`);
+  if ((await toggle.count()) === 0) return;
+  await toggle.scrollIntoViewIfNeeded().catch(() => undefined);
+  if ((await toggle.getAttribute("aria-expanded")) === "true") return;
+  await toggle.click({ timeout: 15_000 });
+  await expect(toggle).toHaveAttribute("aria-expanded", "true", {
+    timeout: 10_000,
+  });
+}
+
 export async function openLayers(page: Page) {
   const btn = page.getByTestId("hud-layers-btn");
   await expect(btn).toBeVisible({ timeout: 30_000 });
@@ -283,6 +298,24 @@ export async function openLayers(page: Page) {
   await expect(page.getByTestId("layers-panel")).toBeVisible({
     timeout: 15_000,
   });
+  // Belt-and-braces: land + places hold the toggles most specs assert on.
+  await ensureLayersGroupOpen(page, "land");
+  await ensureLayersGroupOpen(page, "places");
+}
+
+/** Raise map zoom so in-range legends show Lower/Higher (not the zoom gate). */
+export async function ensureMapZoomAtLeast(page: Page, minZoom: number) {
+  await waitForMap(page);
+  await page.evaluate((z) => {
+    const map = (
+      window as unknown as {
+        __map?: { setZoom(n: number): void; getZoom(): number };
+      }
+    ).__map;
+    if (!map) throw new Error("window.__map missing");
+    if (map.getZoom() < z) map.setZoom(z);
+  }, minZoom);
+  await expect.poll(async () => getMapZoom(page)).toBeGreaterThanOrEqual(minZoom);
 }
 
 export async function openPlaceViaCoords(

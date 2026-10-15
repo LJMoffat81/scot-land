@@ -764,6 +764,9 @@ export default function ScotlandMap() {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   /** Place card set aside while Layers is open (restore on Layers close). */
   const placeAsideRef = useRef(false);
+  /** Latest panel kind for async identify — must not steal Layers. */
+  const panelKindRef = useRef<PanelSlotKind>(panelKind);
+  panelKindRef.current = panelKind;
   const [mapStyle, setMapStyle] = useState<MapBasemapId>(DEFAULT_MAP_BASEMAP);
   const [mapZoom, setMapZoom] = useState(5.7);
   const [isNarrowPanel, setIsNarrowPanel] = useState(false);
@@ -1138,19 +1141,26 @@ export default function ScotlandMap() {
       setResult(null);
       setSearchNoMatch(false);
       setRestPromptVisible(false);
-      setPanelKind("place");
-      setPanelCollapsed(false);
-      setPanelDetent(opts.fromAddressSearch ? "half" : "peek");
+      // Layers XOR place: keep Layers open; stash the place for restore on close.
+      // Late map-identify must not unmount the layers drawer mid-interaction.
+      const layersHolding = panelKindRef.current === "layers";
+      if (layersHolding) {
+        placeAsideRef.current = true;
+      } else {
+        setPanelKind("place");
+        setPanelCollapsed(false);
+        setPanelDetent(opts.fromAddressSearch ? "half" : "peek");
+      }
       if (!panelHistoryRef.current) {
         pushMapUrl({
           center: { lng, lat },
-          panel: "place",
+          panel: layersHolding ? "layers" : "place",
         });
         panelHistoryRef.current = true;
       } else {
         replaceMapUrl({
           center: { lng, lat },
-          panel: "place",
+          panel: layersHolding ? "layers" : "place",
         });
       }
       setAddressLine(opts.label ?? null);
@@ -3764,6 +3774,9 @@ export default function ScotlandMap() {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map) return;
+    const syncZoom = () => {
+      setMapZoom(map.getZoom());
+    };
     const sync = () => {
       const zoom = map.getZoom();
       setMapZoom(zoom);
@@ -3776,9 +3789,12 @@ export default function ScotlandMap() {
       });
     };
     sync();
+    // Keep inline-legend zoom gates current during flyTo (not only on end).
+    map.on("zoom", syncZoom);
     map.on("zoomend", sync);
     map.on("moveend", sync);
     return () => {
+      map.off("zoom", syncZoom);
       map.off("zoomend", sync);
       map.off("moveend", sync);
     };

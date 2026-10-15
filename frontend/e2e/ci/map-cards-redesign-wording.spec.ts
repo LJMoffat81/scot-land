@@ -4,6 +4,8 @@ import {
   attachConsoleGate,
   BANNED_VISIBLE,
   countMatches,
+  ensureLayersGroupOpen,
+  ensureMapZoomAtLeast,
   openLayers,
   openMap,
   openPlaceViaCoords,
@@ -134,16 +136,13 @@ for (const viewport of [
       const gate = attachConsoleGate(page);
       await stubMapCardsBackend(page);
       await openMap(page);
+      await ensureMapZoomAtLeast(page, 11);
       await openLayers(page);
 
       const panel = page.getByTestId("layers-panel");
       await expect(panel).not.toContainText(/coming soon|coming later/i);
 
-      // Expand land group if needed and toggle AGR
-      const landToggle = page.getByTestId("layers-group-toggle-land");
-      if ((await landToggle.getAttribute("aria-expanded")) !== "true") {
-        await landToggle.click();
-      }
+      await ensureLayersGroupOpen(page, "land");
       await page.getByTestId("layer-toggle-1").click();
       const legend = page.getByTestId("layer-inline-legend-1");
       await expect(legend).toBeVisible();
@@ -174,6 +173,7 @@ for (const viewport of [
       );
       await expect(page.getByTestId("map-rest-prompt")).toHaveCount(1);
       await openLayers(page);
+      await ensureLayersGroupOpen(page, "land");
       await expect(page.getByTestId("layer-toggle-1")).toHaveAttribute(
         "aria-checked",
         "false",
@@ -196,6 +196,7 @@ test.describe("MAP-CARDS default view gbp-live on (1280)", () => {
     await stubMapCardsBackend(page, { gbpLive: true });
     await openMap(page);
     await openLayers(page);
+    await ensureLayersGroupOpen(page, "land");
     await expect(page.getByTestId("layer-toggle-1")).toHaveAttribute(
       "aria-checked",
       "true",
@@ -205,6 +206,7 @@ test.describe("MAP-CARDS default view gbp-live on (1280)", () => {
     await page.goto("/?layers=flood&place=S01014567&lat=55.86&lng=-4.25");
     await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
     await openLayers(page);
+    await ensureLayersGroupOpen(page, "land");
     await expect(page.getByTestId("layer-toggle-flood")).toHaveAttribute(
       "aria-checked",
       "true",

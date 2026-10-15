@@ -277,6 +277,10 @@ export type PlaceCardPayload = {
   council_code?: string | null;
   council_name?: string | null;
   data_zone?: PlaceDataZone | null;
+  /** Top-level Data Zone code from identify (same as data_zone.code when present). */
+  dz_code?: string | null;
+  /** Build / source CRS for map identify (British National Grid). */
+  source_crs?: "EPSG:27700" | string | null;
   intermediate_zone?: PlaceIntermediateZone | null;
   /** Map reference OSGB36 easting,northing (EPSG:27700) — never a what3words brand string. */
   square_reference?: string | null;
@@ -510,6 +514,8 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
       },
     ],
   },
+  dz_code: "S01014567",
+  source_crs: "EPSG:27700",
   intermediate_zone: {
     status: "ok",
     code: "S02002645",
@@ -808,6 +814,9 @@ export function sanitizePlaceCard(payload: PlaceCardPayload): PlaceCardPayload {
   return {
     ...rest,
     data_zone: zone,
+    // Identify meta: pass through only — do not invent a code or CRS.
+    dz_code: rest.dz_code ?? null,
+    source_crs: rest.source_crs ?? null,
     // Always recompute OSGB36 from lat/lng so a stale API index cannot show.
     square_reference: mapReferenceNumbers(
       scotLandSquareReference(rest.lat, rest.lng),

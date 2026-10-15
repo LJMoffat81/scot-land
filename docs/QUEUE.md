@@ -17,6 +17,8 @@ Plain-English queue for maintainers (Laurie and agents). Update on main after me
 | GBP-LIVE-V1b | Per-m² unit for £ behind the flag (flag still default OFF); one PR only | — | Frozen ready; after V13-METHODS; no PR yet |
 | WORDING-BATCH-1 | Map-view wording/layout batch: SW-047 + ideas 56/57 (and the frozen batch items in the WORDING-BATCH-1 card); one PR only | — | Frozen ready; after GBP-LIVE-V1b; no PR yet |
 | DZ-HIERARCHY | Intermediate Zone / council on the place card (ideas 37 / 40); one PR only | — | Frozen ready; after WORDING-BATCH-1; no PR yet |
+| SW-034_data_mobile | Mobile `/data` sources as stacked cards (no horizontal scroll); one PR only | — | Frozen ready; after DZ-HIERARCHY; no PR yet |
+| SW-044_slim | Slim the map view (licences out of left panel, chip key once, etc.); one PR only | — | Frozen ready; after SW-034_data_mobile; no PR yet |
 
 ### Frozen backlog
 

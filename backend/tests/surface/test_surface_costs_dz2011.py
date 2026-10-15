@@ -125,3 +125,12 @@ def test_write_cost_table_round_trip(tmp_path):
         written = list(csv.DictReader(fh))
     assert len(written) == 20
     assert written[0]["code"] == codes[0]
+
+
+def test_na_status_round_trips_via_read_cost_table(tmp_path):
+    """FILL-MEASURED-ZERO crash fix: literal n/a must not become NaN."""
+    na = sc._na_row("S01010206", 0)
+    out = sc.write_cost_table([na], tmp_path / "na_costs.csv")
+    got = sc.read_cost_table(out)
+    assert got[0]["rebuild_status"] == "n/a"
+    assert got[0]["drc_gbp"] is None

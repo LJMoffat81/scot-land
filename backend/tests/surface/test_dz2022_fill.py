@@ -119,6 +119,7 @@ def test_reconciled_facts():
     assert facts["suppressed_after_pooling_n"] == 125
     assert facts["not_in_price_file"] == sorted(fill.NOT_IN_PRICE_FILE_CODES)
     assert facts["zero_dwellings_n"] == 3
+    assert facts["measured_zeros_n"] == 27
     assert facts["pre_pooling_empty_to_fill_n"] == 727
     assert "S01010206" not in facts["not_in_price_file"]
 

@@ -30,7 +30,10 @@ def test_residual_floor_keeps_raw_and_flags():
     neg = sr.residual_land_value(80_000, 120_000)
     assert neg.land_value == 0.0 and neg.raw_residual == -40_000
     assert neg.negative_residual is True and "negative_residual" in neg.tags
-    assert sr.residual_land_value(100_000, 100_000).negative_residual is False  # zero is not negative
+    assert sr.COST_AT_OR_ABOVE_PRICE_TAG in neg.tags  # FILL-MEASURED-ZERO internal tag
+    eq = sr.residual_land_value(100_000, 100_000)
+    assert eq.negative_residual is False  # zero is not negative
+    assert sr.COST_AT_OR_ABOVE_PRICE_TAG in eq.tags
 
 
 def test_band_runs_low_central_high_rebuild(cfg, band):

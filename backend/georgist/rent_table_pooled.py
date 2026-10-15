@@ -14,6 +14,7 @@ from __future__ import annotations
 import csv
 import logging
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Iterable, Mapping, Sequence
 
 from georgist import dz2022_fill as fill
@@ -89,6 +90,7 @@ def rent_row_from_resolved(
     """One CSV row; central/low/high are land-rent figures (research estimates)."""
     central = land.land_value
     status = land.fill_method
+    flag_parts = [p for p in str(flags or "").split(";") if p]
     if status == "not_applicable":
         central = 0.0
         low = 0.0
@@ -99,10 +101,17 @@ def rent_row_from_resolved(
         low = None
         high = None
     else:
+        # FILL-MEASURED-ZERO: floored zero keeps £0 → band upper, not flat £0.
         if low is None:
-            low = float(central)
+            low = 0.0 if float(central) == 0.0 else float(central)
         if high is None:
             high = float(central)
+        if float(central) == 0.0 and status in ("observed_pooled", "shrunk_to_model"):
+            if sr.COST_AT_OR_ABOVE_PRICE_TAG not in flag_parts:
+                flag_parts.append(sr.COST_AT_OR_ABOVE_PRICE_TAG)
+            for t in land.tags or ():
+                if t and t not in flag_parts:
+                    flag_parts.append(str(t))
     return {
         "zone_id": code,
         "central": "" if central is None else f"{float(central):.6f}",
@@ -113,7 +122,7 @@ def rent_row_from_resolved(
         "la_code": la_code or "",
         "ur6_class": "" if ur6_class is None else int(ur6_class),
         "sales_n": int(sales_n),
-        "flags": flags,
+        "flags": ";".join(flag_parts),
         "evidence_window": evidence_window or "",
         "evidence_oldest_year": (
             "" if evidence_oldest_year is None else int(evidence_oldest_year)
@@ -235,6 +244,8 @@ def pool_observations_to_rent_row(
     flags: str = "",
     absent_from_price_file: bool = False,
     zero_dwellings: bool = False,
+    rebuild_drc_low: float | None = None,
+    rebuild_drc_high: float | None = None,
 ) -> dict:
     """One zone: pool → index → residual → resolve → stamped rent row."""
     n_min = int(price_cfg["n_min"])
@@ -256,6 +267,7 @@ def pool_observations_to_rent_row(
         n_min=n_min,
     )
     observed = None
+    band_low = band_high = None
     if pooled.price_gbp is not None and rebuild_drc is not None:
         indexed = sr.index_price(
             pooled,
@@ -265,7 +277,19 @@ def pool_observations_to_rent_row(
             tags=(),
         )
         # When index_to_year == evidence_year, factor 1.0 is a no-op.
-        observed = sr.residual_land_value(indexed.price_indexed_gbp, float(rebuild_drc))
+        price = float(indexed.price_indexed_gbp)
+        if rebuild_drc_low is not None and rebuild_drc_high is not None:
+            rebuilds = {
+                "low": SimpleNamespace(drc_gbp=float(rebuild_drc_low)),
+                "central": SimpleNamespace(drc_gbp=float(rebuild_drc)),
+                "high": SimpleNamespace(drc_gbp=float(rebuild_drc_high)),
+            }
+            band = sr.residual_band(price, rebuilds)
+            observed = band.central
+            band_low = band.land_value_low
+            band_high = band.land_value_high
+        else:
+            observed = sr.residual_land_value(price, float(rebuild_drc))
     land = sr.resolve_land_value(
         dwellings=int(dwellings),
         observed=observed,
@@ -288,6 +312,8 @@ def pool_observations_to_rent_row(
         evidence_oldest_year=pooled.evidence_oldest_year,
         pooling_sha=pooling_sha,
         flags=flags,
+        low=band_low,
+        high=band_high,
     )
 
 

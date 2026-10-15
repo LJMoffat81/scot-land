@@ -1198,11 +1198,24 @@ class Residual:
     tags: tuple[str, ...]
 
 
+# FILL-MEASURED-ZERO: internal tag when rebuild cost >= price (floored residual).
+COST_AT_OR_ABOVE_PRICE_TAG = "cost_at_or_above_price"
+
+
 def residual_land_value(price_gbp: float, drc_gbp: float) -> Residual:
-    """Rules 6.3: raw kept (may be negative); published floored at 0 and flagged."""
+    """Rules 6.3: raw kept (may be negative); published floored at 0 and flagged.
+
+    When cost >= price the published land value is 0 and the internal tag
+    ``cost_at_or_above_price`` is set (not visitor wording). ``negative_residual``
+    remains True only when raw < 0 (raw == 0 is not negative).
+    """
     raw = float(price_gbp) - float(drc_gbp)
     if raw < 0:
-        return Residual(raw, 0.0, True, ("negative_residual",))
+        return Residual(
+            raw, 0.0, True, ("negative_residual", COST_AT_OR_ABOVE_PRICE_TAG)
+        )
+    if raw == 0:
+        return Residual(raw, 0.0, False, (COST_AT_OR_ABOVE_PRICE_TAG,))
     return Residual(raw, raw, False, ())
 
 
@@ -1216,12 +1229,22 @@ class ResidualBand:
 
 
 def residual_band(price_gbp: float, rebuilds: Mapping[str, RebuildResult]) -> ResidualBand:
+    """Residual with uncertainty band.
+
+    Measured zeros keep range £0 to band upper (low rebuild → high land), never
+    a collapsed flat £0 when the low-rebuild residual is positive.
+    """
     raw = {s: float(price_gbp) - rebuilds[s].drc_gbp for s in SCENARIOS}
     central = residual_land_value(price_gbp, rebuilds["central"].drc_gbp)
     tags = list(central.tags)
     if raw["high"] < 0 and not central.negative_residual:
         tags.append("negative_under_high_rebuild")
-    return ResidualBand(central, max(0.0, raw["high"]), max(0.0, raw["low"]), raw, tuple(tags))
+    # Floored central with positive high-land under low rebuild still tagged.
+    land_low = max(0.0, raw["high"])
+    land_high = max(0.0, raw["low"])
+    if central.land_value == 0.0 and COST_AT_OR_ABOVE_PRICE_TAG not in tags:
+        tags.append(COST_AT_OR_ABOVE_PRICE_TAG)
+    return ResidualBand(central, land_low, land_high, raw, tuple(tags))
 
 
 @dataclass(frozen=True)

@@ -93,11 +93,14 @@ MEASURED_SHARE_FULLY_BELOW = 0.05
 DEFAULT_NULL_DZ_FILL_TARGET_N = 129
 PRE_POOLING_EMPTY_TO_FILL_N = 727  # historical only — gates must not expect this
 PRE_POOLING_SUPPRESSED_N = 723
+# FILL-MEASURED-ZERO: pooled price present but residual floors to £0 (cost >= price).
+DEFAULT_MEASURED_ZERO_N = 27
 
 NOT_IN_PRICE_FILE_CODES = frozenset(
     {"S01007788", "S01010462", "S01010493", "S01011598"}
 )  # all filled under C; inside the 129 model-fill set
 ZERO_DWELLING_CODES = frozenset(sr.ZERO_DWELLINGS_FALLBACK)  # 3; all D
+COST_AT_OR_ABOVE_PRICE_TAG = "cost_at_or_above_price"
 # GIS also flagged S01010206 / S01010226 as absent; reconciled: they are D (zero dwellings),
 # not among the 4 C-filled "not in price file" codes.
 
@@ -161,15 +164,41 @@ def _is_zero_dwellings(row: Mapping, zero_codes: Iterable[str]) -> bool:
     return False
 
 
-def _is_measured(row: Mapping) -> bool:
+def has_price_evidence(row: Mapping) -> bool:
+    """True when the zone has measured or pooled price evidence.
+
+    FILL-MEASURED-ZERO: evidence is never inferred from ``rent == 0``. A floored
+    residual with ``observed_pooled`` / ``shrunk_to_model`` still counts. Explicit
+    ``price_gbp`` / ``price_indexed_gbp`` on a surface row also count. Sales-only
+    or ``model_fill_pending`` without a measured fill_method do **not**.
+    """
     fm = str(row.get("fill_method") or "").strip()
-    rent = _num(row.get("measured_rent"))
-    if rent is None or rent <= 0:
+    if fm in MEASURED_FILLS:
+        return True
+    if row.get("price_gbp") is not None and row.get("price_gbp") != "":
+        return True
+    if row.get("price_indexed_gbp") is not None and row.get("price_indexed_gbp") != "":
+        return True
+    return False
+
+
+def _is_measured(row: Mapping) -> bool:
+    """Measured/pooled evidence, including floored zeros (cost >= price).
+
+    Never uses ``rent == 0`` as a missing-price signal. A measured zero cannot be
+    treated as empty and must not be overwritten by the fill.
+    """
+    fm = str(row.get("fill_method") or "").strip()
+    if fm not in MEASURED_FILLS:
         return False
-    return fm in MEASURED_FILLS
+    rent = _num(row.get("measured_rent"))
+    if rent is None or rent < 0:
+        return False
+    return True
 
 
 def _is_empty_to_fill(row: Mapping, zero_codes: Iterable[str]) -> bool:
+    """Needs filling = no price evidence (never ``rent == 0``)."""
     if _is_zero_dwellings(row, zero_codes):
         return False
     if _is_measured(row):
@@ -178,6 +207,17 @@ def _is_empty_to_fill(row: Mapping, zero_codes: Iterable[str]) -> bool:
     if rent is not None and rent > 0 and str(row.get("fill_method") or "") == FILL_METHOD_MODEL:
         return False
     return True
+
+
+def is_measured_zero(row: Mapping) -> bool:
+    """Floored residual with price evidence (cost >= price); not zero-dwellings N/A."""
+    rent = _num(row.get("measured_rent"))
+    if rent is None or rent != 0:
+        return False
+    fm = str(row.get("fill_method") or "").strip()
+    if fm == FILL_METHOD_NA:
+        return False
+    return _is_measured(row) and has_price_evidence(row)
 
 
 def sha256_file(path: Path) -> str:
@@ -358,14 +398,29 @@ def load_2011_rent_table(path: Path | str) -> list[dict]:
             low = _num(raw.get("low") if "low" in raw else raw.get("uncertainty_low"))
             high = _num(raw.get("high") if "high" in raw else raw.get("uncertainty_high"))
             status = str(raw.get("status") or raw.get("fill_method") or "").strip()
+            sales_raw = raw.get("sales_n")
+            sales_n_hint = (
+                int(sales_raw) if sales_raw not in (None, "") else None
+            )
             if not status:
-                status = "observed_pooled" if central and central > 0 else "model_fill_pending"
+                # FILL-MEASURED-ZERO: central==0 with sales is still observed, not pending.
+                if sales_n_hint is not None and sales_n_hint > 0 and central is not None:
+                    status = "observed_pooled"
+                elif central is not None and central > 0:
+                    status = "observed_pooled"
+                else:
+                    status = "model_fill_pending"
+            # Measured zero keeps band £0 → upper; never collapse high to flat £0 when given.
+            if low is None:
+                low = 0.0 if central == 0.0 else central
+            if high is None:
+                high = central
             row = {
                 "code": code,
                 "vintage": 2011,
                 "measured_rent": central,
-                "uncertainty_low": low if low is not None else central,
-                "uncertainty_high": high if high is not None else central,
+                "uncertainty_low": low,
+                "uncertainty_high": high,
                 "fill_method": status,
                 "dwellings": int(raw["dwellings"]) if raw.get("dwellings") not in (None, "") else None,
                 "la_code": str(raw["la_code"]).strip() if raw.get("la_code") else None,
@@ -441,9 +496,20 @@ def ensure_pooling_stamp(
     )
 
 
+def measured_zero_n_from_config(config: Mapping | None = None) -> int:
+    """Expected measured-zero count (pooled price, floored residual)."""
+    if config is None:
+        config = sr.load_config()
+    section = (config.get("dz2022_empty_fill") or {}).get("reconciled") or {}
+    if "measured_zeros_n" in section:
+        return int(section["measured_zeros_n"])
+    return DEFAULT_MEASURED_ZERO_N
+
+
 def reconciled_facts(config: Mapping | None = None) -> dict:
     """Post-pooling reconciled zone counts (config target + fixed code lists)."""
     target = null_dz_fill_target_from_config(config)
+    measured_zeros = measured_zero_n_from_config(config)
     return {
         "model_fill_n": target,
         "suppressed_after_pooling_n": target - len(NOT_IN_PRICE_FILE_CODES),
@@ -453,11 +519,13 @@ def reconciled_facts(config: Mapping | None = None) -> dict:
         "zero_dwellings": sorted(ZERO_DWELLING_CODES),
         "zero_dwellings_n": len(ZERO_DWELLING_CODES),
         "zero_dwellings_fill": CLASS_D,
+        "measured_zeros_n": measured_zeros,
         "empty_to_fill_n": target,
         "pre_pooling_empty_to_fill_n": PRE_POOLING_EMPTY_TO_FILL_N,
         "note": (
             f"{target} model-fill after pooling (includes "
             f"{len(NOT_IN_PRICE_FILE_CODES)} not-in-price-file) + "
+            f"{measured_zeros} measured zeros (cost >= price, not filled) + "
             f"{len(ZERO_DWELLING_CODES)} zero-dwellings (D). "
             "S01010206/S01010226 are zero-dwellings (D), not among the 4 C codes. "
             f"Pre-pooling baseline was {PRE_POOLING_EMPTY_TO_FILL_N}."
@@ -1003,6 +1071,10 @@ def fill_dz2022_empty_zones(
 
         if klass.fill_class == CLASS_UNAFFECTED:
             measured_step = _measured_step_for_edges(edges, by_2011)
+            extra = ["unaffected_empty_share_0"]
+            if measured_rent == 0.0:
+                # FILL-MEASURED-ZERO: keep internal tag; band is £0 → high.
+                extra.append(COST_AT_OR_ABOVE_PRICE_TAG)
             row = _base_2022_row(
                 dst,
                 rent=measured_rent,
@@ -1013,7 +1085,7 @@ def fill_dz2022_empty_zones(
                 dwellings=dwellings,
                 la_code=la,
                 ur6_class=ur6,
-                extra_tags=("unaffected_empty_share_0",),
+                extra_tags=extra,
                 fill_step=measured_step,
             )
             row["quality"] = "derived"
@@ -1240,10 +1312,23 @@ def assert_fill_step_inventory(rows_2022: Sequence[Mapping]) -> None:
             raise FillError(f"unknown c_sub_step {sub!r}")
 
 
+def count_measured_zeros(dz2011_rows: Sequence[Mapping]) -> int:
+    """Count floored measured/pooled zeros (cost >= price); excludes N/A zero-dwellings."""
+    zero = set(ZERO_DWELLING_CODES)
+    n = 0
+    for r in dz2011_rows:
+        if _is_zero_dwellings(r, zero):
+            continue
+        if is_measured_zero(r):
+            n += 1
+    return n
+
+
 def count_reconciled_sources(dz2011_rows: Sequence[Mapping]) -> dict[str, int]:
     """Count model-fill / not-in-price-file / zero-dwellings on a 2011 inventory.
 
     ``model_fill_n`` includes the 4 not-in-price-file codes (post-pooling target).
+    Measured zeros are never counted as model-fill (FILL-MEASURED-ZERO).
     """
     zero = set(ZERO_DWELLING_CODES)
     n_zero = 0
@@ -1253,6 +1338,9 @@ def count_reconciled_sources(dz2011_rows: Sequence[Mapping]) -> dict[str, int]:
         code = str(r.get("code") or "").strip()
         if _is_zero_dwellings(r, zero) or code in zero:
             n_zero += 1
+            continue
+        if is_measured_zero(r):
+            # Price evidence + floored residual — keep measured; do not fill.
             continue
         if code in NOT_IN_PRICE_FILE_CODES or "absent_from_ros_price_file" in str(
             r.get("flags") or ""
@@ -1318,7 +1406,11 @@ def assert_post_fill_gate(
     source_2011: Sequence[Mapping] | None = None,
     config: Mapping | None = None,
 ) -> None:
-    """Gate: Scotland total conserved; every 2022 zone rent > 0 except N/A.
+    """Gate: Scotland total conserved; non-N/A rents > 0 or measured zeros.
+
+    FILL-MEASURED-ZERO: a zero passes ONLY when the row is a measured zero with
+    price evidence. A zero with no price evidence still FAILs. Expected model-fill
+    count stays 129 (measured zeros are not filled).
 
     On a real run pass ``require_reconciled_counts=True`` and the original 2011
     rent-table inventory as ``source_2011`` to assert the post-pooling
@@ -1334,11 +1426,17 @@ def assert_post_fill_gate(
         rent = _num(r.get("measured_rent"))
         if label == ESTIMATE_NA or fm == FILL_METHOD_NA:
             continue
-        if rent is None or rent <= 0:
+        if rent is None or rent < 0:
             raise FillError(
                 f"post-fill gate: DZ2022 {r.get('code')} has rent {rent}; "
-                "expected > 0 (except not_applicable)"
+                "expected > 0 or measured zero with price evidence"
             )
+        if rent == 0:
+            if not is_measured_zero(r):
+                raise FillError(
+                    f"post-fill gate: DZ2022 {r.get('code')} has rent 0 without "
+                    "measured price evidence (zero with no evidence must FAIL)"
+                )
         if r.get("publication_status") != PUBLICATION_STATUS:
             raise FillError(
                 f"post-fill gate: {r.get('code')} publication_status must stay blocked"

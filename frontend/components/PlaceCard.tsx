@@ -14,21 +14,29 @@ import {
   PLACE_CARD_COVERS_HOMES_ONLY,
   PLACE_CARD_EXPERIMENTAL_FOOTER,
   PLACE_CARD_FACT_LINE,
+  PLACE_CARD_FIGURE_STATUS,
+  PLACE_CARD_FIGURE_WHY_HREF,
+  PLACE_CARD_FIGURE_WHY_LABEL,
   PLACE_CARD_FULLY_ESTIMATED,
   PLACE_CARD_HOW_WE_WORK_HOMES,
   PLACE_CARD_HOW_WE_WORK_LABEL,
+  PLACE_CARD_MAP_REFERENCE_COPY_FAIL,
+  PLACE_CARD_MAP_REFERENCE_LABEL,
   PLACE_CARD_NEIGHBOURHOOD_NOT_ADDRESS,
   PLACE_CARD_NO_HOMES,
   PLACE_CARD_NO_MATCH,
   PLACE_CARD_OUT_OF_SCOTLAND_LINE,
   PLACE_CARD_PARTS_NOTE,
+  PLACE_CARD_PARTS_SUMMARY,
   PLACE_CARD_PART_NOT_YET,
+  PLACE_CARD_LAND_VALUES_COMING_SOON,
   PLACE_CARD_PRE_POUND,
   PLACE_CARD_RANK_BAND_ENABLED,
   PLACE_CARD_SHOW_SCOTLAND_LABEL,
   PLACE_CARD_TOO_FEW_HOMES,
   PLACE_CARD_TYPICAL_HOME,
   isPlaceCardSeaMiss,
+  mapReferenceNumbers,
   placeClassChip,
   placeSalesBasisLine,
   placeUnitKind,
@@ -61,6 +69,46 @@ export type PlaceCardProps = {
 /** Suggestion 31 — fold the Sasine / no-outline explanation behind a short control. */
 const WHY_NO_OUTLINE_LABEL = "Why no outline?";
 const NO_OUTLINE_STATUS_LINE = "No registered outline at this point";
+
+function MapReferenceCopy({ value }: { value: string }) {
+  const [done, setDone] = useState(false);
+  const [failMsg, setFailMsg] = useState<string | null>(null);
+
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setFailMsg(null);
+      setDone(true);
+      window.setTimeout(() => setDone(false), 1500);
+    } catch {
+      setDone(false);
+      setFailMsg(PLACE_CARD_MAP_REFERENCE_COPY_FAIL);
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="place-card-map-reference-copy"
+        onClick={() => void onCopy()}
+        data-testid="place-card-map-reference-copy"
+        aria-label={`Copy ${PLACE_CARD_MAP_REFERENCE_LABEL}`}
+      >
+        {done ? "Copied" : "Copy"}
+      </button>
+      {failMsg ? (
+        <span
+          className="place-card-map-reference-copy-fail"
+          data-testid="place-card-map-reference-copy-fail"
+          role="status"
+        >
+          {failMsg}
+        </span>
+      ) : null}
+    </>
+  );
+}
 
 /**
  * Survive PlaceCard body remounts (loading flicker / stub→card swap) so the
@@ -178,22 +226,30 @@ function PartRow({
   row,
   display,
   gbpLive,
+  showFigureWhy,
 }: {
   row: PlaceAgrRow;
   display?: SurfaceRentDisplay | null;
   gbpLive: boolean;
+  /** Idea 17/24 — unpublished figure status + Why? on the first value row. */
+  showFigureWhy?: boolean;
 }) {
   const classTag = (row.class ?? row.tag) as PlaceRentTag;
   const tone = placeTagTone(classTag);
   const rangeText = surfacePartRange(row, display, gbpLive);
-  const estimateLabel =
-    gbpLive && row.id === "surface" && display?.state === "ok"
-      ? display.estimate_label || row.estimate_label
-      : null;
-  const rentRateWording =
-    gbpLive && row.id === "surface" && display?.state === "ok"
-      ? display.rent_rate_wording || row.rent_rate_wording
-      : null;
+  const liveOk =
+    gbpLive &&
+    row.id === "surface" &&
+    display?.state === "ok" &&
+    display.low != null &&
+    display.central != null &&
+    display.high != null;
+  const estimateLabel = liveOk
+    ? display.estimate_label || row.estimate_label
+    : null;
+  const rentRateWording = liveOk
+    ? display.rent_rate_wording || row.rent_rate_wording
+    : null;
   return (
     <li
       className="place-agr-row"
@@ -219,6 +275,20 @@ function PartRow({
       >
         {rangeText}
       </p>
+      {showFigureWhy && !liveOk ? (
+        <p
+          className="place-card-figure-status"
+          data-testid="place-card-figure-status"
+        >
+          {PLACE_CARD_FIGURE_STATUS}{" "}
+          <a
+            href={PLACE_CARD_FIGURE_WHY_HREF}
+            data-testid="place-card-figure-why"
+          >
+            {PLACE_CARD_FIGURE_WHY_LABEL}
+          </a>
+        </p>
+      ) : null}
       {estimateLabel ? (
         <p
           className="place-card-estimate-label"
@@ -403,7 +473,11 @@ export function PlaceCard({
 
       {!isLoading && isNoMatch ? (
         <div className="place-card-body place-card-state" data-testid="place-card-no-match">
-          <p className="place-card-meta">{PLACE_CARD_NO_MATCH}</p>
+          <p className="place-card-meta place-card-no-match-line">
+            <span data-testid="place-card-no-match-text">
+              {PLACE_CARD_NO_MATCH}
+            </span>
+          </p>
         </div>
       ) : null}
 
@@ -445,6 +519,22 @@ export function PlaceCard({
                   {councilLine}
                 </p>
               ) : null}
+              {card.square_reference ? (
+                <p
+                  className="place-card-map-reference"
+                  data-testid="place-card-map-reference"
+                >
+                  <span className="place-card-map-reference-label">
+                    {PLACE_CARD_MAP_REFERENCE_LABEL}
+                  </span>{" "}
+                  <span data-testid="place-card-square-reference">
+                    {mapReferenceNumbers(card.square_reference)}
+                  </span>{" "}
+                  <MapReferenceCopy
+                    value={mapReferenceNumbers(card.square_reference)}
+                  />
+                </p>
+              ) : null}
             </header>
 
             <p
@@ -462,6 +552,14 @@ export function PlaceCard({
                 </span>
               ) : null}
             </p>
+            {figureText === PLACE_CARD_PRE_POUND ? (
+              <p
+                className="place-card-land-values-coming-soon"
+                data-testid="place-card-land-values-coming-soon"
+              >
+                {PLACE_CARD_LAND_VALUES_COMING_SOON}
+              </p>
+            ) : null}
             {figureEstimate ? (
               <p
                 className="place-card-figure-estimate"
@@ -492,7 +590,11 @@ export function PlaceCard({
             </p>
           </div>
 
-          <div className="place-card-sheet-body" data-testid="place-card-sheet-body">
+          {/* SW-047: value rows stay outside the scrollable sheet so height is kept. */}
+          <div
+            className="place-card-value-block"
+            data-testid="place-card-value-block"
+          >
             {unitEffective === "typical_home" ? (
               <>
                 <p
@@ -552,7 +654,10 @@ export function PlaceCard({
             </p>
 
             {/* Surface row always visible (Suggestion 31 first-value-row). */}
-            <ul className="place-agr-list place-agr-list-surface">
+            <ul
+              className="place-agr-list place-agr-list-surface"
+              data-testid="place-card-value-rows"
+            >
               {valueRows
                 .filter((row) => row.id === "surface")
                 .map((row) => (
@@ -561,15 +666,20 @@ export function PlaceCard({
                     row={row}
                     display={surfaceDisplay}
                     gbpLive={gbpLive}
+                    showFigureWhy
                   />
                 ))}
             </ul>
+          </div>
 
+          <div className="place-card-sheet-body" data-testid="place-card-sheet-body">
             <details
               className="place-card-parts"
               data-testid="place-card-parts"
             >
-              <summary className="place-card-parts-summary">Parts</summary>
+              <summary className="place-card-parts-summary">
+                {PLACE_CARD_PARTS_SUMMARY}
+              </summary>
               <ul className="place-agr-list">
                 {valueRows
                   .filter((row) => row.id !== "surface")

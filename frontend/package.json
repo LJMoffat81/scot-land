@@ -32,6 +32,7 @@
     "test:methodology-nits": "node --experimental-strip-types scripts/test-methodology-nits.mjs",
     "test:site-watch-d3-sea-click": "node --experimental-strip-types scripts/test-site-watch-d3-sea-click.mjs",
     "test:prereview-rent-groups": "node --experimental-strip-types scripts/test-prereview-rent-groups.mjs",
+    "test:share-fix": "node scripts/test-share-fix.mjs",
     "check:developers-links": "node scripts/check-developers-links.mjs"
   },
   "dependencies": {

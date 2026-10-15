@@ -7,6 +7,17 @@
  *
  * Production / non-local: NEXT_PUBLIC_API_URL (e.g. Railway).
  */
+
+/** HTTP statuses retried for place lookup (SHARE-FIX). */
+export const PLACE_LOOKUP_RETRY_STATUSES = [502, 503, 504] as const;
+
+export type ApiFetchInit = RequestInit & {
+  /** Retry these HTTP statuses with exponential backoff (place lookup). */
+  retryStatuses?: readonly number[];
+  /** Attempts including the first try (default 3 when retryStatuses set). */
+  maxAttempts?: number;
+};
+
 export function getApiBaseUrl(): string {
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
@@ -41,7 +52,11 @@ export class ApiError extends Error {
   }
 }
 
-export const SERVICE_BUSY = "Service busy, please try again";
+/** Visitor copy after place-lookup retries exhaust (replaces "Service busy"). */
+export const TRY_AGAIN = "Try again";
+
+/** @deprecated Prefer TRY_AGAIN — kept as alias for existing imports. */
+export const SERVICE_BUSY = TRY_AGAIN;
 
 /** Exact visitor copy when Housing land audit PostGIS is unloaded (HLA 503). */
 export const HLA_NOT_LOADED =
@@ -72,6 +87,11 @@ export function isServiceFailure(err: unknown): boolean {
   return err instanceof ApiError && (err.status == null || err.status >= 500);
 }
 
+/** True when the API returned HTTP service-unavailable (tiles / layer not loaded). */
+export function isServiceUnavailable(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 503;
+}
+
 /**
  * Bounds / place 400 from `/platform/place` or `/api/place.json`
  * (`Coordinates appear to be outside Scotland.`).
@@ -91,35 +111,68 @@ export function visitorFacingError(err: unknown): string {
     // Keep in sync with PLACE_CARD_OUT_OF_SCOTLAND_LINE (placeCard.ts).
     return "This spot is outside Scotland's land map. Tap on land to see a place.";
   }
-  if (!message || isDevFacing(message) || isServiceFailure(err)) return SERVICE_BUSY;
+  if (!message || isDevFacing(message) || isServiceFailure(err)) return TRY_AGAIN;
   return message;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+/** Backoff delays (ms) between place-lookup retries after 502/503/504. */
+export function placeLookupBackoffMs(attemptIndex: number): number {
+  // attemptIndex 0 = after first failure → 250ms, then 500, 1000, …
+  return Math.min(2000, 250 * 2 ** attemptIndex);
+}
+
+function stripFetchInit(init?: ApiFetchInit): RequestInit {
+  if (!init) return {};
+  const { retryStatuses: _r, maxAttempts: _m, ...rest } = init;
+  return rest;
 }
 
 export async function apiFetch(
   path: string,
-  init?: RequestInit,
+  init?: ApiFetchInit,
 ): Promise<Response> {
   const base = getApiBaseUrl().replace(/\/$/, "");
   const url = path.startsWith("http")
     ? path
     : `${base}${path.startsWith("/") ? "" : "/"}${path}`;
 
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      ...init,
-      // Explicit so rewrites + CORS preflight stay simple
-      credentials: init?.credentials ?? "omit",
-      headers: {
-        Accept: "application/json",
-        ...(init?.headers ?? {}),
-      },
-    });
-  } catch {
-    throw new ApiError(SERVICE_BUSY, url);
-  }
+  const retryStatuses = new Set(init?.retryStatuses ?? []);
+  const maxAttempts =
+    init?.maxAttempts ?? (retryStatuses.size > 0 ? 3 : 1);
+  const fetchInit = stripFetchInit(init);
 
-  if (!response.ok) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...fetchInit,
+        // Explicit so rewrites + CORS preflight stay simple
+        credentials: fetchInit.credentials ?? "omit",
+        headers: {
+          Accept: "application/json",
+          ...(fetchInit.headers ?? {}),
+        },
+      });
+    } catch {
+      throw new ApiError(TRY_AGAIN, url);
+    }
+
+    if (response.ok) return response;
+
+    const retryable =
+      retryStatuses.has(response.status) && attempt + 1 < maxAttempts;
+    if (retryable) {
+      await sleep(placeLookupBackoffMs(attempt));
+      continue;
+    }
+
     let detail = "";
     try {
       const body = (await response.json()) as { detail?: unknown };
@@ -127,20 +180,38 @@ export async function apiFetch(
     } catch {
       /* ignore non-JSON error bodies */
     }
-    // Keep honest HLA unload copy; other 5xx stay generic Service busy.
+    // Keep honest HLA unload copy; other 5xx stay generic Try again.
     if (detail.trim() === HLA_NOT_LOADED) {
       throw new ApiError(detail, url, response.status);
     }
     if (response.status >= 500 || !detail.trim() || isDevFacing(detail)) {
-      detail = SERVICE_BUSY;
+      detail = TRY_AGAIN;
     }
-    throw new ApiError(detail, url, response.status);
+    lastError = new ApiError(detail, url, response.status);
+    throw lastError;
   }
 
-  return response;
+  throw lastError instanceof ApiError
+    ? lastError
+    : new ApiError(TRY_AGAIN, url);
 }
 
-export async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
+/** Place / search lookup with SHARE-FIX retries on 502/503/504. */
+export function placeLookupFetch(
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
+  return apiFetch(path, {
+    ...init,
+    retryStatuses: PLACE_LOOKUP_RETRY_STATUSES,
+    maxAttempts: 3,
+  });
+}
+
+export async function apiJson<T>(
+  path: string,
+  init?: ApiFetchInit,
+): Promise<T> {
   const response = await apiFetch(path, init);
   return (await response.json()) as T;
 }

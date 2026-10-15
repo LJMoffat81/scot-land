@@ -244,6 +244,46 @@
   }
 }
 
+/*
+ * SW-042 / SW-049 (≤900): no-match toast hugs content and stays clear of
+ * Layers + map chrome; closed legend pill sits above the bottom sheet.
+ */
+@media (max-width: 900px) {
+  .app-shell.place-open .hud-place.place-card.place-card-search-miss,
+  .app-shell.place-open .place-card-stub.place-card-search-miss {
+    bottom: 7.4rem;
+    max-height: min(28dvh, 12rem);
+    overflow: visible;
+  }
+
+  .app-shell.place-open .hud-scotland:not(.legend-open) {
+    bottom: calc(
+      7.4rem + min(52dvh, calc(100dvh - var(--hud-height, 8rem) - 8rem)) +
+        0.55rem
+    );
+    padding-bottom: 0;
+    z-index: 15;
+  }
+
+  .app-shell.place-open .hud-scotland:not(.legend-open) .hud-scotland-stack {
+    max-height: none;
+  }
+}
+
+/*
+ * SW-049: closed legend pill stays above the place card (z-index + clickable)
+ * at every width — not only the ≥1024 left-column layout.
+ */
+.app-shell.place-open .hud-scotland {
+  z-index: 15;
+  pointer-events: none;
+}
+
+.app-shell.place-open .hud-scotland-fold,
+.app-shell.place-open .hud-scotland.legend-open .hud-scotland-body {
+  pointer-events: auto;
+}
+
 /* —— Find a place intro collapses when place card is open (all widths) —— */
 @media (min-width: 641px) {
   /* Match mobile / site nav pill look (not the default browser button). */
@@ -293,7 +333,8 @@
 }
 
 .app-shell.place-open .hud-scotland .hud-scotland-job,
-.app-shell.place-open .hud-scotland .hud-scotland-lead {
+.app-shell.place-open .hud-scotland .hud-scotland-lead,
+.app-shell.place-open .hud-scotland .hud-scotland-coming-soon {
   display: none;
 }
 

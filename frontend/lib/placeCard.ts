@@ -26,6 +26,16 @@ export const PLACE_CARD_AGR_SUBTITLE =
 export const PLACE_CARD_PRE_POUND =
   "We're not showing amounts yet while we check our method.";
 
+/**
+ * Home + place-card coming-soon line (WORDING-BATCH-1 A1 / 17:40;
+ * Scot-LAND: same wording on home and card).
+ */
+export const LAND_VALUES_COMING_SOON_HOME =
+  "Land values coming soon — our method is still being tested.";
+
+/** Same string as LAND_VALUES_COMING_SOON_HOME (shown under PRE_POUND). */
+export const PLACE_CARD_LAND_VALUES_COMING_SOON = LAND_VALUES_COMING_SOON_HOME;
+
 /** Rank band UI — OFF until £ unblocked (UX-10). */
 export const PLACE_CARD_RANK_BAND_ENABLED = false;
 
@@ -142,6 +152,14 @@ export const PLACE_CARD_MAP_REFERENCE_LABEL = "Map reference";
 /** Shown when the map-reference Copy button cannot write the clipboard. */
 export const PLACE_CARD_MAP_REFERENCE_COPY_FAIL =
   "Couldn't copy — select and copy the reference instead.";
+
+/** Parts disclosure summary before open (idea 52; Scot-LAND: "and", not "&"). */
+export const PLACE_CARD_PARTS_SUMMARY =
+  "Natural resource rents and services of nature";
+
+/** Why? beside unpublished figures — methodology certainty section. */
+export const PLACE_CARD_FIGURE_WHY_HREF = "/methodology#how-sure";
+export const PLACE_CARD_FIGURE_WHY_LABEL = "Why?";
 
 export type PlaceValueStatus = "coming_soon" | "in_progress";
 
@@ -639,6 +657,7 @@ export async function fetchPlaceCard({
   try {
     return await apiJson<PlaceCardPayload>(
       `/platform/place?${params.toString()}`,
+      { retryStatuses: [502, 503, 504], maxAttempts: 3 },
     );
   } catch (err) {
     if (isOutsideScotlandError(err)) {

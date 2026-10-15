@@ -20,6 +20,7 @@ import {
 } from "@/lib/gbpLive";
 import {
   fetchPlaceCard,
+  LAND_VALUES_COMING_SOON_HOME,
   outsideScotlandPlaceCard,
 } from "@/lib/placeCard";
 import MapLayersDrawer from "./MapLayersDrawer";
@@ -27,12 +28,13 @@ import MapLicenceCredits from "./MapLicenceCredits";
 import MapRangeLegend from "./MapRangeLegend";
 import {
   ApiError,
-  HLA_NOT_LOADED,
-  SERVICE_BUSY,
+  TRY_AGAIN,
   apiFetch,
   apiJson,
+  placeLookupFetch,
   isOutsideScotlandError,
   isServiceFailure,
+  isServiceUnavailable,
   pingApi,
   fetchCapabilities,
   POSTCODES_ONLY,
@@ -541,6 +543,13 @@ export default function ScotlandMap() {
   const dzHoverPopupRef = useRef<maplibregl.Popup | null>(null);
 
   const onMapLayersChange = (next: LedgerToggleState) => {
+    // SHARE-FIX — refuse on for Coming soon tile layers.
+    const sanitized: LedgerToggleState = { ...next };
+    if (tileUnavailableIds.has("hla") && sanitized.hla) sanitized.hla = false;
+    if (tileUnavailableIds.has("3") && sanitized["3"]) sanitized["3"] = false;
+    if (tileUnavailableIds.has("5") && sanitized["5"]) sanitized["5"] = false;
+    if (tileUnavailableIds.has("lca") && sanitized.lca) sanitized.lca = false;
+
     const prevEnabled: Record<string, boolean> = {
       ...ledgerEnabled,
       data_zones: showDataZones,
@@ -548,11 +557,13 @@ export default function ScotlandMap() {
       hla: showHla,
     };
     const nextEnabled: Record<string, boolean> = {
-      ...next,
+      ...sanitized,
       data_zones:
-        "data_zones" in next ? Boolean(next.data_zones) : showDataZones,
-      vdl: "vdl" in next ? Boolean(next.vdl) : showVdl,
-      hla: "hla" in next ? Boolean(next.hla) : showHla,
+        "data_zones" in sanitized
+          ? Boolean(sanitized.data_zones)
+          : showDataZones,
+      vdl: "vdl" in sanitized ? Boolean(sanitized.vdl) : showVdl,
+      hla: "hla" in sanitized ? Boolean(sanitized.hla) : showHla,
     };
     const activated = newlyEnabledLegendLayer(prevEnabled, nextEnabled);
     if (activated) {
@@ -563,25 +574,116 @@ export default function ScotlandMap() {
     ) {
       setLegendPreferredId(null);
     }
-    setLedgerEnabled(next);
+    setLedgerEnabled(sanitized);
     // Catalog boundary / VDL toggles from the right-hand Layers drawer.
-    if ("boundaries" in next) {
+    if ("boundaries" in sanitized) {
       boundariesTouched.current = true;
       // Parcel layer stays off unless PARCELS_PUBLIC=true.
-      setShowBoundaries(parcelsPublic() && Boolean(next.boundaries));
+      setShowBoundaries(parcelsPublic() && Boolean(sanitized.boundaries));
     }
-    if ("data_zones" in next) {
+    if ("data_zones" in sanitized) {
       dataZonesTouched.current = true;
-      setShowDataZones(Boolean(next.data_zones));
+      setShowDataZones(Boolean(sanitized.data_zones));
     }
-    if ("builtup_mask" in next) {
+    if ("builtup_mask" in sanitized) {
       builtupMaskTouched.current = true;
-      setShowBuiltupMask(Boolean(next.builtup_mask));
+      // Idea 57 — refuse on when Coming soon (unavailable / catalogue gap).
+      if (builtupMaskUnavailable || builtupMaskCatalogGap) {
+        setShowBuiltupMask(false);
+      } else {
+        const turnOn = Boolean(sanitized.builtup_mask);
+        setShowBuiltupMask(turnOn);
+        // Availability check on enable (works at any zoom; loadMasked may skip
+        // the geo fetch below DATA_ZONE_MIN_ZOOM).
+        if (turnOn) {
+          const path =
+            "/layers/open/dz2022-masked?south=55.85&west=-4.27&north=55.87&east=-4.24&max_features=1";
+          void apiJson<GeoJSON.FeatureCollection>(path).catch(
+            (err: unknown) => {
+              if (isServiceUnavailable(err)) {
+                setBuiltupMaskUnavailable(true);
+                setShowBuiltupMask(false);
+              }
+            },
+          );
+        }
+      }
     }
-    if ("vdl" in next) setShowVdl(Boolean(next.vdl));
-    if ("hla" in next) setShowHla(Boolean(next.hla));
+    if ("vdl" in sanitized) setShowVdl(Boolean(sanitized.vdl));
+    if ("hla" in sanitized) {
+      const turnOn =
+        Boolean(sanitized.hla) && !tileUnavailableIds.has("hla");
+      setShowHla(turnOn);
+      if (turnOn) {
+        const path =
+          "/layers/open/hla?south=55.85&west=-4.27&north=55.87&east=-4.24&max_features=1";
+        void apiJson<GeoJSON.FeatureCollection>(path).catch((err: unknown) => {
+          if (isServiceUnavailable(err)) {
+            markTileUnavailable("hla");
+            setShowHla(false);
+          }
+        });
+      }
+    }
+    if (
+      "3" in sanitized &&
+      Boolean(sanitized["3"]) &&
+      !tileUnavailableIds.has("3")
+    ) {
+      const path =
+        "/layers/open/repd-onshore-wind?south=55.85&west=-4.27&north=55.87&east=-4.24&max_features=1";
+      void apiJson<GeoJSON.FeatureCollection>(path).catch((err: unknown) => {
+        if (isServiceUnavailable(err)) {
+          markTileUnavailable("3");
+          setLedgerEnabled((cur) => {
+            if (!cur["3"]) return cur;
+            const copy = { ...cur };
+            delete copy["3"];
+            return copy;
+          });
+        }
+      });
+    }
+    if (
+      "5" in sanitized &&
+      Boolean(sanitized["5"]) &&
+      !tileUnavailableIds.has("5")
+    ) {
+      const path =
+        "/layers/open/ces-aquaculture?south=55.85&west=-4.27&north=55.87&east=-4.24&max_features=1";
+      void apiJson<GeoJSON.FeatureCollection>(path).catch((err: unknown) => {
+        if (isServiceUnavailable(err)) {
+          markTileUnavailable("5");
+          setLedgerEnabled((cur) => {
+            if (!cur["5"]) return cur;
+            const copy = { ...cur };
+            delete copy["5"];
+            return copy;
+          });
+        }
+      });
+    }
+    if (
+      "lca" in sanitized &&
+      Boolean(sanitized.lca) &&
+      !tileUnavailableIds.has("lca")
+    ) {
+      const path =
+        "/layers/open/lca?south=55.85&west=-4.27&north=55.87&east=-4.24&max_features=1";
+      void apiJson<GeoJSON.FeatureCollection>(path).catch((err: unknown) => {
+        if (isServiceUnavailable(err)) {
+          markTileUnavailable("lca");
+          setLedgerEnabled((cur) => {
+            if (!cur.lca) return cur;
+            const copy = { ...cur };
+            delete copy.lca;
+            return copy;
+          });
+        }
+      });
+    }
     // Constraint flood paints the existing flood context overlay when available.
-    setContextOn((cur) => ({ ...cur, flood: Boolean(next.flood) }));
+    setContextOn((cur) => ({ ...cur, flood: Boolean(sanitized.flood) }));
   };
 
   // Public place card (stub). Modelled AGR £ / Wealth / tax stay off the public shell.
@@ -626,6 +728,28 @@ export default function ScotlandMap() {
     null,
   );
   const [catalogLayers, setCatalogLayers] = useState<CatalogLayer[]>([]);
+  /** Idea 57 — built-up mask tiles/geo returned service-unavailable. */
+  const [builtupMaskUnavailable, setBuiltupMaskUnavailable] = useState(false);
+  /**
+   * Idea 57 — catalogue loaded with builtup_mask missing or not live.
+   * Empty catalogue stubs (common in e2e) leave this false.
+   */
+  const [builtupMaskCatalogGap, setBuiltupMaskCatalogGap] = useState(false);
+  /**
+   * SHARE-FIX — layers whose tiles returned 503 → Coming soon / disabled
+   * (hla, onshore wind+hydro "3", aquaculture "5", lca).
+   */
+  const [tileUnavailableIds, setTileUnavailableIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const markTileUnavailable = useCallback((id: string) => {
+    setTileUnavailableIds((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, []);
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const parcelLabelRef = useRef<maplibregl.Marker | null>(null);
   const headerRef = useRef<HTMLElement | null>(null);
@@ -1088,7 +1212,7 @@ export default function ScotlandMap() {
   }, [mapReady, mapStyle]);
 
   const openPostcode = async (postcode: string, generation: number) => {
-    const response = await apiFetch(
+    const response = await placeLookupFetch(
       `/postcode/${encodeURIComponent(postcode)}`,
     );
     const payload = (await response.json()) as SquareResponse & {
@@ -1115,7 +1239,7 @@ export default function ScotlandMap() {
 
   const openWords = async (words: string, generation: number) => {
     // Public shell: resolve ///words via /place only (no /square AGR £).
-    const response = await apiFetch(
+    const response = await placeLookupFetch(
       `/place?q=${encodeURIComponent(`///${words.replace(/^\/+/, "")}`)}`,
     );
     const body = (await response.json()) as PlaceLookup;
@@ -1170,9 +1294,10 @@ export default function ScotlandMap() {
     try {
       const body = await apiJson<{ postcode: string; lat: number; lng: number }>(
         `/geocode/postcode?q=${encodeURIComponent(q)}`,
+        { retryStatuses: [502, 503, 504], maxAttempts: 3 },
       );
       if (generation !== lookupGen.current) return;
-      setQuery(body.postcode);
+      // SW-051: keep the user's postcode formatting (e.g. EH1 1YZ), not API compact.
       void inspectRef.current(body.lat, body.lng, {
         fly: true,
         fromAddressSearch: true,
@@ -1225,7 +1350,9 @@ export default function ScotlandMap() {
     setError(null);
     clearSuggestions();
     try {
-      const response = await apiFetch(`/place?q=${encodeURIComponent(q)}`);
+      const response = await placeLookupFetch(
+        `/place?q=${encodeURIComponent(q)}`,
+      );
       const body = (await response.json()) as PlaceLookup;
       if (generation !== lookupGen.current) return;
       if (body.kind === "words" && body.words) {
@@ -1286,7 +1413,13 @@ export default function ScotlandMap() {
     suggestGen.current += 1;
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
     clearSuggestions();
-    setQuery(item.label);
+    // SW-051: if the pick is the same postcode the user typed, keep their spacing.
+    const typed = query.trim();
+    const pickPc = (item.postcode || item.label || "").replace(/\s+/g, "").toUpperCase();
+    const typedPc = typed.replace(/\s+/g, "").toUpperCase();
+    if (!(item.kind === "postcode" && pickPc && pickPc === typedPc && /\s/.test(typed))) {
+      setQuery(item.label);
+    }
     setError(null);
     setLoading(true);
     try {
@@ -1340,9 +1473,10 @@ export default function ScotlandMap() {
     if (generation !== suggestGen.current) return;
     setSuggesting(true);
     try {
-      const response = await apiFetch(`/place?q=${encodeURIComponent(text)}`, {
-        signal: controller.signal,
-      });
+      const response = await placeLookupFetch(
+        `/place?q=${encodeURIComponent(text)}`,
+        { signal: controller.signal },
+      );
       const body = (await response.json()) as PlaceLookup;
       if (generation !== suggestGen.current) return;
       const found = suggestionsFromLookup(body, text);
@@ -2399,19 +2533,37 @@ export default function ScotlandMap() {
   }, []);
 
   // Catalog licence fields drive the map credits control in the legend.
+  // Idea 57: when the catalogue has loaded and builtup_mask is missing or not
+  // live, mark it Coming soon (empty catalogue stubs leave toggles alone).
   useEffect(() => {
     let cancelled = false;
     void fetchLayerCatalog()
       .then((payload) => {
-        if (!cancelled) setCatalogLayers(payload.layers ?? []);
+        if (cancelled) return;
+        const layers = payload.layers ?? [];
+        setCatalogLayers(layers);
+        if (layers.length === 0) {
+          setBuiltupMaskCatalogGap(false);
+          return;
+        }
+        const mask = layers.find((layer) => layer.id === "builtup_mask");
+        const maskReady = Boolean(mask && mask.status === "live");
+        setBuiltupMaskCatalogGap(!maskReady);
+        if (!maskReady) setShowBuiltupMask(false);
       })
       .catch(() => {
-        if (!cancelled) setCatalogLayers([]);
+        if (!cancelled) {
+          setCatalogLayers([]);
+          setBuiltupMaskCatalogGap(false);
+        }
       });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Idea 57 — service-unavailable is detected when the mask is turned on
+  // (loadMasked / enable check), not via a mount-time probe.
 
   // Public shell: never fetch /layers/councils (council AGR £ and rent £/m² stay internal).
   // Keep fill/hatch expressions on a public context ramp so hidden paint is never AGR £.
@@ -2619,9 +2771,13 @@ export default function ScotlandMap() {
           (map.getSource("dz2022-masked-overlay") as GeoJSONSource)?.setData(data);
           setVis("visible");
         })
-        .catch(() => {
-          // Unloaded (503) or empty — keep outlines; do not invent mask geometry.
+        .catch((err: unknown) => {
+          // Unloaded or empty — keep outlines; do not invent mask geometry.
           if (!cancelled) setVis("none");
+          if (!cancelled && isServiceUnavailable(err)) {
+            setBuiltupMaskUnavailable(true);
+            setShowBuiltupMask(false);
+          }
         })
         .finally(() => {
           inFlight = false;
@@ -2687,10 +2843,15 @@ export default function ScotlandMap() {
         .catch((err: unknown) => {
           if (cancelled) return;
           setVis("none");
-          if (err instanceof ApiError && err.status === 503) {
-            setLayerNotice(
-              "REPD onshore wind is not loaded yet. Gaps are not filled with guesses.",
-            );
+          // SHARE-FIX: 503 → Coming soon on "Onshore wind and hydro", no raw error.
+          if (isServiceUnavailable(err)) {
+            markTileUnavailable("3");
+            setLedgerEnabled((cur) => {
+              if (!cur["3"]) return cur;
+              const copy = { ...cur };
+              delete copy["3"];
+              return copy;
+            });
           }
         })
         .finally(() => {
@@ -2711,7 +2872,7 @@ export default function ScotlandMap() {
       if (timer) clearTimeout(timer);
       map.off("moveend", onMove);
     };
-  }, [mapReady, showRepdOnshoreWind]);
+  }, [mapReady, showRepdOnshoreWind, markTileUnavailable]);
 
   // CES aquaculture seabed leases (OGL Spatial Hub; ledger row 5; no £ rent)
   useEffect(() => {
@@ -2759,10 +2920,15 @@ export default function ScotlandMap() {
         .catch((err: unknown) => {
           if (cancelled) return;
           setVis("none");
-          if (err instanceof ApiError && err.status === 503) {
-            setLayerNotice(
-              "Aquaculture seabed leases are not loaded yet. Gaps are not filled with guesses.",
-            );
+          // SHARE-FIX: 503 → Coming soon on Aquaculture, no raw error.
+          if (isServiceUnavailable(err)) {
+            markTileUnavailable("5");
+            setLedgerEnabled((cur) => {
+              if (!cur["5"]) return cur;
+              const copy = { ...cur };
+              delete copy["5"];
+              return copy;
+            });
           }
         })
         .finally(() => {
@@ -2783,7 +2949,7 @@ export default function ScotlandMap() {
       if (timer) clearTimeout(timer);
       map.off("moveend", onMove);
     };
-  }, [mapReady, showCesAquaculture]);
+  }, [mapReady, showCesAquaculture, markTileUnavailable]);
 
   // SVDLS vacant / derelict overlay (OGL survey polygons)
   useEffect(() => {
@@ -2899,13 +3065,10 @@ export default function ScotlandMap() {
         .catch((err: unknown) => {
           if (cancelled) return;
           setVis("none");
-          if (err instanceof ApiError && err.status === 503) {
-            // Prefer API detail when preserved; never fall back to Service busy.
-            const msg =
-              err.message.trim() === HLA_NOT_LOADED
-                ? err.message.trim()
-                : HLA_NOT_LOADED;
-            setLayerNotice(msg);
+          // SHARE-FIX: 503 → Coming soon on Housing land audit, no raw error.
+          if (isServiceUnavailable(err)) {
+            markTileUnavailable("hla");
+            setShowHla(false);
           }
         })
         .finally(() => {
@@ -2926,7 +3089,7 @@ export default function ScotlandMap() {
       if (timer) clearTimeout(timer);
       map.off("moveend", onMove);
     };
-  }, [mapReady, showHla]);
+  }, [mapReady, showHla, markTileUnavailable]);
 
   // LDP allocations (OGL Spatial Hub + authority seeds)
   useEffect(() => {
@@ -3217,6 +3380,17 @@ export default function ScotlandMap() {
         .catch((err: unknown) => {
           if (cancelled) return;
           setVis("none");
+          // SHARE-FIX: same ledger row "3" as onshore wind / hydro.
+          if (isServiceUnavailable(err)) {
+            markTileUnavailable("3");
+            setLedgerEnabled((cur) => {
+              if (!cur["3"]) return cur;
+              const copy = { ...cur };
+              delete copy["3"];
+              return copy;
+            });
+            return;
+          }
           const msg =
             err instanceof ApiError
               ? visitorFacingError(err)
@@ -3240,7 +3414,7 @@ export default function ScotlandMap() {
       if (timer) clearTimeout(timer);
       map.off("moveend", onMove);
     };
-  }, [mapReady, showRepd]);
+  }, [mapReady, showRepd, markTileUnavailable]);
 
   // Crown Estate Scotland offshore leases (ledger row 4 — no £ rent)
   useEffect(() => {
@@ -3424,10 +3598,15 @@ export default function ScotlandMap() {
         .catch((err: unknown) => {
           if (cancelled) return;
           setVis("none");
-          if (err instanceof ApiError && err.status === 503) {
-            setLayerNotice(
-              "Land capability overlay is not available right now. Gaps are not filled with guesses.",
-            );
+          // SHARE-FIX: 503 → Coming soon on LCA, no raw error.
+          if (isServiceUnavailable(err)) {
+            markTileUnavailable("lca");
+            setLedgerEnabled((cur) => {
+              if (!cur.lca) return cur;
+              const copy = { ...cur };
+              delete copy.lca;
+              return copy;
+            });
           }
         })
         .finally(() => {
@@ -3448,7 +3627,7 @@ export default function ScotlandMap() {
       if (timer) clearTimeout(timer);
       map.off("moveend", onMove);
     };
-  }, [mapReady, showLca]);
+  }, [mapReady, showLca, markTileUnavailable]);
 
   useEffect(() => {
     if (!mapReady) return;
@@ -3732,6 +3911,13 @@ export default function ScotlandMap() {
 
   const placeOpen = Boolean(placeStub || result || error);
   const collapsedIntroForPlace = useRef(false);
+  /** Idea 57 + SHARE-FIX — drawer Coming soon for unavailable tile layers. */
+  const unavailableLayerIds = new Set<string>(tileUnavailableIds);
+  if (builtupMaskUnavailable || builtupMaskCatalogGap) {
+    unavailableLayerIds.add("builtup_mask");
+  }
+  /** SW-047 / idea 56 — compact legend strip while a place card is open. */
+  const legendCompact = placeOpen;
 
   // Usability: collapse Find a place intro when a place card opens; restore on close.
   useEffect(() => {
@@ -3947,10 +4133,17 @@ export default function ScotlandMap() {
       <ResearchBanner dismissible collapseForSuggest={suggestOpen} />
 
       <aside
-        className={legendOpen ? "hud-scotland legend-open" : "hud-scotland"}
+        className={[
+          "hud-scotland",
+          legendOpen ? "legend-open" : "",
+          legendCompact ? "legend-compact" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         aria-label="Map legend"
         data-testid="map-legend-panel"
         data-legend-layer={activeLegend.layerId}
+        data-legend-compact={legendCompact ? "true" : "false"}
         ref={scotlandRef}
       >
         <div className="hud-scotland-stack">
@@ -3970,23 +4163,33 @@ export default function ScotlandMap() {
             </span>
           </button>
           <div className="hud-scotland-body" id="hud-scotland-body">
-            <p className="hud-scotland-job">Find a place</p>
-            <p className="hud-scotland-lead">
-              Type a postcode or place name, or tap the map. You&apos;ll see what
-              we know about that area and where the data comes from.
-            </p>
+            {!legendCompact ? (
+              <>
+                <p className="hud-scotland-job">Find a place</p>
+                <p className="hud-scotland-lead">
+                  Type a postcode or place name, or tap the map. You&apos;ll see
+                  what we know about that area and where the data comes from.
+                </p>
+                <p
+                  className="hud-scotland-coming-soon"
+                  data-testid="land-values-coming-soon"
+                >
+                  {LAND_VALUES_COMING_SOON_HOME}
+                </p>
+              </>
+            ) : null}
             <MapRangeLegend
               title={activeLegend.title}
-              blurb={activeLegend.blurb}
-              paler={activeLegend.paler}
+              blurb={legendCompact ? undefined : activeLegend.blurb}
+              paler={legendCompact ? undefined : activeLegend.paler}
               ranges={activeLegend.ranges}
               showNoData={activeLegend.showNoData}
               mode={activeLegend.mode}
               zoomHint={activeLegend.zoomHint}
-              source={activeLegend.source ?? null}
+              source={legendCompact ? null : activeLegend.source ?? null}
               layerId={activeLegend.layerId}
             />
-            {surfaceRentLegend ? (
+            {!legendCompact && surfaceRentLegend ? (
               <MapRangeLegend
                 title={SURFACE_RENT_LEGEND_TITLE}
                 blurb={SURFACE_RENT_LEGEND_BLURB}
@@ -3997,19 +4200,23 @@ export default function ScotlandMap() {
                 className="map-range-legend-surface-rent"
               />
             ) : null}
-            <MapLicenceCredits credits={mapCredits} />
-            <p className="hud-scotland-foot">
-              <a href="/about">About</a>
-              {" · "}
-              <a href="/methodology">How it works</a>
-            </p>
+            {!legendCompact ? (
+              <MapLicenceCredits credits={mapCredits} />
+            ) : null}
+            {!legendCompact ? (
+              <p className="hud-scotland-foot">
+                <a href="/about">About</a>
+                {" · "}
+                <a href="/methodology">How it works</a>
+              </p>
+            ) : null}
           </div>
         </div>
       </aside>
 
       {apiOk === false && (
         <div className="hud-banner">
-          <span>{SERVICE_BUSY}</span>
+          <span>{TRY_AGAIN}</span>
           <button
             type="button"
             className="api-retry"
@@ -4033,6 +4240,7 @@ export default function ScotlandMap() {
                 vdl: showVdl,
                 hla: showHla,
               }}
+              unavailableIds={unavailableLayerIds}
               onEnabledChange={onMapLayersChange}
             />
             {showBoundaries && (
@@ -4163,10 +4371,10 @@ export default function ScotlandMap() {
               >
                 ×
               </button>
-              <p className="error-line" data-testid="place-card-no-match" role="alert">
-                {error}
+              <p className="error-line place-card-no-match-line" data-testid="place-card-no-match" role="alert">
+                <span data-testid="place-card-no-match-text">{error}</span>
               </p>
-              <p className="meta">
+              <p className="meta place-card-no-match-line">
                 Try a Scottish postcode, place name, coordinates, or click the map.
               </p>
             </aside>

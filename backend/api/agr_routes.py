@@ -59,7 +59,7 @@ from layers.council_metrics import build_council_metrics_geojson, scrub_public_a
 from layers.councils_layer import build_councils_agr_geojson
 from layers.grid_layer import build_w3w_agr_grid
 from layers.platform import platform_catalog
-from spatial.address import search_door, search_place
+from spatial.address import NominatimUnavailable, search_door, search_place
 from spatial.context_tiles import (
     fetch_context_geojson,
     fetch_context_tile,
@@ -1112,6 +1112,10 @@ def internal_get_postcode_square(
     return JSONResponse(_with_internal_block(square_payload), headers=INTERNAL_HEADERS)
 
 
+_PLACE_BUSY = "Place search is busy. Try again in a moment."
+_ADDRESS_BUSY = "Address search is busy. Try again in a moment."
+
+
 @router.get("/place")
 def get_place(q: str = Query(description="Postcode, address, place, or title number")) -> dict:
     """Find where to open the map. A title miss is not a rent and not a ScotLIS call."""
@@ -1119,8 +1123,11 @@ def get_place(q: str = Query(description="Postcode, address, place, or title num
         return search_place(q)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except NominatimUnavailable as exc:
+        # Nominatim 429 / exhaustion — never surface as 502 after SHARE-FIX.
+        raise HTTPException(status_code=503, detail=_PLACE_BUSY) from exc
     except (httpx.HTTPError, json.JSONDecodeError) as exc:
-        raise HTTPException(status_code=502, detail="Place search is unavailable.") from exc
+        raise HTTPException(status_code=503, detail=_PLACE_BUSY) from exc
 
 
 @router.get("/address")
@@ -1135,5 +1142,7 @@ def get_address(
         return search_door(postcode, door, lat=lat, lng=lng)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except NominatimUnavailable as exc:
+        raise HTTPException(status_code=503, detail=_ADDRESS_BUSY) from exc
     except (httpx.HTTPError, json.JSONDecodeError) as exc:
-        raise HTTPException(status_code=502, detail="Address search is unavailable.") from exc
+        raise HTTPException(status_code=503, detail=_ADDRESS_BUSY) from exc

@@ -223,6 +223,16 @@ async function assertSkeletonCopy(page: Page) {
   const parts = page.getByTestId("place-card-parts");
   await expect(parts).toBeVisible();
   await expect(parts).not.toHaveAttribute("open", "");
+  await expect(parts.locator("summary")).toHaveText(
+    "Natural resource rents and services of nature",
+  );
+  await expect(page.getByTestId("place-card-figure-status")).toContainText(
+    "Figure not published yet",
+  );
+  await expect(page.getByTestId("place-card-figure-why")).toHaveAttribute(
+    "href",
+    "/methodology#how-sure",
+  );
   await parts.locator("summary").click();
   await expect(page.getByTestId("place-card-agr-surface")).toContainText("Land");
   await expect(page.getByTestId("place-card-agr-resource")).toContainText(

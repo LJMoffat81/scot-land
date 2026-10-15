@@ -380,11 +380,23 @@ input {
 .place-card-how-homes,
 .place-card-part-gloss,
 .place-card-part-range,
+.place-card-figure-status,
 .place-card-fully-estimated-marker {
   margin: 0.25rem 0 0;
   font-size: 0.85rem;
   line-height: 1.4;
   color: var(--slrg-text);
+}
+
+.place-card-figure-status a {
+  color: var(--slrg-navy);
+  font-weight: 650;
+  text-underline-offset: 0.12em;
+}
+
+.place-card-map-reference-label {
+  font-weight: 650;
+  color: var(--slrg-muted);
 }
 
 .place-card-experimental-footer {
@@ -396,6 +408,13 @@ input {
 
 .place-card-experimental-footer-sticky {
   display: none;
+}
+
+.place-card-value-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  flex-shrink: 0;
 }
 
 .place-card-sheet-body {
@@ -504,6 +523,8 @@ input {
   .place-card-stub.place-card {
     display: flex;
     flex-direction: column;
+    /* Section scroll (peek / sheet); keep first value row in the card clip. */
+    overflow: hidden;
   }
 
   .hud-place .place-card-body,
@@ -519,6 +540,20 @@ input {
     flex: 1 1 auto;
     min-height: 0;
     padding-bottom: 0.35rem;
+  }
+
+  /* SW-047: value block (AGR + surface row) stays outside the scrollable sheet.
+     Peek may shrink so the coming-soon line never clips the first value row. */
+  .hud-place .place-card-peek,
+  .place-card-stub .place-card-peek {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .hud-place .place-card-value-block,
+  .place-card-stub .place-card-value-block {
+    flex: 0 0 auto;
   }
 
   .hud-place .place-card-experimental-footer-peek,
@@ -612,6 +647,25 @@ input {
   font-size: 0.92rem;
   line-height: 1.45;
   color: var(--slrg-ink, #1a2332);
+}
+
+/* SW-042: no-match toast — × must not overlap text (same clearance as sea line). */
+.place-card-search-miss .place-card-no-match-line,
+.place-card-search-miss .error-line.place-card-no-match-line {
+  padding-right: calc(44px + 8px);
+  box-sizing: border-box;
+}
+
+.place-card-land-values-coming-soon,
+.hud-scotland-coming-soon {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  color: var(--slrg-muted);
+}
+
+.hud-scotland-coming-soon {
+  margin-top: 0.45rem;
 }
 
 /* SW-028: link under the sea plain line — closes card + national view. */
@@ -1320,6 +1374,49 @@ input {
 
 .map-licence-credits-attribution {
   color: var(--slrg-muted);
+}
+
+/* SW-047 / idea 56 — compact strip: title + colour bands only. */
+.hud-scotland.legend-compact {
+  padding: 0.55rem 0.75rem 0.5rem;
+}
+
+.hud-scotland.legend-compact .map-range-legend {
+  margin-top: 0;
+}
+
+.layers-group-ogl {
+  margin-top: 0.35rem;
+}
+
+.api-dev-notes {
+  margin: 0.85rem 0 1rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--line, #d8dee6);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.api-dev-notes > summary {
+  cursor: pointer;
+  font-weight: 650;
+  color: var(--slrg-navy);
+}
+
+.api-docs-swagger-host,
+.api-docs-swagger-host .swagger-ui {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.api-docs-swagger-host .swagger-ui .microlight,
+.api-docs-swagger-host .swagger-ui pre,
+.api-docs-swagger-host .swagger-ui code,
+.api-docs-swagger-host .swagger-ui .opblock-summary-path,
+.api-docs-swagger-host .swagger-ui .highlight-code {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .map-range-legend {
@@ -3489,6 +3586,12 @@ button.linkish:disabled {
 
   /* SW-030 sea line: clear the enlarged mobile × (44px) + 8px. */
   .place-card-sea-line {
+    padding-right: 52px;
+  }
+
+  /* SW-042: no-match toast — same × clearance on mobile. */
+  .place-card-search-miss .place-card-no-match-line,
+  .place-card-search-miss .error-line.place-card-no-match-line {
     padding-right: 52px;
   }
 

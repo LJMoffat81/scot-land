@@ -18,10 +18,19 @@ const { formatDownloadBytes } = await import(
   pathToFileURL(join(frontendRoot, "lib/downloadManifest.ts")).href
 );
 
-assert.equal(formatDownloadBytes(null), "—");
+assert.equal(formatDownloadBytes(null), "Not packaged yet");
+assert.equal(formatDownloadBytes(undefined), "Not packaged yet");
 assert.equal(formatDownloadBytes(512), "512 B");
 assert.match(formatDownloadBytes(2048), /KB/);
 assert.match(formatDownloadBytes(2_500_000), /MB/);
+assert.doesNotMatch(
+  readSrc("app/developers/page.tsx"),
+  /Size\s*—|Size —/,
+);
+assert.match(
+  readSrc("app/developers/page.tsx"),
+  /Not packaged yet/,
+);
 
 // --- Item 5: manifest + files ---
 const downloadsDir = join(frontendRoot, "public/downloads");

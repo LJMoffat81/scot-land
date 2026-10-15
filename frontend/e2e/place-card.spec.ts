@@ -15,6 +15,11 @@ test.describe("place card (internal preview)", () => {
     await expect(page.getByTestId("place-card-figure")).toContainText(
       "We're not showing amounts yet while we check our method.",
     );
+    await expect(
+      page.getByTestId("place-card-land-values-coming-soon"),
+    ).toHaveText(
+      "Land values coming soon — our method is still being tested.",
+    );
     await expect(page.getByTestId("place-card-agr-label")).toHaveText(
       "Annual Ground Rent",
     );
@@ -27,9 +32,19 @@ test.describe("place card (internal preview)", () => {
     await expect(page.getByTestId("place-card-fact")).toBeVisible();
 
     const parts = page.getByTestId("place-card-parts");
+    await expect(parts.locator("summary")).toHaveText(
+      "Natural resource rents and services of nature",
+    );
     await parts.locator("summary").click();
     await expect(page.getByTestId("place-card-agr-surface")).toContainText(
       /Land/i,
+    );
+    await expect(page.getByTestId("place-card-map-reference")).toContainText(
+      "Map reference",
+    );
+    await expect(page.getByTestId("place-card-figure-why")).toHaveAttribute(
+      "href",
+      "/methodology#how-sure",
     );
     await expect(page.getByTestId("place-card-of-which-planning_uplift")).toContainText(
       /of which: planning uplift/i,

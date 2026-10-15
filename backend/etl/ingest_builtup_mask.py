@@ -28,6 +28,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from etl.receipt_write import write_receipt
 from georgist.db import connect
 from paths import DATA_DIR
 
@@ -179,7 +180,8 @@ def assert_full_qa(conn, qa_path: Path | None) -> None:
     )
 
 
-def write_stamp(path: Path, mask_parts: int, dz_rows: int) -> None:
+def write_stamp(path: Path, mask_parts: int, dz_rows: int) -> Path | None:
+    """Write builtup_mask.ingest.json; non-fatal when /app/data is read-only."""
     stamp = {
         "layer": "map_builtup_mask",
         "licence": "OGL-3.0",
@@ -193,8 +195,11 @@ def write_stamp(path: Path, mask_parts: int, dz_rows: int) -> None:
             "(data/external/builtup/ or BUILTUP_MASK_DIR)."
         ),
     }
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
+    return write_receipt(
+        path,
+        stamp,
+        fallback_name="builtup_mask.ingest.json",
+    )
 
 
 def main() -> None:

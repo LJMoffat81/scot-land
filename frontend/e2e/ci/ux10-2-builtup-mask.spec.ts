@@ -105,18 +105,110 @@ function filterNoise(errors: string[]): string[] {
 }
 
 async function stubMapBackend(page: Page) {
-  await page.route("**/backend/health**", async (route) => {
+  // Single handler so Playwright LIFO cannot let a catch-all steal
+  // /layers/catalog or dz2022-masked (credits would never mount).
+  await page.route("**/backend/**", async (route) => {
+    const url = route.request().url();
+    if (/\/health(?:\?|$)/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(HEALTH_OK),
+      });
+      return;
+    }
+    if (/\/layers\/catalog/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(CATALOG),
+      });
+      return;
+    }
+    // Attribution under test does not need a live place card. A 200 place
+    // payload lets ?lat=&lng= boot (and accidental map hits) keep a sheet
+    // open that covers Show legend at 390 and keeps legendCompact so
+    // map-licence-credits never mounts.
+    if (/\/platform\/place/i.test(url)) {
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "e2e stub: no place card" }),
+      });
+      return;
+    }
+    if (/\/place(?:\?|$)/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ kind: "places", matches: [] }),
+      });
+      return;
+    }
+    if (/\/layers\/open\/dz2022-masked/i.test(url)) {
+      if (/\/tiles\//i.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/vnd.mapbox-vector-tile",
+          body: Buffer.alloc(0),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(MASK_FC),
+      });
+      return;
+    }
+    if (/\/layers\/open\/builtup-mask/i.test(url)) {
+      if (/\/tiles\//i.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/vnd.mapbox-vector-tile",
+          body: Buffer.alloc(0),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(EMPTY_FC),
+      });
+      return;
+    }
+    if (/\/layers\/context\/data-zones\/at/i.test(url)) {
+      await route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ detail: "e2e stub: no data zone" }),
+      });
+      return;
+    }
+    if (/\/platform\/gbp-live/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          enabled: false,
+          banner: null,
+          rent_rate_wording: null,
+        }),
+      });
+      return;
+    }
+    if (/\/layers\//i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(EMPTY_FC),
+      });
+      return;
+    }
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(HEALTH_OK),
-    });
-  });
-  await page.route("**/backend/layers/catalog**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(CATALOG),
+      body: JSON.stringify({}),
     });
   });
   await page.route("**/layers/catalog**", async (route) => {
@@ -124,89 +216,6 @@ async function stubMapBackend(page: Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(CATALOG),
-    });
-  });
-  await page.route("**/backend/place**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ kind: "places", matches: [] }),
-    });
-  });
-  await page.route("**/backend/platform/place**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        contract: "place_card_v1",
-        lat: 55.86,
-        lng: -4.25,
-        place_label: "Glasgow",
-      }),
-    });
-  });
-  await page.route("**/backend/layers/open/dz2022-masked**", async (route) => {
-    const url = route.request().url();
-    if (/\/tiles\//i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/vnd.mapbox-vector-tile",
-        body: Buffer.alloc(0),
-      });
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(MASK_FC),
-    });
-  });
-  await page.route("**/backend/layers/open/builtup-mask**", async (route) => {
-    const url = route.request().url();
-    if (/\/tiles\//i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/vnd.mapbox-vector-tile",
-        body: Buffer.alloc(0),
-      });
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
-  await page.route("**/backend/layers/open/data-zones**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
-  await page.route("**/backend/layers/context/data-zones/at**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        code: "S01014567",
-        name: "City Centre South",
-        vintage: 2022,
-      }),
-    });
-  });
-  await page.route("**/backend/layers/**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
-  await page.route("**/backend/platform/gbp-live**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ enabled: false, banner: null, rent_rate_wording: null }),
     });
   });
 }
@@ -228,25 +237,84 @@ async function closeTools(page: Page) {
 }
 
 async function closePlaceCard(page: Page) {
-  const close = page.getByRole("button", { name: "Close place card" });
-  if (await close.isVisible().catch(() => false)) {
-    await close.click();
-    await expect(close).toBeHidden({ timeout: 10_000 });
-  }
+  // Click × until the card is gone. Escape alone can leave a loading stub up;
+  // a single click can race an in-flight ?lat=&lng= inspect that remounts.
+  // force is only on × (sheet covers the hit target at 390) — not on asserts.
+  await expect(async () => {
+    const card = page.getByTestId("place-card");
+    if ((await card.count()) === 0) return;
+    const close = page.getByRole("button", { name: "Close place card" });
+    if ((await close.count()) > 0) {
+      await close.click({ force: true });
+    } else {
+      await page.keyboard.press("Escape");
+    }
+    await expect(page.getByTestId("place-card")).toHaveCount(0, {
+      timeout: 3_000,
+    });
+  }).toPass({ timeout: 20_000 });
 }
 
 /**
  * Narrow layout hides licence credits until the legend fold is open.
- * Close overlays first — place card / layers drawer intercept the fold click at 390.
+ * SW-047: MapLicenceCredits is unmounted while a place card keeps
+ * legendCompact. Close overlays first — place / layers intercept Show legend
+ * at 390. URL ?lat=&lng= can reopen the place card after dismiss — retry
+ * dismiss + open. Do not click the fold when credits are already visible
+ * (place-close restores legendOpen; another click would toggle shut).
  */
 async function ensureLegendOpen(page: Page) {
-  await closePlaceCard(page);
   await closeTools(page);
+  // Boot inspect may still be mounting the place card — wait briefly then dismiss.
+  await page
+    .getByTestId("place-card")
+    .waitFor({ state: "visible", timeout: 5_000 })
+    .catch(() => {});
   const credits = page.getByTestId("map-licence-credits");
-  if (await credits.isVisible().catch(() => false)) return;
   const show = page.locator("button.hud-scotland-fold");
-  await expect(show).toBeVisible({ timeout: 15_000 });
-  await show.click();
+  const panel = page.getByTestId("map-legend-panel");
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await closePlaceCard(page);
+    await expect(panel).toHaveAttribute("data-legend-compact", "false", {
+      timeout: 10_000,
+    });
+    if (await credits.isVisible().catch(() => false)) return;
+    const foldVisible = await show.isVisible().catch(() => false);
+    if (!foldVisible) {
+      // Desktop: legend body shows without the fold control.
+      await expect(credits).toBeVisible({ timeout: 15_000 });
+      return;
+    }
+    if (await page.getByTestId("place-card").isVisible().catch(() => false)) {
+      continue;
+    }
+    // Only click Show legend when the fold is closed — place-close may have
+    // already restored legendOpen; clicking again would toggle the body shut.
+    const needsOpen = await panel.evaluate(
+      (el) => !el.classList.contains("legend-open"),
+    );
+    try {
+      if (needsOpen) {
+        await show.click({ timeout: 3_000, force: true });
+      }
+      await expect(credits).toBeVisible({ timeout: 15_000 });
+      return;
+    } catch {
+      // Place card likely reopened over the fold; dismiss and retry.
+    }
+  }
+  await closePlaceCard(page);
+  await expect(page.getByTestId("place-card")).toHaveCount(0);
+  await expect(panel).toHaveAttribute("data-legend-compact", "false", {
+    timeout: 10_000,
+  });
+  if (await credits.isVisible().catch(() => false)) return;
+  const needsOpen = await panel.evaluate(
+    (el) => !el.classList.contains("legend-open"),
+  );
+  if (needsOpen && (await show.isVisible().catch(() => false))) {
+    await show.click({ force: true });
+  }
   await expect(credits).toBeVisible({ timeout: 15_000 });
 }
 
@@ -262,6 +330,9 @@ for (const viewport of [
       const gate = attachConsoleGate(page);
       await stubMapBackend(page);
 
+      // lat/lng fly zooms past DATA_ZONE_MIN_ZOOM (10) so dz2022-masked can
+      // paint and MapLibre surfaces the source attribution (NRS/OS). Place card
+      // is dismissed in ensureLegendOpen before Show legend.
       await page.goto("/?lat=55.8609&lng=-4.2514");
       await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
 

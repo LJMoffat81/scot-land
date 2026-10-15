@@ -343,7 +343,10 @@ async function runBasemapChecks(page: Page) {
 
   await page.keyboard.press("Enter");
   await expectSatelliteState(page, switcher);
-  await page.keyboard.press("Space");
+  // Attribution poll can move focus off the tile — re-focus before Space.
+  await switcher.focus();
+  await expect(switcher).toBeFocused();
+  await switcher.press("Space");
   await expectStreetsState(page, switcher);
 
   // Geometry checks use resting collapsed-(i) chrome (expanded attrib shoves zoom up).

@@ -12,11 +12,13 @@ const contentSecurityPolicy = [
   "object-src 'none'",
   "form-action 'self'",
   "frame-ancestors 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  // Cloudflare Web Analytics beacon (static.cloudflareinsights.com script +
+  // cloudflareinsights.com connect). SHARE-FIX — keep analytics allowed.
+  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://tiles.openfreemap.org https://server.arcgisonline.com",
   "font-src 'self'",
-  "connect-src 'self' https://tiles.openfreemap.org https://server.arcgisonline.com http://localhost:* http://127.0.0.1:* https://localhost:* https://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*",
+  "connect-src 'self' https://tiles.openfreemap.org https://server.arcgisonline.com https://cloudflareinsights.com http://localhost:* http://127.0.0.1:* https://localhost:* https://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
 ].join("; ");

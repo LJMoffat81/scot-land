@@ -26,9 +26,14 @@ export type DownloadManifest = {
   bundles: DownloadBundle[];
 };
 
+/** Shown in the size slot when a download bundle has no packaged file yet. */
+export const DOWNLOAD_NOT_PACKAGED_YET = "Not packaged yet";
+
 /** Format byte size for the download card. */
 export function formatDownloadBytes(bytes: number | null | undefined): string {
-  if (bytes == null || !Number.isFinite(bytes) || bytes < 0) return "—";
+  if (bytes == null || !Number.isFinite(bytes) || bytes < 0) {
+    return DOWNLOAD_NOT_PACKAGED_YET;
+  }
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;

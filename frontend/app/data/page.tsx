@@ -101,6 +101,7 @@ export default function DataChecksPage() {
               </span>
             </summary>
             <p className="downloads-note sources-group-blurb">{bucket.summary}</p>
+            {/* Desktop: wide table. Mobile (below 640px): stacked cards — SW-034. */}
             <div className="sources-table-wrap">
               <table
                 className="sources-table"
@@ -150,6 +151,56 @@ export default function DataChecksPage() {
                 </tbody>
               </table>
             </div>
+            <ul
+              className="sources-card-list"
+              data-testid={`data-sources-cards-${bucket.key}`}
+            >
+              {bucket.layers.map((layer) => {
+                const id = asText(layer.id);
+                const name = asText(layer.label) || id;
+                const licenceUrl = asText(layer.licence_url);
+                const sourceUrl = asText(layer.source_url);
+                return (
+                  <li
+                    key={id}
+                    className="sources-card"
+                    data-testid={`data-source-card-${id}`}
+                    data-source-id={id}
+                  >
+                    <p className="sources-card-name">{name}</p>
+                    <p className="sources-card-group">{bucket.label}</p>
+                    <p className="sources-card-licence">
+                      {licenceUrl ? (
+                        <a
+                          href={licenceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          data-testid={`data-source-licence-${id}`}
+                        >
+                          {asText(layer.licence) || "Licence"}
+                        </a>
+                      ) : (
+                        asText(layer.licence) || "—"
+                      )}
+                    </p>
+                    <p className="sources-card-link">
+                      {sourceUrl ? (
+                        <a
+                          href={sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          data-testid={`data-source-link-${id}`}
+                        >
+                          Source
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </p>
+                  </li>
+                );
+              })}
+            </ul>
           </details>
         ))}
       </div>

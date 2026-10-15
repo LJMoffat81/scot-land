@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * POST-SHARE-1 — Map reference OSGB; Coming soon Aquaculture/LCA up front;
- * swagger Scot-LAND API badge; PAGE-WIDTH; layer catalog status.
+ * POST-SHARE-1 (aligned with MAP-CARDS) — map reference removed; Aquaculture/LCA
+ * deferred to roadmap; swagger Scot-LAND API badge; PAGE-WIDTH.
  * Viewports 390 and 1280. Fail on console errors.
  */
 
@@ -194,10 +194,10 @@ for (const viewport of [
   { width: 1280, height: 800 },
   { width: 390, height: 844 },
 ]) {
-  test.describe(`POST-SHARE-1 map ref + coming soon (${viewport.width})`, () => {
+  test.describe(`POST-SHARE-1 MAP-CARDS card + deferred layers (${viewport.width})`, () => {
     test.use({ viewport });
 
-    test("Map reference OSGB; Aquaculture/LCA Coming soon; no 503 tiles", async ({
+    test("no map reference; Aquaculture/LCA not in Layers; roadmap link", async ({
       page,
     }) => {
       test.setTimeout(90_000);
@@ -218,41 +218,24 @@ for (const viewport of [
       }
       await expect(card).toBeVisible({ timeout: 30_000 });
 
-      await expect(card.getByTestId("place-card-map-reference")).toBeVisible();
-      await expect(card).toContainText("Map reference");
-      const refText = (
-        await card.getByTestId("place-card-square-reference").innerText()
-      ).trim();
-      expect(refText).toMatch(/^\d+,\d+$/);
-      const [easting, northing] = refText.split(",").map(Number);
-      // Edinburgh ~325900,674000 — not the old lat/lng index.
-      expect(easting).toBeGreaterThan(300_000);
-      expect(easting).toBeLessThan(350_000);
-      expect(northing).toBeGreaterThan(650_000);
-      expect(northing).toBeLessThan(700_000);
-      expect(refText).not.toBe("2076130,-66340");
-
-      const copyBtn = card.getByTestId("place-card-map-reference-copy");
-      await expect(copyBtn).toBeVisible();
-      await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-      await copyBtn.click();
-      const clipped = await page.evaluate(() => navigator.clipboard.readText());
-      expect(clipped.trim()).toBe(refText);
+      await expect(card.getByTestId("place-card-map-reference")).toHaveCount(0);
+      await expect(card).not.toContainText(/map reference/i);
+      await expect(page.locator("#place-query")).toHaveAttribute(
+        "placeholder",
+        /postcode or place/i,
+      );
 
       await openLayers(page);
       for (const id of ["5", "lca"] as const) {
-        const toggle = page.getByTestId(`layer-toggle-${id}`);
-        await expect(toggle).toBeVisible({ timeout: 15_000 });
-        await expect(toggle).toBeDisabled();
-        await expect(
-          page.getByTestId(`layer-coming-soon-${id}`),
-        ).toHaveText("Coming soon");
-        await expect(page.getByTestId(`map-layer-${id}`)).toHaveAttribute(
-          "data-coming-soon",
-          "true",
-        );
+        await expect(page.getByTestId(`layer-toggle-${id}`)).toHaveCount(0);
+        await expect(page.getByTestId(`layer-coming-soon-${id}`)).toHaveCount(0);
       }
-      // Boundaries / parcels stay off (no Land parcels toggle).
+      await expect(page.getByTestId("layers-panel")).not.toContainText(
+        /coming soon/i,
+      );
+      await expect(
+        page.getByTestId("map-layers-roadmap-link").locator("a"),
+      ).toHaveAttribute("href", "/roadmap#map-layers");
       await expect(page.getByTestId("layer-toggle-boundaries")).toHaveCount(0);
 
       expect(layerHits).toEqual([]);

@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * MAPREF-FIX — place card shows OSGB36 Map reference + Copy at 390 and 1280.
- * Replaces mapref-hide.spec.ts (temporary hide).
+ * MAP-CARDS / SW-052 — Map reference row removed from the place card.
+ * Placeholder must not say "map reference".
  */
 
 const HEALTH_OK = {
@@ -23,9 +23,6 @@ const PLACE_STUB = {
   council_name: "Glasgow City",
   square_reference: "2068927,-157234",
   dwellings: 410,
-  sales_year_from: 2019,
-  sales_year_to: 2023,
-  confidence: "Medium",
   data_zone: {
     status: "ok",
     code: "S01014567",
@@ -42,11 +39,6 @@ const PLACE_STUB = {
       status: "in_progress",
       applies: true,
       range: "not yet estimated",
-      unit: null,
-      confidence: null,
-      method: null,
-      gloss: "The yearly value of the land under homes.",
-      of_which: [],
     },
   ],
   constraints: [],
@@ -91,6 +83,13 @@ async function stubBackend(page: Page) {
       body: JSON.stringify({ layers: [] }),
     });
   });
+  await page.route("**/api/gbp-live**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ enabled: false }),
+    });
+  });
 }
 
 async function openCard(page: Page, width: number) {
@@ -107,33 +106,31 @@ async function openCard(page: Page, width: number) {
 }
 
 for (const width of [1280, 390] as const) {
-  test.describe(`MAPREF-FIX ${width}`, () => {
+  test.describe(`MAP-CARDS no map reference ${width}`, () => {
     test.use({
       viewport: { width, height: width === 390 ? 844 : 800 },
     });
 
-    test("Map reference OSGB + Copy same string", async ({ page }) => {
+    test("place card has no Map reference row; placeholder clean", async ({
+      page,
+    }) => {
       test.setTimeout(90_000);
       await stubBackend(page);
       const card = await openCard(page, width);
 
-      await expect(card).toContainText("Map reference");
-      const ref = card.getByTestId("place-card-square-reference");
-      await expect(ref).toBeVisible();
-      const text = (await ref.innerText()).trim();
-      expect(text).toMatch(/^\d+,\d+$/);
-      const [e, n] = text.split(",").map(Number);
-      // Glasgow ~259189,665372
-      expect(e).toBeGreaterThan(200_000);
-      expect(e).toBeLessThan(320_000);
-      expect(n).toBeGreaterThan(600_000);
-      expect(n).toBeLessThan(750_000);
-      expect(text).not.toBe("2068927,-157234");
-
-      await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-      await card.getByTestId("place-card-map-reference-copy").click();
-      const clipped = await page.evaluate(() => navigator.clipboard.readText());
-      expect(clipped.trim()).toBe(text);
+      await expect(card.getByTestId("place-card-map-reference")).toHaveCount(0);
+      await expect(card.getByTestId("place-card-square-reference")).toHaveCount(
+        0,
+      );
+      await expect(card).not.toContainText(/map reference/i);
+      await expect(page.locator("#place-query")).toHaveAttribute(
+        "placeholder",
+        /postcode or place/i,
+      );
+      await expect(page.locator("#place-query")).not.toHaveAttribute(
+        "placeholder",
+        /map reference/i,
+      );
     });
   });
 }

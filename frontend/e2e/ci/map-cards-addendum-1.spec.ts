@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { execFileSync } from "node:child_process";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { execFileSync } from "child_process";
+import path from "path";
 import {
   assertConsoleClean,
   attachConsoleGate,
@@ -18,8 +17,10 @@ import {
  * MAP-CARDS ADDENDUM A1–A6.
  */
 
-const here = dirname(fileURLToPath(import.meta.url));
-const registryScript = join(here, "../../scripts/test-map-layer-registry.mjs");
+const registryScript = path.join(
+  process.cwd(),
+  "scripts/test-map-layer-registry.mjs",
+);
 
 test.describe("MAP-CARDS addendum A1 registry unit", () => {
   test("scripts/test-map-layer-registry.mjs stays green", () => {

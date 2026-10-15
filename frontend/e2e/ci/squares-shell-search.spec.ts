@@ -9,16 +9,25 @@ async function openMap(page: Page) {
 test.describe("squares shell", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("full-screen map with prominent search and stub place card", async ({
+  test("full-screen map with prominent search and place card", async ({
     page,
   }) => {
     test.setTimeout(90_000);
+    await page.route("**/api/gbp-live**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ enabled: false }),
+      });
+    });
     await openMap(page);
 
     await expect(page.locator(".app-shell")).toBeVisible();
     await expect(page.locator("#map")).toBeVisible();
     const search = page.locator("#place-query");
     await expect(search).toBeVisible();
+    await expect(search).toHaveAttribute("placeholder", /postcode or place/i);
+    await expect(search).not.toHaveAttribute("placeholder", /map reference/i);
 
     await page.route("**/platform/place**", async (route) => {
       await route.fulfill({
@@ -55,16 +64,16 @@ test.describe("squares shell", () => {
 
     await search.fill("55.86090, -4.25140");
     await page.locator(".hud-search-go").click();
-    const card = page.locator("aside.place-card-stub");
+    const card = page.getByTestId("place-card");
     await expect(card).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId("place-card")).toBeVisible();
     await expect(page.getByTestId("place-card-agr-label")).toHaveText(
       "Annual Ground Rent",
     );
     await expect(page.getByTestId("place-card-figure")).toContainText(
       "We're not showing amounts yet while we check our method.",
     );
-    await expect(page.getByTestId("place-card-covers-homes")).toBeVisible();
+    // MAP-CARDS: covers-homes only inside the fold, not a top row testid
+    await expect(page.getByTestId("place-card-covers-homes")).toHaveCount(0);
     await expect(card.getByText(/£\d/)).toHaveCount(0);
     await expect(card).not.toContainText("£0");
     await expect(card).not.toContainText(/what3words/i);
@@ -84,8 +93,8 @@ test.describe("squares shell mobile", () => {
     expect(box!.width).toBeGreaterThan(200);
     const basemap = page.getByTestId("basemap-switcher");
     await expect(basemap).toBeVisible();
-    await expect(basemap).toHaveAccessibleName("Switch to satellite view");
-    await expect(basemap).toContainText("Satellite");
+    await expect(basemap).toHaveAccessibleName(/Detailed|Light/i);
+    await expect(basemap).not.toContainText(/Satellite/i);
     await expect(
       page.getByRole("button", { name: "Layers", exact: true }),
     ).toBeVisible();

@@ -18,8 +18,8 @@ export type MapLayersDrawerProps = {
   enabled?: MapLayerToggleState;
   onEnabledChange?: (next: MapLayerToggleState) => void;
   /**
-   * Layer ids forced to Coming soon / disabled (tiles 503 or catalogue not
-   * ingested). Merged with static `comingSoon` on the curated row.
+   * Layer ids forced to Coming soon / disabled (tiles unavailable or catalogue
+   * not ingested). Merged with static comingSoon on the curated row.
    */
   unavailableIds?: ReadonlySet<string> | ReadonlyArray<string>;
   className?: string;

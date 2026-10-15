@@ -72,6 +72,11 @@ export function isServiceFailure(err: unknown): boolean {
   return err instanceof ApiError && (err.status == null || err.status >= 500);
 }
 
+/** True when the API returned HTTP service-unavailable (tiles / layer not loaded). */
+export function isServiceUnavailable(err: unknown): boolean {
+  return err instanceof ApiError && err.status === 503;
+}
+
 /**
  * Bounds / place 400 from `/platform/place` or `/api/place.json`
  * (`Coordinates appear to be outside Scotland.`).

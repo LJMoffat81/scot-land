@@ -33,6 +33,7 @@ import {
   apiJson,
   isOutsideScotlandError,
   isServiceFailure,
+  isServiceUnavailable,
   pingApi,
   fetchCapabilities,
   POSTCODES_ONLY,
@@ -576,8 +577,8 @@ export default function ScotlandMap() {
     }
     if ("builtup_mask" in next) {
       builtupMaskTouched.current = true;
-      // Idea 57 — refuse on when Coming soon (503 / catalogue gap).
-      if (builtupMask503 || builtupMaskCatalogGap) {
+      // Idea 57 — refuse on when Coming soon (unavailable / catalogue gap).
+      if (builtupMaskUnavailable || builtupMaskCatalogGap) {
         setShowBuiltupMask(false);
       } else {
         const turnOn = Boolean(next.builtup_mask);
@@ -589,8 +590,8 @@ export default function ScotlandMap() {
             "/layers/open/dz2022-masked?south=55.85&west=-4.27&north=55.87&east=-4.24&max_features=1";
           void apiJson<GeoJSON.FeatureCollection>(path).catch(
             (err: unknown) => {
-              if (err instanceof ApiError && err.status === 503) {
-                setBuiltupMask503(true);
+              if (isServiceUnavailable(err)) {
+                setBuiltupMaskUnavailable(true);
                 setShowBuiltupMask(false);
               }
             },
@@ -646,8 +647,8 @@ export default function ScotlandMap() {
     null,
   );
   const [catalogLayers, setCatalogLayers] = useState<CatalogLayer[]>([]);
-  /** Idea 57 — built-up mask tiles/geo returned 503. */
-  const [builtupMask503, setBuiltupMask503] = useState(false);
+  /** Idea 57 — built-up mask tiles/geo returned service-unavailable. */
+  const [builtupMaskUnavailable, setBuiltupMaskUnavailable] = useState(false);
   /**
    * Idea 57 — catalogue loaded with builtup_mask missing or not live.
    * Empty catalogue stubs (common in e2e) leave this false.
@@ -2455,8 +2456,8 @@ export default function ScotlandMap() {
     };
   }, []);
 
-  // Idea 57 — 503 is detected when the mask is turned on (loadMasked), not via a
-  // mount-time probe (that 404s in CI stubs that never route dz2022-masked).
+  // Idea 57 — service-unavailable is detected when the mask is turned on
+  // (loadMasked / enable check), not via a mount-time probe.
 
   // Public shell: never fetch /layers/councils (council AGR £ and rent £/m² stay internal).
   // Keep fill/hatch expressions on a public context ramp so hidden paint is never AGR £.
@@ -2665,14 +2666,10 @@ export default function ScotlandMap() {
           setVis("visible");
         })
         .catch((err: unknown) => {
-          // Unloaded (503) or empty — keep outlines; do not invent mask geometry.
+          // Unloaded or empty — keep outlines; do not invent mask geometry.
           if (!cancelled) setVis("none");
-          if (
-            !cancelled &&
-            err instanceof ApiError &&
-            err.status === 503
-          ) {
-            setBuiltupMask503(true);
+          if (!cancelled && isServiceUnavailable(err)) {
+            setBuiltupMaskUnavailable(true);
             setShowBuiltupMask(false);
           }
         })
@@ -3785,9 +3782,9 @@ export default function ScotlandMap() {
 
   const placeOpen = Boolean(placeStub || result || error);
   const collapsedIntroForPlace = useRef(false);
-  /** Idea 57 — drawer Coming soon for built-up mask when 503 or not ingested. */
+  /** Idea 57 — drawer Coming soon for built-up mask when unavailable or not ingested. */
   const unavailableLayerIds = new Set<string>();
-  if (builtupMask503 || builtupMaskCatalogGap) {
+  if (builtupMaskUnavailable || builtupMaskCatalogGap) {
     unavailableLayerIds.add("builtup_mask");
   }
   /** SW-047 / idea 56 — compact legend strip while a place card is open. */

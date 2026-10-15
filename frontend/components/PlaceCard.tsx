@@ -742,41 +742,46 @@ export function PlaceCard({
             </ul>
           </div>
 
-          <div className="place-card-sheet-body" data-testid="place-card-sheet-body">
-            {/* DZ-HIERARCHY: fold → Data & sources; never show DZ2011 / IZ codes. */}
-            {showMoreAbout ? (
-              <details
-                className="place-card-more-about"
-                data-testid="place-card-more-about"
-                open={narrowHierarchy ? moreAboutOpen : true}
-                onToggle={(event) => {
-                  if (!narrowHierarchy) return;
-                  setMoreAboutOpen(
-                    (event.currentTarget as HTMLDetailsElement).open,
-                  );
-                }}
+          {/*
+            DZ-HIERARCHY: fold → Data & sources; never show DZ2011 / IZ codes.
+            Keep outside the scrollable sheet (with SW-047 value block) so the
+            summary stays in the mobile sheet chrome and is not covered by the
+            map canvas or value-block figure-status when the sheet scrolls.
+          */}
+          {showMoreAbout ? (
+            <details
+              className="place-card-more-about"
+              data-testid="place-card-more-about"
+              open={narrowHierarchy ? moreAboutOpen : true}
+              onToggle={(event) => {
+                if (!narrowHierarchy) return;
+                setMoreAboutOpen(
+                  (event.currentTarget as HTMLDetailsElement).open,
+                );
+              }}
+            >
+              <summary
+                className="place-card-more-about-summary"
+                data-testid="place-card-more-about-summary"
               >
-                <summary
-                  className="place-card-more-about-summary"
-                  data-testid="place-card-more-about-summary"
+                {PLACE_CARD_MORE_ABOUT_LABEL}
+              </summary>
+              <div
+                className="place-card-more-about-body"
+                data-testid="place-card-more-about-body"
+              >
+                <a
+                  href={PLACE_CARD_DATA_SOURCES_HREF}
+                  className="place-card-data-sources-link"
+                  data-testid="place-card-data-sources-link"
                 >
-                  {PLACE_CARD_MORE_ABOUT_LABEL}
-                </summary>
-                <div
-                  className="place-card-more-about-body"
-                  data-testid="place-card-more-about-body"
-                >
-                  <a
-                    href={PLACE_CARD_DATA_SOURCES_HREF}
-                    className="place-card-data-sources-link"
-                    data-testid="place-card-data-sources-link"
-                  >
-                    {PLACE_CARD_DATA_SOURCES_LABEL}
-                  </a>
-                </div>
-              </details>
-            ) : null}
+                  {PLACE_CARD_DATA_SOURCES_LABEL}
+                </a>
+              </div>
+            </details>
+          ) : null}
 
+          <div className="place-card-sheet-body" data-testid="place-card-sheet-body">
             <details
               className="place-card-parts"
               data-testid="place-card-parts"

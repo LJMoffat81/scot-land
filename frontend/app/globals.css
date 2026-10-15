@@ -590,6 +590,9 @@ input {
     border-radius: 16px 16px 0 0;
     padding-bottom: 0.85rem;
     box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.14);
+    /* Match desktop SW-047: card chrome (peek/value/more-about) does not
+       scroll under the map; only .place-card-sheet-body scrolls. */
+    overflow: hidden;
   }
 
   /* Sea stub hugs content; still clear of basemap/zoom (SW-028). */
@@ -609,9 +612,35 @@ input {
     display: none;
   }
 
+  .hud-place .place-card-body,
+  .place-card-stub .place-card-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* SW-047 + DZ-HIERARCHY: peek may shrink; value + more-about stay painted. */
+  .hud-place .place-card-peek,
+  .place-card-stub .place-card-peek {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .hud-place .place-card-value-block,
+  .place-card-stub .place-card-value-block,
+  .hud-place .place-card-more-about,
+  .place-card-stub .place-card-more-about {
+    flex: 0 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
   .hud-place .place-card-sheet-body,
   .place-card-stub .place-card-sheet-body {
     overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
     max-height: min(36dvh, 18rem);
   }
 }
@@ -3636,12 +3665,14 @@ button.linkish:disabled {
   text-decoration: underline;
 }
 
-/* DZ-HIERARCHY / idea 40: "More about this area" fold (≤600px) → Data & sources. */
+/* DZ-HIERARCHY / idea 40: "More about this area" fold (≤600px) → Data & sources.
+   Sibling of the SW-047 value block (not inside .place-card-sheet-body). */
 .place-card-more-about {
   border: 0;
   padding: 0;
   margin: 0.15rem 0 0;
   background: transparent;
+  flex-shrink: 0;
 }
 
 .place-card-more-about-summary {
@@ -3653,6 +3684,10 @@ button.linkish:disabled {
   min-height: 44px;
   display: flex;
   align-items: center;
+  position: relative;
+  z-index: 1;
+  /* Hit target stays above neighbouring value-block / map chrome. */
+  isolation: isolate;
 }
 
 .place-card-more-about-summary::-webkit-details-marker {

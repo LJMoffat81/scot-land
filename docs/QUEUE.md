@@ -1,23 +1,24 @@
 # Work queue
 
-Plain-English queue for maintainers (Laurie and agents). Update this file in each PR you open, or when queue order changes — piggyback on a real change; never open a PR just for `QUEUE.md`.
+Plain-English queue for maintainers (Laurie and agents). Update on main after merges — not in feature PRs (avoids serial conflict churn). Dedicated QUEUE-only follow-up is OK when nothing else is ready to piggyback.
 
-**Cap:** ≤5 open non-draft PRs; one PR per item ID.
+**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: 2 open non-draft ([#144](https://github.com/LJMoffat81/scot-land/pull/144), [#146](https://github.com/LJMoffat81/scot-land/pull/146)).
 
 ## In progress
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| SW-036 v2 | Desktop layout (≥1024): place card left, Layers right, legend pill below the card | [#139](https://github.com/LJMoffat81/scot-land/pull/139) | Tip `fa3488d` — CI green; ready for review (not merged) |
+| GBP-LIVE-V1 | Public £ surface rent on place card / legend / How it works (flag default OFF) | [#144](https://github.com/LJMoffat81/scot-land/pull/144) | Open (not draft); tip `db67606` — Scot-LAND FAIL on yield wording being fixed on same branch |
 
 ## Next up (in order)
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| FILL-ORDER-V12 | Mainland borrow order: drop next-UR step (own → neighbour → Scotland); weakest 2022 label rule | — | Frozen; start **only after FILL-POOLED merges**; one PR only |
-| GBP-LIVE-V1 | Public £ surface rent on place card / legend / How it works (flag default OFF) | — | After SW-036; before SW-045; one PR only |
-| SW-045 | Legend follows the active layer (HIGH — Laurie-flagged); diagnose first | — | After GBP-LIVE-V1; no PR yet; one PR only |
-| SW-044 | Slim the map view (licences out of left panel, chip key once, etc.) | — | After SW-045; no PR yet; one PR only |
+| GBP-LIVE-V1b | Follow-on after GBP-LIVE-V1 (flag / surface polish) | — | After GBP-LIVE-V1 (#144) merges; one PR only |
+| SW-045 + SW-046 | Legend follows the active layer (HIGH) + legend clash dock when place card open; one combined PR | — | After GBP-LIVE-V1b; no PR yet; one PR only |
+| SW-044 | Slim the map view (licences out of left panel, chip key once, etc.) | — | After SW-045+046; no PR yet; one PR only |
+
+SURFACE-COSTS-STRICT (strict fixture equality + CI always runs the 20-row exact match) may appear when opened — follow-up after SURFACE-COSTS-ALL (#147); not part of the UI train above.
 
 ### Frozen backlog
 
@@ -35,7 +36,12 @@ Newest first.
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| FILL-POOLED | Run DZ2011/DZ2022 empty-zone fill on pooled inputs (target 129) | [#141](https://github.com/LJMoffat81/scot-land/pull/141) | Merged |
+| PARCELS-OFF | Gate parcel API/UI behind `PARCELS_PUBLIC` (default false); HIGH | [#145](https://github.com/LJMoffat81/scot-land/pull/145) | Merged (`fc5e1f1`) |
+| SURFACE-COSTS-ALL | Rebuild surface costs for every DZ2011 zone | [#147](https://github.com/LJMoffat81/scot-land/pull/147) | Merged (`d98b513`) |
+| HOME-TUNNEL step 2 | Named tunnel, offline Worker, backups | [#142](https://github.com/LJMoffat81/scot-land/pull/142) | Merged (`b41d2c6`) |
+| FILL-ORDER-V12 | Mainland borrow drops next-UR class (Methods v1.2) | [#143](https://github.com/LJMoffat81/scot-land/pull/143) | Merged (`5196eab`) |
+| SW-036 v2 | Desktop layout (≥1024): place card left, Layers right, legend pill below the card | [#139](https://github.com/LJMoffat81/scot-land/pull/139) | Merged (`705f2d5`) |
+| FILL-POOLED | Run DZ2011/DZ2022 empty-zone fill on pooled inputs (target 129) | [#141](https://github.com/LJMoffat81/scot-land/pull/141) | Merged (`5156b74`) |
 | NEIGHBOURS-2022 | Council neighbours CSV at `data/reference/council_neighbours_2022.csv` (reason column + invariants) | [#140](https://github.com/LJMoffat81/scot-land/pull/140) | Merged (`d49651a`) |
 | SW/UX e2e auto-discovery | Playwright CI auto-discovers specs under `e2e/ci/` | [#138](https://github.com/LJMoffat81/scot-land/pull/138) | Merged (`cec7e41`) |
 | UX-01 | Mobile tap targets ≥44×44 | [#136](https://github.com/LJMoffat81/scot-land/pull/136) | Merged |

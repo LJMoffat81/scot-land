@@ -284,21 +284,21 @@ surface_rent:
 
   # Land-value model fill for suppressed / absent Data Zones (Wealth Engine internal).
   # Pre-pooling spine count 727 = 724 RoS-2023 single-year suppressed + 6 absent − 3 zero-dwellings.
-  # Methods PR-1 recomputes remaining empty after 3y+5y pooling (R4.7) in the run log / report
-  # (count-only). Config constant stays 727 until methods M3 updates it alongside #84 DZ2022
-  # RECONCILED_EMPTY_TO_FILL_N. Research estimates only — not official valuations.
+  # FILL-POOLED / M3: after 3y+5y pooling the remaining model-fill target is 129
+  # (includes the 4 not-in-price-file codes; + 3 zero-dwellings stay D / not_applicable).
+  # Research estimates only — not official valuations.
   model_fill:
     status: research_estimate
     delta: 1.0                    # ASSUMPTION: log(L + δ) target offset
     drivers: []                   # optional allowed drivers (empty = class intercept / FE only)
-    null_dz_fill_target_n: 727    # pre-pooling baseline; post-pooling figure moves in M3
+    null_dz_fill_target_n: 129    # post-pooling (FILL-POOLED); pre-pooling baseline was 727
     publication: internal_calibration_only
     note: >
       Fills null residential Data Zones via per-UR6-class log-linear prediction.
       Never copies a neighbour. Thin classes borrow adjacent-class training rows
       (tag borrowed_class). Leave yield.central / yield.band (v3 calibration) untouched.
-      PR-1 logs recomputed remaining-empty after pooling; null_dz_fill_target_n config
-      update is deferred to methods M3.
+      FILL-POOLED closes the M3 deferral: null_dz_fill_target_n is the post-pooling
+      remaining-empty count (129 from the hash-pinned RoS sales_n extract).
 
   drivers:
     allowed:
@@ -350,9 +350,12 @@ surface_rent:
     ur6_lookup_note: "NRS Scottish Postcode Directory geography lookups release 2026/2, OGL v3; path is a setting; never use 8-fold"
     island_councils: [S12000013, S12000023, S12000027]   # Na h-Eileanan Siar, Orkney, Shetland
     reconciled:
-      suppressed_n: 723
-      not_in_price_file: [S01007788, S01010462, S01010493, S01011598]  # filled under C
+      # Post-pooling (FILL-POOLED): 129 model-fill includes the 4 not-in-price-file.
+      model_fill_n: 129
+      suppressed_after_pooling_n: 125
+      not_in_price_file: [S01007788, S01010462, S01010493, S01011598]  # filled under C; inside 129
       zero_dwellings_n: 3
+      pre_pooling_empty_to_fill_n: 727
     holdout:
       seed: 20261014
       frac: 0.20

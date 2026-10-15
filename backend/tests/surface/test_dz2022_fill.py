@@ -107,10 +107,12 @@ def test_neighbours_committed_60_pairs_no_islands(neighbours):
 
 def test_reconciled_facts():
     facts = fill.reconciled_facts()
-    assert facts["suppressed_n"] == 723
+    assert facts["model_fill_n"] == 129
+    assert facts["empty_to_fill_n"] == 129
+    assert facts["suppressed_after_pooling_n"] == 125
     assert facts["not_in_price_file"] == sorted(fill.NOT_IN_PRICE_FILE_CODES)
     assert facts["zero_dwellings_n"] == 3
-    assert facts["empty_to_fill_n"] == 727
+    assert facts["pre_pooling_empty_to_fill_n"] == 727
     assert "S01010206" not in facts["not_in_price_file"]
 
 
@@ -129,6 +131,7 @@ def test_unaffected_pass_through_exact(filled):
     row = next(r for r in filled.rows_2022 if r["code"] == "S01020870")
     assert row["measured_rent"] == 1000.0
     assert row["estimate_label"] == fill.ESTIMATE_MEASURED
+    assert row["fill_step"] == fill.STEP_MEASURED_2023
     assert row["publication_status"] == "blocked"
     assert row["value_tier"] == "proxy"
     assert fill.PROXY_TAG in row["proxy_tags"]
@@ -144,17 +147,20 @@ def test_class_a_scale_up_exact_and_widen(filled):
     assert row["uncertainty_low"] < row["measured_rent"]
     assert row["uncertainty_high"] > row["measured_rent"]
     assert row["fill_method"] == "model_filled"
+    assert row["fill_step"] == fill.STEP_A_RESCALE
 
 
 def test_class_b_partly_and_fully(filled):
     b = next(r for r in filled.rows_2022 if r["code"] == "S01020872")
     assert b["estimate_label"] == fill.ESTIMATE_PARTLY
-    assert b["fill_step"]  # recorded on B
+    assert b["fill_step"] == fill.STEP_B_BLEND
+    assert b["c_sub_step"] in fill.C_SUB_STEPS
     assert b["measured_rent"] > 0
 
     fully = next(r for r in filled.rows_2022 if r["code"] == "S01020005")
     assert fully["estimate_label"] == fill.ESTIMATE_FULLY
-    assert fully["fill_step"]
+    assert fully["fill_step"] == fill.STEP_B_BLEND
+    assert fully["c_sub_step"] in fill.C_SUB_STEPS
     assert fully["measured_rent"] > 0
 
 
@@ -162,7 +168,8 @@ def test_class_c_fully_estimated_with_fill_step(filled):
     row = next(r for r in filled.rows_2022 if r["code"] == "S01020873")
     assert row["estimate_label"] == fill.ESTIMATE_FULLY
     assert row["fill_method"] == "model_filled"
-    assert row["fill_step"] in {
+    assert row["fill_step"] == fill.STEP_C_MODEL
+    assert row["c_sub_step"] in {
         fill.STEP_OWN,
         fill.STEP_NEXT_UR,
         fill.STEP_NEIGHBOUR,
@@ -175,8 +182,9 @@ def test_class_c_neighbour_or_next_class_borrow(filled):
     # Edinburgh UR3 C zone has no own measured UR3 → must borrow.
     row = next(r for r in filled.rows_2022 if r["code"] == "S01020002")
     assert row["estimate_label"] == fill.ESTIMATE_FULLY
-    assert row["fill_step"] != fill.STEP_OWN
-    assert row.get("borrowed_class") or row["fill_step"] in {
+    assert row["fill_step"] == fill.STEP_C_MODEL
+    assert row["c_sub_step"] != fill.STEP_OWN
+    assert row.get("borrowed_class") or row["c_sub_step"] in {
         fill.STEP_NEXT_UR,
         fill.STEP_NEIGHBOUR,
         fill.STEP_SCOTLAND,
@@ -301,10 +309,11 @@ def test_fill_step_scotland_island_when_group_under_min():
     assert models[(shetland, 6)].scotland_fallback is True
 
 
-def test_gate_asserts_723_4_3_on_real_run_inventory():
-    """Real-run gate checks reconciled source counts on the 2011 inventory."""
+def test_gate_asserts_post_pooling_129_on_real_run_inventory():
+    """Real-run gate checks post-pooling model-fill / 4 / 3 (FILL-POOLED)."""
+    # 125 suppressed-after-pooling + 4 not-in-price-file = 129 model-fill.
     rows = []
-    for i in range(723):
+    for i in range(125):
         rows.append({
             "code": f"S010{6506 + i:05d}",
             "fill_method": "model_fill_pending",
@@ -329,12 +338,12 @@ def test_gate_asserts_723_4_3_on_real_run_inventory():
             "flags": "zero_dwellings",
         })
     assert fill.count_reconciled_sources(rows) == {
-        "suppressed_n": 723,
+        "model_fill_n": 129,
         "not_in_price_file_n": 4,
         "zero_dwellings_n": 3,
     }
     fill.assert_reconciled_source_counts(rows)
-    with pytest.raises(fill.FillError, match="723"):
+    with pytest.raises(fill.FillError, match="129"):
         fill.assert_reconciled_source_counts(rows[:-1])
 
     out = [{

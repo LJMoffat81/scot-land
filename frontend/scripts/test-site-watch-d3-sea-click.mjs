@@ -63,8 +63,13 @@ assert.match(placeCard, /data-testid="place-card-out-of-scotland"/);
 assert.match(placeCard, /place-card-sea-line/);
 assert.match(
   placeCard,
-  /!isLoading && !error && card && seaMiss/,
-  "sea miss must render the plain line branch",
+  /!error && card && seaMiss/,
+  "sea miss must render the plain line branch (kept mounted across re-inspect loading)",
+);
+assert.match(
+  placeCard,
+  /isLoading && !seaMiss/,
+  "loading spinner must not replace an already-shown sea-miss line",
 );
 assert.match(
   placeCard,

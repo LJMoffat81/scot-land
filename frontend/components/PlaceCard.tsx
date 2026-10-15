@@ -284,7 +284,9 @@ export function PlaceCard({
         </button>
       ) : null}
 
-      {isLoading ? (
+      {/* Keep an existing sea-miss line mounted across re-inspect loading so
+          SW-030 × padding stays measurable (no spinner flash / remount). */}
+      {isLoading && !seaMiss ? (
         <div
           className="place-card-loading"
           aria-busy="true"
@@ -317,7 +319,8 @@ export function PlaceCard({
         </div>
       ) : null}
 
-      {!isLoading && !error && card && seaMiss ? (
+      {/* Keep sea-line mounted across re-inspect/loading flicker (SW-030 / UX-01 e2e). */}
+      {!error && card && seaMiss ? (
         <>
           <p
             className="place-card-sea-line"

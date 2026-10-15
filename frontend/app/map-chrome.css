@@ -148,14 +148,31 @@
   }
 
   .map-footer {
-    padding: 0.12rem 0.55rem 0.14rem;
+    /*
+     * UX-01: Sources hit ≥44×44 may overflow this bar, but the flex chrome
+     * height stays compact so the map stage (and UX10-1 bottom sheet top)
+     * does not rise into the mid-viewport.
+     */
+    box-sizing: border-box;
+    height: 2.1rem;
+    max-height: 2.1rem;
+    padding: 0 0.55rem;
     font-size: 0.62rem;
     line-height: 1.25;
-    max-height: 2.1rem;
-    overflow: hidden;
+    overflow: visible;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .map-footer p {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    margin: 0;
+    max-width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -449,10 +466,10 @@
   .basemap-switcher {
     right: 0.55rem;
     /*
-     * Above zoom group (~58px) + collapsed (i) (~24px) + MapLibre margins.
-     * Measured against the resting collapsed-(i) layout (not expanded attrib).
+     * UX-01: zoom +/- are 44×44 (~88px group) + collapsed (i) (~24px)
+     * + MapLibre margins. Keep tile clear of the taller zoom stack.
      */
-    bottom: 7.35rem;
+    bottom: 9.25rem;
   }
 
   /*

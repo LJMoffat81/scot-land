@@ -175,6 +175,12 @@ async function openSeaStub(page: Page) {
   await expect(line).toBeVisible({ timeout: 30_000 });
   await expect(line).toHaveText(OUT_OF_SCOTLAND_LINE);
 
+  // Wait out the loading→sea-miss re-render so the line stays mounted
+  // (detached nodes yield empty computed padding → NaN).
+  await expect(page.getByTestId("place-card-loading")).toHaveCount(0);
+  await expect(line).toBeVisible();
+  await expect(line).toHaveText(OUT_OF_SCOTLAND_LINE);
+
   const text = page.getByTestId("place-card-sea-line-text");
   await expect(text).toBeVisible();
 

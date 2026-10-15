@@ -550,7 +550,8 @@ input {
     left: 0.55rem;
     bottom: 7.4rem;
     width: auto;
-    max-height: min(58dvh, calc(100dvh - var(--hud-height, 8rem) - 8rem));
+    /* Cap peek height so sheet top stays in the lower half (UX10-1 y>200). */
+    max-height: min(52dvh, calc(100dvh - var(--hud-height, 8rem) - 8rem));
     border-radius: 16px 16px 0 0;
     padding-bottom: 0.85rem;
     box-shadow: 0 -8px 28px rgba(15, 23, 42, 0.14);
@@ -3319,7 +3320,7 @@ button.linkish:disabled {
     right: 3.35rem;
     bottom: 7.4rem;
     width: auto;
-    max-height: min(58dvh, calc(100dvh - var(--hud-height, 8rem) - 8rem));
+    max-height: min(52dvh, calc(100dvh - var(--hud-height, 8rem) - 8rem));
     padding: 1.65rem 1rem 0.85rem;
   }
 
@@ -3443,4 +3444,90 @@ button.linkish:disabled {
   font-size: 0.78rem;
   color: var(--slrg-muted);
   font-weight: 500;
+}
+
+/*
+ * UX-01 — mobile tap targets ≥44×44 via padding / min box.
+ * Glyph and type sizes stay put; box-sizing keeps the extra padding inside.
+ */
+@media (max-width: 900px) {
+  .map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-in,
+  .map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-out {
+    width: 44px;
+    height: 44px;
+    box-sizing: border-box;
+  }
+
+  button.chip,
+  .layer-chips .chip {
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.55rem 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hud-close {
+    box-sizing: border-box;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* SW-030 sea line: clear the enlarged mobile × (44px) + 8px. */
+  .place-card-sea-line {
+    padding-right: 52px;
+  }
+
+  .hud-search-go,
+  .squares-shell .hud-search-go {
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.55rem 1.05rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .site-nav-panel a {
+    box-sizing: border-box;
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    padding: 0.65rem 0.75rem;
+  }
+
+  .map-footer a {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    /* Expand the hit box without growing the 2.1rem footer chrome. */
+    margin-block: calc((2.1rem - 44px) / 2);
+    padding: 0 0.35rem;
+    position: relative;
+    z-index: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .hud-scotland-fold {
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.65rem 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 }

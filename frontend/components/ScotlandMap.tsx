@@ -872,22 +872,32 @@ export default function ScotlandMap() {
       setAddressLine(opts.label ?? null);
       const knownCode = opts.dataZoneCode?.trim() || null;
       const knownName = opts.dataZoneName?.trim() || null;
-      setPlaceStub({
-        lat,
-        lng,
-        label: opts.label ?? knownName ?? null,
-        postcode: opts.postcode ?? null,
-        dataZoneCode: knownCode,
-        dataZoneName: knownName,
-        dataZoneVintage: opts.dataZoneVintage ?? null,
-        laName: opts.laName ?? null,
-        population: opts.population ?? null,
-        popYear: opts.popYear ?? null,
-        dwellings: opts.dwellings ?? null,
-        dwYear: opts.dwYear ?? null,
-        card: null,
-        noMatch: false,
-        fromAddressSearch: Boolean(opts.fromAddressSearch),
+      // Keep the prior card when re-inspecting the same point so the sea-line
+      // (and its × padding) is not unmounted mid-paint (SW-030 / UX-01 e2e).
+      setPlaceStub((prev) => {
+        const samePoint =
+          prev != null && prev.lat === lat && prev.lng === lng;
+        return {
+          lat,
+          lng,
+          label: opts.label ?? knownName ?? prev?.label ?? null,
+          postcode: opts.postcode ?? prev?.postcode ?? null,
+          dataZoneCode: knownCode ?? (samePoint ? prev?.dataZoneCode ?? null : null),
+          dataZoneName: knownName ?? (samePoint ? prev?.dataZoneName ?? null : null),
+          dataZoneVintage:
+            opts.dataZoneVintage ??
+            (samePoint ? prev?.dataZoneVintage ?? null : null),
+          laName: opts.laName ?? (samePoint ? prev?.laName ?? null : null),
+          population:
+            opts.population ?? (samePoint ? prev?.population ?? null : null),
+          popYear: opts.popYear ?? (samePoint ? prev?.popYear ?? null : null),
+          dwellings:
+            opts.dwellings ?? (samePoint ? prev?.dwellings ?? null : null),
+          dwYear: opts.dwYear ?? (samePoint ? prev?.dwYear ?? null : null),
+          card: samePoint ? prev?.card ?? null : null,
+          noMatch: false,
+          fromAddressSearch: Boolean(opts.fromAddressSearch),
+        };
       });
       if (window.matchMedia("(max-width: 640px)").matches) {
         setLegendOpen(false);
@@ -1450,6 +1460,41 @@ export default function ScotlandMap() {
 
     map.on("load", () => {
       frameScotland();
+
+      // SW-019: kick off ?lat=&lng= / ?words= before optional layer setup so the
+      // out-of-Scotland plain line can appear within the 3s product budget
+      // (canvas is already painted; layer registration must not delay inspect).
+      const bootParams = new URLSearchParams(window.location.search);
+      const bootWords = bootParams.get("words");
+      const bootLat = bootParams.get("lat");
+      const bootLng = bootParams.get("lng");
+      // public/Crown 2024 dashboard: licence unverified/not open — never paint
+      // Council AGR £ / rent £/m² / band choropleth: scrubbed from public shell
+      if (bootParams.get("vacant") === "1") {
+        setShowVdl(true);
+      }
+      if (bootParams.get("community") === "1") {
+        setShowCommunityOwnership(true);
+      }
+      if (bootWords) {
+        setQuery(bootWords);
+        void (async () => {
+          if (!(await fetchCapabilities()).agr) return;
+          const generation = ++lookupGen.current;
+          try {
+            await openWords(bootWords, generation);
+            setApiOk(true);
+          } catch (err) {
+            setError(visitorFacingError(err));
+            if (isServiceFailure(err)) {
+              void pingApi().then((s) => setApiOk(s.ok));
+            }
+          }
+        })();
+      } else if (bootLat && bootLng) {
+        void inspectRef.current(Number(bootLat), Number(bootLng), { fly: true });
+      }
+
       // Hatched grey pattern for missing choropleth values (honest no-data).
       if (!map.hasImage(NO_DATA_HATCH_IMAGE)) {
         const hatch = createNoDataHatchImageData(8);
@@ -2025,37 +2070,6 @@ export default function ScotlandMap() {
       );
 
       setMapReady(true);
-
-      const params = new URLSearchParams(window.location.search);
-      const qWords = params.get("words");
-      const qLat = params.get("lat");
-      const qLng = params.get("lng");
-      // public/Crown 2024 dashboard: licence unverified/not open — never paint
-      // Council AGR £ / rent £/m² / band choropleth: scrubbed from public shell
-      if (params.get("vacant") === "1") {
-        setShowVdl(true);
-      }
-      if (params.get("community") === "1") {
-        setShowCommunityOwnership(true);
-      }
-      if (qWords) {
-        setQuery(qWords);
-        void (async () => {
-          if (!(await fetchCapabilities()).agr) return;
-          const generation = ++lookupGen.current;
-          try {
-            await openWords(qWords, generation);
-            setApiOk(true);
-          } catch (err) {
-            setError(visitorFacingError(err));
-            if (isServiceFailure(err)) {
-              void pingApi().then((s) => setApiOk(s.ok));
-            }
-          }
-        })();
-      } else if (qLat && qLng) {
-        void inspectRef.current(Number(qLat), Number(qLng), { fly: true });
-      }
     });
 
     map.on("mousemove", "data-zones-fill", (event) => {

@@ -436,8 +436,21 @@ export function PlaceCard({
         <button
           type="button"
           className="hud-close"
-          onClick={onClose}
+          data-testid="place-card-close"
           aria-label="Close place card"
+          // Dismiss on pointerdown + stopPropagation so the card unmounts
+          // before mouseup; otherwise the same gesture can hit the map and
+          // re-open inspect (sea-miss stub stays up — UX10-2 Show legend).
+          onPointerDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onClose();
+          }}
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onClose();
+          }}
         >
           ×
         </button>

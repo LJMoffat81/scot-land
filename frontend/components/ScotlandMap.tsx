@@ -1073,7 +1073,10 @@ export default function ScotlandMap() {
       const knownName = opts.dataZoneName?.trim() || null;
       // Keep the prior card when re-inspecting the same point so the sea-line
       // (and its × padding) is not unmounted mid-paint (SW-030 / UX-01 e2e).
+      // Honour lookupGen inside the updater so a clearPlace that landed after
+      // this setState was queued cannot be overwritten by a stale recreate.
       setPlaceStub((prev) => {
+        if (gen !== lookupGen.current) return prev;
         const samePoint =
           prev != null && prev.lat === lat && prev.lng === lng;
         return {
@@ -4368,9 +4371,19 @@ export default function ScotlandMap() {
               <button
                 type="button"
                 className="hud-close"
+                data-testid="place-card-close"
                 title="Close (Esc)"
                 aria-label="Close place card"
-                onClick={() => clearPlace()}
+                onPointerDown={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  clearPlace();
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  clearPlace();
+                }}
               >
                 ×
               </button>

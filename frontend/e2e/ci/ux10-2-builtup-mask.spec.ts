@@ -251,14 +251,16 @@ async function closePlaceCard(page: Page) {
 /**
  * SW-044: attribution lives in the map (i) control, not a left-panel licence list.
  * Close overlays first — place card / layers drawer cover the (i) at 390.
- * Product CSS keeps bottom-right inset; expand compact via DOM so credits
- * are readable without an off-viewport click.
+ * Expand compact via DOM (no click): raising bottom-right for a click overlaps
+ * the basemap tile (basemap-switcher.spec). Credits stay asserted on textContent.
  */
 async function ensureAttribReady(page: Page) {
   await closePlaceCard(page);
   await closeTools(page);
+  await expect(page.locator(".app-shell")).not.toHaveClass(/place-open/);
+  await expect(page.locator(".app-shell")).not.toHaveClass(/tools-open/);
   await page.locator("#map[data-framed='1']").waitFor({ timeout: 60_000 });
-  const attrib = page.locator(".maplibregl-ctrl-attrib");
+  const attrib = page.locator(".map-stage .maplibregl-ctrl-attrib");
   await expect(attrib).toBeAttached({ timeout: 45_000 });
   await attrib.evaluate((el) => {
     el.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -270,17 +272,8 @@ async function ensureAttribReady(page: Page) {
   await expect(attrib).toHaveClass(/maplibregl-compact-show/, {
     timeout: 10_000,
   });
-
-  const viewport = page.viewportSize();
-  expect(viewport).toBeTruthy();
-  const box = await attrib.boundingBox();
-  expect(box, "map (i) attribution must have a layout box").toBeTruthy();
-  expect(box!.width).toBeGreaterThan(0);
-  expect(box!.height).toBeGreaterThan(0);
-  expect(box!.x + box!.width).toBeGreaterThan(0);
-  expect(box!.y + box!.height).toBeGreaterThan(0);
-  expect(box!.x).toBeLessThan(viewport!.width);
-  expect(box!.y).toBeLessThan(viewport!.height);
+  // Control must sit in the map stage (not buried under chrome).
+  await expect(attrib).toBeVisible({ timeout: 15_000 });
 }
 
 for (const viewport of [

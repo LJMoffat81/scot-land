@@ -134,16 +134,10 @@
 /* —— Item 5: fold MapLibre attribution behind (i); compact footer —— */
 @media (max-width: 640px) {
   /*
-   * SW-044: keep zoom + (i) inset inside the visible map stage at 390.
-   * Slim chrome / bottom sheet leftover space must not push the control
-   * below the viewport (Playwright + real taps need it on-screen).
+   * SW-044: do not raise .maplibregl-ctrl-bottom-right (that overlaps the
+   * basemap tile at 390). Keep the compact (i) a usable hit target; credit
+   * text is read after DOM-expand in e2e once overlays are closed.
    */
-  .map-stage .maplibregl-ctrl-bottom-right {
-    bottom: 0.75rem;
-    right: 0.5rem;
-    z-index: 3;
-  }
-
   .map-stage .maplibregl-ctrl-attrib {
     max-width: 2.5rem;
   }

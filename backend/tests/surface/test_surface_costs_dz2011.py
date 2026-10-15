@@ -1,22 +1,32 @@
-"""SURFACE-COSTS-ALL: one rebuild-cost row per DZ2011 zone; measured sample matches fixture."""
+"""SURFACE-COSTS-ALL / STRICT: one rebuild-cost row per DZ2011; measured sample exact match.
+
+The 20-row fixture equality path uses committed inputs under
+``tests/fixtures/surface_costs_dz2011_inputs/`` so CI always runs it even when
+``data/processed`` is absent. Full-nation coverage still needs processed GIS.
+"""
 
 from __future__ import annotations
 
 import csv
-import math
+import json
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from georgist import surface_costs as sc
 from georgist import surface_rent as sr
 from georgist.surface_dz2022 import EXPECTED_DZ2011
-from georgist.surface_paths import REPO_ROOT
 
 FIXTURE = (
     Path(__file__).resolve().parents[1]
     / "fixtures"
     / "surface_costs_dz2011_sample.csv"
+)
+INPUTS = (
+    Path(__file__).resolve().parents[1]
+    / "fixtures"
+    / "surface_costs_dz2011_inputs"
 )
 # Claimed source sha256 of the 20-row sample (freeze message). The committed
 # fixture bytes hash differently (line-ending / export drift); content matches.
@@ -41,21 +51,51 @@ def _processed_ready() -> bool:
     )
 
 
-pytestmark = pytest.mark.skipif(
-    not _processed_ready(),
-    reason="data/processed gis + datazones + ur lookup required",
-)
-
-
-def _rel_diff(a: float, b: float) -> float:
-    if a == 0.0 and b == 0.0:
-        return 0.0
-    return abs(a - b) / max(abs(a), abs(b))
-
-
 def _load_fixture() -> list[dict]:
     with FIXTURE.open(encoding="utf-8", newline="") as fh:
         return list(csv.DictReader(fh))
+
+
+def _build_rows_from_fixture_inputs() -> list[dict]:
+    """Recompute the 20 measured costs from committed zone inputs (no data/processed)."""
+    expected = _load_fixture()
+    codes = [r["code"] for r in expected]
+    cfg = sr.load_config()
+    defaults = sc.agr_aligned_defaults(cfg)
+    base_year = sr.rebuild_price_base_year(cfg)
+    band = sr.rebuild_band(cfg, base_year)
+    rebuild_status = str(cfg["rebuild"]["status"])
+
+    epc = pd.read_csv(INPUTS / "epc_dz_rollup.csv").set_index("code")
+    nrs = pd.read_csv(INPUTS / "nrs_dwelling_mix_2011_fallback.csv").set_index("code")
+    with (INPUTS / "estate_rows.json").open(encoding="utf-8") as fh:
+        estate_rows = {str(r["code"]): r for r in json.load(fh)}
+    with (INPUTS / "dwellings.json").open(encoding="utf-8") as fh:
+        dwell = {str(r["code"]): r["dwellings"] for r in json.load(fh)}
+
+    rows: list[dict] = []
+    for code in codes:
+        erow = epc.loc[code].to_dict() if code in epc.index else None
+        n17 = nrs.loc[code].to_dict() if code in nrs.index else None
+        rebuilds = sc.zone_cost_rebuilds(
+            code,
+            epc_row=erow,
+            nrs2017_row=n17,
+            estate_row=estate_rows.get(code),
+            cfg=cfg,
+            band=band,
+            valuation_year=base_year,
+            defaults=defaults,
+        )
+        rows.append(
+            sc._cost_row(
+                code,
+                dwell.get(code),
+                rebuilds=rebuilds,
+                rebuild_status=rebuild_status,
+            )
+        )
+    return rows
 
 
 def test_agr_defaults_align_with_surface_rebuild_inputs():
@@ -69,8 +109,16 @@ def test_fixture_file_present_with_expected_columns():
     rows = _load_fixture()
     assert len(rows) == 20
     assert list(rows[0]) == list(sc.COST_COLUMNS)
+    assert (INPUTS / "epc_dz_rollup.csv").is_file()
+    assert (INPUTS / "nrs_dwelling_mix_2011_fallback.csv").is_file()
+    assert (INPUTS / "estate_rows.json").is_file()
+    assert (INPUTS / "dwellings.json").is_file()
 
 
+@pytest.mark.skipif(
+    not _processed_ready(),
+    reason="data/processed gis + datazones + ur lookup required (full-nation only)",
+)
 def test_one_row_per_dz2011_zone_and_zero_dwellings_na():
     rows = sc.build_cost_rows()
     sc.assert_one_row_per_zone(rows, expected_n=EXPECTED_DZ2011)
@@ -85,19 +133,16 @@ def test_one_row_per_dz2011_zone_and_zero_dwellings_na():
     assert all(r["rebuild_status"] == "OPEN_ESTIMATE" for r in priced)
 
 
-def test_measured_fixture_costs_match(tmp_path):
-    """Recompute costs for the 20 measured DZ2011 codes; match fixture floats.
+def test_measured_fixture_costs_match_strict():
+    """Recompute costs for the 20 measured DZ2011 codes; strict float equality.
 
-    Prefers exact equality; falls back to ~1e-6 relative tolerance only if
-    float formatting would otherwise fail (reported via pytest message).
+    Always runs in CI via committed fixture inputs (no data/processed skip).
     """
     expected = _load_fixture()
-    codes = [r["code"] for r in expected]
-    got_rows = sc.build_cost_rows(codes=codes)
+    got_rows = _build_rows_from_fixture_inputs()
     by_code = {r["code"]: r for r in got_rows}
-    assert set(by_code) == set(codes)
+    assert set(by_code) == {r["code"] for r in expected}
 
-    used_rel_tol = False
     for exp in expected:
         code = exp["code"]
         got = by_code[code]
@@ -105,26 +150,22 @@ def test_measured_fixture_costs_match(tmp_path):
         assert got["rebuild_status"] == exp["rebuild_status"], code
         for k in COST_KEYS:
             e, g = float(exp[k]), float(got[k])
-            if e == g:
-                continue
-            rel = _rel_diff(e, g)
-            if rel <= 1e-6:
-                used_rel_tol = True
-                continue
-            pytest.fail(f"{code} {k}: expected {e!r} got {g!r} rel={rel}")
-    # Exact match on this machine (no formatting drift).
-    assert used_rel_tol is False or math.isfinite(1.0)
+            assert e == g, f"{code} {k}: expected {e!r} got {g!r}"
 
 
 def test_write_cost_table_round_trip(tmp_path):
     expected = _load_fixture()
     codes = [r["code"] for r in expected]
-    rows = sc.build_cost_rows(codes=codes)
+    rows = _build_rows_from_fixture_inputs()
     out = sc.write_cost_table(rows, tmp_path / "costs.csv")
     with out.open(encoding="utf-8", newline="") as fh:
         written = list(csv.DictReader(fh))
     assert len(written) == 20
     assert written[0]["code"] == codes[0]
+    for exp, got in zip(expected, written):
+        assert got["code"] == exp["code"]
+        for k in COST_KEYS:
+            assert float(got[k]) == float(exp[k]), f"{exp['code']} {k}"
 
 
 def test_na_status_round_trips_via_read_cost_table(tmp_path):

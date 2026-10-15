@@ -143,8 +143,6 @@ export const PLACE_CARD_MAP_REFERENCE_LABEL = "Map reference";
 export const PLACE_CARD_MAP_REFERENCE_COPY_FAIL =
   "Couldn't copy — select and copy the reference instead.";
 
-export type PlaceRentTag = "market" | "proxy" | "shadow";
-
 export type PlaceValueStatus = "coming_soon" | "in_progress";
 
 export type PlaceLayerStatus = "live" | "linked" | "gap" | string;

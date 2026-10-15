@@ -1,0 +1,25 @@
+# Cloudflare Access template for Scot-LAND admin surfaces (HOME-TUNNEL).
+# Apply in the Cloudflare Zero Trust dashboard (or API). No secrets here —
+# identity provider and policy emails stay in the Cloudflare account.
+#
+# Protect any admin / docs-admin routes. Public map and API stay open.
+
+applications:
+  - name: Scot-LAND admin
+    type: self_hosted
+    # Session duration is operator-chosen in the dashboard; leave unset here.
+    destinations:
+      - uri: scot-land.scot/admin
+      - uri: scot-land.scot/admin/*
+      - uri: www.scot-land.scot/admin
+      - uri: www.scot-land.scot/admin/*
+      - uri: scot-land.scot/docs-admin
+      - uri: scot-land.scot/docs-admin/*
+      - uri: www.scot-land.scot/docs-admin
+      - uri: www.scot-land.scot/docs-admin/*
+    policies:
+      - name: allow-operators
+        action: allow
+        # Replace with real IdP group / email list in the dashboard.
+        include:
+          - email_domain: REPLACE_WITH_ALLOWED_EMAIL_DOMAIN

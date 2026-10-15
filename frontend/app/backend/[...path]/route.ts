@@ -77,7 +77,15 @@ async function proxy(request: Request, context: Ctx): Promise<Response> {
     const ct = upstream.headers.get("Content-Type");
     if (ct) responseHeaders.set("Content-Type", ct);
     const cache = upstream.headers.get("Cache-Control");
-    if (cache) responseHeaders.set("Cache-Control", cache);
+    // HOME-TUNNEL: GET API responses cache for 5 minutes unless upstream forbids it.
+    const method = request.method.toUpperCase();
+    const upstreamForbids =
+      !!cache && /\b(no-store|private)\b/i.test(cache);
+    if ((method === "GET" || method === "HEAD") && !upstreamForbids) {
+      responseHeaders.set("Cache-Control", "public, max-age=300");
+    } else if (cache) {
+      responseHeaders.set("Cache-Control", cache);
+    }
 
     return new Response(buf, { status: upstream.status, headers: responseHeaders });
   } catch {

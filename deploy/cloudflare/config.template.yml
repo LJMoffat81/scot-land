@@ -1,0 +1,26 @@
+# Cloudflare named-tunnel config template for Scot-LAND (HOME-TUNNEL).
+# Copy to the home PC (outside the repo), replace placeholders, never commit secrets.
+#
+# Placeholders:
+#   REPLACE_WITH_TUNNEL_ID          — Cloudflare tunnel UUID
+#   REPLACE_WITH_CREDENTIALS_FILE   — absolute path to the tunnel credentials JSON
+#
+# Routing (order matters — nothing else):
+#   1. apex + www → frontend on localhost:3000
+#   2. http_status:404 catch-all last
+#
+# No /api → :8000 rule. The API listens at the container root (/health, …);
+# the Next front end already proxies it at /backend (live through this tunnel).
+# Postgres is never exposed (no ingress to :5432 / :5433).
+
+tunnel: REPLACE_WITH_TUNNEL_ID
+credentials-file: REPLACE_WITH_CREDENTIALS_FILE
+
+ingress:
+  - hostname: scot-land.scot
+    service: http://localhost:3000
+  - hostname: www.scot-land.scot
+    service: http://localhost:3000
+
+  # Required catch-all — last rule only.
+  - service: http_status:404

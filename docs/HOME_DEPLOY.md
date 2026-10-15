@@ -6,9 +6,13 @@ This is the live origin — not Vercel/Railway.
 
 | Piece | Path / command |
 |-------|----------------|
-| Live stack | `docker-compose.home.yml` (ports `3000` frontend, `8000` API, `5433` PostGIS) |
+| Live stack | `docker-compose.home.yml` (loopback `3000` frontend, `8000` API, `5433` PostGIS) |
 | Canary stack | `docker-compose.home.canary.yml` (ports `3001` / `8001`) |
+| Tunnel template | `deploy/cloudflare/config.template.yml` |
+| Offline Worker | `deploy/cloudflare/worker-offline/` |
+| Access template | `deploy/cloudflare/access.template.yml` |
 | Safe deploy | `scripts/ops/deploy-home.ps1` |
+| Daily pg_dump | `scripts/ops/pg-dump-daily.ps1` (keep 14) |
 | Legacy name | `scripts/ops/rebuild-home.ps1` → calls deploy-home |
 | Last good SHA | `.deploy/last-good-sha` (gitignored machine state) |
 | Last good images | `scot-land-home-api:last-good`, `scot-land-home-frontend:last-good` |
@@ -122,9 +126,89 @@ After a successful safe deploy, still run the mandatory smoke when practical:
 
 See `docs/OPERATING.md`.
 
+## Named tunnel (HOME-TUNNEL)
+
+Repo template: `deploy/cloudflare/config.template.yml` (placeholders only — no
+secrets). Copy it onto the home PC and replace `REPLACE_WITH_TUNNEL_ID` and
+`REPLACE_WITH_CREDENTIALS_FILE`.
+
+Ingress is intentionally minimal:
+
+1. `scot-land.scot` → `http://localhost:3000`
+2. `www.scot-land.scot` → `http://localhost:3000`
+3. `http_status:404` catch-all **last**
+
+There is **no** `/api` → `:8000` rule. The API container serves at its root
+(`/health`, …); the front end already proxies public API traffic at
+`/backend/*`. Postgres (`5432` / published `5433`) is never in the ingress.
+
+Live compose binds the front end to loopback only
+(`127.0.0.1:${HOME_FRONTEND_PORT:-3000}:3000`), matching API and db. The
+tunnel reaches the stack via `cloudflared` on the PC — not via router port
+forwards.
+
+### cloudflared as a Windows service (no router ports)
+
+1. Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
+   on the home PC.
+2. Place the filled config (from the template) outside the git working tree,
+   e.g. `%USERPROFILE%\.cloudflared\config.yml`, with the credentials JSON
+   beside it.
+3. Install and start the Windows service (elevated PowerShell), pointing at
+   that config — for example:
+
+   ```powershell
+   cloudflared service install
+   # If the service needs an explicit config path, set it per Cloudflare's
+   # current Windows service docs for your cloudflared build.
+   Start-Service cloudflared
+   ```
+
+4. Do **not** open inbound router ports (no WAN NAT to 3000 / 8000 / 5433).
+   Only Cloudflare → `cloudflared` → loopback reaches the stack.
+5. Deploy scripts must never stop this service (see safe deploy above).
+
+### Offline Worker
+
+Template: `deploy/cloudflare/worker-offline/`. When the tunnel or origin is
+down, the Worker returns plain text:
+
+`Scot-LAND is offline for a short while. Please try again later.`
+
+Deploy with Wrangler from a local copy of `wrangler.toml.template` (fill
+account/zone placeholders; never commit tokens).
+
+### Cloudflare Access (admin / docs-admin)
+
+Template: `deploy/cloudflare/access.template.yml`. Protect `/admin` and
+`/docs-admin` (and subpaths) on both hostnames. Public map and `/backend`
+stay open. Identity rules stay in the Cloudflare account — not in git.
+
+### Cache headers
+
+- Static assets (`/_next/static`, mark image, swagger-ui) and map tiles: long
+  `Cache-Control` lifetimes.
+- GET `/backend/*` responses: `public, max-age=300` (5 minutes) unless the
+  upstream already sent `no-store` / `private`.
+
+## Daily PostGIS backup (14 copies)
+
+```powershell
+.\scripts\ops\pg-dump-daily.ps1
+.\scripts\ops\register-pg-dump-task.ps1
+```
+
+- Writes dated `scot-land-YYYY-MM-DD.dump` under `.deploy/pg-dumps/` (gitignored).
+- Keeps the newest **14** dumps; older files are deleted.
+- Task Scheduler: daily (default 02:30). See comments in
+  `register-pg-dump-task.ps1`. Needs `pg_dump` on PATH and
+  `POSTGRES_PASSWORD` / `PGPASSWORD` available to the task account — never
+  commit secrets.
+
 ## Operator notes
 
 - Needs `.env` with `POSTGRES_PASSWORD` (same as today).
 - Tunnel config stays outside this repo; deploy scripts must not `Stop-Process`
   / `systemctl stop` cloudflared.
 - Canary ports must stay loopback-only so they are not public while testing.
+- No router port forwards; named tunnel + Windows `cloudflared` service only.

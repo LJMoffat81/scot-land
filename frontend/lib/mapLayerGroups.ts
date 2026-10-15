@@ -222,7 +222,7 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] = [
     id: "data_zones",
     group: "boundaries",
     label: "Data zones",
-    description: "Small-area boundaries used to join open tables.",
+    description: "Data Zone boundaries 2022.",
     licence: "Open Government Licence v3.0",
     licenceUrl: OGL_V3,
   },

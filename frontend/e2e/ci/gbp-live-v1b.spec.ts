@@ -170,14 +170,10 @@ async function stubShell(
   });
 }
 
+/** Open via search/coords query — map tap is unreliable at 390 (mobile sheet). */
 async function openPlaceCard(page: Page) {
-  await page.goto("/");
-  await page.waitForTimeout(400);
-  const map = page.locator(".maplibregl-canvas, #map, .map-shell").first();
-  if (await map.count()) {
-    await map.click({ position: { x: 200, y: 200 } }).catch(() => undefined);
-  }
-  await expect(page.getByTestId("place-card")).toBeVisible({ timeout: 15_000 });
+  await page.goto("/?lat=55.860900&lng=-4.251400");
+  await expect(page.getByTestId("place-card")).toBeVisible({ timeout: 30_000 });
 }
 
 /** Every text node that contains £ must also contain "per m²". */

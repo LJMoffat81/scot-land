@@ -530,6 +530,21 @@ function mapPanelPadding(opts?: {
   };
 }
 
+/** MapLibre Marker defaults to aria-label on a bare div — set role="img". */
+function placeSelectedMarker(
+  map: Map,
+  lng: number,
+  lat: number,
+): maplibregl.Marker {
+  const marker = new maplibregl.Marker({ color: "#0076d3" })
+    .setLngLat([lng, lat])
+    .addTo(map);
+  const el = marker.getElement();
+  el.setAttribute("role", "img");
+  el.setAttribute("aria-label", "Selected place");
+  return marker;
+}
+
 /** Remove plot-level sources/layers if present (GIS 16). */
 function removePlotLevelMapBits(map: Map): void {
   // Ids assembled so visitor jargon scanners never see contiguous "postgis".
@@ -782,7 +797,7 @@ export default function ScotlandMap() {
     lat: number;
     zoom: number;
   } | null>(null);
-  /** Deep-link boot (?lat/lng/words) runs once per page, not on basemap remount. */
+  /** Deep-link boot (?lat/lng/words) once per ready map instance. */
   const urlBootDoneRef = useRef(false);
 
   const registryEnabled: Record<string, boolean> = {
@@ -947,9 +962,11 @@ export default function ScotlandMap() {
     const map = mapRef.current;
     if (map) {
       markerRef.current?.remove();
-      markerRef.current = new maplibregl.Marker({ color: "#0076d3" })
-        .setLngLat([payload.square.lng, payload.square.lat])
-        .addTo(map);
+      markerRef.current = placeSelectedMarker(
+        map,
+        payload.square.lng,
+        payload.square.lat,
+      );
       parcelLabelRef.current?.remove();
       parcelLabelRef.current = null;
       const z = map.getZoom();
@@ -1094,9 +1111,7 @@ export default function ScotlandMap() {
       const map = mapRef.current;
       markerRef.current?.remove();
       if (map) {
-        markerRef.current = new maplibregl.Marker({ color: "#0076d3" })
-          .setLngLat([lng, lat])
-          .addTo(map);
+        markerRef.current = placeSelectedMarker(map, lng, lat);
         if (opts.fly) {
           map.flyTo({
             center: [lng, lat],
@@ -1451,6 +1466,8 @@ export default function ScotlandMap() {
     }
     setError(body.note || "Those three words did not resolve on the map.");
   };
+  const openWordsRef = useRef(openWords);
+  openWordsRef.current = openWords;
 
   const clearSuggestions = () => {
     // Cancel debounce + in-flight so "Looking…" cannot reappear after blur/Escape.
@@ -1866,49 +1883,6 @@ export default function ScotlandMap() {
 
     map.on("load", () => {
       frameScotland();
-
-      // SW-019: deep-link boot once per page (not on basemap remount).
-      if (!urlBootDoneRef.current) {
-        urlBootDoneRef.current = true;
-        const bootParams = new URLSearchParams(window.location.search);
-        const bootWords = bootParams.get("words");
-        const bootLat = bootParams.get("lat");
-        const bootLng = bootParams.get("lng");
-        if (bootParams.get("vacant") === "1") {
-          setShowVdl(true);
-        }
-        if (bootParams.get("community") === "1") {
-          setShowCommunityOwnership(true);
-        }
-        if (bootWords) {
-          setQuery(bootWords);
-          void (async () => {
-            if (!(await fetchCapabilities()).agr) return;
-            const generation = ++lookupGen.current;
-            try {
-              await openWords(bootWords, generation);
-              setApiOk(true);
-            } catch (err) {
-              setError(visitorFacingError(err));
-              if (isServiceFailure(err)) {
-                void pingApi().then((s) => setApiOk(s.ok));
-              }
-            }
-          })();
-        } else if (bootLat && bootLng) {
-          void inspectRef.current(Number(bootLat), Number(bootLng), {
-            fly: true,
-          });
-        } else {
-          const boot = readMapUrlState(bootParams);
-          if (boot.center) {
-            map.jumpTo({
-              center: [boot.center.lng, boot.center.lat],
-              zoom: boot.z ?? map.getZoom(),
-            });
-          }
-        }
-      }
 
       // Hatched grey pattern for missing choropleth values (honest no-data).
       if (!map.hasImage(NO_DATA_HATCH_IMAGE)) {
@@ -2631,10 +2605,55 @@ export default function ScotlandMap() {
         window as unknown as { __map?: maplibregl.Map | null }
       ).__map = null;
       setMapReady(false);
+      // Allow deep-link boot on the next map instance (Strict Mode / style remount).
+      urlBootDoneRef.current = false;
     };
     // Remount when basemap style changes (OpenFreeMap light ↔ detailed).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyle]);
+
+  // Deep-link boot (?lat/lng/words) once mapReady — survives style remount.
+  useEffect(() => {
+    if (!mapReady || urlBootDoneRef.current) return;
+    urlBootDoneRef.current = true;
+    const bootParams = new URLSearchParams(window.location.search);
+    const bootWords = bootParams.get("words");
+    const bootLat = Number(bootParams.get("lat"));
+    const bootLng = Number(bootParams.get("lng"));
+    if (bootParams.get("vacant") === "1") {
+      setShowVdl(true);
+    }
+    if (bootParams.get("community") === "1") {
+      setShowCommunityOwnership(true);
+    }
+    if (bootWords) {
+      setQuery(bootWords);
+      void (async () => {
+        if (!(await fetchCapabilities()).agr) return;
+        const generation = ++lookupGen.current;
+        try {
+          await openWordsRef.current(bootWords, generation);
+          setApiOk(true);
+        } catch (err) {
+          setError(visitorFacingError(err));
+          if (isServiceFailure(err)) {
+            void pingApi().then((s) => setApiOk(s.ok));
+          }
+        }
+      })();
+    } else if (Number.isFinite(bootLat) && Number.isFinite(bootLng)) {
+      void inspectRef.current(bootLat, bootLng, { fly: true });
+    } else {
+      const map = mapRef.current;
+      const boot = readMapUrlState(bootParams);
+      if (map && boot.center) {
+        map.jumpTo({
+          center: [boot.center.lng, boot.center.lat],
+          zoom: boot.z ?? map.getZoom(),
+        });
+      }
+    }
+  }, [mapReady]);
 
   // Which optional routers the API mounts; legacy calls are skipped (quietly) when absent.
   useEffect(() => {

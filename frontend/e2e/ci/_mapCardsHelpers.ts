@@ -118,12 +118,21 @@ export function attachConsoleGate(page: Page): ConsoleGate {
 }
 
 export function filterNoise(errors: string[]): string[] {
-  return errors.filter(
-    (text) =>
-      !/favicon|Download the React DevTools|AbortError|aborted|net::ERR_|Failed to fetch|400|404|503/i.test(
+  return errors.filter((text) => {
+    // Keep real exceptions (stack traces); drop CDN / network / resource noise only.
+    if (
+      /favicon|Download the React DevTools|AbortError|aborted|net::ERR_|Failed to fetch|400|404|503|Service Unavailable/i.test(
         text,
-      ),
-  );
+      )
+    ) {
+      return false;
+    }
+    // MapLibre sprite/glyph CDN failures (no app stack).
+    if (/sprite|glyph/i.test(text) && /failed|error|load|404|503/i.test(text)) {
+      return false;
+    }
+    return true;
+  });
 }
 
 export function assertConsoleClean(gate: ConsoleGate) {
@@ -284,9 +293,11 @@ export async function openPlaceViaCoords(
   await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
   const card = page.getByTestId("place-card");
   if ((await card.count()) === 0) {
-    await page.locator(".maplibregl-canvas").click({
-      position: { x: 400, y: 300 },
-    });
+    const canvas = page.locator(".maplibregl-canvas");
+    const box = await canvas.boundingBox();
+    const x = box ? Math.min(200, box.width / 2) : 200;
+    const y = box ? Math.min(300, box.height / 2) : 300;
+    await canvas.click({ position: { x, y } });
   }
   await expect(card).toBeVisible({ timeout: 45_000 });
   return card;
@@ -338,7 +349,22 @@ export async function visibleMapText(page: Page): Promise<string> {
 export async function waitForMap(page: Page) {
   await expect
     .poll(async () =>
-      page.evaluate(() => Boolean((window as unknown as { __map?: unknown }).__map)),
+      page.evaluate(() => {
+        const map = (
+          window as unknown as {
+            __map?: {
+              isStyleLoaded?: () => boolean;
+              getStyle?: () => { sources?: Record<string, unknown> } | undefined;
+            };
+          }
+        ).__map;
+        if (!map) return false;
+        try {
+          return Boolean(map.isStyleLoaded?.() && map.getStyle?.()?.sources);
+        } catch {
+          return false;
+        }
+      }),
     )
     .toBe(true);
 }
@@ -356,15 +382,19 @@ export async function getVisibleLayerIds(page: Page): Promise<string[]> {
     const map = (
       window as unknown as {
         __map?: {
-          getStyle(): { layers?: Array<{ id: string; layout?: { visibility?: string } }> };
+          isStyleLoaded?: () => boolean;
+          getStyle():
+            | { layers?: Array<{ id: string; layout?: { visibility?: string } }> }
+            | undefined;
           getLayoutProperty(id: string, prop: string): unknown;
         };
       }
     ).__map;
-    if (!map) return [];
-    const style = map.getStyle();
+    if (!map || !map.isStyleLoaded?.()) return [];
+    const style = map.getStyle?.();
+    if (!style?.layers) return [];
     const ids: string[] = [];
-    for (const layer of style.layers || []) {
+    for (const layer of style.layers) {
       let vis = layer.layout?.visibility;
       try {
         vis = (map.getLayoutProperty(layer.id, "visibility") as string) || vis;
@@ -381,11 +411,16 @@ export async function getStyleSourceIds(page: Page): Promise<string[]> {
   return page.evaluate(() => {
     const map = (
       window as unknown as {
-        __map?: { getStyle(): { sources?: Record<string, unknown> } };
+        __map?: {
+          isStyleLoaded?: () => boolean;
+          getStyle(): { sources?: Record<string, unknown> } | undefined;
+        };
       }
     ).__map;
-    if (!map) return [];
-    return Object.keys(map.getStyle().sources || {});
+    if (!map || !map.isStyleLoaded?.()) return [];
+    const style = map.getStyle?.();
+    if (!style?.sources) return [];
+    return Object.keys(style.sources);
   });
 }
 

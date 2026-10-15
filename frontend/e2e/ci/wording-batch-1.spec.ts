@@ -316,7 +316,7 @@ test.describe("WORDING-BATCH-1 developers", () => {
     test.describe(`${viewport.width}`, () => {
       test.use({ viewport });
 
-      test("idea 26 Not packaged yet; SW-033 Scot-LAND API + folded notes", async ({
+      test("idea 26 catalog size packaged; SW-033 Scot-LAND API + folded notes", async ({
         page,
       }) => {
         test.setTimeout(90_000);
@@ -325,7 +325,7 @@ test.describe("WORDING-BATCH-1 developers", () => {
 
         await page.goto("/developers");
         await expect(page.getByTestId("download-size-catalog")).toHaveText(
-          "Not packaged yet",
+          /\d+(\.\d+)?\s*KB/,
         );
         await expect(page.locator("body")).not.toContainText(/Size\s*—/);
 

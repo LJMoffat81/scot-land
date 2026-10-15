@@ -655,3 +655,41 @@ surface_rent:
       rent_measure: Median
       national_max_abs_gap: 0.25
       class_max_abs_gap: 0.40
+
+  # ------------------------------------------------------------------------------------------------------------
+  # v1.4 methods (frozen prereg sha prefix e1ab6d0a…; fidelity_fix_spec sha prefix 1694c8ad…)
+  # Leaves the v1.3 depreciation block above (compounding_v13, 0.002757) untouched for reproducibility.
+  # ------------------------------------------------------------------------------------------------------------
+  v14:
+    prereg_sha256_prefix: "e1ab6d0a"
+    fidelity_fix_spec_sha256_prefix: "1694c8ad"
+    prereg_path: "scotland-rules/v14_prereg_FROZEN_e1ab6d0a.md"
+    fidelity_fix_spec_path: "scotland-rules/fidelity_fix_spec.md"
+    freeze_json_path: "scotland-rules/v14_prereg_freeze.json"
+    gbp_display: false                      # £ display off for scoring / publication
+    # Primary = cost residual; secondary = hedonic. Never switch to whichever passes (3.2).
+    estimators:
+      primary: cost_residual_v14
+      secondary: hedonic_plot_gradient
+    no_switch_publication: true
+    depreciation:
+      method: straight_line_v14
+      # remaining = max(1 − rate_building×age_c, 1 − max_depreciation)
+      # age_c = min(valuation_year − midpoint, age_cap_years); straight line, no compounding.
+      age_cap_years: 68
+      rate_building: {low: 0.010, central: 0.0035, high: 0.0}   # 0–1.0%/yr building value
+      max_depreciation: {low: 0.60, central: 0.55, high: 0.55} # 55% cap (remaining floor 0.45); band to 60%
+      # Midpoints inherited from depreciation.age_band_midpoint_year at load time.
+      band_combination:
+        rule: corner
+        drc_high_land_low: {rebuild: high, rate_building: high, max_depreciation: high}
+        drc_low_land_high: {rebuild: low, rate_building: low, max_depreciation: low}
+    no_age_mix:
+      # Must NOT use rebuild_inputs.default_remaining_factor (0.55).
+      # Frozen central remaining at age cap: 1 − min(0.0035×68, 0.55) = 0.762
+      use: central_remaining_at_age_cap
+      central_remaining_factor: 0.762
+    check4:
+      national_max_abs_gap: 0.25
+      class_max_abs_gap: 0.40
+      capitalisation_yield: 0.045

@@ -198,6 +198,11 @@
     width: auto;
     max-width: none;
   }
+
+  /* Banner strip stays between left card and right Layers drawer. */
+  .app-shell.place-open.tools-open .research-banner-map {
+    right: calc(min(332px, calc(100vw - 2rem)) + 1.1rem + 1rem);
+  }
 }
 
 @media (min-width: 901px) {
@@ -546,5 +551,12 @@
 
   .app-shell.tools-open .map-stage .maplibregl-ctrl-bottom-right {
     right: calc(min(332px, calc(100vw - 2rem)) + 1.1rem + 0.5rem);
+  }
+
+  /* Keep the right drawer within the map stage so it cannot paint over chrome. */
+  .app-shell.tools-open .hud-tools {
+    max-height: calc(100% - 8.5rem);
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 }

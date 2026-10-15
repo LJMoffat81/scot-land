@@ -197,9 +197,12 @@ test.describe("SW-036 v2 desktop layout 1280", () => {
 
     const layersBtn = page.getByTestId("hud-layers-btn");
     await layersBtn.click();
-    const layers = page.getByTestId("layers-panel");
-    await expect(layers).toBeVisible();
+    const layersPanel = page.getByTestId("layers-panel");
+    await expect(layersPanel).toBeVisible();
     await expect(page.locator(".app-shell.tools-open")).toBeVisible();
+    // Use the drawer shell (clipped) — inner panel content can be taller than the stage.
+    const layers = page.locator("aside.hud-tools");
+    await expect(layers).toBeVisible();
 
     // Collapsed legend pill while the card is open.
     const legendPill = page.getByRole("button", { name: "Show legend" });
@@ -217,6 +220,11 @@ test.describe("SW-036 v2 desktop layout 1280", () => {
     const zoomBox = await boxOf(zoom, "zoom +");
     const basemapBox = await boxOf(basemap, "basemap");
     const dismissBox = await boxOf(bannerDismiss, "banner ×");
+
+    // Drawer must stay within the viewport (not an unclipped content box).
+    expect(layersBox.y + layersBox.height, "Layers drawer bottom").toBeLessThanOrEqual(
+      800 + 1,
+    );
 
     // Card is the left panel; Layers stays on the right with map between.
     expect(cardBox.x + cardBox.width, "card right edge").toBeLessThan(

@@ -331,26 +331,36 @@ test.describe("POST-SHARE-1 SW-033 swagger badge", () => {
   test("swagger shows Scot-LAND API, not wealth-api-boot", async ({ page }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
-    await page.route("**/backend/openapi.json", async (route) => {
+    // Quiet footer /health and other probes so CI has no live FastAPI 503 noise.
+    await page.route("**/backend/**", async (route) => {
+      const url = route.request().url();
+      if (/\/openapi\.json/i.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            openapi: "3.0.3",
+            info: {
+              title: "wealth-api-boot",
+              version: "wealth-api-boot",
+              description: "Fixture — rewrite must hide legacy badge.",
+            },
+            paths: {
+              "/health": {
+                get: {
+                  summary: "Health",
+                  responses: { "200": { description: "ok" } },
+                },
+              },
+            },
+          }),
+        });
+        return;
+      }
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({
-          openapi: "3.0.3",
-          info: {
-            title: "wealth-api-boot",
-            version: "wealth-api-boot",
-            description: "Fixture — rewrite must hide legacy badge.",
-          },
-          paths: {
-            "/health": {
-              get: {
-                summary: "Health",
-                responses: { "200": { description: "ok" } },
-              },
-            },
-          },
-        }),
+        body: JSON.stringify(/\/health/i.test(url) ? HEALTH_OK : {}),
       });
     });
     await page.route("**/api/catalog.json", async (route) => {

@@ -1,61 +1,61 @@
-council_a,council_b,method
-S12000005,S12000047,dz2022_dissolve_touch_1m
-S12000005,S12000030,dz2022_dissolve_touch_1m
-S12000005,S12000048,dz2022_dissolve_touch_1m
-S12000006,S12000028,dz2022_dissolve_touch_1m
-S12000006,S12000008,dz2022_dissolve_touch_1m
-S12000006,S12000026,dz2022_dissolve_touch_1m
-S12000006,S12000029,dz2022_dissolve_touch_1m
-S12000008,S12000028,dz2022_dissolve_touch_1m
-S12000008,S12000021,dz2022_dissolve_touch_1m
-S12000008,S12000011,dz2022_dissolve_touch_1m
-S12000008,S12000029,dz2022_dissolve_touch_1m
-S12000010,S12000026,dz2022_dissolve_touch_1m
-S12000010,S12000019,dz2022_dissolve_touch_1m
-S12000010,S12000036,dz2022_dissolve_touch_1m
-S12000011,S12000021,dz2022_dissolve_touch_1m
-S12000011,S12000038,dz2022_dissolve_touch_1m
-S12000011,S12000049,dz2022_dissolve_touch_1m
-S12000011,S12000029,dz2022_dissolve_touch_1m
-S12000014,S12000050,dz2022_dissolve_touch_1m
-S12000014,S12000040,dz2022_dissolve_touch_1m
-S12000014,S12000030,dz2022_dissolve_touch_1m
-S12000017,S12000035,dz2022_dissolve_touch_1m
-S12000017,S12000048,dz2022_dissolve_touch_1m
-S12000017,S12000034,dz2022_dissolve_touch_1m
-S12000017,S12000020,dz2022_dissolve_touch_1m
-S12000018,S12000021,dz2022_dissolve_touch_1m
-S12000018,S12000038,dz2022_dissolve_touch_1m
-S12000019,S12000026,dz2022_dissolve_touch_1m
-S12000019,S12000036,dz2022_dissolve_touch_1m
-S12000020,S12000034,dz2022_dissolve_touch_1m
-S12000021,S12000028,dz2022_dissolve_touch_1m
-S12000021,S12000038,dz2022_dissolve_touch_1m
-S12000026,S12000029,dz2022_dissolve_touch_1m
-S12000026,S12000040,dz2022_dissolve_touch_1m
-S12000026,S12000036,dz2022_dissolve_touch_1m
-S12000029,S12000049,dz2022_dissolve_touch_1m
-S12000029,S12000050,dz2022_dissolve_touch_1m
-S12000029,S12000040,dz2022_dissolve_touch_1m
-S12000030,S12000050,dz2022_dissolve_touch_1m
-S12000030,S12000045,dz2022_dissolve_touch_1m
-S12000030,S12000039,dz2022_dissolve_touch_1m
-S12000030,S12000035,dz2022_dissolve_touch_1m
-S12000030,S12000048,dz2022_dissolve_touch_1m
-S12000033,S12000034,dz2022_dissolve_touch_1m
-S12000034,S12000048,dz2022_dissolve_touch_1m
-S12000034,S12000041,dz2022_dissolve_touch_1m
-S12000035,S12000039,dz2022_dissolve_touch_1m
-S12000035,S12000048,dz2022_dissolve_touch_1m
-S12000036,S12000040,dz2022_dissolve_touch_1m
-S12000038,S12000049,dz2022_dissolve_touch_1m
-S12000039,S12000049,dz2022_dissolve_touch_1m
-S12000039,S12000045,dz2022_dissolve_touch_1m
-S12000040,S12000050,dz2022_dissolve_touch_1m
-S12000041,S12000042,dz2022_dissolve_touch_1m
-S12000041,S12000048,dz2022_dissolve_touch_1m
-S12000042,S12000048,dz2022_dissolve_touch_1m
-S12000045,S12000049,dz2022_dissolve_touch_1m
-S12000045,S12000050,dz2022_dissolve_touch_1m
-S12000047,S12000048,dz2022_dissolve_touch_1m
-S12000049,S12000050,dz2022_dissolve_touch_1m
+council_a,council_b,method,reason
+S12000005,S12000047,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000005,S12000030,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000005,S12000048,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000006,S12000028,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000006,S12000008,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000006,S12000026,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000006,S12000029,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000008,S12000028,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000008,S12000021,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000008,S12000011,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000008,S12000029,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000010,S12000026,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000010,S12000019,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000010,S12000036,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000011,S12000021,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000011,S12000038,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000011,S12000049,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000011,S12000029,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000014,S12000050,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000014,S12000040,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000014,S12000030,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000017,S12000035,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000017,S12000048,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000017,S12000034,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000017,S12000020,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000018,S12000021,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000018,S12000038,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000019,S12000026,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000019,S12000036,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000020,S12000034,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000021,S12000028,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000021,S12000038,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000026,S12000029,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000026,S12000040,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000026,S12000036,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000029,S12000049,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000029,S12000050,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000029,S12000040,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000030,S12000050,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000030,S12000045,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000030,S12000039,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000030,S12000035,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000030,S12000048,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000033,S12000034,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000034,S12000048,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000034,S12000041,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000035,S12000039,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000035,S12000048,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000036,S12000040,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000038,S12000049,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000039,S12000049,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000039,S12000045,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000040,S12000050,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000041,S12000042,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000041,S12000048,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000042,S12000048,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000045,S12000049,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000045,S12000050,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000047,S12000048,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"
+S12000049,S12000050,dz2022_dissolve_touch_1m,"shared land boundary (2022 data zones dissolved to councils, touch within 1 m)"

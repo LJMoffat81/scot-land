@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+
+import { OG_IMAGES } from "@/lib/socialMeta";
+
 import "./globals.css";
 import "./platform.css";
 import "./map-chrome.css";
@@ -11,14 +14,34 @@ const mona = localFont({
   fallback: ["Segoe UI", "Helvetica", "Arial", "sans-serif"],
 });
 
+const SITE_DESCRIPTION =
+  "Search a Scottish postcode, place or map reference on an open land map. Research estimate — land rent figures are not published yet.";
+const OG_DESCRIPTION =
+  "Find a place on Scotland’s open land map. Research estimate — land rent figures are not published yet.";
+
 export const metadata: Metadata = {
   title: "Map | Scot-LAND",
-  description:
-    "Search a Scottish postcode, place or map reference on an open land map. Research estimate — land rent figures are not published yet.",
+  description: SITE_DESCRIPTION,
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  manifest: "/site.webmanifest",
   openGraph: {
     title: "Map | Scot-LAND",
-    description:
-      "Find a place on Scotland’s open land map. Research estimate — land rent figures are not published yet.",
+    description: OG_DESCRIPTION,
+    images: [...OG_IMAGES],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Map | Scot-LAND",
+    description: OG_DESCRIPTION,
+    images: ["/og-image.png"],
   },
 };
 

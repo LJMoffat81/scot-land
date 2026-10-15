@@ -165,12 +165,15 @@ export default function SiteNav({
       <a
         className="site-nav-brand"
         href="/"
-        aria-label="Scot-LAND"
+        aria-label="Scot-LAND home"
         data-testid="site-nav-brand"
       >
         <img src="/scot-land-mark.png" alt="" width={40} height={40} />
-        {/* Logo mark already includes LAND; hide this text on mobile (SW-020). */}
-        <span className="site-nav-wordmark">Scot-LAND</span>
+        <span className="site-nav-brand-text">
+          {/* Logo mark already includes LAND; hide this text on mobile (SW-020). */}
+          <span className="site-nav-wordmark">Scot-LAND</span>
+          <span className="site-nav-tagline">Land value we all create</span>
+        </span>
       </a>
       {mobileMenu}
     </nav>

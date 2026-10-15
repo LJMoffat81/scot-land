@@ -2605,6 +2605,10 @@ export default function ScotlandMap() {
 
 
     mapRef.current = map;
+    // E2e / GIS checks (MAP-CARDS 26–32, A3): MapLibre instance for style/zoom probes.
+    (
+      window as unknown as { __map?: maplibregl.Map | null }
+    ).__map = map;
     return () => {
       resizeObserver.disconnect();
       markerRef.current?.remove();
@@ -2615,6 +2619,9 @@ export default function ScotlandMap() {
       layerPopupRef.current = null;
       map.remove();
       mapRef.current = null;
+      (
+        window as unknown as { __map?: maplibregl.Map | null }
+      ).__map = null;
       setMapReady(false);
     };
     // Remount when basemap style changes (OpenFreeMap light ↔ detailed).

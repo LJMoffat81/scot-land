@@ -223,10 +223,11 @@ test.describe("DZ-HIERARCHY place card desktop 1280", () => {
       "Edinburgh Old Town",
     );
 
-    await expect(page.getByTestId("place-card-more-about-summary")).toBeHidden();
+    // Desktop: summary is present but visually hidden; label must stay exact.
     await expect(page.getByTestId("place-card-more-about-summary")).toHaveText(
       MORE_ABOUT,
     );
+    await expect(page.getByTestId("place-card-more-about-summary")).toBeHidden();
     const dataLink = page.getByTestId("place-card-data-sources-link");
     await expect(dataLink).toBeVisible();
     await expect(dataLink).toHaveText(DATA_SOURCES);

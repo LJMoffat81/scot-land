@@ -401,6 +401,20 @@ export function PlaceCard({
 
   const placeName = card ? placeCardTitle(card) : "This place";
   const councilLine = card?.council_name?.trim() || null;
+  // Show the fold when hierarchy ids exist in the payload — never render those
+  // codes on the card; the fold links to Data & sources instead.
+  const izCodeRaw = card?.intermediate_zone?.code
+    ? String(card.intermediate_zone.code).trim()
+    : "";
+  const hasIzCode =
+    Boolean(izCodeRaw) && izCodeRaw.toLowerCase() !== "unknown";
+  const hasDz2011 = (card?.data_zone?.zones ?? []).some(
+    (z) =>
+      z.vintage === 2011 &&
+      Boolean(z.code) &&
+      String(z.code).toLowerCase() !== "unknown",
+  );
+  const showMoreAbout = hasIzCode || hasDz2011;
 
   const shellClass = [
     floating ? "hud-card hud-place place-card" : "place-card place-card-standalone",
@@ -729,37 +743,39 @@ export function PlaceCard({
           </div>
 
           <div className="place-card-sheet-body" data-testid="place-card-sheet-body">
-            {/* DZ-HIERARCHY: fold links to Data & sources — no DZ2011 / IZ codes on the card. */}
-            <details
-              className="place-card-more-about"
-              data-testid="place-card-more-about"
-              open={narrowHierarchy ? moreAboutOpen : true}
-              onToggle={(event) => {
-                if (!narrowHierarchy) return;
-                setMoreAboutOpen(
-                  (event.currentTarget as HTMLDetailsElement).open,
-                );
-              }}
-            >
-              <summary
-                className="place-card-more-about-summary"
-                data-testid="place-card-more-about-summary"
+            {/* DZ-HIERARCHY: fold → Data & sources; never show DZ2011 / IZ codes. */}
+            {showMoreAbout ? (
+              <details
+                className="place-card-more-about"
+                data-testid="place-card-more-about"
+                open={narrowHierarchy ? moreAboutOpen : true}
+                onToggle={(event) => {
+                  if (!narrowHierarchy) return;
+                  setMoreAboutOpen(
+                    (event.currentTarget as HTMLDetailsElement).open,
+                  );
+                }}
               >
-                {PLACE_CARD_MORE_ABOUT_LABEL}
-              </summary>
-              <div
-                className="place-card-more-about-body"
-                data-testid="place-card-more-about-body"
-              >
-                <a
-                  href={PLACE_CARD_DATA_SOURCES_HREF}
-                  className="place-card-data-sources-link"
-                  data-testid="place-card-data-sources-link"
+                <summary
+                  className="place-card-more-about-summary"
+                  data-testid="place-card-more-about-summary"
                 >
-                  {PLACE_CARD_DATA_SOURCES_LABEL}
-                </a>
-              </div>
-            </details>
+                  {PLACE_CARD_MORE_ABOUT_LABEL}
+                </summary>
+                <div
+                  className="place-card-more-about-body"
+                  data-testid="place-card-more-about-body"
+                >
+                  <a
+                    href={PLACE_CARD_DATA_SOURCES_HREF}
+                    className="place-card-data-sources-link"
+                    data-testid="place-card-data-sources-link"
+                  >
+                    {PLACE_CARD_DATA_SOURCES_LABEL}
+                  </a>
+                </div>
+              </details>
+            ) : null}
 
             <details
               className="place-card-parts"

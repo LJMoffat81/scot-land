@@ -242,6 +242,12 @@ async function closePlaceCard(page: Page) {
 async function ensureLegendOpen(page: Page) {
   await closePlaceCard(page);
   await closeTools(page);
+  // SW-047 hides Data licences while a place card is open (compact legend).
+  await expect(page.getByTestId("map-legend-panel")).toHaveAttribute(
+    "data-legend-compact",
+    "false",
+    { timeout: 15_000 },
+  );
   const credits = page.getByTestId("map-licence-credits");
   if (await credits.isVisible().catch(() => false)) return;
   const show = page.locator("button.hud-scotland-fold");

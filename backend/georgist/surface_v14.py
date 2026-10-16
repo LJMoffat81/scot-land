@@ -304,6 +304,8 @@ def score_estimators(
         gating_pass = bool(gating["1"].get("pass")) and bool(gating["1d"].get("pass"))
         if check4 is not None:
             gating_pass = gating_pass and bool(check4.get("pass"))
+        if any(gating[name].get("status") == "pending" for name in ("1a", "1b", "3", "4", "6")):
+            gating_pass = False
         return _pack(gating, information, gating_pass, check4)
 
     if primary_zones is not None:

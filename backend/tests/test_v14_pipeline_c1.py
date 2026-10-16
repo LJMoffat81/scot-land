@@ -100,6 +100,22 @@ def test_surface_v14_untouched_functions():
     ]
 
 
+def test_share_only_pass_of_checks_1_and_1d_does_not_publish():
+    shares = [0.2, 0.25, 0.3]
+    scored = v14.score_estimators(primary_shares=shares, secondary_shares=list(shares))
+    for block in (scored["primary"], scored["secondary"]):
+        assert block["gating"]["1"]["pass"] is True
+        assert block["gating"]["1d"]["pass"] is True
+        for name in ("1a", "1b", "3", "4", "6"):
+            assert block["gating"][name]["status"] == "pending"
+        assert block["gating_pass"] is False
+    publication = scored["publication"]
+    assert publication["publish_primary"] is False
+    assert publication["publish_secondary"] is False
+    assert publication["publish_as_range"] is False
+    assert publication["outcome"] == "both_fail_publish_neither"
+
+
 def test_g1_reports_every_check_and_pending_when_inputs_are_missing():
     scored = v14.score_estimators(primary_shares=[0.2, 0.25], secondary_shares=[0.2, 0.25])
     for block in (scored["primary"], scored["secondary"]):

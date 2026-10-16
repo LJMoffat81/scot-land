@@ -2171,6 +2171,10 @@ export default function ScotlandMap() {
       if (framed) {
         if (container.dataset.viewSource === "url") return;
         if (map.getZoom() > 8) return;
+        // A selected place owns the camera. Zooming out must not refit
+        // Scotland over that zone (that put the Highland view back on reload).
+        const placeUrl = readMapUrlState(window.location.search);
+        if (placeUrl.panel === "place" || placeUrl.dz) return;
       }
       // Apply a Scotland `c` before the national fitBounds. #169 returned
       // early whenever zoom was already > 8, so a bad or not-yet-applied
@@ -2984,6 +2988,17 @@ export default function ScotlandMap() {
         fromAddressSearch: true,
         keepCollapsed: panelCollapsedRef.current,
       });
+    } else if (
+      panelKindRef.current === "place" &&
+      placeStubRef.current != null
+    ) {
+      // mapReady can land after search has already written panel=place.
+      // Identifying again clears the title and the zone code.
+      const live = placeStubRef.current;
+      const map = mapRef.current;
+      if (map && live && !markerRef.current) {
+        markerRef.current = placeSelectedMarker(map, live.lng, live.lat);
+      }
     } else if (captured?.place && boot.center && !(boot.dz || captured.dz)) {
       // place= + c= after rewrite — still identify at the captured centre.
       // A selected Data Zone wins over that centre.
@@ -4462,10 +4477,7 @@ export default function ScotlandMap() {
     const syncZoom = () => {
       setMapZoom(map.getZoom());
     };
-    const sync = () => {
-      const zoom = map.getZoom();
-      setMapZoom(zoom);
-      if (map.isMoving()) return;
+    const writeCamera = () => {
       // Do not write c= until the initial view (Scotland frame or a shared
       // link inside Scotland) has been applied. A mount-time rewrite used to
       // persist the unready camera — Number(null) === 0 — as c=0.00,0.00.
@@ -4473,19 +4485,30 @@ export default function ScotlandMap() {
       // data_zones stays off until the user toggles it (no auto-on at zoom 10).
       const center = map.getCenter();
       replaceMapUrl({
-        z: zoom,
+        z: map.getZoom(),
         center: { lng: center.lng, lat: center.lat },
       });
+    };
+    const sync = () => {
+      syncZoom();
+      if (map.isMoving()) return;
+      writeCamera();
+    };
+    // moveend/zoomend are the settled camera. isMoving() can still be true
+    // on that event, which used to leave c= on the previous place.
+    const syncSettled = () => {
+      syncZoom();
+      writeCamera();
     };
     sync();
     // Keep inline-legend zoom gates current during flyTo (not only on end).
     map.on("zoom", syncZoom);
-    map.on("zoomend", sync);
-    map.on("moveend", sync);
+    map.on("zoomend", syncSettled);
+    map.on("moveend", syncSettled);
     return () => {
       map.off("zoom", syncZoom);
-      map.off("zoomend", sync);
-      map.off("moveend", sync);
+      map.off("zoomend", syncSettled);
+      map.off("moveend", syncSettled);
     };
   }, [mapReady]);
 
@@ -5017,10 +5040,10 @@ export default function ScotlandMap() {
           liveMessage={liveMessage}
           showSlotClose={false}
         >
-          {placeStub ? (
+          {placeStub && !placeLoading ? (
             <PlaceCardStub
               place={placeStub}
-              loading={placeLoading}
+              loading={false}
               error={error}
               onClose={() => {
                 // Card × clears selection (not desktop collapse-to-tab).

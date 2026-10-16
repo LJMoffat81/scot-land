@@ -12,7 +12,7 @@
       "updated": "2025",
       "zone_set": "2022",
       "file": "vacant-derelict-land-dz2022.csv",
-      "bytes": 4104150,
+      "bytes": 4857756,
       "api_anchor": "api-vdl",
       "href": "/downloads/vacant-derelict-land-dz2022.csv"
     },
@@ -25,7 +25,7 @@
       "updated": "2025",
       "zone_set": "2011",
       "file": "vacant-derelict-land-dz2011.csv",
-      "bytes": 3873257,
+      "bytes": 4578840,
       "api_anchor": "api-vdl",
       "href": "/downloads/vacant-derelict-land-dz2011.csv"
     },
@@ -73,7 +73,7 @@
       "licence": "OGL v3.0",
       "updated": "2026",
       "file": "source-catalogue.csv",
-      "bytes": 3371,
+      "bytes": 3493,
       "api_anchor": "api-catalog",
       "href": "/downloads/source-catalogue.csv"
     }

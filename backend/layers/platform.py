@@ -298,8 +298,8 @@ def platform_catalog() -> dict[str, Any]:
                 "group": "spatial",
                 "status": "live",
                 "label": "Vacant and derelict land",
-                "description": "Data Zone totals from the Scottish Vacant and Derelict Land Survey: how many sites and how much area in each zone. Survey fields, not a legal title.",
-                "developer_note": "SVDLS survey polygons rolled up to Data Zone totals on the open layer. Owner class is a survey field, not legal title.",
+                "description": "Totals from the Scottish Vacant and Derelict Land Survey, grouped by Data Zone. Zones with one or two sites show no area.",
+                "developer_note": "Open /layers/open/vdl returns Data Zone totals only. Zones with fewer than 3 sites publish site_count '<3' and no area. Other areas are rounded to 0.5 ha. No site polygon on the public map.",
                 "endpoint": "/layers/open/vdl",
                 "licence": "OGL-3.0",
                 "licence_url": (

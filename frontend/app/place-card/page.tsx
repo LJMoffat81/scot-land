@@ -88,8 +88,8 @@ function PlaceCardPreviewInner() {
                     {
                       data_zone: "S01014567",
                       vintage: 2022,
-                      site_count: 2,
-                      area_ha: 1.4,
+                      site_count: "<3",
+                      area_ha: null,
                     },
                   ],
                 },

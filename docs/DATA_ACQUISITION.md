@@ -208,7 +208,7 @@ Registry: `data/config/sources.yaml` → `community_ownership`. Do not commit ra
 
 | Field | Value |
 |-------|--------|
-| Product | Scottish Vacant and Derelict Land Survey. The survey is published site by site; the public map and `GET /layers/open/vdl` return Data Zone totals only (site count and area) |
+| Product | Scottish Vacant and Derelict Land Survey. The survey is published site by site; `GET /layers/open/vdl` returns Data Zone totals only. Zones with fewer than 3 sites show no area and the count `<3`. Other areas are rounded to 0.5 ha. The map does not draw site polygons |
 | Licence | OGL v3.0 |
 | Attribution | © Scottish Government; contains Improvement Service / local planning authority data under OGL |
 | Site register | https://www.gov.scot/publications/the-scottish-vacant-and-derelict-land-survey-site-register/ |
@@ -216,8 +216,8 @@ Registry: `data/config/sources.yaml` → `community_ownership`. Do not commit ra
 | BBox API | `GET /layers/open/vdl` → Data Zone totals in `meta.data_zones` (count and area); features stay empty; **503** when upstream unavailable |
 | Site types | Vacant Land; Vacant Land and Buildings; Derelict |
 | Geometry precedence | **Spatial Hub survey > RoS title outline > point** — each site tagged `geometry_source` (`backend/layers/svdls_geometry.py`) |
-| Live open overlay | Spatial Hub survey polygons only (`geometry_source=spatialhub_survey`) |
-| Gaps | Owner class is a survey field (not title); Spatial Hub vintage may lag the SG register; RoS title outlines stay internal until OS/RoS end-user terms cleared |
+| Live open overlay | No site-polygon overlay. Vacant land stays off the Layers panel (no Data Zone choropleth yet) |
+| Gaps | Totals from the Scottish Vacant and Derelict Land Survey, grouped by Data Zone. Zones with one or two sites show no area. Spatial Hub vintage may lag the SG register; RoS title outlines stay internal until OS/RoS end-user terms cleared |
 
 Registry: `data/config/sources.yaml` → `vdl`. Zone-level rollups used by the Wealth Engine live under `data/processed/gis/` (see `README_svdls_hls.md`); the public map layer uses the live OGL FeatureServer, not gitignored `data/external`. GIS will review licences / CRS / zone alignment before merge of the map-layer PR.
 

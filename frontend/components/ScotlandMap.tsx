@@ -269,7 +269,6 @@ const PUBLIC_LAND_FILL: ExpressionSpecification = [
 
 const CADASTRAL_MIN_ZOOM = 14;
 const PUBLIC_LAND_MIN_ZOOM = 8;
-const VDL_MIN_ZOOM = 8;
 /** Protected sites: do not fetch the multi-megabyte extract below this zoom. */
 const DESIGNATIONS_MIN_ZOOM = 6;
 const HLA_MIN_ZOOM = 8;
@@ -304,24 +303,6 @@ const CES_LEASE_FILL: ExpressionSpecification = [
 /** Community ownership points — postcode centroids, not titles. */
 const COMMUNITY_OWNERSHIP_MIN_ZOOM = 6;
 const LCA_MIN_ZOOM = 7;
-
-const VDL_SITE_TYPES: Array<{ name: string; color: string }> = [
-  { name: "Vacant Land", color: "#e8a317" },
-  { name: "Vacant Land and Buildings", color: "#c45c26" },
-  { name: "Derelict", color: "#7a2e00" },
-];
-
-const VDL_FILL: ExpressionSpecification = [
-  "match",
-  ["coalesce", ["get", "site_type"], ""],
-  "Vacant Land",
-  "#e8a317",
-  "Vacant Land and Buildings",
-  "#c45c26",
-  "Derelict",
-  "#7a2e00",
-  "#c45c26",
-];
 
 const LDP_FILL = "#5b8c5a";
 
@@ -2427,30 +2408,6 @@ export default function ScotlandMap() {
         paint: { "line-color": "#0b3d5c", "line-width": 1.0, "line-opacity": 0.85 },
       });
 
-      map.addSource("vdl-overlay", {
-        type: "geojson",
-        data: emptyCollection,
-        attribution:
-          "SVDLS © Scottish Government / Improvement Service (OGL v3.0). Survey sites, not a title.",
-      });
-      map.addLayer({
-        id: "vdl-fill",
-        type: "fill",
-        source: "vdl-overlay",
-        layout: { visibility: "none" },
-        paint: {
-          "fill-color": VDL_FILL,
-          "fill-opacity": 0.42,
-        },
-      });
-      map.addLayer({
-        id: "vdl-line",
-        type: "line",
-        source: "vdl-overlay",
-        layout: { visibility: "none" },
-        paint: { "line-color": "#5a2200", "line-width": 1.1, "line-opacity": 0.9 },
-      });
-
       map.addSource("designations-overlay", {
         type: "geojson",
         data: emptyCollection,
@@ -2777,16 +2734,6 @@ export default function ScotlandMap() {
               source?: string;
             }
           | undefined;
-        const vdlHits =
-          map.getLayer("vdl-fill") &&
-          map.getLayoutProperty("vdl-fill", "visibility") === "visible"
-            ? map.queryRenderedFeatures(point, {
-                layers: ["vdl-fill"],
-              })
-            : [];
-        const vdlProps = vdlHits[0]?.properties as
-          | { source?: string }
-          | undefined;
         const lcaHits =
           map.getLayer("lca-fill") &&
           map.getLayoutProperty("lca-fill", "visibility") === "visible"
@@ -2810,9 +2757,8 @@ export default function ScotlandMap() {
           lcaCode: lcaProps?.lccode ?? null,
           source:
             lcaProps?.source ||
-            vdlProps?.source ||
             publicProps?.source ||
-            (publicProps || vdlProps || lcaProps
+            (publicProps || lcaProps
               ? "Open land layers — research overlay, not a title"
               : null),
         });
@@ -3630,76 +3576,6 @@ export default function ScotlandMap() {
       map.off("moveend", onMove);
     };
   }, [mapReady, showCesAquaculture, markTileUnavailable]);
-
-  // SVDLS vacant / derelict overlay (OGL survey polygons)
-  useEffect(() => {
-    if (!mapReady) return;
-    const map = mapRef.current;
-    if (!map) return;
-
-    const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("vdl-fill")) return;
-      map.setLayoutProperty("vdl-fill", "visibility", vis);
-      map.setLayoutProperty("vdl-line", "visibility", vis);
-    };
-
-    if (!showVdl) {
-      setVis("none");
-      return;
-    }
-
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let inFlight = false;
-
-    const loadVdl = () => {
-      if (cancelled || !mapRef.current || inFlight) return;
-      const b = map.getBounds();
-      if (!b) return;
-      if (map.getZoom() < VDL_MIN_ZOOM) {
-        setVis("none");
-        return;
-      }
-      inFlight = true;
-      setLayerBusy(true);
-      const path =
-        `/layers/open/vdl?south=${b.getSouth()}&west=${b.getWest()}` +
-        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
-      void apiJson<GeoJSON.FeatureCollection>(path)
-        .then((data) => {
-          if (cancelled) return;
-          safeSetGeoJson(map.getSource("vdl-overlay") as GeoJSONSource | undefined, data);
-          setVis("visible");
-          setLayerNotice(null);
-        })
-        .catch((err: unknown) => {
-          if (cancelled) return;
-          setVis("none");
-          if (err instanceof ApiError && err.status === 503) {
-            setLayerNotice(
-              "Vacant and derelict overlay is not available right now (SVDLS source unavailable). Gaps are not filled with guesses.",
-            );
-          }
-        })
-        .finally(() => {
-          inFlight = false;
-          if (!cancelled) setLayerBusy(false);
-        });
-    };
-
-    const onMove = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(loadVdl, 700);
-    };
-
-    loadVdl();
-    map.on("moveend", onMove);
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-      map.off("moveend", onMove);
-    };
-  }, [mapReady, showVdl]);
 
   // Oil and gas switch paints the existing oil-fields context layer.
   useEffect(() => {

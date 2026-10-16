@@ -5,6 +5,7 @@ import {
   useEffect,
   useId,
   useRef,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 
@@ -40,6 +41,15 @@ export type MapPanelSlotProps = {
 };
 
 const DETENT_ORDER: PanelDetent[] = ["peek", "half", "full"];
+
+/** Place sheet: a downward handle drag of this many pixels from half snaps to peek. */
+const PLACE_HANDLE_DRAG_PEEK_PX = 80;
+
+function nextPlaceDetent(detent: PanelDetent): PanelDetent {
+  const idx = DETENT_ORDER.indexOf(detent);
+  const next = (idx + 1) % DETENT_ORDER.length;
+  return DETENT_ORDER[next]!;
+}
 
 function detentLabel(d: PanelDetent): string {
   switch (d) {
@@ -78,6 +88,12 @@ export default function MapPanelSlot({
 }: MapPanelSlotProps) {
   const headingId = useId();
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const handleDragRef = useRef<{
+    pointerId: number;
+    startY: number;
+    startDetent: PanelDetent;
+  } | null>(null);
+  const suppressHandleClickRef = useRef(false);
   const open = kind !== "closed";
 
   const cycleDetentUp = useCallback(() => {
@@ -96,9 +112,65 @@ export default function MapPanelSlot({
   }, [detent, onDetentChange, onRequestDismiss]);
 
   const onHandleActivate = useCallback(() => {
+    if (kind === "place") {
+      onDetentChange(nextPlaceDetent(detent));
+      return;
+    }
     if (detent === "full") cycleDetentDown();
     else cycleDetentUp();
-  }, [cycleDetentDown, cycleDetentUp, detent]);
+  }, [cycleDetentDown, cycleDetentUp, detent, kind, onDetentChange]);
+
+  const onHandlePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      if (kind !== "place" || event.button !== 0) return;
+      // A previous drag may have armed click-suppression without a click.
+      suppressHandleClickRef.current = false;
+      handleDragRef.current = {
+        pointerId: event.pointerId,
+        startY: event.clientY,
+        startDetent: detent,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+    },
+    [detent, kind],
+  );
+
+  const onHandlePointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      const drag = handleDragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      handleDragRef.current = null;
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      const dy = event.clientY - drag.startY;
+      if (
+        drag.startDetent === "half" &&
+        dy >= PLACE_HANDLE_DRAG_PEEK_PX
+      ) {
+        suppressHandleClickRef.current = true;
+        onDetentChange("peek");
+      }
+    },
+    [onDetentChange],
+  );
+
+  const onHandlePointerCancel = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      const drag = handleDragRef.current;
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      handleDragRef.current = null;
+    },
+    [],
+  );
+
+  const onHandleClick = useCallback(() => {
+    if (suppressHandleClickRef.current) {
+      suppressHandleClickRef.current = false;
+      return;
+    }
+    onHandleActivate();
+  }, [onHandleActivate]);
 
   useEffect(() => {
     if (!open || collapsed) return;
@@ -197,7 +269,10 @@ export default function MapPanelSlot({
             aria-label={detent === "full" ? "Collapse panel" : "Expand panel"}
             aria-expanded={detent !== "peek"}
             data-testid="map-panel-handle"
-            onClick={onHandleActivate}
+            onPointerDown={onHandlePointerDown}
+            onPointerUp={onHandlePointerUp}
+            onPointerCancel={onHandlePointerCancel}
+            onClick={onHandleClick}
           >
             <span className="map-panel-handle-bar" aria-hidden="true" />
           </button>

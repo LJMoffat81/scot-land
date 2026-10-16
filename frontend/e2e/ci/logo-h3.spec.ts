@@ -243,7 +243,10 @@ function expectVersionedHead(html: string, path: string) {
   }
 
   const manifestHrefs = linkHrefsByRel(html, "manifest");
-  expect(manifestHrefs, path).toContain("/site.webmanifest");
+  expect(manifestHrefs, path).toContain(`/site.webmanifest${CACHE_QUERY}`);
+  for (const href of manifestHrefs) {
+    expect(href, path).toBe(`/site.webmanifest${CACHE_QUERY}`);
+  }
   return { og, tw, iconHrefs };
 }
 

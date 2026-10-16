@@ -43,7 +43,7 @@ const COMING_TO_THE_MAP: ReadonlyArray<{
   ...MAP_LAYER_REGISTRY.filter((entry) => entry.coming).map((entry) => ({
     id: entry.id,
     name: entry.label,
-    status: "Not started",
+    status: entry.id === "vdl" ? "In progress" : "Not started",
   })),
   {
     name: "Landscape character areas",
@@ -218,6 +218,14 @@ const OUR_VISION_HEADING = "Our vision";
 const OUR_VISION_TEXT =
   "Our long-term aim is to give every piece of land in Scotland its own Annual Ground Rent value, per square metre. Today we show estimates for small areas, called Data Zones. Next we plan to work at the level of individual land parcels, and then on a fine 3-metre grid. We are building this step by step from accurate, publicly available data. Getting it right will take time, and we will keep refining it until it is accurate enough to be a trusted source of land value information for Scotland.";
 
+const OUR_VISION_TODAY = "Today the map shows estimates for Data Zones only.";
+
+const SUGGEST_LAYER_COPY =
+  "Know a dataset that would make this map better? Tell us what the layer is, where the data comes from (a link), and why it matters for land value. We check every suggestion against its licence and our method before adding it.";
+
+const SUGGEST_LAYER_HREF =
+  "https://github.com/LJMoffat81/scot-land/issues/new?template=suggest-layer.yml";
+
 export default function RoadmapPage() {
   return (
     <main className="methodology-page" data-testid="roadmap-page">
@@ -228,6 +236,9 @@ export default function RoadmapPage() {
       <section id="our-vision" data-testid="roadmap-vision">
         <h2>{OUR_VISION_HEADING}</h2>
         <p>{OUR_VISION_TEXT}</p>
+        <p>
+          {OUR_VISION_TODAY} <a href="/">Back to map</a>
+        </p>
       </section>
 
       <section id="what-we-aim-to-cover" data-testid="roadmap-aim">
@@ -251,6 +262,14 @@ export default function RoadmapPage() {
             </ul>
           </div>
         ))}
+      </section>
+
+      <section id="suggest-a-layer" data-testid="roadmap-suggest-layer">
+        <h2>Suggest a layer</h2>
+        <p>{SUGGEST_LAYER_COPY}</p>
+        <p>
+          <a href={SUGGEST_LAYER_HREF}>Suggest a layer</a>
+        </p>
       </section>
 
       <section id="map-layers" data-testid="roadmap-map-layers">

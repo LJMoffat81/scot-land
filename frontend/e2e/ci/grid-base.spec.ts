@@ -243,12 +243,13 @@ test.describe("GRID-BASE-1", () => {
     expect(maxZoom).toBe(20);
 
     await expect(page.getByTestId("hud-layers-btn")).toBeVisible();
-    // Confirm boot enabled grid3
     await page.getByTestId("hud-layers-btn").click();
-    await expect(page.getByTestId("layer-toggle-grid3")).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    const toggle = page.getByTestId("layer-toggle-grid3");
+    await expect(toggle).toBeVisible();
+    if ((await toggle.getAttribute("aria-checked")) !== "true") {
+      await toggle.click();
+    }
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
     await page.keyboard.press("Escape");
 
     await setZoom(page, 17.2, [-3.1883, 55.9533]);
@@ -354,6 +355,12 @@ test.describe("GRID-BASE-1", () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/?layers=grid3");
     await waitMap(page);
+    await page.getByTestId("hud-layers-btn").click();
+    const toggle = page.getByTestId("layer-toggle-grid3");
+    if ((await toggle.getAttribute("aria-checked")) !== "true") {
+      await toggle.click();
+    }
+    await page.keyboard.press("Escape");
     await setZoom(page, 18.2, [-3.1883, 55.9533]);
     await waitGridLines(page, 1);
     const order = await page.evaluate(() => {

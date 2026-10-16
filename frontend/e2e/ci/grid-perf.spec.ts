@@ -74,6 +74,12 @@ test.describe("GRID-BASE-1 perf", () => {
 
     await page.goto("/?layers=grid3");
     await waitMap(page);
+    await page.getByTestId("hud-layers-btn").click();
+    const toggle = page.getByTestId("layer-toggle-grid3");
+    if ((await toggle.getAttribute("aria-checked")) !== "true") {
+      await toggle.click();
+    }
+    await page.keyboard.press("Escape");
 
     // Warm the lazy chunk, then measure rebuild via exposed helper.
     await page.evaluate(() => {

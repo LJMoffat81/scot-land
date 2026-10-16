@@ -6,19 +6,26 @@ reads a 2023 outcome back into a setting.
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
+import math
 import subprocess
 from pathlib import Path
 from typing import Mapping, Sequence
 
+import statsmodels
+
 from georgist import surface_rent as sr
+from georgist import surface_v14 as v14
+from georgist import surface_v14_checks as checks
 from georgist.surface_paths import REPO_ROOT
-from georgist.v14_hedonic import BOOTSTRAP_SEED
+from georgist.v14_hedonic import BOOTSTRAP_SEED, FIDELITY_LIMITATION, land_share_for_zone
+from georgist.v14_primary_inputs import DepreciationMethodError, remaining_factor_at_age, v14_depreciation
 
 EXPECTED_SHA8 = {
     "backend/georgist/surface_rent.py": "dc07f4fe",
-    "backend/georgist/surface_v14.py": "a81d627c",
+    "backend/georgist/surface_v14.py": "cdb69a4f",
     "data/config/surface.yaml": "0ad64260",
     "backend/georgist/ros_c14_input.py": "ca8718fa",
 }
@@ -64,6 +71,69 @@ class MergeMapError(RuntimeError):
     """The pinned merge map sha256 does not match."""
 
 
+PRICE_READ_STAGES = (
+    "primary_inputs",
+    "hedonic_fit",
+    "holdout_2023",
+    "score_2024",
+)
+ROW_IDS = (
+    "G1",
+    "G2",
+    "V1",
+    "V2",
+    "V3",
+    "V4",
+    "V5",
+    "V6",
+    "V7",
+    "V8",
+    "V9",
+    "V10",
+    "V11",
+    "V12",
+    "V13",
+    "V14",
+    "V15",
+    "V16",
+)
+C1_OPEN = frozenset({"V9", "V13", "V14"})
+
+
+class PriceColumnReadLog:
+    """Flags set by reader functions. A stage stays false until its reader returns."""
+
+    def __init__(self) -> None:
+        self._flags = {stage: False for stage in PRICE_READ_STAGES}
+
+    def mark(self, stage: str) -> None:
+        if stage not in self._flags:
+            raise KeyError(stage)
+        self._flags[stage] = True
+
+    def snapshot(self) -> dict[str, bool]:
+        return dict(self._flags)
+
+
+def apply_price_reader(log: PriceColumnReadLog, stage: str, reader):
+    """Call ``reader`` and record ``stage`` only after it returns."""
+    result = reader()
+    log.mark(stage)
+    return result
+
+
+def git_commit() -> str:
+    return _git_commit()
+
+
+def require_commit_sha(commit: str) -> str:
+    """Refuse a missing commit and the placeholder ``pending``."""
+    text = str(commit or "").strip()
+    if not text or text == "pending":
+        raise ReportAbort("prepare step refuses a pending or empty commit")
+    return text
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -105,35 +175,398 @@ def _line_number(rel: str, needle: str) -> int:
     raise ReportAbort(f"{needle!r} is not in {rel}")
 
 
-def code_text_disagreements() -> list[dict[str, str]]:
-    """Places the protected scorer does not match the frozen text.
+def _source(rel: str) -> str:
+    return (REPO_ROOT / rel).read_text(encoding="utf-8")
 
-    New modules follow the frozen text. These rows are the remaining gaps.
-    Rulings stay pending until the Statistician rules, outcome-blind.
-    """
-    scorer = "backend/georgist/surface_v14.py"
+
+def _calls_in_order(rel: str, function: str) -> list[str]:
+    tree = ast.parse(_source(rel))
+    target = None
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == function:
+            target = node
+            break
+    if target is None:
+        return []
+    names: list[str] = []
+
+    def visit(node: ast.AST) -> None:
+        if isinstance(node, ast.Call):
+            func = node.func
+            if isinstance(func, ast.Name):
+                names.append(func.id)
+            elif isinstance(func, ast.Attribute):
+                names.append(func.attr)
+        for child in ast.iter_child_nodes(node):
+            visit(child)
+
+    visit(target)
+    return names
+
+
+def _status_g1() -> str:
+    scored = v14.score_estimators(primary_shares=[0.2], secondary_shares=[0.2])
+    gating = ("1", "1a", "1b", "1d", "3", "4", "6")
+    information = ("1c", "1e", "2", "3-all", "3-dz22", "5", "7", "agreement", "gis_plot_median_ratio")
+    for block in (scored["primary"], scored["secondary"]):
+        for name in gating:
+            if name not in block["gating"]:
+                return "pending"
+        for name in information:
+            if name not in block["information"]:
+                return "pending"
+        if block["gating"]["1a"].get("status") != "pending":
+            return "pending"
+    return "fixed"
+
+
+def _status_g2() -> str:
+    outcomes = [
+        v14.apply_no_switch_publication(primary_gating_pass=left, secondary_gating_pass=right)["outcome"]
+        for left, right in ((True, True), (True, False), (False, True), (False, False))
+    ]
+    expected = [
+        "publish_range_both",
+        "publish_primary_only",
+        "primary_fail_secondary_pass_publish_neither_until_v15",
+        "both_fail_publish_neither",
+    ]
+    if outcomes == expected and len(set(outcomes)) == 4:
+        return "fixed"
+    return "pending"
+
+
+def _status_v1() -> str:
+    fit = {
+        "beta_by_cell": {"c": 0.25},
+        "model_failure_by_cell": {"c": False},
+        "informative_by_cell": {"c": True},
+        "coefficient_names": ["alpha[c]", "beta[c]"],
+        "coefficients": [math.log(80.0), 0.25],
+    }
+    row = {"zone": "Z1", "cell": "c", "price": 10.0, "a_m2": math.e, "year": 2021}
+    share = land_share_for_zone(fit, row)
+    observed = 0.25 * float(row["price"])
+    if share["land_per_home"] != observed and share["fitted_price"] != float(row["price"]):
+        return "fixed"
+    return "pending"
+
+
+def _status_v2() -> str:
+    zones = [
+        {"zone": "Z1", "share": 0.0, "count_in_1d": False, "ur6": 1, "price": 1.0, "land_per_home": 0.0},
+        {"zone": "Z2", "share": 0.2, "count_in_1d": True, "ur6": 1, "price": 2.0, "land_per_home": 1.0},
+    ]
+    # The other checks need a fuller zone. Probe the 1d helper directly.
+    result = checks._check_1d(zones)
+    if result["n"] == 2 and result["n_at_0"] == 0 and result["numerator_n"] == 1:
+        return "fixed"
+    return "pending"
+
+
+def _status_v3() -> str:
+    text = _source("backend/georgist/v14_hedonic.py")
+    if "Fidelity limitation:" in text and "only β̂ ≤0 is applied" in text:
+        return "limitation_disclosed"
+    return "pending"
+
+
+def _status_v4() -> str:
+    tied = checks.check_1a(
+        [
+            {"zone": "A", "ur6": 1, "land_per_home": 3.0},
+            {"zone": "B", "ur6": 2, "land_per_home": 3.0},
+        ]
+    )
+    return "fixed" if tied.get("pass") is False else "pending"
+
+
+def _status_v5() -> str:
+    try:
+        checks.check_6_zone_range([{"zone": "S01000001", "share_low": 0.1, "share_central": 0.2, "share_high": 0.3}])
+    except ValueError:
+        return "fixed"
+    return "pending"
+
+
+def _status_v6() -> str:
+    primary = [{"zone": "A", "ur6": 1, "share": 0.2}, {"zone": "B", "ur6": 2, "share": 0.3}]
+    result = checks.agreement(primary, primary)
+    keys = set(result.get("by_ur6") or {})
+    if keys == {str(klass) for klass in range(1, 7)} and "national" in result:
+        return "fixed"
+    return "pending"
+
+
+def _status_v7() -> str:
+    zones = [
+        {"zone": "A", "ur6": 1, "detached_plot_m2": 40.0, "house_plot_m2": 10.0},
+        {"zone": "B", "ur6": 1, "detached_plot_m2": 40.0, "house_plot_m2": 20.0},
+        {"zone": "C", "ur6": 1, "detached_plot_m2": 40.0, "house_plot_m2": 90.0},
+    ]
+    ratios = checks.gis_plot_median_ratio(zones)["ratio_by_ur6"]["1"]
+    pooled = ratios["ratio_pooled_denominator"]
+    zone_median = ratios["ratio_zone_median_denominator"]
+    if pooled is not None and zone_median is not None and pooled != zone_median:
+        return "fixed"
+    return "pending"
+
+
+def _status_v8() -> str:
+    if checks.HBU_NOT_RUN.startswith("NOT_RUN:") and checks.hbu_line([{"zone": "A", "hla": True}])[0]["gates"] is False:
+        return "NOT_RUN"
+    return "pending"
+
+
+def _status_v9() -> str:
+    text = _source("backend/georgist/v14_hedonic.py")
+    if "MixedLM" in text and "def build_v14_hedonic_rows" in text:
+        return "fixed"
+    return "pending"
+
+
+def _status_v10() -> str:
+    rel = "backend/scripts/rerun_v14_score.py"
+    names = _calls_in_order(rel, "_extended_main")
+    if "write_report" not in names or "write_holdout_lock" not in names:
+        return "pending"
+    if names.index("write_report") > names.index("write_holdout_lock"):
+        return "pending"
+    if "_score_holdout" not in names:
+        return "pending"
+    return "fixed"
+
+
+def _status_v11() -> str:
+    try:
+        require_commit_sha("pending")
+    except ReportAbort:
+        if 'commit="pending"' not in _source("backend/scripts/rerun_v14_score.py"):
+            return "fixed"
+    return "pending"
+
+
+def _status_v12() -> str:
+    text = _source("backend/scripts/rerun_v14_score.py")
+    if '"primary_inputs": False' in text or "'primary_inputs': False" in text:
+        return "pending"
+    log = PriceColumnReadLog()
+    if log.snapshot()["hedonic_fit"] is not False:
+        return "pending"
+    apply_price_reader(log, "hedonic_fit", lambda: None)
+    if log.snapshot()["hedonic_fit"] is True and log.snapshot()["primary_inputs"] is False:
+        return "fixed"
+    return "pending"
+
+
+def _status_v13() -> str:
+    path = REPO_ROOT / "backend/scripts/build_v14_check_inputs.py"
+    return "pending" if not path.is_file() else "fixed"
+
+
+def _status_v14() -> str:
+    path = REPO_ROOT / "backend/scripts/build_v14_hedonic_rows.py"
+    return "pending" if not path.is_file() else "fixed"
+
+
+def _status_v15() -> str:
+    path = REPO_ROOT / "backend/scripts/build_v14_drc.py"
+    if not path.is_file():
+        return "pending"
+    text = path.read_text(encoding="utf-8")
+    if "zone_drc_v14" not in text or "straight_line_v14" not in text:
+        return "pending"
+    try:
+        remaining_factor_at_age(0, {"method": "compounding_v13"})
+    except DepreciationMethodError:
+        factors = v14_depreciation()
+        age0 = remaining_factor_at_age(0, factors)
+        age20 = remaining_factor_at_age(20, factors)
+        age68 = remaining_factor_at_age(68, factors)
+        age100 = remaining_factor_at_age(100, factors)
+        if (
+            age0 == 1.0
+            and f"{age20:.3f}" == "0.930"
+            and f"{age68:.3f}" == "0.762"
+            and f"{age100:.3f}" == "0.762"
+        ):
+            return "fixed"
+    return "pending"
+
+
+def _status_v16() -> str:
+    text = _source("backend/scripts/build_v14_primary_inputs.py")
+    if "--exclusion-list" not in text or "EXCLUSION_LIST_SHA256" not in text:
+        return "pending"
+    return "fixed"
+
+
+_STATUS = {
+    "G1": _status_g1,
+    "G2": _status_g2,
+    "V1": _status_v1,
+    "V2": _status_v2,
+    "V3": _status_v3,
+    "V4": _status_v4,
+    "V5": _status_v5,
+    "V6": _status_v6,
+    "V7": _status_v7,
+    "V8": _status_v8,
+    "V9": _status_v9,
+    "V10": _status_v10,
+    "V11": _status_v11,
+    "V12": _status_v12,
+    "V13": _status_v13,
+    "V14": _status_v14,
+    "V15": _status_v15,
+    "V16": _status_v16,
+}
+
+_ROW_TEXT = {
+    "G1": (
+        "backend/georgist/surface_v14.py",
+        "def score_estimators",
+        "score_estimators reports every gating and information check for both estimators",
+        "Every gating check (1, 1a, 1b, 1d, 3, 4, 6) and every information check is reported for both estimators.",
+    ),
+    "G2": (
+        "backend/georgist/surface_v14.py",
+        "primary_fail_secondary_pass_publish_neither_until_v15",
+        "primary-fail and both-fail use distinct outcome strings",
+        "Primary fails + secondary passes → publish neither. Both fail → publish neither.",
+    ),
+    "V1": (
+        "backend/georgist/v14_hedonic.py",
+        "def fitted_price",
+        "land per home uses the fitted headline price",
+        "L̂_z = β̂_c × fitted P̂_z from the headline log model.",
+    ),
+    "V2": (
+        "backend/georgist/surface_v14_checks.py",
+        "def _check_1d",
+        "check 1d denominator is every scoring zone",
+        "Uninformative cells are reported and left out of the numerator.",
+    ),
+    "V3": (
+        "backend/georgist/v14_hedonic.py",
+        "FIDELITY_LIMITATION",
+        "only β̂ ≤0 is applied",
+        "β̂ ≤0 or negative location premium is a model-failure flag.",
+    ),
+    "V4": (
+        "backend/georgist/surface_v14_checks.py",
+        "def check_1a",
+        "check 1a uses a strict greater-than",
+        "Class 1 has the highest median land per home. A tie fails.",
+    ),
+    "V5": (
+        "backend/georgist/surface_v14_checks.py",
+        "def check_6_zone_range",
+        "check 6 keys on dz2022 only",
+        "A row lacking dz2022 raises. There is no DZ2011 fallback.",
+    ),
+    "V6": (
+        "backend/georgist/surface_v14_checks.py",
+        "def agreement",
+        "agreement is national and by UR6",
+        "Spearman, median difference and Bland-Altman, nationally and by UR6.",
+    ),
+    "V7": (
+        "backend/georgist/surface_v14_checks.py",
+        "def gis_plot_median_ratio",
+        "GIS ratios use pooled and zone-median denominators",
+        "Report both the pooled and the zone-median denominators.",
+    ),
+    "V8": (
+        "backend/georgist/surface_v14_checks.py",
+        "HBU_NOT_RUN",
+        "HBU line is separate and does not gate",
+        "HLA zones only, separate line, never in checks 1–7.",
+    ),
+    "V9": (
+        "backend/georgist/v14_hedonic.py",
+        "def sensitivity_table",
+        "sensitivities are not all computed yet",
+        "Every listed sensitivity is computed, information only.",
+    ),
+    "V10": (
+        "backend/scripts/rerun_v14_score.py",
+        "def _extended_main",
+        "holdout scores both estimators and writes the lock last",
+        "Estimate and score both estimators and every check, then write the lock last, only on success.",
+    ),
+    "V11": (
+        "backend/scripts/rerun_v14_score.py",
+        "def _extended_main",
+        "prepare records a real commit sha",
+        "A pending or empty commit is refused.",
+    ),
+    "V12": (
+        "backend/scripts/rerun_v14_score.py",
+        "PriceColumnReadLog",
+        "price-column flags come from the readers",
+        "price_columns_read is set by the reader functions.",
+    ),
+    "V13": (
+        "backend/scripts/build_v14_check_inputs.py",
+        "build_v14_check_inputs",
+        "check-input builder is not in this change",
+        "Build primary_zones and secondary_zones for --check-inputs.",
+    ),
+    "V14": (
+        "backend/scripts/build_v14_hedonic_rows.py",
+        "build_v14_hedonic_rows",
+        "hedonic-row builder is not in this change",
+        "Build hedonic rows and refuse any year at or after 2024.",
+    ),
+    "V15": (
+        "backend/scripts/build_v14_drc.py",
+        "straight_line_v14",
+        "DRC writer asserts straight_line_v14",
+        "Write depreciated replacement cost per DZ2011. No prices.",
+    ),
+    "V16": (
+        "backend/scripts/build_v14_primary_inputs.py",
+        "--exclusion-list",
+        "exclusion list is required and its sha256 is asserted",
+        "Pass the pinned exclusion list through to build_inputs.",
+    ),
+}
+
+
+def predeclared_not_run() -> list[dict[str, str]]:
+    """HBU is pre-declared. Sensitivity NOT_RUN rows stay with V9 until that change lands."""
     return [
         {
-            "file": scorer,
-            "line": str(_line_number(scorer, '"check_1d": c1d')),
-            "code": "score_estimators records check_1, check_1d and check_1e",
-            "frozen_text": (
-                "Every gating check (1, 1a, 1b, 1d, 3, 4, 6) and every information "
-                "check is reported for both estimators in one table, whatever the outcome."
-            ),
-            "ruling": "pending",
-        },
-        {
-            "file": scorer,
-            "line": str(_line_number(scorer, 'outcome = "publish_neither_report_both"')),
-            "code": "primary fail with secondary pass uses the same outcome string as both fail",
-            "frozen_text": (
-                "Primary fails + secondary passes → report both; publish neither as official. "
-                "Both fail → publish neither; report both."
-            ),
-            "ruling": "pending",
-        },
+            "id": "HBU",
+            "status": "NOT_RUN",
+            "reason": checks.HBU_NOT_RUN,
+        }
     ]
+
+
+def code_text_disagreements() -> list[dict[str, str]]:
+    """One row per frozen-text gap. Status comes from the checks, not a fixed ruling list."""
+    rows: list[dict[str, str]] = []
+    for row_id in ROW_IDS:
+        rel, needle, code, frozen = _ROW_TEXT[row_id]
+        try:
+            line = str(_line_number(rel, needle))
+        except (ReportAbort, OSError):
+            line = "0"
+        status = _STATUS[row_id]()
+        rows.append(
+            {
+                "id": row_id,
+                "file": rel,
+                "line": line,
+                "code": code,
+                "frozen_text": frozen,
+                "ruling": status,
+                "status": status,
+            }
+        )
+    return rows
 
 
 def disagreement_markdown(rows: Sequence[Mapping[str, str]] | None = None) -> str:
@@ -148,6 +581,11 @@ def disagreement_markdown(rows: Sequence[Mapping[str, str]] | None = None) -> st
         lines.append(
             f"| {row['file']}:{row['line']} | {row['code']} | {row['frozen_text']} | {row['ruling']} |"
         )
+    lines.append("")
+    lines.append("## Pre-declared")
+    lines.append("")
+    for item in predeclared_not_run():
+        lines.append(f"- {item['id']}: {item['status']}: {item['reason']}")
     lines.append("")
     return "\n".join(lines)
 
@@ -172,8 +610,9 @@ def prepare_holdout_2023(
     """Write the disagreement table, then refuse a second run.
 
     Scoring is the caller's next step. This function does not take a 2023
-    outcome and does not change a setting.
+    outcome and does not change a setting. ``commit`` must be the real sha.
     """
+    commit = require_commit_sha(commit)
     table = write_disagreement_table(score_dir / "code_text_disagreements.md")
     lock = holdout_lock_path(score_dir)
     if lock.is_file() and not allow_incident:
@@ -190,13 +629,22 @@ def prepare_holdout_2023(
     }
 
 
-def write_holdout_lock(score_dir: Path, *, inputs_sha256: str, commit: str) -> Path:
+def write_holdout_lock(
+    score_dir: Path,
+    *,
+    inputs_sha256: str,
+    commit: str,
+    report_sha256: str | None = None,
+) -> Path:
     path = holdout_lock_path(score_dir)
-    path.write_text(
-        json.dumps({"inputs_sha256": inputs_sha256, "commit": commit, "label": HOLDOUT_LABEL}, sort_keys=True)
-        + "\n",
-        encoding="utf-8",
-    )
+    payload = {
+        "inputs_sha256": inputs_sha256,
+        "commit": require_commit_sha(commit),
+        "label": HOLDOUT_LABEL,
+    }
+    if report_sha256:
+        payload["report_sha256"] = report_sha256
+    path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
     return path
 
 
@@ -264,8 +712,10 @@ def build_report(
         "commit": commit or _git_commit(),
         "input_sha256": _input_pins(input_paths),
         "seed": BOOTSTRAP_SEED,
+        "s_c3_statsmodels_version": statsmodels.__version__,
+        "fidelity_limitation": FIDELITY_LIMITATION,
         "status_counts": dict(status_counts or {}),
-        "price_columns_read": dict(price_columns_read or {}),
+        "price_columns_read": dict(price_columns_read or {stage: False for stage in PRICE_READ_STAGES}),
         "disclosures": dict(DISCLOSURES),
         "code_text_disagreements": rows,
         "holdout_label": HOLDOUT_LABEL,

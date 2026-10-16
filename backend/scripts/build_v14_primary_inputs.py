@@ -19,7 +19,12 @@ import sys
 from pathlib import Path
 
 from georgist import surface_rent as sr
-from georgist.ros_c14_input import InputBuildError, build_inputs
+from georgist.ros_c14_input import (
+    EXCLUSION_LIST_SHA256,
+    InputBuildError,
+    build_inputs,
+    file_sha256,
+)
 from georgist.ros_c14_prices import (
     MEDIAN_SENSITIVITY,
     PriceColumnError,
@@ -48,19 +53,35 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--merge-map", type=Path, default=None)
     parser.add_argument("--ur", type=Path, default=None)
     parser.add_argument("--drc-json", type=Path, default=None)
+    parser.add_argument("--exclusion-list", type=Path, default=None)
     parser.add_argument("--frozen-plan", type=Path, default=None)
     parser.add_argument("--synthetic-fixtures", action="store_true")
     return parser
 
 
+def assert_exclusion_list(path: Path | None) -> str:
+    """Hash the exclusion list before it is parsed. A wrong sha aborts."""
+    if path is None:
+        raise InputBuildError("--exclusion-list is required")
+    digest = file_sha256(path)
+    if digest != EXCLUSION_LIST_SHA256:
+        raise InputBuildError(f"exclusion list sha256 {digest} != {EXCLUSION_LIST_SHA256}")
+    return digest
+
+
 def _require(args: argparse.Namespace) -> None:
     missing = [
         name
-        for name in ("c14", "lookup", "crosswalk", "merge_map", "ur", "drc_json")
+        for name in ("c14", "lookup", "crosswalk", "merge_map", "ur", "drc_json", "exclusion_list")
         if getattr(args, name) is None
     ]
     if missing:
         raise InputBuildError("scored run needs " + ", ".join(missing))
+    if args.synthetic_fixtures:
+        if not args.exclusion_list.is_file():
+            raise InputBuildError("--exclusion-list is required")
+        return
+    assert_exclusion_list(args.exclusion_list)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -79,6 +100,7 @@ def main(argv: list[str] | None = None) -> int:
             merge_map_path=args.merge_map,
             ur_path=args.ur,
             frozen_plan_path=args.frozen_plan,
+            exclusion_list_path=args.exclusion_list,
             scored_run=False,
             check_pins=not args.synthetic_fixtures,
         )

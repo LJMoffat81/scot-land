@@ -154,7 +154,7 @@ def test_f4_scorer_pins_and_no_switch(cfg):
     pins = v14.pin_frozen_inputs(cfg)
     assert pins["prereg_sha256_prefix"] == "e1ab6d0a"
     assert pins["fidelity_fix_spec_sha256_prefix"] == "1694c8ad"
-    # Primary fails 1d (many zeros); secondary passes — must NOT publish secondary alone.
+    # Share lists leave 1a, 1b, 3, 4 and 6 pending, so neither estimator publishes.
     primary = [0.0] * 3 + [0.25] * 7  # 30% at 0 → 1d fail
     secondary = [0.20] * 10
     scored = v14.score_estimators(
@@ -162,7 +162,9 @@ def test_f4_scorer_pins_and_no_switch(cfg):
     )
     assert scored["gbp_display"] is False
     assert scored["publication"]["never_switch_to_passing"] is True
-    assert scored["publication"]["outcome"] == "publish_neither_report_both"
+    assert scored["primary"]["gating_pass"] is False
+    assert scored["secondary"]["gating_pass"] is False
+    assert scored["publication"]["outcome"] == "both_fail_publish_neither"
     assert scored["publication"]["publish_primary"] is False
     assert scored["publication"]["publish_secondary"] is False
 

@@ -88,7 +88,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: calc(100% - 0.4rem);
+    min-width: 44px !important;
+    min-height: 44px !important;
+    height: 44px !important;
     margin: 0.2rem;
     padding: 0 0.85rem;
     font-size: 0.8rem;
@@ -434,9 +436,12 @@
 .basemap-switcher {
   position: absolute;
   z-index: 3;
-  /* Desktop: sit left of the MapLibre zoom group (48×48 + group margin). */
-  right: calc(48px + 1.35rem);
-  bottom: 2.55rem;
+  /*
+   * MAP-CARDS §3.6 — sit above the zoom ± stack (2×48 + MapLibre margin),
+   * same right column, so the 64px tile does not overlap zoom.
+   */
+  right: 0.65rem;
+  bottom: calc(10px + 48px + 48px + 1rem);
   width: 64px;
   margin: 0;
   padding: 0;

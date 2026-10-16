@@ -298,7 +298,13 @@ test.describe("MAP-CARDS desktop collapse 1280", () => {
 
     await page.getByTestId("map-panel-slot-close").click();
     const tab = page.getByTestId("panel-collapse-tab");
-    await expect(tab).toBeVisible();
+    await expect(tab).toBeVisible({ timeout: 10_000 });
+    await expect
+      .poll(async () => {
+        const box = await tab.boundingBox();
+        return box ? Math.round(box.width) : 0;
+      })
+      .toBeGreaterThanOrEqual(40);
     const tabBox = await tab.boundingBox();
     expect(tabBox).toBeTruthy();
     expect(Math.abs(tabBox!.width - 48)).toBeLessThanOrEqual(8);

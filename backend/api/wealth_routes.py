@@ -149,8 +149,8 @@ def data_zone_at(
 ) -> dict:
     """Data zone(s) containing a WGS84 point: real (code, vintage) for each loaded vintage.
 
-    404 when no zone contains the point (e.g. at sea); 503 when no boundary
-    source is available. Never returns 'unknown'.
+    200 with a null zone when no zone contains the point (e.g. at sea); 503 when
+    no boundary source is available. Never returns 'unknown'.
     """
     if lon is None:
         lon = lng
@@ -165,13 +165,8 @@ def data_zone_at(
             detail={"error": "dz_boundaries_unavailable", "reasons": exc.reasons,
                     "message": "No data zone boundary source is available; no zone returned."},
         ) from exc
-    if not found.zones:
-        raise HTTPException(
-            status_code=404,
-            detail={"error": "no_data_zone_at_point", "lat": lat, "lon": lon,
-                    "vintages_checked": found.vintages_loaded,
-                    "message": "No data zone contains this point."},
-        )
+    # A miss is an empty result (null zone), including points at sea. Boundaries
+    # that failed to load stay 503 above. Invalid lat/lng stay 422 from Query.
     # Context metrics (HPI/SIMD/density) stay on platform /layers/open/dz-context —
     # wealth_routes must not import layers/agr (see test_wealth_router_does_not_import_agr).
     return {"lat": lat, "lon": lon, **found.to_dict()}

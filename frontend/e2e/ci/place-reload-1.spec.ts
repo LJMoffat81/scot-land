@@ -1,9 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * PLACE-RELOAD-1 — search EH1 1YZ, then reload with panel=place.
- * The card must come back as the same Data Zone. A Highland map centre
- * must not replace it. 1280×800 and 390×844. No skips. No public amounts.
+ * PLACE-RELOAD-1 — search EH1 1YZ, then reload with panel=place and dz=.
+ * The card must come back as the same Data Zone. The reload address may
+ * carry a Highland camera; that centre is not the selection, and the
+ * centre button is not used. 1280×800 and 390×844. No skips. No public amounts.
  */
 
 const OLD_CODE = "S01008677";
@@ -208,6 +209,22 @@ async function zoneOnCard(page: Page) {
 
 async function searchEh1ThenReload(page: Page) {
   const gate = attachConsoleGate(page);
+  await page.addInitScript(() => {
+    document.addEventListener(
+      "click",
+      (event) => {
+        const target = event.target;
+        if (
+          target instanceof Element &&
+          target.closest("[data-testid='identify-at-centre']")
+        ) {
+          (window as unknown as { __centreClicked?: boolean }).__centreClicked =
+            true;
+        }
+      },
+      true,
+    );
+  });
   await stubMap(page);
   await page.goto("/");
   await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
@@ -223,34 +240,36 @@ async function searchEh1ThenReload(page: Page) {
     .poll(() => new URL(page.url()).searchParams.get("dz"))
     .toBe(OLD_CODE);
 
-  // The reported failure: panel=place stays, and the camera centre is the
-  // Highland view. Reload must still restore EH1's zone.
-  await page.evaluate(
-    ({ lng, lat }) => {
-      const map = (
-        window as unknown as {
-          __SCOT_LAND_MAP__?: { jumpTo: (opts: object) => void };
-        }
-      ).__SCOT_LAND_MAP__;
-      if (!map) throw new Error("map missing");
-      map.jumpTo({ center: [lng, lat], zoom: 6 });
-    },
-    HIGHLAND_VIEW,
+  // Reload the selected zone with a Highland camera already in the address.
+  // The card must come from dz=, not from that centre and not from the
+  // centre button.
+  const reloadUrl = new URL(page.url());
+  reloadUrl.searchParams.set("panel", "place");
+  reloadUrl.searchParams.set(
+    "c",
+    `${HIGHLAND_VIEW.lng.toFixed(5)},${HIGHLAND_VIEW.lat.toFixed(5)}`,
   );
-  await expect
-    .poll(() => new URL(page.url()).searchParams.get("dz"))
-    .toBe(OLD_CODE);
-  await expect
-    .poll(() => {
-      const raw = new URL(page.url()).searchParams.get("c") ?? "";
-      const [lng, lat] = raw.split(",").map(Number);
-      return isOldTownPoint(lat, lng);
-    })
-    .toBe(false);
+  expect(reloadUrl.searchParams.get("dz")).toBe(OLD_CODE);
+  const [reloadLng, reloadLat] = (reloadUrl.searchParams.get("c") ?? "")
+    .split(",")
+    .map(Number);
+  expect(isOldTownPoint(reloadLat, reloadLng)).toBe(false);
 
-  await page.reload();
+  const placeCalls: string[] = [];
+  const onRequest = (request: { url: () => string }) => {
+    if (/\/platform\/place\?/.test(request.url())) placeCalls.push(request.url());
+  };
+  page.on("request", onRequest);
+  const byCode = page.waitForRequest(
+    (request) =>
+      request.url().includes("/layers/context/data-zones/by-code") &&
+      request.url().includes(`code=${OLD_CODE}`),
+  );
+  await page.goto(`${reloadUrl.pathname}${reloadUrl.search}`);
+  await byCode;
   await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
   const after = await zoneOnCard(page);
+  page.off("request", onRequest);
   expect(after.code).toBe(before.code);
   expect(after.name).toBe(before.name);
   expect(after.title).toBe(before.title);
@@ -260,6 +279,20 @@ async function searchEh1ThenReload(page: Page) {
   await expect(page.getByTestId("place-card-place")).not.toContainText(HIGH_NAME);
   expect(new URL(page.url()).searchParams.get("dz")).toBe(OLD_CODE);
   expect(page.url()).toContain("panel=place");
+  expect(placeCalls.length).toBeGreaterThan(0);
+  for (const url of placeCalls) {
+    const parsed = new URL(url);
+    const lat = Number(parsed.searchParams.get("lat"));
+    const lng = Number(parsed.searchParams.get("lng"));
+    expect(isOldTownPoint(lat, lng)).toBe(true);
+  }
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { __centreClicked?: boolean }).__centreClicked ===
+        true,
+    ),
+  ).toBe(false);
   assertConsoleClean(gate);
 }
 

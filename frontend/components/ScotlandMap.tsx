@@ -3008,7 +3008,8 @@ export default function ScotlandMap() {
         keepCollapsed: panelCollapsedRef.current,
       });
     } else if (boot.panel === "place" && (boot.dz || captured?.dz)) {
-      // Reload restores the selected Data Zone. Never the map centre.
+      // Reload restores the selected Data Zone from dz= alone.
+      // The camera centre and the centre button are not inputs.
       const zoneCode = boot.dz || captured?.dz || null;
       const remembered = placeDetentMemory;
       const stub = placeStubRef.current;

@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import CopyCodeButton from "@/components/CopyCodeButton";
 import QualityTag from "@/components/QualityTag";
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
@@ -13,61 +12,6 @@ import {
 import { QUALITY_TAGS } from "@/lib/qualityTag";
 
 const GITHUB_REPO = "https://github.com/LJMoffat81/scot-land";
-
-/** API addresses — each appears once on this page, in #api only (item 4). */
-const API_ROWS = [
-  {
-    id: "api-place",
-    what: "One place",
-    path: "/api/place.json?pc=EH1+1YZ",
-    tryIt: true,
-  },
-  {
-    id: "api-catalog",
-    what: "Source catalogue",
-    path: "/api/catalog.json",
-    tryIt: false,
-  },
-  {
-    id: "api-ledger",
-    what: "Annual Ground Rent breakdown (structure and rules; figures not published yet)",
-    path: "/api/ledger.json",
-    tryIt: false,
-  },
-  {
-    id: "api-vdl",
-    what: "Vacant and derelict land",
-    path: "/api/vdl.json",
-    tryIt: false,
-  },
-  {
-    id: "api-ldp",
-    what: "Planned land use",
-    path: "/api/ldp.json",
-    tryIt: false,
-  },
-  {
-    id: "api-registers",
-    what: "Official registers",
-    path: "/api/registers.json",
-    tryIt: false,
-  },
-  {
-    id: "api-common-good",
-    what: "Common Good registers",
-    path: "/api/common-good.json",
-    tryIt: false,
-  },
-  {
-    id: "api-crofting",
-    what: "Crofting",
-    path: "/api/crofting.json",
-    tryIt: false,
-  },
-] as const;
-
-const LAYERS_BBOX =
-  "/layers/…?south=&west=&north=&east=";
 
 function DevelopersPageInner() {
   const searchParams = useSearchParams();
@@ -216,7 +160,7 @@ function DevelopersPageInner() {
                 ) : (
                   <a
                     className="download-card-action download-card-action-json"
-                    href={`#${bundle.api_anchor}`}
+                    href="/developers/api"
                     data-testid={`download-json-${bundle.id}`}
                   >
                     JSON (for developers)
@@ -240,63 +184,7 @@ function DevelopersPageInner() {
         ) : null}
         <h2>API (for developers)</h2>
         <p>
-          Ask for data about one place, or the area on screen. Answers come back
-          as JSON. If a layer is not loaded, the API answers &lsquo;temporarily
-          unavailable&rsquo;.
-        </p>
-        <div className="api-table-wrap">
-          <table className="api-table" data-testid="developers-api-table">
-            <thead>
-              <tr>
-                <th scope="col">What you get</th>
-                <th scope="col">Address</th>
-                <th scope="col">Try it</th>
-              </tr>
-            </thead>
-            <tbody>
-              {API_ROWS.map((row) => (
-                <tr key={row.id} id={row.id}>
-                  <td>{row.what}</td>
-                  <td>
-                    <div className="api-address">
-                      <code className="api-path-code">{row.path}</code>
-                      <CopyCodeButton value={row.path} />
-                    </div>
-                  </td>
-                  <td>
-                    {row.tryIt ? (
-                      <a href={row.path} data-testid={`try-it-${row.id}`}>
-                        Try it
-                      </a>
-                    ) : (
-                      <span className="downloads-note">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              <tr id="api-layers">
-                <td>Map layers for the area on screen</td>
-                <td>
-                  <div className="api-address">
-                    {/* Item 3: bbox pattern is plain code, never a link. */}
-                    <code className="api-path-code">{LAYERS_BBOX}</code>
-                    <CopyCodeButton value={LAYERS_BBOX} />
-                  </div>
-                  <p className="download-path">
-                    Listed in the{" "}
-                    <a href="/developers/api">API reference</a>, in a code box,
-                    not shown as links.
-                  </p>
-                </td>
-                <td>
-                  <span className="downloads-note">—</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <p>
-          <a href="/developers/api">Full API reference</a>
+          <a href="/developers/api">Developer API and bulk data</a>
           {" · "}
           <a href="/developers/checks">Technical checks</a>
           {" · "}

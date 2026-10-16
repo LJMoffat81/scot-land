@@ -17,6 +17,12 @@
     gap: 0.65rem;
   }
 
+  /* Brand box matches the 48px search row so the logo stays on the same edges. */
+  .hud-top .hud-brand {
+    min-height: var(--hud-control-h);
+    align-items: center;
+  }
+
   .hud-top .site-nav-map {
     order: 15;
     margin-left: 0;

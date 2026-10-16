@@ -175,14 +175,15 @@ assert.match(developers, /id="downloads"/);
 assert.match(developers, /id="api"/);
 assert.match(developers, /JSON \(for developers\)/);
 assert.match(developers, /manifest\.json/);
-assert.match(developers, /CopyCodeButton/);
+assert.doesNotMatch(developers, /CopyCodeButton/);
 assert.match(developers, /zone_set/);
 assert.match(developers, /Zone set/);
 assert.match(developers, /download-card-summary/);
 assert.match(developers, /formatDownloadBytes\(bundle\.bytes\)/);
 assert.match(developers, /bundle\.whats_in_it/);
-assert.match(developers, /\/layers\/…\?south=&west=&north=&east=/);
-assert.match(developers, /Full API reference/);
+assert.doesNotMatch(developers, /\/layers\/…\?south=&west=&north=&east=/);
+assert.doesNotMatch(developers, /Full API reference/);
+assert.match(developers, /Developer API and bulk data/);
 assert.match(developers, /Technical checks/);
 assert.match(developers, /Source code/);
 
@@ -225,7 +226,11 @@ const apiPaths = [
 ];
 for (const path of apiPaths) {
   const count = developers.split(path).length - 1;
-  assert.equal(count, 1, `${path} must appear exactly once on developers page`);
+  assert.equal(
+    count,
+    0,
+    `${path} must not appear on the public developers page`,
+  );
 }
 
 const downloadsSection = developers.slice(
@@ -236,10 +241,8 @@ assert.doesNotMatch(downloadsSection, /href=\{?["'`]\/api\//);
 assert.doesNotMatch(downloadsSection, /GET \/api\//);
 
 assert.doesNotMatch(developers, /<a[^>]+href=["']\/layers/);
-assert.match(
-  developers,
-  /<code className="api-path-code">\{LAYERS_BBOX\}<\/code>/,
-);
+assert.doesNotMatch(developers, /api-path-code/);
+assert.doesNotMatch(developers, /LAYERS_BBOX/);
 
 const checks = readSrc("app/developers/checks/page.tsx");
 assert.doesNotMatch(checks, /Pre-registered test log/);

@@ -4147,3 +4147,10 @@ button.linkish:disabled {
     justify-content: center;
   }
 }
+
+/* PRE-WRAP-1: every pre and code block stays inside its container. */
+pre,
+code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

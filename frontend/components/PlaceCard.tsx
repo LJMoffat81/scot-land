@@ -398,7 +398,7 @@ export function PlaceCard({
             {/* 4 Label + 5 Subtitle */}
             <section
               className="place-card-agr-heading"
-              aria-label={`${PLACE_CARD_AGR_LABEL}. ${PLACE_CARD_AGR_SUBTITLE} ${PLACE_CARD_AGR_SCOPE_NOTE}`}
+              aria-label={`${PLACE_CARD_AGR_LABEL}. ${PLACE_CARD_AGR_SUBTITLE}. ${PLACE_CARD_AGR_SCOPE_NOTE}`}
               data-testid="place-card-agr-heading"
             >
               <h3

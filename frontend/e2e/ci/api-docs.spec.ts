@@ -1,42 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-const MINIMAL_OPENAPI = {
-  openapi: "3.0.3",
-  info: {
-    title: "Scot-LAND API",
-    version: "0.0.0-e2e",
-    description: "Fixture schema for Playwright — not live market rents.",
-  },
-  paths: {
-    "/health": {
-      get: {
-        operationId: "health_check",
-        summary: "Health",
-        responses: {
-          "200": {
-            description: "ok",
-          },
-        },
-      },
-    },
-    "/api/catalog.json": {
-      get: {
-        operationId: "catalog",
-        summary: "Catalog",
-        responses: {
-          "200": {
-            description: "ok",
-          },
-        },
-      },
-    },
-  },
-};
-
 test.describe("API reference (charter C1)", () => {
   test.use({ viewport: { width: 1100, height: 800 } });
 
-  test("/developers/api renders Swagger opblocks without CDN CSP errors", async ({
+  test("/developers/api teaser does not load Swagger or a CDN", async ({
     page,
   }) => {
     const cspViolations: string[] = [];
@@ -48,33 +15,23 @@ test.describe("API reference (charter C1)", () => {
       }
     });
     page.on("request", (req) => {
-      if (/validator\.swagger\.io/i.test(req.url())) {
-        validatorHits.push(req.url());
+      const url = req.url();
+      if (
+        /validator\.swagger\.io|jsdelivr|\/swagger-ui\/swagger-ui-bundle\.js|\/swagger-ui\/swagger-ui\.css/i.test(
+          url,
+        )
+      ) {
+        validatorHits.push(url);
       }
     });
 
-    await page.route("**/backend/openapi.json", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(MINIMAL_OPENAPI),
-      });
-    });
-
-    const bundleOk = page.waitForResponse(
-      (r) => r.url().includes("/swagger-ui/swagger-ui-bundle.js") && r.ok(),
-    );
-    const cssOk = page.waitForResponse(
-      (r) => r.url().includes("/swagger-ui/swagger-ui.css") && r.ok(),
-    );
     await page.goto("/developers/api");
-    await Promise.all([bundleOk, cssOk]);
-
-    await expect(page.getByTestId("api-reference-page")).toBeVisible();
-    await expect(page.locator(".swagger-ui .opblock").first()).toBeVisible({
-      timeout: 15_000,
-    });
-    await expect(page.locator(".swagger-ui .opblock")).toHaveCount(2);
+    await expect(page.getByTestId("api-teaser")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "Developer API and bulk data: coming",
+    );
+    await expect(page.locator(".swagger-ui")).toHaveCount(0);
+    await expect(page.locator(".swagger-ui .opblock")).toHaveCount(0);
     expect(cspViolations).toEqual([]);
     expect(validatorHits).toEqual([]);
   });

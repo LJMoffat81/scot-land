@@ -102,6 +102,9 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
     height: 100%;
     padding: 0 0.4rem;
   }
@@ -142,7 +145,8 @@
 /* —— Item 5: fold MapLibre attribution behind (i); compact footer —— */
 @media (max-width: 640px) {
   .map-stage .maplibregl-ctrl-attrib {
-    max-width: 2.5rem;
+    /* UI-FIX-1 U1: room for a 44×44 (i) hit target (was 2.5rem / 40px). */
+    max-width: 2.75rem;
   }
 
   .map-stage .maplibregl-ctrl-attrib:not(.maplibregl-compact-show) {
@@ -153,6 +157,19 @@
     .maplibregl-ctrl-attrib:not(.maplibregl-compact-show)
     .maplibregl-ctrl-attrib-inner {
     display: none;
+  }
+
+  /* UI-FIX-1 U1: attribution (i) ≥44×44; visual glyph stays MapLibre-sized. */
+  .map-stage .maplibregl-ctrl-attrib-button {
+    box-sizing: border-box;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 0 !important;
   }
 
   .map-footer {

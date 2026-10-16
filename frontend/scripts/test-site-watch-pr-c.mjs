@@ -299,8 +299,20 @@ if (existsSync(nextHtml)) {
     // Shadow ban stays global (including /developers); only the glossary block is exempt.
     const proseForShadow = toProse(stripDevelopersGlossaryBlock(html));
     const proseForTimes = toProse(withoutAriaButtons);
+    // UI-FIX-1 U5: exact path `/api/ledger.json` is allowed on /developers and
+    // /downloads only — strip that literal before the ledger word ban.
+    const isDevelopersOrDownloads =
+      /(^|\/)developers(\/|$)/.test(rel) || /(^|\/)downloads(\/|$)/.test(rel);
+    const proseForLedger = isDevelopersOrDownloads
+      ? prose.replaceAll("/api/ledger.json", " ")
+      : prose;
     for (const { name, re } of forbidden) {
-      const scan = name === "shadow" ? proseForShadow : prose;
+      const scan =
+        name === "shadow"
+          ? proseForShadow
+          : name === "ledger"
+            ? proseForLedger
+            : prose;
       if (re.test(scan)) {
         violations.push(`${rel}: ${name}`);
       }

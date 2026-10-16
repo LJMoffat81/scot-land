@@ -281,6 +281,7 @@ test.describe("LOGO-H2 desktop chrome", () => {
       "/developers/api",
       "/developers/checks",
       "/developers/glossary",
+      "/roadmap",
     ];
     for (const path of paths) {
       const res = await request.get(path);

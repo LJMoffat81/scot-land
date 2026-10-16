@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import ContentPageFooter from "@/components/ContentPageFooter";
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
+import { absoluteOgImageUrl, OG_IMAGES } from "@/lib/socialMeta";
 
 export const metadata: Metadata = {
   title: "Roadmap | Scot-LAND",
@@ -11,6 +12,14 @@ export const metadata: Metadata = {
     title: "Roadmap | Scot-LAND",
     description:
       "What is coming to the Scot-LAND map next. Research estimate — land rent figures are not published yet.",
+    images: [...OG_IMAGES],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Roadmap | Scot-LAND",
+    description:
+      "What is coming to the Scot-LAND map next. Research estimate — land rent figures are not published yet.",
+    images: [absoluteOgImageUrl()],
   },
 };
 

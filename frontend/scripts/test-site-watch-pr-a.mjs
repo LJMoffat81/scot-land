@@ -87,11 +87,15 @@ assert.match(
   /\.app-shell\.place-open[\s\S]*\.place-card-stub[\s\S]*z-index:\s*14/,
 );
 
-// —— Find a place collapses when place-open ——
-assert.match(chrome, /\.app-shell\.place-open[\s\S]*\.hud-scotland-job/);
+// —— Research banner collapses when place card is open (MAP-CARDS §3.6) ——
 assert.match(
   readSrc("components/ScotlandMap.tsx"),
-  /collapsedIntroForPlace/,
+  /collapseForSuggest=\{suggestOpen \|\| placeOpen\}/,
+);
+assert.doesNotMatch(
+  readSrc("components/ScotlandMap.tsx"),
+  /hud-scotland-job|map-legend-panel/,
+  "floating Find a place / legend panel must be gone",
 );
 
 // —— SW-013: Downloads has moved here ——
@@ -175,25 +179,29 @@ const {
   pathToFileURL(join(frontendRoot, "lib/mapDrawerLicenceDisplay.ts")).href
 );
 const {
-  MAP_DRAWER_LAYERS,
-} = await import(pathToFileURL(join(frontendRoot, "lib/mapLayerGroups.ts")).href);
+  MAP_LAYER_REGISTRY,
+} = await import(pathToFileURL(join(frontendRoot, "lib/mapLayerRegistry.ts")).href);
 
-for (const layer of MAP_DRAWER_LAYERS) {
-  const display = mapDrawerLicenceDisplay(
-    layer.id,
-    layer.licence,
-    layer.licenceUrl,
+for (const layer of MAP_LAYER_REGISTRY) {
+  // Live Layers show Source · year captions, not research-estimate licence lines.
+  assert.ok(
+    layer.sourceCaption.trim(),
+    `empty source caption for ${layer.id}`,
   );
-  assert.ok(display.label.trim(), `empty licence for ${layer.id}`);
   assert.doesNotMatch(
-    display.label,
+    layer.sourceCaption,
     /research\s*estimate/i,
-    `drawer licence for ${layer.id} must not be research-estimate text`,
+    `source caption for ${layer.id} must not be research-estimate text`,
   );
+  const display = mapDrawerLicenceDisplay(layer.id, "OGL-3.0");
+  assert.ok(display.label.trim(), `empty licence helper for ${layer.id}`);
 }
 
 const drawer = readSrc("components/MapLayersDrawer.tsx");
-assert.match(drawer, /mapDrawerLicenceDisplay/);
+// MAP-CARDS: licences live on Sources page; drawer shows Source · year captions.
+assert.match(drawer, /buildInlineLegendFromRegistry|sourceCaption|layers-source-caption/);
+assert.match(drawer, /What's coming next|What&apos;s coming next/);
+assert.doesNotMatch(drawer, /Coming soon</);
 
 // —— Built HTML (when present) ——
 const htmlFiles = walkHtml(join(frontendRoot, ".next/server"));

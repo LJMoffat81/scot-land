@@ -19,7 +19,7 @@ function readSrc(relPath) {
   const placeCard = readSrc("lib/placeCard.ts");
   assert.match(
     placeCard,
-    /PLACE_CARD_FIGURE_STATUS\s*=\s*"Figure not published yet"/,
+    /PLACE_CARD_FIGURE_STATUS\s*=\s*"Not published yet"/,
   );
   assert.match(
     placeCard,
@@ -48,23 +48,28 @@ function readSrc(relPath) {
   assert.match(ui, /PLACE_CARD_EXPERIMENTAL_FOOTER/);
   assert.match(ui, /PLACE_CARD_HOW_WE_WORK_LABEL/);
   assert.match(ui, /PLACE_CARD_HOW_WE_WORK_HOMES/);
-  assert.match(ui, /PLACE_CARD_PARTS_NOTE/);
+  assert.match(ui, /PLACE_CARD_PARTS_SUMMARY/);
   assert.doesNotMatch(ui, /What limits how it can be used/);
-  assert.doesNotMatch(ui, /Coming soon/);
+  assert.doesNotMatch(ui, /Coming soon</);
   assert.doesNotMatch(ui, /In progress/);
   assert.doesNotMatch(ui, /Estimate \(no market price\)/);
 }
 
-// --- Map empty-state + search placeholder ---
+// --- Map empty-state + search placeholder (MAP-CARDS: no map reference) ---
 {
   const map = readSrc("components/ScotlandMap.tsx");
   assert.match(
     map,
-    /placeholder="Search a postcode, place or map reference"/,
+    /placeholder="Search a postcode or place"/,
+  );
+  assert.doesNotMatch(
+    map,
+    /map reference/i,
+    "search chrome must not say map reference",
   );
   assert.match(
     map,
-    /Type a postcode or place name, or tap the map/,
+    /Search a place or pick a layer/,
   );
   assert.doesNotMatch(
     map,
@@ -105,10 +110,11 @@ function readSrc(relPath) {
   assert.match(glossary, /Open Government Licence/);
 }
 
-// --- Limits group label ---
+// --- Limits on use explainer (footer; Limits group removed from Layers) ---
 {
-  const groups = readSrc("lib/mapLayerGroups.ts");
-  assert.match(groups, /return "Limits on use"/);
+  const drawer = readSrc("components/MapLayersDrawer.tsx");
+  assert.match(drawer, /Limits on use/);
+  assert.match(drawer, /map-layers-limits-explainer/);
 }
 
 // --- Item 9 jargon sweep (public pages, excludes /developers*) ---

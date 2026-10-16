@@ -1,6 +1,6 @@
 /**
- * SW-022 guard: population-density map legend visitor wording (additions only).
- * Checks source strings and, when present, built HTML prose.
+ * MAP-CARDS-REDESIGN guard: legend lives inline / strip — not a floating density panel.
+ * Density is not a visitor layer (Q3). Certainty uses "Striped = less sure", not "Paler".
  */
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -10,131 +10,70 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const frontendRoot = join(here, "..");
 
-const TITLE = "Population density — people per km²";
-const BLURB = "Busier places tend to have a higher Annual Ground Rent.";
-const SOURCE =
-  "Source: National Records of Scotland mid-year estimates, Open Government Licence v3.0";
-const ZOOM_HINT = "Zoom in to see colours";
-
-const LAND_TITLE =
-  "What the land is worth each year: lower to higher";
-const LAND_PALER = "Paler = less sure";
-
-const rampSource = readFileSync(
-  join(frontendRoot, "lib/mapColourRamps.ts"),
-  "utf8",
-);
-const activeLegendSource = readFileSync(
-  join(frontendRoot, "lib/mapActiveLegend.ts"),
-  "utf8",
-);
-const legendSource = readFileSync(
-  join(frontendRoot, "components/MapRangeLegend.tsx"),
-  "utf8",
-);
 const mapSource = readFileSync(
   join(frontendRoot, "components/ScotlandMap.tsx"),
   "utf8",
 );
+const registrySource = readFileSync(
+  join(frontendRoot, "lib/mapLayerRegistry.ts"),
+  "utf8",
+);
+const drawerSource = readFileSync(
+  join(frontendRoot, "components/MapLayersDrawer.tsx"),
+  "utf8",
+);
 
-assert.ok(rampSource.includes(TITLE), "mapColourRamps.ts must include exact title");
-assert.ok(rampSource.includes(BLURB), "mapColourRamps.ts must include exact blurb");
 assert.ok(
-  rampSource.includes(SOURCE),
-  "mapColourRamps.ts must include exact source line",
-);
-assert.ok(
-  rampSource.includes(ZOOM_HINT),
-  "mapColourRamps.ts must include zoom hint",
-);
-// SW-045: density wording is wired through mapActiveLegend → ScotlandMap.
-assert.ok(
-  activeLegendSource.includes("POP_DENSITY_LEGEND_BLURB"),
-  "mapActiveLegend must wire density blurb",
-);
-assert.ok(
-  activeLegendSource.includes("POP_DENSITY_LEGEND_SOURCE"),
-  "mapActiveLegend must wire density source",
-);
-assert.ok(
-  activeLegendSource.includes("POP_DENSITY_ZOOM_HINT"),
-  "mapActiveLegend must wire density zoom hint",
-);
-assert.ok(
-  activeLegendSource.includes(LAND_TITLE),
-  "mapActiveLegend must include exact Land worth title",
-);
-assert.ok(
-  activeLegendSource.includes(LAND_PALER),
-  "mapActiveLegend must include exact Paler line",
-);
-assert.ok(
-  activeLegendSource.includes("cividis") ||
-    activeLegendSource.includes("LAND_WORTH_CIVIDIS"),
-  "mapActiveLegend must define cividis Land ramp",
+  mapSource.includes('data-testid="legend-strip"'),
+  "ScotlandMap must expose the legend strip chip",
 );
 assert.doesNotMatch(
-  activeLegendSource,
-  /£\d/,
-  "active legend source must not publish £ figures",
+  mapSource,
+  /data-testid="map-legend-panel"/,
+  "floating map-legend-panel must be removed",
 );
-assert.ok(
-  mapSource.includes("buildActiveLegendView"),
-  "ScotlandMap must build the active-layer legend",
+assert.doesNotMatch(
+  mapSource,
+  /Show legend|Hide legend/,
+  "Show/Hide legend pill must be removed",
 );
-assert.ok(
-  mapSource.includes("activeLegend"),
-  "ScotlandMap must gate legend mode by active layer / zoom",
+assert.doesNotMatch(
+  mapSource,
+  /buildActiveLegendView/,
+  "ScotlandMap must not build the old floating active-layer legend",
 );
 
 assert.ok(
-  legendSource.includes("map-range-legend-zoom-hint"),
-  "MapRangeLegend must expose zoom-hint test id",
+  registrySource.includes("Striped = less sure"),
+  "registry legend must include Striped = less sure",
 );
 assert.ok(
-  legendSource.includes("map-range-legend-source"),
-  "MapRangeLegend must expose source test id",
+  registrySource.includes("No figure here"),
+  "registry legend must include No figure here",
 );
-assert.ok(
-  legendSource.includes("map-range-legend-swatch-nodata"),
-  "MapRangeLegend must keep hatched No data swatch",
+assert.doesNotMatch(
+  registrySource,
+  /Paler = less sure/,
+  "registry must not use Paler = less sure",
 );
-assert.ok(
-  legendSource.includes("map-range-legend-paler"),
-  "MapRangeLegend must expose Paler confidence line",
+assert.doesNotMatch(
+  drawerSource,
+  /Paler = less sure/,
+  "Layers drawer must not use Paler = less sure",
 );
-assert.doesNotMatch(rampSource, /£\d/, "density ramp source must not publish £ figures");
-assert.doesNotMatch(legendSource, /£\d/, "legend component must not publish £ figures");
+assert.doesNotMatch(
+  mapSource,
+  /Paler = less sure/,
+  "map shell must not use Paler = less sure",
+);
 
-// Contrast: adjacent density stops must stay clearly distinct (WCAG-ish ratio).
-function relativeLuminance(hex) {
-  const raw = hex.replace("#", "").trim();
-  const channels = [0, 2, 4].map((i) => {
-    const c = parseInt(raw.slice(i, i + 2), 16) / 255;
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  });
-  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
-}
-
-const densityStopsMatch = rampSource.match(
-  /id:\s*"pop_density"[\s\S]*?stops:\s*\[([\s\S]*?)\]\s*,\s*\n\s*\}/,
+assert.doesNotMatch(
+  registrySource,
+  /People per km/,
+  "population density must not be a Layers registry row",
 );
-assert.ok(densityStopsMatch, "pop_density stops must be present");
-const stopColors = [...densityStopsMatch[1].matchAll(/"(#[0-9a-fA-F]{6})"/g)].map(
-  (m) => m[1],
-);
-assert.ok(stopColors.length >= 4, "density ramp needs several stops");
-for (let i = 0; i < stopColors.length - 1; i += 1) {
-  const a = relativeLuminance(stopColors[i]);
-  const b = relativeLuminance(stopColors[i + 1]);
-  const lighter = Math.max(a, b);
-  const darker = Math.min(a, b);
-  const ratio = (lighter + 0.05) / (darker + 0.05);
-  assert.ok(
-    ratio >= 1.25,
-    `density stops ${stopColors[i]} → ${stopColors[i + 1]} contrast ${ratio.toFixed(2)} < 1.25`,
-  );
-}
+assert.doesNotMatch(registrySource, /£\d/, "registry must not publish £ figures");
+assert.doesNotMatch(drawerSource, /£\d/, "drawer must not publish £ figures");
 
 function walk(dir) {
   const out = [];
@@ -152,7 +91,6 @@ if (existsSync(nextHtml)) {
   const htmlFiles = walk(join(nextHtml, "server")).filter((f) =>
     f.endsWith(".html"),
   );
-  // Client components may only appear in chunks; still forbid £ in map HTML shells.
   const violations = [];
   for (const file of htmlFiles) {
     const rel = relative(frontendRoot, file);
@@ -161,8 +99,11 @@ if (existsSync(nextHtml)) {
       .replace(/<style[\s\S]*?<\/style>/gi, " ")
       .replace(/<(pre|code)\b[\s\S]*?<\/\1>/gi, " ")
       .replace(/<[^>]+>/g, " ");
-    if (/£\d/.test(prose) && /map-range-legend|Population density/.test(prose)) {
-      violations.push(`${rel}: £ figure near density legend`);
+    if (/Paler = less sure/i.test(prose)) {
+      violations.push(`${rel}: Paler = less sure`);
+    }
+    if (/£\d/.test(prose) && /legend-strip|inline-legend/i.test(prose)) {
+      violations.push(`${rel}: £ figure near legend`);
     }
   }
   assert.equal(
@@ -171,8 +112,8 @@ if (existsSync(nextHtml)) {
     `map legend built-HTML guard:\n${violations.join("\n")}`,
   );
   console.log(
-    `test-map-legend-wording: ok (source + contrast + ${htmlFiles.length} HTML files)`,
+    `test-map-legend-wording: ok (MAP-CARDS strip + ${htmlFiles.length} HTML files)`,
   );
 } else {
-  console.log("test-map-legend-wording: ok (source + contrast; no .next)");
+  console.log("test-map-legend-wording: ok (MAP-CARDS strip; no .next)");
 }

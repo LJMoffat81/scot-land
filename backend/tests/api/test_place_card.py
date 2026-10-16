@@ -215,3 +215,33 @@ def test_place_context_unit_no_agr_keys(monkeypatch):
     assert isinstance(card["layers"], list)
     assert isinstance(card["links"], list)
     assert card["data_zone"]["status"] == "ok"
+
+
+def test_place_context_dz_code_and_source_crs(monkeypatch):
+    """MAP-CARDS-ADDENDUM-1 A6: identify returns dz_code + source_crs EPSG:27700."""
+    from layers.platform import place_context
+
+    _stub_place_seams(monkeypatch)
+    card = place_context(55.95, -3.19)
+    assert card["dz_code"] == card["data_zone"]["code"] == "S01014713"
+    assert card["source_crs"] == "EPSG:27700"
+
+
+def test_place_context_dz_code_null_on_sea_miss(monkeypatch):
+    from layers.platform import place_context
+
+    _stub_place_seams(monkeypatch)
+    monkeypatch.setattr(
+        "layers.platform._data_zone_at",
+        lambda lat, lng: {
+            "status": "miss",
+            "code": None,
+            "name": None,
+            "vintage": None,
+            "zones": [],
+            "note": "No Scottish data zone contains this point (e.g. at sea).",
+        },
+    )
+    card = place_context(56.0, -3.0)
+    assert card["dz_code"] is None
+    assert card["source_crs"] == "EPSG:27700"

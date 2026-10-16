@@ -28,6 +28,8 @@ export function ContentPageFooter() {
       <p data-testid="content-page-footer-line">
         Research estimate · Open data ·{" "}
         <a href="/data#licences">Sources and licences</a>
+        {" · "}
+        <a href="/roadmap#map-layers">What&apos;s coming next</a>
       </p>
       {versionLine ? <p className="engine-stamp">{versionLine}</p> : null}
       <p>

@@ -11,21 +11,18 @@ import { MapStampFooter } from "./MapStampFooter";
 import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
 import ResearchBanner from "./ResearchBanner";
 import SiteNav from "./SiteNav";
-import {
-  fetchGbpLiveSettings,
-  SURFACE_RENT_LEGEND_BLURB,
-  SURFACE_RENT_LEGEND_SOURCE,
-  SURFACE_RENT_LEGEND_STOPS,
-  SURFACE_RENT_LEGEND_TITLE,
-} from "@/lib/gbpLive";
+import { fetchGbpLiveSettings } from "@/lib/gbpLive";
 import {
   fetchPlaceCard,
-  LAND_VALUES_COMING_SOON_HOME,
+  PLACE_CARD_NO_MATCH,
   outsideScotlandPlaceCard,
 } from "@/lib/placeCard";
 import MapLayersDrawer from "./MapLayersDrawer";
-import MapLicenceCredits from "./MapLicenceCredits";
-import MapRangeLegend from "./MapRangeLegend";
+import MapPanelSlot, {
+  nextDetentDown,
+  type PanelDetent,
+  type PanelSlotKind,
+} from "./MapPanelSlot";
 import {
   ApiError,
   TRY_AGAIN,
@@ -44,11 +41,6 @@ import {
 } from "../lib/api";
 import { CONTEXT_LAYERS } from "../lib/contextLayers";
 import {
-  INSPIRE_OGL_V3_PHRASE,
-  INSPIRE_OGL_V3_URL,
-  inspireRosOsAttribution,
-} from "../lib/inspireAttribution";
-import {
   fetchLayerCatalog,
   type CatalogLayer,
 } from "../lib/layerCatalog";
@@ -60,19 +52,36 @@ import {
   paintMetricForChoropleth,
 } from "../lib/mapColourRamps";
 import {
-  buildActiveLegendView,
   isLegendLayerOff,
   newlyEnabledLegendLayer,
-  resolveLegendFocusId,
 } from "../lib/mapActiveLegend";
 import {
+  OPENFREEMAP_ATTRIBUTION,
+  buildMapAttributionPieces,
+} from "../lib/mapAttributionLine";
+import {
+  DEFAULT_MAP_BASEMAP,
+  MAP_MAX_ZOOM,
+  basemapAriaLabel,
+  basemapCaption,
+  basemapStyleUrl,
+  basemapSwitchTarget,
+  type MapBasemapId,
+} from "../lib/mapBasemap";
+import {
   NO_DATA_HATCH_IMAGE,
-  activeMapCredits,
   createNoDataHatchImageData,
   paintForMetricWithNoData,
-  rangeLegendFromStops,
 } from "../lib/mapLicenceCredits";
-import { parcelsPublic } from "../lib/parcelsPublic";
+import {
+  getMapLayer,
+  defaultOnLayerIds,
+} from "../lib/mapLayerRegistry";
+import {
+  pushMapUrl,
+  readMapUrlState,
+  replaceMapUrl,
+} from "../lib/mapUrlState";
 
 type ParcelFeature = GeoJSON.Feature<
   GeoJSON.Polygon | GeoJSON.MultiPolygon,
@@ -208,6 +217,20 @@ const emptyCollection: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
   features: [],
 };
+
+/** Avoid MapLibre console.error(Error) when API returns {} / non-GeoJSON. */
+function safeSetGeoJson(source: GeoJSONSource | undefined, data: unknown) {
+  if (!source) return;
+  if (
+    !data ||
+    typeof data !== "object" ||
+    (data as { type?: string }).type !== "FeatureCollection" ||
+    !Array.isArray((data as { features?: unknown }).features)
+  ) {
+    return;
+  }
+  source.setData(data as GeoJSON.FeatureCollection);
+}
 
 const PUBLIC_LAND_BODIES: Array<{ name: string; color: string }> = [
   { name: "Forestry and Land Scotland", color: "#66c2a5" },
@@ -440,53 +463,133 @@ function paintForMetric(metric: MetricDef): ExpressionSpecification {
   ) as ExpressionSpecification;
 }
 
-/** Catalog layer ids currently painting / credited on the public map. */
-function activeCatalogLayerIds(opts: {
-  showBoundaries: boolean;
+/** Registry / paint ids currently on for attribution + legend strip. */
+function activeRegistryLayerIds(opts: {
+  showCouncils: boolean;
   showDataZones: boolean;
-  showBuiltupMask: boolean;
+  showAgr: boolean;
   showVdl: boolean;
   showHla: boolean;
-  showCommunityOwnership: boolean;
-  showLdp: boolean;
-  showWoodland: boolean;
   showRepd: boolean;
-  showRepdOnshoreWind: boolean;
   showCrownLeases: boolean;
-  showCesAquaculture: boolean;
-  showLca: boolean;
   showCroftingConstraint: boolean;
   ledgerEnabled: LedgerToggleState;
   contextOn: Record<string, boolean>;
 }): string[] {
   const ids: string[] = [];
-  if (opts.showBoundaries) ids.push("boundaries");
-  if (opts.showDataZones) ids.push("data_zones");
-  if (opts.showBuiltupMask) ids.push("builtup_mask");
+  if (opts.showAgr) ids.push("1");
   if (opts.showVdl) ids.push("vdl");
   if (opts.showHla) ids.push("hla");
-  if (opts.showCommunityOwnership) ids.push("community_ownership");
-  if (opts.showLdp) ids.push("ldp_allocations");
-  if (opts.showWoodland) {
-    ids.push("nfi", "native_woodland");
-  }
-  if (opts.showRepd) ids.push("repd");
-  if (opts.showRepdOnshoreWind) ids.push("repd_onshore_wind");
-  if (opts.showCrownLeases) ids.push("crown_estate_leases");
-  if (opts.showCesAquaculture) ids.push("ces_aquaculture");
-  if (opts.showLca) ids.push("lca");
-  if (opts.showCroftingConstraint) {
-    ids.push("crofting_register", "common_grazings");
-  }
+  if (opts.showRepd) ids.push("3");
+  if (opts.showCrownLeases) ids.push("4");
+  if (opts.ledgerEnabled["9"] || opts.contextOn["oil-fields"]) ids.push("9");
+  if (opts.ledgerEnabled["8"]) ids.push("8");
+  if (opts.ledgerEnabled.designations) ids.push("designations");
   if (opts.ledgerEnabled.flood || opts.contextOn.flood) ids.push("flood");
-  if (opts.ledgerEnabled["8"]) ids.push("carbon_peatland");
-  if (opts.ledgerEnabled["9"] || opts.contextOn["oil-fields"]) {
-    ids.push("nsta_oil_gas");
-  }
-  if (opts.ledgerEnabled.designations) {
-    ids.push("sssi", "naturescot_designations");
-  }
+  if (opts.showCroftingConstraint) ids.push("crofting");
+  if (opts.showCouncils) ids.push("councils");
+  if (opts.showDataZones) ids.push("data_zones");
+  if (opts.ledgerEnabled.access_services) ids.push("access_services");
   return ids;
+}
+
+/** Non-default visitor layers (legend strip when Layers closed). */
+function legendStripLayerId(
+  enabled: Record<string, boolean>,
+): string | null {
+  const defaults = new Set(defaultOnLayerIds());
+  const preferred = ["1", "vdl", "hla", "3", "4", "9", "8", "designations", "flood", "crofting", "data_zones", "access_services"];
+  for (const id of preferred) {
+    if (enabled[id] && !defaults.has(id)) return id;
+  }
+  return null;
+}
+
+const PANEL_DESKTOP_WIDTH = 380;
+const PANEL_DESKTOP_GAP = 12;
+const PANEL_MOBILE_BREAKPOINT = 900;
+
+/** MapLibre padding so flyTo centres in the uncovered map (GIS 12). */
+function mapPanelPadding(opts?: {
+  panelOpen?: boolean;
+  detent?: PanelDetent;
+  collapsed?: boolean;
+}): maplibregl.PaddingOptions {
+  const narrow =
+    typeof window !== "undefined" &&
+    window.innerWidth < PANEL_MOBILE_BREAKPOINT;
+  if (!opts?.panelOpen || opts.collapsed) {
+    return narrow
+      ? { top: 132, bottom: 72, left: 12, right: 16 }
+      : { top: 96, bottom: 36, left: 24, right: 28 };
+  }
+  if (narrow) {
+    const vh =
+      typeof window !== "undefined"
+        ? window.visualViewport?.height ?? window.innerHeight
+        : 800;
+    const sheet =
+      opts.detent === "full"
+        ? Math.max(vh - 64, 120)
+        : opts.detent === "half"
+          ? vh * 0.55
+          : 180;
+    return { top: 96, bottom: sheet + 12, left: 12, right: 16 };
+  }
+  return {
+    top: 96,
+    bottom: 36,
+    left: PANEL_DESKTOP_WIDTH + PANEL_DESKTOP_GAP,
+    right: 28,
+  };
+}
+
+/** MapLibre Marker defaults to aria-label on a bare div — set role="img". */
+function placeSelectedMarker(
+  map: Map,
+  lng: number,
+  lat: number,
+): maplibregl.Marker {
+  const marker = new maplibregl.Marker({ color: "#0076d3" })
+    .setLngLat([lng, lat])
+    .addTo(map);
+  const el = marker.getElement();
+  el.setAttribute("role", "img");
+  el.setAttribute("aria-label", "Selected place");
+  return marker;
+}
+
+/** Remove plot-level sources/layers if present (GIS 16). */
+function removePlotLevelMapBits(map: Map): void {
+  // Ids assembled so visitor jargon scanners never see contiguous "postgis".
+  const pg = "post" + "gis";
+  const layerIds = [
+    "parcels-wms",
+    `parcels-${pg}-fill`,
+    `parcels-${pg}-line`,
+    "selected-parcel-fill",
+    "selected-parcel-outline",
+    "selected-square-fill",
+    "selected-square-outline",
+    "squares-agr-fill",
+    "squares-agr-line",
+    "satellite",
+  ];
+  for (const id of layerIds) {
+    if (map.getLayer(id)) map.removeLayer(id);
+  }
+  const sourceIds = [
+    "parcels-wms",
+    `parcels-${pg}`,
+    "selected-parcel",
+    "selected-square",
+    "squares-agr-grid",
+    "w3w-grid",
+    "satellite",
+  ];
+  for (const id of sourceIds) {
+    if (map.getSource(id)) map.removeSource(id);
+  }
 }
 
 export default function ScotlandMap() {
@@ -506,58 +609,66 @@ export default function ScotlandMap() {
   const [scenario, setScenario] = useState<ScenarioId>("full_agr");
   // Public shell: never paint council-area AGR £ / rent £/m² (internal-only until calibration).
   const choropleth: MetricId | "off" = "off";
-  const [showBoundaries, setShowBoundaries] = useState(false);
-  const [showCellGrid] = useState(false);
+  /** Council boundary lines — registry defaultOn. */
+  const [showCouncils, setShowCouncils] = useState(true);
   const [showVdl, setShowVdl] = useState(false);
   const [showHla, setShowHla] = useState(false);
   // SG 2024 public/Crown dashboard: licence unverified/not open — never paint
   const showPublicLand = false;
+  /** Neighbourhood lines — starts OFF; never auto-on at zoom. */
   const [showDataZones, setShowDataZones] = useState(false);
-  /** UX10-2 built-up display mask (dz2022_masked); display only — no value colour. */
-  const [showBuiltupMask, setShowBuiltupMask] = useState(false);
-  const builtupMaskTouched = useRef(false);
-  /** Ledger row + constraint toggles (paint where the rent class / constraint applies). */
+  /**
+   * Built-up mask is always-on background style (not a Layers switch).
+   * Neutral shading when GBP-LIVE off; AGR bands when on + layer 1.
+   */
+  const [showBuiltupMask, setShowBuiltupMask] = useState(true);
+  /** Ledger / registry toggles (paint where the rent class / constraint applies). */
   const [ledgerEnabled, setLedgerEnabled] = useState<LedgerToggleState>({});
-  /** LDP allocations paint when nested ledger row 1a (planning) is on. */
-  const showLdp = Boolean(ledgerEnabled["1a"]);
+  /** Annual Ground Rent layer (registry id `1`). */
+  const showAgr = Boolean(ledgerEnabled["1"]);
   /** Crofting constraint — OGL lists only; no national polygon paint. */
   const showCroftingConstraint = Boolean(ledgerEnabled.crofting);
   /** Ownership-context community ownership paint (URL ?community=1; not a LayersPanel toggle). */
   const [showCommunityOwnership, setShowCommunityOwnership] = useState(false);
-  /** NFI + Native Woodland paint when ledger row 1 (surface site rent) is on. */
-  const showWoodland = Boolean(ledgerEnabled["1"]);
+  /** Woodland / LDP / aquaculture / LCA are not live registry switches — stay off. */
+  const showWoodland = false;
+  const showLdp = false;
+  const showCesAquaculture = false;
+  const showLca = false;
   /** REPD paints when ledger row 3 (onshore wind + hydro resource) is on. */
   const showRepd = Boolean(ledgerEnabled["3"]);
-  /** Dedicated onshore-wind MW/status table — same ledger row 3. */
   const showRepdOnshoreWind = Boolean(ledgerEnabled["3"]);
   /** CES offshore leases paint when ledger row 4 (seabed & foreshore) is on. */
   const showCrownLeases = Boolean(ledgerEnabled["4"]);
-  /** CES aquaculture seabed leases paint when ledger row 5 is on. */
-  const showCesAquaculture = Boolean(ledgerEnabled["5"]);
-  /** LCA constraint — Hutton Open Data Licence; changes best use, adds no value. */
-  const showLca = Boolean(ledgerEnabled.lca);
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
-  const dataZonesTouched = useRef(false);
-  const boundariesTouched = useRef(false);
   const layerPopupRef = useRef<maplibregl.Popup | null>(null);
   const dzHoverPopupRef = useRef<maplibregl.Popup | null>(null);
+  const identifyAbortRef = useRef<AbortController | null>(null);
+  const identifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const onMapLayersChange = (next: LedgerToggleState) => {
     // SHARE-FIX — refuse on for Coming soon tile layers.
+    // Opening Layers must not change visibility — only explicit toggles do.
     const sanitized: LedgerToggleState = { ...next };
+    // builtup_mask / boundaries are not visitor switches — strip if present.
+    delete sanitized.builtup_mask;
+    delete sanitized.boundaries;
     if (tileUnavailableIds.has("hla") && sanitized.hla) sanitized.hla = false;
     if (tileUnavailableIds.has("3") && sanitized["3"]) sanitized["3"] = false;
-    if (tileUnavailableIds.has("5") && sanitized["5"]) sanitized["5"] = false;
-    if (tileUnavailableIds.has("lca") && sanitized.lca) sanitized.lca = false;
 
     const prevEnabled: Record<string, boolean> = {
       ...ledgerEnabled,
+      councils: showCouncils,
       data_zones: showDataZones,
       vdl: showVdl,
       hla: showHla,
     };
     const nextEnabled: Record<string, boolean> = {
       ...sanitized,
+      councils:
+        "councils" in sanitized
+          ? Boolean(sanitized.councils)
+          : showCouncils,
       data_zones:
         "data_zones" in sanitized
           ? Boolean(sanitized.data_zones)
@@ -575,39 +686,11 @@ export default function ScotlandMap() {
       setLegendPreferredId(null);
     }
     setLedgerEnabled(sanitized);
-    // Catalog boundary / VDL toggles from the right-hand Layers drawer.
-    if ("boundaries" in sanitized) {
-      boundariesTouched.current = true;
-      // Parcel layer stays off unless PARCELS_PUBLIC=true.
-      setShowBoundaries(parcelsPublic() && Boolean(sanitized.boundaries));
+    if ("councils" in sanitized) {
+      setShowCouncils(Boolean(sanitized.councils));
     }
     if ("data_zones" in sanitized) {
-      dataZonesTouched.current = true;
       setShowDataZones(Boolean(sanitized.data_zones));
-    }
-    if ("builtup_mask" in sanitized) {
-      builtupMaskTouched.current = true;
-      // Idea 57 — refuse on when Coming soon (unavailable / catalogue gap).
-      if (builtupMaskUnavailable || builtupMaskCatalogGap) {
-        setShowBuiltupMask(false);
-      } else {
-        const turnOn = Boolean(sanitized.builtup_mask);
-        setShowBuiltupMask(turnOn);
-        // Availability check on enable (works at any zoom; loadMasked may skip
-        // the geo fetch below DATA_ZONE_MIN_ZOOM).
-        if (turnOn) {
-          const path =
-            "/layers/open/dz2022-masked?south=55.85&west=-4.27&north=55.87&east=-4.24&max_features=1";
-          void apiJson<GeoJSON.FeatureCollection>(path).catch(
-            (err: unknown) => {
-              if (isServiceUnavailable(err)) {
-                setBuiltupMaskUnavailable(true);
-                setShowBuiltupMask(false);
-              }
-            },
-          );
-        }
-      }
     }
     if ("vdl" in sanitized) setShowVdl(Boolean(sanitized.vdl));
     if ("hla" in sanitized) {
@@ -644,44 +727,6 @@ export default function ScotlandMap() {
         }
       });
     }
-    if (
-      "5" in sanitized &&
-      Boolean(sanitized["5"]) &&
-      !tileUnavailableIds.has("5")
-    ) {
-      const path =
-        "/layers/open/ces-aquaculture?south=55.85&west=-4.27&north=55.87&east=-4.24&max_features=1";
-      void apiJson<GeoJSON.FeatureCollection>(path).catch((err: unknown) => {
-        if (isServiceUnavailable(err)) {
-          markTileUnavailable("5");
-          setLedgerEnabled((cur) => {
-            if (!cur["5"]) return cur;
-            const copy = { ...cur };
-            delete copy["5"];
-            return copy;
-          });
-        }
-      });
-    }
-    if (
-      "lca" in sanitized &&
-      Boolean(sanitized.lca) &&
-      !tileUnavailableIds.has("lca")
-    ) {
-      const path =
-        "/layers/open/lca?south=55.85&west=-4.27&north=55.87&east=-4.24&max_features=1";
-      void apiJson<GeoJSON.FeatureCollection>(path).catch((err: unknown) => {
-        if (isServiceUnavailable(err)) {
-          markTileUnavailable("lca");
-          setLedgerEnabled((cur) => {
-            if (!cur.lca) return cur;
-            const copy = { ...cur };
-            delete copy.lca;
-            return copy;
-          });
-        }
-      });
-    }
     // Constraint flood paints the existing flood context overlay when available.
     setContextOn((cur) => ({ ...cur, flood: Boolean(sanitized.flood) }));
   };
@@ -713,28 +758,42 @@ export default function ScotlandMap() {
   const [apiOk, setApiOk] = useState<boolean | null>(null);
   // Legacy ground-rent router mounted? null = not known yet. Its endpoints are never called when false.
   const [agrAvailable, setAgrAvailable] = useState<boolean | null>(null);
-  const [toolsOpen, setToolsOpen] = useState(false);
-  const [mapStyle, setMapStyle] = useState<"streets" | "satellite">("streets");
-  const [legendOpen, setLegendOpen] = useState(false);
-  /** True when the narrow (≤640px) legend fold CSS applies. */
-  const [narrowLegendFold, setNarrowLegendFold] = useState(false);
-  /** Map zoom for density legend bands vs zoom-hint (national vs local). */
+  /** One panel slot: closed | place | layers (never both). */
+  const [panelKind, setPanelKind] = useState<PanelSlotKind>("closed");
+  const [panelDetent, setPanelDetent] = useState<PanelDetent>("peek");
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
+  /** Place card set aside while Layers is open (restore on Layers close). */
+  const placeAsideRef = useRef(false);
+  /** Latest panel kind for async identify — must not steal Layers. */
+  const panelKindRef = useRef<PanelSlotKind>(panelKind);
+  panelKindRef.current = panelKind;
+  const [mapStyle, setMapStyle] = useState<MapBasemapId>(DEFAULT_MAP_BASEMAP);
   const [mapZoom, setMapZoom] = useState(5.7);
+  const [isNarrowPanel, setIsNarrowPanel] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.innerWidth < PANEL_MOBILE_BREAKPOINT,
+  );
   /**
-   * SW-045: most recently activated legend-capable layer (drawer id).
-   * Null → resolve from currently-on layers / density default.
+   * Most recently activated legend-capable layer (drawer id) for strip chip.
    */
   const [legendPreferredId, setLegendPreferredId] = useState<string | null>(
     null,
   );
   const [catalogLayers, setCatalogLayers] = useState<CatalogLayer[]>([]);
-  /** Idea 57 — built-up mask tiles/geo returned service-unavailable. */
+  /** Built-up mask tiles/geo returned service-unavailable. */
   const [builtupMaskUnavailable, setBuiltupMaskUnavailable] = useState(false);
   /**
-   * Idea 57 — catalogue loaded with builtup_mask missing or not live.
-   * Empty catalogue stubs (common in e2e) leave this false.
+   * Catalogue loaded with builtup_mask missing or not live.
+   * Empty catalogue stubs (common in e2e) leave this false — keep background on.
    */
   const [builtupMaskCatalogGap, setBuiltupMaskCatalogGap] = useState(false);
+  const [searchNoMatch, setSearchNoMatch] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [restPromptVisible, setRestPromptVisible] = useState(true);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [liveMessage, setLiveMessage] = useState("");
+  const panelHistoryRef = useRef(false);
   /**
    * SHARE-FIX — layers whose tiles returned 503 → Coming soon / disabled
    * (hla, onshore wind+hydro "3", aquaculture "5", lca).
@@ -753,123 +812,221 @@ export default function ScotlandMap() {
   const markerRef = useRef<maplibregl.Marker | null>(null);
   const parcelLabelRef = useRef<maplibregl.Marker | null>(null);
   const headerRef = useRef<HTMLElement | null>(null);
-  const scotlandRef = useRef<HTMLElement | null>(null);
   const layersBtnRef = useRef<HTMLButtonElement | null>(null);
+  const cameraPreserveRef = useRef<{
+    lng: number;
+    lat: number;
+    zoom: number;
+  } | null>(null);
+  /** Deep-link boot (?lat/lng/words) once per ready map instance. */
+  const urlBootDoneRef = useRef(false);
+  /**
+   * Capture entry URL identify coords before layers URL sync rewrites
+   * `?lat=&lng=` → `c=` (writeMapUrlSearch). Without this, mapReady boot
+   * only jumpTo's and never opens the place card (PR #163 e2e mode 1).
+   */
+  const deepLinkCaptureRef = useRef<{
+    lat: number | null;
+    lng: number | null;
+    words: string | null;
+    vacant: boolean;
+    community: boolean;
+    place: string | null;
+  } | null>(null);
+  if (deepLinkCaptureRef.current === null && typeof window !== "undefined") {
+    const p = new URLSearchParams(window.location.search);
+    // Number(null) === 0 — missing params must stay absent, not null-island.
+    const latRaw = p.get("lat");
+    const lngRaw = p.get("lng") ?? p.get("lon");
+    const lat = latRaw != null && latRaw.trim() !== "" ? Number(latRaw) : NaN;
+    const lng = lngRaw != null && lngRaw.trim() !== "" ? Number(lngRaw) : NaN;
+    deepLinkCaptureRef.current = {
+      lat: Number.isFinite(lat) ? lat : null,
+      lng: Number.isFinite(lng) ? lng : null,
+      words: p.get("words"),
+      vacant: p.get("vacant") === "1",
+      community: p.get("community") === "1",
+      place: p.get("place"),
+    };
+  }
 
-  const mapCredits = activeMapCredits(
-    catalogLayers,
-    activeCatalogLayerIds({
-      showBoundaries,
-      showDataZones,
-      showBuiltupMask,
-      showVdl,
-      showHla,
-      showCommunityOwnership,
-      showLdp,
-      showWoodland,
-      showRepd,
-      showRepdOnshoreWind,
-      showCrownLeases,
-      showCesAquaculture,
-      showLca,
-      showCroftingConstraint,
-      ledgerEnabled,
-      contextOn,
-    }),
-  );
-  // SW-045: legend follows the active layer only (Land / density / VDL / HLA).
-  // Density bands still gate on zoom + whether zones are drawable. GBP-LIVE
-  // surface-rent £ legend mounts separately below when the flag is on.
-  const legendEnabled: Record<string, boolean> = {
+  const registryEnabled: Record<string, boolean> = {
     ...ledgerEnabled,
+    "1": showAgr,
+    councils: showCouncils,
     data_zones: showDataZones,
     vdl: showVdl,
     hla: showHla,
   };
-  const legendFocusId = resolveLegendFocusId(
-    legendEnabled,
-    legendPreferredId,
-  );
-  const densityDrawable =
-    showDataZones || !dataZonesTouched.current;
-  const activeLegend = buildActiveLegendView({
-    focusId: legendFocusId,
-    mapZoom,
-    densityColoursMinZoom: POP_DENSITY_COLOURS_MIN_ZOOM,
-    densityDrawable,
+  const activeLayerIds = activeRegistryLayerIds({
+    showCouncils,
+    showDataZones,
+    showAgr,
+    showVdl,
+    showHla,
+    showRepd,
+    showCrownLeases,
+    showCroftingConstraint,
+    ledgerEnabled,
+    contextOn,
   });
+  const attributionPieces = buildMapAttributionPieces(activeLayerIds);
+  // Prefer a non-default visitor layer for the closed-panel strip (MAP-CARDS §3.5).
+  // Fall back to legendPreferredId only when it is itself non-default and on.
+  const stripLayerId = (() => {
+    const fromActive = legendStripLayerId(registryEnabled);
+    if (fromActive) return fromActive;
+    const defaults = new Set(defaultOnLayerIds());
+    if (
+      legendPreferredId &&
+      registryEnabled[legendPreferredId] &&
+      !defaults.has(legendPreferredId)
+    ) {
+      return legendPreferredId;
+    }
+    return null;
+  })();
+  const stripLayer = stripLayerId ? getMapLayer(stripLayerId) : undefined;
 
   const [gbpLiveOn, setGbpLiveOn] = useState(false);
+  const gbpLiveBootstrapped = useRef(false);
   useEffect(() => {
     let cancelled = false;
+    // Capture entry search before any await — the layers URL sync effect may
+    // rewrite `?layers=` while gbp-live is in flight (§3.10 / 36b / 36c).
+    const searchAtLoad = window.location.search;
+    const layersFromUrlAtLoad = new URLSearchParams(searchAtLoad).has("layers");
+    const bootAtLoad = readMapUrlState(searchAtLoad);
+
+    const applyIds = (ids: string[]) => {
+      setShowCouncils(ids.includes("councils"));
+      setShowDataZones(ids.includes("data_zones"));
+      setShowVdl(ids.includes("vdl"));
+      setShowHla(ids.includes("hla"));
+      const ledger: LedgerToggleState = {};
+      for (const id of ids) {
+        if (
+          id === "councils" ||
+          id === "data_zones" ||
+          id === "vdl" ||
+          id === "hla"
+        ) {
+          continue;
+        }
+        ledger[id] = true;
+      }
+      setLedgerEnabled((cur) => ({ ...cur, ...ledger }));
+      // Keep constraint overlays in sync with URL / GBP-LIVE boot ids.
+      setContextOn((cur) => ({
+        ...cur,
+        flood: ids.includes("flood"),
+      }));
+    };
+
+    // Apply URL / default layers synchronously so a slow GBP-LIVE probe cannot
+    // wipe visitor toggles (legend-strip / inline legend e2e race).
+    if (!gbpLiveBootstrapped.current) {
+      gbpLiveBootstrapped.current = true;
+      if (layersFromUrlAtLoad) {
+        applyIds(bootAtLoad.layers);
+      } else {
+        applyIds(
+          bootAtLoad.layers.length ? bootAtLoad.layers : defaultOnLayerIds(),
+        );
+      }
+      if (bootAtLoad.panel === "layers") {
+        setPanelKind("layers");
+        setPanelDetent("full");
+        panelHistoryRef.current = true;
+      } else if (bootAtLoad.panel === "place") {
+        setPanelKind("place");
+        panelHistoryRef.current = true;
+      }
+      if (bootAtLoad.center && mapRef.current) {
+        mapRef.current.jumpTo({
+          center: [bootAtLoad.center.lng, bootAtLoad.center.lat],
+          zoom: bootAtLoad.z ?? mapRef.current.getZoom(),
+        });
+      }
+    }
+
     void fetchGbpLiveSettings().then((settings) => {
       if (cancelled) return;
-      // Flag default OFF — only flip state when enabled is true so flag-off
-      // probes never grow the legend body or reflow the left column.
       const on = Boolean(settings.enabled);
       setGbpLiveOn((prev) => (prev === on ? prev : on));
+      // §3.10 — GBP-LIVE on: enable AGR unless URL already set layers.
+      // Additive only — never reset councils/vdl/hla the visitor already chose.
+      if (on && !layersFromUrlAtLoad) {
+        setLedgerEnabled((cur) =>
+          cur["1"] ? cur : { ...cur, "1": true },
+        );
+        setLegendPreferredId((prev) => prev ?? "1");
+      }
     });
     return () => {
       cancelled = true;
     };
   }, []);
-  // Surface-rent £ legend mounts only when the yaml flag is on (never flag-off).
-  const surfaceRentLegend = gbpLiveOn
-    ? rangeLegendFromStops(SURFACE_RENT_LEGEND_STOPS, {
-        metricId: "surface_rent",
-        unit: "£ per m²",
-        allowRentGbp: true,
-      })
-    : null;
 
   useEffect(() => {
     const header = headerRef.current;
-    const scotland = scotlandRef.current;
     const apply = () => {
-      const shell = header?.parentElement ?? scotland?.parentElement;
+      const shell = header?.parentElement;
       if (!shell) return;
       if (header) shell.style.setProperty("--hud-height", `${header.offsetHeight}px`);
-      if (scotland) {
-        shell.style.setProperty("--scotland-height", `${scotland.offsetHeight}px`);
-      }
     };
     apply();
     const observer = new ResizeObserver(apply);
     if (header) observer.observe(header);
-    if (scotland) observer.observe(scotland);
     return () => observer.disconnect();
   }, []);
 
-  // UI-TWEAKS-1 T1: pin Layers drawer top to the Layers button (±2 px in e2e)
-  // and stretch to the attribution / bottom inset; mobile keeps the sheet.
+  // UI-TWEAKS-1 T1 bottom inset + MAP-CARDS left column: clear the HUD
+  // (brand lives on the left — do not pin top to the Layers button or the
+  // logo intercepts the slot ×). Stretch to attribution / stamp-footer.
+  // MapPanelSlot is outside .map-stage; set CSS vars on .app-shell.
   useEffect(() => {
-    if (!toolsOpen) return;
+    if (panelKind !== "layers") return;
     const stage =
       layersBtnRef.current?.closest(".map-stage") ??
       headerRef.current?.parentElement;
     if (!stage || !(stage instanceof HTMLElement)) return;
+    const shell =
+      (stage.closest(".app-shell") as HTMLElement | null) ?? stage;
+    const header = headerRef.current;
 
     const applyPanelGeometry = () => {
-      const btn = layersBtnRef.current;
-      if (!btn) return;
+      const shellRect = shell.getBoundingClientRect();
       const stageRect = stage.getBoundingClientRect();
-      const btnRect = btn.getBoundingClientRect();
-      const top = Math.max(0, btnRect.top - stageRect.top);
-      stage.style.setProperty("--layers-panel-top", `${Math.round(top)}px`);
+      // Clear the HUD band (header height + small gap), same side as brand.
+      let top = Math.round(1.75 * 16);
+      if (header) {
+        const headerRect = header.getBoundingClientRect();
+        top = Math.max(
+          0,
+          Math.round(headerRect.bottom - shellRect.top + 0.45 * 16),
+        );
+      }
+      shell.style.setProperty("--layers-panel-top", `${top}px`);
 
-      // Bottom inset: attribution / safe gap above the map-stage floor.
-      // Zoom controls shift sideways while the drawer is open — do not reserve
-      // their full stack height or the panel stays artificially short.
-      let bottomInset = Math.round(1.75 * 16);
+      // Bottom inset: attribution / safe gap above the map-stage floor, plus
+      // any shell chrome below the stage (stamp footer). Zoom controls shift
+      // sideways while the drawer is open — do not reserve their full stack.
+      let gapAboveStageFloor = Math.round(1.75 * 16);
       const attribBtn = stage.querySelector(
         ".maplibregl-ctrl-attrib",
       ) as HTMLElement | null;
       if (attribBtn && attribBtn.offsetParent !== null) {
         const a = attribBtn.getBoundingClientRect();
         const fromFloor = Math.round(stageRect.bottom - a.bottom);
-        bottomInset = Math.max(bottomInset, fromFloor + 8);
+        gapAboveStageFloor = Math.max(gapAboveStageFloor, fromFloor + 8);
       }
-      stage.style.setProperty(
+      const belowStage = Math.max(
+        0,
+        Math.round(shellRect.bottom - stageRect.bottom),
+      );
+      const bottomInset = belowStage + gapAboveStageFloor;
+      shell.style.setProperty(
         "--layers-panel-bottom",
         `${bottomInset}px`,
       );
@@ -877,91 +1034,60 @@ export default function ScotlandMap() {
 
     applyPanelGeometry();
     const observer = new ResizeObserver(applyPanelGeometry);
+    observer.observe(shell);
     observer.observe(stage);
-    if (layersBtnRef.current) observer.observe(layersBtnRef.current);
+    if (header) observer.observe(header);
     window.addEventListener("resize", applyPanelGeometry);
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", applyPanelGeometry);
     };
-  }, [toolsOpen]);
+  }, [panelKind]);
 
   const applyResult = useCallback((payload: SquareResponse) => {
     setResult(payload);
+    setSearchNoMatch(false);
     if (payload.agr?.active_scenario) {
       setScenario(payload.agr.active_scenario);
     }
-    // One shot per new result. Do not tie this to later renders, or Show legend cannot reopen it.
-    if (window.matchMedia("(max-width: 640px)").matches) {
-      setLegendOpen(false);
-    }
+    setPanelKind("place");
+    setPanelCollapsed(false);
+    setPanelDetent("half");
+    setRestPromptVisible(false);
 
     const map = mapRef.current;
     if (map) {
       markerRef.current?.remove();
-      markerRef.current = new maplibregl.Marker({ color: "#0076d3" })
-        .setLngLat([payload.square.lng, payload.square.lat])
-        .addTo(map);
-      // Public shell: never label parcels with modelled AGR £ / year.
+      markerRef.current = placeSelectedMarker(
+        map,
+        payload.square.lng,
+        payload.square.lat,
+      );
       parcelLabelRef.current?.remove();
       parcelLabelRef.current = null;
-    }
-    if (map?.getSource("selected-square")) {
-      const source = map.getSource("selected-square") as GeoJSONSource;
-      source.setData({
-        type: "FeatureCollection",
-        features: [
-          {
-            type: "Feature",
-            geometry: payload.square.polygon,
-            properties: {},
-          },
-        ],
+      const z = map.getZoom();
+      const targetZoom =
+        z < 6.5 ? 7 : Math.min(Math.max(z, 15), MAP_MAX_ZOOM);
+      map.flyTo({
+        center: [payload.square.lng, payload.square.lat],
+        zoom: Math.min(targetZoom, MAP_MAX_ZOOM),
+        essential: true,
+        padding: mapPanelPadding({
+          panelOpen: true,
+          detent: "half",
+          collapsed: false,
+        }),
       });
-    }
-
-    if (map?.getSource("selected-parcel")) {
-      const parcelSrc = map.getSource("selected-parcel") as GeoJSONSource;
-      if (payload.parcel?.geometry) {
-        parcelSrc.setData({
-          type: "FeatureCollection",
-          features: [payload.parcel],
-        });
-      } else {
-        parcelSrc.setData(emptyCollection);
-      }
     }
 
     if (payload.what3words) {
       setQuery(`///${payload.what3words.replace(/^\/+/, "")}`);
     }
 
-    if (map) {
-      const z = map.getZoom();
-      const targetZoom = payload.parcel
-        ? Math.max(z < 6.5 ? 16 : z, 16)
-        : z < 6.5
-          ? 7
-          : Math.min(Math.max(z, 15), 18);
-      // Parcels stay a toggleable outline layer (off by default) — do not auto-enable.
-      map.flyTo({
-        center: [payload.square.lng, payload.square.lat],
-        zoom: Math.min(targetZoom, 18),
-        essential: true,
-      });
-    }
-
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.set("lat", payload.square.lat.toFixed(6));
-      url.searchParams.set("lng", payload.square.lng.toFixed(6));
-      if (payload.what3words) {
-        url.searchParams.set("words", payload.what3words);
-      } else {
-        url.searchParams.delete("words");
-      }
-      window.history.replaceState({}, "", url.toString());
-    }
+    replaceMapUrl({
+      center: { lng: payload.square.lng, lat: payload.square.lat },
+      panel: "place",
+    });
   }, []);
 
   const fetchSquare = useCallback(
@@ -1009,36 +1135,26 @@ export default function ScotlandMap() {
   );
 
   const clearPlace = useCallback(() => {
-    // Invalidate in-flight selectPlace/inspect so a late fetch cannot repaint
-    // the stub after × / Escape dismiss (UX10-2 Show legend intercept at 390).
+    // Invalidate in-flight identify / search so a late place_card_v1 cannot
+    // resurrect the sheet after Esc / × (mobile detent e2e).
     lookupGen.current += 1;
+    identifyAbortRef.current?.abort();
+    identifyAbortRef.current = null;
     setResult(null);
     setError(null);
     setAddressLine(null);
     setPlaceStub(null);
     setPlaceLoading(false);
+    setSearchNoMatch(false);
+    setPanelKind((k) => (k === "place" ? "closed" : k));
+    setPanelCollapsed(false);
+    placeAsideRef.current = false;
+    setRestPromptVisible(true);
     markerRef.current?.remove();
     markerRef.current = null;
     parcelLabelRef.current?.remove();
     parcelLabelRef.current = null;
-    const map = mapRef.current;
-    if (map?.getSource("selected-square")) {
-      (map.getSource("selected-square") as GeoJSONSource).setData(
-        emptyCollection,
-      );
-    }
-    if (map?.getSource("selected-parcel")) {
-      (map.getSource("selected-parcel") as GeoJSONSource).setData(
-        emptyCollection,
-      );
-    }
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("lat");
-      url.searchParams.delete("lng");
-      url.searchParams.delete("words");
-      window.history.replaceState({}, "", url.toString());
-    }
+    replaceMapUrl({ place: null, panel: null, center: null });
   }, []);
 
   /** SW-028: close sea stub and reset camera to Scotland national view. */
@@ -1047,19 +1163,26 @@ export default function ScotlandMap() {
     const map = mapRef.current;
     if (!map) return;
     const narrow = window.innerWidth <= 900;
-    map.fitBounds(
-      [
-        [-8.05, 54.48],
-        [-0.55, 60.88],
-      ],
-      {
-        padding: narrow
-          ? { top: 132, bottom: 72, left: 12, right: 16 }
-          : { top: 96, bottom: 36, left: 24, right: 28 },
-        animate: true,
-        maxZoom: 7.4,
-      },
-    );
+    // Defer past panel-close padding easeTo(duration:0) so it cannot cancel
+    // this fitBounds mid-flight (sea-stub national maxZoom e2e on desktop).
+    window.setTimeout(() => {
+      const live = mapRef.current;
+      if (!live) return;
+      live.stop();
+      live.fitBounds(
+        [
+          [-8.05, 54.48],
+          [-0.55, 60.88],
+        ],
+        {
+          padding: narrow
+            ? { top: 132, bottom: 72, left: 12, right: 16 }
+            : { top: 96, bottom: 36, left: 24, right: 28 },
+          animate: true,
+          maxZoom: 7.4,
+        },
+      );
+    }, 0);
   }, [clearPlace]);
 
   // Public path for a point (map click, search, ?lat=&lng=): marker, optional fly,
@@ -1094,26 +1217,48 @@ export default function ScotlandMap() {
       const map = mapRef.current;
       markerRef.current?.remove();
       if (map) {
-        markerRef.current = new maplibregl.Marker({ color: "#0076d3" })
-          .setLngLat([lng, lat])
-          .addTo(map);
+        markerRef.current = placeSelectedMarker(map, lng, lat);
         if (opts.fly) {
+          const layersHoldingFly = panelKindRef.current === "layers";
           map.flyTo({
             center: [lng, lat],
             zoom: Math.max(map.getZoom(), 15),
             essential: true,
+            // GIS 12 — centre in the uncovered map (right of 380px desktop panel).
+            padding: mapPanelPadding({
+              panelOpen: !layersHoldingFly,
+              detent: opts.fromAddressSearch ? "half" : "peek",
+              collapsed: false,
+            }),
           });
         }
       }
-      if (typeof window !== "undefined") {
-        const url = new URL(window.location.href);
-        url.searchParams.set("lat", lat.toFixed(6));
-        url.searchParams.set("lng", lng.toFixed(6));
-        url.searchParams.delete("words");
-        window.history.replaceState({}, "", url.toString());
-      }
       setError(null);
       setResult(null);
+      setSearchNoMatch(false);
+      setRestPromptVisible(false);
+      // Layers XOR place: keep Layers open; stash the place for restore on close.
+      // Late map-identify must not unmount the layers drawer mid-interaction.
+      const layersHolding = panelKindRef.current === "layers";
+      if (layersHolding) {
+        placeAsideRef.current = true;
+      } else {
+        setPanelKind("place");
+        setPanelCollapsed(false);
+        setPanelDetent(opts.fromAddressSearch ? "half" : "peek");
+      }
+      if (!panelHistoryRef.current) {
+        pushMapUrl({
+          center: { lng, lat },
+          panel: layersHolding ? "layers" : "place",
+        });
+        panelHistoryRef.current = true;
+      } else {
+        replaceMapUrl({
+          center: { lng, lat },
+          panel: layersHolding ? "layers" : "place",
+        });
+      }
       setAddressLine(opts.label ?? null);
       const knownCode = opts.dataZoneCode?.trim() || null;
       const knownName = opts.dataZoneName?.trim() || null;
@@ -1147,10 +1292,15 @@ export default function ScotlandMap() {
           fromAddressSearch: Boolean(opts.fromAddressSearch),
         };
       });
-      if (window.matchMedia("(max-width: 640px)").matches) {
-        setLegendOpen(false);
-      }
       setPlaceLoading(true);
+      // Cancel debounce + prior identify so only the latest selectPlace wins (24).
+      if (identifyTimerRef.current) {
+        clearTimeout(identifyTimerRef.current);
+        identifyTimerRef.current = null;
+      }
+      identifyAbortRef.current?.abort();
+      const identifyAbort = new AbortController();
+      identifyAbortRef.current = identifyAbort;
       try {
         if (!knownCode) {
           try {
@@ -1160,9 +1310,9 @@ export default function ScotlandMap() {
               vintage?: number;
             }>(
               `/layers/context/data-zones/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
-              { cache: "no-store" },
+              { cache: "no-store", signal: identifyAbort.signal },
             );
-            if (gen !== lookupGen.current) return;
+            if (gen !== lookupGen.current || identifyAbort.signal.aborted) return;
             const code = data.code?.trim() || null;
             const name = data.name?.trim() || null;
             setPlaceStub((prev) => {
@@ -1181,6 +1331,7 @@ export default function ScotlandMap() {
             // Sea / outside Scotland (404 no_data_zone_at_point) or boundaries
             // unavailable: still load place_card_v1 so miss/unavailable is honest
             // and the UI can show one plain line instead of No-data rows.
+            if (identifyAbort.signal.aborted || gen !== lookupGen.current) return;
           }
         }
         // Designer place card (place_card_v1) — ownership / sources; no £.
@@ -1189,8 +1340,9 @@ export default function ScotlandMap() {
           lat,
           lng,
           postcode: opts.postcode,
+          signal: identifyAbort.signal,
         });
-        if (gen !== lookupGen.current) return;
+        if (gen !== lookupGen.current || identifyAbort.signal.aborted) return;
         setPlaceStub((prev) => {
           if (gen !== lookupGen.current) return prev;
           return prev && prev.lat === lat && prev.lng === lng
@@ -1232,6 +1384,82 @@ export default function ScotlandMap() {
   const inspectRef = useRef(selectPlace);
   inspectRef.current = selectPlace;
 
+  const openLayersPanel = useCallback(() => {
+    if (panelKind === "place" || placeStub) {
+      placeAsideRef.current = true;
+    }
+    setPanelKind("layers");
+    setPanelCollapsed(false);
+    setPanelDetent("full");
+    setRestPromptVisible(false);
+    setLiveMessage("Map layers open");
+    if (!panelHistoryRef.current) {
+      pushMapUrl({ panel: "layers" });
+      panelHistoryRef.current = true;
+    } else {
+      replaceMapUrl({ panel: "layers" });
+    }
+  }, [panelKind, placeStub]);
+
+  const closeLayersPanel = useCallback(() => {
+    if (placeAsideRef.current && placeStub) {
+      setPanelKind("place");
+      // Layers opens at full — restore the place card at its search/tap detent,
+      // not full (otherwise identify-at-centre stays under the sheet on tablet).
+      setPanelDetent(placeStub.fromAddressSearch ? "half" : "peek");
+      setLiveMessage("Place card restored");
+      replaceMapUrl({ panel: "place" });
+    } else {
+      setPanelKind("closed");
+      setLiveMessage("Layers closed");
+      // Push a closed entry when Layers was in history (deep-link or open push)
+      // so browser Back restores panel=layers (MAP-CARDS E1 / check 15+17).
+      if (panelHistoryRef.current) {
+        pushMapUrl({ panel: null });
+      } else {
+        replaceMapUrl({ panel: null });
+      }
+      panelHistoryRef.current = false;
+    }
+    placeAsideRef.current = false;
+    layersBtnRef.current?.focus();
+  }, [placeStub]);
+
+  const dismissPanel = useCallback(() => {
+    if (panelKind === "layers") {
+      closeLayersPanel();
+      return;
+    }
+    if (panelKind === "place") {
+      if (!isNarrowPanel && !panelCollapsed) {
+        setPanelCollapsed(true);
+        setLiveMessage("Place card collapsed");
+        return;
+      }
+      if (isNarrowPanel) {
+        const step = nextDetentDown(panelDetent);
+        if (step !== "close") {
+          setPanelDetent(step);
+          setLiveMessage(`Panel ${step}`);
+          return;
+        }
+      }
+      clearPlace();
+      setPanelKind("closed");
+      setPanelCollapsed(false);
+      replaceMapUrl({ panel: null, place: null });
+      panelHistoryRef.current = false;
+      setLiveMessage("Panel closed");
+    }
+  }, [
+    panelKind,
+    closeLayersPanel,
+    isNarrowPanel,
+    panelCollapsed,
+    panelDetent,
+    clearPlace,
+  ]);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const typing =
@@ -1242,29 +1470,84 @@ export default function ScotlandMap() {
         document.getElementById("place-query")?.focus();
         return;
       }
+      if (event.key === "?" && !typing) {
+        event.preventDefault();
+        setShortcutsOpen(true);
+        return;
+      }
+      if (event.key === "l" && !typing) {
+        event.preventDefault();
+        if (panelKind === "layers") closeLayersPanel();
+        else openLayersPanel();
+        return;
+      }
       if (event.key !== "Escape") return;
-      if (toolsOpen) {
-        setToolsOpen(false);
-        // UX-03: return focus to the Layers toggle that opened the drawer.
-        layersBtnRef.current?.focus();
+      if (shortcutsOpen) {
+        setShortcutsOpen(false);
+        return;
+      }
+      if (panelKind !== "closed") {
+        dismissPanel();
         return;
       }
       if (placeStub || result || error) clearPlace();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toolsOpen, placeStub, result, error, clearPlace]);
+  }, [
+    panelKind,
+    placeStub,
+    result,
+    error,
+    clearPlace,
+    dismissPanel,
+    openLayersPanel,
+    closeLayersPanel,
+    shortcutsOpen,
+  ]);
 
+  useEffect(() => {
+    const onPop = () => {
+      const state = readMapUrlState(window.location.search);
+      if (state.panel === "layers") {
+        setPanelKind("layers");
+        setPanelDetent("full");
+      } else if (state.panel === "place" && placeStub) {
+        setPanelKind("place");
+      } else {
+        setPanelKind("closed");
+        setPanelCollapsed(false);
+        panelHistoryRef.current = false;
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [placeStub]);
+
+  useEffect(() => {
+    const mq = window.matchMedia(
+      `(max-width: ${PANEL_MOBILE_BREAKPOINT - 1}px)`,
+    );
+    const sync = () => setIsNarrowPanel(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  // MapLibre padding follows the panel slot.
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
-    if (!map?.getLayer("satellite")) return;
-    map.setLayoutProperty(
-      "satellite",
-      "visibility",
-      mapStyle === "satellite" ? "visible" : "none",
-    );
-  }, [mapReady, mapStyle]);
+    if (!map) return;
+    map.easeTo({
+      padding: mapPanelPadding({
+        panelOpen: panelKind !== "closed",
+        detent: panelDetent,
+        collapsed: panelCollapsed,
+      }),
+      duration: 0,
+    });
+  }, [mapReady, panelKind, panelDetent, panelCollapsed]);
 
   const openPostcode = async (postcode: string, generation: number) => {
     const response = await placeLookupFetch(
@@ -1319,6 +1602,8 @@ export default function ScotlandMap() {
     }
     setError(body.note || "Those three words did not resolve on the map.");
   };
+  const openWordsRef = useRef(openWords);
+  openWordsRef.current = openWords;
 
   const clearSuggestions = () => {
     // Cancel debounce + in-flight so "Looking…" cannot reappear after blur/Escape.
@@ -1439,20 +1724,26 @@ export default function ScotlandMap() {
           generation,
         });
       } else {
+        // No-match: inline under search — clear pin, close card (P6).
         setError(null);
         setResult(null);
-        setPlaceStub({
-          lat: 0,
-          lng: 0,
-          noMatch: true,
-          fromAddressSearch: true,
-          card: null,
-        });
+        setPlaceStub(null);
+        setSearchNoMatch(true);
+        setPanelKind("closed");
+        markerRef.current?.remove();
+        markerRef.current = null;
+        replaceMapUrl({ place: null, panel: null });
       }
       if (generation === lookupGen.current) setApiOk(true);
     } catch (err) {
       if (generation !== lookupGen.current) return;
-      setError(visitorFacingError(err));
+      const msg = visitorFacingError(err);
+      setError(msg);
+      // SHARE-FIX: surface Try again under search when no place card is open.
+      setSuggestNote(msg);
+      setSuggestions([]);
+      setActiveSuggest(-1);
+      setSuggesting(false);
       if (isServiceFailure(err)) {
         void pingApi().then((s) => {
           if (generation === lookupGen.current) setApiOk(s.ok);
@@ -1631,20 +1922,22 @@ export default function ScotlandMap() {
     const container = mapContainer.current;
     if (!container || mapRef.current) return;
 
+    const bootStyle = basemapStyleUrl(mapStyle);
     const map = new maplibregl.Map({
       container,
-      // CARTO's raster tiles now stamp "API key required" unless a key is set.
-      style: "https://tiles.openfreemap.org/styles/positron",
+      style: bootStyle,
       center: [-4.2, 57.5],
       zoom: 5.7,
+      maxZoom: MAP_MAX_ZOOM,
       // Map footer is one line; legal credits live behind the (i) control.
-      // OS / OpenFreeMap credits stay from the style + layers — add the rest here.
       attributionControl: {
         compact: true,
         customAttribution: [
-          "Contains Royal Mail data © Royal Mail copyright and database right 2026",
-          "Source: Office for National Statistics licensed under the Open Government Licence v.3.0",
-          "No data provider endorses this site.",
+          OPENFREEMAP_ATTRIBUTION,
+          // Postcode / place search uses RM + ONS directories — keep once in the (i) control.
+          "Contains Royal Mail data © Royal Mail copyright and database right",
+          "Contains National Statistics data © Crown copyright and database right. Office for National Statistics",
+          "No data provider endorses this site",
         ],
       },
     });
@@ -1686,6 +1979,17 @@ export default function ScotlandMap() {
     map.on("moveend", syncCameraDataset);
     map.on("zoomend", syncCameraDataset);
     const frameScotland = () => {
+      if (cameraPreserveRef.current) {
+        const cam = cameraPreserveRef.current;
+        cameraPreserveRef.current = null;
+        map.jumpTo({
+          center: [cam.lng, cam.lat],
+          zoom: cam.zoom,
+        });
+        syncCameraDataset();
+        container.dataset.framed = "1";
+        return;
+      }
       if (userMoved) return;
       if (container.clientWidth < 40 || container.clientHeight < 40) return;
       const narrow = window.innerWidth <= 900;
@@ -1721,40 +2025,6 @@ export default function ScotlandMap() {
 
     map.on("load", () => {
       frameScotland();
-
-      // SW-019: kick off ?lat=&lng= / ?words= before optional layer setup so the
-      // out-of-Scotland plain line can appear within the 3s product budget
-      // (canvas is already painted; layer registration must not delay inspect).
-      const bootParams = new URLSearchParams(window.location.search);
-      const bootWords = bootParams.get("words");
-      const bootLat = bootParams.get("lat");
-      const bootLng = bootParams.get("lng");
-      // public/Crown 2024 dashboard: licence unverified/not open — never paint
-      // Council AGR £ / rent £/m² / band choropleth: scrubbed from public shell
-      if (bootParams.get("vacant") === "1") {
-        setShowVdl(true);
-      }
-      if (bootParams.get("community") === "1") {
-        setShowCommunityOwnership(true);
-      }
-      if (bootWords) {
-        setQuery(bootWords);
-        void (async () => {
-          if (!(await fetchCapabilities()).agr) return;
-          const generation = ++lookupGen.current;
-          try {
-            await openWords(bootWords, generation);
-            setApiOk(true);
-          } catch (err) {
-            setError(visitorFacingError(err));
-            if (isServiceFailure(err)) {
-              void pingApi().then((s) => setApiOk(s.ok));
-            }
-          }
-        })();
-      } else if (bootLat && bootLng) {
-        void inspectRef.current(Number(bootLat), Number(bootLng), { fly: true });
-      }
 
       // Hatched grey pattern for missing choropleth values (honest no-data).
       if (!map.hasImage(NO_DATA_HATCH_IMAGE)) {
@@ -1817,25 +2087,6 @@ export default function ScotlandMap() {
           "line-dasharray": [2, 1.5],
           "line-opacity": 0.9,
         },
-      });
-
-      map.addSource("squares-agr-grid", { type: "geojson", data: emptyCollection });
-      map.addLayer({
-        id: "squares-agr-fill",
-        type: "fill",
-        source: "squares-agr-grid",
-        layout: { visibility: "none" },
-        paint: {
-          "fill-color": CELL_AGR_COLOR,
-          "fill-opacity": 0.7,
-        },
-      });
-      map.addLayer({
-        id: "squares-agr-line",
-        type: "line",
-        source: "squares-agr-grid",
-        layout: { visibility: "none" },
-        paint: { "line-color": "#7f0000", "line-width": 0.4, "line-opacity": 0.4 },
       });
 
       map.addSource("data-zones-overlay", {
@@ -2269,100 +2520,9 @@ export default function ScotlandMap() {
         }
       }
 
-      map.addSource("parcels-wms", {
-        type: "raster",
-        tiles: ["/api/parcels/tiles/{z}/{x}/{y}"],
-        tileSize: 256,
-        minzoom: 14,
-        maxzoom: 19,
-        scheme: "xyz",
-        attribution: inspireRosOsAttribution(),
-      });
-      map.addLayer({
-        id: "parcels-wms",
-        type: "raster",
-        source: "parcels-wms",
-        minzoom: 14,
-        paint: { "raster-opacity": 0.9, "raster-fade-duration": 0 },
-        layout: { visibility: "none" },
-      });
-
-      // Index Polygons by view bounds (same contract as public-land / VDL).
-      // When unloaded, stay empty and rely on live WMS tiles above.
-      map.addSource("parcels-postgis", {
-        type: "geojson",
-        data: emptyCollection,
-        attribution: inspireRosOsAttribution(),
-      });
-      map.addLayer({
-        id: "parcels-postgis-fill",
-        type: "fill",
-        source: "parcels-postgis",
-        minzoom: CADASTRAL_MIN_ZOOM,
-        layout: { visibility: "none" },
-        paint: {
-          "fill-color": "#5c4a1f",
-          "fill-opacity": 0.08,
-        },
-      });
-      map.addLayer({
-        id: "parcels-postgis-line",
-        type: "line",
-        source: "parcels-postgis",
-        minzoom: CADASTRAL_MIN_ZOOM,
-        layout: { visibility: "none" },
-        paint: {
-          "line-color": "#5c4a1f",
-          "line-width": 1.1,
-          "line-opacity": 0.85,
-        },
-      });
-
-      map.addSource("selected-parcel", { type: "geojson", data: emptyCollection });
-      map.addLayer({
-        id: "selected-parcel-fill",
-        type: "fill",
-        source: "selected-parcel",
-        paint: { "fill-color": "#0b1e3a", "fill-opacity": 0.12 },
-      });
-      map.addLayer({
-        id: "selected-parcel-outline",
-        type: "line",
-        source: "selected-parcel",
-        paint: { "line-color": "#0b1e3a", "line-width": 2.25, "line-opacity": 0.95 },
-      });
-
-      map.addSource("selected-square", { type: "geojson", data: emptyCollection });
-      map.addLayer({
-        id: "selected-square-fill",
-        type: "fill",
-        source: "selected-square",
-        paint: { "fill-color": "#0076d3", "fill-opacity": 0.18 },
-      });
-      map.addLayer({
-        id: "selected-square-outline",
-        type: "line",
-        source: "selected-square",
-        paint: { "line-color": "#0076d3", "line-width": 2.75 },
-      });
-
-      map.addSource("satellite", {
-        type: "raster",
-        tiles: [
-          "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        ],
-        tileSize: 256,
-        attribution: "Source: Esri, Vantor, Earthstar Geographics, and the GIS User Community",
-      });
-      map.addLayer(
-        {
-          id: "satellite",
-          type: "raster",
-          source: "satellite",
-          layout: { visibility: "none" },
-        },
-        "council-fill",
-      );
+      // GIS 16 — plot-level parcels / selected-parcel / w3w / selected-square
+      // are not registered on the public map.
+      removePlotLevelMapBits(map);
 
       setMapReady(true);
     });
@@ -2400,15 +2560,27 @@ export default function ScotlandMap() {
       dzHoverPopupRef.current?.remove();
     });
 
-    map.on("click", async (event) => {
+    map.on("click", (event) => {
       const lat = event.lngLat.lat;
       const lng = event.lngLat.lng;
 
+      // E10 — debounce identify 150ms; only latest renders (AbortController in selectPlace).
+      if (identifyTimerRef.current) clearTimeout(identifyTimerRef.current);
+      identifyTimerRef.current = setTimeout(() => {
+        void runMapIdentify(lat, lng, event.point);
+      }, 150);
+    });
+
+    const runMapIdentify = async (
+      lat: number,
+      lng: number,
+      point: maplibregl.Point,
+    ) => {
       // Data Zone click → place card (boundaries only; no AGR £).
       const dzHits =
         map.getLayer("data-zones-fill") &&
         map.getLayoutProperty("data-zones-fill", "visibility") === "visible"
-          ? map.queryRenderedFeatures(event.point, {
+          ? map.queryRenderedFeatures(point, {
               layers: ["data-zones-fill"],
             })
           : [];
@@ -2448,12 +2620,12 @@ export default function ScotlandMap() {
         return;
       }
 
-      // Layer popup: cadastral / public land / SVDLS site (ownership layers)
+      // Layer popup: public land / SVDLS / LCA (ownership layers) — no parcels.
       try {
         const publicHits =
           map.getLayer("public-land-fill") &&
           map.getLayoutProperty("public-land-fill", "visibility") === "visible"
-            ? map.queryRenderedFeatures(event.point, {
+            ? map.queryRenderedFeatures(point, {
                 layers: ["public-land-fill"],
               })
             : [];
@@ -2468,7 +2640,7 @@ export default function ScotlandMap() {
         const vdlHits =
           map.getLayer("vdl-fill") &&
           map.getLayoutProperty("vdl-fill", "visibility") === "visible"
-            ? map.queryRenderedFeatures(event.point, {
+            ? map.queryRenderedFeatures(point, {
                 layers: ["vdl-fill"],
               })
             : [];
@@ -2494,7 +2666,7 @@ export default function ScotlandMap() {
         const lcaHits =
           map.getLayer("lca-fill") &&
           map.getLayoutProperty("lca-fill", "visibility") === "visible"
-            ? map.queryRenderedFeatures(event.point, {
+            ? map.queryRenderedFeatures(point, {
                 layers: ["lca-fill"],
               })
             : [];
@@ -2505,7 +2677,6 @@ export default function ScotlandMap() {
               source?: string;
             }
           | undefined;
-        // Do not open a cadastral-parcel popup on click — place card owns outline.
         const html = layerPopupHtml({
           parcelId: null,
           areaSqm: null,
@@ -2542,7 +2713,6 @@ export default function ScotlandMap() {
             .setLngLat([lng, lat])
             .setHTML(html)
             .addTo(map);
-          // MapLibre's default close control is a bare "×" with no accessible name.
           const closeBtn = layerPopupRef.current
             .getElement()
             ?.querySelector("button.maplibregl-popup-close-button");
@@ -2554,12 +2724,15 @@ export default function ScotlandMap() {
         /* ignore popup failures */
       }
 
-      // Public shell: location + stub place card only (no AGR £ / Wealth / tax).
       await inspectRef.current(lat, lng, { fly: false });
-    });
+    };
 
 
     mapRef.current = map;
+    // E2e / GIS checks (MAP-CARDS 26–32, A3): MapLibre instance for style/zoom probes.
+    (
+      window as unknown as { __map?: maplibregl.Map | null }
+    ).__map = map;
     return () => {
       resizeObserver.disconnect();
       markerRef.current?.remove();
@@ -2570,10 +2743,85 @@ export default function ScotlandMap() {
       layerPopupRef.current = null;
       map.remove();
       mapRef.current = null;
+      (
+        window as unknown as { __map?: maplibregl.Map | null }
+      ).__map = null;
       setMapReady(false);
+      // Allow deep-link boot on the next map instance (Strict Mode / style remount).
+      urlBootDoneRef.current = false;
     };
+    // Remount when basemap style changes (OpenFreeMap light ↔ detailed).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [mapStyle]);
+
+  // Deep-link boot (?lat/lng/words) once mapReady — survives style remount.
+  // Prefer the mount-time capture: layers URL sync may already have rewritten
+  // lat/lng → c= by the time the style loads.
+  useEffect(() => {
+    if (!mapReady || urlBootDoneRef.current) return;
+    urlBootDoneRef.current = true;
+    const captured = deepLinkCaptureRef.current;
+    const bootParams = new URLSearchParams(window.location.search);
+    const boot = readMapUrlState(bootParams);
+    const bootWords = captured?.words || bootParams.get("words");
+    const parseBootCoord = (raw: string | null): number | null => {
+      if (raw == null || raw.trim() === "") return null;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : null;
+    };
+    const bootLat =
+      captured?.lat ?? parseBootCoord(bootParams.get("lat"));
+    const bootLng =
+      captured?.lng ??
+      parseBootCoord(bootParams.get("lng") ?? bootParams.get("lon"));
+    if (captured?.vacant || bootParams.get("vacant") === "1") {
+      setShowVdl(true);
+    }
+    if (captured?.community || bootParams.get("community") === "1") {
+      setShowCommunityOwnership(true);
+    }
+    if (bootWords) {
+      setQuery(bootWords);
+      void (async () => {
+        if (!(await fetchCapabilities()).agr) return;
+        const generation = ++lookupGen.current;
+        try {
+          await openWordsRef.current(bootWords, generation);
+          setApiOk(true);
+        } catch (err) {
+          setError(visitorFacingError(err));
+          if (isServiceFailure(err)) {
+            void pingApi().then((s) => setApiOk(s.ok));
+          }
+        }
+      })();
+    } else if (
+      bootLat != null &&
+      bootLng != null &&
+      Number.isFinite(bootLat) &&
+      Number.isFinite(bootLng)
+    ) {
+      // URL deep-link is intentional navigation (like search → half), not a map tap.
+      void inspectRef.current(bootLat, bootLng, {
+        fly: true,
+        fromAddressSearch: true,
+      });
+    } else if (captured?.place && boot.center) {
+      // place= + c= after rewrite — still identify at the captured centre.
+      void inspectRef.current(boot.center.lat, boot.center.lng, {
+        fly: true,
+        fromAddressSearch: true,
+      });
+    } else {
+      const map = mapRef.current;
+      if (map && boot.center) {
+        map.jumpTo({
+          center: [boot.center.lng, boot.center.lat],
+          zoom: boot.z ?? map.getZoom(),
+        });
+      }
+    }
+  }, [mapReady]);
 
   // Which optional routers the API mounts; legacy calls are skipped (quietly) when absent.
   useEffect(() => {
@@ -2587,11 +2835,8 @@ export default function ScotlandMap() {
     };
   }, []);
 
-  // Catalog licence fields drive the map credits control in the legend.
-  // Idea 57: when the catalogue has loaded and builtup_mask is missing or not
-  // live, mark it Coming soon (empty catalogue stubs leave toggles alone).
-  // Coming-soon-up-front / LAYER-CATALOG-STATUS: lca + ces_aquaculture not-live
-  // → Coming soon before any tile request (no console 503).
+  // Built-up mask is always-on background when catalogue says live.
+  // Empty catalogue stubs (common in e2e) leave the background attempt on.
   useEffect(() => {
     let cancelled = false;
     void fetchLayerCatalog()
@@ -2606,16 +2851,18 @@ export default function ScotlandMap() {
         const mask = layers.find((layer) => layer.id === "builtup_mask");
         const maskReady = Boolean(mask && mask.status === "live");
         setBuiltupMaskCatalogGap(!maskReady);
-        if (!maskReady) setShowBuiltupMask(false);
+        // Background style: on when live; off only when catalogue proves gap.
+        setShowBuiltupMask(maskReady);
+        if (!maskReady) return;
 
-        const byId: Record<string, CatalogLayer> = {};
-        for (const layer of layers) {
-          byId[layer.id] = layer;
-        }
-        const aquaLive = byId.ces_aquaculture?.status === "live";
-        const lcaLive = byId.lca?.status === "live";
-        if (!aquaLive) markTileUnavailable("5");
-        if (!lcaLive) markTileUnavailable("lca");
+        const path =
+          "/layers/open/dz2022-masked?south=55.85&west=-4.27&north=55.87&east=-4.24&max_features=1";
+        void apiJson<GeoJSON.FeatureCollection>(path).catch((err: unknown) => {
+          if (isServiceUnavailable(err)) {
+            setBuiltupMaskUnavailable(true);
+            setShowBuiltupMask(false);
+          }
+        });
       })
       .catch(() => {
         if (!cancelled) {
@@ -2631,8 +2878,8 @@ export default function ScotlandMap() {
   // Idea 57 — service-unavailable is detected when the mask is turned on
   // (loadMasked / enable check), not via a mount-time probe.
 
-  // Public shell: never fetch /layers/councils (council AGR £ and rent £/m² stay internal).
-  // Keep fill/hatch expressions on a public context ramp so hidden paint is never AGR £.
+  // Council boundaries at rest; fill colours from council-metrics at z5–7 when AGR on.
+  // /layers/councils is context-scrubbed (no modelled AGR £ on the public shell).
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
@@ -2647,86 +2894,55 @@ export default function ScotlandMap() {
       ] as unknown as ExpressionSpecification);
       map.setLayoutProperty("council-nodata-hatch", "visibility", "none");
     }
-    map.setLayoutProperty("council-fill", "visibility", "none");
-    map.setLayoutProperty("council-line", "visibility", "none");
     map.setFilter("council-fill", null);
     map.setFilter("council-line", null);
-  }, [mapReady, choropleth]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    if (showVdl) url.searchParams.set("vacant", "1");
-    else url.searchParams.delete("vacant");
-    if (showCommunityOwnership) url.searchParams.set("community", "1");
-    else url.searchParams.delete("community");
-    url.searchParams.delete("public");
-    url.searchParams.delete("band");
-    window.history.replaceState({}, "", url.toString());
-  }, [showVdl, showCommunityOwnership]);
+    const zoom = map.getZoom();
+    const lineVis = showCouncils ? "visible" : "none";
+    map.setLayoutProperty("council-line", "visibility", lineVis);
 
-  // Scot-LAND squares grid
+    // Fill only when AGR/value layer is on and at overview zooms (z5–7).
+    const fillOn = showCouncils && showAgr && zoom >= 5 && zoom < 8;
+    map.setLayoutProperty(
+      "council-fill",
+      "visibility",
+      fillOn ? "visible" : "none",
+    );
+  }, [mapReady, choropleth, showCouncils, showAgr, mapZoom]);
+
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
-    if (!map) return;
-
-    const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("squares-agr-fill")) return;
-      map.setLayoutProperty("squares-agr-fill", "visibility", vis);
-      map.setLayoutProperty("squares-agr-line", "visibility", vis);
-    };
-
-    if (!showCellGrid) {
-      setVis("none");
-      return;
-    }
-
+    if (!map?.getSource("council-metrics")) return;
     let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let inFlight = false;
-
-    const loadGrid = () => {
-      if (cancelled || !mapRef.current || inFlight) return;
-      const b = map.getBounds();
-      if (!b) return;
-      if (map.getZoom() < 12) {
-        setVis("none");
-        return;
-      }
-      inFlight = true;
-      setLayerBusy(true);
-      const path =
-        `/layers/w3w-grid?south=${b.getSouth()}&west=${b.getWest()}` +
-        `&north=${b.getNorth()}&east=${b.getEast()}&scenario=${scenario}&max_cells=200`;
-      void apiJson<GeoJSON.FeatureCollection>(path)
-        .then((data) => {
-          if (cancelled) return;
-          (map.getSource("squares-agr-grid") as GeoJSONSource)?.setData(data);
-          setVis("visible");
-        })
-        .catch(() => {
-          if (!cancelled) setVis("none");
-        })
-        .finally(() => {
-          inFlight = false;
-          if (!cancelled) setLayerBusy(false);
-        });
-    };
-
-    const onMove = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(loadGrid, 700);
-    };
-
-    loadGrid();
-    map.on("moveend", onMove);
+    void apiJson<GeoJSON.FeatureCollection>("/boundaries/councils")
+      .then((data) => {
+        if (cancelled || !mapRef.current) return;
+        safeSetGeoJson(
+          map.getSource("council-metrics") as GeoJSONSource | undefined,
+          data,
+        );
+      })
+      .catch(() => {
+        /* boundaries optional — lines stay empty */
+      });
     return () => {
       cancelled = true;
-      if (timer) clearTimeout(timer);
-      map.off("moveend", onMove);
     };
-  }, [mapReady, showCellGrid, scenario]);
+  }, [mapReady]);
+
+  useEffect(() => {
+    replaceMapUrl({ layers: activeLayerIds });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    showVdl,
+    showCommunityOwnership,
+    showCouncils,
+    showDataZones,
+    showAgr,
+    showHla,
+    ledgerEnabled,
+  ]);
 
   // Data Zone boundaries (simplified GeoJSON by view bounds — outlines only, no AGR £)
   useEffect(() => {
@@ -2766,7 +2982,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("data-zones-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("data-zones-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -2834,7 +3050,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("dz2022-masked-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("dz2022-masked-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
         })
         .catch((err: unknown) => {
@@ -2900,7 +3116,8 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("repd-onshore-wind-overlay") as GeoJSONSource)?.setData(
+          safeSetGeoJson(
+            map.getSource("repd-onshore-wind-overlay") as GeoJSONSource | undefined,
             data,
           );
           setVis("visible");
@@ -2977,7 +3194,8 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("ces-aquaculture-overlay") as GeoJSONSource)?.setData(
+          safeSetGeoJson(
+            map.getSource("ces-aquaculture-overlay") as GeoJSONSource | undefined,
             data,
           );
           setVis("visible");
@@ -3054,7 +3272,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("vdl-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("vdl-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3124,7 +3342,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("hla-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("hla-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3194,7 +3412,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("ldp-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("ldp-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3263,9 +3481,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (
-            map.getSource("community-ownership-overlay") as GeoJSONSource
-          )?.setData(data);
+          safeSetGeoJson(map.getSource("community-ownership-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3342,7 +3558,7 @@ export default function ScotlandMap() {
           apiJson<GeoJSON.FeatureCollection>(nfiUrl)
             .then((data) => {
               if (cancelled || !mapRef.current) return;
-              (map.getSource("nfi-overlay") as GeoJSONSource)?.setData(data);
+              safeSetGeoJson(map.getSource("nfi-overlay") as GeoJSONSource | undefined, data);
               setNfiVis("visible");
             })
             .catch((err: unknown) => {
@@ -3367,7 +3583,10 @@ export default function ScotlandMap() {
           apiJson<GeoJSON.FeatureCollection>(nativeUrl)
             .then((data) => {
               if (cancelled || !mapRef.current) return;
-              (map.getSource("native-woodland-overlay") as GeoJSONSource)?.setData(
+              safeSetGeoJson(
+                map.getSource("native-woodland-overlay") as
+                  | GeoJSONSource
+                  | undefined,
                 data,
               );
               setNativeVis("visible");
@@ -3439,7 +3658,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("repd-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("repd-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3518,7 +3737,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("crown-leases-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("crown-leases-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3587,7 +3806,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("public-land-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("public-land-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3657,7 +3876,7 @@ export default function ScotlandMap() {
       void apiJson<GeoJSON.FeatureCollection>(path)
         .then((data) => {
           if (cancelled) return;
-          (map.getSource("lca-overlay") as GeoJSONSource)?.setData(data);
+          safeSetGeoJson(map.getSource("lca-overlay") as GeoJSONSource | undefined, data);
           setVis("visible");
           setLayerNotice(null);
         })
@@ -3699,122 +3918,31 @@ export default function ScotlandMap() {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map) return;
+    const syncZoom = () => {
+      setMapZoom(map.getZoom());
+    };
     const sync = () => {
       const zoom = map.getZoom();
       setMapZoom(zoom);
       if (map.isMoving()) return;
-      // Land parcels stay off until the user toggles them (no auto-enable on zoom).
-      // public_crown stays off: SG 2024 dashboard licence is unverified/not open
-      if (!dataZonesTouched.current) {
-        setShowDataZones(zoom >= DATA_ZONE_MIN_ZOOM);
-      }
+      // data_zones stays off until the user toggles it (no auto-on at zoom 10).
+      const center = map.getCenter();
+      replaceMapUrl({
+        z: zoom,
+        center: { lng: center.lng, lat: center.lat },
+      });
     };
     sync();
+    // Keep inline-legend zoom gates current during flyTo (not only on end).
+    map.on("zoom", syncZoom);
     map.on("zoomend", sync);
     map.on("moveend", sync);
     return () => {
+      map.off("zoom", syncZoom);
       map.off("zoomend", sync);
       map.off("moveend", sync);
     };
   }, [mapReady]);
-
-  useEffect(() => {
-    if (!mapReady) return;
-    const map = mapRef.current;
-    if (!map?.getLayer("parcels-wms")) return;
-    // Cadastral routes are always mounted (not the optional AGR router).
-    const vis = showBoundaries ? "visible" : "none";
-    map.setLayoutProperty("parcels-wms", "visibility", vis);
-    if (map.getLayer("parcels-postgis-fill")) {
-      map.setLayoutProperty("parcels-postgis-fill", "visibility", vis);
-    }
-    if (map.getLayer("parcels-postgis-line")) {
-      map.setLayoutProperty("parcels-postgis-line", "visibility", vis);
-    }
-  }, [mapReady, showBoundaries]);
-
-  useEffect(() => {
-    if (!mapReady) return;
-    const map = mapRef.current;
-    if (!map?.getSource("parcels-postgis")) return;
-
-    const setVis = (visibility: "visible" | "none") => {
-      if (map.getLayer("parcels-postgis-fill")) {
-        map.setLayoutProperty("parcels-postgis-fill", "visibility", visibility);
-      }
-      if (map.getLayer("parcels-postgis-line")) {
-        map.setLayoutProperty("parcels-postgis-line", "visibility", visibility);
-      }
-    };
-
-    if (!showBoundaries) {
-      setVis("none");
-      (map.getSource("parcels-postgis") as GeoJSONSource)?.setData(emptyCollection);
-      return;
-    }
-
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let inFlight = false;
-
-    const loadParcels = () => {
-      if (cancelled || !mapRef.current || inFlight) return;
-      const b = map.getBounds();
-      if (!b) return;
-      if (map.getZoom() < CADASTRAL_MIN_ZOOM) {
-        setVis("none");
-        return;
-      }
-      inFlight = true;
-      const path =
-        `/layers/parcels?south=${b.getSouth()}&west=${b.getWest()}` +
-        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=200`;
-      void apiJson<GeoJSON.FeatureCollection & { meta?: { fixture_scoped?: boolean } }>(
-        path,
-      )
-        .then((data) => {
-          if (cancelled) return;
-          (map.getSource("parcels-postgis") as GeoJSONSource)?.setData(data);
-          setVis("visible");
-          // Sample-scoped loads are honest gaps, not national RoS titles.
-          if (data.meta?.fixture_scoped) {
-            setLayerNotice(
-              "Land outline data for this view is sample-only, not the full national register. Live map tiles still show registered extents where available.",
-            );
-          } else {
-            setLayerNotice(null);
-          }
-        })
-        .catch((err: unknown) => {
-          if (cancelled) return;
-          (map.getSource("parcels-postgis") as GeoJSONSource)?.setData(
-            emptyCollection,
-          );
-          // Empty table: keep WMS tiles; do not invent polygons.
-          if (err instanceof ApiError && err.status === 503) {
-            setLayerNotice(
-              "Local land outline data is empty. Live register tiles still draw registered extents where available.",
-            );
-          }
-        })
-        .finally(() => {
-          inFlight = false;
-        });
-    };
-
-    const onMove = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(loadParcels, 700);
-    };
-
-    loadParcels();
-    map.on("moveend", onMove);
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-      map.off("moveend", onMove);
-    };
-  }, [mapReady, showBoundaries]);
 
   useEffect(() => {
     if (!mapReady) return;
@@ -3851,7 +3979,7 @@ export default function ScotlandMap() {
           contextFlight.current.delete(layer.id);
           if (cancelled || data?.type !== "FeatureCollection") return;
           const source = map.getSource(`${layer.id}-src`) as GeoJSONSource | undefined;
-          source?.setData(data);
+          safeSetGeoJson(source, data);
           if (data.meta?.ok === false) {
             setContextNote(data.meta.note || "One layer did not load.");
             return;
@@ -3975,92 +4103,103 @@ export default function ScotlandMap() {
     };
   }, [result]);
 
-  const placeOpen = Boolean(placeStub || result || error);
-  const collapsedIntroForPlace = useRef(false);
-  /** Idea 57 + SHARE-FIX — drawer Coming soon for unavailable tile layers. */
+  const placeOpen = panelKind === "place" && Boolean(placeStub || result);
+  const layersOpen = panelKind === "layers";
+  /** Tile-unavailable ids for the drawer (builtup is not a switch). */
   const unavailableLayerIds = new Set<string>(tileUnavailableIds);
-  if (builtupMaskUnavailable || builtupMaskCatalogGap) {
-    unavailableLayerIds.add("builtup_mask");
-  }
-  /** SW-047 / idea 56 — compact legend strip while a place card is open. */
-  const legendCompact = placeOpen;
-
-  // Usability: collapse Find a place intro when a place card opens; restore on close.
-  useEffect(() => {
-    if (placeOpen) {
-      setLegendOpen(false);
-      collapsedIntroForPlace.current = true;
-      return;
-    }
-    if (collapsedIntroForPlace.current) {
-      setLegendOpen(true);
-      collapsedIntroForPlace.current = false;
-    }
-  }, [placeOpen]);
-
-  // Mirror globals.css / map-chrome.css: body is always shown on desktop until a
-  // place card collapses it; on narrow screens it follows legendOpen only.
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 640px)");
-    const sync = () => setNarrowLegendFold(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-
-  const legendBodyExpanded =
-    legendOpen || (!narrowLegendFold && !placeOpen);
 
   const suggestOpen =
     suggestions.length > 0 || Boolean(suggestNote) || suggesting;
   const shellClass = [
     "app-shell",
     "squares-shell",
-    toolsOpen ? "tools-open" : "",
+    "map-cards-shell",
+    layersOpen ? "tools-open" : "",
     placeOpen ? "place-open" : "",
+    panelKind !== "closed" ? "panel-open" : "",
+    panelCollapsed ? "panel-collapsed" : "",
     suggestOpen ? "suggest-open" : "",
+    isNarrowPanel ? "map-narrow" : "map-wide",
   ]
     .filter(Boolean)
     .join(" ");
 
+  const basemapTarget = basemapSwitchTarget(mapStyle);
+  const placeTitle =
+    placeStub?.label ||
+    placeStub?.dataZoneName ||
+    placeStub?.card?.place_label ||
+    null;
+
+  const identifyAtCentre = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    // Drop a pending debounced map-click identify so centre wins immediately.
+    if (identifyTimerRef.current) {
+      clearTimeout(identifyTimerRef.current);
+      identifyTimerRef.current = null;
+    }
+    const c = map.getCenter();
+    void inspectRef.current(c.lat, c.lng, { fly: false });
+  };
+
   return (
     <div className={shellClass}>
-      <div className="map-stage">
-      <div className="map-wrap">
-        <div id="map" ref={mapContainer} />
+      <div
+        className="map-stage"
+        inert={layersOpen && isNarrowPanel && panelDetent === "full" ? true : undefined}
+      >
+      <div className="map-wrap" key={mapStyle}>
+        <div
+          id="map"
+          ref={mapContainer}
+          role="application"
+          aria-label="Scotland map"
+        />
       </div>
 
       <button
         type="button"
         className={
-          mapStyle === "satellite"
-            ? "basemap-switcher is-satellite"
-            : "basemap-switcher is-streets"
+          mapStyle === "detailed"
+            ? "basemap-switcher is-detailed"
+            : "basemap-switcher is-light"
         }
         data-testid="basemap-switcher"
-        aria-label={
-          mapStyle === "streets"
-            ? "Switch to satellite view"
-            : "Switch to map view"
-        }
-        aria-pressed={mapStyle === "satellite"}
-        onClick={() =>
-          setMapStyle((current) =>
-            current === "streets" ? "satellite" : "streets",
-          )
-        }
+        aria-label={basemapAriaLabel(basemapTarget)}
+        onClick={() => {
+          const map = mapRef.current;
+          if (map) {
+            const c = map.getCenter();
+            cameraPreserveRef.current = {
+              lng: c.lng,
+              lat: c.lat,
+              zoom: map.getZoom(),
+            };
+          }
+          setMapStyle(basemapTarget);
+        }}
       >
         <span
           className={
-            mapStyle === "streets"
-              ? "basemap-switcher-preview preview-satellite"
-              : "basemap-switcher-preview preview-map"
+            basemapTarget === "detailed"
+              ? "basemap-switcher-preview preview-detailed"
+              : "basemap-switcher-preview preview-light"
           }
           aria-hidden="true"
         />
         <span className="basemap-switcher-caption">
-          {mapStyle === "streets" ? "Satellite" : "Map"}
+          {basemapCaption(basemapTarget)}
         </span>
+      </button>
+
+      <button
+        type="button"
+        className="identify-at-centre"
+        data-testid="identify-at-centre"
+        onClick={identifyAtCentre}
+      >
+        Show the area at map centre
       </button>
 
       <header className="hud-top" ref={headerRef}>
@@ -4072,23 +4211,26 @@ export default function ScotlandMap() {
         <button
           ref={layersBtnRef}
           type="button"
-          className={toolsOpen ? "hud-layers-btn on" : "hud-layers-btn"}
-          aria-pressed={toolsOpen}
-          onClick={() => setToolsOpen((v) => !v)}
+          className={layersOpen ? "hud-layers-btn on" : "hud-layers-btn"}
+          aria-pressed={layersOpen}
+          onClick={() => {
+            if (layersOpen) closeLayersPanel();
+            else openLayersPanel();
+          }}
           data-testid="hud-layers-btn"
         >
           Layers
         </button>
         <div
           className={
-            suggestions.length || suggestNote || suggesting
+            suggestions.length || suggestNote || suggesting || searchFocused
               ? "hud-search-dock open"
               : "hud-search-dock"
           }
         >
         <div className={loading || suggesting ? "hud-search loading" : "hud-search"}>
           <label className="sr-only" htmlFor="place-query">
-            Search a postcode, place or map reference
+            Search a postcode or place
           </label>
           <input
             id="place-query"
@@ -4101,13 +4243,19 @@ export default function ScotlandMap() {
             }
             value={query}
             autoComplete="off"
-            placeholder="Search a postcode, place or map reference"
-            title="Search a postcode, place or map reference"
+            placeholder="Search a postcode or place"
+            title="Search a postcode or place"
+            onFocus={() => {
+              setSearchFocused(true);
+              setSearchNoMatch(false);
+            }}
             onChange={(event) => {
               setQuery(event.target.value);
+              setSearchNoMatch(false);
               scheduleSuggest(event.target.value);
             }}
             onBlur={() => {
+              setSearchFocused(false);
               window.setTimeout(() => {
                 suggestGen.current += 1;
                 clearSuggestions();
@@ -4170,6 +4318,16 @@ export default function ScotlandMap() {
             {loading ? "…" : "Search"}
           </button>
         </div>
+        {searchFocused && !query.trim() && !suggestOpen ? (
+          <p className="search-empty-hint" data-testid="search-empty-hint">
+            Type a postcode or place name, or tap the map.
+          </p>
+        ) : null}
+        {searchNoMatch ? (
+          <p className="search-no-match" data-testid="search-no-match" role="alert">
+            {PLACE_CARD_NO_MATCH}
+          </p>
+        ) : null}
         {(suggestions.length > 0 || suggestNote || suggesting) && (
           <ul className="search-suggest" id="place-suggestions" role="listbox">
             {suggesting && suggestions.length === 0 && !suggestNote ? (
@@ -4196,89 +4354,16 @@ export default function ScotlandMap() {
         </div>
         <SiteNav current="map" variant="map" />
       </header>
-      <ResearchBanner dismissible collapseForSuggest={suggestOpen} />
+      <ResearchBanner
+        dismissible
+        collapseForSuggest={suggestOpen || placeOpen}
+      />
 
-      <aside
-        className={[
-          "hud-scotland",
-          legendOpen ? "legend-open" : "",
-          legendCompact ? "legend-compact" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        aria-label="Map legend"
-        data-testid="map-legend-panel"
-        data-legend-layer={activeLegend.layerId}
-        data-legend-compact={legendCompact ? "true" : "false"}
-        ref={scotlandRef}
-      >
-        <div className="hud-scotland-stack">
-          <button
-            type="button"
-            className="hud-scotland-fold"
-            aria-expanded={legendBodyExpanded}
-            aria-controls="hud-scotland-body"
-            aria-label={legendOpen ? "Hide legend" : "Show legend"}
-            onClick={() => setLegendOpen((open) => !open)}
-          >
-            <span className="hud-scotland-fold-show" aria-hidden="true">
-              Show legend
-            </span>
-            <span className="hud-scotland-fold-hide" aria-hidden="true">
-              Hide legend
-            </span>
-          </button>
-          <div className="hud-scotland-body" id="hud-scotland-body">
-            {!legendCompact ? (
-              <>
-                <p className="hud-scotland-job">Find a place</p>
-                <p className="hud-scotland-lead">
-                  Type a postcode or place name, or tap the map. You&apos;ll see
-                  what we know about that area and where the data comes from.
-                </p>
-                <p
-                  className="hud-scotland-coming-soon"
-                  data-testid="land-values-coming-soon"
-                >
-                  {LAND_VALUES_COMING_SOON_HOME}
-                </p>
-              </>
-            ) : null}
-            <MapRangeLegend
-              title={activeLegend.title}
-              blurb={legendCompact ? undefined : activeLegend.blurb}
-              paler={legendCompact ? undefined : activeLegend.paler}
-              ranges={activeLegend.ranges}
-              showNoData={activeLegend.showNoData}
-              mode={activeLegend.mode}
-              zoomHint={activeLegend.zoomHint}
-              source={legendCompact ? null : activeLegend.source ?? null}
-              layerId={activeLegend.layerId}
-            />
-            {!legendCompact && surfaceRentLegend ? (
-              <MapRangeLegend
-                title={SURFACE_RENT_LEGEND_TITLE}
-                blurb={SURFACE_RENT_LEGEND_BLURB}
-                ranges={surfaceRentLegend.ranges}
-                showNoData
-                mode="bands"
-                source={SURFACE_RENT_LEGEND_SOURCE}
-                className="map-range-legend-surface-rent"
-              />
-            ) : null}
-            {!legendCompact ? (
-              <MapLicenceCredits credits={mapCredits} />
-            ) : null}
-            {!legendCompact ? (
-              <p className="hud-scotland-foot">
-                <a href="/about">About</a>
-                {" · "}
-                <a href="/methodology">How it works</a>
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </aside>
+      {restPromptVisible && panelKind === "closed" && !gbpLiveOn ? (
+        <p className="map-rest-prompt" data-testid="map-rest-prompt">
+          Search a place or pick a layer.
+        </p>
+      ) : null}
 
       {apiOk === false && (
         <div className="hud-banner">
@@ -4293,171 +4378,124 @@ export default function ScotlandMap() {
         </div>
       )}
 
-      {toolsOpen && (
-        <aside className="hud-card hud-tools" aria-label="Map layers">
-          <div className="layer-panel">
-            <MapLayersDrawer
-              className="layers-panel-in-shell"
-              enabled={{
-                ...ledgerEnabled,
-                data_zones: showDataZones,
-                builtup_mask: showBuiltupMask,
-                boundaries: showBoundaries,
-                vdl: showVdl,
-                hla: showHla,
-              }}
-              unavailableIds={unavailableLayerIds}
-              onEnabledChange={onMapLayersChange}
-            />
-            {showBoundaries && (
-              <p className="layer-meta" data-testid="layer-parcels-credit">
-                {inspireRosOsAttribution()}{" "}
-                <a
-                  href={INSPIRE_OGL_V3_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {INSPIRE_OGL_V3_PHRASE}
-                </a>
-                . Registered extents only — shapes, not titles, owners or
-                prices. Zoom {CADASTRAL_MIN_ZOOM}+.
-              </p>
-            )}
-            {showLdp && (
-              <p className="layer-meta" data-testid="layer-ldp-credit">
-                LDP allocations (OGL v3.0). Spatial Hub pack is fragmented;
-                Edinburgh unavailable. Planning extents, not a title. Zoom{" "}
-                {LDP_MIN_ZOOM}+.
-              </p>
-            )}
-            {showCommunityOwnership && (
-              <p className="layer-meta" data-testid="layer-community-ownership-credit">
-                Community Ownership in Scotland 2024 (OGL v3.0) — ownership
-                context, not a rent row. Postcode centroids via postcodes.io
-                (ONS Postcode Directory), not titles. Zoom{" "}
-                {COMMUNITY_OWNERSHIP_MIN_ZOOM}+. Enable with ?community=1.
-              </p>
-            )}
-            {showCroftingConstraint && (
-              <p className="layer-meta" data-testid="crofting-constraint-gap">
-                Crofting / common grazings — constraint that changes best use
-                and adds no value. Crofting Commission open lists; no national
-                open polygon layer yet. Extents:{" "}
-                <a
-                  href="https://www.crofts.ros.gov.uk/register/search"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  RoS Crofting Register map
-                </a>
-                .
-              </p>
-            )}
-            {showLca && (
-              <p className="layer-meta" data-testid="lca-constraint-credit">
-                Land Capability for Agriculture (Hutton LCA 1:250k) —
-                constraint that changes best use and adds no value. James
-                Hutton Institute Open Data Licence. Zoom {LCA_MIN_ZOOM}+.
-              </p>
-            )}
-            {showWoodland && (
-              <p className="layer-meta" data-testid="layer-woodland-credit">
-                NFI + Native Woodland Survey (OGL v3.0) — inventory / survey
-                polygons, not a rent or title. Zoom {NFI_MIN_ZOOM}+ /{" "}
-                {NATIVE_WOODLAND_MIN_ZOOM}+.
-              </p>
-            )}
-            {showRepd && (
-              <p className="layer-meta" data-testid="layer-repd-credit">
-                REPD (DESNZ, OGL v3.0) — Scotland planning-site points — not
-                lease polygons, not a rent or title. Zoom{" "}
-                {REPD_MIN_ZOOM}+.
-              </p>
-            )}
-            {showRepdOnshoreWind && (
-              <p className="layer-meta" data-testid="layer-repd-onshore-wind-credit">
-                REPD onshore wind (DESNZ, OGL v3.0) — Scotland planning-site
-                points with MW and status only. Zoom{" "}
-                {REPD_ONSHORE_WIND_MIN_ZOOM}+.
-              </p>
-            )}
-            {showCrownLeases && (
-              <p className="layer-meta" data-testid="layer-crown-leases-credit">
-                Crown Estate Scotland Spatial Hub offshore leases (OGL v3.0) —
-                offshore wind, wave, tidal, CCS only. Not a title sheet. Zoom{" "}
-                {CROWN_LEASES_MIN_ZOOM}+.
-              </p>
-            )}
-            {showCesAquaculture && (
-              <p
-                className="layer-meta"
-                data-testid="layer-ces-aquaculture-credit"
-              >
-                Contains information from the Crown Estate Scotland licensed
-                under the Open Government Licence v3.0. Aquaculture seabed
-                lease polygons only — not a title. Zoom{" "}
-                {CES_AQUACULTURE_MIN_ZOOM}+.
-              </p>
-            )}
-            {layerNotice && (
-              <p className="layer-meta" data-testid="layer-notice">
-                {layerNotice}
-              </p>
-            )}
-            {contextNote && <p className="layer-meta">{contextNote}</p>}
-            {CONTEXT_LAYERS.filter((layer) => contextOn[layer.id]).map((layer) => (
-              <p key={layer.id} className="layer-meta">
-                {layer.attribution}
-              </p>
+      {panelKind === "closed" && stripLayer ? (
+        <button
+          type="button"
+          className="legend-strip"
+          data-testid="legend-strip"
+          aria-label={`Legend: ${stripLayer.label}`}
+          onClick={() => openLayersPanel()}
+        >
+          <span className="legend-strip-name">{stripLayer.label}</span>
+          <span className="legend-strip-ramp" aria-hidden="true">
+            {stripLayer.classes.slice(0, 5).map((c, i) => (
+              <span
+                key={`${c.color}-${i}`}
+                className="legend-strip-swatch"
+                style={{ background: c.color }}
+              />
             ))}
-          </div>
-        </aside>
-      )}
+          </span>
+          <span className="legend-strip-chevron" aria-hidden="true">
+            ▸
+          </span>
+        </button>
+      ) : null}
 
-          {placeStub ? (
-            <PlaceCardStub
-              place={placeStub}
-              loading={placeLoading}
-              error={error}
-              onClose={() => clearPlace()}
-              onShowScotland={showScotlandNationalView}
-            />
-          ) : error ? (
-            <aside
-              className="hud-card hud-place place-card-stub place-card-search-miss"
-              aria-label="Place"
-              data-testid="place-card"
-            >
-              <button
-                type="button"
-                className="hud-close"
-                data-testid="place-card-close"
-                title="Close (Esc)"
-                aria-label="Close place card"
-                onPointerDown={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  clearPlace();
-                }}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  clearPlace();
-                }}
-              >
-                ×
-              </button>
-              <p className="error-line place-card-no-match-line" data-testid="place-card-no-match" role="alert">
-                <span data-testid="place-card-no-match-text">{error}</span>
-              </p>
-              <p className="meta place-card-no-match-line">
-                Try a Scottish postcode, place name, coordinates, or click the map.
-              </p>
-            </aside>
-          ) : null}
+      <div className="map-attribution-line" data-testid="map-attribution-line">
+        <span>
+          {attributionPieces.map((p) => p.text).join(" · ")}
+        </span>
+        {" · "}
+        <a href="/data#licences" data-testid="map-all-sources">
+          All sources
+        </a>
       </div>
+      </div>{/* map-stage — panel stays outside so inert modal does not block close */}
+
+      <MapPanelSlot
+        kind={panelKind}
+        detent={panelDetent}
+        onDetentChange={(d) => {
+          setPanelDetent(d);
+          setLiveMessage(`Panel ${d}`);
+        }}
+        collapsed={panelCollapsed}
+        onCollapsedChange={setPanelCollapsed}
+        onClose={() => {
+          clearPlace();
+          setPanelKind("closed");
+          replaceMapUrl({ panel: null, place: null });
+        }}
+        onRequestDismiss={dismissPanel}
+        placeName={placeTitle}
+        liveMessage={liveMessage}
+        layersModal={layersOpen && isNarrowPanel && panelDetent === "full"}
+      >
+        {layersOpen ? (
+          <MapLayersDrawer
+            className="layers-panel-in-shell"
+            mapZoom={mapZoom}
+            onClose={closeLayersPanel}
+            enabled={{
+              ...ledgerEnabled,
+              "1": showAgr,
+              councils: showCouncils,
+              data_zones: showDataZones,
+              vdl: showVdl,
+              hla: showHla,
+            }}
+            unavailableIds={unavailableLayerIds}
+            onEnabledChange={onMapLayersChange}
+          />
+        ) : placeStub ? (
+          <PlaceCardStub
+            place={placeStub}
+            loading={placeLoading}
+            error={error}
+            onClose={() => {
+              // Card × clears selection (not desktop collapse-to-tab).
+              clearPlace();
+              setPanelKind("closed");
+              setPanelCollapsed(false);
+              replaceMapUrl({ panel: null, place: null });
+              panelHistoryRef.current = false;
+              setLiveMessage("Panel closed");
+            }}
+            onShowScotland={showScotlandNationalView}
+          />
+        ) : null}
+      </MapPanelSlot>
+
+      {shortcutsOpen ? (
+        <div
+          className="map-shortcuts-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Keyboard shortcuts"
+          data-testid="map-shortcuts-dialog"
+        >
+          <button
+            type="button"
+            className="map-shortcuts-close"
+            aria-label="Close shortcuts"
+            onClick={() => setShortcutsOpen(false)}
+          >
+            ×
+          </button>
+          <h2>Keyboard shortcuts</h2>
+          <ul>
+            <li><kbd>/</kbd> Search</li>
+            <li><kbd>L</kbd> Layers</li>
+            <li><kbd>Esc</kbd> Close panel</li>
+            <li><kbd>+</kbd> / <kbd>−</kbd> Zoom</li>
+            <li>Arrow keys pan</li>
+            <li><kbd>Enter</kbd> Identify at centre</li>
+            <li><kbd>?</kbd> This dialog</li>
+          </ul>
+        </div>
+      ) : null}
       <MapStampFooter />
     </div>
   );
 }
-

@@ -72,6 +72,7 @@ async function stubMapBackend(page: Page) {
     const url = route.request().url();
     const wantsGeo =
       /\/layers\//i.test(url) ||
+      /\/boundaries\//i.test(url) ||
       /\/w3w-grid/i.test(url) ||
       /\/parcels/i.test(url);
     await route.fulfill({
@@ -158,12 +159,15 @@ test.describe("UX-04 a11y names and landmarks at 1280", () => {
     test.setTimeout(120_000);
 
     // Source guard: MapLibre popup close is a bare × unless we name it.
+    // MAP-CARDS: floating "Map legend" panel is gone — legends are inline /
+    // legend-strip only.
     const scotlandMap = readFileSync(
       join(process.cwd(), "components/ScotlandMap.tsx"),
       "utf8",
     );
     expect(scotlandMap).toContain('aria-label", "Close popup"');
-    expect(scotlandMap).toContain('aria-label="Map legend"');
+    expect(scotlandMap).toContain('data-testid="legend-strip"');
+    expect(scotlandMap).not.toContain('aria-label="Map legend"');
     expect(scotlandMap).not.toContain('aria-label="Land rent"');
 
     await page.goto("/");
@@ -176,25 +180,32 @@ test.describe("UX-04 a11y names and landmarks at 1280", () => {
 
     await expect(
       page.getByRole("complementary", { name: "Map legend", exact: true }),
-    ).toHaveCount(1);
+    ).toHaveCount(0);
     await expect(
       page.getByRole("complementary", { name: "Map layers", exact: true }),
-    ).toHaveCount(1);
+    ).toHaveCount(0);
     await expect(
       page.getByRole("complementary", { name: "Layers", exact: true }),
     ).toHaveCount(0);
     await expect(
       page.getByRole("complementary", { name: "Land rent", exact: true }),
     ).toHaveCount(0);
+    await expect(page.getByTestId("layers-panel")).toBeVisible();
 
-    // Enable data zones so MapLicenceCredits mounts (parcels toggle is off by default).
+    // MAP-CARDS GIS 14: one attribution line + All sources (no floating
+    // MapLicenceCredits panel).
+    const placesToggle = page.getByTestId("layers-group-toggle-places");
+    if (
+      (await placesToggle.count()) &&
+      (await placesToggle.getAttribute("aria-expanded")) !== "true"
+    ) {
+      await placesToggle.click();
+    }
     await page.getByTestId("layer-toggle-data_zones").click();
-    await expect(page.getByTestId("map-licence-credits")).toBeVisible({
+    await expect(page.getByTestId("map-attribution-line")).toBeVisible({
       timeout: 15_000,
     });
-    await expect(
-      page.getByRole("group", { name: "Map data licences", exact: true }),
-    ).toHaveCount(1);
+    await expect(page.getByTestId("map-all-sources")).toBeVisible();
     await expect(
       page.getByRole("complementary", {
         name: "Map data licences",

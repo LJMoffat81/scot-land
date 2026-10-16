@@ -92,6 +92,14 @@ test.beforeEach(async ({ page }) => {
       }),
     });
   });
+  await page.route("**/backend/boundaries/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(EMPTY_FC),
+    });
+  });
+
   await page.route("**/backend/health**", async (route) => {
     await route.fulfill({
       status: 200,
@@ -186,7 +194,7 @@ for (const vp of VIEWPORTS) {
   test.describe(`${vp.name}`, () => {
     test.use({ viewport: { width: vp.width, height: vp.height } });
 
-    test("place card does not cover research banner; dismiss stays visible", async ({
+    test("place card hides research banner (MAP-CARDS say-it-once)", async ({
       page,
     }) => {
       test.setTimeout(90_000);
@@ -194,35 +202,16 @@ for (const vp of VIEWPORTS) {
 
       const banner = page.getByTestId("research-banner");
       await expect(banner).toBeVisible({ timeout: 15_000 });
-      // Do not dismiss — banner must remain while the place card opens.
       await expect(page.getByTestId("research-banner-dismiss")).toBeVisible();
 
       const card = await openPlaceCard(page);
       await expect(page.locator(".app-shell.place-open")).toBeVisible();
-      await expect(banner).toBeVisible();
-
-      const bannerBox = await banner.boundingBox();
+      // MAP-CARDS §3.6 / P1 — banner collapses to nothing while a card is open;
+      // the place card footer is the single trust line.
+      await expect(banner).toBeHidden();
       const cardBox = await card.boundingBox();
-      expect(bannerBox, "research banner box").toBeTruthy();
       expect(cardBox, "place card box").toBeTruthy();
-      expect(
-        boxesOverlap(bannerBox!, cardBox!),
-        `banner and place card must not overlap at ${vp.name}: banner=${JSON.stringify(bannerBox)} card=${JSON.stringify(cardBox)}`,
-      ).toBe(false);
-      // SW-036: card is left panel; ≥16px clearance between card right and banner left.
-      expect(
-        bannerBox!.x - (cardBox!.x + cardBox!.width),
-        `card→banner gap at ${vp.name}`,
-      ).toBeGreaterThanOrEqual(16);
-
-      await assertFullyVisible(banner, "research banner");
-      const dismiss = page.getByTestId("research-banner-dismiss");
-      await assertFullyVisible(dismiss, "research-banner-dismiss");
-      await assertCenterTappable(dismiss, "research-banner-dismiss");
-
-      const text = banner.locator(".research-banner-text");
-      await expect(text).toBeVisible();
-      await assertFullyVisible(text, "research banner text");
+      expect(cardBox!.height).toBeGreaterThan(40);
     });
   });
 }

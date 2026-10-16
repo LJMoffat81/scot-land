@@ -54,7 +54,10 @@ for (const id of ['"hla"', '"3"', '"5"', '"lca"']) {
 }
 
 const drawer = readSrc("components/MapLayersDrawer.tsx");
-assert.match(drawer, /Coming soon/);
+// MAP-CARDS: unavailable ids are omitted — no visitor "Coming soon" badge.
+assert.doesNotMatch(drawer, /Coming soon</);
+assert.doesNotMatch(drawer, /layer-coming-soon/);
 assert.match(drawer, /unavailableIds/);
+assert.match(drawer, /What's coming next|What&apos;s coming next/);
 
 console.log("test-share-fix: ok");

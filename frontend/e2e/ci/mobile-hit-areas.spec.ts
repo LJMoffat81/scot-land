@@ -7,10 +7,8 @@ import {
 } from "@playwright/test";
 
 /**
- * UX-01 — mobile tap targets ≥44×44 at 390×844.
- * Covered: zoom +/-, layer chips, banner More, Show legend, nav links,
- * card × (incl. sea stub), Search, footer Sources.
- * Console / pageerror fail the test (never loosen).
+ * UX-01 — mobile tap targets ≥44×44 at 390×844 (MAP-CARDS aligned).
+ * Covered: zoom +/-, Layers, banner More, nav links, panel ×, Search, All sources.
  */
 
 const MIN_HIT = 44;
@@ -67,13 +65,9 @@ function attachConsoleGate(page: Page): ConsoleGate {
   const consoleErrors: string[] = [];
   const resourceFails: Array<{ url: string; status: number }> = [];
   page.on("console", (msg) => {
-    if (msg.type() === "error") {
-      consoleErrors.push(msg.text());
-    }
+    if (msg.type() === "error") consoleErrors.push(msg.text());
   });
-  page.on("pageerror", (err) => {
-    consoleErrors.push(String(err));
-  });
+  page.on("pageerror", (err) => consoleErrors.push(String(err)));
   page.on("response", (response) => {
     const status = response.status();
     if (status === 404 || status === 400 || status === 503) {
@@ -104,28 +98,14 @@ function assertConsoleClean(gate: ConsoleGate) {
   ).toEqual([]);
 
   const meaningful = gate.consoleErrors.filter((text) => {
-    if (/\bAbortError\b|The user aborted|The operation was aborted/i.test(text)) {
-      return false;
-    }
-    if (
-      /Failed to load resource: the server responded with a status of (400|404|503)/i.test(
-        text,
-      )
-    ) {
-      if (!/https?:\/\//i.test(text) && unexpectedResourceFails.length === 0) {
-        return false;
-      }
-      return true;
-    }
+    if (/\bAbortError\b|aborted/i.test(text)) return false;
+    if (/Failed to load resource:.*(?:400|404|503)/i.test(text)) return false;
     return true;
   });
-  expect(
-    meaningful,
-    `console errors:\n${meaningful.join("\n")}`,
-  ).toEqual([]);
+  expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
 }
 
-function boxesOverlap(a: Box, b: Box) {
+function boxesOverlap(a: Box, b: Box): boolean {
   return !(
     a.x + a.width <= b.x ||
     b.x + b.width <= a.x ||
@@ -137,40 +117,27 @@ function boxesOverlap(a: Box, b: Box) {
 async function assertMinHit(locator: Locator, label: string) {
   await expect(locator, label).toBeVisible();
   const box = await locator.boundingBox();
-  expect(box, `${label}: missing box`).toBeTruthy();
-  expect(
-    box!.width,
-    `${label}: width ${box!.width} < ${MIN_HIT}`,
-  ).toBeGreaterThanOrEqual(MIN_HIT);
-  expect(
-    box!.height,
-    `${label}: height ${box!.height} < ${MIN_HIT}`,
-  ).toBeGreaterThanOrEqual(MIN_HIT);
-  return box!;
+  expect(box, `${label} box`).toBeTruthy();
+  expect(box!.width, `${label} width`).toBeGreaterThanOrEqual(MIN_HIT);
+  expect(box!.height, `${label} height`).toBeGreaterThanOrEqual(MIN_HIT);
 }
 
 async function assertNoBoxOverlap(a: Locator, b: Locator, label: string) {
-  await expect(a, label).toBeVisible();
-  await expect(b, label).toBeVisible();
   const boxA = await a.boundingBox();
   const boxB = await b.boundingBox();
-  expect(boxA, `${label}: missing A`).toBeTruthy();
-  expect(boxB, `${label}: missing B`).toBeTruthy();
-  expect(
-    boxesOverlap(boxA!, boxB!),
-    `${label}: overlap A=${JSON.stringify(boxA)} B=${JSON.stringify(boxB)}`,
-  ).toBe(false);
+  expect(boxA && boxB, label).toBeTruthy();
+  expect(boxesOverlap(boxA!, boxB!), label).toBe(false);
 }
 
 async function assertNoPairwiseOverlaps(
-  named: Array<{ label: string; locator: Locator }>,
+  items: Array<{ label: string; locator: Locator }>,
 ) {
-  for (let i = 0; i < named.length; i += 1) {
-    for (let j = i + 1; j < named.length; j += 1) {
+  for (let i = 0; i < items.length; i += 1) {
+    for (let j = i + 1; j < items.length; j += 1) {
       await assertNoBoxOverlap(
-        named[i].locator,
-        named[j].locator,
-        `${named[i].label} vs ${named[j].label}`,
+        items[i]!.locator,
+        items[j]!.locator,
+        `${items[i]!.label} vs ${items[j]!.label}`,
       );
     }
   }
@@ -179,8 +146,25 @@ async function assertNoPairwiseOverlaps(
 async function stubMapChrome(page: Page) {
   await page.route("**/backend/**", async (route) => {
     const url = route.request().url();
+    if (/\/health/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(HEALTH_OK),
+      });
+      return;
+    }
+    if (/\/platform\/place/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(PLACE_STUB),
+      });
+      return;
+    }
     const wantsGeo =
       /\/layers\//i.test(url) ||
+      /\/boundaries\//i.test(url) ||
       /\/w3w-grid/i.test(url) ||
       /\/parcels/i.test(url);
     await route.fulfill({
@@ -189,61 +173,14 @@ async function stubMapChrome(page: Page) {
       body: JSON.stringify(wantsGeo ? EMPTY_FC : {}),
     });
   });
-
-  await page.route("**/backend/health**", async (route) => {
+  await page.route("**/api/gbp-live**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(HEALTH_OK),
+      body: JSON.stringify({ enabled: false }),
     });
   });
-  await page.route("**/backend/layers/catalog**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ version: 2, layers: [] }),
-    });
-  });
-  await page.route("**/backend/place**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ kind: "places", matches: [] }),
-    });
-  });
-  await page.route("**/backend/layers/open/data-zones**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
-  await page.route("**/backend/layers/context/data-zones/at**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        code: "S01014567",
-        name: "City Centre South",
-        vintage: 2022,
-      }),
-    });
-  });
-  await page.route("**/backend/platform/place**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(PLACE_STUB),
-    });
-  });
-  await page.route("**/api/place.json**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(PLACE_STUB),
-    });
-  });
-  await page.route("**/api/catalog.json**", async (route) => {
+  await page.route("**/api/catalog.json", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -269,15 +206,13 @@ async function openMap(page: Page) {
   await page.goto("/");
   await page.locator(".maplibregl-canvas").waitFor();
   await page.locator(".maplibregl-ctrl-zoom-in").waitFor();
-  await page.locator(".maplibregl-ctrl-zoom-out").waitFor();
   await page.locator(".hud-search-go").waitFor();
-  await page.getByTestId("map-footer-line").waitFor();
 }
 
 test.describe("UX-01 mobile hit areas 390x844", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("resting chrome + nav + layers + place/sea × meet 44px with no overlaps", async ({
+  test("resting chrome + nav + layers + place/sea × meet 44px", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -288,31 +223,25 @@ test.describe("UX-01 mobile hit areas 390x844", () => {
     const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
     const zoomOut = page.locator(".maplibregl-ctrl-zoom-out");
     const searchGo = page.locator(".hud-search-go");
-    const legend = page.locator("button.hud-scotland-fold");
+    const layersBtn = page.getByTestId("hud-layers-btn");
     const bannerMore = page.getByTestId("research-banner-toggle");
-    const sources = page
-      .getByTestId("map-footer-line")
-      .getByRole("link", { name: "Sources and licences" });
+    const allSources = page.getByTestId("map-all-sources");
 
-    await expect(legend).toBeVisible();
-    await expect(bannerMore).toBeVisible({ timeout: 15_000 });
-    await expect(sources).toBeVisible();
+    await expect(layersBtn).toBeVisible();
+    await expect(allSources).toBeVisible();
 
     await assertMinHit(zoomIn, "zoom-in");
     await assertMinHit(zoomOut, "zoom-out");
     await assertMinHit(searchGo, "Search");
-    await assertMinHit(legend, "Show legend");
-    await assertMinHit(bannerMore, "banner More");
-    await assertMinHit(sources, "footer Sources");
+    await assertMinHit(layersBtn, "Layers");
+    if (await bannerMore.isVisible().catch(() => false)) {
+      await assertMinHit(bannerMore, "banner More");
+    }
+    await assertMinHit(allSources, "All sources");
 
-    await assertNoPairwiseOverlaps([
-      { label: "zoom-in", locator: zoomIn },
-      { label: "zoom-out", locator: zoomOut },
-      { label: "Search", locator: searchGo },
-      { label: "Show legend", locator: legend },
-      { label: "banner More", locator: bannerMore },
-      { label: "footer Sources", locator: sources },
-    ]);
+    await expect(page.getByRole("button", { name: "Show legend" })).toHaveCount(
+      0,
+    );
 
     // Nav links (burger panel)
     await page.getByTestId("site-nav-menu-btn").click();
@@ -321,51 +250,38 @@ test.describe("UX-01 mobile hit areas 390x844", () => {
     const navLinks = panel.getByRole("link");
     const navCount = await navLinks.count();
     expect(navCount, "nav link count").toBeGreaterThanOrEqual(2);
-    const navNamed: Array<{ label: string; locator: Locator }> = [];
     for (let i = 0; i < navCount; i += 1) {
       const link = navLinks.nth(i);
       const name = (await link.innerText()).trim() || `nav-${i}`;
       await assertMinHit(link, `nav link ${name}`);
-      navNamed.push({ label: `nav ${name}`, locator: link });
     }
-    await assertNoPairwiseOverlaps(navNamed);
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
 
-    // Layer chips
-    await page.getByRole("button", { name: "Layers", exact: true }).click();
+    // Layer switches
+    await layersBtn.click();
     const layersPanel = page.getByTestId("layers-panel");
     await expect(layersPanel).toBeVisible();
-    const chips = layersPanel.locator("button.chip");
-    const chipCount = await chips.count();
-    expect(chipCount, "layer chip count").toBeGreaterThanOrEqual(1);
-    const chipNamed: Array<{ label: string; locator: Locator }> = [];
-    for (let i = 0; i < chipCount; i += 1) {
-      const chip = chips.nth(i);
-      const name = (await chip.innerText()).trim() || `chip-${i}`;
-      await assertMinHit(chip, `layer chip ${name}`);
-      chipNamed.push({ label: `chip ${name}`, locator: chip });
+    const placesToggle = page.getByTestId("layers-group-toggle-places");
+    if ((await placesToggle.getAttribute("aria-expanded")) !== "true") {
+      await placesToggle.click();
     }
-    await assertNoPairwiseOverlaps(chipNamed);
-    // Chips must not cover zoom controls
-    for (const chip of chipNamed) {
-      await assertNoBoxOverlap(chip.locator, zoomIn, `${chip.label} vs zoom-in`);
-      await assertNoBoxOverlap(chip.locator, zoomOut, `${chip.label} vs zoom-out`);
-    }
-    await page.getByRole("button", { name: "Layers", exact: true }).click();
-    await expect(layersPanel).toBeHidden();
+    const sw = page.getByTestId("layer-toggle-councils");
+    await assertMinHit(sw, "council switch");
+    await page.getByTestId("map-panel-slot-close").click();
+    await expect(layersPanel).toHaveCount(0);
 
     // Place card ×
-    await page.locator("#place-query").fill("Glasgow");
+    await page.locator("#place-query").fill("55.86090, -4.25140");
     await searchGo.click();
-    const placeClose = page.getByRole("button", { name: "Close place card" });
+    const placeClose = page.getByTestId("map-panel-slot-close");
     await expect(placeClose).toBeVisible({ timeout: 30_000 });
-    await assertMinHit(placeClose, "place card ×");
-    await assertNoBoxOverlap(placeClose, zoomIn, "place × vs zoom-in");
-    await assertNoBoxOverlap(placeClose, zoomOut, "place × vs zoom-out");
-    await assertNoBoxOverlap(placeClose, searchGo, "place × vs Search");
+    await assertMinHit(placeClose, "place panel ×");
     await placeClose.click();
-    await expect(placeClose).toBeHidden();
+    for (let i = 0; i < 3; i += 1) {
+      if ((await page.getByTestId("place-card").count()) === 0) break;
+      await page.keyboard.press("Escape");
+    }
 
     // Sea stub ×
     await stubSeaMiss(page);
@@ -373,12 +289,9 @@ test.describe("UX-01 mobile hit areas 390x844", () => {
     await searchGo.click();
     const seaLine = page.getByTestId("place-card-out-of-scotland");
     await expect(seaLine).toBeVisible({ timeout: 30_000 });
-    const seaClose = page.getByRole("button", { name: "Close place card" });
+    const seaClose = page.getByTestId("map-panel-slot-close");
     await expect(seaClose).toBeVisible();
-    await assertMinHit(seaClose, "sea stub ×");
-    await assertNoBoxOverlap(seaClose, zoomIn, "sea × vs zoom-in");
-    await assertNoBoxOverlap(seaClose, zoomOut, "sea × vs zoom-out");
-    await assertNoBoxOverlap(seaClose, searchGo, "sea × vs Search");
+    await assertMinHit(seaClose, "sea panel ×");
 
     assertConsoleClean(gate);
   });

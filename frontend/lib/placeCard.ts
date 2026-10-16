@@ -27,24 +27,24 @@ export {
 export { RENT_GROUP_NAME, RENT_GROUP_NAMES };
 export { PLACE_CARD_PART_GLOSS, PLACE_CARD_PART_NOT_YET };
 
-/** One public term for the figure (UX-10 terminology test). */
+/** One public term for the figure (UX-10 terminology test). Sentence case — not all caps. */
 export const PLACE_CARD_AGR_LABEL = "Annual Ground Rent";
 
 export const PLACE_CARD_AGR_SUBTITLE =
   "What the land here is worth each year";
 
-/** Pre-£ figure line (UX-10 item 4). Rank band stays OFF. */
+/** Pre-£ answer line (MAP-CARDS §5 row 6). Rank band stays OFF. */
 export const PLACE_CARD_PRE_POUND =
   "We're not showing amounts yet while we check our method.";
 
 /**
- * Home + place-card coming-soon line (WORDING-BATCH-1 A1 / 17:40;
- * Scot-LAND: same wording on home and card).
+ * Home / legend coming-soon line (WORDING-BATCH-1). Not shown on the place card
+ * (MAP-CARDS §6 — say it once via the answer status pill).
  */
 export const LAND_VALUES_COMING_SOON_HOME =
   "Land values coming soon — our method is still being tested.";
 
-/** Same string as LAND_VALUES_COMING_SOON_HOME (shown under PRE_POUND). */
+/** @deprecated MAP-CARDS §6 — do not show on the place card. */
 export const PLACE_CARD_LAND_VALUES_COMING_SOON = LAND_VALUES_COMING_SOON_HOME;
 
 /** Rank band UI — OFF until £ unblocked (UX-10). */
@@ -53,21 +53,25 @@ export const PLACE_CARD_RANK_BAND_ENABLED = false;
 export const PLACE_CARD_TYPICAL_HOME =
   "For a typical home in this neighbourhood, not your home.";
 
+/** @deprecated MAP-CARDS §6 — covered by PLACE_CARD_TYPICAL_HOME. */
 export const PLACE_CARD_NEIGHBOURHOOD_NOT_ADDRESS =
   "We show your neighbourhood, not your address.";
 
+/** @deprecated MAP-CARDS §6 — use PLACE_CARD_HOW_WE_WORK_HOMES in the fold only. */
 export const PLACE_CARD_COVERS_HOMES_ONLY = "Covers land under homes only.";
 
 export const PLACE_CARD_HOW_WE_WORK_HOMES =
   "This covers land under homes only. Shops, offices and industrial land aren't included yet.";
 
+/** MAP-CARDS §5 row 7 — Why line. */
 export const PLACE_CARD_FACT_LINE =
-  "Land is worth more where there are jobs, good transport, schools and shops nearby. Most of that comes from the area, not the house.";
+  "Land is worth more near jobs, transport, schools and shops. That value comes from the area, not the house.";
 
+/** @deprecated MAP-CARDS §5 fold no longer shows a parts-sum note. */
 export const PLACE_CARD_PARTS_NOTE =
   "These are worked out differently, so we don't add them up.";
 
-export const PLACE_CARD_HOW_WE_WORK_LABEL = "How we work this out";
+export const PLACE_CARD_HOW_WE_WORK_LABEL = "How we work this out →";
 
 export const PLACE_CARD_EXPERIMENTAL_FOOTER =
   "Experimental estimate, not an official valuation. It is not a bill, and it does not change what you pay.";
@@ -77,8 +81,9 @@ export const PLACE_CARD_NO_HOMES = "No homes here, so not applicable";
 export const PLACE_CARD_TOO_FEW_HOMES =
   "Too few homes here for a typical figure.";
 
+/** Under-search copy when parent shows no-match (card itself stays empty). */
 export const PLACE_CARD_NO_MATCH =
-  "No place matched. Try a postcode, place name, coordinates, or click the map.";
+  "We couldn't find that place. Try a town or a postcode.";
 
 export const PLACE_CARD_FULLY_ESTIMATED =
   "Mostly worked out from nearby areas: treat as a rough guide";
@@ -86,11 +91,27 @@ export const PLACE_CARD_FULLY_ESTIMATED =
 /** Unit rule (v1): zones with fewer than this many dwellings are N/A, never 0. */
 export const PLACE_CARD_MIN_DWELLINGS_TYPICAL = 20;
 
-/** Per-row status until publication — keep exact wording (site rewrite PR2). */
-export const PLACE_CARD_FIGURE_STATUS = "Figure not published yet";
+/** Pre-£ answer status pill (MAP-CARDS §5 row 6) — once only. */
+export const PLACE_CARD_FIGURE_STATUS = "Not published yet";
 
-/** @deprecated Prefer PLACE_CARD_FIGURE_STATUS on each value row. */
+/** @deprecated Prefer PLACE_CARD_FIGURE_STATUS on the answer row. */
 export const PLACE_CARD_FIGURES_CHECKED = PLACE_CARD_FIGURE_STATUS;
+
+/** Loading skeleton label (MAP-CARDS §5.2). */
+export const PLACE_CARD_LOADING_LABEL = "Looking up…";
+
+/** Error state (MAP-CARDS §5.2). */
+export const PLACE_CARD_ERROR_LINE =
+  "Something went wrong. Please try again.";
+
+export const PLACE_CARD_TRY_AGAIN_LABEL = "Try again";
+
+/** Sea / outside Scotland titles (MAP-CARDS §5.2). */
+export const PLACE_CARD_SEA_TITLE = "Out at sea";
+export const PLACE_CARD_OUTSIDE_SCOTLAND_TITLE = "Outside Scotland";
+
+/** Fold part status when no £ (MAP-CARDS §5 8a–8c). */
+export const PLACE_CARD_FOLD_NOT_YET = "Not yet estimated";
 
 export const PLACE_CARD_RESEARCH_DISCLAIMER =
   "research estimate, not an official valuation or bill";
@@ -111,10 +132,10 @@ export const PLACE_CARD_SCOTLIS_LABEL =
   "Check the official title record on ScotLIS";
 
 /**
- * Sea / outside Scotland map click — one plain line (site-watch D3 / SW-019).
+ * Sea / outside Scotland map click — one plain line (MAP-CARDS §5.2).
  */
 export const PLACE_CARD_OUT_OF_SCOTLAND_LINE =
-  "This spot is outside Scotland's land map. Tap on land to see a place.";
+  "We only cover land in Scotland.";
 
 /** SW-028: link under the sea line — close card and reset to national map view. */
 export const PLACE_CARD_SHOW_SCOTLAND_LABEL = "Show me Scotland";
@@ -161,21 +182,21 @@ export function isPlaceCardSeaMiss(
 export const PLACE_CARD_MAP_REFERENCE_LABEL = "Map reference";
 
 /**
- * MAPREF-FIX — Map reference shows OSGB36 British National Grid
- * easting,northing (EPSG:27700). Restored after MAPREF-HIDE.
+ * MAP-CARDS §6 / SW-052 — Map reference + Copy removed from the place card.
+ * Keep helpers for tests / OSGB compute; do not render the row.
  */
-export const PLACE_CARD_MAP_REFERENCE_ENABLED = true;
+export const PLACE_CARD_MAP_REFERENCE_ENABLED = false;
 
 /** Shown when the map-reference Copy button cannot write the clipboard. */
 export const PLACE_CARD_MAP_REFERENCE_COPY_FAIL =
   "Couldn't copy — select and copy the reference instead.";
 
-/** Parts disclosure summary before open (idea 52; Scot-LAND: "and", not "&"). */
-export const PLACE_CARD_PARTS_SUMMARY =
-  "Natural resource rents and services of nature";
+/** Fold summary (MAP-CARDS §5 row 8). */
+export const PLACE_CARD_PARTS_SUMMARY = "More about this area ▾";
 
-/** Why? beside unpublished figures — methodology certainty section. */
+/** @deprecated MAP-CARDS §6 — Why? link removed; status pill says it once. */
 export const PLACE_CARD_FIGURE_WHY_HREF = "/methodology#how-sure";
+/** @deprecated MAP-CARDS §6 — Why? link removed. */
 export const PLACE_CARD_FIGURE_WHY_LABEL = "Why?";
 
 export type PlaceValueStatus = "coming_soon" | "in_progress";
@@ -256,6 +277,10 @@ export type PlaceCardPayload = {
   council_code?: string | null;
   council_name?: string | null;
   data_zone?: PlaceDataZone | null;
+  /** Top-level Data Zone code from identify (same as data_zone.code when present). */
+  dz_code?: string | null;
+  /** Build / source CRS for map identify (British National Grid). */
+  source_crs?: "EPSG:27700" | string | null;
   intermediate_zone?: PlaceIntermediateZone | null;
   /** Map reference OSGB36 easting,northing (EPSG:27700) — never a what3words brand string. */
   square_reference?: string | null;
@@ -351,6 +376,8 @@ export type FetchPlaceCardArgs = {
   lat: number;
   lng: number;
   postcode?: string | null;
+  /** Abort in-flight identify when a newer map/search select wins (MAP-CARDS 24). */
+  signal?: AbortSignal;
 };
 
 /**
@@ -489,6 +516,8 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
       },
     ],
   },
+  dz_code: "S01014567",
+  source_crs: "EPSG:27700",
   intermediate_zone: {
     status: "ok",
     code: "S02002645",
@@ -666,6 +695,7 @@ export async function fetchPlaceCard({
   lat,
   lng,
   postcode,
+  signal,
 }: FetchPlaceCardArgs): Promise<PlaceCardPayload> {
   const params = new URLSearchParams({
     lat: String(lat),
@@ -675,9 +705,10 @@ export async function fetchPlaceCard({
   try {
     return await apiJson<PlaceCardPayload>(
       `/platform/place?${params.toString()}`,
-      { retryStatuses: [502, 503, 504], maxAttempts: 3 },
+      { retryStatuses: [502, 503, 504], maxAttempts: 3, signal },
     );
   } catch (err) {
+    if (signal?.aborted) throw err;
     if (isOutsideScotlandError(err)) {
       return outsideScotlandPlaceCard(lat, lng);
     }
@@ -739,9 +770,23 @@ function normalizeAgrRow(row: PlaceAgrRow): PlaceAgrRow {
     status,
     applies: row.applies !== false,
     of_which: (row.of_which || []).filter(
-      (note) => note.id !== "infrastructure_share",
+      (note) =>
+        note.id !== "infrastructure_share" &&
+        note.id !== "planning_uplift",
     ),
   };
+}
+
+/**
+ * GBP-LIVE answer range (MAP-CARDS §5 row 6 / check 9): "£a to £b a year".
+ * No single-point £, no total.
+ */
+export function formatPlaceCardGbpRange(low: number, high: number): string {
+  const fmt = (n: number) =>
+    `\u00a3${Math.round(n).toLocaleString("en-GB", {
+      maximumFractionDigits: 0,
+    })}`;
+  return `${fmt(low)} to ${fmt(high)} a year`;
 }
 
 /** Strip any accidental AGR £ payload before render; fill Designer defaults. */
@@ -773,6 +818,9 @@ export function sanitizePlaceCard(payload: PlaceCardPayload): PlaceCardPayload {
   return {
     ...rest,
     data_zone: zone,
+    // Identify meta: pass through only — do not invent a code or CRS.
+    dz_code: rest.dz_code ?? null,
+    source_crs: rest.source_crs ?? null,
     // Always recompute OSGB36 from lat/lng so a stale API index cannot show.
     square_reference: mapReferenceNumbers(
       scotLandSquareReference(rest.lat, rest.lng),

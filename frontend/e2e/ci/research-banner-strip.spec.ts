@@ -95,7 +95,15 @@ test.describe("SW-016 research banner strip 390x844", () => {
       });
     });
 
-    await page.route("**/backend/health**", async (route) => {
+    await page.route("**/backend/boundaries/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(EMPTY_FC),
+    });
+  });
+
+  await page.route("**/backend/health**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -285,11 +293,12 @@ test.describe("SW-016 research banner strip 390x844", () => {
     const cardClose = page.getByRole("button", { name: "Close place card" });
     await expect(card).toBeVisible({ timeout: 30_000 });
     await expect(cardTitle).toBeVisible();
-    // Tall cards may share y-range with the strip; stacking keeps the card on top.
+    // MAP-CARDS §3.6 — research banner collapses while a card is open.
+    await expect(banner).toBeHidden();
     await assertCenterTappable(cardTitle, "place card title");
     await assertCenterTappable(cardClose, "place card close");
-    await assertBannerClears(banner, burger, "burger with place card open");
-    await assertBannerClears(banner, search, "search with place card open");
+    await assertCenterTappable(burger, "burger with place card open");
+    await assertCenterTappable(search, "search with place card open");
   });
 
   test("methodology strip expands and shows experimental", async ({ page }) => {

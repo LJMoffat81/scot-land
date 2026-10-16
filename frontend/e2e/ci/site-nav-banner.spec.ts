@@ -63,6 +63,14 @@ test.beforeEach(async ({ page }) => {
   });
 
   // Explicit stubs for routes the chrome suite needs without a live API.
+  await page.route("**/backend/boundaries/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(EMPTY_FC),
+    });
+  });
+
   await page.route("**/backend/health**", async (route) => {
     await route.fulfill({
       status: 200,
@@ -486,23 +494,25 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
     await first.click();
     const placeCard = page.getByTestId("place-card");
     await expect(placeCard).toBeVisible({ timeout: 30_000 });
-    // Intro collapses while the card is open.
+    // Intro / rest prompt collapses while the card is open.
     await expect(page.locator(".app-shell")).toHaveClass(/place-open/);
-    await expect(page.locator(".hud-scotland-job")).toBeHidden();
+    await expect(page.getByTestId("map-rest-prompt")).toHaveCount(0);
 
     // Root-cause check: spinner must clear after suggest pick (not masked).
     await expect(page.locator(".hud-search.loading")).toHaveCount(0, {
       timeout: 10_000,
     });
 
-    // Item 12: restore Find a place intro when the card closes.
+    // MAP-CARDS: card × clears selection; rest prompt returns at closed.
     const close = placeCard.getByRole("button", { name: "Close place card" });
     await expect(close).toBeVisible();
     await close.click();
     await expect(placeCard).toHaveCount(0);
     await expect(page.locator(".app-shell")).not.toHaveClass(/place-open/);
-    await expect(page.locator(".hud-scotland-job")).toBeVisible();
-    await expect(page.locator(".hud-scotland-job")).toHaveText("Find a place");
+    await expect(page.getByTestId("map-rest-prompt")).toBeVisible();
+    await expect(page.getByTestId("map-rest-prompt")).toHaveText(
+      /Search a place or pick a layer/i,
+    );
   });
 });
 

@@ -163,6 +163,9 @@ data_zone_boundaries:
       expected_count: 7392
       product: DataZoneBdry2022
       sha256: 421c648480c7d51e32934de9f1b9f6cbbf86c6d8d382aab30a7bb4d2049ef0ec
+      # Publisher extraction year for map attribution (MAP-CARDS addendum).
+      # Mirrored to frontend/lib/dz2022Attribution.json — do not hard-code in UI.
+      extraction_year: 2022
   gaps:
     - Sasine / private titles are outside this zone frame
     - Zone codes alone are not ownership or rent

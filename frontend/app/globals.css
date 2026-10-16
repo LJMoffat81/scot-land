@@ -851,8 +851,27 @@ input {
   font-size: 0.78rem;
   font-weight: 700;
   letter-spacing: 0.03em;
-  text-transform: uppercase;
+  /* MAP-CARDS §5/§6 — Annual Ground Rent stays sentence case, not all caps */
   color: var(--slrg-muted);
+}
+
+.place-card-status-pill {
+  display: inline-block;
+  margin: 0.35rem 0 0.25rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 650;
+  background: #e8eef5;
+  color: var(--slrg-navy, #1a2b4a);
+}
+
+.place-card-pre-pound {
+  margin: 0.25rem 0 0;
+}
+
+.place-card-try-again {
+  margin-top: 0.65rem;
 }
 
 .place-agr-list,
@@ -1142,6 +1161,9 @@ input {
   margin: 0.22rem 0.22rem 0.22rem 0;
   border-radius: 999px;
   cursor: pointer;
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .search-suggest {
@@ -2900,8 +2922,45 @@ button.primary:disabled {
   margin-top: 0.55rem;
 }
 
+.layers-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.layers-panel-header .hud-tools-title {
+  margin: 0;
+}
+
+.layers-panel-close {
+  min-width: 48px;
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--slrg-text);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .layers-panel-group {
   margin-top: 0.35rem;
+}
+
+.layers-panel-accordion {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 0;
+  background: transparent;
+  padding: 0.35rem 0;
+  cursor: pointer;
+  text-align: left;
 }
 
 .layers-panel-list {
@@ -2909,11 +2968,11 @@ button.primary:disabled {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.85rem;
+  gap: 0.35rem;
 }
 
 .layers-panel-row {
-  padding-bottom: 0.75rem;
+  padding-bottom: 0.55rem;
   border-bottom: 1px solid color-mix(in srgb, var(--slrg-navy) 10%, transparent);
 }
 
@@ -2927,6 +2986,122 @@ button.primary:disabled {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.45rem;
+}
+
+.layers-panel-switch {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 0;
+  background: transparent;
+  padding: 0.25rem 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.layers-panel-switch-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--slrg-text);
+  line-height: 1.3;
+}
+
+.layers-panel-switch-track {
+  flex: 0 0 auto;
+  width: 2.4rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--slrg-navy) 18%, white);
+  position: relative;
+}
+
+.layers-panel-switch-track::after {
+  content: "";
+  position: absolute;
+  top: 0.15rem;
+  left: 0.15rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--slrg-navy) 20%, transparent);
+}
+
+.layers-panel-switch-track.on {
+  background: color-mix(in srgb, var(--rugby-sky) 55%, var(--rugby-navy));
+}
+
+.layers-panel-switch-track.on::after {
+  left: auto;
+  right: 0.15rem;
+}
+
+.layers-inline-legend {
+  margin: 0.15rem 0 0.35rem 0.1rem;
+  padding-left: 0.15rem;
+}
+
+.layers-inline-legend-chip {
+  margin-bottom: 0.25rem;
+}
+
+.layers-inline-legend-scale {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--slrg-muted);
+}
+
+.layers-source-caption {
+  margin-top: 0.2rem;
+}
+
+.layers-panel-footer {
+  margin-top: 0.85rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid color-mix(in srgb, var(--slrg-navy) 10%, transparent);
+}
+
+.layers-limits-explainer {
+  margin-top: 0.45rem;
+}
+
+.layer-legend-swatch.striped {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.35) 2px,
+    rgba(0, 0, 0, 0.35) 3px
+  );
+}
+
+.roadmap-layer-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.roadmap-layer-list li {
+  display: grid;
+  gap: 0.15rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--slrg-navy) 10%, transparent);
+}
+
+.roadmap-layer-name {
+  font-weight: 650;
+  color: var(--slrg-text);
+}
+
+.roadmap-layer-status {
+  font-size: 0.9rem;
+  color: var(--slrg-muted);
 }
 
 .layers-panel-label {
@@ -3529,8 +3704,14 @@ button.linkish:disabled {
   }
 
   .hud-layers-btn {
+    box-sizing: border-box;
+    min-width: 48px;
+    min-height: 48px;
     padding: 0.48rem 0.65rem;
     font-size: 0.78rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .hud-nav {
@@ -3785,11 +3966,27 @@ button.linkish:disabled {
  * UX-01 — mobile tap targets ≥44×44 via padding / min box.
  * Glyph and type sizes stay put; box-sizing keeps the extra padding inside.
  */
+/* MAP-CARDS §3.6 — zoom ± are 48×48 at every width (beat MapLibre 29px defaults). */
+.map-stage .maplibregl-ctrl button.maplibregl-ctrl-zoom-in,
+.map-stage .maplibregl-ctrl button.maplibregl-ctrl-zoom-out,
+.map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-in,
+.map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-out {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
+  box-sizing: border-box;
+}
+
 @media (max-width: 900px) {
+  .map-stage .maplibregl-ctrl button.maplibregl-ctrl-zoom-in,
+  .map-stage .maplibregl-ctrl button.maplibregl-ctrl-zoom-out,
   .map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-in,
   .map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-out {
-    width: 44px;
-    height: 44px;
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
     box-sizing: border-box;
   }
 

@@ -1,7 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const OUT_OF_SCOTLAND_LINE =
-  "This spot is outside Scotland's land map. Tap on land to see a place.";
+const OUT_OF_SCOTLAND_LINE = "We only cover land in Scotland.";
 
 /** SW-019 sample: west of the public bounds check (lng < -8.5). */
 const OUTSIDE_LAT = 59.66616;
@@ -86,6 +85,14 @@ function assertConsoleClean(gate: ConsoleGate) {
 }
 
 async function stubMapChrome(page: Page) {
+  await page.route("**/backend/boundaries/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(EMPTY_FC),
+    });
+  });
+
   await page.route("**/backend/health**", async (route) => {
     await route.fulfill({
       status: 200,

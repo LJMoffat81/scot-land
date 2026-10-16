@@ -4,7 +4,7 @@ import type { NextConfig } from "next";
 // A per-request nonce would need another file, so those two stay 'unsafe-inline'.
 // MapLibre's worker is a blob URL, and raster tiles are images (data: and blob: too).
 // Outside hosts the browser actually fetches: OpenFreeMap (style, tiles, sprites,
-// glyphs) and Esri World Imagery. Context and parcel tiles are same-origin proxies.
+// glyphs). Context tiles are same-origin proxies.
 // API docs at /developers/api use self-hosted swagger-ui under /swagger-ui/ — no CDN.
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -16,9 +16,9 @@ const contentSecurityPolicy = [
   // cloudflareinsights.com connect). SHARE-FIX — keep analytics allowed.
   "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://tiles.openfreemap.org https://server.arcgisonline.com",
+  "img-src 'self' data: blob: https://tiles.openfreemap.org",
   "font-src 'self'",
-  "connect-src 'self' https://tiles.openfreemap.org https://server.arcgisonline.com https://cloudflareinsights.com http://localhost:* http://127.0.0.1:* https://localhost:* https://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*",
+  "connect-src 'self' https://tiles.openfreemap.org https://cloudflareinsights.com http://localhost:* http://127.0.0.1:* https://localhost:* https://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
 ].join("; ");

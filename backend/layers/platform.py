@@ -1349,6 +1349,9 @@ def place_context(
     else:
         ownership_flags.append("no_inspire_parcel")
 
+    data_zone = _data_zone_at(lat, lng)
+    # Identify: top-level dz_code mirrors data_zone.code; null/omit on sea miss.
+    dz_code = data_zone.get("code") if data_zone.get("status") == "ok" else None
     card: dict[str, Any] = {
         "contract": "place_card_v1",
         "lat": lat,
@@ -1356,7 +1359,10 @@ def place_context(
         "postcode": postcode,
         "council_code": council_code,
         "council_name": council_name,
-        "data_zone": _data_zone_at(lat, lng),
+        "data_zone": data_zone,
+        # MAP-CARDS-ADDENDUM-1 A6: identify + build CRS for later BNG→DZ lookup.
+        "dz_code": dz_code,
+        "source_crs": "EPSG:27700",
         "vacant_or_derelict": vacant,
         "vdl": vdl,
         "housing_land_audit": housing_land,

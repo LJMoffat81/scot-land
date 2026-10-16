@@ -19,8 +19,7 @@ function exists(relPath) {
   return existsSync(join(frontendRoot, relPath));
 }
 
-const LINE =
-  "This spot is outside Scotland's land map. Tap on land to see a place.";
+const LINE = "We only cover land in Scotland.";
 
 const SHOW_SCOTLAND = "Show me Scotland";
 

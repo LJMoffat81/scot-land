@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * SHARE-FIX — Coming soon when scoped layer tiles return 503;
+ * SHARE-FIX aligned with MAP-CARDS — deferred layers are not in Layers;
  * place lookup shows Try again (not Service busy) after exhausted retries.
  */
 
@@ -14,19 +14,6 @@ const HEALTH_OK = {
 };
 
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
-
-const CATALOG = {
-  version: 2,
-  layers: [
-    {
-      id: "builtup_mask",
-      group: "spatial",
-      status: "live",
-      label: "Built-up display mask",
-      licence: "OGL-3.0",
-    },
-  ],
-};
 
 type ConsoleGate = { consoleErrors: string[]; pageErrors: string[] };
 
@@ -47,66 +34,6 @@ function filterNoise(errors: string[]): string[] {
   );
 }
 
-async function stubShareFixBackend(
-  page: Page,
-  opts: { unavailablePath?: RegExp } = {},
-) {
-  const unavailable = opts.unavailablePath;
-  await page.route("**/backend/**", async (route) => {
-    const url = route.request().url();
-    if (/\/health/i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(HEALTH_OK),
-      });
-      return;
-    }
-    if (/\/layers\/catalog/i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(CATALOG),
-      });
-      return;
-    }
-    if (unavailable && unavailable.test(url)) {
-      await route.fulfill({
-        status: 503,
-        contentType: "application/json",
-        body: JSON.stringify({ detail: "not loaded" }),
-      });
-      return;
-    }
-    if (/\/layers\//i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(EMPTY_FC),
-      });
-      return;
-    }
-    if (/\/platform\/place/i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          contract: "place_card_v1",
-          lat: 55.86,
-          lng: -4.25,
-          place_label: "Glasgow",
-        }),
-      });
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({}),
-    });
-  });
-}
-
 async function openLayers(page: Page) {
   const btn = page.getByTestId("hud-layers-btn");
   await expect(btn).toBeVisible({ timeout: 30_000 });
@@ -118,111 +45,59 @@ async function openLayers(page: Page) {
   });
 }
 
-/** Layers that still go live until tiles 503 (SHARE-FIX). */
-const COMING_SOON_ON_503: Array<{
-  name: string;
-  path: RegExp;
-  toggle: string;
-}> = [
-  { name: "hla", path: /\/layers\/open\/hla/i, toggle: "hla" },
-  {
-    name: "onshore wind and hydro",
-    path: /\/layers\/open\/repd-onshore-wind/i,
-    toggle: "3",
-  },
-];
+/** Layers that MAP-CARDS moved off the drawer onto the roadmap. */
+const DEFERRED_LAYER_TOGGLES = ["5", "lca", "1a", "2", "builtup_mask"] as const;
 
-/** POST-SHARE-1 — not ingested; Coming soon before any tile request. */
-const COMING_SOON_UP_FRONT = [
-  { name: "aquaculture", toggle: "5" },
-  { name: "lca", toggle: "lca" },
-] as const;
-
-test.describe("SHARE-FIX Coming soon on 503 tiles", () => {
+test.describe("MAP-CARDS deferred layers not in drawer", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  for (const layer of COMING_SOON_ON_503) {
-    test(`${layer.name} 503 → Coming soon / disabled`, async ({ page }) => {
-      test.setTimeout(90_000);
-      const gate = attachConsoleGate(page);
-      await stubShareFixBackend(page, { unavailablePath: layer.path });
-
-      await page.goto("/?lat=55.8609&lng=-4.2514");
-      await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
-      await openLayers(page);
-
-      const toggle = page.getByTestId(`layer-toggle-${layer.toggle}`);
-      await expect(toggle).toBeVisible({ timeout: 30_000 });
-      await expect(toggle).toBeEnabled();
-      await toggle.click();
-
-      await expect(
-        page.getByTestId(`layer-coming-soon-${layer.toggle}`),
-      ).toHaveText("Coming soon", { timeout: 15_000 });
-      await expect(toggle).toBeDisabled();
-      await expect(
-        page.getByTestId(`map-layer-${layer.toggle}`),
-      ).toHaveAttribute("data-coming-soon", "true");
-      await expect(page.getByTestId("layer-notice")).toHaveCount(0);
-      await expect(page.locator("aside.hud-tools")).not.toContainText(
-        /Service busy/i,
-      );
-
-      expect(filterNoise(gate.consoleErrors)).toEqual([]);
-      expect(filterNoise(gate.pageErrors)).toEqual([]);
-    });
-  }
-});
-
-test.describe("POST-SHARE-1 Coming soon up front (no tile 503)", () => {
-  test.use({ viewport: { width: 1280, height: 800 } });
-
-  for (const layer of COMING_SOON_UP_FRONT) {
-    test(`${layer.name} Coming soon / disabled without tile request`, async ({
-      page,
-    }) => {
-      test.setTimeout(90_000);
-      const gate = attachConsoleGate(page);
-      const hits: string[] = [];
-      await page.route("**/backend/**", async (route) => {
-        const url = route.request().url();
-        if (/ces-aquaculture|\/lca/i.test(url)) {
-          hits.push(url);
-        }
-        if (/\/health/i.test(url)) {
-          await route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify(HEALTH_OK),
-          });
-          return;
-        }
+  test("aquaculture / LCA / planning uplift / minerals / builtup absent", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+    const gate = attachConsoleGate(page);
+    await page.route("**/backend/**", async (route) => {
+      const url = route.request().url();
+      if (/\/health/i.test(url)) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify(/\/layers\//i.test(url) ? EMPTY_FC : {}),
+          body: JSON.stringify(HEALTH_OK),
         });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(/\/layers\//i.test(url) || /\/boundaries\//i.test(url) ? EMPTY_FC : {}),
       });
-
-      await page.goto("/?lat=55.8609&lng=-4.2514");
-      await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
-      await openLayers(page);
-
-      const toggle = page.getByTestId(`layer-toggle-${layer.toggle}`);
-      await expect(toggle).toBeVisible({ timeout: 30_000 });
-      await expect(toggle).toBeDisabled();
-      await expect(
-        page.getByTestId(`layer-coming-soon-${layer.toggle}`),
-      ).toHaveText("Coming soon");
-      await expect(
-        page.getByTestId(`map-layer-${layer.toggle}`),
-      ).toHaveAttribute("data-coming-soon", "true");
-      expect(hits).toEqual([]);
-
-      expect(filterNoise(gate.consoleErrors)).toEqual([]);
-      expect(filterNoise(gate.pageErrors)).toEqual([]);
     });
-  }
+    await page.route("**/api/gbp-live**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ enabled: false }),
+      });
+    });
+
+    await page.goto("/?lat=55.8609&lng=-4.2514");
+    await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
+    await openLayers(page);
+
+    for (const id of DEFERRED_LAYER_TOGGLES) {
+      await expect(page.getByTestId(`layer-toggle-${id}`)).toHaveCount(0);
+      await expect(page.getByTestId(`layer-coming-soon-${id}`)).toHaveCount(0);
+    }
+    await expect(page.getByTestId("layers-panel")).not.toContainText(
+      /coming soon/i,
+    );
+    await expect(
+      page.getByTestId("map-layers-roadmap-link").locator("a"),
+    ).toHaveAttribute("href", "/roadmap#map-layers");
+
+    expect(filterNoise(gate.consoleErrors)).toEqual([]);
+    expect(filterNoise(gate.pageErrors)).toEqual([]);
+  });
 });
 
 test.describe("SHARE-FIX place lookup Try again", () => {
@@ -244,7 +119,20 @@ test.describe("SHARE-FIX place lookup Try again", () => {
         });
         return;
       }
-      if (/\/place\?/i.test(url) || /\/place$/i.test(url)) {
+      // HEALTH-TRIM: AGR capability is probed via /layers/catalog (not /health routers).
+      if (/\/layers\/catalog/i.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ version: 2, layers: [] }),
+        });
+        return;
+      }
+      // Place *search* only — do not 503 /platform/place identify.
+      if (
+        (/\/place\?/i.test(url) || /\/place$/i.test(url)) &&
+        !/platform\/place/i.test(url)
+      ) {
         placeHits += 1;
         await route.fulfill({
           status: 503,
@@ -258,7 +146,11 @@ test.describe("SHARE-FIX place lookup Try again", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(/\/layers\//i.test(url) ? EMPTY_FC : {}),
+        body: JSON.stringify(
+          /\/layers\//i.test(url) || /\/boundaries\//i.test(url)
+            ? EMPTY_FC
+            : {},
+        ),
       });
     });
 

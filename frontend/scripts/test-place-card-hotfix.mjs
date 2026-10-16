@@ -18,19 +18,21 @@ const { preferDz2022, dataZoneFieldLabel } = await import(
   pathToFileURL(join(frontendRoot, "lib/placeCardDz.ts")).href
 );
 
-// --- 1. Aquaculture tag shadow → proxy; fisheries stays market ---
+// --- 1. MAP-CARDS: aquaculture / fisheries left the live Layers registry ---
 {
-  const { MAP_DRAWER_LAYERS } = await import(
-    pathToFileURL(join(frontendRoot, "lib/mapLayerGroups.ts")).href
+  const { MAP_LAYER_REGISTRY } = await import(
+    pathToFileURL(join(frontendRoot, "lib/mapLayerRegistry.ts")).href
   );
-  const aqua = MAP_DRAWER_LAYERS.find((row) => row.id === "5");
-  const fish = MAP_DRAWER_LAYERS.find((row) => row.id === "6");
-  assert.ok(aqua, "Aquaculture layer id 5 present");
-  assert.equal(aqua.label, "Aquaculture");
-  assert.equal(aqua.tag, "proxy", "Aquaculture evidence tag must be proxy");
-  assert.ok(fish, "Fisheries quota layer id 6 present");
-  assert.equal(fish.label, "Fisheries quota");
-  assert.equal(fish.tag, "market", "Fisheries quota stays market");
+  assert.equal(
+    MAP_LAYER_REGISTRY.find((row) => row.id === "5"),
+    undefined,
+    "Aquaculture is roadmap-only, not a live switch",
+  );
+  assert.equal(
+    MAP_LAYER_REGISTRY.find((row) => row.id === "6"),
+    undefined,
+    "Fisheries quota is roadmap-only, not a live switch",
+  );
 }
 
 // --- 2. preferDz2022 never invents vintage 2022 ---
@@ -134,8 +136,8 @@ const { preferDz2022, dataZoneFieldLabel } = await import(
     /<dt>Data zone \(2022\)<\/dt>/,
     "heading must not hardcode Data zone (2022)",
   );
-  // Grey placeholder rows while a place is being looked up.
-  assert.match(src, /Looking up this spot…/);
+  // Grey placeholder rows while a place is being looked up (MAP-CARDS §5.2).
+  assert.match(src, /PLACE_CARD_LOADING_LABEL|Looking up…/);
   assert.match(src, /place-card-placeholder-rows/);
   assert.match(src, /data-testid="place-card-placeholders"/);
   assert.match(src, /place-card-placeholder-row/);

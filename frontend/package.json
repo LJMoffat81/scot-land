@@ -36,6 +36,7 @@
     "test:prereview-rent-groups": "node --experimental-strip-types scripts/test-prereview-rent-groups.mjs",
     "test:share-fix": "node scripts/test-share-fix.mjs",
     "test:logo-fix": "node --experimental-strip-types scripts/test-logo-fix.mjs",
+    "test:map-layer-registry": "node --experimental-strip-types scripts/test-map-layer-registry.mjs",
     "check:developers-links": "node scripts/check-developers-links.mjs"
   },
   "dependencies": {

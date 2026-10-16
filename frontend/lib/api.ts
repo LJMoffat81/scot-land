@@ -109,7 +109,7 @@ export function visitorFacingError(err: unknown): string {
     message.toLowerCase().includes("outside scotland")
   ) {
     // Keep in sync with PLACE_CARD_OUT_OF_SCOTLAND_LINE (placeCard.ts).
-    return "This spot is outside Scotland's land map. Tap on land to see a place.";
+    return "We only cover land in Scotland.";
   }
   if (!message || isDevFacing(message) || isServiceFailure(err)) return TRY_AGAIN;
   return message;
@@ -232,13 +232,13 @@ export async function pingApi(): Promise<{ ok: boolean; message: string }> {
 }
 
 /**
- * Which optional API routers this server mounts. HEALTH-TRIM: `/health` is
- * status + version only, so AGR is detected via GET `/layers/catalog` (a public
- * path unique to that router). When AGR is not loaded, public place/search
- * endpoints 404, so the map must not call them. The public shell never fetches
- * council AGR metrics (/layers/councils) or paints rent £/m² — modelled AGR £
- * stays internal-only. Cached for the page; a failed probe is retried on the
- * next call.
+ * Which optional API routers this server mounts. HEALTH-TRIM (#166): `/health`
+ * is status + version only, so AGR is detected via GET `/layers/catalog` (a
+ * public path unique to that router). When AGR is not loaded, public
+ * place/search endpoints 404, so the map must not call them. The public shell
+ * never fetches council AGR metrics (/layers/councils) or paints rent £/m² —
+ * modelled AGR £ stays internal-only. Cached for the page; a failed probe is
+ * retried on the next call.
  *
  * `platform` is reserved for callers that need the open-platform router; the
  * map shell does not read it, so we do not probe a platform-only path (that

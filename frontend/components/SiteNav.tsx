@@ -8,8 +8,8 @@ import {
 } from "@/lib/siteNav";
 
 export type SiteNavProps = {
-  /** Current page — sets aria-current="page". */
-  current: SiteNavId;
+  /** Current page — sets aria-current="page". Omit on pages outside the main nav. */
+  current?: SiteNavId;
   /**
    * page — full top bar with logo (content pages).
    * map — compact links for the map HUD (logo stays in hud-brand).

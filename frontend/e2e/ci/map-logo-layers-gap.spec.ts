@@ -141,6 +141,14 @@ test.describe("SW-020 map logo vs Layers gap (390×844)", () => {
       });
     });
 
+    await page.route("**/backend/boundaries/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(EMPTY_FC),
+      });
+    });
+
     await page.route("**/backend/health**", async (route) => {
       await route.fulfill({
         status: 200,
@@ -153,6 +161,22 @@ test.describe("SW-020 map logo vs Layers gap (390×844)", () => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({ layers: [] }),
+      });
+    });
+    await page.route("**/backend/platform/place**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          contract: "place_card_v1",
+          lat: 55.95,
+          lng: -3.19,
+          place_label: null,
+          agr_rows: [],
+          constraints: [],
+          layers: [],
+          links: [],
+        }),
       });
     });
     await page.route("**/backend/place**", async (route) => {

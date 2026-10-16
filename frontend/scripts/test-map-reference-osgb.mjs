@@ -69,8 +69,8 @@ const placeCardSrc = readFileSync(
 );
 assert.match(
   placeCardSrc,
-  /PLACE_CARD_MAP_REFERENCE_ENABLED = true/,
-  "Map reference row restored (MAPREF-FIX)",
+  /PLACE_CARD_MAP_REFERENCE_ENABLED = false/,
+  "MAP-CARDS §6 — Map reference row off on the place card",
 );
 assert.match(
   placeCardSrc,
@@ -88,19 +88,20 @@ assert.match(
   "sanitizePlaceCard always recomputes OSGB from lat/lng",
 );
 
-const groupsSrc = readFileSync(
-  join(frontendRoot, "lib/mapLayerGroups.ts"),
+const registrySrc = readFileSync(
+  join(frontendRoot, "lib/mapLayerRegistry.ts"),
   "utf8",
 );
-assert.match(
-  groupsSrc,
-  /id: "5"[\s\S]*?comingSoon: true/,
-  "Aquaculture marked Coming soon up front",
+// MAP-CARDS: aquaculture / LCA are roadmap items, not Layers switches.
+assert.doesNotMatch(
+  registrySrc,
+  /id:\s*"5"/,
+  "Aquaculture must not be a live Layers registry id",
 );
-assert.match(
-  groupsSrc,
-  /id: "lca"[\s\S]*?comingSoon: true/,
-  "LCA marked Coming soon up front",
+assert.doesNotMatch(
+  registrySrc,
+  /id:\s*"lca"/,
+  "LCA must not be a live Layers registry id",
 );
 
 console.log("test-map-reference-osgb: ok");

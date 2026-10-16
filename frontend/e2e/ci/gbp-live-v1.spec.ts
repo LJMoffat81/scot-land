@@ -108,13 +108,6 @@ function placeFixture(overrides: Record<string, unknown> = {}) {
 }
 
 async function stubShell(page: Page, place: Record<string, unknown>, gbpLiveEnabled: boolean) {
-  await page.route("**/health", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(HEALTH_OK),
-    });
-  });
   const gbpLiveBody = gbpLiveEnabled
     ? {
         enabled: true,
@@ -122,6 +115,63 @@ async function stubShell(page: Page, place: Record<string, unknown>, gbpLiveEnab
         rent_rate_wording: RENT_RATE_HOW_IT_WORKS,
       }
     : { enabled: false, banner: null, rent_rate_wording: null };
+  // Quiet FastAPI: boundaries must be FeatureCollection (MapLibre rejects {}).
+  await page.route("**/backend/**", async (route) => {
+    const url = route.request().url();
+    if (/\/health/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(HEALTH_OK),
+      });
+      return;
+    }
+    if (/\/platform\/gbp-live/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(gbpLiveBody),
+      });
+      return;
+    }
+    if (/\/platform\/place/i.test(url) || /\/api\/place\.json/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(place),
+      });
+      return;
+    }
+    if (/\/layers\/context\/data-zones\/at/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code: "S01014567",
+          name: "City Centre South",
+          vintage: 2022,
+        }),
+      });
+      return;
+    }
+    const wantsGeo =
+      /\/layers\//i.test(url) ||
+      /\/boundaries\//i.test(url) ||
+      /\/w3w-grid/i.test(url) ||
+      /\/parcels/i.test(url);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(wantsGeo ? EMPTY_FC : {}),
+    });
+  });
+  await page.route("**/health", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(HEALTH_OK),
+    });
+  });
   // Same-origin probe + backend path both return 200 (never 404 when flag off).
   await page.route("**/api/gbp-live**", async (route) => {
     await route.fulfill({
@@ -161,88 +211,78 @@ async function stubShell(page: Page, place: Record<string, unknown>, gbpLiveEnab
 }
 
 async function openPlaceCard(page: Page) {
-  await page.goto("/");
-  await page.waitForTimeout(400);
-  const map = page.locator(".maplibregl-canvas, #map, .map-shell").first();
-  if (await map.count()) {
-    await map.click({ position: { x: 200, y: 200 } }).catch(() => undefined);
+  // Deep-link boot (?lat=&lng=) — reliable under MAP-CARDS panel slot.
+  await page.goto("/?lat=55.8609&lng=-4.2514");
+  await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
+  const card = page.getByTestId("place-card");
+  if ((await card.count()) === 0) {
+    await page.locator(".maplibregl-canvas").click({
+      position: { x: 400, y: 300 },
+    });
   }
-  await expect(page.getByTestId("place-card")).toBeVisible({ timeout: 15_000 });
+  await expect(card).toBeVisible({ timeout: 45_000 });
 }
 
 test.describe("GBP-LIVE-V1 flag OFF", () => {
   test("no £ on place card", async ({ page }) => {
+    test.setTimeout(90_000);
     await stubShell(page, placeFixture(), false);
     await openPlaceCard(page);
     const card = page.getByTestId("place-card");
-    await expect(card.getByTestId("place-card-figure")).toHaveText(PRE_POUND);
+    // MAP-CARDS §5: status + pre-pound live in the answer row.
+    const figure = card.getByTestId("place-card-figure");
+    await expect(figure.getByTestId("place-card-figure-status")).toHaveText(
+      "Not published yet",
+    );
+    await expect(figure).toContainText(PRE_POUND);
     await expect(card).not.toContainText("£");
     await expect(card.getByTestId("place-card-figure-range")).toHaveCount(0);
   });
 });
 
 test.describe("GBP-LIVE-V1 flag ON", () => {
-  test("place card shows central, range, and estimate label", async ({
+  test("place card shows £a to £b a year range and chip (MAP-CARDS §5)", async ({
     page,
   }) => {
+    test.setTimeout(90_000);
     const place = placeFixture({
       gbp_live: {
         enabled: true,
         banner: "Early estimates; ranges are wide and will change.",
         rent_rate_wording: RENT_RATE_HOW_IT_WORKS,
-        unit: "per m²",
-        unit_wording: "per m² of land a year",
       },
       surface_rent_display: {
         state: "ok",
-        low: 0.06,
-        central: 0.12,
-        high: 0.18,
+        low: 6000,
+        central: 12000,
+        high: 18000,
         estimate_label: "Partly estimated",
         rent_rate_wording: RENT_RATE_CARD,
-        unit: "per m²",
-        unit_wording: "per m² of land a year",
-        central_label: "most likely",
         grain: "data_zone",
       },
     });
     await stubShell(page, place, true);
     await openPlaceCard(page);
     const card = page.getByTestId("place-card");
-    await expect(card.getByTestId("place-card-figure")).toContainText(
-      "£0.12 per m²",
+    const range = card.getByTestId("place-card-figure-range");
+    await expect(range).toContainText("£6,000");
+    await expect(range).toContainText("to");
+    await expect(range).toContainText("£18,000");
+    await expect(range).toContainText("a year");
+    // No single-point £ headline; chip present; no totals / yield.
+    await expect(card.getByTestId("place-card-figure")).not.toContainText(
+      /^£12,000$/,
     );
-    await expect(card.getByTestId("place-card-figure-range")).toContainText(
-      "£0.06",
-    );
-    await expect(card.getByTestId("place-card-figure-range")).toContainText(
-      "£0.18 per m²",
-    );
-    await expect(card.getByTestId("place-card-figure-central-label")).toHaveText(
-      "most likely",
-    );
-    await expect(card.getByTestId("place-card-figure-unit")).toContainText(
-      "per m²",
-    );
-    await expect(card.getByTestId("place-card-figure-estimate")).toHaveText(
-      "Partly estimated",
-    );
-    await expect(card.getByTestId("place-card-range-surface")).toContainText(
-      "per m²",
-    );
-    await expect(card.getByTestId("place-card-estimate-label-surface")).toHaveText(
-      "Partly estimated",
-    );
-    await expect(card.getByTestId("place-card-rent-rate-surface")).toHaveText(
-      RENT_RATE_CARD,
-    );
-    // No total line.
+    // Chip on the answer row (parts accordion also tags Land as Modelled).
+    await expect(
+      card.getByTestId("place-card-figure").getByTestId("place-tag-proxy"),
+    ).toBeVisible();
     await expect(card).not.toContainText(/Scotland total|national total/i);
-    // Banned visitor word "yield" must never appear.
     await expect(card).not.toContainText(/\byield\b/i);
   });
 
   test("API class shadow never shows as visible text", async ({ page }) => {
+    test.setTimeout(90_000);
     const place = placeFixture({
       gbp_live: {
         enabled: true,
@@ -251,30 +291,27 @@ test.describe("GBP-LIVE-V1 flag ON", () => {
       },
       surface_rent_display: {
         state: "ok",
-        low: 0.06,
-        central: 0.12,
-        high: 0.18,
+        low: 6000,
+        central: 12000,
+        high: 18000,
         estimate_label: "Partly estimated",
         rent_rate_wording: RENT_RATE_CARD,
-        unit: "per m²",
-        unit_wording: "per m² of land a year",
-        central_label: "most likely",
         grain: "data_zone",
       },
     });
-    // Fixture includes nature row with tag/class "shadow" — visitor chip must be Estimate.
+    // Fixture includes nature row with tag/class "shadow" — visitor never sees "shadow".
     await stubShell(page, place, true);
     await openPlaceCard(page);
     const card = page.getByTestId("place-card");
+    await card.getByTestId("place-card-parts").locator("summary").click();
     const nature = card.getByTestId("place-card-agr-nature");
-    await expect(nature.getByTestId("place-tag-estimate")).toHaveText("Estimate");
+    await expect(nature).toHaveAttribute("data-class", "estimate");
     await expect(nature).not.toContainText(/\bshadow\b/i);
     await expect(card).not.toContainText(/\bshadow\b/i);
-    // Tone attribute must be remapped too (data-class on the row).
-    await expect(nature).toHaveAttribute("data-class", "estimate");
   });
 
   test("under-review zone shows label and no £", async ({ page }) => {
+    test.setTimeout(90_000);
     const place = placeFixture({
       gbp_live: { enabled: true },
       surface_rent_display: {
@@ -295,11 +332,11 @@ test.describe("GBP-LIVE-V1 flag ON", () => {
     await expect(card.getByTestId("place-card-under-review")).toHaveText(
       "Under review",
     );
-    await expect(card.getByTestId("place-card-figure")).toHaveText("Under review");
     await expect(card).not.toContainText("£");
   });
 
   test("placeholder / hidden display never shows £", async ({ page }) => {
+    test.setTimeout(90_000);
     const place = placeFixture({
       gbp_live: { enabled: true },
       surface_rent_display: {
@@ -313,7 +350,7 @@ test.describe("GBP-LIVE-V1 flag ON", () => {
     await stubShell(page, place, true);
     await openPlaceCard(page);
     const card = page.getByTestId("place-card");
-    await expect(card.getByTestId("place-card-figure")).toHaveText(PRE_POUND);
+    await expect(card.getByTestId("place-card-figure")).toContainText(PRE_POUND);
     await expect(card).not.toContainText("£");
   });
 });

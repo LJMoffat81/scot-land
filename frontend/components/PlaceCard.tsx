@@ -1,51 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import {
-  formatGbpCentralWithRangePerM2,
-  GBP_LIVE_CENTRAL_LABEL,
   GBP_LIVE_UNDER_REVIEW,
-  GBP_LIVE_UNIT_WORDING,
   gbpLiveFromCard,
   type SurfaceRentDisplay,
 } from "../lib/gbpLive";
 import {
   PLACE_CARD_AGR_LABEL,
   PLACE_CARD_AGR_SUBTITLE,
-  PLACE_CARD_COVERS_HOMES_ONLY,
+  PLACE_CARD_ERROR_LINE,
   PLACE_CARD_EXPERIMENTAL_FOOTER,
   PLACE_CARD_FACT_LINE,
   PLACE_CARD_FIGURE_STATUS,
-  PLACE_CARD_FIGURE_WHY_HREF,
-  PLACE_CARD_FIGURE_WHY_LABEL,
-  PLACE_CARD_FULLY_ESTIMATED,
+  PLACE_CARD_FOLD_NOT_YET,
   PLACE_CARD_HOW_WE_WORK_HOMES,
   PLACE_CARD_HOW_WE_WORK_LABEL,
-  PLACE_CARD_DATA_SOURCES_HREF,
-  PLACE_CARD_DATA_SOURCES_LABEL,
-  PLACE_CARD_MAP_REFERENCE_COPY_FAIL,
-  PLACE_CARD_MAP_REFERENCE_ENABLED,
-  PLACE_CARD_MAP_REFERENCE_LABEL,
-  PLACE_CARD_MORE_ABOUT_LABEL,
-  PLACE_CARD_NEIGHBOURHOOD_NOT_ADDRESS,
-  PLACE_CARD_NO_HOMES,
-  PLACE_CARD_NO_MATCH,
+  PLACE_CARD_LOADING_LABEL,
   PLACE_CARD_OUT_OF_SCOTLAND_LINE,
-  PLACE_CARD_PARTS_NOTE,
+  PLACE_CARD_OUTSIDE_SCOTLAND_TITLE,
   PLACE_CARD_PARTS_SUMMARY,
-  PLACE_CARD_PART_NOT_YET,
-  PLACE_CARD_LAND_VALUES_COMING_SOON,
   PLACE_CARD_PRE_POUND,
   PLACE_CARD_RANK_BAND_ENABLED,
+  PLACE_CARD_SEA_TITLE,
   PLACE_CARD_SHOW_SCOTLAND_LABEL,
   PLACE_CARD_TOO_FEW_HOMES,
+  PLACE_CARD_TRY_AGAIN_LABEL,
   PLACE_CARD_TYPICAL_HOME,
+  formatPlaceCardGbpRange,
   isPlaceCardSeaMiss,
-  mapReferenceNumbers,
-  placeCardTitle,
   placeClassChip,
-  placeSalesBasisLine,
   placeUnitKind,
   sanitizePlaceCard,
   type PlaceAgrRow,
@@ -61,118 +44,19 @@ export type PlaceCardProps = {
   onClose?: () => void;
   /** SW-028: sea stub — close card and reset map to Scotland national view. */
   onShowScotland?: () => void;
+  /** Error state — retry the last lookup. */
+  onRetry?: () => void;
   /** When true, render as a floating HUD card (map shell). Default: true. */
   floating?: boolean;
   /** Extra class on the aside (e.g. place-card-stub for map HUD selectors). */
   className?: string;
-  /** After an address / postcode search — show neighbourhood-not-address line. */
+  /** @deprecated MAP-CARDS §6 — neighbourhood-not-address line removed. */
   fromAddressSearch?: boolean;
   /** Dwelling count for the unit rule when the API payload omits it. */
   dwellings?: number | null;
-  /** Explicit no-match card state (search found nothing). */
+  /** Explicit no-match card state (search found nothing) — parent shows under search. */
   noMatch?: boolean;
 };
-
-/** Suggestion 31 — fold the Sasine / no-outline explanation behind a short control. */
-const WHY_NO_OUTLINE_LABEL = "Why no outline?";
-const NO_OUTLINE_STATUS_LINE = "No registered outline at this point";
-
-function MapReferenceCopy({ value }: { value: string }) {
-  const [done, setDone] = useState(false);
-  const [failMsg, setFailMsg] = useState<string | null>(null);
-
-  async function onCopy() {
-    try {
-      await navigator.clipboard.writeText(value);
-      setFailMsg(null);
-      setDone(true);
-      window.setTimeout(() => setDone(false), 1500);
-    } catch {
-      setDone(false);
-      setFailMsg(PLACE_CARD_MAP_REFERENCE_COPY_FAIL);
-    }
-  }
-
-  return (
-    <>
-      <button
-        type="button"
-        className="place-card-map-reference-copy"
-        onClick={() => void onCopy()}
-        data-testid="place-card-map-reference-copy"
-        aria-label={`Copy ${PLACE_CARD_MAP_REFERENCE_LABEL}`}
-      >
-        {done ? "Copied" : "Copy"}
-      </button>
-      {failMsg ? (
-        <span
-          className="place-card-map-reference-copy-fail"
-          data-testid="place-card-map-reference-copy-fail"
-          role="status"
-        >
-          {failMsg}
-        </span>
-      ) : null}
-    </>
-  );
-}
-
-/**
- * Survive PlaceCard body remounts (loading flicker / stub→card swap) so the
- * open/closed choice is not lost mid-toggle under CI timing.
- */
-const whyNoOutlineExpandedByNote = new Map<string, boolean>();
-
-/** ≤600px: DZ2011 + IZ code start folded (DZ-HIERARCHY / idea 40). */
-function useNarrowHierarchyFold(maxWidthPx = 600): boolean {
-  const [narrow, setNarrow] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const mq = window.matchMedia(`(max-width: ${maxWidthPx}px)`);
-    const apply = () => setNarrow(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, [maxWidthPx]);
-  return narrow;
-}
-
-function WhyNoOutlineBlock({ note }: { note: string }) {
-  const [expanded, setExpanded] = useState(
-    () => whyNoOutlineExpandedByNote.get(note) ?? false,
-  );
-
-  return (
-    <div className="place-card-why-no-outline" data-testid="place-card-why-no-outline">
-      <p className="place-card-meta place-card-outline-status-row">
-        <span data-testid="place-card-outline-status">{NO_OUTLINE_STATUS_LINE}</span>{" "}
-        <button
-          type="button"
-          className="place-card-why-no-outline-btn"
-          data-testid="place-card-why-no-outline-btn"
-          aria-expanded={expanded}
-          onClick={() => {
-            // Write the Map before setState so a remount mid-click still
-            // rehydrates the intended open/closed value.
-            const next = !(whyNoOutlineExpandedByNote.get(note) ?? expanded);
-            whyNoOutlineExpandedByNote.set(note, next);
-            setExpanded(next);
-          }}
-        >
-          {WHY_NO_OUTLINE_LABEL}
-        </button>
-      </p>
-      {expanded ? (
-        <p
-          className="place-card-meta place-card-why-no-outline-detail"
-          data-testid="place-card-why-no-outline-detail"
-        >
-          {note}
-        </p>
-      ) : null}
-    </div>
-  );
-}
 
 /** Visitor-safe CSS tone — never emit the raw API class string `shadow` in HTML. */
 function placeTagTone(tag: PlaceRentTag): "market" | "proxy" | "estimate" {
@@ -203,82 +87,38 @@ function ClassChip({ tag }: { tag: PlaceRentTag }) {
   );
 }
 
-function figureCopy(unit: PlaceUnitKind): string {
-  switch (unit) {
-    case "no_homes":
-      return PLACE_CARD_NO_HOMES;
-    case "too_few_homes":
-    case "not_applicable":
-      return PLACE_CARD_TOO_FEW_HOMES;
-    case "typical_home":
-      return PLACE_CARD_PRE_POUND;
-    default: {
-      const _exhaustive: never = unit;
-      return _exhaustive;
-    }
-  }
-}
-
-function surfacePartRange(
-  row: PlaceAgrRow,
+function surfaceLiveRange(
   display: SurfaceRentDisplay | null | undefined,
   gbpLive: boolean,
-): string {
-  if (!gbpLive || row.id !== "surface") {
-    return row.range ?? PLACE_CARD_PART_NOT_YET;
-  }
-  if (display?.state === "under_review") {
-    return display.label?.trim() || GBP_LIVE_UNDER_REVIEW;
-  }
+): string | null {
+  if (!gbpLive || !display) return null;
+  if (display.state === "under_review") return null;
   if (
-    display?.state === "ok" &&
+    display.state === "ok" &&
     display.low != null &&
     display.central != null &&
     display.high != null
   ) {
-    return formatGbpCentralWithRangePerM2(
-      display.low,
-      display.central,
-      display.high,
-    ).range;
+    return formatPlaceCardGbpRange(display.low, display.high);
   }
-  // Placeholder / hidden — never show £.
-  return row.range ?? PLACE_CARD_PART_NOT_YET;
+  return null;
 }
 
-function PartRow({
+function FoldPartRow({
   row,
-  display,
-  gbpLive,
-  showFigureWhy,
+  liveRange,
 }: {
   row: PlaceAgrRow;
-  display?: SurfaceRentDisplay | null;
-  gbpLive: boolean;
-  /** Idea 17/24 — unpublished figure status + Why? on the first value row. */
-  showFigureWhy?: boolean;
+  liveRange: string | null;
 }) {
   const classTag = (row.class ?? row.tag) as PlaceRentTag;
   const tone = placeTagTone(classTag);
-  const rangeText = surfacePartRange(row, display, gbpLive);
-  const liveOk =
-    gbpLive &&
-    row.id === "surface" &&
-    display?.state === "ok" &&
-    display.low != null &&
-    display.central != null &&
-    display.high != null;
-  const estimateLabel = liveOk
-    ? display.estimate_label || row.estimate_label
-    : null;
-  const rentRateWording = liveOk
-    ? display.rent_rate_wording || row.rent_rate_wording
-    : null;
+  const showLive = Boolean(liveRange && row.id === "surface");
   return (
     <li
       className="place-agr-row"
       data-testid={`place-card-agr-${row.id}`}
-      data-range={rangeText}
+      data-range={showLive && liveRange ? liveRange : PLACE_CARD_FOLD_NOT_YET}
       data-unit={row.unit ?? ""}
       data-confidence={row.confidence ?? ""}
       data-method={row.method ?? ""}
@@ -286,10 +126,13 @@ function PartRow({
     >
       <div className="place-agr-row-main">
         <span className="place-agr-label">{row.label}</span>
-        <ClassChip tag={classTag} />
+        {showLive ? <ClassChip tag={classTag} /> : null}
       </div>
-      {row.gloss ? (
-        <p className="place-card-part-gloss" data-testid={`place-card-gloss-${row.id}`}>
+      {row.id === "surface" && row.gloss ? (
+        <p
+          className="place-card-part-gloss"
+          data-testid={`place-card-gloss-${row.id}`}
+        >
           {row.gloss}
         </p>
       ) : null}
@@ -297,56 +140,15 @@ function PartRow({
         className="place-card-part-range"
         data-testid={`place-card-range-${row.id}`}
       >
-        {rangeText}
+        {showLive && liveRange ? liveRange : PLACE_CARD_FOLD_NOT_YET}
       </p>
-      {showFigureWhy && !liveOk ? (
-        <p
-          className="place-card-figure-status"
-          data-testid="place-card-figure-status"
-        >
-          {PLACE_CARD_FIGURE_STATUS}{" "}
-          <a
-            href={PLACE_CARD_FIGURE_WHY_HREF}
-            data-testid="place-card-figure-why"
-          >
-            {PLACE_CARD_FIGURE_WHY_LABEL}
-          </a>
-        </p>
-      ) : null}
-      {estimateLabel ? (
-        <p
-          className="place-card-estimate-label"
-          data-testid={`place-card-estimate-label-${row.id}`}
-        >
-          {estimateLabel}
-        </p>
-      ) : null}
-      {rentRateWording ? (
-        <p
-          className="place-card-rent-rate-wording"
-          data-testid={`place-card-rent-rate-${row.id}`}
-        >
-          {rentRateWording}
-        </p>
-      ) : null}
-      {row.of_which?.length ? (
-        <ul className="place-agr-of-which">
-          {row.of_which.map((note) => (
-            <li
-              key={note.id}
-              data-testid={`place-card-of-which-${note.id}`}
-            >
-              {note.label}
-            </li>
-          ))}
-        </ul>
-      ) : null}
     </li>
   );
 }
 
 /**
- * UX-10 place card skeleton — Annual Ground Rent first; FP1 part schema; no pounds.
+ * MAP-CARDS §5 place card — answer-first Annual Ground Rent; no map reference;
+ * no land outline; status pill once; fold for parts.
  */
 export function PlaceCard({
   data,
@@ -354,9 +156,9 @@ export function PlaceCard({
   error = null,
   onClose,
   onShowScotland,
+  onRetry,
   floating = true,
   className,
-  fromAddressSearch = false,
   dwellings = null,
   noMatch = false,
 }: PlaceCardProps) {
@@ -375,136 +177,96 @@ export function PlaceCard({
         ? card.dwellings
         : null;
   const unit = placeUnitKind(dwellingCount);
-  // Explicit API state only — dwellings ≤ 0 uses too_few_homes via placeUnitKind.
   const unitEffective: PlaceUnitKind =
     card?.card_state === "no_homes" ? "no_homes" : unit;
-  const fullyEstimated = Boolean(card?.fully_estimated);
-  const valueRows = (card?.agr_rows || []).filter((row) => row.applies !== false);
-  const salesBasis = placeSalesBasisLine(
-    card?.sales_year_from,
-    card?.sales_year_to,
-    card?.confidence,
+  const tooFew =
+    unitEffective === "too_few_homes" ||
+    unitEffective === "not_applicable" ||
+    unitEffective === "no_homes";
+  const valueRows = (card?.agr_rows || []).filter(
+    (row) => row.applies !== false,
   );
 
-  const landOutline = card?.land_outline ?? null;
-  const outlineStatus =
-    landOutline?.status || card?.land_register_outline?.status;
-  const outlineNote =
-    landOutline?.note || card?.land_register_outline?.note || null;
-  const outlineArea =
-    typeof landOutline?.area_sqm === "number" && Number.isFinite(landOutline.area_sqm)
-      ? landOutline.area_sqm
-      : typeof card?.parcel?.area_sqm === "number" &&
-          Number.isFinite(card.parcel.area_sqm)
-        ? card.parcel.area_sqm
-        : null;
-
-  const placeName = card ? placeCardTitle(card) : "This place";
+  // Title: Intermediate Zone when present — never council as h2 when IZ exists.
+  const izName = card?.intermediate_zone?.name?.trim() || null;
+  const placeName =
+    izName ||
+    card?.place_label?.trim() ||
+    card?.data_zone?.name?.trim() ||
+    (!izName ? card?.council_name?.trim() : null) ||
+    card?.postcode?.trim() ||
+    "This place";
   const councilLine = card?.council_name?.trim() || null;
-  // Show the fold when hierarchy ids exist in the payload — never render those
-  // codes on the card; the fold links to Data & sources instead.
-  const izCodeRaw = card?.intermediate_zone?.code
-    ? String(card.intermediate_zone.code).trim()
-    : "";
-  const hasIzCode =
-    Boolean(izCodeRaw) && izCodeRaw.toLowerCase() !== "unknown";
-  const hasDz2011 = (card?.data_zone?.zones ?? []).some(
-    (z) =>
-      z.vintage === 2011 &&
-      Boolean(z.code) &&
-      String(z.code).toLowerCase() !== "unknown",
-  );
-  const showMoreAbout = hasIzCode || hasDz2011;
+
+  const titleId = "place-card-title";
 
   const shellClass = [
     floating ? "hud-card hud-place place-card" : "place-card place-card-standalone",
     seaMiss ? "place-card-sea-miss" : null,
-    // UX-05 hug CSS + e2e still key on place-card-search-miss; keep no-match as alias.
     isNoMatch && !isLoading ? "place-card-no-match place-card-search-miss" : null,
     className,
   ]
     .filter(Boolean)
     .join(" ");
 
-  const narrowHierarchy = useNarrowHierarchyFold(600);
-  const [moreAboutOpen, setMoreAboutOpen] = useState(false);
   const gbpLive = gbpLiveFromCard(card);
   const surfaceDisplay = (card?.surface_rent_display ??
     null) as SurfaceRentDisplay | null;
-  let figureText = figureCopy(unitEffective);
-  let figureRange: string | null = null;
-  let figureEstimate: string | null = null;
-  let figureCentralLabel: string | null = null;
-  let figureUnitWording: string | null = null;
-  if (gbpLive && unitEffective === "typical_home") {
-    if (surfaceDisplay?.state === "under_review") {
-      figureText = surfaceDisplay.label?.trim() || GBP_LIVE_UNDER_REVIEW;
-    } else if (
-      surfaceDisplay?.state === "ok" &&
-      surfaceDisplay.low != null &&
-      surfaceDisplay.central != null &&
-      surfaceDisplay.high != null
-    ) {
-      const formatted = formatGbpCentralWithRangePerM2(
-        surfaceDisplay.low,
-        surfaceDisplay.central,
-        surfaceDisplay.high,
-      );
-      figureText = formatted.central;
-      figureRange = formatted.range;
-      figureEstimate = surfaceDisplay.estimate_label ?? null;
-      figureCentralLabel =
-        surfaceDisplay.central_label?.trim() || GBP_LIVE_CENTRAL_LABEL;
-      figureUnitWording =
-        surfaceDisplay.unit_wording?.trim() || GBP_LIVE_UNIT_WORDING;
-    }
-    // placeholder / hidden → keep PRE_POUND (no £).
-  }
+  const liveAnswerRange =
+    !tooFew && unitEffective === "typical_home"
+      ? surfaceLiveRange(surfaceDisplay, gbpLive)
+      : null;
+  const surfaceRow = valueRows.find((row) => row.id === "surface");
+  const answerChipTag = (surfaceRow?.class ??
+    surfaceRow?.tag ??
+    "proxy") as PlaceRentTag;
+
   // Rank band stays OFF for UX10-1 (flag constant).
   void PLACE_CARD_RANK_BAND_ENABLED;
+
+  const seaTitle =
+    card?.place_label?.trim() === PLACE_CARD_OUTSIDE_SCOTLAND_TITLE
+      ? PLACE_CARD_OUTSIDE_SCOTLAND_TITLE
+      : PLACE_CARD_SEA_TITLE;
+
+  // No-match: parent shows under search — no card.
+  if (!isLoading && isNoMatch) {
+    return null;
+  }
+
+  const showTitleForAria =
+    Boolean(error && !isLoading) ||
+    Boolean(!error && card && seaMiss) ||
+    Boolean(!isLoading && !error && card && !seaMiss);
 
   return (
     <aside
       className={shellClass}
-      role="dialog"
-      aria-label="Place card"
+      role="region"
+      aria-labelledby={showTitleForAria ? titleId : undefined}
+      aria-label={showTitleForAria ? undefined : "Place card"}
       data-testid="place-card"
       data-unit={unitEffective}
-      data-fully-estimated={fullyEstimated ? "true" : "false"}
+      data-fully-estimated={card?.fully_estimated ? "true" : "false"}
     >
       {onClose ? (
         <button
           type="button"
           className="hud-close"
-          data-testid="place-card-close"
+          onClick={onClose}
           aria-label="Close place card"
-          // Dismiss on pointerdown + stopPropagation so the card unmounts
-          // before mouseup; otherwise the same gesture can hit the map and
-          // re-open inspect (sea-miss stub stays up — UX10-2 Show legend).
-          onPointerDown={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onClose();
-          }}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onClose();
-          }}
         >
           ×
         </button>
       ) : null}
 
-      {/* Keep an existing sea-miss line mounted across re-inspect loading so
-          SW-030 × padding stays measurable (no spinner flash / remount). */}
       {isLoading && !seaMiss ? (
         <div
           className="place-card-loading"
           aria-busy="true"
           data-testid="place-card-loading"
         >
-          <p className="place-card-loading-label">Looking up this spot…</p>
+          <p className="place-card-loading-label">{PLACE_CARD_LOADING_LABEL}</p>
           <div
             className="place-card-placeholder-rows"
             data-testid="place-card-placeholders"
@@ -519,30 +281,53 @@ export function PlaceCard({
         </div>
       ) : null}
 
-      {error && !isNoMatch ? (
-        <p className="place-card-error" role="alert" data-testid="place-card-error">
-          {error}
-        </p>
-      ) : null}
-
-      {!isLoading && isNoMatch ? (
-        <div className="place-card-body place-card-state" data-testid="place-card-no-match">
-          <p className="place-card-meta place-card-no-match-line">
-            <span data-testid="place-card-no-match-text">
-              {PLACE_CARD_NO_MATCH}
-            </span>
-          </p>
+      {error && !isLoading ? (
+        <div
+          className="place-card-body place-card-state"
+          data-testid="place-card-error"
+          role="alert"
+        >
+          {card && !seaMiss ? (
+            <h2
+              className="place-card-title"
+              id={titleId}
+              data-testid="place-card-place"
+            >
+              {placeName}
+            </h2>
+          ) : (
+            <h2 className="place-card-title" id={titleId} hidden>
+              Place
+            </h2>
+          )}
+          <p className="place-card-error-line">{PLACE_CARD_ERROR_LINE}</p>
+          <button
+            type="button"
+            className="place-card-try-again"
+            data-testid="place-card-try-again"
+            onClick={() => {
+              if (onRetry) onRetry();
+              else if (onClose) onClose();
+            }}
+          >
+            {PLACE_CARD_TRY_AGAIN_LABEL}
+          </button>
         </div>
       ) : null}
 
-      {/* Keep sea-line mounted across re-inspect/loading flicker (SW-030 / UX-01 e2e). */}
       {!error && card && seaMiss ? (
         <>
+          <h2
+            className="place-card-title"
+            id={titleId}
+            data-testid="place-card-place"
+          >
+            {seaTitle}
+          </h2>
           <p
             className="place-card-sea-line"
             data-testid="place-card-out-of-scotland"
           >
-            {/* Inner span = line text box for SW-030 (excludes × padding). */}
             <span data-testid="place-card-sea-line-text">
               {PLACE_CARD_OUT_OF_SCOTLAND_LINE}
             </span>
@@ -562,134 +347,41 @@ export function PlaceCard({
 
       {!isLoading && !error && card && !seaMiss && !isNoMatch ? (
         <div className="place-card-body">
-          {/* Peek (mobile) / top of panel (desktop): name + figure + disclaimer */}
-          <div className="place-card-peek" data-testid="place-card-peek">
-            <header className="place-card-header">
-              <h2 className="place-card-title" data-testid="place-card-place">
-                {placeName}
-              </h2>
-              {councilLine ? (
-                <p className="place-card-council" data-testid="place-card-council">
-                  {councilLine}
-                </p>
-              ) : null}
-              {PLACE_CARD_MAP_REFERENCE_ENABLED && card.square_reference ? (
-                <p
-                  className="place-card-map-reference"
-                  data-testid="place-card-map-reference"
-                >
-                  <span className="place-card-map-reference-label">
-                    {PLACE_CARD_MAP_REFERENCE_LABEL}
-                  </span>{" "}
-                  <span data-testid="place-card-square-reference">
-                    {mapReferenceNumbers(card.square_reference)}
-                  </span>{" "}
-                  <MapReferenceCopy
-                    value={mapReferenceNumbers(card.square_reference)}
-                  />
-                </p>
-              ) : null}
-            </header>
-
-            <p
-              className="place-card-figure"
-              data-testid="place-card-figure"
-            >
-              {figureText}
-              {figureRange ? (
-                <span
-                  className="place-card-figure-range"
-                  data-testid="place-card-figure-range"
-                >
-                  {" "}
-                  ({figureRange})
-                </span>
-              ) : null}
-            </p>
-            {figureText === PLACE_CARD_PRE_POUND ? (
-              <p
-                className="place-card-land-values-coming-soon"
-                data-testid="place-card-land-values-coming-soon"
-              >
-                {PLACE_CARD_LAND_VALUES_COMING_SOON}
-              </p>
-            ) : null}
-            {figureCentralLabel ? (
-              <p
-                className="place-card-figure-central-label"
-                data-testid="place-card-figure-central-label"
-              >
-                {figureCentralLabel}
-              </p>
-            ) : null}
-            {figureEstimate ? (
-              <p
-                className="place-card-figure-estimate"
-                data-testid="place-card-figure-estimate"
-              >
-                {figureEstimate}
-              </p>
-            ) : null}
-            {figureUnitWording ? (
-              <p
-                className="place-card-figure-unit"
-                data-testid="place-card-figure-unit"
-              >
-                {figureUnitWording}
-              </p>
-            ) : null}
-            {gbpLive && surfaceDisplay?.state === "under_review" ? (
-              <p
-                className="place-card-under-review"
-                data-testid="place-card-under-review"
-              >
-                {surfaceDisplay.label?.trim() || GBP_LIVE_UNDER_REVIEW}
-              </p>
-            ) : null}
-            <p
-              className="place-card-covers"
-              data-testid="place-card-covers-homes"
-            >
-              {PLACE_CARD_COVERS_HOMES_ONLY}
-            </p>
-            <p
-              className="place-card-experimental-footer place-card-experimental-footer-peek"
-              data-testid="place-card-experimental-footer"
-            >
-              {PLACE_CARD_EXPERIMENTAL_FOOTER}
-            </p>
-          </div>
-
-          {/* SW-047: value rows stay outside the scrollable sheet so height is kept. */}
-          <div
-            className="place-card-value-block"
-            data-testid="place-card-value-block"
+          <header
+            className="place-card-header"
+            data-testid="place-card-header"
           >
-            {unitEffective === "typical_home" ? (
-              <>
-                <p
-                  className="place-card-typical"
-                  data-testid="place-card-typical-home"
-                >
-                  {PLACE_CARD_TYPICAL_HOME}
-                </p>
-                {fromAddressSearch ? (
-                  <p
-                    className="place-card-neighbourhood"
-                    data-testid="place-card-neighbourhood-not-address"
-                  >
-                    {PLACE_CARD_NEIGHBOURHOOD_NOT_ADDRESS}
-                  </p>
-                ) : null}
-              </>
+            {/* 1 Title */}
+            <h2
+              className="place-card-title"
+              id={titleId}
+              data-testid="place-card-place"
+            >
+              {placeName}
+            </h2>
+            {/* 2 Council */}
+            {councilLine ? (
+              <p className="place-card-council" data-testid="place-card-council">
+                {councilLine}
+              </p>
             ) : null}
-
+            {/* 3 Scope (rows 1–5 for too-few too) */}
+            <p
+              className="place-card-typical"
+              data-testid="place-card-typical-home"
+            >
+              {PLACE_CARD_TYPICAL_HOME}
+            </p>
+            {/* 4 Label + 5 Subtitle */}
             <section
               className="place-card-agr-heading"
               aria-label={PLACE_CARD_AGR_LABEL}
               data-testid="place-card-agr-heading"
             >
-              <h3 className="place-card-section" data-testid="place-card-agr-label">
+              <h3
+                className="place-card-section place-card-agr-label"
+                data-testid="place-card-agr-label"
+              >
                 {PLACE_CARD_AGR_LABEL}
               </h3>
               <p
@@ -699,152 +391,83 @@ export function PlaceCard({
                 {PLACE_CARD_AGR_SUBTITLE}
               </p>
             </section>
+            {/* 6 Answer (+ addendum A4 hidden slot) */}
+            <div
+              className="place-card-answer"
+              data-testid="place-card-figure"
+            >
+              {tooFew ? (
+                <p
+                  className="place-card-too-few"
+                  data-testid="place-card-too-few"
+                >
+                  {PLACE_CARD_TOO_FEW_HOMES}
+                </p>
+              ) : liveAnswerRange ? (
+                <p className="place-card-figure-range-line">
+                  <span data-testid="place-card-figure-range">
+                    {liveAnswerRange}
+                  </span>{" "}
+                  <ClassChip tag={answerChipTag} />
+                </p>
+              ) : gbpLive && surfaceDisplay?.state === "under_review" ? (
+                <p
+                  className="place-card-under-review"
+                  data-testid="place-card-under-review"
+                >
+                  {surfaceDisplay.label?.trim() || GBP_LIVE_UNDER_REVIEW}
+                </p>
+              ) : (
+                <>
+                  <span
+                    className="place-card-status-pill"
+                    data-testid="place-card-figure-status"
+                  >
+                    {PLACE_CARD_FIGURE_STATUS}
+                  </span>
+                  <p className="place-card-pre-pound">{PLACE_CARD_PRE_POUND}</p>
+                </>
+              )}
+            </div>
+            {/* Addendum A4 — optional child slot, hidden in v1 */}
+            <div
+              data-testid="place-card-row6-slot"
+              hidden
+              aria-hidden="true"
+            />
+          </header>
 
-            {unitEffective === "typical_home" && !fullyEstimated && salesBasis ? (
-              <p
-                className="place-card-sales-basis"
-                data-testid="place-card-sales-basis"
-              >
-                {salesBasis}
-              </p>
-            ) : null}
+          {/* 7 Why */}
+          <p className="place-card-fact" data-testid="place-card-fact">
+            {PLACE_CARD_FACT_LINE}
+          </p>
 
-            {fullyEstimated && unitEffective === "typical_home" ? (
-              <p
-                className="place-card-fully-estimated-marker"
-                data-testid="place-card-fully-estimated"
-                data-wider-band="true"
-              >
-                {PLACE_CARD_FULLY_ESTIMATED}
-              </p>
-            ) : null}
-
-            <p className="place-card-fact" data-testid="place-card-fact">
-              {PLACE_CARD_FACT_LINE}
-            </p>
-
-            {/* Surface row always visible (Suggestion 31 first-value-row). */}
+          {/* 8 Fold */}
+          <details
+            className="place-card-parts"
+            data-testid="place-card-parts"
+          >
+            <summary className="place-card-parts-summary">
+              {PLACE_CARD_PARTS_SUMMARY}
+            </summary>
             <ul
-              className="place-agr-list place-agr-list-surface"
+              className="place-agr-list"
               data-testid="place-card-value-rows"
             >
-              {valueRows
-                .filter((row) => row.id === "surface")
-                .map((row) => (
-                  <PartRow
-                    key={row.id}
-                    row={row}
-                    display={surfaceDisplay}
-                    gbpLive={gbpLive}
-                    showFigureWhy
-                  />
-                ))}
+              {valueRows.map((row) => (
+                <FoldPartRow
+                  key={row.id}
+                  row={row}
+                  liveRange={row.id === "surface" ? liveAnswerRange : null}
+                />
+              ))}
             </ul>
-          </div>
-
-          {/*
-            DZ-HIERARCHY: fold → Data & sources; never show DZ2011 / IZ codes.
-            Keep outside the scrollable sheet (with SW-047 value block) so the
-            summary stays in the mobile sheet chrome and is not covered by the
-            map canvas or value-block figure-status when the sheet scrolls.
-          */}
-          {showMoreAbout ? (
-            <details
-              className="place-card-more-about"
-              data-testid="place-card-more-about"
-              open={narrowHierarchy ? moreAboutOpen : true}
-              onToggle={(event) => {
-                if (!narrowHierarchy) return;
-                setMoreAboutOpen(
-                  (event.currentTarget as HTMLDetailsElement).open,
-                );
-              }}
+            <p
+              className="place-card-how-homes"
+              data-testid="place-card-how-homes-only"
             >
-              <summary
-                className="place-card-more-about-summary"
-                data-testid="place-card-more-about-summary"
-              >
-                {PLACE_CARD_MORE_ABOUT_LABEL}
-              </summary>
-              <div
-                className="place-card-more-about-body"
-                data-testid="place-card-more-about-body"
-              >
-                <a
-                  href={PLACE_CARD_DATA_SOURCES_HREF}
-                  className="place-card-data-sources-link"
-                  data-testid="place-card-data-sources-link"
-                >
-                  {PLACE_CARD_DATA_SOURCES_LABEL}
-                </a>
-              </div>
-            </details>
-          ) : null}
-
-          <div className="place-card-sheet-body" data-testid="place-card-sheet-body">
-            <details
-              className="place-card-parts"
-              data-testid="place-card-parts"
-            >
-              <summary className="place-card-parts-summary">
-                {PLACE_CARD_PARTS_SUMMARY}
-              </summary>
-              <ul className="place-agr-list">
-                {valueRows
-                  .filter((row) => row.id !== "surface")
-                  .map((row) => (
-                    <PartRow
-                      key={row.id}
-                      row={row}
-                      display={null}
-                      gbpLive={false}
-                    />
-                  ))}
-              </ul>
-              <p
-                className="place-card-parts-note"
-                data-testid="place-card-parts-note"
-              >
-                {PLACE_CARD_PARTS_NOTE}
-              </p>
-            </details>
-
-            {(outlineStatus || outlineArea != null || outlineNote) && (
-              <section
-                className="place-card-land-outline"
-                aria-label="Land outline"
-                data-testid="place-card-land-outline"
-              >
-                <h3 className="place-card-section">Land outline</h3>
-                {outlineStatus === "no_outline" && outlineNote ? (
-                  <WhyNoOutlineBlock note={outlineNote} />
-                ) : (
-                  <>
-                    {outlineStatus ? (
-                      <p
-                        className="place-card-meta"
-                        data-testid="place-card-outline-status"
-                      >
-                        {outlineStatus === "inside_outline"
-                          ? "Inside a registered land outline"
-                          : outlineStatus === "no_outline"
-                            ? NO_OUTLINE_STATUS_LINE
-                            : outlineStatus}
-                      </p>
-                    ) : null}
-                    {outlineNote ? (
-                      <p className="place-card-meta">{outlineNote}</p>
-                    ) : null}
-                  </>
-                )}
-                {outlineArea != null ? (
-                  <p className="place-card-meta" data-testid="place-card-outline-area">
-                    About {Math.round(outlineArea).toLocaleString("en-GB")} m²
-                  </p>
-                ) : null}
-              </section>
-            )}
-
+              {PLACE_CARD_HOW_WE_WORK_HOMES}
+            </p>
             <div className="place-card-how" data-testid="place-card-how-we-work">
               <a
                 href="/methodology"
@@ -853,19 +476,13 @@ export function PlaceCard({
               >
                 {PLACE_CARD_HOW_WE_WORK_LABEL}
               </a>
-              <p
-                className="place-card-how-homes"
-                data-testid="place-card-how-homes-only"
-              >
-                {PLACE_CARD_HOW_WE_WORK_HOMES}
-              </p>
             </div>
-          </div>
+          </details>
 
+          {/* 9 Footer — once */}
           <p
-            className="place-card-experimental-footer place-card-experimental-footer-sticky"
-            data-testid="place-card-experimental-footer-sticky"
-            aria-hidden="true"
+            className="place-card-experimental-footer"
+            data-testid="place-card-footer"
           >
             {PLACE_CARD_EXPERIMENTAL_FOOTER}
           </p>

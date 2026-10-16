@@ -51,32 +51,12 @@ assert.match(formatted.range, /\u00a3.*\u2013\u00a3/);
 assert.equal(formatted.central, "\u00a312,000");
 assert.equal(formatted.range, "\u00a36,000\u2013\u00a318,000");
 
-// GBP-LIVE-V1b: every £ string includes "per m²"
-assert.equal(gbp.GBP_LIVE_UNIT, "per m²");
-assert.equal(gbp.GBP_LIVE_UNIT_WORDING, "per m² of land a year");
-assert.equal(gbp.GBP_LIVE_CENTRAL_LABEL, "most likely");
-const perM2 = gbp.formatGbpCentralWithRangePerM2(0.06, 0.12, 0.18);
-assert.match(perM2.central, /^\u00a3/);
-assert.match(perM2.central, /per m²/);
-assert.match(perM2.range, /\u00a3.*\u2013\u00a3/);
-assert.match(perM2.range, /per m²/);
-assert.equal(perM2.central, "\u00a30.12 per m²");
-assert.equal(perM2.range, "\u00a30.06\u2013\u00a30.18 per m²");
-assert.match(gbp.SURFACE_RENT_LEGEND_TITLE, /per m²/);
-assert.match(gbp.SURFACE_RENT_LEGEND_BLURB, /per m²/);
-assert.match(gbp.SURFACE_RENT_LEGEND_SOURCE, /per m²/);
-
-// Place card wires GBP-LIVE surfaces + rent-rate field (never yield_wording)
+// Place card wires GBP-LIVE as £a to £b a year + chip (MAP-CARDS §5; never yield)
 {
   const ui = readSrc("components/PlaceCard.tsx");
-  assert.match(ui, /formatGbpCentralWithRangePerM2/);
+  assert.match(ui, /formatPlaceCardGbpRange/);
   assert.match(ui, /place-card-figure-range/);
-  assert.match(ui, /place-card-figure-estimate/);
-  assert.match(ui, /place-card-figure-central-label/);
-  assert.match(ui, /place-card-figure-unit/);
   assert.match(ui, /place-card-under-review/);
-  assert.match(ui, /place-card-rent-rate-/);
-  assert.match(ui, /rent_rate_wording/);
   assert.doesNotMatch(ui, /yield_wording/);
   assert.doesNotMatch(ui, /place-card-yield-/);
   assert.match(ui, /PLACE_CARD_PRE_POUND/);
@@ -94,32 +74,28 @@ assert.match(gbp.SURFACE_RENT_LEGEND_SOURCE, /per m²/);
   assert.doesNotMatch(placeCard, /yield_wording/);
 }
 
-// Map legend allowRentGbp gate + surface rent legend
+// Map credits allowRentGbp gate + GBP-LIVE fetch (legend is registry/inline)
 {
   const credits = readSrc("lib/mapLicenceCredits.ts");
   assert.match(credits, /allowRentGbp/);
   const map = readSrc("components/ScotlandMap.tsx");
-  assert.match(map, /SURFACE_RENT_LEGEND_TITLE/);
-  assert.match(map, /allowRentGbp:\s*true/);
-  assert.match(map, /unit:\s*"£ per m²"/);
   assert.match(map, /fetchGbpLiveSettings/);
+  assert.match(map, /legend-strip/);
+  const registry = readSrc("lib/mapLayerRegistry.ts");
+  assert.match(registry, /Annual Ground Rent/);
 }
 
-// How it works + banner — signed-off rent-rate sentence + per m² unit
+// How it works + banner — signed-off rent-rate sentence
 {
   const method = readSrc("components/MethodologyContent.tsx");
   assert.match(method, /GbpLiveBannerNote/);
   const note = readSrc("components/GbpLiveBannerNote.tsx");
   assert.match(note, /GBP_LIVE_EARLY_BANNER/);
   assert.match(note, /GBP_LIVE_RENT_RATE_HOW_IT_WORKS/);
-  assert.match(note, /GBP_LIVE_UNIT_WORDING/);
   assert.match(note, /gbp-live-rent-rate-wording/);
-  assert.match(note, /gbp-live-unit-wording/);
   assert.match(note, /rent_rate_wording/);
   assert.doesNotMatch(note, /yield_wording/);
   assert.match(note, /Data Zone only/);
-  assert.match(note, /GBP_LIVE_UNIT_WORDING/);
-  assert.match(note, /most likely/);
   const banner = readSrc("components/ResearchBanner.tsx");
   assert.match(banner, /fetchGbpLiveSettings/);
   assert.match(banner, /GBP_LIVE_EARLY_BANNER/);
@@ -132,18 +108,15 @@ assert.match(gbp.SURFACE_RENT_LEGEND_SOURCE, /per m²/);
   assert.match(probe, /status:\s*200/);
   assert.match(probe, /platform\/gbp-live/);
   assert.match(probe, /rent_rate_wording/);
-  assert.match(probe, /unit_wording/);
   assert.doesNotMatch(probe, /yield_wording/);
   const client = readSrc("lib/gbpLive.ts");
   assert.match(client, /\/api\/gbp-live/);
   assert.match(client, /rent_rate_wording/);
-  assert.match(client, /unit_wording/);
   assert.doesNotMatch(client, /yield_wording/);
   const proxy = readSrc("app/backend/[...path]/route.ts");
   assert.match(proxy, /platform\/gbp-live/);
   assert.match(proxy, /GBP_LIVE_FLAG_OFF/);
   assert.match(proxy, /rent_rate_wording/);
-  assert.match(proxy, /unit_wording/);
   assert.doesNotMatch(proxy, /yield_wording/);
 }
 
@@ -154,10 +127,8 @@ assert.match(gbp.SURFACE_RENT_LEGEND_SOURCE, /per m²/);
   assert.match(e2e, /class:\s*"shadow"/);
   assert.match(e2e, /API class shadow never shows as visible text/);
   assert.match(e2e, /not\.toContainText\(\/\\bshadow\\b\/i\)/);
-  assert.match(e2e, /place-tag-estimate/);
+  assert.match(e2e, /data-class.*estimate|toHaveAttribute\("data-class", "estimate"\)/);
   assert.match(e2e, /rent_rate_wording/);
-  assert.match(e2e, /per m²/);
-  assert.match(e2e, /most likely/);
   assert.doesNotMatch(e2e, /yield_wording/);
   assert.match(
     e2e,
@@ -167,17 +138,7 @@ assert.match(gbp.SURFACE_RENT_LEGEND_SOURCE, /per m²/);
     e2e,
     /We turn land value into a yearly rent of up to 4\.5% of that value\./,
   );
-}
-
-// GBP-LIVE-V1b e2e: per m² at 390 and 1280
-{
-  const e2e = readSrc("e2e/ci/gbp-live-v1b.spec.ts");
-  assert.match(e2e, /width:\s*1280/);
-  assert.match(e2e, /width:\s*390/);
-  assert.match(e2e, /per m²/);
-  assert.match(e2e, /most likely/);
-  assert.match(e2e, /assertEveryPoundHasPerM2/);
-  assert.doesNotMatch(e2e, /yield_wording/);
+  assert.match(e2e, /a year/);
 }
 
 // Rank band stays OFF; pre-£ copy preserved for flag-off path
@@ -190,16 +151,11 @@ assert.match(gbp.SURFACE_RENT_LEGEND_SOURCE, /per m²/);
   assert.match(placeCard, /PLACE_CARD_RANK_BAND_ENABLED\s*=\s*false/);
 }
 
-// Desktop place-open: Legend pill stays clickable above the left card.
+// Desktop: legend strip / panel slot stay above the map chrome.
 {
   const chrome = readSrc("app/map-chrome.css");
-  assert.match(chrome, /z-index:\s*15/);
-  assert.match(chrome, /bottom:\s*5\.25rem/);
-  // Still bottom-left under the card column — not docked bottom-right.
-  assert.match(
-    chrome,
-    /\.app-shell\.place-open \.hud-scotland\s*\{[^}]*left:\s*1\.1rem/s,
-  );
+  assert.match(chrome, /legend-strip|map-panel-slot/);
+  assert.match(chrome, /z-index:\s*1[0-9]/);
 }
 
 console.log("test-gbp-live-v1: ok");

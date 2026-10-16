@@ -77,7 +77,10 @@ function chipLabel(
 }
 
 function initialOpenGroups(
-  groups: ReturnType<typeof mapDrawerLayersByGroup>,
+  groups: ReadonlyArray<{
+    key: MapLayerGroupKey;
+    layers: ReadonlyArray<{ id: string }>;
+  }>,
   enabled: MapLayerToggleState,
 ): Set<MapLayerGroupKey> {
   const open = new Set<MapLayerGroupKey>();

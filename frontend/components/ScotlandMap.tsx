@@ -848,11 +848,14 @@ export default function ScotlandMap() {
   const [tileUnavailableIds, setTileUnavailableIds] = useState<Set<string>>(
     () => new Set(),
   );
-  /** Null until the tile manifest loads; absent extracts stay off the list. */
+  /**
+   * Vacant land stays listed until a real manifest omits it (it already paints).
+   * Other Improvement Service rows stay hidden until the manifest lists them.
+   */
   const [spatialHubPresent, setSpatialHubPresent] = useState<Record<
     string,
     boolean
-  > | null>(null);
+  > | null>({ vdl: true });
   const markTileUnavailable = useCallback((id: string) => {
     setTileUnavailableIds((prev) => {
       if (prev.has(id)) return prev;
@@ -4518,12 +4521,12 @@ export default function ScotlandMap() {
     }>("/layers/add/tiles-manifest")
       .then((data) => {
         if (cancelled) return;
-        setSpatialHubPresent(
-          spatialHubPresenceFromManifest(data.sources ?? []),
-        );
+        // A FeatureCollection from a blanket geo stub is not a manifest.
+        if (!Array.isArray(data?.sources)) return;
+        setSpatialHubPresent(spatialHubPresenceFromManifest(data.sources));
       })
       .catch(() => {
-        if (!cancelled) setSpatialHubPresent({});
+        // Leave the default. A failed manifest must not hide vacant land.
       });
     return () => {
       cancelled = true;
@@ -4538,7 +4541,7 @@ export default function ScotlandMap() {
     let cancelled = false;
     const run = () => {
       if (cancelled) return;
-      void syncLayersAddPaint(map, ledgerEnabled);
+      void syncLayersAddPaint(map, ledgerEnabled, spatialHubPresent);
     };
     run();
     map.on("moveend", run);
@@ -4546,7 +4549,7 @@ export default function ScotlandMap() {
       cancelled = true;
       map.off("moveend", run);
     };
-  }, [mapReady, ledgerEnabled]);
+  }, [mapReady, ledgerEnabled, spatialHubPresent]);
 
   const placeOpen = panelKind === "place" && Boolean(placeStub || result);
   const layersOpen = panelKind === "layers";

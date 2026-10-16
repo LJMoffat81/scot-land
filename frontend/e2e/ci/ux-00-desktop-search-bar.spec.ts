@@ -1,3 +1,4 @@
+import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Page } from "@playwright/test";
 
 /**
@@ -125,6 +126,7 @@ test.beforeEach(async ({ page }) => {
       body: JSON.stringify({ layers: [] }),
     });
   });
+  await stubLayersAddQuiet(page);
 });
 
 test.afterEach(() => {

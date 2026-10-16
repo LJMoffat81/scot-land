@@ -121,8 +121,34 @@ async function proxy(request: Request, context: Ctx): Promise<Response> {
 
     return new Response(buf, { status: upstream.status, headers: responseHeaders });
   } catch {
+    const quiet = layersAddQuietWhenApiDown(new URL(request.url).pathname);
+    if (quiet) return quiet;
     return Response.json({ detail: SERVICE_BUSY, ok: false }, { status: 503 });
   }
+}
+
+/**
+ * When the API process is down, map chrome must not see 503 for the
+ * LAYERS-ADD manifest. Vacant land stays listed; other extracts stay absent.
+ * A live API response, including a real 404, is passed through above.
+ */
+function layersAddQuietWhenApiDown(pathname: string): Response | null {
+  if (pathname.endsWith("/layers/add/tiles-manifest")) {
+    return Response.json(
+      {
+        version: 1,
+        sources: [{ layer_id: "vdl", display_id: "vdl" }],
+      },
+      { status: 200 },
+    );
+  }
+  if (pathname.includes("/layers/add/viewport/")) {
+    return Response.json(
+      { type: "FeatureCollection", features: [] },
+      { status: 200 },
+    );
+  }
+  return null;
 }
 
 export async function GET(request: Request, context: Ctx) {

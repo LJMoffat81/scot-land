@@ -1,3 +1,4 @@
+import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Locator } from "@playwright/test";
 
 /** Collect console errors / pageerror for every test (data-page.spec.ts pattern). */
@@ -124,6 +125,7 @@ test.beforeEach(async ({ page }) => {
       body: JSON.stringify({ layers: [] }),
     });
   });
+  await stubLayersAddQuiet(page);
 });
 
 test.afterEach(() => {

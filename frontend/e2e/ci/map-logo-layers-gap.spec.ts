@@ -1,3 +1,4 @@
+import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Page } from "@playwright/test";
 
 /**
@@ -214,6 +215,7 @@ test.describe("SW-020 map logo vs Layers gap (390×844)", () => {
         body: JSON.stringify({ layers: [] }),
       });
     });
+    await stubLayersAddQuiet(page);
   });
 
   test.afterEach(() => {

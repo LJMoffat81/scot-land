@@ -165,10 +165,15 @@ function setSourceData(
   src.setData(data);
 }
 
+const SPATIAL_HUB_CATALOG_IDS = new Set(
+  LAYERS_ADD_REGISTRY.filter((row) => row.isSpatialHub).map((row) => row.layerId),
+);
+
 /** Show or hide each painted row and load viewport shapes when one is on. */
 export async function syncLayersAddPaint(
   map: Map,
   enabled: Record<string, boolean | undefined>,
+  spatialHubPresent?: Record<string, boolean> | null,
 ): Promise<void> {
   ensureLayersAddPaint(map);
   const bounds = map.getBounds();
@@ -180,6 +185,14 @@ export async function syncLayersAddPaint(
       map.setLayoutProperty(layerId, "visibility", on ? "visible" : "none");
     }
     if (!on || !bounds || map.getZoom() < spec.minzoom) continue;
+    // Improvement Service outlines are requested only once the extract exists.
+    if (
+      SPATIAL_HUB_CATALOG_IDS.has(spec.catalogLayerId) &&
+      spatialHubPresent?.[spec.catalogLayerId] !== true &&
+      spatialHubPresent?.[spec.displayId] !== true
+    ) {
+      continue;
+    }
     const path =
       `/layers/add/viewport/${spec.catalogLayerId}` +
       `?south=${bounds.getSouth()}&west=${bounds.getWest()}` +

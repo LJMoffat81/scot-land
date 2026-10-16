@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { stubLayersAddQuiet } from "./_layersAddStub";
 
 /**
  * SW-030 — sea / out-of-area stub:
@@ -136,6 +137,7 @@ async function stubMapChrome(page: Page) {
       body: JSON.stringify({ layers: [] }),
     });
   });
+  await stubLayersAddQuiet(page);
 }
 
 async function stubSeaMissPlaceApis(page: Page) {

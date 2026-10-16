@@ -305,7 +305,9 @@ function LayersAccordion({
       >
         <span
           className={
-            header ? "layer-select-label layers-nav-header" : "layer-select-label"
+            header
+              ? "layer-select-label layers-nav-header"
+              : "layers-nav-subgroup"
           }
           data-testid={
             header ? "layers-nav-header" : subgroup ? "layers-nav-subgroup" : undefined

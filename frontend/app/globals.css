@@ -3049,6 +3049,15 @@ button.primary:disabled {
   font-size: 0.78rem;
 }
 
+.layers-nav-subgroup {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--slrg-text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .layers-nav-subtitle,
 .layers-nav-note {
   margin: 0 0 0.35rem;

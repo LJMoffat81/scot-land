@@ -88,7 +88,7 @@ for (const phrase of retired) {
 }
 assert.match(
   api,
-  /Totals from the Scottish Vacant and Derelict Land Survey, by council\./,
+  /Scotland-wide totals from the Scottish Vacant and Derelict Land Survey, by owner type\./,
 );
 
 console.log("test-vdl-dz-3: ok");

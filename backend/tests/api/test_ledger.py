@@ -43,8 +43,8 @@ def test_ledger_catalog_shape():
     assert payload["excluded"]
     assert all(e.get("reason") for e in payload["excluded"])
     labels = {b["label"] for b in payload["benchmarks"]}
-    assert "Spectrum / airspace" in labels
-    assert "Wightman" in labels
+    assert "Radio spectrum and airspace" in labels
+    assert "Andy Wightman's land estimates" in labels
     assert all(b["note"] == "benchmark only, not inputs" for b in payload["benchmarks"])
     # Not a map-panel layer dump
     assert "layers" not in payload
@@ -66,7 +66,11 @@ def test_ledger_rows_1_to_10_and_nested_1a():
     assert by_id["1a"]["never_added"] is True
     assert by_id["9"]["outside_scottish_total"] is True
     assert by_id["9"]["stack"] == "outside"
-    assert by_id["5"]["stack"] == "shadow"
+    assert by_id["5"]["stack"] == "headline"
+    assert by_id["5"]["tag"] == "proxy"
+    assert by_id["6"]["stack"] == "headline"
+    assert by_id["6"]["tag"] == "proxy"
+    assert by_id["10"]["stack"] == "shadow"
     assert by_id["7"]["status"] == "not_yet" and by_id["7"]["range"] is None
     assert ECONOMIC_RULES_APPROVED is False
     catalog = ledger_catalog()

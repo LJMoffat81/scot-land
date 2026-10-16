@@ -71,6 +71,8 @@ export type MapLayerRegistryEntry = {
   subline?: string;
   /** Inline legend zoom gate copy when gated (defaults to LAYER_ZOOM_HINT). */
   zoomHint?: string;
+  /** Sentence shown with the class key. */
+  legendNote?: string;
   /**
    * When the map is zoomed further in than this, the layer no longer paints
    * and the row shows zoomOutHint. AGR council fill stops above zoom 7.
@@ -156,13 +158,19 @@ const DEPRIVATION_CLASSES: MapLayerLegendClass[] = [
   { label: "No figure here", color: "#bbbbbb" },
 ];
 
-/** LAYERS-ADD-1 design: flood risk blue (high → very low). */
+/** SEPA-FLOOD-1: share of the Data Zone in the medium present-day extent. */
+export const FLOOD_EXTENT_LEGEND =
+  "Share of this area in SEPA's medium-likelihood flood extent (today's climate)";
+
+export const FLOOD_EXTENT_CREDIT =
+  "©SEPA 2025; this SEPA product is licensed under the Open Government Licence version 3.0.";
+
 const FLOOD_RISK_CLASSES: MapLayerLegendClass[] = [
-  { label: "high", color: "#08519c" },
-  { label: "medium", color: "#3182bd" },
-  { label: "low", color: "#9ecae1" },
-  { label: "very low", color: "#deebf7" },
-  { label: "No figure here", color: "#bbbbbb" },
+  { label: "0", color: "#f7fbff" },
+  { label: "1–10", color: "#c6dbef" },
+  { label: "11–25", color: "#6baed6" },
+  { label: "26–50", color: "#2171b5" },
+  { label: "Over 50", color: "#08306b" },
 ];
 
 const LISTED_CLASSES: MapLayerLegendClass[] = [
@@ -192,7 +200,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     minzoom: 5,
     maxzoom: 20,
     sourceCaption: "Scot-LAND model · 2023",
-    legendUnit: "£/year",
+    legendUnit: "£ per m² of land, per year",
     classes: AGR_CLASSES,
     chip: "proxy",
     defaultOn: false,
@@ -215,12 +223,15 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
   {
     id: "flood",
     group: "land",
-    label: "Flood risk",
+    label: "Flood risk (SEPA)",
     minzoom: 8,
     maxzoom: 20,
-    sourceCaption: "SEPA · NFRA flood risk grid",
+    sourceCaption: FLOOD_EXTENT_CREDIT,
     classes: FLOOD_RISK_CLASSES,
     defaultOn: false,
+    legendNote: FLOOD_EXTENT_LEGEND,
+    paintLayerIds: ["sepa_nfra_grid-add-fill"],
+    // Hidden while sepa_flood_dz is empty (LAYERS-FIX-1). Shown once loaded.
     coming: true,
   },
   {
@@ -344,7 +355,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     id: "data_zones",
     aliases: ["dz2022"],
     group: "places",
-    label: "Neighbourhood lines",
+    label: "Area boundaries",
     minzoom: 10,
     maxzoom: 20,
     sourceCaption: `Scottish Government · ${DZ2022_EXTRACTION_YEAR}`,

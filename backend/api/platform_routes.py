@@ -32,6 +32,8 @@ from layers.builtup_mask import query_bbox as builtup_mask_bbox
 from layers.builtup_mask import query_mvt as builtup_mask_mvt
 from layers.data_zones import query_bbox as data_zones_bbox
 from layers.flood import query_bbox as flood_bbox
+from layers.flood_dz import NOT_LOADED as FLOOD_DZ_NOT_LOADED
+from layers.flood_dz import query_bbox as flood_dz_bbox
 from layers.hydro import query_bbox as hydro_bbox
 from layers.hla import HLA_NOT_LOADED_YET
 from layers.hla import query_bbox as hla_bbox
@@ -52,6 +54,7 @@ from layers.layers_add2_catalog import agg_is_public, tile_is_public
 from layers.public_land import query_bbox as public_land_bbox
 from layers.sepa_car import query_bbox as sepa_car_bbox
 from layers.naturescot import LayerUnavailable as NatureScotUnavailable
+from layers.naturescot import dumps_feature_collection
 from layers.naturescot import query_designations_bbox as naturescot_designations_bbox
 from layers.naturescot import query_sssi_bbox as sssi_bbox
 from layers.scotwind import LayerUnavailable as ScotwindUnavailable
@@ -440,6 +443,51 @@ def layer_open_flood(
     return JSONResponse(payload)
 
 
+def _parse_flood_dz_bbox(bbox: str) -> tuple[float, float, float, float]:
+    """bbox is west,south,east,north."""
+    parts = [part.strip() for part in bbox.split(",")]
+    if len(parts) != 4:
+        raise HTTPException(
+            status_code=422,
+            detail="bbox must be west,south,east,north",
+        )
+    try:
+        west, south, east, north = (float(part) for part in parts)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="bbox must be west,south,east,north",
+        ) from exc
+    if south >= north or west >= east:
+        raise HTTPException(status_code=422, detail="bbox is empty")
+    return west, south, east, north
+
+
+@router.get("/layers/open/flood-dz")
+def layer_open_flood_dz(
+    bbox: str = Query(..., description="west,south,east,north"),
+    kind: str = Query(..., description="river, coastal, or surface"),
+) -> JSONResponse:
+    """Data Zone share of SEPA's medium-likelihood flood extent (today's climate).
+
+    Properties are the zone whitelist only. Geometry is the 2022 Data Zone.
+    **503** when ``sepa_flood_dz`` is empty. No flood polygons and no £.
+    """
+    kind_norm = kind.strip().lower()
+    if kind_norm not in {"river", "coastal", "surface"}:
+        raise HTTPException(
+            status_code=422,
+            detail="kind must be river, coastal, or surface",
+        )
+    west, south, east, north = _parse_flood_dz_bbox(bbox)
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    payload = flood_dz_bbox(west, south, east, north, kind=kind_norm)
+    meta = payload.get("meta") or {}
+    if meta.get("ok") is False:
+        raise HTTPException(status_code=503, detail=FLOOD_DZ_NOT_LOADED)
+    return JSONResponse(payload)
+
+
 @router.get("/layers/open/hydro")
 def layer_open_hydro(
     south: float = Query(..., description="BBox south latitude"),
@@ -538,14 +586,23 @@ def layer_open_sssi(
     north: float = Query(..., description="BBox north latitude"),
     east: float = Query(..., description="BBox east longitude"),
     max_features: int = Query(default=80, ge=1, le=80),
+    z: float | None = Query(default=None, ge=0, le=22),
 ) -> JSONResponse:
-    """NatureScot SSSI polygons (OGL-3.0). Constraint overlay — no money figures, no rent row."""
+    """NatureScot SSSI polygons (OGL-3.0). Constraint overlay — no money figures, no rent row.
+
+    Geometry is simplified in EPSG:27700 for zoom `z` (or the bbox span) and
+    capped at 500 KB for z6–z9 and 1 MB at any finer zoom. Over budget, the
+    body has no features and ``meta.hidden_below_zoom`` is set. A repeat view
+    at z6, z7, or z8 is served from memory.
+    """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     try:
-        payload = sssi_bbox(south, west, north, east, max_features=max_features)
+        payload = sssi_bbox(
+            south, west, north, east, max_features=max_features, zoom=z
+        )
     except NatureScotUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return JSONResponse(payload)
+    return Response(content=dumps_feature_collection(payload), media_type="application/json")
 
 
 @router.get("/layers/open/naturescot-designations")
@@ -555,16 +612,23 @@ def layer_open_naturescot_designations(
     north: float = Query(..., description="BBox north latitude"),
     east: float = Query(..., description="BBox east longitude"),
     max_features: int = Query(default=80, ge=1, le=80),
+    z: float | None = Query(default=None, ge=0, le=22),
 ) -> JSONResponse:
-    """NatureScot SPA/SAC/NNR polygons (OGL-3.0). Constraint overlay — no money figures, no rent row."""
+    """NatureScot SPA/SAC/NNR polygons (OGL-3.0). Constraint overlay — no money figures, no rent row.
+
+    Geometry is simplified in EPSG:27700 for zoom `z` (or the bbox span) and
+    capped at 500 KB for z6–z9 and 1 MB at any finer zoom. Over budget, the
+    body has no features and ``meta.hidden_below_zoom`` is set. A repeat view
+    at z6, z7, or z8 is served from memory.
+    """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     try:
         payload = naturescot_designations_bbox(
-            south, west, north, east, max_features=max_features
+            south, west, north, east, max_features=max_features, zoom=z
         )
     except NatureScotUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return JSONResponse(payload)
+    return Response(content=dumps_feature_collection(payload), media_type="application/json")
 
 
 @router.get(

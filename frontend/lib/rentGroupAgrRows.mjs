@@ -9,9 +9,9 @@ export const PLACE_CARD_PART_NOT_YET = "not yet estimated";
 
 /** Plain glosses for Parts (UX-10 item 7). */
 export const PLACE_CARD_PART_GLOSS = Object.freeze({
-  land: "The yearly value of the land under homes.",
-  resources: "Rents from things like wind, minerals and fish farming.",
-  nature: "Value from nature's services, such as peat holding carbon.",
+  land: "The yearly rental value of the land under homes, without the buildings.",
+  resources: "Rent from natural resources such as wind, water, minerals and fish farm sites.",
+  nature: "What nature gives us for free, such as peat holding carbon. Estimate only.",
 });
 
 function fp1Fields(classTag) {

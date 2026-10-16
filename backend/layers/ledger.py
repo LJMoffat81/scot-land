@@ -32,61 +32,63 @@ _ROWS: list[dict[str, Any]] = [
         "tag": "already_included",
         "status": "not_yet",
         "status_note": (
-            "Planning uplift: an 'of which' figure inside the land part, never added again"
+            "Value from planning permission. Part of the land figure, not added again."
         ),
         "amount_placeholder": "—",
     },
     {
         "id": "2",
-        "label": "Mineral rent",
+        "label": "Minerals and quarries",
         "parent_id": None,
         "nested": False,
         "tag": "proxy",
         "status": "not_yet",
-        "status_note": "Royalty/tonne, below ground. Not yet on the public breakdown.",
+        "status_note": "The royalty paid for each tonne taken from the ground.",
         "amount_placeholder": "—",
     },
     {
         "id": "3",
-        "label": "Onshore wind + hydro resource rent",
+        "label": "Wind and hydro sites on land",
         "parent_id": None,
         "nested": False,
         "tag": "proxy",
         "status": "partial",
         "status_note": (
-            "Site rent minus footprint surface rent. Inventory layers may paint; "
-            "figures not published yet."
+            "The extra rent a wind or hydro site earns over ordinary land rent."
         ),
         "amount_placeholder": "—",
     },
     {
         "id": "4",
-        "label": "Seabed & foreshore",
+        "label": "Seabed and shore",
         "parent_id": None,
         "nested": False,
         "tag": "market",
         "status": "not_yet",
-        "status_note": "CES offshore wind, cables, moorings, foreshore.",
+        "status_note": (
+            "Rent Crown Estate Scotland charges for offshore wind, cables, "
+            "moorings and the shore."
+        ),
         "amount_placeholder": "—",
     },
     {
         "id": "5",
-        "label": "Aquaculture licence rent",
+        "label": "Fish farm sites",
         "parent_id": None,
         "nested": False,
-        "tag": "shadow",
+        "tag": "proxy",
         "status": "not_yet",
-        "status_note": "Estimate — total minus CES seabed paid. Drawn in estimate stack later.",
+        "status_note": "Total minus the seabed lease paid to Crown Estate Scotland.",
         "amount_placeholder": "—",
     },
     {
         "id": "6",
-        "label": "Fisheries quota",
+        "label": "Fishing quota",
         "parent_id": None,
         "nested": False,
-        "tag": "market_or_proxy",
+        "tag": "proxy",
         "status": "not_yet",
-        "status_note": "Market if lease prices, else estimate.",
+        "status_note": "Market if lease prices, else modelled.",
         "amount_placeholder": "—",
     },
     {
@@ -103,12 +105,14 @@ _ROWS: list[dict[str, Any]] = [
     },
     {
         "id": "8",
-        "label": "Unpriced peat/soil carbon",
+        "label": "Carbon held in peat and soil",
         "parent_id": None,
         "nested": False,
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Only unpriced carbon; timber/credits stay in row 1.",
+        "status_note": (
+            "Carbon with no market price. Timber and carbon credits are counted with the land."
+        ),
         "amount_placeholder": "—",
     },
     {
@@ -124,12 +128,12 @@ _ROWS: list[dict[str, Any]] = [
     },
     {
         "id": "10",
-        "label": "Ecosystem services",
+        "label": "Other services of nature, such as flood control",
         "parent_id": None,
         "nested": False,
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Estimate, later.",
+        "status_note": "Estimate. Not worked out yet.",
         "amount_placeholder": "—",
     },
 ]

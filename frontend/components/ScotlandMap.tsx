@@ -40,7 +40,10 @@ import {
   visitorFacingError,
 } from "../lib/api";
 import { CONTEXT_LAYERS } from "../lib/contextLayers";
-import { syncLayersAddPaint } from "../lib/layersAddMapPaint";
+import {
+  syncLayersAddPaint,
+  type FloodKind,
+} from "../lib/layersAddMapPaint";
 import { spatialHubPresenceFromManifest } from "../lib/layersAddRegistry";
 import {
   fetchLayerCatalog,
@@ -271,6 +274,73 @@ const CADASTRAL_MIN_ZOOM = 14;
 const PUBLIC_LAND_MIN_ZOOM = 8;
 /** Protected sites: do not fetch the multi-megabyte extract below this zoom. */
 const DESIGNATIONS_MIN_ZOOM = 6;
+/** Simplified protected-site outlines are labelled below this zoom. */
+const SIMPLIFIED_OUTLINES_BELOW_ZOOM = 9;
+
+type ProtectedPayload = GeoJSON.FeatureCollection & {
+  meta?: { hidden_below_zoom?: boolean };
+};
+
+/** Draw returned outlines. A layer over the size budget contributes nothing. */
+function protectedSitesToDraw(parts: ProtectedPayload[]): {
+  features: GeoJSON.Feature[];
+  hint: boolean;
+} {
+  const features: GeoJSON.Feature[] = [];
+  let withheld = false;
+  for (const part of parts) {
+    if (part?.meta?.hidden_below_zoom === true) {
+      withheld = true;
+      continue;
+    }
+    if (part?.type !== "FeatureCollection") continue;
+    features.push(...(part.features ?? []));
+  }
+  if (features.length === 0 && withheld) return { features: [], hint: true };
+  return { features, hint: false };
+}
+
+type ContextFeaturePayload = GeoJSON.FeatureCollection & {
+  meta?: {
+    ok?: boolean;
+    note?: string;
+    hidden_below_zoom?: boolean;
+    hint?: string;
+  };
+};
+
+const OIL_GAS_ZOOM_HINT = "Zoom in to see oil and gas";
+
+/** One fetch per context layer for the life of the page. Toggles only change visibility. */
+const contextFeatureCache: Record<string, ContextFeaturePayload> = {};
+const contextFeatureInflight: Record<string, Promise<ContextFeaturePayload>> = {};
+
+function loadContextFeature(layerId: string): Promise<ContextFeaturePayload> {
+  const cached = contextFeatureCache[layerId];
+  if (cached) return Promise.resolve(cached);
+  const pending = contextFeatureInflight[layerId];
+  if (pending) return pending;
+  const request = apiJson<ContextFeaturePayload>(`/layers/context/${layerId}`)
+    .then((data) => {
+      const sizeCapHidOil =
+        layerId === "oil-fields" && data?.meta?.hidden_below_zoom === true;
+      if (
+        data?.type === "FeatureCollection" &&
+        data.meta?.ok !== false &&
+        !sizeCapHidOil
+      ) {
+        contextFeatureCache[layerId] = data;
+      }
+      delete contextFeatureInflight[layerId];
+      return data;
+    })
+    .catch((err: unknown) => {
+      delete contextFeatureInflight[layerId];
+      throw err;
+    });
+  contextFeatureInflight[layerId] = request;
+  return request;
+}
 const HLA_MIN_ZOOM = 8;
 const HLA_FILL = "#7b5ea7";
 /** Data Zone outlines / density colours — readable from neighbourhood zoom. */
@@ -623,6 +693,9 @@ export default function ScotlandMap() {
   /** CES offshore leases paint when ledger row 4 (seabed & foreshore) is on. */
   const showCrownLeases = Boolean(ledgerEnabled["4"]);
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
+  const [protectedSitesHint, setProtectedSitesHint] = useState(false);
+  const [protectedSitesDrawn, setProtectedSitesDrawn] = useState(false);
+  const [oilGasHint, setOilGasHint] = useState(false);
   const layerPopupRef = useRef<maplibregl.Popup | null>(null);
   const dzHoverPopupRef = useRef<maplibregl.Popup | null>(null);
   const identifyAbortRef = useRef<AbortController | null>(null);
@@ -747,7 +820,6 @@ export default function ScotlandMap() {
   const [seabed, setSeabed] = useState<{ notes: string[]; failed: boolean } | null>(null);
   const [contextNote, setContextNote] = useState<string | null>(null);
   const contextLoaded = useRef<Set<string>>(new Set());
-  const contextFlight = useRef<Set<string>>(new Set());
   const [, setLayerBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -813,6 +885,9 @@ export default function ScotlandMap() {
     string,
     boolean
   > | null>({ vdl: true });
+  const [floodKind, setFloodKind] = useState<FloodKind>("river");
+  /** Hidden until sepa_flood_dz has rows (LAYERS-FIX-1 while empty). */
+  const [floodDzLoaded, setFloodDzLoaded] = useState(false);
   const markTileUnavailable = useCallback((id: string) => {
     setTileUnavailableIds((prev) => {
       if (prev.has(id)) return prev;
@@ -2392,7 +2467,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "© Forestry Commission copyright. Contains OS data © Crown copyright. OGL v3.0. NFI woodland — Annual Ground Rent breakdown row 1 land-use, not a rent.",
+          "© Forestry Commission copyright. Contains OS data © Crown copyright. OGL v3.0. Woodland map, shown for context. Not a rent.",
       });
       map.addLayer({
         id: "nfi-fill",
@@ -2416,7 +2491,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "Native Woodland Survey of Scotland. © Scottish Forestry. OGL v3.0. Annual Ground Rent breakdown row 1 land-use, not a title.",
+          "Native Woodland Survey of Scotland. © Scottish Forestry. OGL v3.0. Native woodland map, shown for context. Not a rent or a title.",
       });
       map.addLayer({
         id: "native-woodland-fill",
@@ -2444,7 +2519,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "REPD © DESNZ / Crown copyright (OGL v3.0). Planning-site points — Annual Ground Rent breakdown row 3, not a rent.",
+          "REPD © DESNZ / Crown copyright (OGL v3.0). Planned wind and hydro sites, shown for context. Not a rent.",
       });
       map.addLayer({
         id: "repd-circle",
@@ -2464,7 +2539,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "Contains public sector information, licensed under the Open Government Licence v3.0, from Crown Estate Scotland. Offshore leases — Annual Ground Rent breakdown row 4, not a title.",
+          "Contains public sector information, licensed under the Open Government Licence v3.0, from Crown Estate Scotland. Seabed leases, shown for context. Not a rent or a title.",
       });
       map.addLayer({
         id: "crown-leases-fill",
@@ -3022,6 +3097,7 @@ export default function ScotlandMap() {
         if (cancelled) return;
         const layers = payload.layers ?? [];
         setCatalogLayers(layers);
+        setFloodDzLoaded(payload.flood_dz_loaded === true);
         if (layers.length === 0) {
           setBuiltupMaskCatalogGap(false);
           return;
@@ -3724,6 +3800,12 @@ export default function ScotlandMap() {
 
     if (!on) {
       setVis("none");
+      setProtectedSitesHint(false);
+      setProtectedSitesDrawn(false);
+      safeSetGeoJson(
+        map.getSource("designations-overlay") as GeoJSONSource | undefined,
+        emptyCollection,
+      );
       return;
     }
 
@@ -3737,33 +3819,40 @@ export default function ScotlandMap() {
       if (!b) return;
       if (map.getZoom() < DESIGNATIONS_MIN_ZOOM) {
         setVis("none");
+        setProtectedSitesHint(false);
+        setProtectedSitesDrawn(false);
+        safeSetGeoJson(
+          map.getSource("designations-overlay") as GeoJSONSource | undefined,
+          emptyCollection,
+        );
         return;
       }
       inFlight = true;
       const q =
         `south=${b.getSouth()}&west=${b.getWest()}` +
-        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
+        `&north=${b.getNorth()}&east=${b.getEast()}` +
+        `&max_features=80&z=${map.getZoom()}`;
       const paths = [
         `/layers/open/naturescot-designations?${q}`,
         `/layers/open/sssi?${q}`,
       ];
       void Promise.all(
         paths.map((path) =>
-          apiJson<GeoJSON.FeatureCollection>(path).catch(
-            () => ({ type: "FeatureCollection", features: [] }) as GeoJSON.FeatureCollection,
+          apiJson<ProtectedPayload>(path).catch(
+            () => ({ type: "FeatureCollection", features: [] }) as ProtectedPayload,
           ),
         ),
       )
         .then((parts) => {
           if (cancelled) return;
-          const features = parts.flatMap((part) =>
-            part?.type === "FeatureCollection" ? part.features ?? [] : [],
-          );
+          const drawn = protectedSitesToDraw(parts);
           safeSetGeoJson(
             map.getSource("designations-overlay") as GeoJSONSource | undefined,
-            { type: "FeatureCollection", features },
+            { type: "FeatureCollection", features: drawn.features },
           );
-          setVis(features.length > 0 ? "visible" : "none");
+          setProtectedSitesHint(drawn.hint);
+          setProtectedSitesDrawn(drawn.features.length > 0);
+          setVis(drawn.features.length > 0 ? "visible" : "none");
         })
         .finally(() => {
           inFlight = false;
@@ -3779,6 +3868,8 @@ export default function ScotlandMap() {
     map.on("moveend", onMove);
     return () => {
       cancelled = true;
+      setProtectedSitesHint(false);
+      setProtectedSitesDrawn(false);
       if (timer) clearTimeout(timer);
       map.off("moveend", onMove);
     };
@@ -4446,37 +4537,35 @@ export default function ScotlandMap() {
         setContextNote("This layer isn't available on this server yet.");
         continue;
       }
-      if (
-        !on ||
-        layer.kind === "raster" ||
-        contextLoaded.current.has(layer.id) ||
-        contextFlight.current.has(layer.id)
-      ) {
+      if (layer.id === "oil-fields" && !on) {
+        setOilGasHint(false);
+      }
+      if (!on || layer.kind === "raster" || contextLoaded.current.has(layer.id)) {
         continue;
       }
-      contextFlight.current.add(layer.id);
-      void apiJson<
-        GeoJSON.FeatureCollection & { meta?: { ok?: boolean; note?: string } }
-      >(`/layers/context/${layer.id}`)
+      const layerId = layer.id;
+      void loadContextFeature(layerId)
         .then((data) => {
-          contextFlight.current.delete(layer.id);
           if (cancelled || data?.type !== "FeatureCollection") return;
-          const source = map.getSource(`${layer.id}-src`) as GeoJSONSource | undefined;
+          const source = map.getSource(`${layerId}-src`) as GeoJSONSource | undefined;
           safeSetGeoJson(source, data);
+          if (layerId === "oil-fields" && data.meta?.hidden_below_zoom === true) {
+            setOilGasHint(data.meta.hint === OIL_GAS_ZOOM_HINT);
+            return;
+          }
           if (data.meta?.ok === false) {
             setContextNote(data.meta.note || "One layer did not load.");
             return;
           }
-          contextLoaded.current.add(layer.id);
+          if (layerId === "oil-fields") setOilGasHint(false);
+          contextLoaded.current.add(layerId);
         })
         .catch(() => {
-          contextFlight.current.delete(layer.id);
           if (!cancelled) setContextNote("One layer did not load.");
         });
     }
     return () => {
       cancelled = true;
-      contextFlight.current.clear();
     };
   }, [mapReady, contextOn, agrAvailable]);
 
@@ -4605,7 +4694,7 @@ export default function ScotlandMap() {
     };
   }, []);
 
-  // Flood risk paints sepa_nfra_grid (layersAddMapPaint), not /layers/open/flood.
+  // Flood risk paints Data Zone shares from /layers/open/flood-dz.
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
@@ -4613,7 +4702,7 @@ export default function ScotlandMap() {
     let cancelled = false;
     const run = () => {
       if (cancelled || mapRef.current !== map) return;
-      void syncLayersAddPaint(map, ledgerEnabled, spatialHubPresent);
+      void syncLayersAddPaint(map, ledgerEnabled, spatialHubPresent, floodKind);
     };
     run();
     map.on("moveend", run);
@@ -4621,7 +4710,7 @@ export default function ScotlandMap() {
       cancelled = true;
       map.off("moveend", run);
     };
-  }, [mapReady, ledgerEnabled, spatialHubPresent]);
+  }, [mapReady, ledgerEnabled, spatialHubPresent, floodKind]);
 
   const placeOpen = panelKind === "place" && Boolean(placeStub || result);
   const layersOpen = isNarrowPanel
@@ -4676,6 +4765,34 @@ export default function ScotlandMap() {
           role="application"
           aria-label="Scotland map"
         />
+        {protectedSitesHint || oilGasHint ? (
+          <div className="map-zoom-hint-stack">
+            {protectedSitesHint ? (
+              <p
+                className="protected-sites-zoom-hint"
+                data-testid="protected-sites-zoom-hint"
+              >
+                Zoom in to see protected sites
+              </p>
+            ) : null}
+            {oilGasHint ? (
+              <p
+                className="protected-sites-zoom-hint"
+                data-testid="oil-gas-zoom-hint"
+              >
+                Zoom in to see oil and gas
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        {protectedSitesDrawn && mapZoom < SIMPLIFIED_OUTLINES_BELOW_ZOOM ? (
+          <p
+            className="simplified-outlines-chip"
+            data-testid="simplified-outlines-chip"
+          >
+            Simplified outlines at this zoom. Zoom in for detail.
+          </p>
+        ) : null}
         {grid3Tooltip ? (
           <div
             className="grid3-tooltip"
@@ -4737,7 +4854,7 @@ export default function ScotlandMap() {
       <header className="hud-top" ref={headerRef}>
         <div className="hud-brand">
           <a className="hud-wordmark" href="/" aria-label="Scot-LAND home">
-            <img src="/logo-mark-h3.png" alt="" />
+            <img src="/logo-mark-h3.png" alt="" width={40} height={40} />
           </a>
         </div>
         <button
@@ -5023,6 +5140,9 @@ export default function ScotlandMap() {
             }}
             unavailableIds={unavailableLayerIds}
             spatialHubPresent={spatialHubPresent}
+            floodDzLoaded={floodDzLoaded}
+            floodKind={floodKind}
+            onFloodKindChange={setFloodKind}
             onEnabledChange={onMapLayersChange}
           />
         </MapPanelSlot>

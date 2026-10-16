@@ -17,9 +17,8 @@ test.describe("place card (internal preview)", () => {
     );
     await expect(
       page.getByTestId("place-card-land-values-coming-soon"),
-    ).toHaveText(
-      "Land values coming soon — our method is still being tested.",
-    );
+    ).toHaveCount(0);
+    await expect(card).not.toContainText(/coming soon/i);
     await expect(page.getByTestId("place-card-agr-label")).toHaveText(
       "Annual Ground Rent",
     );
@@ -27,7 +26,7 @@ test.describe("place card (internal preview)", () => {
       "Covers land under homes only.",
     );
     await expect(page.getByTestId("place-card-typical-home")).toContainText(
-      "For a typical home in this neighbourhood, not your home.",
+      "For a typical home in this area, not your home.",
     );
     await expect(page.getByTestId("place-card-fact")).toBeVisible();
 

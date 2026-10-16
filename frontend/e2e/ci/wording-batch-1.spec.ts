@@ -338,35 +338,15 @@ test.describe("WORDING-BATCH-1 developers", () => {
         );
         await expect(page.locator("body")).not.toContainText(/Size\s*—/);
 
-        await page.route("**/backend/openapi.json", async (route) => {
-          await route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({
-              openapi: "3.0.3",
-              info: { title: "Scot-LAND API", version: "0.0.0-e2e" },
-              paths: {
-                "/health": {
-                  get: {
-                    summary: "Health",
-                    responses: { "200": { description: "ok" } },
-                  },
-                },
-              },
-            }),
-          });
-        });
-
         await page.goto("/developers/api");
-        await expect(page.getByTestId("api-reference-title")).toHaveText(
-          "Scot-LAND API",
+        await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+          "Developer API and bulk data: coming",
         );
-        const notes = page.getByTestId("catalog-developer-notes");
-        await expect(notes).toBeVisible();
-        await expect(notes).not.toHaveAttribute("open", "");
-        await expect(
-          page.getByTestId("catalog-developer-notes-summary"),
-        ).toHaveText("Catalogue technical notes");
+        await expect(page.getByTestId("catalog-developer-notes")).toHaveCount(0);
+        await expect(page.getByTestId("api-register-interest")).toHaveAttribute(
+          "href",
+          "/about#contact",
+        );
 
         const noHScroll = await page.evaluate(() => {
           const root = document.documentElement;

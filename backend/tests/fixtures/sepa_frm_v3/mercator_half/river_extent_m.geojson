@@ -1,0 +1,20 @@
+{
+  "type": "FeatureCollection",
+  "crs": {"type": "name", "properties": {"name": "EPSG:3857"}},
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"layer": "FRM_FH_RIVER_EXTENT_M"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-489261.178865, 7520665.944898],
+          [-489172.450191, 7520669.021114],
+          [-489178.588713, 7520846.858240],
+          [-489267.319426, 7520843.781850],
+          [-489261.178865, 7520665.944898]
+        ]]
+      }
+    }
+  ]
+}

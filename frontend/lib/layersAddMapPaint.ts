@@ -3,9 +3,36 @@
  * Flood risk (visitor id "flood") paints catalog layer sepa_nfra_grid.
  */
 
-import type { GeoJSONSource, Map } from "maplibre-gl";
+import type { ExpressionSpecification, GeoJSONSource, Map } from "maplibre-gl";
 import { apiJson } from "./api";
 import { LAYERS_ADD_CREDITS, LAYERS_ADD_REGISTRY } from "./layersAddRegistry";
+
+export type FloodKind = "river" | "coastal" | "surface";
+
+const FLOOD_BAND_COLORS = ["#f7fbff", "#c6dbef", "#6baed6", "#2171b5", "#08306b"] as const;
+
+/** 0, 1–10, 11–25, 26–50, and over 50 per cent of the Data Zone. */
+export function floodFillColor(kind: FloodKind): ExpressionSpecification {
+  const field =
+    kind === "coastal"
+      ? "pct_area_coastal"
+      : kind === "surface"
+        ? "pct_area_surface"
+        : "pct_area_river";
+  return [
+    "step",
+    ["coalesce", ["to-number", ["get", field]], 0],
+    FLOOD_BAND_COLORS[0],
+    1,
+    FLOOD_BAND_COLORS[1],
+    11,
+    FLOOD_BAND_COLORS[2],
+    26,
+    FLOOD_BAND_COLORS[3],
+    51,
+    FLOOD_BAND_COLORS[4],
+  ] as ExpressionSpecification;
+}
 
 export type LayersAddPaintKind = "fill" | "circle";
 
@@ -135,7 +162,11 @@ export function ensureLayersAddPaint(map: Map): void {
         source: sourceId,
         minzoom: spec.minzoom,
         layout: { visibility: "none" },
-        paint: { "fill-color": spec.color, "fill-opacity": 0.45 },
+        paint: {
+          "fill-color":
+            spec.displayId === "flood" ? floodFillColor("river") : spec.color,
+          "fill-opacity": spec.displayId === "flood" ? 0.72 : 0.45,
+        },
       });
       continue;
     }
@@ -184,6 +215,7 @@ export async function syncLayersAddPaint(
   map: Map,
   enabled: Record<string, boolean | undefined>,
   spatialHubPresent?: Record<string, boolean> | null,
+  floodKind: FloodKind = "river",
 ): Promise<void> {
   if (!styleIsReady(map)) return;
   const bounds = map.getBounds();
@@ -195,6 +227,9 @@ export async function syncLayersAddPaint(
       const on = Boolean(enabled[spec.displayId]);
       if (map.getLayer(layerId)) {
         map.setLayoutProperty(layerId, "visibility", on ? "visible" : "none");
+        if (spec.displayId === "flood") {
+          map.setPaintProperty(layerId, "fill-color", floodFillColor(floodKind));
+        }
       }
     }
   } catch (err) {
@@ -214,9 +249,11 @@ export async function syncLayersAddPaint(
       continue;
     }
     const path =
-      `/layers/add/viewport/${spec.catalogLayerId}` +
-      `?south=${bounds.getSouth()}&west=${bounds.getWest()}` +
-      `&north=${bounds.getNorth()}&east=${bounds.getEast()}`;
+      spec.displayId === "flood"
+        ? `/layers/open/flood-dz?bbox=${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}&kind=${floodKind}`
+        : `/layers/add/viewport/${spec.catalogLayerId}` +
+          `?south=${bounds.getSouth()}&west=${bounds.getWest()}` +
+          `&north=${bounds.getNorth()}&east=${bounds.getEast()}`;
     const sourceId = layersAddSourceId(spec);
     jobs.push(
       apiJson<GeoJSON.FeatureCollection>(path)

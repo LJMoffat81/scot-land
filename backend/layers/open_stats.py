@@ -13,6 +13,7 @@ import httpx
 
 from layers.catalog_copy import apply_visitor_catalog_copy
 from layers.council_metrics import build_council_metrics_geojson
+from layers.layers_add2_pipeline import published_total_area, suppress_site_totals
 from layers.platform import platform_catalog
 from layers.public_land import ATTRIBUTION as PUBLIC_ATTRIBUTION
 from layers.public_land import BODIES, DASHBOARD_URL, FEATURE_URL as PUBLIC_URL
@@ -22,6 +23,7 @@ from layers.vdl import REGISTER_URL
 from layers.vdl import by_council_hectares
 
 TIMEOUT = 12.0
+VDL_OWNER_NOTE = "Scotland-wide totals from the Scottish Vacant and Derelict Land Survey, by owner type."
 
 
 def _client() -> httpx.Client:
@@ -91,6 +93,43 @@ def public_land_json() -> dict[str, Any]:
     }
 
 
+def _reject_small_owner_count(row: dict[str, Any]) -> None:
+    """A published owner class never keeps a 1- or 2-site count or its area."""
+    sites = row.get("sites")
+    leaked = sites in {1, 2, "1", "2"} or (
+        sites == "<3" and row.get("hectares") is not None
+    )
+    if leaked:
+        raise ValueError("byOwnerClass cannot publish a 1- or 2-site count")
+
+
+def _publish_owner_class(owner: Any, count: int, hectares: float) -> dict[str, Any]:
+    """Same '<3' helper as the council rollup. The Scotland-wide total cannot skip it."""
+    label, shown = suppress_site_totals(count, hectares)
+    if label == "<3":
+        sites: str | int = "<3"
+        published_ha = None
+    else:
+        sites = int(label)
+        published_ha = None if shown is None else round(float(shown), 2)
+    row = {"ownerClass": owner, "sites": sites, "hectares": published_ha}
+    _reject_small_owner_count(row)
+    return row
+
+
+def _reject_hidden_owner_total(classes: list[dict[str, Any]], total: float | None) -> None:
+    """A '<3' owner type must not leave a Scotland-wide area that reveals it."""
+    if any(row.get("sites") == "<3" for row in classes) and total is not None:
+        raise ValueError("Scotland-wide total area would reveal a hidden owner type")
+
+
+def _owner_class_sort(row: dict[str, Any]) -> tuple[int, float, str]:
+    hectares = row.get("hectares")
+    if hectares is None:
+        return (1, 0.0, str(row.get("ownerClass") or ""))
+    return (0, -float(hectares), str(row.get("ownerClass") or ""))
+
+
 def vdl_json() -> dict[str, Any]:
     try:
         rows = _stats(VDL_URL, "owner_1", "FID", "Shape__Area", "sqm")
@@ -102,18 +141,21 @@ def vdl_json() -> dict[str, Any]:
         ha = float(row.get("sqm") or 0) / 10_000.0
         total_ha += ha
         classes.append(
-            {
-                "ownerClass": row.get("owner_1"),
-                "sites": int(row.get("n") or 0),
-                "hectares": round(ha, 2),
-            }
+            _publish_owner_class(row.get("owner_1"), int(row.get("n") or 0), ha)
         )
-    classes.sort(key=lambda c: c["hectares"], reverse=True)
+    classes.sort(key=_owner_class_sort)
+    for item in classes:
+        _reject_small_owner_count(item)
+    total_hectares = published_total_area(
+        round(total_ha, 2),
+        [item.get("sites") for item in classes],
+    )
+    _reject_hidden_owner_total(classes, total_hectares)
     return {
         "ok": True,
-        "note": "Totals from the Scottish Vacant and Derelict Land Survey, by council.",
+        "note": VDL_OWNER_NOTE,
         "byOwnerClass": classes,
-        "totalHectares": round(total_ha, 2),
+        "totalHectares": total_hectares,
         "source": VDL_ATTRIBUTION,
         "register_url": REGISTER_URL,
     }

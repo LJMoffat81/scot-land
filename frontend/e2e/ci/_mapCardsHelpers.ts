@@ -2,7 +2,7 @@
  * Shared stubs and probes for MAP-CARDS-REDESIGN e2e under e2e/ci/.
  * Not a Playwright spec — imported by *.spec.ts only.
  */
-import { expect, type Page } from "@playwright/test";
+import { expect, type Page, type Route } from "@playwright/test";
 
 export const HEALTH_OK = {
   status: "ok",
@@ -13,6 +13,23 @@ export const HEALTH_OK = {
 };
 
 export const EMPTY_FC = { type: "FeatureCollection", features: [] };
+
+/**
+ * Glyphs protobuf with one font stack and no glyphs.
+ * MapLibre accepts it and draws nothing for that range.
+ */
+export const EMPTY_GLYPH_PBF = Buffer.from(
+  "ChoKEU9wZW4gU2FucyBSZWd1bGFyEgUwLTI1NQ==",
+  "base64",
+);
+
+export async function fulfillEmptyGlyph(route: Route) {
+  await route.fulfill({
+    status: 200,
+    contentType: "application/x-protobuf",
+    body: EMPTY_GLYPH_PBF,
+  });
+}
 
 export const LIVE_LAYER_IDS = [
   "1",
@@ -75,7 +92,7 @@ export const PLACE_FIXTURE = {
       unit: null,
       confidence: null,
       method: null,
-      gloss: "The yearly value of the land under homes.",
+      gloss: "The yearly rental value of the land under homes, without the buildings.",
       of_which: [],
     },
     {
@@ -89,7 +106,7 @@ export const PLACE_FIXTURE = {
       unit: null,
       confidence: null,
       method: null,
-      gloss: "Rents from things like wind, minerals and fish farming.",
+      gloss: "Rent from natural resources such as wind, water, minerals and fish farm sites.",
     },
     {
       id: "nature",
@@ -102,7 +119,7 @@ export const PLACE_FIXTURE = {
       unit: null,
       confidence: null,
       method: null,
-      gloss: "Value from nature's services, such as peat holding carbon.",
+      gloss: "What nature gives us for free, such as peat holding carbon. Estimate only.",
     },
   ],
   constraints: [],
@@ -165,6 +182,8 @@ export type StubOpts = {
    * Default keeps vacant land (existing map tests). Other IS rows stay absent.
    */
   spatialHubLayerIds?: readonly string[];
+  /** sepa_flood_dz has rows — the flood switch may show. */
+  floodDzLoaded?: boolean;
 };
 
 /**
@@ -220,7 +239,11 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ version: 2, layers: [] }),
+        body: JSON.stringify({
+          version: 2,
+          layers: [],
+          flood_dz_loaded: opts.floodDzLoaded === true,
+        }),
       });
       return;
     }
@@ -284,6 +307,11 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       contentType: "application/json",
       body: JSON.stringify({ layers: [] }),
     });
+  });
+  // Same idea as the raster tile stub: answer glyph ranges here so CI never
+  // fetches tiles.openfreemap.org fonts. The live map still requests that host.
+  await page.route("**/tiles.openfreemap.org/fonts/**", async (route) => {
+    await fulfillEmptyGlyph(route);
   });
   await page.route("**/health**", async (route) => {
     // Fulfill all health probes (including /backend/health). Continuing to the

@@ -120,6 +120,10 @@ const banned = [
   "DZ",
   "IZ",
   "People per km²",
+  "Neighbourhood",
+  "neighbourhood",
+  "Neighborhood",
+  "neighborhood",
 ];
 for (const entry of MAP_LAYER_REGISTRY) {
   for (const token of banned) {
@@ -140,7 +144,7 @@ assert.equal(
 );
 assert.equal(
   MAP_LAYER_REGISTRY.find((e) => e.id === "data_zones")?.label,
-  "Neighbourhood lines",
+  "Area boundaries",
 );
 assert.equal(
   MAP_LAYER_REGISTRY.find((e) => e.id === "councils")?.label,
@@ -148,7 +152,7 @@ assert.equal(
 );
 assert.equal(
   MAP_LAYER_REGISTRY.find((e) => e.id === "flood")?.label,
-  "Flood risk",
+  "Flood risk (SEPA)",
 );
 assert.equal(
   MAP_LAYER_REGISTRY.find((e) => e.id === "flood")?.group,

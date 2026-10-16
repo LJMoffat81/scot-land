@@ -19,7 +19,7 @@ export default function DevelopersGlossaryPage() {
       <h1>{DEVELOPERS_GLOSSARY_TITLE}</h1>
       <ResearchBanner />
       <p className="downloads-note">
-        Terms used in the valuation engine and developer APIs. Overview:{" "}
+        Words used in our method and in the data for developers. Overview:{" "}
         <a href="/developers">Downloads &amp; API</a>.
       </p>
       <div

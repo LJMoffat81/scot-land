@@ -11,6 +11,7 @@ import os
 
 import pytest
 
+from layers.naturescot import clear_low_zoom_cache
 from paths import PROCESSED_DIR
 
 
@@ -27,6 +28,14 @@ def pytest_configure(config):
 @pytest.fixture(autouse=True)
 def _offline_data_zone(monkeypatch):
     monkeypatch.setattr("agr.engine.zone_code_at", lambda lat, lng: None)
+
+
+@pytest.fixture(autouse=True)
+def _clear_designation_zoom_cache():
+    """Each test starts cold so a cached z6 body cannot leak into the next one."""
+    clear_low_zoom_cache()
+    yield
+    clear_low_zoom_cache()
 
 
 @pytest.fixture

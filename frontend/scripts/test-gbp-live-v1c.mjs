@@ -103,6 +103,10 @@ assert.equal(badRange.range, "estimate unavailable");
 }
 
 // Legend copy carries the V1c unit phrase
+assert.equal(
+  gbp.SURFACE_RENT_LEGEND_TITLE,
+  "Land rent under homes — £ per square metre of land, per year (Data Zone)",
+);
 assert.match(
   gbp.SURFACE_RENT_LEGEND_TITLE,
   /£ per square metre of land, per year/,

@@ -20,9 +20,9 @@ const mona = localFont({
 });
 
 const SITE_DESCRIPTION =
-  "Search a Scottish postcode, place or map reference on an open land map. Research estimate — land rent figures are not published yet.";
+  "Search a Scottish postcode, place or map reference on a free, open land map. Annual Ground Rent figures are not published yet. Not a bill or an official valuation.";
 const OG_DESCRIPTION =
-  "Find a place on Scotland’s open land map. Research estimate — land rent figures are not published yet.";
+  "Land value we all create. Find a place on Scotland's free, open land map. Annual Ground Rent figures are not published yet.";
 
 export const metadata: Metadata = {
   metadataBase: getMetadataBase(),

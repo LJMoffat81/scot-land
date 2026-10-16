@@ -224,7 +224,7 @@ export default function DataChecksPage() {
           confirmed.
         </li>
         <li>
-          Oil and gas: shown separately, outside Scotland&apos;s totals, because
+          Oil and gas: kept separate from Scotland&apos;s land figures, because
           it is managed by the UK.
         </li>
       </ul>

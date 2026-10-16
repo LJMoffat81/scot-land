@@ -156,19 +156,20 @@ input {
   line-height: 0;
   /* Solid backing so map labels cannot show through the transparent mark. */
   background: #fff;
-  padding: 0.2rem;
   border-radius: 12px;
   box-shadow: var(--hud-shadow);
   text-decoration: none;
-  /* LOGO-H2: ≥44×44 CSS px tap/click target on mobile. */
+  /* LOGO-SIZE-1: 40px mark; padding keeps the tap target ≥44px. */
+  padding: 2px;
   min-width: 44px;
   min-height: 44px;
 }
 
 .hud-wordmark img {
   display: block;
-  width: 88px;
-  height: 88px;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
 }
 
 .hud-layers-btn {
@@ -220,8 +221,8 @@ input {
 }
 
 .squares-shell .hud-wordmark img {
-  width: 72px;
-  height: 72px;
+  width: 40px;
+  height: 40px;
 }
 
 .place-card,
@@ -379,6 +380,7 @@ input {
 .place-card-typical,
 .place-card-neighbourhood,
 .place-card-agr-subtitle,
+.place-card-agr-scope,
 .place-card-sales-basis,
 .place-card-fact,
 .place-card-parts-note,
@@ -391,6 +393,12 @@ input {
   font-size: 0.85rem;
   line-height: 1.4;
   color: var(--slrg-text);
+}
+
+.place-card-agr-scope {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--slrg-muted);
 }
 
 .place-card-figure-status a {
@@ -3056,6 +3064,26 @@ button.primary:disabled {
   gap: 0.45rem;
 }
 
+.flood-kind {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+.flood-kind-option {
+  border: 1px solid #9ecae1;
+  background: #f7fbff;
+  color: #08306b;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.flood-kind-option[aria-checked="true"] {
+  background: #2171b5;
+  color: #fff;
+  border-color: #2171b5;
+}
 .layers-panel-switch {
   display: flex;
   width: 100%;
@@ -3767,8 +3795,8 @@ button.linkish:disabled {
   }
 
   .hud-wordmark img {
-    width: 56px;
-    height: 56px;
+    width: 40px;
+    height: 40px;
   }
 
   .hud-layers-btn {
@@ -4138,4 +4166,11 @@ button.linkish:disabled {
     align-items: center;
     justify-content: center;
   }
+}
+
+/* PRE-WRAP-1: every pre and code block stays inside its container. */
+pre,
+code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

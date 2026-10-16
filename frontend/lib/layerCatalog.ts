@@ -53,6 +53,8 @@ export type LayerCatalog = {
   version?: number;
   brief?: string;
   principle?: string;
+  /** True when sepa_flood_dz has rows. The flood switch stays hidden until then. */
+  flood_dz_loaded?: boolean;
   layers: CatalogLayer[];
   tools?: Array<{ id: string; status: string; label: string }>;
   data_policy?: Record<string, unknown>;

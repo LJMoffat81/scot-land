@@ -91,14 +91,14 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     publication_status: "ok",
   },
   publication_note:
-    "Per-hectare stack. Figures are being checked and aren't published yet. Planning uplift sits under land. Services of nature stay separate from Market and Modelled rows. Oil and gas sit outside the Scottish land total.",
+    "Rent for each hectare. Figures are being checked and aren't published yet. Planning permission value is shown inside land, not added again. Services of nature are shown on their own and never added in. Oil and gas are offshore and kept out of Scotland's land total.",
   headline: {
     label: "Scottish totals (Market and Modelled)",
     unit: "per hectare per year",
-    sum_row_ids: ["1", "2", "3", "4"],
+    sum_row_ids: ["1", "2", "3", "4", "5", "6"],
     total_placeholder: "—",
     total_note:
-      "Visually stacked rows that add to this total: 1, 2, 3, 4. Planning uplift excluded from the sum.",
+      "Visually stacked rows that add to this total: 1, 2, 3, 4, 5, 6. Planning uplift excluded from the sum.",
     rows: [
       {
         id: "1",
@@ -120,7 +120,7 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
         tag: "already_included",
         status: "not_yet",
         status_note:
-          "Planning uplift: an 'of which' figure inside the land part, never added again",
+          "Value from planning permission. Part of the land figure, not added again.",
         parent_id: "1",
         nested: true,
         in_total: false,
@@ -130,11 +130,11 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
       },
       {
         id: "2",
-        label: "Mineral rent",
+        label: "Minerals and quarries",
         tag: "proxy",
         status: "not_yet",
         status_note:
-          "Royalty/tonne, below ground. Stated difference only (C-hectare).",
+          "The royalty paid for each tonne taken from the ground.",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -144,11 +144,11 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
       },
       {
         id: "3",
-        label: "Onshore wind + hydro resource rent",
+        label: "Wind and hydro sites on land",
         tag: "proxy",
         status: "partial",
         status_note:
-          "Site rent minus footprint surface rent. Inventory layers may paint.",
+          "The extra rent a wind or hydro site earns over ordinary land rent.",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -158,10 +158,37 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
       },
       {
         id: "4",
-        label: "Seabed & foreshore",
+        label: "Seabed and shore",
         tag: "market",
         status: "not_yet",
-        status_note: "CES offshore wind, cables, moorings, foreshore.",
+        status_note:
+          "Rent Crown Estate Scotland charges for offshore wind, cables, moorings and the shore.",
+        parent_id: null,
+        nested: false,
+        in_total: true,
+        stack: "headline",
+        amount_placeholder: "—",
+        amount_gbp_per_ha: null,
+      },
+      {
+        id: "5",
+        label: "Fish farm sites",
+        tag: "proxy",
+        status: "not_yet",
+        status_note: "Total minus the seabed lease paid to Crown Estate Scotland.",
+        parent_id: null,
+        nested: false,
+        in_total: true,
+        stack: "headline",
+        amount_placeholder: "—",
+        amount_gbp_per_ha: null,
+      },
+      {
+        id: "6",
+        label: "Fishing quota",
+        tag: "proxy",
+        status: "not_yet",
+        status_note: "Market if lease prices, else modelled.",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -172,40 +199,13 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     ],
   },
   shadow: {
-    label: "Services of nature (separate — never summed into Scottish totals)",
+    label: "Services of nature (estimates, shown on their own and never added in)",
     unit: "per hectare per year",
-    sum_row_ids: ["5", "6", "7", "8", "10"],
+    sum_row_ids: ["7", "8", "10"],
     total_placeholder: "—",
     total_note:
       "Estimate stack total is separate from the Scottish totals. Totals per chip only, never across chips or price years.",
     rows: [
-      {
-        id: "5",
-        label: "Aquaculture licence rent",
-        tag: "shadow",
-        status: "not_yet",
-        status_note: "Estimate — total minus CES seabed paid. Separate stack.",
-        parent_id: null,
-        nested: false,
-        in_total: true,
-        stack: "shadow",
-        amount_placeholder: "—",
-        amount_gbp_per_ha: null,
-      },
-      {
-        id: "6",
-        label: "Fisheries quota",
-        tag: "shadow",
-        status: "not_yet",
-        status_note:
-          "Market if lease prices, else estimate (default: estimate stack).",
-        parent_id: null,
-        nested: false,
-        in_total: true,
-        stack: "shadow",
-        amount_placeholder: "—",
-        amount_gbp_per_ha: null,
-      },
       {
         id: "7",
         label: "Water scarcity",
@@ -222,10 +222,11 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
       },
       {
         id: "8",
-        label: "Unpriced peat/soil carbon",
+        label: "Carbon held in peat and soil",
         tag: "shadow",
         status: "not_yet",
-        status_note: "Only unpriced carbon; timber/credits stay in row 1.",
+        status_note:
+          "Carbon with no market price. Timber and carbon credits are counted with the land.",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -235,10 +236,10 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
       },
       {
         id: "10",
-        label: "Ecosystem services",
+        label: "Other services of nature, such as flood control",
         tag: "shadow",
         status: "not_yet",
-        status_note: "Estimate, later.",
+        status_note: "Estimate. Not worked out yet.",
         parent_id: null,
         nested: false,
         in_total: true,
@@ -273,12 +274,12 @@ export const PLACE_STACK_FIXTURE: PlaceHectareStackPayload = {
     benchmarks: [
       {
         id: "spectrum_airspace",
-        label: "Spectrum / airspace",
+        label: "Radio spectrum and airspace",
         note: "benchmark only, not inputs",
       },
       {
         id: "wightman",
-        label: "Wightman",
+        label: "Andy Wightman's land estimates",
         note: "benchmark only, not inputs",
       },
     ],

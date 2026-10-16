@@ -23,8 +23,10 @@ export default function MissionContent() {
 
       <p>
         Scot-LAND is a free, open map of Scotland&apos;s land, built around
-        Annual Ground Rent, the yearly rental value of the land itself. It
-        shows where that value comes from: homes and businesses, farms, wind,
+        Annual Ground Rent, the yearly rental value of the land itself. For
+        now it shows Data Zones, small areas of a few hundred homes. Our aim
+        is to value each piece of land, step by step, from accurate public
+        data. It shows where that value comes from: homes and businesses, farms, wind,
         water, fish farms, forests and peat. Anyone can use it: the public,
         community groups, journalists, researchers and people who make policy.
       </p>
@@ -50,9 +52,10 @@ export default function MissionContent() {
           It is not a bill or an official valuation. It does not propose a
           rate. It shows the evidence. We only show owners from public records,
           never private owners&apos; names, sale prices or title plans. We use
-          open data only at launch. Paid sources may be added later as the
-          project advances, each one clearly tagged. Paid data is never
-          republished or offered for download.
+          open data only. Paid sources may be added later, each one clearly
+          tagged. Paid data is never republished or offered for download. The
+          map stays free. Larger data packs and an API may be paid services
+          later.
         </p>
       </section>
 
@@ -108,6 +111,9 @@ export default function MissionContent() {
           estimates. They are not a bill or an official valuation. Scot-LAND does
           not propose a rate.
         </p>
+        <p>
+          Read <a href="/how-we-built-this">how we built this</a>.
+        </p>
       </section>
 
       <section id="contact">
@@ -134,7 +140,10 @@ export default function MissionContent() {
         </p>
       </section>
 
-      <p className="meta">Scot-LAND logo: original design.</p>
+      <p className="meta">
+        Scot-LAND logo: mountains over a loch, drawn as small map areas. Original
+        design.
+      </p>
       <p>
         <a href="/">Back to map</a>
         {" · "}

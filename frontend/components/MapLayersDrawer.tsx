@@ -28,6 +28,10 @@ export type MapLayersDrawerProps = {
    * Null or omitted hides those rows (skip when the extract is absent).
    */
   spatialHubPresent?: Record<string, boolean> | null;
+  /** True when sepa_flood_dz has rows. The flood switch stays hidden until then. */
+  floodDzLoaded?: boolean;
+  floodKind?: "river" | "coastal" | "surface";
+  onFloodKindChange?: (kind: "river" | "coastal" | "surface") => void;
   /** Current map zoom for inline legend zoom gates. */
   mapZoom?: number;
   /** Close control — parent owns open state (opening must not change layers). */
@@ -75,13 +79,19 @@ export default function MapLayersDrawer({
   onEnabledChange,
   unavailableIds,
   spatialHubPresent = null,
+  floodDzLoaded = false,
+  floodKind = "river",
+  onFloodKindChange,
   mapZoom,
   onClose,
   className,
   title = "Map layers",
 }: MapLayersDrawerProps) {
   const unavailable = asUnavailableSet(unavailableIds);
-  const groups = mapDrawerLayersByGroup({ spatialHubPresent })
+  const groups = mapDrawerLayersByGroup({
+    spatialHubPresent,
+    floodLoaded: floodDzLoaded,
+  })
     .map(({ key, label, layers }) => ({
       key,
       label,
@@ -186,6 +196,8 @@ export default function MapLayersDrawer({
                       layer={layer}
                       on={on}
                       mapZoom={mapZoom}
+                      floodKind={floodKind}
+                      onFloodKindChange={onFloodKindChange}
                       onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
                     />
                   );
@@ -217,16 +229,26 @@ export default function MapLayersDrawer({
   );
 }
 
+const FLOOD_KINDS = [
+  { id: "river", label: "River" },
+  { id: "coastal", label: "Coastal" },
+  { id: "surface", label: "Surface water" },
+] as const;
+
 function DrawerLayerRow({
   layer,
   on,
   onToggle,
   mapZoom,
+  floodKind,
+  onFloodKindChange,
 }: {
   layer: MapDrawerLayer;
   on: boolean;
   onToggle: () => void;
   mapZoom?: number;
+  floodKind?: "river" | "coastal" | "surface";
+  onFloodKindChange?: (kind: "river" | "coastal" | "surface") => void;
 }) {
   const registry = getMapLayer(layer.id);
   const legend: InlineLegendView | null =
@@ -267,6 +289,28 @@ function DrawerLayerRow({
           aria-hidden="true"
         />
       </button>
+      {layer.id === "flood" && onFloodKindChange ? (
+        <div
+          className="flood-kind"
+          role="radiogroup"
+          aria-label="Flood source"
+          data-testid="flood-kind"
+        >
+          {FLOOD_KINDS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="radio"
+              className="flood-kind-option"
+              aria-checked={floodKind === item.id}
+              data-testid={`flood-kind-${item.id}`}
+              onClick={() => onFloodKindChange(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {layer.subline ? (
         <p
           id={`layer-desc-${layer.id}`}
@@ -315,6 +359,11 @@ function DrawerLayerRow({
           {/* Class key stays visible while zoom-gated so toggles still show Vacant/Derelict etc. */}
           {legend.rampScale ? (
             <p className="layers-inline-legend-scale">{legend.rampScale}</p>
+          ) : null}
+          {registry?.legendNote ? (
+            <p className="layer-meta" data-testid="layer-flood-extent-legend">
+              {registry.legendNote}
+            </p>
           ) : null}
           <ul className="layer-legend" aria-label={`${layer.label} key`}>
             {legend.classes.map((row) => (

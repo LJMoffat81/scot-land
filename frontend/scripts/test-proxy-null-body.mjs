@@ -46,4 +46,43 @@ try {
   globalThis.fetch = realFetch;
 }
 
+globalThis.fetch = async (_url, init) => {
+  assert.equal(init?.headers?.["If-None-Match"], '"oil-etag"');
+  return new Response(JSON.stringify({ type: "FeatureCollection", features: [] }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "public, max-age=86400",
+      ETag: '"oil-etag"',
+    },
+  });
+};
+try {
+  const oil = await GET(
+    new Request("http://localhost/backend/layers/context/oil-fields", {
+      headers: { "If-None-Match": '"oil-etag"' },
+    }),
+    { params: Promise.resolve({ path: ["layers", "context", "oil-fields"] }) },
+  );
+  assert.equal(oil.headers.get("cache-control"), "public, max-age=86400");
+  assert.equal(oil.headers.get("etag"), '"oil-etag"');
+} finally {
+  globalThis.fetch = realFetch;
+}
+
+globalThis.fetch = async () =>
+  new Response("{}", {
+    status: 200,
+    headers: { "Cache-Control": "public, max-age=60", "Content-Type": "application/json" },
+  });
+try {
+  const short = await GET(
+    new Request("http://localhost/backend/health"),
+    { params: Promise.resolve({ path: ["health"] }) },
+  );
+  assert.equal(short.headers.get("cache-control"), "public, max-age=300");
+} finally {
+  globalThis.fetch = realFetch;
+}
+
 console.log("test-proxy-null-body: ok");

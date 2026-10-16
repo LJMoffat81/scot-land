@@ -152,7 +152,7 @@ assert.equal(
 );
 assert.equal(
   MAP_LAYER_REGISTRY.find((e) => e.id === "flood")?.label,
-  "Flood risk",
+  "Flood risk (SEPA)",
 );
 assert.equal(
   MAP_LAYER_REGISTRY.find((e) => e.id === "flood")?.group,

@@ -805,6 +805,8 @@ def layer_context_features(layer_id: str) -> Response:
     """Allowlisted oil, lease, or renewable features. Empty when unknown.
 
     Oil and gas is simplified to 500 KB and cached for a day with an ETag.
+    A body the size cap hid is not cached. It carries hidden_below_zoom and
+    the hint "Zoom in to see oil and gas".
     """
     try:
         geo = fetch_context_geojson(layer_id)

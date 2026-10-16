@@ -134,13 +134,7 @@ export default function MissionContent() {
         </p>
       </section>
 
-      <p className="meta">
-        Credit: the logo uses the &ldquo;Land&rdquo; icon by Adrien Coquet, from{" "}
-        <a href="https://thenounproject.com/browse/icons/term/land/">
-          Noun Project
-        </a>{" "}
-        (CC BY 3.0).
-      </p>
+      <p className="meta">Scot-LAND logo: original design.</p>
       <p>
         <a href="/">Back to map</a>
         {" · "}

@@ -1,9 +1,12 @@
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
  * LOGO-H2 — new mark assets, favicons, OG image, header label + tap target,
  * desktop tagline only (hidden ≤600px / 390).
+ * LOGO-FIX-1 — absolute prod og/twitter images; no Noun Project credit.
  */
+
+const PROD_OG_IMAGE = "https://scot-land.scot/og-image.png";
 
 const consoleErrors: string[] = [];
 const resourceFails: Array<{ url: string; status: number }> = [];
@@ -140,6 +143,77 @@ function pngDimensions(buf: Buffer): { width: number; height: number } {
   };
 }
 
+/** SW-054: og:image + twitter:image must be absolute prod URLs, never localhost. */
+async function expectAbsoluteSocialImages(page: Page, path = page.url()) {
+  const ogContents = await page
+    .locator('meta[property="og:image"]')
+    .evaluateAll((els) =>
+      els.map((el) => el.getAttribute("content") || ""),
+    );
+  expect(
+    ogContents.some((c) => c === PROD_OG_IMAGE || c.startsWith(`${PROD_OG_IMAGE}?`)),
+    `${path}: og:image must be ${PROD_OG_IMAGE}; got ${JSON.stringify(ogContents)}`,
+  ).toBe(true);
+  expect(
+    ogContents.every((c) => !/localhost/i.test(c)),
+    `${path}: og:image must not contain localhost; got ${JSON.stringify(ogContents)}`,
+  ).toBe(true);
+
+  const twContents = await page
+    .locator('meta[name="twitter:image"], meta[property="twitter:image"]')
+    .evaluateAll((els) =>
+      els.map((el) => el.getAttribute("content") || ""),
+    );
+  expect(
+    twContents.some((c) => c === PROD_OG_IMAGE || c.startsWith(`${PROD_OG_IMAGE}?`)),
+    `${path}: twitter:image must be ${PROD_OG_IMAGE}; got ${JSON.stringify(twContents)}`,
+  ).toBe(true);
+  expect(
+    twContents.every((c) => !/localhost/i.test(c)),
+    `${path}: twitter:image must not contain localhost; got ${JSON.stringify(twContents)}`,
+  ).toBe(true);
+}
+
+function assertAbsoluteSocialImagesInHtml(html: string, path: string) {
+  const og = [...html.matchAll(/property=["']og:image["'][^>]*content=["']([^"']+)["']/gi)]
+    .map((m) => m[1])
+    .concat(
+      [...html.matchAll(/content=["']([^"']+)["'][^>]*property=["']og:image["']/gi)].map(
+        (m) => m[1],
+      ),
+    );
+  const tw = [
+    ...html.matchAll(
+      /(?:name|property)=["']twitter:image["'][^>]*content=["']([^"']+)["']/gi,
+    ),
+  ]
+    .map((m) => m[1])
+    .concat(
+      [
+        ...html.matchAll(
+          /content=["']([^"']+)["'][^>]*(?:name|property)=["']twitter:image["']/gi,
+        ),
+      ].map((m) => m[1]),
+    );
+
+  expect(
+    og.some((c) => c === PROD_OG_IMAGE || c.startsWith(`${PROD_OG_IMAGE}?`)),
+    `${path}: og:image must be ${PROD_OG_IMAGE}; got ${JSON.stringify(og)}`,
+  ).toBe(true);
+  expect(
+    og.every((c) => c && !/localhost/i.test(c)),
+    `${path}: og:image must not contain localhost; got ${JSON.stringify(og)}`,
+  ).toBe(true);
+  expect(
+    tw.some((c) => c === PROD_OG_IMAGE || c.startsWith(`${PROD_OG_IMAGE}?`)),
+    `${path}: twitter:image must be ${PROD_OG_IMAGE}; got ${JSON.stringify(tw)}`,
+  ).toBe(true);
+  expect(
+    tw.every((c) => c && !/localhost/i.test(c)),
+    `${path}: twitter:image must not contain localhost; got ${JSON.stringify(tw)}`,
+  ).toBe(true);
+}
+
 test.describe("LOGO-H2 static assets", () => {
   test.use({ viewport: { width: 1100, height: 800 } });
 
@@ -192,27 +266,39 @@ test.describe("LOGO-H2 desktop chrome", () => {
     const bodyTaglineMatches = page.getByText(TAGLINE, { exact: true });
     await expect(bodyTaglineMatches).toHaveCount(1);
 
-    const ogContents = await page
-      .locator('meta[property="og:image"]')
-      .evaluateAll((els) =>
-        els.map((el) => el.getAttribute("content") || ""),
-      );
-    expect(
-      ogContents.some((c) => /\/og-image\.png(?:\?|$)/.test(c)),
-      `og:image missing /og-image.png; got ${JSON.stringify(ogContents)}`,
-    ).toBe(true);
+    await expectAbsoluteSocialImages(page);
+  });
 
-    const twContents = await page
-      .locator(
-        'meta[name="twitter:image"], meta[property="twitter:image"]',
-      )
-      .evaluateAll((els) =>
-        els.map((el) => el.getAttribute("content") || ""),
-      );
-    expect(
-      twContents.some((c) => /\/og-image\.png(?:\?|$)/.test(c)),
-      `twitter:image missing /og-image.png; got ${JSON.stringify(twContents)}`,
-    ).toBe(true);
+  test("LOGO-FIX-1: every public page has absolute prod og/twitter images", async ({
+    request,
+  }) => {
+    const paths = [
+      "/",
+      "/about",
+      "/methodology",
+      "/data",
+      "/developers",
+      "/developers/api",
+      "/developers/checks",
+      "/developers/glossary",
+    ];
+    for (const path of paths) {
+      const res = await request.get(path);
+      expect(res.status(), path).toBe(200);
+      assertAbsoluteSocialImagesInHtml(await res.text(), path);
+    }
+  });
+
+  test("LOGO-FIX-1: Noun Project / Coquet absent on about", async ({
+    page,
+  }) => {
+    await page.goto("/about");
+    const body = await page.locator("body").innerText();
+    expect(body).not.toMatch(/Noun Project/i);
+    expect(body).not.toMatch(/Coquet/i);
+    await expect(
+      page.getByText("Scot-LAND logo: original design."),
+    ).toBeVisible();
   });
 
   test("map HUD brand aria-label is Scot-LAND home", async ({ page }) => {

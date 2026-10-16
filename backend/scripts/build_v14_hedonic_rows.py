@@ -240,11 +240,24 @@ def _skip_record(cursor: _CsvCursor) -> None:
             return
 
 
+def _integer_year(text: str) -> int:
+    """Blank, missing and non-integer years fail closed."""
+    stripped = str(text).strip()
+    if not stripped:
+        raise HedonicRowError("year field is blank")
+    digits = stripped[1:] if stripped[0] == "-" else stripped
+    if not digits.isdigit():
+        raise HedonicRowError("year is not an integer")
+    return int(stripped)
+
+
 def screen_year_column(handle, year_column: str, source_name: str) -> None:
     """Read the year field before any later field on that row.
 
-    A year at or after 2024 raises before the remainder of the record is
-    read, so a price cell after the year column never enters memory.
+    A blank, missing or short year (the record ends before the year
+    column), a non-integer year, or a year at or after 2024 raises
+    before the remainder of the record is read, so a price cell after
+    the year column never enters memory.
     """
     cursor = _CsvCursor(handle)
     header: list[str] = []
@@ -269,15 +282,16 @@ def screen_year_column(handle, year_column: str, source_name: str) -> None:
             if eof_before:
                 if position == 0:
                     return
-                year_text = None
-                break
+                raise HedonicRowError("year field is short")
             if position == year_index:
                 year_text = text
+            if at_end and position < year_index:
+                raise HedonicRowError("year field is short")
             if at_end:
-                if position < year_index:
-                    year_text = None
                 break
-        if year_text is not None and year_text.strip() and int(year_text.strip()) >= 2024:
+        if year_text is None:
+            raise HedonicRowError("year field is blank")
+        if _integer_year(year_text) >= 2024:
             raise HedonicRowError("year >= 2024 refused")
         if not at_end:
             _skip_record(cursor)
@@ -490,7 +504,9 @@ def _load_epc(path: Path) -> dict[str, dict]:
 
 
 def _load_sold_tfa(path: Path) -> dict[tuple[str, int], dict]:
-    """Keep fit and holdout years. A 2024 row is skipped and its cells are not used."""
+    """Keep fit and holdout years. A bad year raises before later cells are used."""
+    with path.open("rb", buffering=0) as handle:
+        screen_year_column(handle, "year", path.name)
     out: dict[tuple[str, int], dict] = {}
     with path.open(newline="", encoding="utf-8") as handle:
         reader = csv.reader(handle)
@@ -506,10 +522,12 @@ def _load_sold_tfa(path: Path) -> dict[tuple[str, int], dict]:
         floor_i = index["sold_tfa_mean"]
         imputed_i = index.get("f_imputed")
         for record in reader:
-            if year_i >= len(record) or not str(record[year_i]).strip():
-                continue
-            year = int(record[year_i])
-            if year >= 2024 or year not in KEPT_YEARS:
+            if year_i >= len(record):
+                raise HedonicRowError("year field is short")
+            year = _integer_year(str(record[year_i]))
+            if year >= 2024:
+                raise HedonicRowError("year >= 2024 refused")
+            if year not in KEPT_YEARS:
                 continue
             zone = str(record[zone_i]).strip()
             imputed = 0

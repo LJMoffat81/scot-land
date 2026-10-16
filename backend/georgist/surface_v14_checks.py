@@ -128,8 +128,33 @@ def check_6_zone_range(zones: Sequence[Mapping]) -> dict:
     }
 
 
+_PLOT_RADII = (20, 30, 40)
+
+
+def _pass_at_ints(raw: Mapping) -> dict[int, bool]:
+    """JSON round-trips radii as strings. A non-integer key raises."""
+    normalised: dict[int, bool] = {}
+    for key, value in raw.items():
+        if isinstance(key, bool) or isinstance(key, float):
+            raise ValueError(f"pass_at key is not an integer radius: {key!r}")
+        if isinstance(key, int):
+            radius = key
+        else:
+            text = str(key).strip()
+            if not text.isdigit():
+                raise ValueError(f"pass_at key is not an integer radius: {key!r}")
+            radius = int(text)
+        if radius not in _PLOT_RADII:
+            raise ValueError(f"pass_at key is not an integer radius: {key!r}")
+        normalised[radius] = bool(value)
+    return normalised
+
+
 def _plot(zones: Sequence[Mapping], field: str) -> dict:
-    rows = [{"pass_at": zone.get(field) or {30: False, 20: False, 40: False}} for zone in zones]
+    rows = []
+    for zone in zones:
+        raw = zone.get(field) or {30: False, 20: False, 40: False}
+        rows.append({"pass_at": _pass_at_ints(raw)})
     result = v13.check_3_plot_comparison(rows, min_pass_share=0.80)
     measured = [bool(zone.get("measured_detached_pass")) for zone in zones if "measured_detached_pass" in zone]
     if measured:

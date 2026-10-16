@@ -14,6 +14,7 @@ import subprocess
 from pathlib import Path
 from typing import Mapping, Sequence
 
+import scipy
 import statsmodels
 
 from georgist import surface_rent as sr
@@ -24,6 +25,9 @@ from georgist.v14_hedonic import (
     BOOTSTRAP_SEED,
     FIDELITY_LIMITATION,
     MEDIAN_2024_REASON,
+    S_C3_GTOL,
+    S_C3_MAXITER,
+    S_C3_METHOD,
     S_G1_REASON,
     SENSITIVITY_IDS,
     land_share_for_zone,
@@ -44,7 +48,32 @@ RECORDED_FILES = (
     "backend/georgist/v14_hedonic.py",
     "backend/georgist/surface_v14_checks.py",
     "backend/georgist/v14_score_report.py",
+    "backend/scripts/build_v14_drc.py",
+    "backend/scripts/build_v14_hedonic_rows.py",
+    "backend/scripts/build_v14_check_inputs.py",
+    "backend/scripts/build_v14_primary_inputs.py",
+    "backend/scripts/build_ros_c14_v14_inputs.py",
+    "backend/scripts/build_v14_drc_components.py",
+    "backend/scripts/fit_v14_hedonic.py",
+    "backend/scripts/build_v14_primary_2023.py",
+    "backend/scripts/build_v14_check_sources.py",
 )
+# PR 3 writers are recorded once they exist. They are not hashed while absent.
+PR3_RECORDED_WHEN_PRESENT = frozenset(
+    {
+        "backend/scripts/build_v14_drc_components.py",
+        "backend/scripts/fit_v14_hedonic.py",
+        "backend/scripts/build_v14_primary_2023.py",
+        "backend/scripts/build_v14_check_sources.py",
+    }
+)
+S_C3_OPTIMIZER = {
+    "method": S_C3_METHOD,
+    "pgtol": S_C3_GTOL,
+    "factr": "default",
+    "maxiter": S_C3_MAXITER,
+}
+S_C3_GTOL_MAPPING = "gtol=1e-8 maps to L-BFGS-B pgtol=1e-8"
 INPUT_SHA256_PREFIXES = {
     "workbook": "194fa678",
     "exclusion_list": "13a870fe",
@@ -630,7 +659,12 @@ def disagreement_markdown(rows: Sequence[Mapping[str, str]] | None = None) -> st
     lines.append("## Pre-declared")
     lines.append("")
     for item in predeclared_not_run():
-        lines.append(f"- {item['id']}: {item['status']}: {item['reason']}")
+        status = item["status"]
+        reason = item["reason"]
+        if reason.startswith(f"{status}:"):
+            lines.append(f"- {item['id']}: {reason}")
+        else:
+            lines.append(f"- {item['id']}: {status}: {reason}")
     lines.append("")
     return "\n".join(lines)
 
@@ -641,7 +675,9 @@ def write_disagreement_table(path: Path) -> Path:
     return path
 
 
-def holdout_lock_path(score_dir: Path) -> Path:
+def holdout_lock_path(score_dir: Path, lock_path: Path | None = None) -> Path:
+    if lock_path is not None:
+        return Path(lock_path)
     return score_dir / "holdout_2023.lock"
 
 
@@ -651,6 +687,7 @@ def prepare_holdout_2023(
     inputs_sha256: str,
     commit: str,
     allow_incident: str | None = None,
+    lock_path: Path | None = None,
 ) -> dict:
     """Write the disagreement table, then refuse a second run.
 
@@ -659,7 +696,8 @@ def prepare_holdout_2023(
     """
     commit = require_commit_sha(commit)
     table = write_disagreement_table(score_dir / "code_text_disagreements.md")
-    lock = holdout_lock_path(score_dir)
+    lock = holdout_lock_path(score_dir, lock_path)
+    lock.parent.mkdir(parents=True, exist_ok=True)
     if lock.is_file() and not allow_incident:
         raise HoldoutLockError("second 2023 holdout run refused")
     if lock.is_file() and allow_incident:
@@ -680,8 +718,10 @@ def write_holdout_lock(
     inputs_sha256: str,
     commit: str,
     report_sha256: str | None = None,
+    lock_path: Path | None = None,
 ) -> Path:
-    path = holdout_lock_path(score_dir)
+    path = holdout_lock_path(score_dir, lock_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "inputs_sha256": inputs_sha256,
         "commit": require_commit_sha(commit),
@@ -693,10 +733,61 @@ def write_holdout_lock(
     return path
 
 
-def assert_2024_allowed(score_dir: Path) -> None:
-    """The 2024 entry point refuses unless the 2023 lock exists."""
-    if not holdout_lock_path(score_dir).is_file():
+def assert_2024_allowed(
+    score_dir: Path | None = None,
+    *,
+    lock_path: Path | None = None,
+    inputs_sha256: str | None = None,
+    years: Sequence[int] | None = None,
+) -> None:
+    """The 2024 entry point is score-once and refuses a bad lock or year."""
+    if score_dir is None and lock_path is None:
         raise HoldoutLockError("2024 run refused unless the holdout lock exists")
+    path = holdout_lock_path(score_dir or Path("."), lock_path)
+    if not path.is_file():
+        raise HoldoutLockError("2024 run refused unless the holdout lock exists")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("score_2024") is True:
+        raise HoldoutLockError("second 2024 run refused")
+    if inputs_sha256 is not None and payload.get("inputs_sha256") != inputs_sha256:
+        raise HoldoutLockError("2024 run refused: inputs sha differs")
+    if years is not None and (not years or any(int(year) != 2024 for year in years)):
+        raise HoldoutLockError("2024 run refused: input year is not 2024")
+
+
+def mark_score_2024(lock_path: Path) -> None:
+    """Record that the 2024 entry point has already scored."""
+    payload = json.loads(lock_path.read_text(encoding="utf-8"))
+    payload["score_2024"] = True
+    lock_path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def input_years(path: Path) -> list[int]:
+    """Year fields only. A missing or non-2024 year refuses before scoring."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    years: list[int] = []
+    found = False
+    for key in ("primary_zones", "secondary_zones"):
+        for row in payload.get(key) or []:
+            found = True
+            if not isinstance(row, dict) or "year" not in row:
+                raise HoldoutLockError("2024 run refused: input year is not 2024")
+            value = row["year"]
+            if value is None or (isinstance(value, str) and not value.strip()):
+                raise HoldoutLockError("2024 run refused: input year is not 2024")
+            if isinstance(value, bool) or isinstance(value, float):
+                raise HoldoutLockError("2024 run refused: input year is not 2024")
+            if isinstance(value, str):
+                text = value.strip()
+                if not text.isdigit():
+                    raise HoldoutLockError("2024 run refused: input year is not 2024")
+                value = int(text)
+            elif not isinstance(value, int):
+                raise HoldoutLockError("2024 run refused: input year is not 2024")
+            years.append(int(value))
+    if not found:
+        raise HoldoutLockError("2024 run refused: input year is not 2024")
+    return years
 
 
 def _git_commit() -> str:
@@ -718,16 +809,68 @@ def _git_commit() -> str:
 
 def _input_pins(paths: Mapping[str, Path] | None) -> dict[str, dict]:
     pins: dict[str, dict] = {}
-    for name, prefix in INPUT_SHA256_PREFIXES.items():
+    names = list(INPUT_SHA256_PREFIXES)
+    if paths:
+        for name in paths:
+            if name not in names:
+                names.append(name)
+    for name in names:
+        prefix = INPUT_SHA256_PREFIXES.get(name)
         path = None if not paths else paths.get(name)
         if path is None or not Path(path).is_file():
-            pins[name] = {"expected_prefix": prefix, "present": False, "sha256": None}
+            item: dict = {"present": False, "sha256": None}
+            if prefix is not None:
+                item["expected_prefix"] = prefix
+            pins[name] = item
             continue
         digest = sha256_file(Path(path))
-        if not digest.startswith(prefix):
+        if prefix is not None and not digest.startswith(prefix):
             raise ReportAbort(f"{name} sha256 {digest} does not start with {prefix}")
-        pins[name] = {"expected_prefix": prefix, "present": True, "sha256": digest}
+        item = {"present": True, "sha256": digest}
+        if prefix is not None:
+            item["expected_prefix"] = prefix
+        pins[name] = item
     return pins
+
+
+def _pins_from_check_inputs(path: Path) -> dict[str, dict]:
+    """B6 pins carried in the check-input file."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    raw = payload.get("pins")
+    if not isinstance(raw, dict):
+        return {}
+    return {str(name): {"present": True, "sha256": str(digest)} for name, digest in raw.items()}
+
+
+def secondary_estimator_fields(path: Path) -> dict:
+    """Sha, sensitivity table and S-c3 convergence from the secondary JSON."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    table = payload.get("sensitivities")
+    if table is None:
+        table = payload.get("sensitivity_table") or []
+    converged = payload.get("s_c3_converged")
+    if converged is None and isinstance(table, list):
+        for item in table:
+            if isinstance(item, dict) and item.get("id") == "S-c3":
+                converged = item.get("converged")
+                break
+    return {
+        "sha256": sha256_file(path),
+        "sensitivity_table": table,
+        "s_c3_converged": converged,
+    }
+
+
+def _record_sha8(root: Path) -> dict[str, str]:
+    sha8 = assert_expected_sha8(root=root)
+    for rel in RECORDED_FILES:
+        path = root / rel
+        if not path.is_file():
+            if rel in PR3_RECORDED_WHEN_PRESENT:
+                continue
+            raise ReportAbort(f"recorded file missing: {rel}")
+        sha8[rel] = sha8_file(path)
+    return sha8
 
 
 def build_report(
@@ -738,6 +881,7 @@ def build_report(
     price_columns_read: Mapping[str, bool] | None = None,
     disagreement_rows: Sequence[Mapping[str, str]] | None = None,
     commit: str | None = None,
+    secondary_estimator: Mapping | None = None,
 ) -> dict:
     """Assemble the run report. Missing method or sha8, or a bad sha8, aborts."""
     root = root or REPO_ROOT
@@ -745,19 +889,29 @@ def build_report(
     method = str((cfg.get("v14") or {}).get("depreciation", {}).get("method") or "")
     if method != "straight_line_v14":
         raise ReportAbort(f"depreciation.method must be straight_line_v14, got {method!r}")
-    sha8 = assert_expected_sha8(root=root)
-    for rel in RECORDED_FILES:
-        sha8[rel] = sha8_file(root / rel)
+    sha8 = _record_sha8(root)
     if not sha8 or "backend/georgist/surface_rent.py" not in sha8:
         raise ReportAbort("report is missing sha8")
     rows = list(code_text_disagreements() if disagreement_rows is None else disagreement_rows)
+    recorded = _input_pins(input_paths)
+    check_path = None if not input_paths else input_paths.get("check_inputs")
+    if check_path is not None and Path(check_path).is_file():
+        for name, item in _pins_from_check_inputs(Path(check_path)).items():
+            recorded.setdefault(name, item)
+    secondary = dict(secondary_estimator or {})
     report = {
         "depreciation": {"method": method},
         "sha8": sha8,
         "commit": commit or _git_commit(),
-        "input_sha256": _input_pins(input_paths),
+        "input_sha256": recorded,
         "seed": BOOTSTRAP_SEED,
         "s_c3_statsmodels_version": statsmodels.__version__,
+        "s_c3_optimizer": dict(S_C3_OPTIMIZER),
+        "s_c3_gtol_mapping": S_C3_GTOL_MAPPING,
+        "scipy_version": scipy.__version__,
+        "secondary_estimator_sha256": secondary.get("sha256"),
+        "sensitivity_table": secondary.get("sensitivity_table"),
+        "s_c3_converged": secondary.get("s_c3_converged"),
         "fidelity_limitation": FIDELITY_LIMITATION,
         "status_counts": dict(status_counts or {}),
         "price_columns_read": dict(price_columns_read or {stage: False for stage in PRICE_READ_STAGES}),
@@ -772,10 +926,15 @@ def build_report(
 
 
 def write_report(path: Path, report: Mapping) -> None:
-    """Write the report. A missing method or sha8 leaves no file."""
+    """Write the report. A missing method or an empty sha8 block leaves no file.
+
+    ``--record-sha8s`` absent means the sha8 block is omitted. An empty
+    sha8 block still aborts.
+    """
     method = str((report.get("depreciation") or {}).get("method") or "")
-    sha8 = report.get("sha8")
-    if method != "straight_line_v14" or not sha8:
+    if method != "straight_line_v14":
+        raise ReportAbort("report is missing method or sha8")
+    if "sha8" in report and not report.get("sha8"):
         raise ReportAbort("report is missing method or sha8")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")

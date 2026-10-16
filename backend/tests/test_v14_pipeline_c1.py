@@ -249,7 +249,15 @@ def test_v10_error_leaves_no_lock_and_success_writes_it_after_the_report(tmp_pat
     bad = tmp_path / "bad.json"
     bad.write_text("{", encoding="utf-8")
     assert score_main(
-        ["--out", str(broken / "report.json"), "--holdout-2023", "--check-inputs", str(bad)]
+        [
+            "--out",
+            str(broken / "report.json"),
+            "--holdout-2023",
+            "--check-inputs",
+            str(bad),
+            "--lock-path",
+            str(broken / "holdout_2023.lock"),
+        ]
     ) == 1
     assert not (broken / "holdout_2023.lock").exists()
 
@@ -262,8 +270,18 @@ def test_v10_error_leaves_no_lock_and_success_writes_it_after_the_report(tmp_pat
         encoding="utf-8",
     )
     report_path = good_dir / "report.json"
+    lock_path = good_dir / "holdout_2023.lock"
     assert score_main(
-        ["--out", str(report_path), "--holdout-2023", "--check-inputs", str(payload), "--record-sha8s"]
+        [
+            "--out",
+            str(report_path),
+            "--holdout-2023",
+            "--check-inputs",
+            str(payload),
+            "--lock-path",
+            str(lock_path),
+            "--record-sha8s",
+        ]
     ) == 0
     lock = json.loads((good_dir / "holdout_2023.lock").read_text(encoding="utf-8"))
     digest = hashlib.sha256(report_path.read_bytes()).hexdigest()

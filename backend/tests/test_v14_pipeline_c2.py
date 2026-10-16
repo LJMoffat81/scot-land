@@ -253,7 +253,7 @@ def test_price_columns_are_not_loaded_for_year_2024_or_later() -> None:
     )
     prove(
         b"zone,year,price\n"
-        b"S01000001,,10\n"
+        b"S01000001,2021,10\n"
         b"\"say \"\"hi\"\"\",2024," + sentinel + b"\n"
     )
     ahead = _ByteTracker(b"price,median_price,year\n" + sentinel + b"," + sentinel + b",2024\n")
@@ -268,7 +268,7 @@ def test_s_c3_exception_is_error_distinct_from_not_converged(monkeypatch: pytest
         {"price": 11.0, "a_m2": 21.0, "ur3": "urban"},
     ]
     blocked = hedonic._fit_s_c3(one_group)
-    assert blocked["status"] == "NOT_CONVERGED"
+    assert blocked["status"] == "NOT_RUN"
     assert blocked["status"] != "ERROR"
     assert blocked["converged"] is False
     assert "two or more groups" in blocked["reason"]

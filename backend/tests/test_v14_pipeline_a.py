@@ -293,6 +293,8 @@ def test_scored_run_keeps_sentinels_out_of_stdout(tmp_path: Path, capsys, caplog
                 str(paths["ur"]),
                 "--drc-json",
                 str(drc),
+                "--exclusion-list",
+                str(Path(__file__).resolve().parent / "fixtures" / "v14" / "synthetic_exclusion.csv"),
             ]
         )
     captured = capsys.readouterr()
@@ -353,6 +355,8 @@ def test_negative_residual_is_unavailable_in_the_share_list(tmp_path: Path):
             str(paths["ur"]),
             "--drc-json",
             str(drc_path),
+            "--exclusion-list",
+            str(Path(__file__).resolve().parent / "fixtures" / "v14" / "synthetic_exclusion.csv"),
         ]
     )
     assert rc == 0

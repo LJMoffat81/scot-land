@@ -35,6 +35,10 @@ SENSITIVITY_IDS = (
     "median_price",
 )
 INTERNAL_ONLY = frozenset({"S-x4"})
+FIDELITY_LIMITATION = (
+    "Fidelity limitation: the frozen 'negative location premium' test is not "
+    "operationalised in e1ab6d0a; only β̂ ≤0 is applied. No post-hoc definition."
+)
 
 
 class HedonicError(ValueError):
@@ -136,6 +140,40 @@ def _wls(x: np.ndarray, y: np.ndarray, w: np.ndarray) -> np.ndarray:
     scale = np.sqrt(w)
     beta, *_ = np.linalg.lstsq(x * scale[:, None], y * scale, rcond=None)
     return np.asarray(beta, dtype=float)
+
+
+def _feature_value(name: str, row: Mapping) -> float:
+    """One headline-design column for a single zone-year row."""
+    if name.startswith("alpha["):
+        cell = name[len("alpha[") : -1]
+        return 1.0 if str(row["cell"]) == cell else 0.0
+    if name == "tau_2022":
+        return 1.0 if int(row.get("year", 0)) == 2022 else 0.0
+    if name.startswith("beta["):
+        cell = name[len("beta[") : -1]
+        if str(row["cell"]) != cell:
+            return 0.0
+        return math.log(float(row["a_m2"]))
+    if name.startswith("delta["):
+        cell = name[len("delta[") : -1]
+        if str(row["cell"]) != cell:
+            return 0.0
+        return math.log(float(row["f_m2"]))
+    if name.startswith("x_"):
+        return float(row[name])
+    raise HedonicError(f"unknown coefficient {name}")
+
+
+def fitted_price(fit: Mapping, row: Mapping) -> float:
+    """P̂_z from the headline log model. Observed price is not used."""
+    names = list(fit["coefficient_names"])
+    coef = [float(value) for value in fit["coefficients"]]
+    if len(names) != len(coef):
+        raise HedonicError("coefficient names do not match the headline fit")
+    log_price = 0.0
+    for name, value in zip(names, coef):
+        log_price += _feature_value(name, row) * value
+    return math.exp(log_price)
 
 
 def _beta_by_cell(names: Sequence[str], coef: np.ndarray) -> dict[str, float]:
@@ -361,11 +399,13 @@ def fit_headline(rows: Sequence[Mapping]) -> dict:
         cell: ci["width"] <= CI_WIDTH_NOT_INFORMATIVE
         for cell, ci in iz_ci["ci_by_cell"].items()
     }
+    # β̂ ≤0 only. The frozen negative-location-premium wording has no operational test.
     failures = {cell: value <= 0 for cell, value in beta.items()}
     return {
         "form": "log",
         "headline_form": "log",
         "levels_swapped_in": False,
+        "fidelity_limitation": FIDELITY_LIMITATION,
         "beta_by_cell": beta,
         "coefficient_names": names,
         "coefficients": [float(value) for value in coef],
@@ -388,6 +428,7 @@ def land_share_for_zone(fit: Mapping, row: Mapping) -> dict:
     failure = bool(fit["model_failure_by_cell"][cell]) or beta <= 0
     informative = bool(fit["informative_by_cell"].get(cell, True))
     share = 0.0 if failure else beta
+    predicted = None if failure else fitted_price(fit, row)
     return {
         "zone": str(row["zone"]),
         "cell": cell,
@@ -395,8 +436,10 @@ def land_share_for_zone(fit: Mapping, row: Mapping) -> dict:
         "unavailable": failure,
         "model_failure": failure,
         "count_in_1d": informative,
-        "land_per_home": 0.0 if failure else beta * float(row["price"]),
+        "fitted_price": predicted,
+        "land_per_home": 0.0 if predicted is None else beta * predicted,
         "beta": beta,
+        "fidelity_limitation": FIDELITY_LIMITATION,
     }
 
 

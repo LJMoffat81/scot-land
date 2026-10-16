@@ -162,7 +162,7 @@ def test_f4_scorer_pins_and_no_switch(cfg):
     )
     assert scored["gbp_display"] is False
     assert scored["publication"]["never_switch_to_passing"] is True
-    assert scored["publication"]["outcome"] == "publish_neither_report_both"
+    assert scored["publication"]["outcome"] == "primary_fail_secondary_pass_publish_neither_until_v15"
     assert scored["publication"]["publish_primary"] is False
     assert scored["publication"]["publish_secondary"] is False
 

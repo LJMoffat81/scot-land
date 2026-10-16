@@ -207,8 +207,8 @@ def test_no_switch_table_has_four_outcomes():
     expected = (
         (True, True, "publish_range_both", True, True),
         (True, False, "publish_primary_only", True, False),
-        (False, True, "publish_neither_report_both", False, False),
-        (False, False, "publish_neither_report_both", False, False),
+        (False, True, "primary_fail_secondary_pass_publish_neither_until_v15", False, False),
+        (False, False, "both_fail_publish_neither", False, False),
     )
     for primary, secondary, outcome, publish_primary, publish_secondary in expected:
         got = v14.apply_no_switch_publication(
@@ -264,7 +264,7 @@ def test_report_missing_method_or_sha8_aborts(tmp_path: Path):
     report = build_report(commit="abc123")
     assert report["depreciation"]["method"] == "straight_line_v14"
     assert report["sha8"]["backend/georgist/surface_rent.py"] == "dc07f4fe"
-    assert report["sha8"]["backend/georgist/surface_v14.py"] == "a81d627c"
+    assert report["sha8"]["backend/georgist/surface_v14.py"] == "49086518"
     assert report["sha8"]["data/config/surface.yaml"] == "0ad64260"
     assert report["seed"] == BOOTSTRAP_SEED
     assert report["code_text_disagreements"] == code_text_disagreements()
@@ -350,9 +350,10 @@ def test_wild_cluster_is_information_only_and_leaves_the_iz_interval():
             "beta_by_cell": {"c": 0.2},
             "model_failure_by_cell": {"c": False},
             "informative_by_cell": {"c": False},
-            "coefficients": [0.2],
+            "coefficient_names": ["alpha[c]", "beta[c]"],
+            "coefficients": [0.0, 0.2],
         },
-        {"zone": "Z1", "cell": "c", "price": 8.0},
+        {"zone": "Z1", "cell": "c", "price": 8.0, "a_m2": 1.0, "year": 2021},
     )
     assert uninformative["count_in_1d"] is False
     narrowed = score_estimator(
@@ -361,7 +362,9 @@ def test_wild_cluster_is_information_only_and_leaves_the_iz_interval():
             _zone("Z2", share=0.2),
         ]
     )
-    assert narrowed["gating"]["1d"]["n"] == 1
+    assert narrowed["gating"]["1d"]["n"] == 2
+    assert narrowed["gating"]["1d"]["n_at_0"] == 0
+    assert narrowed["gating"]["1d"]["uninformative_excluded_from_numerator"] == ["Z1"]
 
 
 def test_dropped_zones_are_printed_stop_scoring_and_stay_in_the_denominator(tmp_path: Path, capsys):
@@ -417,6 +420,8 @@ def test_dropped_zones_are_printed_stop_scoring_and_stay_in_the_denominator(tmp_
             str(paths["ur"]),
             "--drc-json",
             str(drc),
+            "--exclusion-list",
+            str(BACKEND / "tests" / "fixtures" / "v14" / "synthetic_exclusion.csv"),
         ]
     )
     captured = capsys.readouterr()

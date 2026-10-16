@@ -25,11 +25,15 @@ from georgist.v14_hedonic import PriceYearError, refuse_2024_price_file
 from georgist.v14_score_report import (
     HoldoutLockError,
     MergeMapError,
+    PriceColumnReadLog,
     ReportAbort,
     assert_2024_allowed,
     assert_merge_map,
     build_report,
+    git_commit,
     prepare_holdout_2023,
+    require_commit_sha,
+    sha256_file,
     write_holdout_lock,
     write_report,
 )
@@ -98,6 +102,26 @@ def _extended(args: argparse.Namespace) -> bool:
     )
 
 
+def _jsonable(value):
+    if isinstance(value, dict):
+        return {str(key): _jsonable(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_jsonable(item) for item in value]
+    if isinstance(value, float) and (value != value or value in (float("inf"), float("-inf"))):
+        return None
+    return value
+
+
+def _score_holdout(path: Path) -> dict:
+    """Estimate-and-score both estimators. Raises before any lock is written."""
+    refuse_2024_price_file(path.name)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if "primary_zones" not in payload or "secondary_zones" not in payload:
+        raise ReportAbort("holdout needs primary_zones and secondary_zones")
+    scored = score_both(payload["primary_zones"], payload["secondary_zones"])
+    return _jsonable(scored)
+
+
 def _check_summary(path: Path) -> dict:
     refuse_2024_price_file(path.name)
     payload = json.loads(path.read_text(encoding="utf-8"))
@@ -128,35 +152,49 @@ def _inputs_sha256(args: argparse.Namespace) -> str:
 def _extended_main(args: argparse.Namespace) -> int:
     score_dir = args.out.parent
     inputs_sha = _inputs_sha256(args)
+    reads = PriceColumnReadLog()
+    commit = require_commit_sha(git_commit())
     try:
         if args.merge_map:
             refuse_2024_price_file(args.merge_map.name)
             assert_merge_map(args.merge_map)
         if args.secondary_estimator_json:
             refuse_2024_price_file(args.secondary_estimator_json.name)
+        holdout_scores = None
         if args.holdout_2023:
+            if args.check_inputs is None:
+                raise ReportAbort("holdout needs check inputs")
             prepare_holdout_2023(
                 score_dir,
                 inputs_sha256=inputs_sha,
-                commit="pending",
+                commit=commit,
                 allow_incident=args.allow_rerun_for_fidelity_bug,
             )
+            holdout_scores = _score_holdout(args.check_inputs)
         if args.score_2024:
             assert_2024_allowed(score_dir)
-        report = build_report(
-            price_columns_read={
-                "primary_inputs": False,
-                "hedonic_fit": False,
-                "holdout_2023": False,
-                "score_2024": False,
-            }
-        )
-        if args.check_inputs:
-            report["checks"] = _check_summary(args.check_inputs)
+        report = build_report(price_columns_read=reads.snapshot(), commit=commit)
         if args.holdout_2023:
-            write_holdout_lock(score_dir, inputs_sha256=inputs_sha, commit=str(report["commit"]))
+            report["holdout_scores"] = holdout_scores
+            report["holdout_estimated"] = True
+            report["checks"] = {
+                "status": "scored",
+                "primary_gating_pass": holdout_scores["primary"]["gating_pass"],
+                "secondary_gating_pass": holdout_scores["secondary"]["gating_pass"],
+                "publication": holdout_scores["publication"]["outcome"],
+                "hbu_in_checks": holdout_scores["checks_include_hbu"],
+            }
+        elif args.check_inputs:
+            report["checks"] = _check_summary(args.check_inputs)
         write_report(args.out, report)
-    except (ReportAbort, HoldoutLockError, MergeMapError, PriceYearError) as exc:
+        if args.holdout_2023:
+            write_holdout_lock(
+                score_dir,
+                inputs_sha256=inputs_sha,
+                commit=commit,
+                report_sha256=sha256_file(args.out),
+            )
+    except Exception as exc:
         sys.stderr.write(str(exc) + "\n")
         return 1
     print(f"wrote {args.out}")

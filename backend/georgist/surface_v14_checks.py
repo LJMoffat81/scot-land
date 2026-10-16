@@ -57,14 +57,14 @@ def _land_per_home(zone: Mapping) -> float:
 
 
 def check_1a(zones: Sequence[Mapping]) -> dict:
-    """Class 1 median land per home is at least as high as every other class."""
+    """Class 1 median land per home is strictly above every other class. A tie fails."""
     by_class: dict[int, list[float]] = {}
     for zone in zones:
         by_class.setdefault(int(zone["ur6"]), []).append(_land_per_home(zone))
     medians = {klass: _median(values) for klass, values in by_class.items() if values}
     if 1 not in medians:
         return {"check": "1a", "pass": False, "status": "fail", "reason": "class_1_missing", "medians": medians}
-    ok = all(medians[1] >= other for klass, other in medians.items() if klass != 1)
+    ok = all(medians[1] > other for klass, other in medians.items() if klass != 1)
     return {"check": "1a", "pass": ok, "status": "pass" if ok else "fail", "medians": medians}
 
 
@@ -94,11 +94,16 @@ def check_1c(shares: Sequence[float]) -> dict:
 
 
 def check_6_zone_range(zones: Sequence[Mapping]) -> dict:
-    """Integrity: one finite low <= central <= high range per zone."""
+    """Integrity: one finite low <= central <= high range per DZ2022 zone.
+
+    The key is dz2022 only. A row with no dz2022 raises. There is no DZ2011 fallback.
+    """
     seen: set[str] = set()
     failures: list[str] = []
     for zone in zones:
-        code = str(zone.get("dz2022") or zone["zone"])
+        if "dz2022" not in zone or not str(zone.get("dz2022") or "").strip():
+            raise ValueError("check 6 requires dz2022")
+        code = str(zone["dz2022"]).strip()
         if code in seen:
             failures.append(code)
             continue
@@ -212,30 +217,64 @@ def _bland_altman(left: Sequence[float], right: Sequence[float]) -> dict:
     return {"mean_difference": mean, "lower": mean - 1.96 * sd, "upper": mean + 1.96 * sd}
 
 
-def agreement(primary: Sequence[Mapping], secondary: Sequence[Mapping]) -> dict:
-    """Spearman, median difference and Bland-Altman. Information only."""
+def _matched_shares(
+    primary: Sequence[Mapping],
+    secondary: Sequence[Mapping],
+    ur6: int | None = None,
+) -> tuple[list[float], list[float]]:
     by_secondary = {str(zone["zone"]): zone for zone in secondary}
-    left = []
-    right = []
+    left: list[float] = []
+    right: list[float] = []
     for zone in primary:
+        if ur6 is not None and int(zone["ur6"]) != ur6:
+            continue
         other = by_secondary.get(str(zone["zone"]))
         if other is None:
             continue
+        if ur6 is not None and int(other["ur6"]) != ur6:
+            continue
         left.append(_share(zone))
         right.append(_share(other))
-    diff = [a - b for a, b in zip(left, right)]
+    return left, right
+
+
+def _agreement_stats(left: Sequence[float], right: Sequence[float]) -> dict:
+    if not left or len(left) != len(right):
+        return {"spearman": None, "median_difference": None, "bland_altman": None, "n": 0}
+    diff = [float(a) - float(b) for a, b in zip(left, right)]
+    return {
+        "spearman": ho.spearman(left, right),
+        "median_difference": _median(diff),
+        "bland_altman": _bland_altman(left, right),
+        "n": len(diff),
+    }
+
+
+def agreement(primary: Sequence[Mapping], secondary: Sequence[Mapping]) -> dict:
+    """Spearman, median difference and Bland-Altman, nationally and for UR6 classes 1–6."""
+    national = _agreement_stats(*_matched_shares(primary, secondary))
+    by_ur6 = {
+        str(klass): _agreement_stats(*_matched_shares(primary, secondary, ur6=klass))
+        for klass in range(1, 7)
+    }
     return {
         "check": "agreement",
         "role": "information_only",
         "pass": None,
-        "spearman": ho.spearman(left, right),
-        "median_difference": None if not diff else _median(diff),
-        "bland_altman": None if not diff else _bland_altman(left, right),
+        "spearman": national["spearman"],
+        "median_difference": national["median_difference"],
+        "bland_altman": national["bland_altman"],
+        "national": national,
+        "by_ur6": by_ur6,
     }
 
 
 def gis_plot_median_ratio(zones: Sequence[Mapping]) -> dict:
-    """Detached-plot median over house-plot median, by UR6. Information only."""
+    """Detached-plot median over both pooled and zone-median house-plot denominators.
+
+    The pooled denominator is the mean house plot in the UR6 class. The zone-median
+    denominator is the median house plot in that class. Information only.
+    """
     by_class: dict[int, list[tuple[float, float]]] = {}
     for zone in zones:
         if "detached_plot_m2" not in zone or "house_plot_m2" not in zone:
@@ -246,23 +285,90 @@ def gis_plot_median_ratio(zones: Sequence[Mapping]) -> dict:
     ratios = {}
     for klass, pairs in by_class.items():
         detached = _median([item[0] for item in pairs])
-        house = _median([item[1] for item in pairs])
-        ratios[klass] = None if house == 0 else detached / house
+        house_values = [item[1] for item in pairs]
+        zone_median = _median(house_values)
+        pooled = sum(house_values) / len(house_values)
+        ratios[str(klass)] = {
+            "numerator_detached_median": detached,
+            "pooled_denominator": pooled,
+            "zone_median_denominator": zone_median,
+            "ratio_pooled_denominator": None if pooled == 0 else detached / pooled,
+            "ratio_zone_median_denominator": None if zone_median == 0 else detached / zone_median,
+        }
     return {"check": "gis_plot_median_ratio", "role": "information_only", "pass": None, "ratio_by_ur6": ratios}
+
+
+# Market value of new-build dwellings and permitted density are not named inputs.
+HBU_NOT_RUN = "NOT_RUN: frozen HBU value/density inputs not specified; deferred to v1.5"
+HBU_DEVELOPER_PROFIT = 0.15
+
+
+def hbu_cost_side(mea_rebuild: float, on_costs: float) -> float:
+    """MEA rebuild times on-costs, no depreciation, plus 15% of base build cost.
+
+    Cost side only. No residual is produced and the line does not gate.
+    """
+    base = float(mea_rebuild)
+    return base * float(on_costs) + HBU_DEVELOPER_PROFIT * base
 
 
 def hbu_line(zones: Sequence[Mapping]) -> list[dict]:
     """Highest-and-best-use line for HLA zones only. Never part of checks 1–7."""
     return [
-        {"zone": str(zone["zone"]), "hla": True, "in_checks_1_to_7": False}
+        {
+            "zone": str(zone["zone"]),
+            "hla": True,
+            "in_checks_1_to_7": False,
+            "gates": False,
+            "status": HBU_NOT_RUN,
+        }
         for zone in zones
         if zone.get("hla")
     ]
 
 
 def _check_1d(zones: Sequence[Mapping]) -> dict:
-    shares = [_share(zone) for zone in zones if zone.get("count_in_1d", True)]
-    return v13.check_1d_zero_mass(shares, max_share=0.10)
+    """Denominator is every scoring zone. Uninformative cells stay out of the numerator."""
+    shares = [_share(zone) for zone in zones]
+    eps = 1e-12
+    informative = [zone for zone in zones if zone.get("count_in_1d", True)]
+    info_shares = [_share(zone) for zone in informative]
+    n_at_0 = sum(1 for share in info_shares if float(share) <= eps)
+    n_at_100 = sum(1 for share in info_shares if float(share) >= 1.0 - eps)
+    n = len(shares)
+    excluded = [str(zone.get("zone")) for zone in zones if not zone.get("count_in_1d", True)]
+    if n == 0:
+        return {
+            "check": "1d",
+            "pass": None,
+            "status": "pending",
+            "n": 0,
+            "n_at_0": 0,
+            "n_at_100": 0,
+            "share_at_bound": None,
+            "max_share": 0.10,
+            "info_1e_zones_at_0": 0,
+            "info_1e_pct_at_0": None,
+            "uninformative_excluded_from_numerator": excluded,
+            "numerator_n": 0,
+        }
+    at_bound = n_at_0 + n_at_100
+    share = at_bound / n
+    ok = share <= 0.10
+    return {
+        "check": "1d",
+        "pass": ok,
+        "status": "pass" if ok else "fail",
+        "n": n,
+        "n_at_0": n_at_0,
+        "n_at_100": n_at_100,
+        "share_at_bound": share,
+        "max_share": 0.10,
+        "info_1e_zones_at_0": n_at_0,
+        "info_1e_pct_at_0": n_at_0 / n,
+        "uninformative_excluded_from_numerator": excluded,
+        "numerator_n": len(info_shares),
+    }
 
 
 def score_estimator(zones: Sequence[Mapping]) -> dict:
@@ -316,6 +422,8 @@ def score_both(primary: Sequence[Mapping], secondary: Sequence[Mapping]) -> dict
         "secondary": secondary_score,
         "agreement": agreement(primary, secondary),
         "hbu": hbu_line(primary) + hbu_line(secondary),
+        "hbu_status": HBU_NOT_RUN,
+        "hbu_gates": False,
         "publication": publication,
         "checks_include_hbu": False,
     }

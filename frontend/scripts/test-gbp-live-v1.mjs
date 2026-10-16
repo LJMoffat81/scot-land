@@ -32,7 +32,8 @@ assert.equal(
   gbp.GBP_LIVE_EARLY_BANNER,
   "Early estimates; ranges are wide and will change.",
 );
-assert.equal(gbp.GBP_LIVE_UNDER_REVIEW, "Under review");
+assert.equal(gbp.GBP_LIVE_ESTIMATE_UNAVAILABLE, "estimate unavailable");
+assert.equal(gbp.GBP_LIVE_UNDER_REVIEW, "estimate unavailable");
 assert.equal(
   gbp.GBP_LIVE_RENT_RATE_CARD,
   "Yearly rent: up to 4.5% of the land's value",
@@ -51,11 +52,22 @@ assert.match(formatted.range, /\u00a3.*\u2013\u00a3/);
 assert.equal(formatted.central, "\u00a312,000");
 assert.equal(formatted.range, "\u00a36,000\u2013\u00a318,000");
 
-// Place card wires GBP-LIVE as £a to £b a year + chip (MAP-CARDS §5; never yield)
+// GBP-LIVE-V1c: unit label + 3 sf per m²
+assert.equal(gbp.GBP_LIVE_UNIT, "per m²");
+assert.equal(
+  gbp.GBP_LIVE_UNIT_WORDING,
+  "£ per square metre of land, per year",
+);
+assert.equal(gbp.formatGbpPerM2(0.12), "\u00a30.120 per m²");
+
+// Place card wires GBP-LIVE per-m² range + unit label (MAP-CARDS §5; never yield)
 {
   const ui = readSrc("components/PlaceCard.tsx");
   assert.match(ui, /formatPlaceCardGbpRange/);
   assert.match(ui, /place-card-figure-range/);
+  assert.match(ui, /place-card-figure-unit/);
+  assert.match(ui, /GBP_LIVE_UNIT_WORDING/);
+  assert.match(ui, /GBP_LIVE_ESTIMATE_UNAVAILABLE/);
   assert.match(ui, /place-card-under-review/);
   assert.doesNotMatch(ui, /yield_wording/);
   assert.doesNotMatch(ui, /place-card-yield-/);
@@ -138,7 +150,9 @@ assert.equal(formatted.range, "\u00a36,000\u2013\u00a318,000");
     e2e,
     /We turn land value into a yearly rent of up to 4\.5% of that value\./,
   );
-  assert.match(e2e, /a year/);
+  assert.match(e2e, /per m²/);
+  assert.match(e2e, /£ per square metre of land, per year/);
+  assert.match(e2e, /estimate unavailable/);
 }
 
 // Rank band stays OFF; pre-£ copy preserved for flag-off path

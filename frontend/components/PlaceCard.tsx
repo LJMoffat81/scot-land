@@ -1,7 +1,8 @@
 "use client";
 
 import {
-  GBP_LIVE_UNDER_REVIEW,
+  GBP_LIVE_ESTIMATE_UNAVAILABLE,
+  GBP_LIVE_UNIT_WORDING,
   gbpLiveFromCard,
   type SurfaceRentDisplay,
 } from "../lib/gbpLive";
@@ -404,18 +405,27 @@ export function PlaceCard({
                   {PLACE_CARD_TOO_FEW_HOMES}
                 </p>
               ) : liveAnswerRange ? (
-                <p className="place-card-figure-range-line">
-                  <span data-testid="place-card-figure-range">
-                    {liveAnswerRange}
-                  </span>{" "}
-                  <ClassChip tag={answerChipTag} />
-                </p>
+                <>
+                  <p className="place-card-figure-range-line">
+                    <span data-testid="place-card-figure-range">
+                      {liveAnswerRange}
+                    </span>{" "}
+                    <ClassChip tag={answerChipTag} />
+                  </p>
+                  <p
+                    className="place-card-figure-unit"
+                    data-testid="place-card-figure-unit"
+                  >
+                    {GBP_LIVE_UNIT_WORDING}
+                  </p>
+                </>
               ) : gbpLive && surfaceDisplay?.state === "under_review" ? (
                 <p
                   className="place-card-under-review"
                   data-testid="place-card-under-review"
                 >
-                  {surfaceDisplay.label?.trim() || GBP_LIVE_UNDER_REVIEW}
+                  {surfaceDisplay.label?.trim() ||
+                    GBP_LIVE_ESTIMATE_UNAVAILABLE}
                 </p>
               ) : (
                 <>

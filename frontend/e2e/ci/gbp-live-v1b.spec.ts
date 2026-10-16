@@ -214,14 +214,18 @@ const okPlace = () =>
       enabled: true,
       banner: "Early estimates; ranges are wide and will change.",
       rent_rate_wording: RENT_RATE_HOW_IT_WORKS,
+      unit: "per m²",
+      unit_wording: "per square metre of land, per year",
     },
     surface_rent_display: {
       state: "ok",
-      low: 6000,
-      central: 12000,
-      high: 18000,
+      low: 0.06,
+      central: 0.12,
+      high: 0.18,
       estimate_label: "Partly estimated",
       rent_rate_wording: RENT_RATE_CARD,
+      unit: "per m²",
+      unit_wording: "per square metre of land, per year",
       grain: "data_zone",
     },
   });
@@ -246,20 +250,21 @@ for (const viewport of [
       await expect(card.getByTestId("place-card-figure-range")).toHaveCount(0);
     });
 
-    test("flag ON: £a to £b a year range and chip (MAP-CARDS §5)", async ({
+    test("flag ON: per-m² range, unit label, and chip (GBP-LIVE-V1c)", async ({
       page,
     }) => {
       await stubShell(page, okPlace(), true);
       await openPlaceCard(page);
       const card = page.getByTestId("place-card");
       const range = card.getByTestId("place-card-figure-range");
-      await expect(range).toContainText("£6,000");
+      await expect(range).toContainText("£0.0600");
       await expect(range).toContainText("to");
-      await expect(range).toContainText("£18,000");
-      await expect(range).toContainText("a year");
-      await expect(card.getByTestId("place-card-figure")).not.toContainText(
-        /^£12,000$/,
+      await expect(range).toContainText("£0.180");
+      await expect(range).toContainText("per m²");
+      await expect(card.getByTestId("place-card-figure-unit")).toHaveText(
+        "£ per square metre of land, per year",
       );
+      await expect(card).not.toContainText("£0.00");
       await expect(
         card.getByTestId("place-card-figure").getByTestId("place-tag-proxy"),
       ).toBeVisible();
@@ -272,21 +277,23 @@ for (const viewport of [
         gbp_live: { enabled: true },
         surface_rent_display: {
           state: "under_review",
-          label: "Under review",
+          label: "estimate unavailable",
           low: null,
           central: null,
           high: null,
           estimate_label: null,
         },
         agr_rows: agrRows().map((row) =>
-          row.id === "surface" ? { ...row, range: "Under review" } : row,
+          row.id === "surface"
+            ? { ...row, range: "estimate unavailable" }
+            : row,
         ),
       });
       await stubShell(page, place, true);
       await openPlaceCard(page);
       const card = page.getByTestId("place-card");
       await expect(card.getByTestId("place-card-under-review")).toHaveText(
-        "Under review",
+        "estimate unavailable",
       );
       await expect(card).not.toContainText("£");
     });

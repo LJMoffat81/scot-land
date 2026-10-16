@@ -2,16 +2,21 @@
  * GBP-LIVE — public £ surface rent display behind ONE flag (default OFF).
  * Backend source of truth: data/config/gbp_live.yaml via GET /platform/gbp-live.
  *
- * GBP-LIVE-V1b: every £ behind the flag is per m² of land a year (range +
- * "most likely" central + estimate label). Keep this module free of top-level
- * ./api imports so Node unit scripts can load the formatters without resolving
- * the Next fetch stack.
+ * GBP-LIVE-V1c: residential surface rent ÷ residential_land_ha; on-screen unit
+ * label exactly "£ per square metre of land, per year"; 3 significant figures;
+ * values below £0.01 as "<£0.01"; never "£0.00"; unavailable/clamped/bad area
+ * → "estimate unavailable". Keep this module free of top-level ./api imports so
+ * Node unit scripts can load the formatters without resolving the Next fetch stack.
  */
 
 export const GBP_LIVE_EARLY_BANNER =
   "Early estimates; ranges are wide and will change.";
 
-export const GBP_LIVE_UNDER_REVIEW = "Under review";
+/** GBP-LIVE-V1c — replaces "Under review"; never show £0. */
+export const GBP_LIVE_ESTIMATE_UNAVAILABLE = "estimate unavailable";
+
+/** @deprecated Use GBP_LIVE_ESTIMATE_UNAVAILABLE (V1c). */
+export const GBP_LIVE_UNDER_REVIEW = GBP_LIVE_ESTIMATE_UNAVAILABLE;
 
 /** Place-card rent-rate line (signed off; never the banned word "yield"). */
 export const GBP_LIVE_RENT_RATE_CARD =
@@ -21,14 +26,22 @@ export const GBP_LIVE_RENT_RATE_CARD =
 export const GBP_LIVE_RENT_RATE_HOW_IT_WORKS =
   "We turn land value into a yearly rent of up to 4.5% of that value.";
 
-/** GBP-LIVE-V1b unit suffix — every £ string behind the flag includes this. */
+/** Short unit suffix on every £ amount string behind the flag. */
 export const GBP_LIVE_UNIT = "per m²";
 
-/** Full unit wording for place card / legend / How it works. */
-export const GBP_LIVE_UNIT_WORDING = "per m² of land a year";
+/**
+ * On-screen unit label (GBP-LIVE-V1c) — must match exactly, including £.
+ * Backend API `unit_wording` omits the £ glyph; always prefer this constant
+ * for visitor-facing copy.
+ */
+export const GBP_LIVE_UNIT_WORDING =
+  "£ per square metre of land, per year";
 
 /** Central figure label (spec: "most likely" central). */
 export const GBP_LIVE_CENTRAL_LABEL = "most likely";
+
+/** Below this £/m²/year rate, display "<£0.01" (never "£0.00"). */
+export const GBP_LIVE_MIN_DISPLAY_GBP = 0.01;
 
 export type GbpLiveSettings = {
   enabled: boolean;
@@ -61,22 +74,32 @@ export function formatGbp(value: number): string {
   return `\u00a3${n.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`;
 }
 
-/** Format £ per m² (two decimal places) — every £ string includes the unit. */
-export function formatGbpPerM2(value: number): string {
-  const n = Number.isFinite(value) ? value : 0;
-  const formatted = n.toLocaleString("en-GB", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  return `\u00a3${formatted} ${GBP_LIVE_UNIT}`;
+/**
+ * Format a £/m² rate body with 3 significant figures.
+ * Values below £0.01 → "<£0.01". Never returns "£0.00".
+ */
+export function formatGbpPerM2Amount(value: number): string {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < GBP_LIVE_MIN_DISPLAY_GBP) {
+    return `<\u00a3${GBP_LIVE_MIN_DISPLAY_GBP.toFixed(2)}`;
+  }
+  let body = n.toPrecision(3);
+  if (/e/i.test(body)) {
+    body = Number(n.toPrecision(3)).toLocaleString("en-GB", {
+      maximumSignificantDigits: 3,
+      useGrouping: false,
+    });
+  }
+  // Guard: never emit the banned £0.00 form.
+  if (body === "0.00" || body === "0.000" || Number(body) === 0) {
+    return `<\u00a3${GBP_LIVE_MIN_DISPLAY_GBP.toFixed(2)}`;
+  }
+  return `\u00a3${body}`;
 }
 
-function formatGbpAmountPerM2(value: number): string {
-  const n = Number.isFinite(value) ? value : 0;
-  return `\u00a3${n.toLocaleString("en-GB", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+/** Format £ per m² — every £ string includes the unit; 3 sf / <£0.01. */
+export function formatGbpPerM2(value: number): string {
+  return `${formatGbpPerM2Amount(value)} ${GBP_LIVE_UNIT}`;
 }
 
 /** Central figure with low–high range beside it (legacy whole-pound helper). */
@@ -92,7 +115,7 @@ export function formatGbpCentralWithRange(
 }
 
 /**
- * GBP-LIVE-V1b: central + range as £ per m².
+ * GBP-LIVE-V1c: central + range as £ per m² (3 sf; <£0.01 floor).
  * Each returned string that carries £ also carries "per m²".
  */
 export function formatGbpCentralWithRangePerM2(
@@ -103,7 +126,7 @@ export function formatGbpCentralWithRangePerM2(
   return {
     central: formatGbpPerM2(central),
     // Single unit suffix on the range so the string still contains "per m²".
-    range: `${formatGbpAmountPerM2(low)}\u2013${formatGbpAmountPerM2(high)} ${GBP_LIVE_UNIT}`,
+    range: `${formatGbpPerM2Amount(low)}\u2013${formatGbpPerM2Amount(high)} ${GBP_LIVE_UNIT}`,
   };
 }
 
@@ -172,10 +195,10 @@ export const SURFACE_RENT_LEGEND_STOPS: Array<[number, string]> = [
 ];
 
 export const SURFACE_RENT_LEGEND_TITLE =
-  "Surface land rent — per m² a year (Data Zone)";
+  "Surface land rent — £ per square metre of land, per year (Data Zone)";
 
 export const SURFACE_RENT_LEGEND_BLURB =
-  "Early estimates for land under homes, shown per m² of land a year. Ranges are wide and will change.";
+  "Early estimates for land under homes, shown as £ per square metre of land, per year. Ranges are wide and will change.";
 
 export const SURFACE_RENT_LEGEND_SOURCE =
-  "Research estimate — Data Zone only; parts are not added into a total. Figures are per m².";
+  "Research estimate — Data Zone only; parts are not added into a total. Figures are £ per square metre of land, per year.";

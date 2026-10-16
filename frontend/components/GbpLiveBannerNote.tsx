@@ -19,7 +19,8 @@ export default function GbpLiveBannerNote() {
   const [rentRateWording, setRentRateWording] = useState(
     GBP_LIVE_RENT_RATE_HOW_IT_WORKS,
   );
-  const [unitWording, setUnitWording] = useState(GBP_LIVE_UNIT_WORDING);
+  // V1c: exact on-screen unit label (constant includes £; API omits the glyph).
+  const unitWording = GBP_LIVE_UNIT_WORDING;
 
   useEffect(() => {
     let cancelled = false;
@@ -30,7 +31,6 @@ export default function GbpLiveBannerNote() {
       if (settings.rent_rate_wording) {
         setRentRateWording(settings.rent_rate_wording);
       }
-      if (settings.unit_wording) setUnitWording(settings.unit_wording);
     });
     return () => {
       cancelled = true;

@@ -366,3 +366,43 @@ test.describe("WORDING-BATCH-1 developers", () => {
     });
   }
 });
+
+test.describe("WORDING-BATCH-1 deep-link vs Layers at 390", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("late place boot leaves Sources and licences in Layers", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const gate = attachConsoleGate(page);
+    await stubMapBackend(page);
+    let releaseStyle = () => {};
+    const styleHeld = new Promise<void>((resolve) => {
+      releaseStyle = resolve;
+    });
+    await page.route("**/tiles.openfreemap.org/styles/**", async (route) => {
+      await styleHeld;
+      await route.continue();
+    });
+
+    await page.goto("/?lat=55.8609&lng=-4.2514");
+    await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
+    await openLayers(page);
+    const placeBoot = page.waitForRequest("**/platform/place**");
+    releaseStyle();
+    await placeBoot;
+
+    const panel = page.getByTestId("layers-panel");
+    await expect(panel).not.toContainText(/coming soon/i);
+    await expect(panel.getByTestId("layer-toggle-builtup_mask")).toHaveCount(0);
+    await expect(
+      panel.getByTestId("map-layers-sources-licences"),
+    ).toContainText("Sources and licences");
+    await expect(
+      panel.getByTestId("map-layers-roadmap-link").locator("a"),
+    ).toHaveAttribute("href", "/roadmap#map-layers");
+
+    expect(filterNoise(gate.consoleErrors)).toEqual([]);
+    expect(filterNoise(gate.pageErrors)).toEqual([]);
+  });
+});

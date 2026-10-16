@@ -808,6 +808,11 @@ export default function ScotlandMap() {
   const isNarrowPanelRef = useRef(isNarrowPanel);
   isNarrowPanelRef.current = isNarrowPanel;
   /**
+   * Set synchronously when the visitor opens Layers on a narrow screen.
+   * A deep-link place boot that lands afterwards must not take the sheet.
+   */
+  const narrowLayersOpenRef = useRef(false);
+  /**
    * Most recently activated legend-capable layer (drawer id) for strip chip.
    */
   const [legendPreferredId, setLegendPreferredId] = useState<string | null>(
@@ -1267,6 +1272,11 @@ export default function ScotlandMap() {
         generation?: number;
         /** Deep-link re-boot after a map remount must not pop a collapsed card open. */
         keepCollapsed?: boolean;
+        /**
+         * URL boot (?lat=&lng=), not a map tap or search. If the visitor
+         * already opened Layers, keep that sheet (the sources link stays).
+         */
+        fromDeepLink?: boolean;
       } = {},
     ) => {
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -1303,15 +1313,24 @@ export default function ScotlandMap() {
       // Mobile: map tap / search closes Layers and opens the card (SW-056 / SW-065).
       const narrow = isNarrowPanelRef.current;
       const layersOpenNow = narrow
-        ? panelKindRef.current === "layers"
+        ? panelKindRef.current === "layers" || narrowLayersOpenRef.current
         : desktopLayersOpenRef.current;
-      const keepLayersOpen = layersOpenNow && !narrow;
-      placeAsideRef.current = false;
-      setPanelKind("place");
-      if (!opts.keepCollapsed) setPanelCollapsed(false);
-      const detent = opts.fromAddressSearch ? "half" : "peek";
-      placeDetentMemory = detent;
-      setPanelDetent(detent);
+      // A late ?lat=&lng= boot must not dismiss Layers the visitor just opened.
+      // A map tap or search still collapses the sheet (SW-056).
+      const deepLinkYieldsToLayers =
+        Boolean(opts.fromDeepLink) && narrow && narrowLayersOpenRef.current;
+      const keepLayersOpen = (layersOpenNow && !narrow) || deepLinkYieldsToLayers;
+      if (deepLinkYieldsToLayers) {
+        placeAsideRef.current = true;
+      } else {
+        placeAsideRef.current = false;
+        if (narrow) narrowLayersOpenRef.current = false;
+        setPanelKind("place");
+        if (!opts.keepCollapsed) setPanelCollapsed(false);
+        const detent = opts.fromAddressSearch ? "half" : "peek";
+        placeDetentMemory = detent;
+        setPanelDetent(detent);
+      }
       if (!panelHistoryRef.current) {
         pushMapUrl({
           center: { lng, lat },
@@ -1452,6 +1471,8 @@ export default function ScotlandMap() {
   const openLayersPanel = useCallback(() => {
     const narrow = isNarrowPanelRef.current;
     if (narrow) {
+      // Before setState, so an in-flight deep-link boot sees Layers as open.
+      narrowLayersOpenRef.current = true;
       if (panelKind === "place" || placeStub) {
         placeAsideRef.current = true;
       }
@@ -1494,6 +1515,7 @@ export default function ScotlandMap() {
       layersBtnRef.current?.focus();
       return;
     }
+    narrowLayersOpenRef.current = false;
     if (placeAsideRef.current && placeStub) {
       setPanelKind("place");
       // Layers opens at full — restore the place card at its search/tap detent,
@@ -2977,6 +2999,7 @@ export default function ScotlandMap() {
       void inspectRef.current(bootLat, bootLng, {
         fly: true,
         fromAddressSearch: true,
+        fromDeepLink: true,
         keepCollapsed: panelCollapsedRef.current,
       });
     } else if (captured?.place && boot.center) {
@@ -2984,6 +3007,7 @@ export default function ScotlandMap() {
       void inspectRef.current(boot.center.lat, boot.center.lng, {
         fly: true,
         fromAddressSearch: true,
+        fromDeepLink: true,
         keepCollapsed: panelCollapsedRef.current,
       });
     } else if (boot.panel === "place" && boot.center) {
@@ -3003,6 +3027,7 @@ export default function ScotlandMap() {
         void inspectRef.current(boot.center.lat, boot.center.lng, {
           fly: remembered == null,
           fromAddressSearch: remembered !== "peek",
+          fromDeepLink: true,
           keepCollapsed: panelCollapsedRef.current,
           label: boot.place,
         });

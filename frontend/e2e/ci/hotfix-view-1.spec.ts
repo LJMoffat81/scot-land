@@ -94,6 +94,14 @@ async function urlWrites(page: Page): Promise<UrlWrite[]> {
   });
 }
 
+function scotlandCenterWrite(write: { search: string; framed: boolean }): boolean {
+  if (!write.framed) return false;
+  const c = centerFromSearch(write.search);
+  if (!c || !FIVE_DP.test(c)) return false;
+  const [lng, lat] = c.split(",").map(Number);
+  return isScotlandViewCenter(lng, lat);
+}
+
 function assertNoNullIsland(searches: string[]) {
   for (const search of searches) {
     const c = centerFromSearch(search);
@@ -144,7 +152,9 @@ for (const viewport of VIEWPORTS) {
             const c = new URLSearchParams(write.search.replace(/^\?/, "")).get(
               "c",
             );
-            return Boolean(c && /^-?\d+\.\d{5},-?\d+\.\d{5}$/.test(c));
+            if (!c || !/^-?\d+\.\d{5},-?\d+\.\d{5}$/.test(c)) return false;
+            const [wLng, wLat] = c.split(",").map(Number);
+            return wLng <= -0.5 && wLng >= -9.5 && wLat >= 54.5 && wLat <= 61;
           });
         });
 
@@ -209,7 +219,9 @@ for (const viewport of VIEWPORTS) {
             const c = new URLSearchParams(write.search.replace(/^\?/, "")).get(
               "c",
             );
-            return Boolean(c && /^-?\d+\.\d{5},-?\d+\.\d{5}$/.test(c));
+            if (!c || !/^-?\d+\.\d{5},-?\d+\.\d{5}$/.test(c)) return false;
+            const [wLng, wLat] = c.split(",").map(Number);
+            return wLng <= -0.5 && wLng >= -9.5 && wLat >= 54.5 && wLat <= 61;
           });
         });
         const camera = await readCamera(page);
@@ -217,7 +229,19 @@ for (const viewport of VIEWPORTS) {
         expect(isScotlandViewCenter(camera.lng, camera.lat)).toBe(true);
         expect(camera.zoom).toBeGreaterThan(2);
         const writes = await urlWrites(page);
-        assertNoNullIsland([page.url(), ...writes.map((write) => write.search)]);
+        const opened = centerFromSearch(path);
+        for (const write of writes) {
+          const c = centerFromSearch(write.search);
+          if (!c || !NULL_ISLAND.test(c)) continue;
+          // The address the visitor opened may be echoed once before the
+          // map replaces it. It must not be the applied view.
+          expect(write.framed, write.search).toBe(false);
+          expect(c, write.search).toBe(opened);
+        }
+        expect(centerFromSearch(page.url()) ?? "", page.url()).not.toMatch(
+          NULL_ISLAND,
+        );
+        expect(writes.some((write) => scotlandCenterWrite(write))).toBe(true);
       }
 
       assertConsoleClean(gate);

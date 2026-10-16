@@ -233,11 +233,16 @@ export async function pingApi(): Promise<{ ok: boolean; message: string }> {
 
 /**
  * Which optional API routers this server mounts. HEALTH-TRIM: `/health` is
- * status + version only, so we probe a public path unique to each optional
- * router. When AGR is not loaded, public place/search endpoints 404, so the
- * map must not call them. The public shell never fetches council AGR metrics
- * (/layers/councils) or paints rent £/m² — modelled AGR £ stays internal-only.
- * Cached for the page; a failed probe is retried on the next call.
+ * status + version only, so AGR is detected via GET `/layers/catalog` (a public
+ * path unique to that router). When AGR is not loaded, public place/search
+ * endpoints 404, so the map must not call them. The public shell never fetches
+ * council AGR metrics (/layers/councils) or paints rent £/m² — modelled AGR £
+ * stays internal-only. Cached for the page; a failed probe is retried on the
+ * next call.
+ *
+ * `platform` is reserved for callers that need the open-platform router; the
+ * map shell does not read it, so we do not probe a platform-only path (that
+ * would 404 in e2e stubs that only mock health + catalog).
  */
 export type ApiCapabilities = { reachable: boolean; agr: boolean; platform: boolean };
 
@@ -265,11 +270,8 @@ export function fetchCapabilities(): Promise<ApiCapabilities> {
         capabilitiesPromise = null;
         return { reachable: false, agr: false, platform: false };
       }
-      const [agr, platform] = await Promise.all([
-        probeOk("/layers/catalog"),
-        probeOk("/platform/gaps"),
-      ]);
-      return { reachable: true, agr, platform };
+      const agr = await probeOk("/layers/catalog");
+      return { reachable: true, agr, platform: false };
     })().catch(() => {
       capabilitiesPromise = null;
       return { reachable: false, agr: false, platform: false };

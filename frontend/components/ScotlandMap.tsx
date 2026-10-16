@@ -981,10 +981,10 @@ export default function ScotlandMap() {
     return () => observer.disconnect();
   }, []);
 
-  // UI-TWEAKS-1 T1: pin Layers drawer top to the Layers button (±2 px in e2e)
-  // and stretch to the attribution / bottom inset; mobile keeps the sheet.
-  // MapPanelSlot sits outside .map-stage (sibling under .app-shell) so CSS
-  // vars must be set on the shell — the slot's absolute containing block.
+  // UI-TWEAKS-1 T1 bottom inset + MAP-CARDS left column: clear the HUD
+  // (brand lives on the left — do not pin top to the Layers button or the
+  // logo intercepts the slot ×). Stretch to attribution / stamp-footer.
+  // MapPanelSlot is outside .map-stage; set CSS vars on .app-shell.
   useEffect(() => {
     if (panelKind !== "layers") return;
     const stage =
@@ -993,16 +993,21 @@ export default function ScotlandMap() {
     if (!stage || !(stage instanceof HTMLElement)) return;
     const shell =
       (stage.closest(".app-shell") as HTMLElement | null) ?? stage;
+    const header = headerRef.current;
 
     const applyPanelGeometry = () => {
-      const btn = layersBtnRef.current;
-      if (!btn) return;
       const shellRect = shell.getBoundingClientRect();
       const stageRect = stage.getBoundingClientRect();
-      const btnRect = btn.getBoundingClientRect();
-      // Slot is position:absolute on .app-shell — measure against shell.
-      const top = Math.max(0, btnRect.top - shellRect.top);
-      shell.style.setProperty("--layers-panel-top", `${Math.round(top)}px`);
+      // Clear the HUD band (header height + small gap), same side as brand.
+      let top = Math.round(1.75 * 16);
+      if (header) {
+        const headerRect = header.getBoundingClientRect();
+        top = Math.max(
+          0,
+          Math.round(headerRect.bottom - shellRect.top + 0.45 * 16),
+        );
+      }
+      shell.style.setProperty("--layers-panel-top", `${top}px`);
 
       // Bottom inset: attribution / safe gap above the map-stage floor, plus
       // any shell chrome below the stage (stamp footer). Zoom controls shift
@@ -1016,7 +1021,10 @@ export default function ScotlandMap() {
         const fromFloor = Math.round(stageRect.bottom - a.bottom);
         gapAboveStageFloor = Math.max(gapAboveStageFloor, fromFloor + 8);
       }
-      const belowStage = Math.max(0, Math.round(shellRect.bottom - stageRect.bottom));
+      const belowStage = Math.max(
+        0,
+        Math.round(shellRect.bottom - stageRect.bottom),
+      );
       const bottomInset = belowStage + gapAboveStageFloor;
       shell.style.setProperty(
         "--layers-panel-bottom",
@@ -1028,7 +1036,7 @@ export default function ScotlandMap() {
     const observer = new ResizeObserver(applyPanelGeometry);
     observer.observe(shell);
     observer.observe(stage);
-    if (layersBtnRef.current) observer.observe(layersBtnRef.current);
+    if (header) observer.observe(header);
     window.addEventListener("resize", applyPanelGeometry);
     return () => {
       observer.disconnect();

@@ -2,9 +2,9 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
  * UI-TWEAKS-1 T1 — Layers panel height and position (MAP-CARDS one-panel slot).
- * 1280×800: top aligns with Layers button (±2 px); fills down to bottom
+ * 1280×800: left column clears the HUD (brand side); fills down to bottom
  * inset / attribution; one inner scroller; XOR with place (no dual float).
- * 390×844: sheet pattern (half detent) without covering chrome.
+ * 390×844: sheet pattern (full detent) without covering stamp footer.
  */
 
 const consoleErrors: string[] = [];
@@ -183,9 +183,14 @@ async function assertInnerListScrolls(page: Page) {
     }
     const probe = document.createElement("div");
     probe.dataset.testid = "layers-overflow-probe";
-    probe.style.height = "2400px";
+    probe.style.cssText =
+      "height:2400px;min-height:2400px;flex-shrink:0;display:block;";
     probe.setAttribute("aria-hidden", "true");
-    scroller.appendChild(probe);
+    const mount =
+      (scroller.querySelector(
+        ".map-panel-slot-focus",
+      ) as HTMLElement | null) ?? scroller;
+    mount.appendChild(probe);
 
     const shellOy = getComputedStyle(shell).overflowY;
     const scrollerOy = getComputedStyle(scroller).overflowY;
@@ -285,16 +290,17 @@ for (const viewport of [
         const drawerBox = await boxOf(drawer, "Layers drawer");
 
         if (viewport.width >= 900) {
-          // Desktop: top edge lines up with Layers button (±2 px).
+          // Desktop left column: clear the HUD (below Layers button), not
+          // flush with it — brand mark shares the left edge.
           await expect(async () => {
             const d = await drawer.boundingBox();
             const b = await layersBtn.boundingBox();
             expect(d, "drawer box").toBeTruthy();
             expect(b, "btn box").toBeTruthy();
             expect(
-              Math.abs(d!.y - b!.y),
-              `top delta ${d!.y} vs btn ${b!.y}`,
-            ).toBeLessThanOrEqual(2);
+              d!.y,
+              `panel top ${d!.y} must clear Layers btn bottom ${b!.y + b!.height}`,
+            ).toBeGreaterThanOrEqual(b!.y + b!.height - 2);
           }).toPass({ timeout: 10_000 });
 
           const freshDrawer = await boxOf(drawer, "Layers drawer aligned");

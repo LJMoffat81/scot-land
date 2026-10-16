@@ -17,23 +17,9 @@ export type MapUrlState = {
   /** View centre [lng, lat] from `c` or lat/lon. */
   center: { lng: number; lat: number } | null;
   panel: MapPanelUrl;
-  /**
-   * Selected Data Zone code (`dz=S01…`). The place card restores this zone.
-   * The map centre is a camera, not the selection.
-   */
-  dz: string | null;
   /** Params not in the known contract — preserved on rewrite. */
   unknown: Record<string, string>;
 };
-
-/** Scottish Data Zone code, 2011 or 2022 (S01 + six digits). */
-export const DATA_ZONE_CODE_RE = /^S01\d{6}$/;
-
-export function parseDataZoneCode(raw: string | null | undefined): string | null {
-  if (raw == null) return null;
-  const code = raw.trim().toUpperCase();
-  return DATA_ZONE_CODE_RE.test(code) ? code : null;
-}
 
 const KNOWN = new Set([
   "place",
@@ -44,7 +30,6 @@ const KNOWN = new Set([
   "lng",
   "lon",
   "panel",
-  "dz",
   // legacy aliases still read/cleared by the shell
   "words",
   "vacant",
@@ -148,7 +133,6 @@ export function readMapUrlState(
     z: Number.isFinite(zNum) ? zNum : null,
     center: parseCenter(params),
     panel,
-    dz: parseDataZoneCode(params.get("dz")),
     unknown,
   };
 }
@@ -159,8 +143,6 @@ export type WriteMapUrlOpts = {
   z?: number | null;
   center?: { lng: number; lat: number } | null;
   panel?: MapPanelUrl;
-  /** Selected Data Zone. `null` clears it. Omit to keep the current value. */
-  dz?: string | null;
   /** Extra unknown keys to keep (merged with current URL unknowns). */
   unknown?: Record<string, string>;
   /**
@@ -187,7 +169,6 @@ export function writeMapUrlSearch(opts: WriteMapUrlOpts): string {
   const z = opts.z !== undefined ? opts.z : prev.z;
   const center = opts.center !== undefined ? opts.center : prev.center;
   const panel = opts.panel !== undefined ? opts.panel : prev.panel;
-  const dz = opts.dz !== undefined ? parseDataZoneCode(opts.dz) : prev.dz;
   const unknown = { ...prev.unknown, ...(opts.unknown ?? {}) };
 
   if (place) next.set("place", place);
@@ -198,7 +179,6 @@ export function writeMapUrlSearch(opts: WriteMapUrlOpts): string {
     next.set("c", formatMapCenterParam(center.lng, center.lat));
   }
   if (panel) next.set("panel", panel);
-  if (dz) next.set("dz", dz);
 
   for (const [key, value] of Object.entries(unknown)) {
     if (!next.has(key)) next.set(key, value);

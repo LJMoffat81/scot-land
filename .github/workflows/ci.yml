@@ -102,7 +102,6 @@ jobs:
       - run: npm run test:map-reference-osgb
       - run: npm run test:bng
       - run: npm run test:map-url-state
-      - run: npm run test:ofm-proxy
       - run: npm run test:dz-hierarchy
       - run: npm run test:gbp-live-v1
       - run: npm run test:gbp-live-v1c

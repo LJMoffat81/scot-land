@@ -751,6 +751,13 @@
     border-radius: 10px;
   }
 
+  /* UI-TWEAKS-1 T1: Layers slot top aligns with Layers button; fills to bottom inset.
+   * --layers-panel-top/bottom set in ScotlandMap when panelKind === "layers". */
+  .map-panel-slot--layers {
+    top: var(--layers-panel-top, calc(var(--hud-height, 6.5rem) + 0.45rem));
+    bottom: var(--layers-panel-bottom, 1.75rem);
+  }
+
   .map-panel-handle {
     display: none;
   }

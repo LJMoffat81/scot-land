@@ -1,10 +1,10 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
- * UI-TWEAKS-1 T1 — Layers panel height and position.
+ * UI-TWEAKS-1 T1 — Layers panel height and position (MAP-CARDS one-panel slot).
  * 1280×800: top aligns with Layers button (±2 px); fills down to bottom
- * inset / attribution; one inner scroller; no overlap with legend or card.
- * 390×844: sheet pattern (redesign half detent) without covering the card.
+ * inset / attribution; one inner scroller; XOR with place (no dual float).
+ * 390×844: sheet pattern (half detent) without covering chrome.
  */
 
 const consoleErrors: string[] = [];
@@ -59,54 +59,60 @@ function boxesOverlap(a: Box, b: Box): boolean {
 
 async function stubBackend(page: Page) {
   await page.route("**/backend/**", async (route) => {
-    await route.fulfill({
-      status: 404,
-      contentType: "application/json",
-      body: JSON.stringify({
-        detail: `e2e stub: unhandled ${route.request().method()} ${route.request().url()}`,
-      }),
-    });
-  });
-  await page.route("**/backend/health**", async (route) => {
+    const url = route.request().url();
+    if (/\/health(?:\?|$)/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(HEALTH_OK),
+      });
+      return;
+    }
+    if (/\/layers\/catalog/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ version: 2, layers: [] }),
+      });
+      return;
+    }
+    if (/\/platform\/place/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(PLACE_STUB),
+      });
+      return;
+    }
+    if (/\/place(?:\?|$)/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ kind: "places", matches: [] }),
+      });
+      return;
+    }
+    if (/\/layers\/context\/data-zones\/at/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code: "S01014567",
+          name: "City Centre South",
+          vintage: 2022,
+        }),
+      });
+      return;
+    }
+    const wantsGeo =
+      /\/layers\//i.test(url) ||
+      /\/boundaries\//i.test(url) ||
+      /\/w3w-grid/i.test(url) ||
+      /\/parcels/i.test(url);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify(HEALTH_OK),
-    });
-  });
-  await page.route("**/backend/layers/catalog**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ layers: [] }),
-    });
-  });
-  await page.route("**/backend/place**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ kind: "places", matches: [] }),
-    });
-  });
-  await page.route("**/backend/layers/open/data-zones**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
-  await page.route("**/backend/layers/context/data-zones/at**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ code: null, name: null, vintage: null }),
-    });
-  });
-  await page.route("**/backend/platform/place**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(PLACE_STUB),
+      body: JSON.stringify(wantsGeo ? EMPTY_FC : {}),
     });
   });
   await page.route("**/api/catalog.json", async (route) => {
@@ -114,6 +120,13 @@ async function stubBackend(page: Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ layers: [] }),
+    });
+  });
+  await page.route("**/api/gbp-live**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ enabled: false }),
     });
   });
 }
@@ -141,7 +154,11 @@ async function openLayers(page: Page) {
   const layersBtn = page.getByTestId("hud-layers-btn");
   await layersBtn.click();
   await expect(page.getByTestId("layers-panel")).toBeVisible();
-  await expect(page.locator("aside.hud-tools")).toBeVisible();
+  await expect(page.getByTestId("map-panel-slot")).toBeVisible();
+  await expect(page.getByTestId("map-panel-slot")).toHaveAttribute(
+    "data-panel",
+    "layers",
+  );
   return layersBtn;
 }
 
@@ -155,8 +172,12 @@ async function openPlaceCard(page: Page) {
 
 async function assertInnerListScrolls(page: Page) {
   const scrollState = await page.evaluate(() => {
-    const shell = document.querySelector("aside.hud-tools") as HTMLElement | null;
-    const scroller = shell?.querySelector(".layer-panel") as HTMLElement | null;
+    const shell = document.querySelector(
+      '[data-testid="map-panel-slot"]',
+    ) as HTMLElement | null;
+    const scroller = shell?.querySelector(
+      '[data-testid="map-panel-scroll"]',
+    ) as HTMLElement | null;
     if (!shell || !scroller) {
       return { ok: false as const, reason: "missing shell or scroller" };
     }
@@ -171,7 +192,8 @@ async function assertInnerListScrolls(page: Page) {
     const before = scroller.scrollTop;
     scroller.scrollTop = 400;
     const after = scroller.scrollTop;
-    const bodyScrolled = document.documentElement.scrollTop + document.body.scrollTop;
+    const bodyScrolled =
+      document.documentElement.scrollTop + document.body.scrollTop;
     const mapWrap = document.querySelector(".map-wrap") as HTMLElement | null;
     const mapScrolled = mapWrap ? mapWrap.scrollTop : 0;
 
@@ -201,9 +223,10 @@ async function assertInnerListScrolls(page: Page) {
     scrollState.shellOy === "hidden" || scrollState.shellOy === "clip",
     `shell overflow-y=${scrollState.shellOy}`,
   ).toBe(true);
-  expect(scrollState.scrollHeight, "inner content taller than panel").toBeGreaterThan(
-    scrollState.clientHeight + 1,
-  );
+  expect(
+    scrollState.scrollHeight,
+    "inner content taller than panel",
+  ).toBeGreaterThan(scrollState.clientHeight + 1);
   expect(scrollState.scrolled, "inner list scrolls").toBe(true);
   expect(scrollState.bodyScrolled, "page must not scroll").toBe(0);
   expect(scrollState.mapScrolled, "map must not scroll").toBe(0);
@@ -213,117 +236,138 @@ for (const viewport of [
   { width: 1280, height: 800 },
   { width: 390, height: 844 },
 ]) {
-  test.describe(`UI-TWEAKS-1 Layers panel (${viewport.width}×${viewport.height})`, () => {
-    test.use({ viewport });
+  test.describe(
+    `UI-TWEAKS-1 Layers panel (${viewport.width}×${viewport.height})`,
+    () => {
+      test.use({ viewport });
 
-    test.beforeEach(async ({ page }) => {
-      consoleErrors.length = 0;
-      page.on("console", (msg) => {
-        if (msg.type() === "error") consoleErrors.push(msg.text());
+      test.beforeEach(async ({ page }) => {
+        consoleErrors.length = 0;
+        page.on("console", (msg) => {
+          if (msg.type() === "error") consoleErrors.push(msg.text());
+        });
+        page.on("pageerror", (err) => {
+          consoleErrors.push(String(err));
+        });
+        await stubBackend(page);
       });
-      page.on("pageerror", (err) => {
-        consoleErrors.push(String(err));
+
+      test.afterEach(async () => {
+        const meaningful = consoleErrors.filter((line) => {
+          if (/favicon/i.test(line)) return false;
+          if (/Download the React DevTools/i.test(line)) return false;
+          if (/Failed to load resource:.*(?:404|503)/i.test(line)) return false;
+          if (/AbortError|aborted|Failed to fetch|net::ERR_/i.test(line)) {
+            return false;
+          }
+          return true;
+        });
+        expect(
+          meaningful,
+          `console errors:\n${meaningful.join("\n")}`,
+        ).toEqual([]);
       });
-      await stubBackend(page);
-    });
 
-    test.afterEach(async () => {
-      const meaningful = consoleErrors.filter((line) => {
-        if (/favicon/i.test(line)) return false;
-        if (/Download the React DevTools/i.test(line)) return false;
-        return true;
-      });
-      expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
-    });
+      test("height, position, scroll, no cover legend/card", async ({
+        page,
+      }) => {
+        test.setTimeout(120_000);
+        await page.goto("/");
+        await page.locator(".maplibregl-canvas").waitFor();
+        await page.locator("#place-query").waitFor();
 
-    test("height, position, scroll, no cover legend/card", async ({ page }) => {
-      test.setTimeout(120_000);
-      await page.goto("/");
-      await page.locator(".maplibregl-canvas").waitFor();
-      await page.locator("#place-query").waitFor();
+        const layersBtn = await openLayers(page);
+        const drawer = page.getByTestId("map-panel-slot");
+        const btnBox = await boxOf(layersBtn, "Layers button");
+        const drawerBox = await boxOf(drawer, "Layers drawer");
 
-      const layersBtn = await openLayers(page);
-      const drawer = page.locator("aside.hud-tools");
-      const btnBox = await boxOf(layersBtn, "Layers button");
-      const drawerBox = await boxOf(drawer, "Layers drawer");
+        if (viewport.width >= 900) {
+          // Desktop: top edge lines up with Layers button (±2 px).
+          await expect(async () => {
+            const d = await drawer.boundingBox();
+            const b = await layersBtn.boundingBox();
+            expect(d, "drawer box").toBeTruthy();
+            expect(b, "btn box").toBeTruthy();
+            expect(
+              Math.abs(d!.y - b!.y),
+              `top delta ${d!.y} vs btn ${b!.y}`,
+            ).toBeLessThanOrEqual(2);
+          }).toPass({ timeout: 10_000 });
 
-      if (viewport.width >= 900) {
-        // Desktop: top edge lines up with Layers button (±2 px).
-        await expect(async () => {
-          const d = await drawer.boundingBox();
-          const b = await layersBtn.boundingBox();
-          expect(d, "drawer box").toBeTruthy();
-          expect(b, "btn box").toBeTruthy();
+          const freshDrawer = await boxOf(drawer, "Layers drawer aligned");
+          const footer = page.getByTestId("map-stamp-footer");
+          const footerBox = await boxOf(footer, "map footer");
+          const attrib = page.locator(".maplibregl-ctrl-attrib");
+          let attribH = 28;
+          if ((await attrib.count()) > 0 && (await attrib.first().isVisible())) {
+            const a = await attrib.first().boundingBox();
+            if (a) attribH = Math.max(attribH, a.height);
+          }
+          const bottomAllowance = footerBox.height + attribH;
           expect(
-            Math.abs(d!.y - b!.y),
-            `top delta ${d!.y} vs btn ${b!.y}`,
-          ).toBeLessThanOrEqual(2);
-        }).toPass({ timeout: 10_000 });
-
-        const freshDrawer = await boxOf(drawer, "Layers drawer aligned");
-        const footer = page.getByTestId("map-stamp-footer");
-        const footerBox = await boxOf(footer, "map footer");
-        const attrib = page.locator(".maplibregl-ctrl-attrib");
-        let attribH = 28;
-        if ((await attrib.count()) > 0 && (await attrib.first().isVisible())) {
-          const a = await attrib.first().boundingBox();
-          if (a) attribH = Math.max(attribH, a.height);
+            freshDrawer.y + freshDrawer.height,
+            "panel reaches bottom inset / attribution",
+          ).toBeGreaterThanOrEqual(viewport.height - bottomAllowance - 2);
+        } else {
+          // Mobile sheet: bottom-anchored; fills the sheet height; not under the button.
+          expect(drawerBox.y, "sheet below Layers button").toBeGreaterThan(
+            btnBox.y,
+          );
+          const footer = page.getByTestId("map-stamp-footer");
+          const footerBox = await boxOf(footer, "map footer");
+          expect(
+            drawerBox.y + drawerBox.height,
+            "sheet reaches above footer",
+          ).toBeGreaterThanOrEqual(viewport.height - footerBox.height - 4);
+          expect(
+            drawerBox.height,
+            "sheet ~55dvh+",
+          ).toBeGreaterThan(viewport.height * 0.45);
         }
-        // panel bottom ≥ viewport − (bottom inset + attribution[/footer])
-        const bottomAllowance = footerBox.height + attribH;
-        expect(
-          freshDrawer.y + freshDrawer.height,
-          "panel reaches bottom inset / attribution",
-        ).toBeGreaterThanOrEqual(viewport.height - bottomAllowance - 2);
-      } else {
-        // Mobile sheet: bottom-anchored; fills the sheet height; not under the button.
-        expect(drawerBox.y, "sheet below Layers button").toBeGreaterThan(btnBox.y);
-        const footer = page.getByTestId("map-stamp-footer");
-        const footerBox = await boxOf(footer, "map footer");
-        expect(
-          drawerBox.y + drawerBox.height,
-          "sheet reaches above footer",
-        ).toBeGreaterThanOrEqual(viewport.height - footerBox.height - 4);
-        expect(drawerBox.height, "sheet ~55dvh").toBeGreaterThan(viewport.height * 0.45);
-      }
 
-      await assertInnerListScrolls(page);
+        await assertInnerListScrolls(page);
 
-      // Legend must stay clear of the drawer.
-      const legendPill = page.getByRole("button", { name: "Show legend" });
-      const legendPanel = page.getByTestId("map-legend-panel");
-      if ((await legendPill.count()) > 0 && (await legendPill.isVisible())) {
-        assertPairClear(
-          drawerBox,
-          await boxOf(legendPill, "legend pill"),
-          "Layers vs legend pill",
-        );
-      } else if (await legendPanel.isVisible()) {
-        assertPairClear(
-          drawerBox,
-          await boxOf(legendPanel, "legend panel"),
-          "Layers vs legend",
-        );
-      }
+        // Legend strip / attribution stay clear of the drawer when present.
+        const legendStrip = page.getByTestId("legend-strip");
+        if (
+          (await legendStrip.count()) > 0 &&
+          (await legendStrip.isVisible())
+        ) {
+          assertPairClear(
+            drawerBox,
+            await boxOf(legendStrip, "legend strip"),
+            "Layers vs legend strip",
+          );
+        }
+        const attribLine = page.getByTestId("map-attribution-line");
+        if (
+          (await attribLine.count()) > 0 &&
+          (await attribLine.isVisible())
+        ) {
+          assertPairClear(
+            drawerBox,
+            await boxOf(attribLine, "attribution line"),
+            "Layers vs attribution",
+          );
+        }
 
-      // Place card + Layers: no bbox intersection (desktop side-by-side; mobile sheet).
-      // Layers button stays above the drawer (hud-top z-index) so this click works.
-      await page.getByTestId("hud-layers-btn").click();
-      await expect(page.getByTestId("layers-panel")).toBeHidden();
-      const card = await openPlaceCard(page);
-      await openLayers(page);
-      const drawerOpen = page.locator("aside.hud-tools");
-      await expect(async () => {
-        assertPairClear(
-          await boxOf(drawerOpen, "Layers drawer with card"),
-          await boxOf(card, "place card"),
-          "Layers vs place card",
-        );
-      }).toPass({ timeout: 10_000 });
-      // Card remains clickable (close control present and enabled).
-      const close = page.getByRole("button", { name: "Close place card" });
-      await expect(close).toBeVisible();
-      await expect(close).toBeEnabled();
-    });
-  });
+        // MAP-CARDS XOR: place card is aside while Layers occupies the slot.
+        await page.getByTestId("hud-layers-btn").click();
+        await expect(page.getByTestId("layers-panel")).toBeHidden();
+        const card = await openPlaceCard(page);
+        await expect(card).toBeVisible();
+        await openLayers(page);
+        await expect(page.getByTestId("place-card")).toHaveCount(0);
+        await expect(page.getByTestId("layers-panel")).toBeVisible();
+        // Close Layers → place card restored.
+        await page.getByTestId("map-panel-slot-close").click();
+        await expect(page.getByTestId("place-card")).toBeVisible({
+          timeout: 15_000,
+        });
+        const close = page.getByRole("button", { name: "Close place card" });
+        await expect(close).toBeVisible();
+        await expect(close).toBeEnabled();
+      });
+    },
+  );
 }

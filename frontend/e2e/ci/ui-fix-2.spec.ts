@@ -43,6 +43,29 @@ async function visibleBox(locator: Locator, label: string): Promise<Box> {
   return box!;
 }
 
+/** Visible panel/card closes: accessible name /close/i, or text × / ✕. */
+async function visibleCloseCount(page: Page): Promise<number> {
+  return page.getByTestId("map-panel-slot").evaluate((root) => {
+    const nodes = root.querySelectorAll("button, [role='button']");
+    let count = 0;
+    for (const el of nodes) {
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      const visible =
+        r.width > 0 &&
+        r.height > 0 &&
+        cs.visibility !== "hidden" &&
+        cs.display !== "none" &&
+        Number(cs.opacity) !== 0;
+      if (!visible) continue;
+      const name = (el.getAttribute("aria-label") || "").trim();
+      const text = (el.textContent || "").replace(/\s+/g, " ").trim();
+      if (/close/i.test(name) || text === "×" || text === "✕") count += 1;
+    }
+    return count;
+  });
+}
+
 async function assertClear(a: Locator, b: Locator, label: string) {
   const boxA = await visibleBox(a, `${label} A`);
   const boxB = await visibleBox(b, `${label} B`);
@@ -233,10 +256,12 @@ for (const viewport of [
           `Detailed vs top bar (${query})`,
         );
 
+        expect(
+          await visibleCloseCount(page),
+          `visible close controls after ${query}`,
+        ).toBe(1);
+
         if (viewport.width >= 1280) {
-          await expect(
-            page.getByRole("button", { name: "Close place card" }),
-          ).toHaveCount(1);
           const trailing = await page.getByTestId("place-card").evaluate((el) => {
             const last = el.lastElementChild;
             if (!last) return { empty: true, height: 0 };

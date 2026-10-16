@@ -274,7 +274,7 @@ test.describe("UX-01 mobile hit areas 390x844", () => {
     // Place card ×
     await page.locator("#place-query").fill("55.86090, -4.25140");
     await searchGo.click();
-    const placeClose = page.getByTestId("map-panel-slot-close");
+    const placeClose = page.getByRole("button", { name: "Close place card" });
     await expect(placeClose).toBeVisible({ timeout: 30_000 });
     await assertMinHit(placeClose, "place panel ×");
     await placeClose.click();
@@ -289,7 +289,7 @@ test.describe("UX-01 mobile hit areas 390x844", () => {
     await searchGo.click();
     const seaLine = page.getByTestId("place-card-out-of-scotland");
     await expect(seaLine).toBeVisible({ timeout: 30_000 });
-    const seaClose = page.getByTestId("map-panel-slot-close");
+    const seaClose = page.getByRole("button", { name: "Close place card" });
     await expect(seaClose).toBeVisible();
     await assertMinHit(seaClose, "sea panel ×");
 

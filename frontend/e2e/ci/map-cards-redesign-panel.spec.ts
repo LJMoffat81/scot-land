@@ -298,7 +298,9 @@ test.describe("MAP-CARDS desktop collapse 1280", () => {
     await stubMapCardsBackend(page);
     await openPlaceViaCoords(page);
 
-    await page.getByTestId("map-panel-slot-close").click();
+    // UI-FIX-3: the place sheet has one close (the card ×), which clears
+    // the place. Desktop collapse stays on Escape.
+    await page.keyboard.press("Escape");
     const tab = page.getByTestId("panel-collapse-tab");
     await expect(tab).toBeVisible({ timeout: 10_000 });
     await expect

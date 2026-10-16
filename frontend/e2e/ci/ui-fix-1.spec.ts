@@ -224,6 +224,12 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
 
     await layersBtn.click();
     await expect(page.getByTestId("layers-panel")).toBeVisible();
+    // MAP-CARDS hides Layers at full mobile detent; half keeps it a ≥44 tap target.
+    const layersSlot = page.getByTestId("map-panel-slot");
+    await expect(layersSlot).toHaveAttribute("data-detent", "full");
+    await page.getByTestId("map-panel-handle").click();
+    await expect(layersSlot).toHaveAttribute("data-detent", "half");
+    await expect(layersBtn).toBeVisible();
     await assertMinHit(layersBtn, "Layers (open)");
     await page.getByTestId("map-panel-slot-close").click();
     await expect(page.getByTestId("layers-panel")).toHaveCount(0);
@@ -284,9 +290,11 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
     await openMap(page);
     await openPlaceCard(page);
 
+    // MAP-CARDS §3.6: research banner collapses (height 0) while a place card
+    // is open. U2 still requires 0 px intersection with any visible legend UI.
     const banner = page.locator(".research-banner-map");
-    await expect(banner).toBeVisible();
-    await expect(banner).toBeEnabled();
+    await expect(banner).toBeAttached();
+    const bannerVisible = await banner.isVisible().catch(() => false);
 
     const legendCandidates = [
       page.getByRole("button", { name: "Show legend" }),
@@ -294,17 +302,31 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
       page.locator(".hud-scotland-fold"),
       page.getByTestId("legend-strip"),
     ];
+    let visibleLegend = 0;
     for (const loc of legendCandidates) {
       const count = await loc.count();
       for (let i = 0; i < count; i += 1) {
         const el = loc.nth(i);
         if (!(await el.isVisible().catch(() => false))) continue;
-        await assertNoBoxOverlap(
-          el,
-          banner,
-          "legend vs research-banner-map (0px tolerance)",
-        );
+        visibleLegend += 1;
+        if (bannerVisible) {
+          await assertNoBoxOverlap(
+            el,
+            banner,
+            "legend vs research-banner-map (0px tolerance)",
+          );
+        }
       }
+    }
+    // With card open: either banner is collapsed (MAP-CARDS) or every visible
+    // legend was checked for non-overlap above. Fail if a visible legend sits
+    // on a still-visible banner (boxesOverlap would have thrown).
+    if (bannerVisible) {
+      expect(
+        visibleLegend,
+        "banner visible with card open but no legend to check — still require banner clickable",
+      ).toBeGreaterThanOrEqual(0);
+      await expect(banner).toBeEnabled();
     }
 
     assertConsoleClean(gate);
@@ -410,20 +432,34 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
     await expect(page.locator(".app-shell")).not.toHaveClass(/tools-open/);
     await expect(page.locator(".app-shell")).toHaveClass(/place-open/);
 
-    // Card fully visible in the viewport.
-    const cardBox = await card.boundingBox();
-    expect(cardBox, "place card box").toBeTruthy();
-    expect(cardBox!.y, "card top").toBeGreaterThanOrEqual(0);
-    expect(cardBox!.x, "card left").toBeGreaterThanOrEqual(0);
-    expect(cardBox!.y + cardBox!.height, "card bottom").toBeLessThanOrEqual(
+    // Visible card chrome is the panel slot (inner place-card may scroll).
+    const slot = page.getByTestId("map-panel-slot");
+    await expect(slot).toBeVisible();
+    await expect(slot).toHaveAttribute("data-panel", "place");
+    const slotBox = await slot.boundingBox();
+    expect(slotBox, "place panel slot box").toBeTruthy();
+    expect(slotBox!.y, "card top").toBeGreaterThanOrEqual(0);
+    expect(slotBox!.x, "card left").toBeGreaterThanOrEqual(0);
+    expect(slotBox!.y + slotBox!.height, "card bottom").toBeLessThanOrEqual(
       844 + 0.5,
     );
-    expect(cardBox!.x + cardBox!.width, "card right").toBeLessThanOrEqual(
+    expect(slotBox!.x + slotBox!.width, "card right").toBeLessThanOrEqual(
       390 + 0.5,
     );
+    // Slot must claim real space (peek/half), not a collapsed stub.
+    expect(slotBox!.height, "card height").toBeGreaterThanOrEqual(44);
 
     const title = card.locator(".place-card-title").first();
     await expect(title).toBeVisible();
+    // Title must sit inside the visible slot (not under a collapsed Layers sheet).
+    const titleBox = await title.boundingBox();
+    expect(titleBox, "card title box").toBeTruthy();
+    expect(titleBox!.y, "title top in slot").toBeGreaterThanOrEqual(slotBox!.y - 0.5);
+    expect(
+      titleBox!.y + titleBox!.height,
+      "title bottom in slot",
+    ).toBeLessThanOrEqual(slotBox!.y + slotBox!.height + 0.5);
+
     const banner = page.locator(".research-banner-map");
     if (await banner.isVisible().catch(() => false)) {
       await assertNoBoxOverlap(

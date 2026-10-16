@@ -10,9 +10,20 @@ import pytest
 
 from georgist.ros_c14_input import (
     BLIND_COLUMNS,
+    MUIRHOUSE_04_CODES,
+    MUIRHOUSE_04_NAME,
     PRICE_COLUMNS,
+    REAL_ABSENT_FROM_C14,
+    REAL_COLLISION_CODES,
+    REAL_COLLISION_NAMES,
+    REAL_DOUBLE_ROW_CODES,
+    REAL_DOUBLE_ROW_NAMES,
+    REAL_EXCLUDED_DZ2011,
+    REAL_EXCLUDED_IN_SCORED_SET,
+    REAL_SCORED_SET,
     InputBuildError,
     build_inputs,
+    real_census_errors,
     requested_columns,
 )
 from scripts.build_ros_c14_v14_inputs import main
@@ -53,8 +64,9 @@ def _row(code: str, name: str, volume, year: int = 2024) -> list:
     return [year, name, code, *SENTINELS[:3], volume, SENTINELS[3]]
 
 
-def _lookup(path: Path, codes: list[str]) -> None:
-    _write_csv(path, ["code"], [[code] for code in codes])
+def _lookup(path: Path, codes: list[str], names: dict[str, str] | None = None) -> None:
+    names = names or {}
+    _write_csv(path, ["code", "name"], [[code, names.get(code, "")] for code in codes])
 
 
 def _crosswalk(path: Path, pairs: list[tuple[str, str, int]]) -> None:
@@ -184,7 +196,19 @@ def test_homonym_cartesian_and_single_row(tmp_path: Path):
     ]
     _c14(c14, body)
     codes = ["S01013482", "S01013483", "S01013484", "S01013485"]
-    paths = _simple(tmp_path, c14, codes, [("S01007000", "S01013482", 10)], ["S01007000"])
+    paths = _simple(
+        tmp_path,
+        c14,
+        codes,
+        [("S01007000", "S01013482", 10)],
+        ["S01007000"],
+        names={
+            "S01013482": "Shared",
+            "S01013483": "Shared",
+            "S01013484": "Muirhouse - 04",
+            "S01013485": "Muirhouse - 04",
+        },
+    )
     result = _build(tmp_path, **paths)
     by_code = {zone["code"]: zone for zone in result["dz2022"]}
     for code in codes:
@@ -331,7 +355,14 @@ def test_pair_rows_do_not_change_s_i(tmp_path: Path):
         c14 = tmp_path / f"c14-{len(body)}.csv"
         _c14(c14, body)
         codes = ["S01013482", "S01013483", "S01013484"]
-        paths = _simple(tmp_path, c14, codes, [("S01007000", "S01013482", 25)], ["S01007000"])
+        paths = _simple(
+            tmp_path,
+            c14,
+            codes,
+            [("S01007000", "S01013482", 25)],
+            ["S01007000"],
+            names={"S01013482": "Ok", "S01013483": "Shared", "S01013484": "Shared"},
+        )
         return _build(tmp_path, **paths)
 
     base = run([_row("S01013482", "Ok", 7)])
@@ -557,13 +588,206 @@ def test_header_found_in_xlsx_below_row_1(tmp_path: Path):
     assert result["dz2011"][0]["count_s"] == 6
 
 
-def _simple(tmp: Path, c14: Path, codes: list[str], pairs: list, scored: list[str], scored_codes=None):
+def _simple(
+    tmp: Path,
+    c14: Path,
+    codes: list[str],
+    pairs: list,
+    scored: list[str],
+    scored_codes=None,
+    names: dict[str, str] | None = None,
+):
     lookup = tmp / "lookup.csv"
     cross = tmp / "cross.csv"
     merge = tmp / "merge.csv"
     ur = tmp / "ur.csv"
-    _lookup(lookup, codes)
+    _lookup(lookup, codes, names)
     _crosswalk(cross, pairs)
     _merge(merge, scored if scored_codes is None else scored_codes)
     _ur(ur, [(code, 1, 0) for code in (scored if scored_codes is None else scored_codes)])
     return {"c14": c14, "lookup": lookup, "crosswalk": cross, "merge": merge, "ur": ur}
+
+
+def _perfect_census() -> dict:
+    return {
+        "collision_names": REAL_COLLISION_NAMES,
+        "collision_codes": REAL_COLLISION_CODES,
+        "double_row_codes": REAL_DOUBLE_ROW_CODES,
+        "double_row_names": REAL_DOUBLE_ROW_NAMES,
+        "muirhouse_04_codes": set(MUIRHOUSE_04_CODES),
+        "muirhouse_04_name": MUIRHOUSE_04_NAME,
+        "muirhouse_04_rows": 1,
+        "absent_from_c14": REAL_ABSENT_FROM_C14,
+        "excluded_dz2011": REAL_EXCLUDED_DZ2011,
+        "excluded_in_scored_set": REAL_EXCLUDED_IN_SCORED_SET,
+        "scored_set": REAL_SCORED_SET,
+    }
+
+
+def test_cartesian_pair_counts_once(tmp_path: Path):
+    """City Centre - 01 pattern: both statistic rows repeated under both codes."""
+    name = "City Centre - 01"
+    dundee = "S01015379"
+    stirling = "S01020438"
+    c14 = tmp_path / "c14.csv"
+    _c14(
+        c14,
+        [
+            _row(dundee, name, 6),
+            _row(dundee, name, 35),
+            _row(stirling, name, 6),
+            _row(stirling, name, 35),
+        ],
+    )
+    paths = _simple(
+        tmp_path,
+        c14,
+        [dundee, stirling],
+        [("S01007000", dundee, 10)],
+        ["S01007000"],
+        names={dundee: name, stirling: name},
+    )
+    result = _build(tmp_path, **paths)
+    by_code = {zone["code"]: zone for zone in result["dz2022"]}
+    assert by_code[dundee]["status"] == "ros_name_collision"
+    assert by_code[stirling]["status"] == "ros_name_collision"
+    assert by_code[dundee]["count"] == 0
+    assert by_code[stirling]["count"] == 0
+    assert by_code[dundee]["c14_rows"] == 2
+    assert by_code[stirling]["c14_rows"] == 2
+    assert result["national"]["raw_dz_sum"] == 82
+    assert result["national"]["pair_dedup_sum"] == 41
+    assert result["national"]["pair_volume"][name] == 41
+
+
+def test_single_row_attached_to_both_codes(tmp_path: Path):
+    name = "Muirhouse - 04"
+    edinburgh = "S01014990"
+    lanark = "S01018619"
+    c14 = tmp_path / "c14.csv"
+    _c14(c14, [_row(edinburgh, name, 4), _row(lanark, name, 4)])
+    paths = _simple(
+        tmp_path,
+        c14,
+        [edinburgh, lanark],
+        [("S01007000", edinburgh, 10)],
+        ["S01007000"],
+        names={edinburgh: name, lanark: name},
+    )
+    result = _build(tmp_path, **paths)
+    by_code = {zone["code"]: zone for zone in result["dz2022"]}
+    assert by_code[edinburgh]["status"] == "ros_name_collision"
+    assert by_code[lanark]["status"] == "ros_name_collision"
+    assert by_code[edinburgh]["c14_rows"] == 1
+    assert by_code[lanark]["c14_rows"] == 1
+    assert by_code[edinburgh]["count"] == 0
+    assert by_code[lanark]["count"] == 0
+    assert result["national"]["raw_dz_sum"] == 8
+    assert result["national"]["pair_dedup_sum"] == 4
+    assert result["national"]["pair_volume"][name] == 4
+    assert result["dz2022_counts"]["absent_from_c14"] == 0
+
+
+def test_missing_pair_member_still_collides(tmp_path: Path):
+    name = "Hillhead - 01"
+    present = "S01015824"
+    missing = "S01017537"
+    c14 = tmp_path / "c14.csv"
+    _c14(c14, [_row(present, name, 15)])
+    paths = _simple(
+        tmp_path,
+        c14,
+        [present, missing],
+        [("S01007000", present, 10)],
+        ["S01007000"],
+        names={present: name, missing: name},
+    )
+    result = _build(tmp_path, **paths)
+    by_code = {zone["code"]: zone for zone in result["dz2022"]}
+    assert by_code[present]["status"] == "ros_name_collision"
+    assert by_code[missing]["status"] == "ros_name_collision"
+    assert by_code[present]["c14_rows"] == 1
+    assert by_code[missing]["c14_rows"] == 0
+    assert by_code[missing]["status"] != "absent_from_c14"
+    assert result["dz2022_counts"]["absent_from_c14"] == 0
+    assert result["dz2022_counts"]["ros_name_collision"] == 2
+    assert result["national"]["raw_dz_sum"] == 15
+    assert result["national"]["pair_dedup_sum"] == 15
+    assert result["national"]["pair_volume"][name] == 15
+
+
+def test_shared_c14_name_without_lookup_pair_is_not_a_collision(tmp_path: Path):
+    c14 = tmp_path / "c14.csv"
+    _c14(
+        c14,
+        [
+            _row("S01013482", "Same label", 6),
+            _row("S01013483", "Same label", 6),
+        ],
+    )
+    paths = _simple(
+        tmp_path,
+        c14,
+        ["S01013482", "S01013483"],
+        [("S01007000", "S01013482", 10), ("S01007001", "S01013483", 10)],
+        ["S01007000", "S01007001"],
+        names={"S01013482": "North", "S01013483": "South"},
+    )
+    result = _build(tmp_path, **paths)
+    by_code = {zone["code"]: zone for zone in result["dz2022"]}
+    assert by_code["S01013482"]["status"] == "ok"
+    assert by_code["S01013483"]["status"] == "ok"
+    assert result["collision_codes"] == 0
+    assert result["national"]["pair_dedup_sum"] == 0
+
+
+def test_real_census_numbers_and_skip():
+    assert REAL_COLLISION_NAMES == 47
+    assert REAL_COLLISION_CODES == 94
+    assert REAL_DOUBLE_ROW_CODES == 92
+    assert REAL_DOUBLE_ROW_NAMES == 46
+    assert MUIRHOUSE_04_CODES == frozenset({"S01014990", "S01018619"})
+    assert REAL_ABSENT_FROM_C14 == 8
+    assert REAL_EXCLUDED_DZ2011 == 124
+    assert REAL_EXCLUDED_IN_SCORED_SET == 109
+    assert REAL_SCORED_SET == 6188
+    perfect = _perfect_census()
+    assert real_census_errors(perfect, lookup_count=7392) == []
+    assert real_census_errors(perfect, lookup_count=4) == []
+    short = dict(perfect)
+    short["collision_codes"] = 93
+    errors = real_census_errors(short, lookup_count=7392)
+    assert errors
+    assert real_census_errors(short, lookup_count=12) == []
+
+
+def test_official_lookup_size_fails_census_loudly(tmp_path: Path):
+    start = 1013482
+    codes = [f"S{start + i:08d}" for i in range(7392)]
+    assert codes[0] == "S01013482"
+    assert codes[-1] == "S01020873"
+    c14 = tmp_path / "c14.csv"
+    _c14(c14, [_row(codes[0], "Only", 10)])
+    paths = _simple(tmp_path, c14, codes, [("S01007000", codes[0], 10)], ["S01007000"])
+    with pytest.raises(InputBuildError, match="real-data collision census failed"):
+        _build(tmp_path, **paths)
+    out = tmp_path / "out.json"
+    rc = main(
+        [
+            "--c14",
+            str(c14),
+            "--lookup",
+            str(paths["lookup"]),
+            "--crosswalk",
+            str(paths["crosswalk"]),
+            "--merge-map",
+            str(paths["merge"]),
+            "--ur",
+            str(paths["ur"]),
+            "--out",
+            str(out),
+            "--synthetic-fixtures",
+        ]
+    )
+    assert rc != 0
+    assert not out.exists()

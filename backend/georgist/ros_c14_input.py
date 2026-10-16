@@ -21,6 +21,17 @@ SCORING_YEAR = 2024
 DZ2011_MIN = "S01006506"
 DZ2011_MAX = "S01013481"
 EXPECTED_LOOKUP_CODES = 7392
+# Official DZ2022 lookup census. Runs only when the lookup has all 7,392 codes.
+REAL_COLLISION_NAMES = 47
+REAL_COLLISION_CODES = 94
+REAL_DOUBLE_ROW_CODES = 92
+REAL_DOUBLE_ROW_NAMES = 46
+MUIRHOUSE_04_NAME = "Muirhouse - 04"
+MUIRHOUSE_04_CODES = frozenset({"S01014990", "S01018619"})
+REAL_ABSENT_FROM_C14 = 8
+REAL_EXCLUDED_DZ2011 = 124
+REAL_EXCLUDED_IN_SCORED_SET = 109
+REAL_SCORED_SET = 6188
 
 # Header text from C14. "Data zone" is the name column.
 BLIND_COLUMNS = (
@@ -205,7 +216,8 @@ def read_c14(path: Path, *, scored_run: bool) -> list[dict[str, str]]:
     raise InputBuildError(f"unsupported C14 file type: {suffix}")
 
 
-def _load_lookup(path: Path) -> list[str]:
+def _load_lookup(path: Path) -> list[dict[str, str]]:
+    """Official DZ2022 codes and names. Collisions come from these names."""
     with path.open(encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         fields = {_norm_header(name): name for name in (reader.fieldnames or [])}
@@ -215,16 +227,44 @@ def _load_lookup(path: Path) -> list[str]:
             or fields.get("data zone code")
             or fields.get("geography code")
         )
+        name_key = (
+            fields.get("name")
+            or fields.get("data zone")
+            or fields.get("zone name")
+            or fields.get("dzname")
+            or fields.get("datazonename")
+        )
         if code_key is None:
             raise InputBuildError("lookup file has no zone code column")
-        codes: list[str] = []
+        rows: list[dict[str, str]] = []
         for row in reader:
             code = str(row.get(code_key) or "").strip().upper()
-            if code:
-                codes.append(code)
+            if not code:
+                continue
+            name = str(row.get(name_key) or "").strip() if name_key else ""
+            rows.append({"code": code, "name": name})
+    codes = [row["code"] for row in rows]
     if len(set(codes)) != len(codes):
         raise InputBuildError("lookup file repeats a zone code")
-    return codes
+    return rows
+
+
+def _collision_sets(
+    lookup_rows: Sequence[Mapping[str, str]],
+) -> tuple[set[str], dict[str, set[str]], dict[str, str]]:
+    """Names held by more than one lookup code. C14 names are not used."""
+    codes_for_name: dict[str, set[str]] = defaultdict(set)
+    name_for_code: dict[str, str] = {}
+    for row in lookup_rows:
+        code = str(row["code"])
+        name = str(row.get("name") or "").strip()
+        name_for_code[code] = name
+        if name:
+            codes_for_name[name].add(code)
+    collision_names = {name for name, codes in codes_for_name.items() if len(codes) > 1}
+    pairs = {name: set(codes_for_name[name]) for name in collision_names}
+    collision_codes = {code for codes in pairs.values() for code in codes}
+    return collision_codes, pairs, name_for_code
 
 
 def _load_crosswalk(path: Path) -> list[dict]:
@@ -440,23 +480,19 @@ def _prepare_rows(raw_rows: Sequence[Mapping[str, str]]) -> tuple[list[dict], di
     return prepared, {"scotland_row_volume": scotland_volume}
 
 
-def _dz2022_status(year_rows: Sequence[Mapping], lookup: Sequence[str]) -> tuple[dict[str, dict], dict]:
+def _dz2022_status(
+    year_rows: Sequence[Mapping],
+    lookup_rows: Sequence[Mapping[str, str]],
+) -> tuple[dict[str, dict], dict]:
     by_code: dict[str, list[Mapping]] = defaultdict(list)
-    names_for_code: dict[str, set[str]] = defaultdict(set)
     for row in year_rows:
         by_code[str(row["code"])].append(row)
-        if row["name"]:
-            names_for_code[str(row["code"])].add(str(row["name"]))
-    codes_for_name: dict[str, set[str]] = defaultdict(set)
-    for code, names in names_for_code.items():
-        for name in names:
-            codes_for_name[name].add(code)
-    collision_names = {name for name, codes in codes_for_name.items() if len(codes) > 1}
-    collision_codes = {code for name in collision_names for code in codes_for_name[name]}
+    collision_codes, pairs, name_for_code = _collision_sets(lookup_rows)
+    lookup_codes = [str(row["code"]) for row in lookup_rows]
 
     present = set(by_code)
     zones: dict[str, dict] = {}
-    for code in lookup:
+    for code in lookup_codes:
         if code in collision_codes:
             status = "ros_name_collision"
             suppressed = False
@@ -477,7 +513,7 @@ def _dz2022_status(year_rows: Sequence[Mapping], lookup: Sequence[str]) -> tuple
                 suppressed = False
         volume_sum = 0
         for row in by_code.get(code, []):
-            if row["volume"] is not None and not row["suppressed"]:
+            if row["volume"] is not None and not row["suppressed"] and status == "ok":
                 volume_sum += int(row["volume"])
         zones[code] = {
             "code": code,
@@ -485,32 +521,109 @@ def _dz2022_status(year_rows: Sequence[Mapping], lookup: Sequence[str]) -> tuple
             "volume_below_5": volume_below_5 and status == "suppressed",
             "suppressed": suppressed,
             "count": volume_sum if status == "ok" else 0,
-            "names": sorted(names_for_code.get(code, set())),
+            "names": [name_for_code[code]] if name_for_code.get(code) else [],
+            "c14_rows": len(by_code.get(code, [])),
         }
 
-    pair_rows = []
-    seen = set()
+    # One sum per lookup pair. The key omits the code, so a cartesian join is not doubled.
+    seen: set[tuple] = set()
+    pair_volume: dict[str, int] = {name: 0 for name in pairs}
     raw_sum = 0
     for row in year_rows:
         if row["volume"] is not None:
             raw_sum += int(row["volume"])
-        if row["code"] not in collision_codes:
+        code = str(row["code"])
+        if code not in collision_codes:
             continue
-        key = (row["year"], row["name"], row["code"], row["volume_text"])
+        pair_name = name_for_code[code]
+        key = (row["year"], pair_name, row["volume_text"])
         if key in seen:
             continue
         seen.add(key)
-        pair_rows.append(row)
-    pair_sum = sum(int(row["volume"]) for row in pair_rows if row["volume"] is not None)
-    extra_codes = sorted(set(by_code) - set(lookup))
+        if row["volume"] is not None:
+            pair_volume[pair_name] += int(row["volume"])
+    pair_sum = sum(pair_volume.values())
+    extra_codes = sorted(set(by_code) - set(lookup_codes))
     national = {
         "raw_dz_sum": raw_sum,
         "pair_dedup_sum": pair_sum,
-        "collision_names": len(collision_names),
+        "pair_volume": pair_volume,
+        "collision_names": len(pairs),
         "collision_codes": len(collision_codes),
+        "collision_pairs": {name: sorted(codes) for name, codes in pairs.items()},
+        "rows_by_code": {code: len(rows) for code, rows in by_code.items()},
         "extra_codes": extra_codes,
     }
     return zones, national
+
+
+def real_census_errors(observed: Mapping, *, lookup_count: int) -> list[str]:
+    """Compare a full DZ2022 run with the fixed census. Smaller lookups skip."""
+    if lookup_count != EXPECTED_LOOKUP_CODES:
+        return []
+    expected = {
+        "collision_names": REAL_COLLISION_NAMES,
+        "collision_codes": REAL_COLLISION_CODES,
+        "double_row_codes": REAL_DOUBLE_ROW_CODES,
+        "double_row_names": REAL_DOUBLE_ROW_NAMES,
+        "absent_from_c14": REAL_ABSENT_FROM_C14,
+        "excluded_dz2011": REAL_EXCLUDED_DZ2011,
+        "excluded_in_scored_set": REAL_EXCLUDED_IN_SCORED_SET,
+        "scored_set": REAL_SCORED_SET,
+    }
+    errors = [
+        f"{key} {observed.get(key)} != {value}"
+        for key, value in expected.items()
+        if observed.get(key) != value
+    ]
+    muirhouse_codes = set(observed.get("muirhouse_04_codes") or [])
+    if muirhouse_codes != set(MUIRHOUSE_04_CODES):
+        errors.append("Muirhouse - 04 codes are not S01014990 and S01018619")
+    if observed.get("muirhouse_04_name") != MUIRHOUSE_04_NAME:
+        errors.append("Muirhouse - 04 name does not match the lookup")
+    if observed.get("muirhouse_04_rows") != 1:
+        errors.append("Muirhouse - 04 does not have one row attached to both codes")
+    return errors
+
+
+def _observed_census(
+    *,
+    zones_2022: Mapping[str, Mapping],
+    national_counts: Mapping,
+    dz2011: Sequence[Mapping],
+    scored_set: set[str],
+) -> dict:
+    pairs = national_counts["collision_pairs"]
+    rows_by_code = national_counts["rows_by_code"]
+    double_codes = [
+        code
+        for name, codes in pairs.items()
+        for code in codes
+        if rows_by_code.get(code, 0) == 2
+    ]
+    double_names = {
+        name
+        for name, codes in pairs.items()
+        if codes and all(rows_by_code.get(code, 0) == 2 for code in codes)
+    }
+    muirhouse_codes = pairs.get(MUIRHOUSE_04_NAME, set())
+    muirhouse_rows = {rows_by_code.get(code, 0) for code in MUIRHOUSE_04_CODES}
+    incomplete = [zone for zone in dz2011 if zone["incomplete_suppressed"]]
+    return {
+        "collision_names": national_counts["collision_names"],
+        "collision_codes": national_counts["collision_codes"],
+        "double_row_codes": len(double_codes),
+        "double_row_names": len(double_names),
+        "muirhouse_04_codes": set(muirhouse_codes),
+        "muirhouse_04_name": MUIRHOUSE_04_NAME if muirhouse_codes else "",
+        "muirhouse_04_rows": next(iter(muirhouse_rows)) if len(muirhouse_rows) == 1 else None,
+        "absent_from_c14": sum(
+            1 for zone in zones_2022.values() if zone["status"] == "absent_from_c14"
+        ),
+        "excluded_dz2011": len(incomplete),
+        "excluded_in_scored_set": sum(1 for zone in incomplete if zone["in_scored_set"]),
+        "scored_set": len(scored_set),
+    }
 
 
 def _dz2011_rows(
@@ -682,7 +795,8 @@ def build_inputs(
     columns = requested_columns(scored_run)
     raw = read_c14(c14_path, scored_run=scored_run)
     prepared, scotland = _prepare_rows(raw)
-    lookup_codes = _load_lookup(lookup_path)
+    lookup_rows = _load_lookup(lookup_path)
+    lookup_codes = [row["code"] for row in lookup_rows]
     lookup_set = set(lookup_codes)
     vintage = _vintage_counts(prepared, lookup_set)
     _assert_vintage(vintage)
@@ -694,7 +808,7 @@ def build_inputs(
         lookup_codes=lookup_codes,
     )
     year_rows = [row for row in prepared if row["year"] == SCORING_YEAR]
-    zones_2022, national_counts = _dz2022_status(year_rows, lookup_codes)
+    zones_2022, national_counts = _dz2022_status(year_rows, lookup_rows)
     national = {
         "scotland_row_volume": scotland["scotland_row_volume"],
         "raw_dz_sum": national_counts["raw_dz_sum"],
@@ -730,7 +844,18 @@ def build_inputs(
     for zone in excluded:
         if zone["ur6"] in range(1, 7):
             excluded_by_ur[str(int(zone["ur6"]))] += 1
-    present_2024 = {row["code"] for row in year_rows}
+    observed = _observed_census(
+        zones_2022=zones_2022,
+        national_counts=national_counts,
+        dz2011=dz2011,
+        scored_set=scored_set,
+    )
+    census_errors = real_census_errors(observed, lookup_count=len(lookup_rows))
+    if census_errors:
+        raise InputBuildError("real-data collision census failed: " + "; ".join(census_errors))
+    absent_codes = [
+        code for code, zone in zones_2022.items() if zone["status"] == "absent_from_c14"
+    ]
     result = {
         "weights": "all_uprn",
         "scoring_year": SCORING_YEAR,
@@ -755,8 +880,14 @@ def build_inputs(
             "frozen_plan_sha256_prefix_expected": pins["frozen_plan_sha256_prefix_expected"],
         },
         "vintage_counts": vintage,
-        "lookup_codes_absent_from_c14": sum(1 for code in lookup_codes if code not in present_2024),
-        "national": national,
+        "lookup_codes_absent_from_c14": len(absent_codes),
+        "incomplete_suppressed_dz2011": observed["excluded_dz2011"],
+        "national": {
+            "scotland_row_volume": national["scotland_row_volume"],
+            "raw_dz_sum": national["raw_dz_sum"],
+            "pair_dedup_sum": national["pair_dedup_sum"],
+            "pair_volume": national_counts["pair_volume"],
+        },
         "dz2022_counts": dz2022_counts,
         "dz2022": [zones_2022[code] for code in sorted(zones_2022)],
         "dz2011_counts": _counts_by_status(dz2011),

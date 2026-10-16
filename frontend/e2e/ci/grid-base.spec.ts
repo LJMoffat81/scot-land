@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { ensureLayersGroupOpen } from "./_mapCardsHelpers";
 
 /**
  * GRID-BASE-1 — G1–G9, G13, G15–G19 (CI).
@@ -203,6 +204,8 @@ test.describe("GRID-BASE-1", () => {
 
     await page.getByTestId("hud-layers-btn").click();
     await expect(page.getByTestId("layers-panel")).toBeVisible();
+    // MAP-CARDS accordion: Land starts closed when no land layer is on.
+    await ensureLayersGroupOpen(page, "land");
 
     const toggle = page.getByTestId("layer-toggle-grid3");
     await expect(toggle).toBeVisible();
@@ -256,6 +259,7 @@ test.describe("GRID-BASE-1", () => {
 
     await expect(page.getByTestId("hud-layers-btn")).toBeVisible();
     await page.getByTestId("hud-layers-btn").click();
+    await ensureLayersGroupOpen(page, "land");
     const toggle = page.getByTestId("layer-toggle-grid3");
     await expect(toggle).toBeVisible();
     if ((await toggle.getAttribute("aria-checked")) !== "true") {
@@ -318,6 +322,7 @@ test.describe("GRID-BASE-1", () => {
     const brand = ["what", "3", "words"].join("");
     expect(body).not.toContain(brand);
     await page.getByTestId("hud-layers-btn").click();
+    await ensureLayersGroupOpen(page, "land");
     await expect(page.getByTestId("layer-licence-grid3")).toHaveCount(0);
 
     const axe = await new AxeBuilder({ page })
@@ -369,6 +374,7 @@ test.describe("GRID-BASE-1", () => {
     await page.goto("/?layers=grid3");
     await waitMap(page);
     await page.getByTestId("hud-layers-btn").click();
+    await ensureLayersGroupOpen(page, "land");
     const toggle = page.getByTestId("layer-toggle-grid3");
     if ((await toggle.getAttribute("aria-checked")) !== "true") {
       await toggle.click();

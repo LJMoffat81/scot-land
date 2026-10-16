@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route, type CDPSession } from "@playwright/test";
+import { ensureLayersGroupOpen } from "./_mapCardsHelpers";
 
 /**
  * GRID-BASE-1 — G10–G12 performance budget (Moto G4, 4× CPU throttle).
@@ -75,6 +76,7 @@ test.describe("GRID-BASE-1 perf", () => {
     await page.goto("/?layers=grid3");
     await waitMap(page);
     await page.getByTestId("hud-layers-btn").click();
+    await ensureLayersGroupOpen(page, "land");
     const toggle = page.getByTestId("layer-toggle-grid3");
     if ((await toggle.getAttribute("aria-checked")) !== "true") {
       await toggle.click();
@@ -186,6 +188,7 @@ test.describe("GRID-BASE-1 perf", () => {
 
     // Toggle on + zoom to force lazy import
     await page.getByTestId("hud-layers-btn").click();
+    await ensureLayersGroupOpen(page, "land");
     await page.getByTestId("layer-toggle-grid3").click();
 
     await page.evaluate(() => {

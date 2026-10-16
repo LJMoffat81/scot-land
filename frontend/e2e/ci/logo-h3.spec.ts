@@ -1,5 +1,9 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * LOGO-H3 — header, map mark, and preload use /logo-mark-h3.png.

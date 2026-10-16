@@ -1,5 +1,9 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
 import { stubLayersAddQuiet } from "./_layersAddStub";
+
+registerOpenFreeMapFontStub();
+
 
 const OUT_OF_SCOTLAND_LINE =
   "We only cover land so far. Scotland's sea rents (offshore wind, oil and gas, fish farms and seabed) will come later as their own map layer.";

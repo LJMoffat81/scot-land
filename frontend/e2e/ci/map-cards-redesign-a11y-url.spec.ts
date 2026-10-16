@@ -1,3 +1,4 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import {
@@ -8,6 +9,9 @@ import {
   openPlaceViaCoords,
   stubMapCardsBackend,
 } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * MAP-CARDS checks 13–15, 17, 25 — axe, keyboard, URL state.

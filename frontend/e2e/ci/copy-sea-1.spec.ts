@@ -1,5 +1,9 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
 import { openMap, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * COPY-SEA-1 — a map click at sea shows the signed-off line and both controls.

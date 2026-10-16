@@ -1,4 +1,8 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * HOME-TUNNEL: static assets must advertise a long Cache-Control lifetime.

@@ -1,3 +1,4 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test } from "@playwright/test";
 import {
   assertConsoleClean,
@@ -13,6 +14,9 @@ import {
   stubMapCardsBackend,
   visibleMapText,
 } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * MAP-CARDS checks 8–10, 12, 20–22, 36 — say-it-once, wording, no-match,

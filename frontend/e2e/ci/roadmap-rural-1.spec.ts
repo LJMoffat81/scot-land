@@ -1,6 +1,10 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
 
 import { BANNED_VISIBLE } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * ROADMAP-RURAL-1 — one "Rural and farmland values" row, status Later.

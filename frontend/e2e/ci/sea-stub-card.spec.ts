@@ -1,5 +1,9 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { stubLayersAddQuiet } from "./_layersAddStub";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * SW-028 + suggestion 25 — sea stub card:

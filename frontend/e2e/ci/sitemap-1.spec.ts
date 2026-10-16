@@ -1,4 +1,8 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * SITEMAP-1 — static sitemap of public content pages, and robots.txt pointing at it.

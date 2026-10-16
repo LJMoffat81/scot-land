@@ -1,3 +1,4 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
 import {
   assertConsoleClean,
@@ -8,6 +9,9 @@ import {
   openMap,
   stubMapCardsBackend,
 } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * LAYERS-NAV-1 — two headers, three LAND sub-groups, roadmap rent rows.

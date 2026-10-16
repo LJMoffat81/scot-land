@@ -2,7 +2,7 @@
  * Shared stubs and probes for MAP-CARDS-REDESIGN e2e under e2e/ci/.
  * Not a Playwright spec — imported by *.spec.ts only.
  */
-import { expect, type Page } from "@playwright/test";
+import { expect, test, type Page, type Route } from "@playwright/test";
 
 export const HEALTH_OK = {
   status: "ok",
@@ -13,6 +13,40 @@ export const HEALTH_OK = {
 };
 
 export const EMPTY_FC = { type: "FeatureCollection", features: [] };
+
+/**
+ * Glyphs protobuf with one font stack and no glyphs.
+ * MapLibre accepts it and draws nothing for that range.
+ */
+export const EMPTY_GLYPH_PBF = Buffer.from(
+  "ChoKEU9wZW4gU2FucyBSZWd1bGFyEgUwLTI1NQ==",
+  "base64",
+);
+
+export async function fulfillEmptyGlyph(route: Route) {
+  await route.fulfill({
+    status: 200,
+    contentType: "application/x-protobuf",
+    body: EMPTY_GLYPH_PBF,
+  });
+}
+
+/** Answer glyph ranges here so CI never fetches tiles.openfreemap.org fonts. */
+export async function stubOpenFreeMapFonts(page: Page) {
+  await page.route("**/tiles.openfreemap.org/fonts/**", async (route) => {
+    await fulfillEmptyGlyph(route);
+  });
+}
+
+/**
+ * File-level hook. Call at the top of each CI spec so the route is registered
+ * on that file. A shared module body would attach only to the first importer.
+ */
+export function registerOpenFreeMapFontStub() {
+  test.beforeEach(async ({ page }) => {
+    await stubOpenFreeMapFonts(page);
+  });
+}
 
 export const LIVE_LAYER_IDS = [
   "1",
@@ -285,6 +319,9 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       body: JSON.stringify({ layers: [] }),
     });
   });
+  // Same idea as the raster tile stub: answer glyph ranges here so CI never
+  // fetches tiles.openfreemap.org fonts. The live map still requests that host.
+  await stubOpenFreeMapFonts(page);
   await page.route("**/health**", async (route) => {
     // Fulfill all health probes (including /backend/health). Continuing to the
     // Next rewrite yields 503 and noisy console errors in CI without an API.

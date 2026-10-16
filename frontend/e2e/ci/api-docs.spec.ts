@@ -1,4 +1,8 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 test.describe("API reference (charter C1)", () => {
   test.use({ viewport: { width: 1100, height: 800 } });

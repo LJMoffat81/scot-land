@@ -2113,8 +2113,8 @@ export default function ScotlandMap() {
       "bottom-right",
     );
     map.getCanvas().style.cursor = "pointer";
-    // Listen so MapLibre does not console.error(Error) for basemap CDN blips.
-    // Other map errors are logged as a message string, not a bare Error object.
+    // Listen so MapLibre does not console.error the Error object itself.
+    // Log every map error as a message string. AbortError is the only skip.
     map.on("error", (event) => {
       const line = mapErrorLogLine(
         (event as { error?: unknown }).error,

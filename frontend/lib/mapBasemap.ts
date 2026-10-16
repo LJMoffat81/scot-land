@@ -36,25 +36,31 @@ export function basemapStyleUrl(id: MapBasemapId): string {
 }
 
 /**
- * Basemap CDN misses and aborted tile loads.
- * MapLibre console.errors an Error object only when nothing listens for
- * "error". Playwright then records the text "Error" (vdl-dz-2 on CI).
+ * MapLibre's own abort is `new Error("AbortError")`.
+ * A cancelled fetch is a DOMException named AbortError.
  */
-const MAP_ERROR_NOISE =
-  /sprite|glyph|openfreemap|AJAXError|AbortError|Failed to fetch|net::ERR_|aborted/i;
+function isAbortError(err: unknown): boolean {
+  if (err instanceof Error) {
+    return err.name === "AbortError" || err.message === "AbortError";
+  }
+  return String(err ?? "").trim() === "AbortError";
+}
 
-/** Text worth logging for a MapLibre error. Null means keep the console quiet. */
+/**
+ * Text for a MapLibre "error" event.
+ * MapLibre console.errors the Error object only when nothing listens.
+ * AbortError is the only skip. Every other error is logged.
+ */
 export function mapErrorLogLine(err: unknown): string | null {
-  let message: string;
+  if (isAbortError(err)) return null;
   if (err instanceof Error) {
     const url =
       "url" in err && typeof (err as { url?: unknown }).url === "string"
         ? ` ${(err as { url: string }).url}`
         : "";
-    message = `${err.name}: ${err.message}${url}`.trim();
-  } else {
-    message = String(err ?? "").trim();
+    const message = `${err.name}: ${err.message}${url}`.trim();
+    return message || err.name || "Error";
   }
-  if (!message || MAP_ERROR_NOISE.test(message)) return null;
-  return message;
+  const message = String(err ?? "").trim();
+  return message || "Error";
 }

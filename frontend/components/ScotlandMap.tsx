@@ -82,6 +82,14 @@ import {
   readMapUrlState,
   replaceMapUrl,
 } from "../lib/mapUrlState";
+import { grid3Row6Text } from "../lib/bng";
+import {
+  GRID3_HOVER_ZOOM,
+  GRID3_LAYER_ID,
+  GRID3_MIN_ZOOM,
+  GRID3_TAP_ZOOM,
+} from "../lib/grid3Map";
+import type { Grid3Square } from "../lib/grid3Map";
 
 type ParcelFeature = GeoJSON.Feature<
   GeoJSON.Polygon | GeoJSON.MultiPolygon,
@@ -473,6 +481,7 @@ function activeRegistryLayerIds(opts: {
   showRepd: boolean;
   showCrownLeases: boolean;
   showCroftingConstraint: boolean;
+  showGrid3: boolean;
   ledgerEnabled: LedgerToggleState;
   contextOn: Record<string, boolean>;
 }): string[] {
@@ -490,6 +499,7 @@ function activeRegistryLayerIds(opts: {
   if (opts.showCouncils) ids.push("councils");
   if (opts.showDataZones) ids.push("data_zones");
   if (opts.ledgerEnabled.access_services) ids.push("access_services");
+  if (opts.showGrid3) ids.push(GRID3_LAYER_ID);
   return ids;
 }
 
@@ -611,6 +621,22 @@ export default function ScotlandMap() {
   const choropleth: MetricId | "off" = "off";
   /** Council boundary lines — registry defaultOn. */
   const [showCouncils, setShowCouncils] = useState(true);
+  /** GRID-BASE-1 — open 3 m BNG grid (default off; boot from ?layers=grid3). */
+  const [showGrid3, setShowGrid3] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const layers = new URLSearchParams(window.location.search).get("layers");
+    if (!layers) return false;
+    return layers
+      .split(",")
+      .map((s) => s.trim())
+      .includes(GRID3_LAYER_ID);
+  });
+  const [grid3Square, setGrid3Square] = useState<Grid3Square | null>(null);
+  const [grid3Tooltip, setGrid3Tooltip] = useState<{
+    x: number;
+    y: number;
+    ref: string;
+  } | null>(null);
   const [showVdl, setShowVdl] = useState(false);
   const [showHla, setShowHla] = useState(false);
   // SG 2024 public/Crown dashboard: licence unverified/not open — never paint
@@ -645,6 +671,13 @@ export default function ScotlandMap() {
   const dzHoverPopupRef = useRef<maplibregl.Popup | null>(null);
   const identifyAbortRef = useRef<AbortController | null>(null);
   const identifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showGrid3Ref = useRef(false);
+  showGrid3Ref.current = showGrid3;
+  const grid3SquareRef = useRef<Grid3Square | null>(null);
+  grid3SquareRef.current = grid3Square;
+  const grid3AfterIdentifyRef = useRef<
+    ((lng: number, lat: number) => void) | null
+  >(null);
 
   const onMapLayersChange = (next: LedgerToggleState) => {
     // SHARE-FIX — refuse on for Coming soon tile layers.
@@ -662,6 +695,7 @@ export default function ScotlandMap() {
       data_zones: showDataZones,
       vdl: showVdl,
       hla: showHla,
+      [GRID3_LAYER_ID]: showGrid3,
     };
     const nextEnabled: Record<string, boolean> = {
       ...sanitized,
@@ -675,6 +709,10 @@ export default function ScotlandMap() {
           : showDataZones,
       vdl: "vdl" in sanitized ? Boolean(sanitized.vdl) : showVdl,
       hla: "hla" in sanitized ? Boolean(sanitized.hla) : showHla,
+      [GRID3_LAYER_ID]:
+        GRID3_LAYER_ID in sanitized
+          ? Boolean(sanitized[GRID3_LAYER_ID])
+          : showGrid3,
     };
     const activated = newlyEnabledLegendLayer(prevEnabled, nextEnabled);
     if (activated) {
@@ -693,6 +731,9 @@ export default function ScotlandMap() {
       setShowDataZones(Boolean(sanitized.data_zones));
     }
     if ("vdl" in sanitized) setShowVdl(Boolean(sanitized.vdl));
+    if (GRID3_LAYER_ID in sanitized) {
+      setShowGrid3(Boolean(sanitized[GRID3_LAYER_ID]));
+    }
     if ("hla" in sanitized) {
       const turnOn =
         Boolean(sanitized.hla) && !tileUnavailableIds.has("hla");
@@ -857,6 +898,7 @@ export default function ScotlandMap() {
     data_zones: showDataZones,
     vdl: showVdl,
     hla: showHla,
+    [GRID3_LAYER_ID]: showGrid3,
   };
   const activeLayerIds = activeRegistryLayerIds({
     showCouncils,
@@ -867,6 +909,7 @@ export default function ScotlandMap() {
     showRepd,
     showCrownLeases,
     showCroftingConstraint,
+    showGrid3,
     ledgerEnabled,
     contextOn,
   });
@@ -903,13 +946,15 @@ export default function ScotlandMap() {
       setShowDataZones(ids.includes("data_zones"));
       setShowVdl(ids.includes("vdl"));
       setShowHla(ids.includes("hla"));
+      setShowGrid3(ids.includes(GRID3_LAYER_ID));
       const ledger: LedgerToggleState = {};
       for (const id of ids) {
         if (
           id === "councils" ||
           id === "data_zones" ||
           id === "vdl" ||
-          id === "hla"
+          id === "hla" ||
+          id === GRID3_LAYER_ID
         ) {
           continue;
         }
@@ -1145,6 +1190,7 @@ export default function ScotlandMap() {
     setAddressLine(null);
     setPlaceStub(null);
     setPlaceLoading(false);
+    setGrid3Square(null);
     setSearchNoMatch(false);
     setPanelKind((k) => (k === "place" ? "closed" : k));
     setPanelCollapsed(false);
@@ -1481,6 +1527,16 @@ export default function ScotlandMap() {
         else openLayersPanel();
         return;
       }
+      if (event.key === "Enter" && !typing) {
+        const map = mapRef.current;
+        if (!map || !showGrid3Ref.current) return;
+        if (map.getZoom() < GRID3_TAP_ZOOM) return;
+        const c = map.getCenter();
+        event.preventDefault();
+        void inspectRef.current(c.lat, c.lng, { fly: false });
+        grid3AfterIdentifyRef.current?.(c.lng, c.lat);
+        return;
+      }
       if (event.key !== "Escape") return;
       if (shortcutsOpen) {
         setShortcutsOpen(false);
@@ -1505,6 +1561,20 @@ export default function ScotlandMap() {
     closeLayersPanel,
     shortcutsOpen,
   ]);
+
+  useEffect(() => {
+    if (showGrid3) return;
+    setGrid3Square(null);
+    setGrid3Tooltip(null);
+    const map = mapRef.current;
+    if (!map) return;
+    void import("../lib/grid3Map").then((gm) => {
+      const src = map.getSource(gm.GRID3_SOURCE_HIGHLIGHT) as
+        | GeoJSONSource
+        | undefined;
+      src?.setData(gm.EMPTY_FC);
+    });
+  }, [showGrid3]);
 
   useEffect(() => {
     const onPop = () => {
@@ -1992,6 +2062,10 @@ export default function ScotlandMap() {
       }
       if (userMoved) return;
       if (container.clientWidth < 40 || container.clientHeight < 40) return;
+      // Panel open/close resizes the map and must still frame the national
+      // view. Once the camera has left that view (GRID-BASE jumpTo ≥ z17),
+      // do not fitBounds again — that yank cleared grid rebuilds (G19).
+      if (map.getZoom() > 8) return;
       const narrow = window.innerWidth <= 900;
       map.fitBounds(
         [
@@ -2524,6 +2598,16 @@ export default function ScotlandMap() {
       // are not registered on the public map.
       removePlotLevelMapBits(map);
 
+      void import("../lib/grid3Runtime").then(({ ensureGrid3Layers }) => {
+        if (mapRef.current !== map) return;
+        try {
+          if (!map.getStyle()?.layers) return;
+        } catch {
+          return;
+        }
+        ensureGrid3Layers(map);
+      });
+
       setMapReady(true);
     });
 
@@ -2617,6 +2701,7 @@ export default function ScotlandMap() {
           dwellings: asNum(dzProps.dwellings),
           dwYear: asNum(dzProps.dw_year),
         });
+        grid3AfterIdentifyRef.current?.(lng, lat);
         return;
       }
 
@@ -2725,6 +2810,7 @@ export default function ScotlandMap() {
       }
 
       await inspectRef.current(lat, lng, { fly: false });
+      grid3AfterIdentifyRef.current?.(lng, lat);
     };
 
 
@@ -2733,6 +2819,10 @@ export default function ScotlandMap() {
     (
       window as unknown as { __map?: maplibregl.Map | null }
     ).__map = map;
+    if (typeof window !== "undefined") {
+      (window as unknown as { __SCOT_LAND_MAP__?: Map }).__SCOT_LAND_MAP__ =
+        map;
+    }
     return () => {
       resizeObserver.disconnect();
       markerRef.current?.remove();
@@ -2746,6 +2836,10 @@ export default function ScotlandMap() {
       (
         window as unknown as { __map?: maplibregl.Map | null }
       ).__map = null;
+      if (typeof window !== "undefined") {
+        delete (window as unknown as { __SCOT_LAND_MAP__?: Map })
+          .__SCOT_LAND_MAP__;
+      }
       setMapReady(false);
       // Allow deep-link boot on the next map instance (Strict Mode / style remount).
       urlBootDoneRef.current = false;
@@ -2910,6 +3004,277 @@ export default function ScotlandMap() {
     );
   }, [mapReady, choropleth, showCouncils, showAgr, mapZoom]);
 
+  // GRID-BASE-1 — device-drawn lines on moveend; lazy-load proj4 chunk (G9).
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    let cancelled = false;
+    let gen = 0;
+    let retryQueued = false;
+    let gridMod: typeof import("../lib/grid3Map") | null = null;
+    let runtime: typeof import("../lib/grid3Runtime") | null = null;
+
+    const styleLive = () => {
+      try {
+        return Boolean(map.getStyle()?.layers);
+      } catch {
+        return false;
+      }
+    };
+
+    const queueRetry = () => {
+      if (cancelled || retryQueued) return;
+      retryQueued = true;
+      const kick = () => {
+        retryQueued = false;
+        if (!cancelled) void rebuild();
+      };
+      map.once("idle", kick);
+      map.once("styledata", kick);
+    };
+
+    const clearLines = () => {
+      if (!styleLive()) return;
+      const src = map.getSource("grid3-lines") as GeoJSONSource | undefined;
+      src?.setData({ type: "FeatureCollection", features: [] });
+      if (map.getLayer("grid3-lines-layer")) {
+        map.setLayoutProperty("grid3-lines-layer", "visibility", "none");
+      }
+    };
+
+    const rebuild = async () => {
+      if (cancelled || !mapRef.current) return;
+      // Basemap / panel resize can fire moveend before the style exists.
+      // Dropping that event left G10 stuck with no lines after jumpTo.
+      if (!styleLive()) {
+        queueRetry();
+        return;
+      }
+      const myGen = ++gen;
+      if (!showGrid3Ref.current) {
+        clearLines();
+        return;
+      }
+      if (!gridMod || !runtime) {
+        const [gm, rt] = await Promise.all([
+          import("../lib/grid3Map"),
+          import("../lib/grid3Runtime"),
+        ]);
+        if (cancelled || myGen !== gen) return;
+        gridMod = gm;
+        runtime = rt;
+        if (typeof window !== "undefined") {
+          (
+            window as unknown as {
+              __SCOT_LAND_GRID3__?: {
+                buildGrid3Lines: typeof gm.buildGrid3Lines;
+                squareAtWgs: typeof gm.squareAtWgs;
+                buildGrid3Highlight: typeof gm.buildGrid3Highlight;
+              };
+            }
+          ).__SCOT_LAND_GRID3__ = {
+            buildGrid3Lines: gm.buildGrid3Lines,
+            squareAtWgs: gm.squareAtWgs,
+            buildGrid3Highlight: gm.buildGrid3Highlight,
+          };
+        }
+      }
+      if (cancelled || myGen !== gen) return;
+      if (!styleLive()) {
+        queueRetry();
+        return;
+      }
+      // Re-read zoom after await so a stale low-zoom rebuild cannot wipe z17+.
+      const z = map.getZoom();
+      if (z < GRID3_MIN_ZOOM) {
+        clearLines();
+        return;
+      }
+      runtime.ensureGrid3Layers(map);
+      runtime.setGrid3LinePaint(map, false);
+      const b = map.getBounds();
+      if (!b) return;
+      const corners = [
+        { lng: b.getWest(), lat: b.getSouth() },
+        { lng: b.getEast(), lat: b.getSouth() },
+        { lng: b.getEast(), lat: b.getNorth() },
+        { lng: b.getWest(), lat: b.getNorth() },
+      ];
+      const { collection } = gridMod.buildGrid3Lines(corners);
+      if (cancelled || myGen !== gen) return;
+      const src = map.getSource(gridMod.GRID3_SOURCE_LINES) as
+        | GeoJSONSource
+        | undefined;
+      src?.setData(collection);
+      if (map.getLayer(gridMod.GRID3_LAYER_LINES)) {
+        map.setLayoutProperty(
+          gridMod.GRID3_LAYER_LINES,
+          "visibility",
+          "visible",
+        );
+      }
+    };
+
+    void rebuild();
+    const onMove = () => {
+      void rebuild();
+    };
+    map.on("moveend", onMove);
+    map.on("zoomend", onMove);
+    return () => {
+      cancelled = true;
+      map.off("moveend", onMove);
+      map.off("zoomend", onMove);
+      clearLines();
+    };
+  }, [mapReady, showGrid3, mapStyle]);
+
+  // GRID-BASE-1 — desktop hover ≥z18; rAF throttle (G4 / G11).
+  useEffect(() => {
+    if (!mapReady || !showGrid3) return;
+    const map = mapRef.current;
+    if (!map) return;
+
+    let raf = 0;
+    let pending: { lng: number; lat: number; x: number; y: number } | null =
+      null;
+    let mod: typeof import("../lib/grid3Map") | null = null;
+    let runtime: typeof import("../lib/grid3Runtime") | null = null;
+
+    const apply = async () => {
+      raf = 0;
+      const p = pending;
+      pending = null;
+      if (!p || !showGrid3Ref.current) return;
+      const z = map.getZoom();
+      if (z < GRID3_HOVER_ZOOM) {
+        setGrid3Tooltip(null);
+        return;
+      }
+      if (
+        typeof window !== "undefined" &&
+        window.matchMedia("(pointer: coarse)").matches
+      ) {
+        return;
+      }
+      if (!mod || !runtime) {
+        const [gm, rt] = await Promise.all([
+          import("../lib/grid3Map"),
+          import("../lib/grid3Runtime"),
+        ]);
+        mod = gm;
+        runtime = rt;
+      }
+      runtime.ensureGrid3Layers(map);
+      const square = mod.squareAtWgs(p.lng, p.lat);
+      const src = map.getSource(mod.GRID3_SOURCE_HIGHLIGHT) as
+        | GeoJSONSource
+        | undefined;
+      if (!square) {
+        src?.setData(mod.EMPTY_FC);
+        setGrid3Tooltip(null);
+        if (!grid3SquareRef.current) {
+          runtime.setGrid3Visibility(map, z >= GRID3_MIN_ZOOM, false);
+        }
+        return;
+      }
+      src?.setData(mod.buildGrid3Highlight(square.easting, square.northing));
+      for (const id of [
+        mod.GRID3_LAYER_HIGHLIGHT_FILL,
+        mod.GRID3_LAYER_HIGHLIGHT_HALO,
+        mod.GRID3_LAYER_HIGHLIGHT_LINE,
+      ]) {
+        if (map.getLayer(id)) {
+          map.setLayoutProperty(id, "visibility", "visible");
+        }
+      }
+      setGrid3Tooltip({ x: p.x, y: p.y, ref: square.ref });
+    };
+
+    const onMove = (event: maplibregl.MapMouseEvent) => {
+      pending = {
+        lng: event.lngLat.lng,
+        lat: event.lngLat.lat,
+        x: event.point.x,
+        y: event.point.y,
+      };
+      if (!raf) {
+        raf = requestAnimationFrame(() => {
+          void apply();
+        });
+      }
+    };
+    const onLeave = () => {
+      pending = null;
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      setGrid3Tooltip(null);
+      if (!grid3SquareRef.current) {
+        void import("../lib/grid3Map").then((gm) => {
+          const src = map.getSource(gm.GRID3_SOURCE_HIGHLIGHT) as
+            | GeoJSONSource
+            | undefined;
+          src?.setData(gm.EMPTY_FC);
+        });
+      }
+    };
+
+    map.on("mousemove", onMove);
+    map.on("mouseout", onLeave);
+    return () => {
+      map.off("mousemove", onMove);
+      map.off("mouseout", onLeave);
+      if (raf) cancelAnimationFrame(raf);
+      setGrid3Tooltip(null);
+    };
+  }, [mapReady, showGrid3]);
+
+  // GRID-BASE-1 — tap/click ≥z19 selects square into row 6 (G5 / G15).
+  useEffect(() => {
+    grid3AfterIdentifyRef.current = (lng: number, lat: number) => {
+      if (!showGrid3Ref.current) return;
+      const map = mapRef.current;
+      if (!map) return;
+      const z = map.getZoom();
+      if (z < GRID3_TAP_ZOOM) return;
+      void Promise.all([
+        import("../lib/grid3Map"),
+        import("../lib/grid3Runtime"),
+      ]).then(([gm, rt]) => {
+        if (!mapRef.current) return;
+        rt.ensureGrid3Layers(map);
+        const square = gm.squareAtWgs(lng, lat);
+        if (!square) {
+          setGrid3Square(null);
+          const src = map.getSource(gm.GRID3_SOURCE_HIGHLIGHT) as
+            | GeoJSONSource
+            | undefined;
+          src?.setData(gm.EMPTY_FC);
+          return;
+        }
+        setGrid3Square(square);
+        const src = map.getSource(gm.GRID3_SOURCE_HIGHLIGHT) as
+          | GeoJSONSource
+          | undefined;
+        src?.setData(gm.buildGrid3Highlight(square.easting, square.northing));
+        for (const id of [
+          gm.GRID3_LAYER_HIGHLIGHT_FILL,
+          gm.GRID3_LAYER_HIGHLIGHT_HALO,
+          gm.GRID3_LAYER_HIGHLIGHT_LINE,
+        ]) {
+          if (map.getLayer(id)) {
+            map.setLayoutProperty(id, "visibility", "visible");
+          }
+        }
+      });
+    };
+    return () => {
+      grid3AfterIdentifyRef.current = null;
+    };
+  }, []);
+
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
@@ -2941,6 +3306,7 @@ export default function ScotlandMap() {
     showDataZones,
     showAgr,
     showHla,
+    showGrid3,
     ledgerEnabled,
   ]);
 
@@ -4141,6 +4507,7 @@ export default function ScotlandMap() {
     }
     const c = map.getCenter();
     void inspectRef.current(c.lat, c.lng, { fly: false });
+    grid3AfterIdentifyRef.current?.(c.lng, c.lat);
   };
 
   return (
@@ -4156,6 +4523,18 @@ export default function ScotlandMap() {
           role="application"
           aria-label="Scotland map"
         />
+        {grid3Tooltip ? (
+          <div
+            className="grid3-tooltip"
+            data-testid="grid3-tooltip"
+            style={{
+              left: grid3Tooltip.x + 12,
+              top: grid3Tooltip.y + 12,
+            }}
+          >
+            {grid3Tooltip.ref}
+          </div>
+        ) : null}
       </div>
 
       <button
@@ -4444,6 +4823,7 @@ export default function ScotlandMap() {
               data_zones: showDataZones,
               vdl: showVdl,
               hla: showHla,
+              [GRID3_LAYER_ID]: showGrid3,
             }}
             unavailableIds={unavailableLayerIds}
             onEnabledChange={onMapLayersChange}
@@ -4463,6 +4843,9 @@ export default function ScotlandMap() {
               setLiveMessage("Panel closed");
             }}
             onShowScotland={showScotlandNationalView}
+            gridSquareLine={
+              grid3Square ? grid3Row6Text(grid3Square.ref) : null
+            }
           />
         ) : null}
       </MapPanelSlot>

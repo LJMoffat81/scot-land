@@ -68,6 +68,10 @@ export type MapLayerRegistryEntry = {
    * until ScotlandMap wires a source.
    */
   paintPending?: boolean;
+  /** Accessible row description (e.g. grid3 “Shows when you zoom right in”). */
+  subline?: string;
+  /** Inline legend zoom gate copy when gated (defaults to LAYER_ZOOM_HINT). */
+  zoomHint?: string;
 };
 
 export const MAP_LAYER_GROUP_ORDER: MapLayerGroupKey[] = [
@@ -173,6 +177,19 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     classes: VDL_CLASSES,
     chip: "proxy",
     defaultOn: false,
+  },
+  {
+    id: "grid3",
+    group: "land",
+    label: "3 m grid",
+    minzoom: 17,
+    maxzoom: 20,
+    // Device-drawn overlay — not an OS/SG data product; no Ordnance Survey credit.
+    sourceCaption: "Scot-LAND · device-drawn",
+    classes: [{ label: "3 m grid", color: "#0b2340" }],
+    defaultOn: false,
+    subline: "Shows when you zoom right in",
+    zoomHint: "Zoom in to see the grid",
   },
   {
     id: "hla",
@@ -371,7 +388,7 @@ export function buildInlineLegendFromRegistry(
     chip: entry.chip ?? null,
     nonCommercial: Boolean(entry.nonCommercial),
     zoomGated,
-    zoomHint: LAYER_ZOOM_HINT,
+    zoomHint: entry.zoomHint ?? LAYER_ZOOM_HINT,
     rampScale: hasRampEnds ? "Lower → Higher" : undefined,
   };
 }

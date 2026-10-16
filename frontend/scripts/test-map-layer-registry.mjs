@@ -47,6 +47,7 @@ assert.deepEqual(liveIds, [
   "1",
   "access_services",
   "vdl",
+  "grid3",
   "hla",
   "3",
   "4",

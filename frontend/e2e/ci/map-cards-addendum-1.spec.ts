@@ -106,7 +106,9 @@ for (const viewport of [
       assertConsoleClean(gate);
     });
 
-    test("A3 maxZoom 19", async ({ page }) => {
+    test("A3 maxZoom 20 (GRID-BASE-1 supersedes addendum 19)", async ({
+      page,
+    }) => {
       test.setTimeout(90_000);
       const gate = attachConsoleGate(page);
       await stubMapCardsBackend(page);
@@ -122,8 +124,8 @@ for (const viewport of [
         map.zoomTo(30);
         return { max: map.getMaxZoom(), zoom: map.getZoom() };
       });
-      expect(maxZoom.max).toBeLessThanOrEqual(19);
-      expect(maxZoom.zoom).toBeLessThanOrEqual(19);
+      expect(maxZoom.max).toBe(20);
+      expect(maxZoom.zoom).toBeLessThanOrEqual(20);
       assertConsoleClean(gate);
     });
 

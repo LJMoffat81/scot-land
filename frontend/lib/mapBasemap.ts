@@ -13,8 +13,8 @@ export const MAP_BASEMAP_STYLE_URL: Readonly<Record<MapBasemapId, string>> = {
 /** Default rest basemap. */
 export const DEFAULT_MAP_BASEMAP: MapBasemapId = "light";
 
-/** Explicit map ceiling (addendum A3). */
-export const MAP_MAX_ZOOM = 19;
+/** Explicit map ceiling — GRID-BASE-1 supersedes addendum A3 (was 19). */
+export const MAP_MAX_ZOOM = 20;
 
 /** The style the switcher preview / caption points toward (not the current). */
 export function basemapSwitchTarget(current: MapBasemapId): MapBasemapId {

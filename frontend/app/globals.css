@@ -819,6 +819,49 @@ input {
   gap: 0.4rem;
 }
 
+/* GRID-BASE-1 — Addendum row-6 grid square line */
+.place-card-row6 {
+  margin: 0.2rem 0 0;
+  font-size: 13px;
+  line-height: 1.35;
+  color: #556;
+}
+
+.layer-inline-legend-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.15rem 0 0.35rem;
+  font-size: 0.75rem;
+  color: var(--slrg-muted, #556);
+}
+
+.layer-legend-swatch-line {
+  display: inline-block;
+  width: 1.25rem;
+  height: 2px;
+  border-radius: 1px;
+}
+
+.grid3-tooltip {
+  position: absolute;
+  z-index: 12;
+  pointer-events: none;
+  background: #0b2340;
+  color: #fff;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.layer-zoom-gate {
+  color: var(--slrg-muted, #556);
+}
+
 .place-card-map-reference-copy {
   font: inherit;
   font-size: 0.72rem;

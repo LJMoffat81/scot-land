@@ -18,6 +18,7 @@ export const LIVE_LAYER_IDS = [
   "1",
   "access_services",
   "vdl",
+  "grid3",
   "hla",
   "3",
   "4",

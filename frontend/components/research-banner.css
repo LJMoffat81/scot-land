@@ -36,7 +36,8 @@
     transform: none;
     width: auto;
     max-width: none;
-    z-index: 3;
+    /* Above map canvas so strip expand is tappable (SW-016). */
+    z-index: 8;
   }
 
   /* UX-01: whole strip toggle is the hit target (≥44×44).
@@ -96,7 +97,7 @@
   }
 
   .app-shell.place-open .research-banner-map.research-banner-strip {
-    z-index: 3;
+    z-index: 8;
     max-height: min(28dvh, 11rem);
   }
 

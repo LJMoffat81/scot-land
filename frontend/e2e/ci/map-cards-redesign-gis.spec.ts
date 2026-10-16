@@ -50,7 +50,13 @@ for (const viewport of [
 
       // Close panel → legend strip for an active non-default layer
       await page.getByTestId("layer-toggle-vdl").click();
+      await expect(page.getByTestId("layer-toggle-vdl")).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+      await expect(page.getByTestId("layer-inline-legend-vdl")).toBeVisible();
       await page.getByTestId("map-panel-slot-close").click();
+      await expect(page.getByTestId("map-panel-slot")).toHaveCount(0);
       await expect(page.getByTestId("legend-strip")).toBeVisible();
       await expect(page.getByTestId("legend-strip")).toContainText(
         /Vacant|derelict/i,

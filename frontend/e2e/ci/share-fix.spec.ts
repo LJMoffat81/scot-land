@@ -119,7 +119,20 @@ test.describe("SHARE-FIX place lookup Try again", () => {
         });
         return;
       }
-      if (/\/place\?/i.test(url) || /\/place$/i.test(url)) {
+      // HEALTH-TRIM: AGR capability is probed via /layers/catalog (not /health routers).
+      if (/\/layers\/catalog/i.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ version: 2, layers: [] }),
+        });
+        return;
+      }
+      // Place *search* only — do not 503 /platform/place identify.
+      if (
+        (/\/place\?/i.test(url) || /\/place$/i.test(url)) &&
+        !/platform\/place/i.test(url)
+      ) {
         placeHits += 1;
         await route.fulfill({
           status: 503,
@@ -133,7 +146,11 @@ test.describe("SHARE-FIX place lookup Try again", () => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(/\/layers\//i.test(url) || /\/boundaries\//i.test(url) ? EMPTY_FC : {}),
+        body: JSON.stringify(
+          /\/layers\//i.test(url) || /\/boundaries\//i.test(url)
+            ? EMPTY_FC
+            : {},
+        ),
       });
     });
 

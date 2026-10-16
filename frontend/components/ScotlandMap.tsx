@@ -871,10 +871,21 @@ export default function ScotlandMap() {
     contextOn,
   });
   const attributionPieces = buildMapAttributionPieces(activeLayerIds);
-  const stripLayerId =
-    legendPreferredId && registryEnabled[legendPreferredId]
-      ? legendPreferredId
-      : legendStripLayerId(registryEnabled);
+  // Prefer a non-default visitor layer for the closed-panel strip (MAP-CARDS §3.5).
+  // Fall back to legendPreferredId only when it is itself non-default and on.
+  const stripLayerId = (() => {
+    const fromActive = legendStripLayerId(registryEnabled);
+    if (fromActive) return fromActive;
+    const defaults = new Set(defaultOnLayerIds());
+    if (
+      legendPreferredId &&
+      registryEnabled[legendPreferredId] &&
+      !defaults.has(legendPreferredId)
+    ) {
+      return legendPreferredId;
+    }
+    return null;
+  })();
   const stripLayer = stripLayerId ? getMapLayer(stripLayerId) : undefined;
 
   const [gbpLiveOn, setGbpLiveOn] = useState(false);
@@ -1107,9 +1118,11 @@ export default function ScotlandMap() {
   );
 
   const clearPlace = useCallback(() => {
-    // Invalidate in-flight selectPlace/inspect so a late fetch cannot repaint
-    // the stub after × / Escape dismiss (UX10-2 Show legend intercept at 390).
+    // Invalidate in-flight identify / search so a late place_card_v1 cannot
+    // resurrect the sheet after Esc / × (mobile detent e2e).
     lookupGen.current += 1;
+    identifyAbortRef.current?.abort();
+    identifyAbortRef.current = null;
     setResult(null);
     setError(null);
     setAddressLine(null);

@@ -5,13 +5,14 @@ Revises: 20261015_0022
 Create Date: 2026-10-16
 
 Tables are written here only. v1.4 model code must not import this schema (L14).
+IF NOT EXISTS keeps this revision idempotent when CI/test DBs already have
+objects from a prior partial upgrade or schema SQL.
 """
 
 from __future__ import annotations
 
 from typing import Sequence, Union
 
-import sqlalchemy as sa
 from alembic import op
 
 revision: str = "20261016_0023"
@@ -23,114 +24,134 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.execute("CREATE SCHEMA IF NOT EXISTS candidates_v15")
     # Strict keys: zone_id S01######, dz_vintage 2011|2022. No currency columns.
-    op.create_table(
-        "agg_simd2020_domains",
-        sa.Column("zone_id", sa.Text(), nullable=False),
-        sa.Column("dz_vintage", sa.Integer(), nullable=False),
-        sa.Column("topic", sa.Text(), nullable=False),
-        sa.Column("q", sa.Integer(), nullable=True),
-        sa.PrimaryKeyConstraint("zone_id", "dz_vintage", "topic"),
-        schema="candidates_v15",
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS candidates_v15.agg_simd2020_domains (
+            zone_id TEXT NOT NULL,
+            dz_vintage INTEGER NOT NULL,
+            topic TEXT NOT NULL,
+            q INTEGER,
+            PRIMARY KEY (zone_id, dz_vintage, topic)
+        )
+        """
     )
-    op.create_table(
-        "agg_naptan",
-        sa.Column("zone_id", sa.Text(), nullable=False),
-        sa.Column("dz_vintage", sa.Integer(), nullable=False),
-        sa.Column("n_bus_active", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("n_ferry_active", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column(
-            "n_tram_subway_active", sa.Integer(), nullable=False, server_default="0"
-        ),
-        sa.Column("dist_rail_m", sa.Float(), nullable=True),
-        sa.Column("n_rail_1000m", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("dist_ferry_m", sa.Float(), nullable=True),
-        sa.Column("naptan_extract_date", sa.Text(), nullable=True),
-        sa.PrimaryKeyConstraint("zone_id", "dz_vintage"),
-        schema="candidates_v15",
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS candidates_v15.agg_naptan (
+            zone_id TEXT NOT NULL,
+            dz_vintage INTEGER NOT NULL,
+            n_bus_active INTEGER NOT NULL DEFAULT 0,
+            n_ferry_active INTEGER NOT NULL DEFAULT 0,
+            n_tram_subway_active INTEGER NOT NULL DEFAULT 0,
+            dist_rail_m DOUBLE PRECISION,
+            n_rail_1000m INTEGER NOT NULL DEFAULT 0,
+            dist_ferry_m DOUBLE PRECISION,
+            naptan_extract_date TEXT,
+            PRIMARY KEY (zone_id, dz_vintage)
+        )
+        """
     )
-    op.create_table(
-        "agg_hes_ca",
-        sa.Column("zone_id", sa.Text(), nullable=False),
-        sa.Column("dz_vintage", sa.Integer(), nullable=False),
-        sa.Column("share", sa.Float(), nullable=False, server_default="0"),
-        sa.PrimaryKeyConstraint("zone_id", "dz_vintage"),
-        schema="candidates_v15",
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS candidates_v15.agg_hes_ca (
+            zone_id TEXT NOT NULL,
+            dz_vintage INTEGER NOT NULL,
+            share DOUBLE PRECISION NOT NULL DEFAULT 0,
+            PRIMARY KEY (zone_id, dz_vintage)
+        )
+        """
     )
-    op.create_table(
-        "agg_hes_lb",
-        sa.Column("zone_id", sa.Text(), nullable=False),
-        sa.Column("dz_vintage", sa.Integer(), nullable=False),
-        sa.Column("category", sa.Text(), nullable=False),
-        sa.Column("n_listings", sa.Integer(), nullable=False, server_default="0"),
-        sa.PrimaryKeyConstraint("zone_id", "dz_vintage", "category"),
-        schema="candidates_v15",
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS candidates_v15.agg_hes_lb (
+            zone_id TEXT NOT NULL,
+            dz_vintage INTEGER NOT NULL,
+            category TEXT NOT NULL,
+            n_listings INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (zone_id, dz_vintage, category)
+        )
+        """
     )
-    op.create_table(
-        "agg_sepa_nfra",
-        sa.Column("zone_id", sa.Text(), nullable=False),
-        sa.Column("dz_vintage", sa.Integer(), nullable=False),
-        sa.Column("score_mean_areaw", sa.Float(), nullable=True),
-        sa.Column("score_max", sa.Integer(), nullable=True),
-        sa.Column("n_cells", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("grid_coarser_than_zone", sa.Boolean(), nullable=True),
-        sa.Column("reason", sa.Text(), nullable=True),
-        sa.PrimaryKeyConstraint("zone_id", "dz_vintage"),
-        schema="candidates_v15",
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS candidates_v15.agg_sepa_nfra (
+            zone_id TEXT NOT NULL,
+            dz_vintage INTEGER NOT NULL,
+            score_mean_areaw DOUBLE PRECISION,
+            score_max INTEGER,
+            n_cells INTEGER NOT NULL DEFAULT 0,
+            grid_coarser_than_zone BOOLEAN,
+            reason TEXT,
+            PRIMARY KEY (zone_id, dz_vintage)
+        )
+        """
     )
-    op.create_table(
-        "agg_vdl",
-        sa.Column("zone_id", sa.Text(), nullable=False),
-        sa.Column("dz_vintage", sa.Integer(), nullable=False),
-        sa.Column("site_count", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("hectares", sa.Float(), nullable=False, server_default="0"),
-        sa.PrimaryKeyConstraint("zone_id", "dz_vintage"),
-        schema="candidates_v15",
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS candidates_v15.agg_vdl (
+            zone_id TEXT NOT NULL,
+            dz_vintage INTEGER NOT NULL,
+            site_count INTEGER NOT NULL DEFAULT 0,
+            hectares DOUBLE PRECISION NOT NULL DEFAULT 0,
+            PRIMARY KEY (zone_id, dz_vintage)
+        )
+        """
     )
-    op.create_table(
-        "agg_green_belt",
-        sa.Column("zone_id", sa.Text(), nullable=False),
-        sa.Column("dz_vintage", sa.Integer(), nullable=False),
-        sa.Column("share", sa.Float(), nullable=False, server_default="0"),
-        sa.PrimaryKeyConstraint("zone_id", "dz_vintage"),
-        schema="candidates_v15",
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS candidates_v15.agg_green_belt (
+            zone_id TEXT NOT NULL,
+            dz_vintage INTEGER NOT NULL,
+            share DOUBLE PRECISION NOT NULL DEFAULT 0,
+            PRIMARY KEY (zone_id, dz_vintage)
+        )
+        """
     )
-    op.create_table(
-        "agg_school_catch",
-        sa.Column("zone_id", sa.Text(), nullable=False),
-        sa.Column("dz_vintage", sa.Integer(), nullable=False),
-        sa.Column("stage", sa.Text(), nullable=False),
-        sa.Column("catchment_id", sa.Text(), nullable=True),
-        sa.Column("school_name", sa.Text(), nullable=True),
-        sa.Column("data_year", sa.Text(), nullable=True),
-        sa.PrimaryKeyConstraint("zone_id", "dz_vintage", "stage"),
-        schema="candidates_v15",
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS candidates_v15.agg_school_catch (
+            zone_id TEXT NOT NULL,
+            dz_vintage INTEGER NOT NULL,
+            stage TEXT NOT NULL,
+            catchment_id TEXT,
+            school_name TEXT,
+            data_year TEXT,
+            PRIMARY KEY (zone_id, dz_vintage, stage)
+        )
+        """
     )
-    op.create_table(
-        "agg_contam",
-        sa.Column("zone_id", sa.Text(), nullable=False),
-        sa.Column("dz_vintage", sa.Integer(), nullable=False),
-        sa.Column("site_count", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("present", sa.Boolean(), nullable=False, server_default="false"),
-        sa.PrimaryKeyConstraint("zone_id", "dz_vintage"),
-        schema="candidates_v15",
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS candidates_v15.agg_contam (
+            zone_id TEXT NOT NULL,
+            dz_vintage INTEGER NOT NULL,
+            site_count INTEGER NOT NULL DEFAULT 0,
+            present BOOLEAN NOT NULL DEFAULT false,
+            PRIMARY KEY (zone_id, dz_vintage)
+        )
+        """
     )
-    op.create_table(
-        "agg_ldp",
-        sa.Column("zone_id", sa.Text(), nullable=False),
-        sa.Column("dz_vintage", sa.Integer(), nullable=False),
-        sa.Column("use_class", sa.Text(), nullable=False),
-        sa.Column("hectares", sa.Float(), nullable=False, server_default="0"),
-        sa.PrimaryKeyConstraint("zone_id", "dz_vintage", "use_class"),
-        schema="candidates_v15",
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS candidates_v15.agg_ldp (
+            zone_id TEXT NOT NULL,
+            dz_vintage INTEGER NOT NULL,
+            use_class TEXT NOT NULL,
+            hectares DOUBLE PRECISION NOT NULL DEFAULT 0,
+            PRIMARY KEY (zone_id, dz_vintage, use_class)
+        )
+        """
     )
-    op.create_table(
-        "agg_hls",
-        sa.Column("zone_id", sa.Text(), nullable=False),
-        sa.Column("dz_vintage", sa.Integer(), nullable=False),
-        sa.Column("effective_units", sa.Float(), nullable=True),
-        sa.Column("hectares", sa.Float(), nullable=False, server_default="0"),
-        sa.PrimaryKeyConstraint("zone_id", "dz_vintage"),
-        schema="candidates_v15",
+    op.execute(
+        """
+        CREATE TABLE IF NOT EXISTS candidates_v15.agg_hls (
+            zone_id TEXT NOT NULL,
+            dz_vintage INTEGER NOT NULL,
+            effective_units DOUBLE PRECISION,
+            hectares DOUBLE PRECISION NOT NULL DEFAULT 0,
+            PRIMARY KEY (zone_id, dz_vintage)
+        )
+        """
     )
 
 
@@ -148,5 +169,5 @@ def downgrade() -> None:
         "agg_naptan",
         "agg_simd2020_domains",
     ):
-        op.drop_table(table, schema="candidates_v15")
+        op.execute(f"DROP TABLE IF EXISTS candidates_v15.{table} CASCADE")
     op.execute("DROP SCHEMA IF EXISTS candidates_v15 CASCADE")

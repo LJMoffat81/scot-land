@@ -313,10 +313,10 @@ test.describe("LOGO-H2 desktop chrome", () => {
   test("map HUD brand aria-label is Scot-LAND home", async ({ page }) => {
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor();
-    const hudBrand = page.locator("a.hud-wordmark");
+    const hudBrand = page.getByTestId("site-nav-brand");
     await expect(hudBrand).toHaveAttribute("aria-label", "Scot-LAND home");
-    // No tagline in map chrome.
-    await expect(page.locator(".hud-brand .site-nav-tagline")).toHaveCount(0);
+    await expect(hudBrand.locator(".site-nav-wordmark")).toBeVisible();
+    await expect(hudBrand.locator(".site-nav-tagline")).toBeVisible();
   });
 });
 
@@ -355,13 +355,14 @@ test.describe("LOGO-H2 mobile (390×844)", () => {
   test("map HUD brand tap target ≥44px and no tagline", async ({ page }) => {
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor();
-    const hudLink = page.locator("a.hud-wordmark");
+    const hudLink = page.getByTestId("site-nav-brand");
     await expect(hudLink).toHaveAttribute("aria-label", "Scot-LAND home");
     const box = await hudLink.boundingBox();
     expect(box, "hud brand bounding box").not.toBeNull();
     expect(box!.width).toBeGreaterThanOrEqual(44);
     expect(box!.height).toBeGreaterThanOrEqual(44);
-    await expect(page.getByText(TAGLINE, { exact: true })).toHaveCount(0);
+    await expect(hudLink.locator(".site-nav-wordmark")).toBeHidden();
+    await expect(hudLink.locator(".site-nav-tagline")).toBeHidden();
   });
 });
 

@@ -196,10 +196,11 @@ test.describe("SW-020 mobile logo (390×844)", () => {
   test("map header has no overlapping or clipped text", async ({ page }) => {
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor();
-    const brand = page.locator(".hud-brand");
+    const brand = page.locator(".hud-brand").getByTestId("site-nav-brand");
     await expect(brand).toBeVisible();
-    const logo = brand.locator(".hud-wordmark img");
+    const logo = brand.locator("img");
     await expect(logo).toBeVisible();
+    await expect(brand.locator(".site-nav-wordmark")).toBeHidden();
 
     const header = page.locator("header.hud-top");
     await assertHeaderTextClear(header, "map hud-top");

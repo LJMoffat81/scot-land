@@ -12,12 +12,30 @@ export type SiteNavProps = {
   current?: SiteNavId;
   /**
    * page — full top bar with logo (content pages).
-   * map — compact links for the map HUD (logo stays in hud-brand).
+   * map — compact links for the map HUD. The lockup is SiteBrand in the HUD.
    */
   variant?: "page" | "map";
 };
 
 const MOBILE_MAX = 600;
+
+/** Shared header lockup: mark plus wordmark. One component, one CSS source. */
+export function SiteBrand() {
+  return (
+    <a
+      className="site-nav-brand"
+      href="/"
+      aria-label="Scot-LAND home"
+      data-testid="site-nav-brand"
+    >
+      <img src="/logo-mark-h3.png" alt="" width={40} height={40} />
+      <span className="site-nav-brand-text">
+        <span className="site-nav-wordmark">Scot-LAND</span>
+        <span className="site-nav-tagline">Land value we all create</span>
+      </span>
+    </a>
+  );
+}
 
 /**
  * Site-wide nav: Map · About · How we built this · How it works · Data & sources · Downloads & API.
@@ -162,19 +180,7 @@ export default function SiteNav({
       data-variant="page"
       data-open={open ? "true" : "false"}
     >
-      <a
-        className="site-nav-brand"
-        href="/"
-        aria-label="Scot-LAND home"
-        data-testid="site-nav-brand"
-      >
-        <img src="/logo-mark-h3.png" alt="" width={40} height={40} />
-        <span className="site-nav-brand-text">
-          {/* Logo mark already includes LAND; hide this text on mobile (SW-020). */}
-          <span className="site-nav-wordmark">Scot-LAND</span>
-          <span className="site-nav-tagline">Land value we all create</span>
-        </span>
-      </a>
+      <SiteBrand />
       {mobileMenu}
     </nav>
   );

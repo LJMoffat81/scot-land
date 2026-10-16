@@ -43,6 +43,8 @@
     "test:share-fix": "node scripts/test-share-fix.mjs",
     "test:logo-fix": "node --experimental-strip-types scripts/test-logo-fix.mjs",
     "test:logo-h3": "node scripts/test-logo-h3.mjs",
+    "test:basemap-err-1": "node --experimental-strip-types scripts/test-basemap-err-1.mjs",
+    "test:privacy-1": "node scripts/test-privacy-1.mjs",
     "test:map-layer-registry": "node --experimental-strip-types scripts/test-map-layer-registry.mjs",
     "test:proxy-null-body": "node --experimental-strip-types --import ./scripts/proxy-null-body-register.mjs scripts/test-proxy-null-body.mjs",
     "check:developers-links": "node scripts/check-developers-links.mjs"

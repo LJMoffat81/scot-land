@@ -339,6 +339,7 @@ function LayersAccordion({
 }
 
 function AimPlaceholder({ row }: { row: AimRow }) {
+  const tag = aimStatusPanelTag(row.status);
   return (
     <li
       className="layers-panel-row layers-aim-placeholder"
@@ -346,10 +347,14 @@ function AimPlaceholder({ row }: { row: AimRow }) {
       data-aim-name={row.name}
     >
       {/* The row itself is not a switch. aria-disabled stays off the link so the roadmap target can be opened. */}
-      <div className="layers-aim-disabled" aria-disabled="true">
+      <div
+        className="layers-aim-disabled"
+        aria-disabled="true"
+        aria-label={`${row.name}, ${tag}`}
+      >
         <span className="layers-aim-name">{row.name}</span>
         <span className="layers-aim-tag" data-testid={`layers-aim-tag-${row.id}`}>
-          {aimStatusPanelTag(row.status)}
+          {tag}
         </span>
       </div>
       <a

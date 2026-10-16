@@ -1,5 +1,5 @@
 /**
- * Confirmed RoS INSPIRE Index Polygons credit (Laurie, Oct 2026).
+ * Confirmed RoS INSPIRE Index Polygons credit (Oct 2026).
  * Map credit + layer guide must use this exact wording; year = harvest year.
  * OGL v3 only — never the 2017 OS INSPIRE end-user licence.
  */

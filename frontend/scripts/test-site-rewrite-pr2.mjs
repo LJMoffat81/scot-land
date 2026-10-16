@@ -81,7 +81,11 @@ function readSrc(relPath) {
 {
   const about = readSrc("components/MissionContent.tsx");
   assert.match(about, /About Scot-LAND/);
-  assert.match(about, /I am Laurie Moffat/);
+  assert.match(about, /id="contact"/);
+  assert.match(about, /ContactForm/);
+  assert.doesNotMatch(about, /Laurie|Moffat/);
+  assert.doesNotMatch(about, /github\.com/i);
+  assert.doesNotMatch(about, /mailto:/i);
   assert.match(about, /What Scot-LAND is not/);
   assert.match(about, /landcommission\.gov\.scot/);
 

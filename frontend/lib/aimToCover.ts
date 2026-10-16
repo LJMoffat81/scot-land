@@ -185,7 +185,7 @@ export const AIM_TO_COVER: readonly AimGroup[] = [
   },
 ];
 
-/** Layers panel tag. Roadmap Later is shown as Coming later. */
+/** Layers panel tag. Later and Not started are shown as Coming later. */
 export function aimStatusPanelTag(status: AimStatus): string {
   switch (status) {
     case "Later":
@@ -193,7 +193,7 @@ export function aimStatusPanelTag(status: AimStatus): string {
     case "In progress":
       return "In progress";
     case "Not started":
-      return "Not started";
+      return "Coming later";
     case "Live":
       return "Live";
     default: {
@@ -202,6 +202,18 @@ export function aimStatusPanelTag(status: AimStatus): string {
     }
   }
 }
+
+/**
+ * Last roadmap row. Not a Layers placeholder (parked so the panel omits it).
+ * Status Later — the file had no matching entry.
+ */
+export const ROADMAP_FINAL_ROW: AimRow = {
+  id: "scotland-national-wealth-engine",
+  name: "Scotland National Wealth Engine: land value for every parcel, ready to support fair land taxation",
+  plain: "",
+  status: "Later",
+  parked: true,
+};
 
 /** Non-parked rows for one LAND sub-group, in roadmap order. */
 export function layersPanelAimRows(groupId: AimGroupId): readonly AimRow[] {

@@ -297,7 +297,7 @@ for (const viewport of [
     test("map HUD mark and preload", async ({ page }) => {
       await page.goto("/");
       await page.locator(".maplibregl-canvas").waitFor();
-      await expectMark(page, ".hud-wordmark img");
+      await expectMark(page, "[data-testid=site-nav-brand] img");
       await expectPreload(page);
       await expect(page.locator('footer img[src*="scot-land-mark"]')).toHaveCount(0);
     });

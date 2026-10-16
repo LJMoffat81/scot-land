@@ -41,7 +41,7 @@ type AimScraped = {
 function panelTag(status: string): string {
   if (status === "Later") return "Coming later";
   if (status === "In progress") return "In progress";
-  if (status === "Not started") return "Not started";
+  if (status === "Not started") return "Coming later";
   if (status === "Live") return "Live";
   throw new Error(`unexpected roadmap status: ${status}`);
 }
@@ -122,6 +122,9 @@ for (const viewport of [
       const placesText = await page.getByTestId("layers-nav-places").innerText();
       expect(placesText).not.toContain("£");
       expect(placesText.toLowerCase()).not.toContain("rent");
+      await expect(
+        panel.getByRole("switch", { name: "Area boundaries", exact: true }),
+      ).toHaveCount(1);
 
       const switchIds = (
         await panel.locator("[data-testid^='layer-toggle-']").evaluateAll((els) =>
@@ -161,6 +164,10 @@ for (const viewport of [
         await expect(liveSwitch).toHaveCount(0);
         await expect(placeholder).toHaveCount(1);
         await expect(placeholder.locator("[aria-disabled='true']")).toHaveCount(1);
+        await expect(placeholder.locator("[aria-disabled='true']")).toHaveAttribute(
+          "aria-label",
+          `${row.name}, ${panelTag(row.status)}`,
+        );
         await expect(placeholder.getByRole("link")).toHaveCount(1);
         await expect(
           placeholder.locator("[aria-disabled='true']").getByRole("link"),

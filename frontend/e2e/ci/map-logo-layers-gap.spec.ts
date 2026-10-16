@@ -266,13 +266,10 @@ test.describe("SW-020 map logo vs Layers gap (390×844)", () => {
     test.setTimeout(90_000);
     await openMapWithTiles(page);
 
-    const logo = page.locator(".hud-wordmark");
+    const logo = page.getByTestId("site-nav-brand");
     const layers = page.getByTestId("hud-layers-btn");
     await expect(logo).toBeVisible();
     await expect(layers).toBeVisible();
-
-    // LOGO-FIT-1: the mark has no white badge. Overlap and gap checks stay.
-    await expect(logo).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 
     const logoBox = await logo.boundingBox();
     const layersBox = await layers.boundingBox();

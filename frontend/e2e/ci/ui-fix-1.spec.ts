@@ -217,7 +217,7 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
     const menu = page.getByTestId("site-nav-menu-btn");
     await assertMinHit(menu, "Menu");
 
-    const logo = page.locator(".hud-wordmark");
+    const logo = page.getByTestId("site-nav-brand");
     await assertMinHit(logo, "Scot-LAND home");
 
     // U1 listed Copy Map reference, but MAP-CARDS / SW-052 removed that control —
@@ -355,7 +355,7 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
 
     const layers = page.getByTestId("hud-layers-btn");
     const basemap = page.getByTestId("basemap-switcher");
-    const logo = page.locator(".hud-wordmark");
+    const logo = page.getByTestId("site-nav-brand");
     await expect(layers).toBeVisible();
     await expect(basemap).toBeVisible();
     await expect(logo).toBeVisible();

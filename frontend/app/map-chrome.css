@@ -469,107 +469,186 @@
   background: #fff;
 }
 
-/* —— SW-023: basemap switcher (bottom-right, beside / above zoom) —— */
+/* —— MAP-CONTROLS-1: basemap column above zoom —— */
+.map-stage .maplibregl-ctrl-bottom-right {
+  right: 0.65rem;
+  bottom: var(--zoom-bottom, 10px);
+  margin: 0;
+}
+
 .basemap-switcher {
   position: absolute;
   z-index: 3;
-  /*
-   * MAP-CARDS §3.6 — sit above the zoom ± stack (2×48 + MapLibre margin),
-   * same right column, so the 64px tile does not overlap zoom.
-   * Extra 0.75rem clears the captioned 64px tile vs the zoom-in box.
-   */
   right: 0.65rem;
-  bottom: calc(48px + 48px + 4.5rem);
-  width: 64px;
+  /* Clear the zoom stack and the compact (i) that sits under it, then 8px. */
+  bottom: calc(var(--zoom-bottom, 10px) + 142px + var(--ctrl-gap, 8px));
   margin: 0;
   padding: 0;
-  border: 2px solid #fff;
-  border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(11, 30, 58, 0.28);
-  background: #fff;
-  cursor: pointer;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  font: inherit;
-  color: var(--slrg-text, #0b1e3a);
-  line-height: 1.1;
-  /* Keep above map chrome but below the place card (z-index 14). */
+  align-items: flex-end;
+  width: auto;
+  overflow: visible;
   pointer-events: auto;
 }
 
-.basemap-switcher:focus {
-  outline: 2px solid var(--slrg-navy, #0b1e3a);
-  outline-offset: 2px;
+.basemap-switcher-wide {
+  display: flex;
+  align-items: center;
+  height: var(--ctrl-h, 48px);
+  border-radius: var(--ctrl-radius, 24px);
+  padding: 3px;
+  gap: 2px;
+  background: var(--ctrl-bg, #fff);
+  border: var(--ctrl-border, 1px solid #6b7684);
+  box-shadow: var(--ctrl-shadow, 0 2px 8px rgba(11, 30, 58, 0.16));
 }
 
-.basemap-switcher:focus:not(:focus-visible) {
-  outline: none;
-}
-
-.basemap-switcher:focus-visible {
-  outline: 2px solid var(--slrg-navy, #0b1e3a);
-  outline-offset: 2px;
-}
-
-.basemap-switcher-preview {
-  display: block;
-  width: 100%;
-  height: 42px;
-  background-size: cover;
-  background-position: center;
-}
-
-/* Preview of the style you would switch to (other than current). */
-.basemap-switcher-preview.preview-satellite {
-  background-color: #3d5a4a;
-  background-image:
-    linear-gradient(
-      145deg,
-      #2a4538 0%,
-      #5f7a4e 38%,
-      #8a9a62 62%,
-      #3a5648 100%
-    ),
-    radial-gradient(circle at 30% 40%, rgba(180, 160, 90, 0.45), transparent 42%),
-    radial-gradient(circle at 70% 65%, rgba(40, 70, 90, 0.5), transparent 48%);
-}
-
-.basemap-switcher-preview.preview-map {
-  background-color: #e7eef3;
-  background-image:
-    linear-gradient(#ffffff 1px, transparent 1px),
-    linear-gradient(90deg, #ffffff 1px, transparent 1px),
-    linear-gradient(#c5d0d8 1px, transparent 1px),
-    linear-gradient(90deg, #c5d0d8 1px, transparent 1px),
-    linear-gradient(180deg, #dfe8ee 0%, #eef3f6 100%);
-  background-size:
-    16px 16px,
-    16px 16px,
-    8px 8px,
-    8px 8px,
-    100% 100%;
-}
-
-.basemap-switcher-caption {
-  display: block;
-  padding: 0.22rem 0.15rem 0.28rem;
-  font-size: 0.62rem;
+.basemap-switcher-wide button {
+  height: 40px;
+  border-radius: 20px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--ctrl-fg, #0b1e3a);
+  font: inherit;
   font-weight: 700;
-  text-align: center;
+  font-size: 0.875rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.basemap-switcher-wide button[aria-checked="true"] {
+  background: var(--ctrl-accent, #1d4f91);
+  color: #fff;
+}
+
+.basemap-toggle-narrow {
+  box-sizing: border-box;
+  width: var(--ctrl-h, 48px);
+  height: var(--ctrl-h, 48px);
+  border-radius: var(--ctrl-radius, 24px);
+  border: var(--ctrl-border, 1px solid #6b7684);
+  background: var(--ctrl-bg, #fff);
+  color: var(--ctrl-fg, #0b1e3a);
+  box-shadow: var(--ctrl-shadow, 0 2px 8px rgba(11, 30, 58, 0.16));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.basemap-toggle-narrow[aria-pressed="true"] {
+  background: var(--ctrl-accent, #1d4f91);
+  border-color: var(--ctrl-accent, #1d4f91);
+  color: #fff;
+}
+
+@media (max-width: 900px) {
+  .basemap-switcher-wide {
+    display: none;
+  }
+}
+
+@media (min-width: 901px) {
+  .basemap-toggle-narrow {
+    display: none;
+  }
+}
+
+.basemap-notice {
+  position: absolute;
+  z-index: 6;
+  left: 50%;
+  top: 5.5rem;
+  transform: translateX(-50%);
+  width: min(22rem, calc(100% - 2rem));
+  margin: 0;
+  padding: 0.75rem 0.9rem;
   background: #fff;
   color: var(--slrg-text, #0b1e3a);
+  border: var(--ctrl-border, 1px solid #6b7684);
+  border-radius: 12px;
+  box-shadow: var(--ctrl-shadow, 0 2px 8px rgba(11, 30, 58, 0.16));
+  pointer-events: auto;
+}
+
+.basemap-notice p {
+  margin: 0 0 0.5rem;
+}
+
+.basemap-notice button {
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 999px;
+  border: var(--ctrl-border, 1px solid #6b7684);
+  background: #fff;
+  color: var(--slrg-text, #0b1e3a);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.contact-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-width: 28rem;
+}
+
+.contact-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-weight: 650;
+}
+
+.contact-form input,
+.contact-form textarea {
+  font: inherit;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--line, #d2d0cd);
+  border-radius: 8px;
+}
+
+.contact-form textarea {
+  min-height: 8rem;
+}
+
+.contact-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.contact-form button[type="submit"] {
+  min-height: 44px;
+  align-self: flex-start;
+  padding: 0.45rem 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--slrg-navy, #0b1e3a);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 /* Mobile: same right column as zoom, stacked above it — clear of (i) + place card. */
 @media (max-width: 900px) {
+  .map-stage .maplibregl-ctrl-bottom-right {
+    right: 0.55rem;
+  }
+
   .basemap-switcher {
     right: 0.55rem;
-    /*
-     * MAP-CARDS §3.6 — zoom ± are 48×48 (not the old 44). Match the desktop
-     * clearance formula so the captioned 64px tile clears zoom-in at rest.
-     */
-    bottom: calc(48px + 48px + 4.5rem);
+    bottom: calc(var(--zoom-bottom, 10px) + 138px + var(--ctrl-gap, 8px));
   }
 
   /*
@@ -666,7 +745,7 @@
   }
 
   .map-cards-shell.tools-open .map-stage .maplibregl-ctrl-bottom-right {
-    right: 0;
+    right: 0.65rem;
   }
 
   /* UI-TWEAKS-1 T1: shell clips; .layer-panel is the only scroller. */
@@ -920,19 +999,15 @@
   }
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .basemap-switcher {
     bottom: calc(
-      196px + env(safe-area-inset-bottom, 0px) + 48px + 48px + 4.5rem
+      196px + env(safe-area-inset-bottom, 0px) + 0.5rem + 138px + var(--ctrl-gap, 8px)
     );
   }
 
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .maplibregl-ctrl-bottom-right {
-    /* Drop the stack until it clears the basemap tile pinned under the HUD.
-       bottom: 55dvh+0.5rem left zoom through that tile. */
     bottom: auto !important;
-    top: calc(var(--hud-height, 9.5rem) + 65px + 0.15rem);
+    top: calc(var(--hud-height, 9.5rem) + 2px + 48px + var(--ctrl-gap, 8px));
   }
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .basemap-switcher {
-    /* Half sheet used to add the closed-map 4.5rem clearance on top of the
-       lifted zoom stack, which put Detailed through the search/top bar. */
     bottom: auto;
     top: calc(var(--hud-height, 9.5rem) + 2px);
   }
@@ -1177,27 +1252,87 @@
   pointer-events: none !important;
 }
 
-/* Basemap light ↔ detailed previews */
-.basemap-switcher-preview.preview-detailed {
-  background-color: #dce8d4;
-  background-image:
-    linear-gradient(180deg, #b8d4a8 0%, #e8f0e0 45%, #c5d8b8 100%),
-    linear-gradient(90deg, transparent 40%, rgba(80, 120, 60, 0.25) 42%, transparent 44%),
-    linear-gradient(0deg, transparent 55%, rgba(180, 100, 60, 0.3) 57%, transparent 59%);
+.map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group {
+  margin: 0;
+  width: var(--ctrl-h, 48px);
+  border-radius: var(--ctrl-radius, 24px);
+  border: var(--ctrl-border, 1px solid #6b7684);
+  box-shadow: var(--ctrl-shadow, 0 2px 8px rgba(11, 30, 58, 0.16));
+  background: var(--ctrl-bg, #fff);
+  overflow: hidden;
 }
 
-.basemap-switcher-preview.preview-light {
-  background-color: #e7eef3;
-  background-image:
-    linear-gradient(#ffffff 1px, transparent 1px),
-    linear-gradient(90deg, #ffffff 1px, transparent 1px),
-    linear-gradient(180deg, #dfe8ee 0%, #eef3f6 100%);
-  background-size: 16px 16px, 16px 16px, 100% 100%;
+.map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: none;
+  border-top: 0;
+}
+
+.map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button + button {
+  border-top: var(--ctrl-divider, 1px solid #d2d0cd);
+}
+
+.map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  display: none;
+}
+
+.map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-zoom-in::before,
+.map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-zoom-out::before {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--ctrl-fg, #0b1e3a);
+}
+
+.map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-zoom-in::before {
+  content: "+";
+}
+
+.map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-zoom-out::before {
+  content: "−";
+}
+
+.map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button:disabled::before {
+  color: #9aa3ad;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .basemap-switcher-wide button[aria-checked="false"]:hover,
+  .basemap-toggle-narrow[aria-pressed="false"]:hover,
+  .map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button:hover:not(:disabled) {
+    background: var(--ctrl-hover, #eef3f8);
+  }
+}
+
+.basemap-switcher-wide button:active,
+.basemap-toggle-narrow:active,
+.map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button:active:not(:disabled) {
+  background: var(--ctrl-active, #dde6f0);
+}
+
+.basemap-switcher-wide button[aria-checked="true"]:active,
+.basemap-toggle-narrow[aria-pressed="true"]:active {
+  background: #173f74;
+}
+
+.basemap-switcher button,
+.map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button {
+  transition: background-color 120ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .basemap-switcher button,
+  .map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button {
+    transition: none;
+  }
 }
 
 /* GOV.UK yellow focus ring on map chrome */
 .map-cards-shell .hud-layers-btn:focus-visible,
-.map-cards-shell .basemap-switcher:focus-visible,
+.map-cards-shell .basemap-switcher button:focus-visible,
+.map-cards-shell .maplibregl-ctrl-group button:focus-visible,
 .map-cards-shell .legend-strip:focus-visible,
 .map-cards-shell .map-panel-handle:focus-visible,
 .map-cards-shell .map-panel-slot-close:focus-visible,
@@ -1207,6 +1342,13 @@
   outline: 3px solid #ffdd00;
   outline-offset: 2px;
   box-shadow: 0 0 0 1px #0b1e3a;
+}
+
+.map-cards-shell .basemap-switcher button:focus-visible,
+.map-cards-shell .maplibregl-ctrl-group button:focus-visible {
+  outline: 3px solid #ffdd00;
+  outline-offset: 0;
+  box-shadow: 0 0 0 5px #0b1e3a;
 }
 
 .map-shortcuts-dialog {

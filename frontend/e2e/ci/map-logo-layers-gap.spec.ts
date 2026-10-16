@@ -1,3 +1,4 @@
+import { fulfillEmptyGlyph } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Page } from "@playwright/test";
 
@@ -94,6 +95,10 @@ async function stubMapBasemap(page: Page) {
         contentType: "application/json",
         body: JSON.stringify(STUB_MAP_STYLE),
       });
+      return;
+    }
+    if (/\/fonts\//i.test(url)) {
+      await fulfillEmptyGlyph(route);
       return;
     }
     await route.fulfill({

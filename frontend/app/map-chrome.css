@@ -1073,6 +1073,47 @@
   vertical-align: middle;
 }
 
+.simplified-outlines-chip {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: 2.75rem;
+  transform: translateX(-50%);
+  margin: 0;
+  max-width: min(28rem, calc(100% - 2rem));
+  padding: 0.28rem 0.7rem;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(11, 30, 58, 0.16);
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(11, 30, 58, 0.12);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  pointer-events: none;
+}
+
+.map-zoom-hint-stack {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: calc(var(--hud-height, 6.5rem) + 5.25rem);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  max-width: min(36rem, calc(100% - 1.5rem));
+  pointer-events: none;
+}
+
+.map-zoom-hint-stack .protected-sites-zoom-hint {
+  position: static;
+  left: auto;
+  top: auto;
+  transform: none;
+}
+
 .protected-sites-zoom-hint {
   position: absolute;
   z-index: 5;

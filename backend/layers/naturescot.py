@@ -21,7 +21,9 @@ from typing import Any
 import psycopg2
 import yaml
 from psycopg2 import extras
+from pyproj import Transformer
 from shapely.geometry import mapping, shape
+from shapely.ops import transform as shapely_transform
 
 logger = logging.getLogger(__name__)
 
@@ -194,7 +196,14 @@ def simplify_tolerance_m(zoom: float) -> float:
     return max(metres_per_pixel * 2.0, 1.0)
 
 
-def _designation_cache_key(
+# Python size-cap steps, coarsest last. Same metre function as the SQL simplify.
+_CAP_TOLERANCE_ZOOMS = (18, 16, 14, 12, 10, 8, 6)
+_TO_BNG = Transformer.from_crs("EPSG:4326", "EPSG:27700", always_xy=True)
+_TO_WGS = Transformer.from_crs("EPSG:27700", "EPSG:4326", always_xy=True)
+
+
+def _low_zoom_cache_key(
+    layer: str,
     south: float,
     west: float,
     north: float,
@@ -206,7 +215,7 @@ def _designation_cache_key(
     if view_zoom < _LOW_ZOOM_CACHE_MIN or view_zoom >= _LOW_ZOOM_CACHE_MAX + 1:
         return None
     return (
-        "naturescot_designations",
+        layer,
         round(view_zoom, 1),
         round(float(south), 2),
         round(float(west), 2),
@@ -217,12 +226,12 @@ def _designation_cache_key(
 
 
 def clear_low_zoom_cache() -> None:
-    """Drop cached z6–z8 designation responses."""
+    """Drop cached z6–z8 SSSI and designation responses."""
     with _low_zoom_cache_lock:
         _low_zoom_cache.clear()
 
 
-def _cached_designations(key: tuple | None, build) -> dict[str, Any]:
+def _cached_low_zoom(key: tuple | None, build) -> dict[str, Any]:
     if key is not None:
         with _low_zoom_cache_lock:
             hit = _low_zoom_cache.get(key)
@@ -271,10 +280,29 @@ def _round_coords(node: Any, digits: int = COORD_DECIMALS) -> Any:
     return node
 
 
-def _geometry_under(geom: dict[str, Any] | None, tolerance: float) -> dict[str, Any] | None:
+def _cap_tolerances_m() -> tuple[float, ...]:
+    """Size-cap fallback steps in metres, matching ``simplify_tolerance_m``."""
+    return (0.0, *(simplify_tolerance_m(zoom) for zoom in _CAP_TOLERANCE_ZOOMS))
+
+
+def _as_rounded_geojson(geom) -> dict[str, Any] | None:
+    if geom is None or geom.is_empty:
+        return None
+    mapped = mapping(geom)
+    if "coordinates" in mapped:
+        mapped["coordinates"] = _round_coords(mapped["coordinates"])
+    return mapped
+
+
+def _project(transformer: Transformer, geom):
+    return shapely_transform(transformer.transform, geom)
+
+
+def _geometry_under(geom: dict[str, Any] | None, tolerance_m: float) -> dict[str, Any] | None:
+    """Simplify one WGS84 geometry. ``tolerance_m`` is metres in EPSG:27700."""
     if not geom:
         return None
-    if tolerance <= 0:
+    if tolerance_m <= 0:
         rounded = dict(geom)
         if "coordinates" in rounded:
             rounded["coordinates"] = _round_coords(rounded["coordinates"])
@@ -283,13 +311,11 @@ def _geometry_under(geom: dict[str, Any] | None, tolerance: float) -> dict[str, 
         parsed = shape(geom)
         if parsed.is_empty:
             return None
-        simple = parsed.simplify(tolerance, preserve_topology=True)
+        projected = _project(_TO_BNG, parsed)
+        simple = projected.simplify(tolerance_m, preserve_topology=True)
         if simple.is_empty:
             return None
-        mapped = mapping(simple)
-        if "coordinates" in mapped:
-            mapped["coordinates"] = _round_coords(mapped["coordinates"])
-        return mapped
+        return _as_rounded_geojson(_project(_TO_WGS, simple))
     except Exception:
         rounded = dict(geom)
         if "coordinates" in rounded:
@@ -312,7 +338,7 @@ def cap_feature_collection(payload: dict[str, Any], budget: int) -> dict[str, An
     original = [row for row in (payload.get("features") or []) if isinstance(row, dict)]
     if not original:
         return payload
-    for tolerance in (0.0, 0.001, 0.005, 0.02, 0.08, 0.25, 1.0):
+    for tolerance in _cap_tolerances_m():
         features: list[dict[str, Any]] = []
         for feature in original:
             geom = _geometry_under(feature.get("geometry"), tolerance)
@@ -363,10 +389,29 @@ def query_sssi_bbox(
     max_features: int = MAX_FEATURES,
     zoom: float | None = None,
 ) -> dict[str, Any]:
-    """Viewport SSSI polygons as GeoJSON (WGS84), simplified for the zoom."""
+    """Viewport SSSI polygons as GeoJSON (WGS84), simplified for the zoom.
+
+    z6, z7, and z8 keep the finished body in memory. A repeat of that view
+    does not run PostGIS again.
+    """
     require_sssi_loaded()
     cap = max(1, min(int(max_features), MAX_FEATURES))
     view_zoom = zoom_for_view(south, west, north, east, zoom)
+    cache_key = _low_zoom_cache_key("sssi", south, west, north, east, cap, view_zoom)
+    return _cached_low_zoom(
+        cache_key,
+        lambda: _query_sssi_uncached(south, west, north, east, cap, view_zoom),
+    )
+
+
+def _query_sssi_uncached(
+    south: float,
+    west: float,
+    north: float,
+    east: float,
+    cap: int,
+    view_zoom: float,
+) -> dict[str, Any]:
     tolerance = simplify_tolerance_m(view_zoom)
     meta = sssi_source_meta()
     sql = f"""
@@ -453,8 +498,10 @@ def query_designations_bbox(
     require_designations_loaded()
     cap = max(1, min(int(max_features), MAX_FEATURES))
     view_zoom = zoom_for_view(south, west, north, east, zoom)
-    cache_key = _designation_cache_key(south, west, north, east, cap, view_zoom)
-    return _cached_designations(
+    cache_key = _low_zoom_cache_key(
+        "naturescot_designations", south, west, north, east, cap, view_zoom
+    )
+    return _cached_low_zoom(
         cache_key,
         lambda: _query_designations_uncached(
             south, west, north, east, cap, view_zoom

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { fulfillEmptyGlyph } from "./_mapCardsHelpers";
 
 const POSTCODE = "EH1 1YZ";
 const LOOKING = "Looking…";
@@ -98,6 +99,10 @@ async function stubMapBasemap(page: Page) {
         contentType: "application/json",
         body: JSON.stringify(STUB_MAP_STYLE),
       });
+      return;
+    }
+    if (/\/fonts\//i.test(url)) {
+      await fulfillEmptyGlyph(route);
       return;
     }
     await route.fulfill({

@@ -139,6 +139,8 @@ export default function MissionContent() {
         <a href="/">Back to map</a>
         {" · "}
         <a href="/methodology">How it works</a>
+        {" · "}
+        <a href="/how-we-built-this">How we built this</a>
       </p>
       <ContentPageFooter />
     </main>

@@ -28,6 +28,13 @@
   .hud-top .site-nav-map .site-nav-links {
     position: relative;
     z-index: 8;
+    gap: 0.1rem;
+  }
+
+  /* Six destinations must stay on one row beside search at 1024px. */
+  .hud-top .site-nav-map .site-nav-links a {
+    padding: 0.45rem 0.4rem;
+    font-size: 0.74rem;
   }
 
   .hud-top [data-testid="hud-layers-btn"] {

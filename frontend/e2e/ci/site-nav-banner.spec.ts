@@ -212,6 +212,7 @@ test.describe("site nav + research banner (rewrite PR1)", () => {
       for (const label of [
         "Map",
         "About",
+        "How we built this",
         "How it works",
         "Data & sources",
         "Downloads & API",

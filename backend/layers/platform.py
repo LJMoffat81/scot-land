@@ -298,7 +298,7 @@ def platform_catalog() -> dict[str, Any]:
                 "group": "spatial",
                 "status": "live",
                 "label": "Vacant and derelict land",
-                "description": "Sites on the Scottish Vacant and Derelict Land Survey. Survey fields, not a legal title.",
+                "description": "Data Zone totals from the Scottish Vacant and Derelict Land Survey: how many sites and how much area in each zone. Survey fields, not a legal title.",
                 "developer_note": "SVDLS survey polygons rolled up to Data Zone totals on the open layer. Owner class is a survey field, not legal title.",
                 "endpoint": "/layers/open/vdl",
                 "licence": "OGL-3.0",

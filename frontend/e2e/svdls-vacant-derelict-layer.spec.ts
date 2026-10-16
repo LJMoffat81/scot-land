@@ -19,7 +19,7 @@ test.describe("SVDLS vacant and derelict layer", () => {
     await page.getByRole("button", { name: "Layers", exact: true }).click();
     const panel = page.locator("aside.hud-tools");
     await expect(panel).toBeVisible();
-    await expect(panel.getByTestId("layer-toggle-vdl")).toBeVisible();
+    await expect(panel.getByTestId("layer-toggle-vdl")).toHaveCount(0);
     await expect(panel.getByText("Around the land")).toHaveCount(0);
     await expect(panel.getByText("The charge")).toHaveCount(0);
     const body = await panel.innerText();

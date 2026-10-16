@@ -119,6 +119,7 @@ jobs:
       - run: npm run test:logo-fix
       - run: npm run test:check-meanings
       - run: npm run test:ux10-agr-terminology
+      - run: npm run test:proxy-null-body
       - run: npm run check:developers-links
       - run: npx tsc --noEmit
       - run: npm run build

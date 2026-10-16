@@ -63,7 +63,7 @@ for (const viewport of [
       if ((await landToggle.getAttribute("aria-expanded")) !== "true") {
         await landToggle.click();
       }
-      const sw = page.getByTestId("layer-toggle-vdl");
+      const sw = page.getByTestId("layer-toggle-access_services");
       await expect(sw).toHaveAttribute("role", "switch");
       await sw.focus();
       const before = await sw.getAttribute("aria-checked");
@@ -86,13 +86,13 @@ for (const viewport of [
       const gate = attachConsoleGate(page);
       await stubMapCardsBackend(page);
       await page.goto(
-        "/?place=S01014567&panel=layers&layers=councils,vdl&z=8&c=-4.25,55.86",
+        "/?place=S01014567&panel=layers&layers=councils,access_services&z=8&c=-4.25,55.86",
       );
       await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
       await expect(page.getByTestId("layers-panel")).toBeVisible({
         timeout: 30_000,
       });
-      await expect(page.getByTestId("layer-toggle-vdl")).toHaveAttribute(
+      await expect(page.getByTestId("layer-toggle-access_services")).toHaveAttribute(
         "aria-checked",
         "true",
       );

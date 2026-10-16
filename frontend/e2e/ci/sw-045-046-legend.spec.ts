@@ -163,12 +163,6 @@ test.describe("MAP-CARDS legend strip / inline (1280)", () => {
     await expect(agrLegend).not.toContainText("Paler = less sure");
     await expect(agrLegend).not.toContainText(/£\d/);
 
-    await page.getByTestId("layer-toggle-vdl").click();
-    await expect(page.getByTestId("layer-inline-legend-vdl")).toBeVisible();
-    await expect(page.getByTestId("layer-inline-legend-vdl")).toContainText(
-      /Vacant|Derelict/i,
-    );
-
     await page.getByTestId("layer-toggle-1").click(); // off
     await expect(page.getByTestId("layer-inline-legend-1")).toHaveCount(0);
 
@@ -185,7 +179,7 @@ test.describe("MAP-CARDS legend strip / inline (1280)", () => {
     if ((await landToggle.getAttribute("aria-expanded")) !== "true") {
       await landToggle.click();
     }
-    await page.getByTestId("layer-toggle-vdl").click();
+    await page.getByTestId("layer-toggle-access_services").click();
     await page.getByTestId("map-panel-slot-close").click();
 
     await expect(page.getByTestId("legend-strip")).toBeVisible();

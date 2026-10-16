@@ -41,6 +41,7 @@
     "test:share-fix": "node scripts/test-share-fix.mjs",
     "test:logo-fix": "node --experimental-strip-types scripts/test-logo-fix.mjs",
     "test:map-layer-registry": "node --experimental-strip-types scripts/test-map-layer-registry.mjs",
+    "test:proxy-null-body": "node --experimental-strip-types --import ./scripts/proxy-null-body-register.mjs scripts/test-proxy-null-body.mjs",
     "check:developers-links": "node scripts/check-developers-links.mjs"
   },
   "dependencies": {

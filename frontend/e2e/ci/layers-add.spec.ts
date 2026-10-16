@@ -16,20 +16,24 @@ import {
  */
 
 const NEW_OFF_BY_GROUP: Record<string, readonly string[]> = {
-  land: ["flood"],
-  places: ["deprivation", "conservation", "listed", "stops"],
+  land: ["access_services"],
+  places: [],
 };
+
+/** LAYERS-FIX-1: empty stubs are not switches. */
+const HIDDEN_STUBS = [
+  "flood",
+  "deprivation",
+  "conservation",
+  "listed",
+  "stops",
+] as const;
 
 const ABSENT_IS = ["contaminated_land", "green_belt", "school_catchments"] as const;
 
 /** Visible new rows, and the map layer each toggle must draw. */
 const DRAWN_ROWS = [
   { toggle: "access_services", layer: "access_services-add-fill" },
-  { toggle: "flood", layer: "sepa_nfra_grid-add-fill" },
-  { toggle: "deprivation", layer: "simd2020_domains-add-fill" },
-  { toggle: "conservation", layer: "hes_conservation_areas-add-fill" },
-  { toggle: "listed", layer: "hes_listed_buildings-add-circle" },
-  { toggle: "stops", layer: "naptan_stops-add-circle" },
 ] as const;
 
 const PRESENT_IS_ROWS = [
@@ -134,6 +138,10 @@ for (const width of [1280, 390] as const) {
         }
       }
 
+      for (const id of HIDDEN_STUBS) {
+        await expect(page.getByTestId(`layer-toggle-${id}`)).toHaveCount(0);
+      }
+
       for (const id of ABSENT_IS) {
         await expect(page.getByTestId(`layer-toggle-${id}`)).toHaveCount(0);
       }
@@ -179,11 +187,12 @@ test.describe("LAYERS-ADD-1 paint", () => {
     for (const id of ABSENT_IS) {
       await expect(page.getByTestId(`layer-toggle-${id}`)).toHaveCount(0);
     }
+    for (const id of HIDDEN_STUBS) {
+      await expect(page.getByTestId(`layer-toggle-${id}`)).toHaveCount(0);
+    }
 
     for (const row of DRAWN_ROWS) {
-      const group = row.toggle === "flood" || row.toggle === "access_services"
-        ? "land"
-        : "places";
+      const group = row.toggle === "access_services" ? "land" : "places";
       await ensureLayersGroupOpen(page, group);
       await page.getByTestId(`layer-toggle-${row.toggle}`).click();
       await expectLayerDrawn(page, row.layer);

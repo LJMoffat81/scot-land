@@ -72,7 +72,7 @@ npm run dev
 | `GET /layers/context/data-zones/at?lat=&lon=` | Point → real `(code, vintage)` from PostGIS (**503** if unloaded; Balfron → `S01013010` when loaded) |
 | `GET /layers/open/settlements?...` | NRS Census 2022 settlements bbox (PostGIS; **503** if not loaded) |
 | `GET /layers/open/localities?...` | NRS Census 2022 localities bbox (PostGIS; **503** if not loaded) |
-| `GET /layers/open/vdl` | SVDLS vacant/derelict sites (bbox; **503** if upstream down) |
+| `GET /layers/open/vdl` | SVDLS vacant/derelict land as Data Zone totals (count and area; bbox; **503** if upstream down) |
 | `GET /layers/open/public-land` | Public / Crown Estate overlay (**licence unverified/not open** — hidden from public map; **503** if upstream down) |
 | `GET /layers/open/community-ownership` | SG Community Ownership 2024 points (PostGIS; **503** if unloaded; ownership-context, no £ rent) |
 | `GET /layers/open/nfi` | National Forest Inventory woodland (PostGIS bbox; **503** if unloaded; ledger row 1) |
@@ -103,7 +103,7 @@ npm run dev
 | **Public land** | SG 2024 five bodies | Top of Layers; on by default zoom ≥ 8; owner-type legend; gaps flagged |
 | Council AGR | All Scotland | Overview choropleth (Annual Ground Rent — not Surface Rent) |
 | Scot-LAND squares | Current map view | Zoom ≥ 12; every cell up to cap (then sampled) |
-| **Vacant and derelict** | SVDLS site-level survey polygons | Ownership and cadastre; site-type legend + credits; zoom ≥ 8; click popup; each site tagged `geometry_source` (Spatial Hub survey > RoS title outline > point) |
+| **Vacant and derelict** | SVDLS Data Zone totals (count and area) | Public output is zone totals, not per-site features. The Layers switch stays off the panel until a zone fill is drawn |
 | **Community ownership** | SG 2024 OGL asset points | Ownership and cadastre; asset-type legend + OGL credits; zoom ≥ 6; PostGIS postcode centroids (not titles); **503** when unloaded |
 | Coverage | Live vs linked/gap | Sidebar **Coverage** list; live rows toggle overlays |
 | Vacant residual story | Council choropleth + overlay | `/?story=vacant_land` |

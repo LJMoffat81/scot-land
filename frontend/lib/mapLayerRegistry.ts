@@ -72,6 +72,20 @@ export type MapLayerRegistryEntry = {
   subline?: string;
   /** Inline legend zoom gate copy when gated (defaults to LAYER_ZOOM_HINT). */
   zoomHint?: string;
+  /**
+   * When the map is zoomed further in than this, the layer no longer paints
+   * and the row shows zoomOutHint. AGR council fill stops above zoom 7.
+   */
+  zoomOutAbove?: number;
+  /** Exact hint when zoom is greater than zoomOutAbove. */
+  zoomOutHint?: string;
+  /** MapLibre layer ids this switch paints. Empty switches stay off the panel. */
+  paintLayerIds?: readonly string[];
+  /**
+   * No geometry yet. Kept in the registry for labels, omitted from the
+   * Layers panel, and listed on the roadmap.
+   */
+  coming?: boolean;
 };
 
 export const MAP_LAYER_GROUP_ORDER: MapLayerGroupKey[] = [
@@ -183,6 +197,9 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     classes: AGR_CLASSES,
     chip: "proxy",
     defaultOn: false,
+    zoomOutAbove: 7,
+    zoomOutHint: "Zoom out to see this layer",
+    paintLayerIds: ["council-fill"],
   },
   {
     id: "access_services",
@@ -194,6 +211,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     classes: cividisLegendClasses(),
     chip: "proxy",
     defaultOn: false,
+    paintLayerIds: ["access_services-add-fill"],
   },
   {
     id: "flood",
@@ -204,6 +222,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "SEPA · NFRA flood risk grid",
     classes: FLOOD_RISK_CLASSES,
     defaultOn: false,
+    coming: true,
   },
   {
     id: "vdl",
@@ -215,6 +234,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     classes: VDL_CLASSES,
     chip: "proxy",
     defaultOn: false,
+    coming: true,
   },
   {
     id: "grid3",
@@ -228,6 +248,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     defaultOn: false,
     subline: "Shows when you zoom right in",
     zoomHint: "Zoom in to see the grid",
+    paintLayerIds: ["grid3-lines-layer"],
   },
   {
     id: "contaminated_land",
@@ -249,6 +270,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     classes: [{ label: "Wind and hydro sites", color: "#0d9488" }],
     chip: "proxy",
     defaultOn: false,
+    paintLayerIds: ["repd-onshore-wind-circle", "repd-circle"],
   },
   {
     id: "4",
@@ -260,6 +282,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     classes: [{ label: "Seabed and foreshore leases", color: "#0369a1" }],
     chip: "market",
     defaultOn: false,
+    paintLayerIds: ["crown-leases-fill"],
   },
   {
     id: "9",
@@ -271,6 +294,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     classes: [{ label: "Oil and gas fields", color: "#57534e" }],
     nonCommercial: true,
     defaultOn: false,
+    paintLayerIds: ["oil-fields-fill"],
   },
   {
     id: "8",
@@ -283,6 +307,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     nonCommercial: true,
     chip: "shadow",
     defaultOn: false,
+    coming: true,
   },
   {
     id: "designations",
@@ -293,6 +318,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "NatureScot · open data",
     classes: [{ label: "Protected sites", color: "#15803d" }],
     defaultOn: false,
+    paintLayerIds: ["designations-fill"],
   },
   {
     id: "crofting",
@@ -313,6 +339,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "Scottish Government · council boundaries",
     classes: OUTLINE_CLASSES,
     defaultOn: true,
+    paintLayerIds: ["council-line"],
   },
   {
     id: "data_zones",
@@ -324,6 +351,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: `Scottish Government · ${DZ2022_EXTRACTION_YEAR}`,
     classes: OUTLINE_CLASSES,
     defaultOn: false,
+    paintLayerIds: ["data-zones-line"],
   },
   {
     id: "deprivation",
@@ -334,6 +362,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "Scottish Government · 2020",
     classes: DEPRIVATION_CLASSES,
     defaultOn: false,
+    coming: true,
   },
   {
     id: "conservation",
@@ -344,6 +373,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "Historic Environment Scotland · open data",
     classes: [{ label: "Protected for their character", color: "#8a3b8f" }],
     defaultOn: false,
+    coming: true,
   },
   {
     id: "listed",
@@ -354,6 +384,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "Historic Environment Scotland · open data",
     classes: LISTED_CLASSES,
     defaultOn: false,
+    coming: true,
   },
   {
     id: "stops",
@@ -364,6 +395,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "Department for Transport · open data",
     classes: STOP_CLASSES,
     defaultOn: false,
+    coming: true,
   },
   {
     id: "green_belt",
@@ -431,6 +463,9 @@ export type InlineLegendView = {
   /** When the active zoom is below minzoom (or paint pending with no paint). */
   zoomGated: boolean;
   zoomHint: string;
+  /** True when zoom is past zoomOutAbove (AGR overview only). */
+  zoomOut: boolean;
+  zoomOutHint?: string;
   /** Lower → Higher scale line for ramp legends. */
   rampScale?: string;
 };
@@ -477,6 +512,11 @@ export function buildInlineLegendFromRegistry(
     nonCommercial: Boolean(entry.nonCommercial),
     zoomGated,
     zoomHint: entry.zoomHint ?? LAYER_ZOOM_HINT,
+    zoomOut:
+      typeof mapZoom === "number" &&
+      typeof entry.zoomOutAbove === "number" &&
+      mapZoom > entry.zoomOutAbove,
+    zoomOutHint: entry.zoomOutHint,
     rampScale: hasRampEnds ? "Lower → Higher" : undefined,
   };
 }

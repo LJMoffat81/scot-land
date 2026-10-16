@@ -84,11 +84,12 @@ function PlaceCardPreviewInner() {
                 ...layer,
                 intersects: true,
                 detail: {
-                  sites: [
+                  data_zones: [
                     {
-                      name: "Demo vacant site",
-                      site_type: "Vacant Land",
-                      size_ha: 0.4,
+                      data_zone: "S01014567",
+                      vintage: 2022,
+                      site_count: 2,
+                      area_ha: 1.4,
                     },
                   ],
                 },

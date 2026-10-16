@@ -208,12 +208,12 @@ Registry: `data/config/sources.yaml` → `community_ownership`. Do not commit ra
 
 | Field | Value |
 |-------|--------|
-| Product | Scottish Vacant and Derelict Land Survey — site-level as published |
+| Product | Scottish Vacant and Derelict Land Survey. The survey is published site by site; the public map and `GET /layers/open/vdl` return Data Zone totals only (site count and area) |
 | Licence | OGL v3.0 |
 | Attribution | © Scottish Government; contains Improvement Service / local planning authority data under OGL |
 | Site register | https://www.gov.scot/publications/the-scottish-vacant-and-derelict-land-survey-site-register/ |
 | Spatial Hub | https://data.spatialhub.scot/dataset/vacant_and_derelict_land-is |
-| BBox API | `GET /layers/open/vdl` → **503** when upstream unavailable |
+| BBox API | `GET /layers/open/vdl` → Data Zone totals in `meta.data_zones` (count and area); features stay empty; **503** when upstream unavailable |
 | Site types | Vacant Land; Vacant Land and Buildings; Derelict |
 | Geometry precedence | **Spatial Hub survey > RoS title outline > point** — each site tagged `geometry_source` (`backend/layers/svdls_geometry.py`) |
 | Live open overlay | Spatial Hub survey polygons only (`geometry_source=spatialhub_survey`) |

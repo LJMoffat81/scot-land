@@ -240,6 +240,12 @@ function DrawerLayerRow({
       className="layers-panel-row"
       data-testid={`map-layer-${layer.id}`}
       data-coming-soon="false"
+      data-minzoom={registry?.minzoom ?? layer.minzoom}
+      data-maxzoom={registry?.maxzoom ?? layer.maxzoom}
+      data-zoom-out-above={
+        registry?.zoomOutAbove != null ? String(registry.zoomOutAbove) : ""
+      }
+      data-paint-layers={(registry?.paintLayerIds ?? []).join(" ")}
     >
       <button
         type="button"
@@ -296,6 +302,14 @@ function DrawerLayerRow({
               aria-live="polite"
             >
               {legend.zoomHint}
+            </p>
+          ) : legend.zoomOut && legend.zoomOutHint ? (
+            <p
+              className="layer-meta"
+              data-testid={`layer-zoom-gate-${layer.id}`}
+              aria-live="polite"
+            >
+              {legend.zoomOutHint}
             </p>
           ) : null}
           {/* Class key stays visible while zoom-gated so toggles still show Vacant/Derelict etc. */}

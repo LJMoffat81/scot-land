@@ -115,7 +115,7 @@ export const LAYER_ATTRIBUTION: Record<
       "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer",
   },
   vdl: {
-    source: "Scottish Vacant and Derelict Land Survey",
+    source: "Scottish Vacant and Derelict Land Survey — Data Zone totals",
     licence: "OGL-3.0",
     sourceUrl:
       "https://www.gov.scot/publications/the-scottish-vacant-and-derelict-land-survey-site-register/",

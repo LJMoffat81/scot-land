@@ -36,6 +36,8 @@ export type MapDrawerLayer = {
   paintPending?: boolean;
   /** Accessible description under the switch (e.g. grid3 subline). */
   subline?: string;
+  /** No geometry yet — omitted from the panel (roadmap lists it). */
+  coming?: boolean;
 };
 
 function toDrawerLayer(entry: MapLayerRegistryEntry): MapDrawerLayer {
@@ -52,6 +54,7 @@ function toDrawerLayer(entry: MapLayerRegistryEntry): MapDrawerLayer {
     defaultOn: entry.defaultOn,
     paintPending: entry.paintPending,
     subline: entry.subline,
+    coming: entry.coming,
   };
 }
 
@@ -82,7 +85,7 @@ export function mapDrawerLayersByGroup(opts?: {
     label: mapLayerGroupLabel(key),
     layers: MAP_DRAWER_LAYERS.filter((layer) => {
       if (layer.group !== key) return false;
-      if (layer.paintPending) return false;
+      if (layer.paintPending || layer.coming) return false;
       const hub = LAYERS_ADD_REGISTRY.find(
         (row) => row.id === layer.id && row.isSpatialHub,
       );

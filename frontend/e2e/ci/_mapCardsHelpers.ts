@@ -17,21 +17,25 @@ export const EMPTY_FC = { type: "FeatureCollection", features: [] };
 export const LIVE_LAYER_IDS = [
   "1",
   "access_services",
-  "flood",
-  "vdl",
   "grid3",
   "3",
   "4",
   "9",
-  "8",
   "designations",
   "crofting",
   "councils",
   "data_zones",
+] as const;
+
+/** Switches with no geometry: absent from the panel (roadmap). */
+export const HIDDEN_LAYER_IDS = [
+  "flood",
   "deprivation",
   "conservation",
   "listed",
   "stops",
+  "8",
+  "vdl",
 ] as const;
 
 export const BANNED_VISIBLE =

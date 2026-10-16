@@ -173,6 +173,15 @@ for (const entry of MAP_LAYER_REGISTRY) {
 const agr = MAP_LAYER_REGISTRY.find((e) => e.id === "1");
 const legend = buildInlineLegendFromRegistry(agr, { mapZoom: 10 });
 assert.equal(legend.zoomGated, false);
+assert.equal(legend.zoomOut, true);
+assert.equal(legend.zoomOutHint, "Zoom out to see this layer");
+const agrOverview = buildInlineLegendFromRegistry(agr, { mapZoom: 6 });
+assert.equal(agrOverview.zoomOut, false);
+const grid = MAP_LAYER_REGISTRY.find((e) => e.id === "grid3");
+assert.equal(
+  buildInlineLegendFromRegistry(grid, { mapZoom: 12 }).zoomHint,
+  "Zoom in to see the grid",
+);
 assert.equal(legend.rampScale, "Lower → Higher");
 assert.ok(legend.classes.some((c) => c.label === "Striped = less sure"));
 assert.ok(legend.classes.some((c) => c.label === "No figure here"));

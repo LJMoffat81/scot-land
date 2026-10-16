@@ -344,7 +344,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     id: "data_zones",
     aliases: ["dz2022"],
     group: "places",
-    label: "Neighbourhood lines",
+    label: "Area boundaries",
     minzoom: 10,
     maxzoom: 20,
     sourceCaption: `Scottish Government · ${DZ2022_EXTRACTION_YEAR}`,

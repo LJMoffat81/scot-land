@@ -267,7 +267,7 @@ export const SURFACE_RENT_LEGEND_STOPS: Array<[number, string]> = [
 ];
 
 export const SURFACE_RENT_LEGEND_TITLE =
-  "Surface land rent — £ per square metre of land, per year (Data Zone)";
+  "Land rent under homes — £ per square metre of land, per year (Data Zone)";
 
 export const SURFACE_RENT_LEGEND_BLURB =
   "Early estimates for land under homes, shown as £ per square metre of land, per year. Ranges are wide and will change.";

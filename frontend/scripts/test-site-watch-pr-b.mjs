@@ -39,7 +39,8 @@ assert.doesNotMatch(
   "map attribution must not default to 2011",
 );
 const layerRegistry = read(join(frontendRoot, "lib/mapLayerRegistry.ts"));
-assert.match(layerRegistry, /Neighbourhood lines/);
+assert.match(layerRegistry, /Area boundaries/);
+assert.doesNotMatch(layerRegistry, /neighbo(u)?rhood/i);
 assert.match(layerRegistry, /DZ2022_EXTRACTION_YEAR/);
 const dzAttr = read(join(frontendRoot, "lib/dzAttribution.mjs"));
 assert.match(dzAttr, /Copyright Scottish Government/);

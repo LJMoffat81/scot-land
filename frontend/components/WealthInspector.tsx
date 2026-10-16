@@ -54,8 +54,8 @@ const WITHHELD_LABEL: Record<string, string> = {
   unknown_value_tier: "Excluded: unknown value tier.",
 };
 const FLAG_LABEL: Record<string, string> = {
-  surface_not_found: "No surface rent row for this zone yet (not £0).",
-  surface_not_measured: "Surface rent not yet measured for this zone.",
+  surface_not_found: "No land rent for this area yet. This does not mean zero.",
+  surface_not_measured: "Land rent not worked out yet for this area.",
   model_filled: "Model-filled zone: too few sales to measure directly.",
   negative_residual: "Prices were below rebuild cost here; rent is floored at £0.",
   absent_from_ros_price_file: "This zone does not appear in the RoS price file.",
@@ -288,7 +288,7 @@ export function WealthInspector({ isOpen, onClose, data, failure, isLoading }: W
           )}
 
           <section>
-            <h3 className="text-sm font-bold text-slate-900 mb-1">Planning uplift: an &apos;of which&apos; figure inside the land part, never added again</h3>
+            <h3 className="text-sm font-bold text-slate-900 mb-1">Value from planning permission. Part of the land figure, not added again.</h3>
             <div className="text-xs space-y-1 text-slate-600">
               <div className="flex justify-between">
                 <span>Infrastructure share</span>

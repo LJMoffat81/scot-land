@@ -31,7 +31,7 @@ export const DEVELOPERS_GLOSSARY_TERMS: readonly DevelopersGlossaryEntry[] = [
   {
     term: "Annual Ground Rent",
     definition:
-      "the project's name for land rent shown on a place card. It measures the same thing as land rent.",
+      "the yearly rental value of a site, created by nature and by the community around it, not by the owner. It is the same thing as land rent.",
   },
   {
     term: "market",

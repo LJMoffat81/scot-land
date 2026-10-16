@@ -37,9 +37,9 @@ export function dataSourceGroupSummary(group: DataSourceGroupKey): string {
     case "land":
       return "Who holds land, empty sites, planned uses, and small-area boundaries.";
     case "resources":
-      return "Energy, water, seabed and other extractive sources on or around the land.";
+      return "Wind, water, minerals, seabed and other natural resources that can earn a rent.";
     case "nature":
-      return "Woodland, peat and other nature stocks that sit outside market rents.";
+      return "Woodland, peat and other free services of nature that have no market price.";
     case "limits":
       return "Rules that change how land can be used. They add no money value.";
     default: {

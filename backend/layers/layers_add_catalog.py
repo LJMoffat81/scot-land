@@ -211,7 +211,7 @@ def layers_add_entries() -> list[dict[str, Any]]:
         ),
         _entry(
             layer_id="dz2022_boundaries",
-            title="Neighbourhood lines",
+            title="Area boundaries",
             publisher="Scottish Government",
             source_url=(
                 "https://www.spatialdata.gov.scot/geonetwork/srv/eng/"

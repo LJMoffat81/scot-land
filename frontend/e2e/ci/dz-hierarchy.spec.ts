@@ -73,7 +73,7 @@ function eh1PlaceFixture(overrides: Record<string, unknown> = {}) {
         unit: null,
         confidence: null,
         method: null,
-        gloss: "The yearly value of the land under homes.",
+        gloss: "The yearly rental value of the land under homes, without the buildings.",
       },
       {
         id: "resource",

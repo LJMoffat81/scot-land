@@ -27,7 +27,7 @@ test.describe("place card (internal preview)", () => {
       "Covers land under homes only.",
     );
     await expect(page.getByTestId("place-card-typical-home")).toContainText(
-      "For a typical home in this neighbourhood, not your home.",
+      "For a typical home in this area, not your home.",
     );
     await expect(page.getByTestId("place-card-fact")).toBeVisible();
 

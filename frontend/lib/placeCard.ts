@@ -52,11 +52,11 @@ export const PLACE_CARD_LAND_VALUES_COMING_SOON = LAND_VALUES_COMING_SOON_HOME;
 export const PLACE_CARD_RANK_BAND_ENABLED = false;
 
 export const PLACE_CARD_TYPICAL_HOME =
-  "For a typical home in this neighbourhood, not your home.";
+  "For a typical home in this area, not your home.";
 
 /** @deprecated MAP-CARDS §6 — covered by PLACE_CARD_TYPICAL_HOME. */
 export const PLACE_CARD_NEIGHBOURHOOD_NOT_ADDRESS =
-  "We show your neighbourhood, not your address.";
+  "We show your area, not your address.";
 
 /** @deprecated MAP-CARDS §6 — use PLACE_CARD_HOW_WE_WORK_HOMES in the fold only. */
 export const PLACE_CARD_COVERS_HOMES_ONLY = "Covers land under homes only.";

@@ -6,7 +6,7 @@
 
 **Location value**: the part of land value that comes from where a site is, such as access to jobs, transport and services.
 
-**Annual Ground Rent**: the project's name for land rent shown on a place card. It measures the same thing as land rent.
+**Annual Ground Rent**: the yearly rental value of a site, created by nature and by the community around it, not by the owner. It is the same thing as land rent.
 
 **market** (chip: Market): a value built from observed local sale prices.
 

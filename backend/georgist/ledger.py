@@ -334,12 +334,12 @@ def ledger_benchmarks() -> list[dict[str, str]]:
     return [
         {
             "id": "spectrum_airspace",
-            "label": "Spectrum / airspace",
+            "label": "Radio spectrum and airspace",
             "note": "benchmark only, not inputs",
         },
         {
             "id": "wightman",
-            "label": "Wightman",
+            "label": "Andy Wightman's land estimates",
             "note": "benchmark only, not inputs",
         },
     ]
@@ -439,15 +439,14 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             coverage_pct=None,
             range_band=None,
             note=(
-                "Already included in Surface site rent — never added as a "
-                "sibling total (C-planning)."
+                "Value from planning permission. Part of the land figure, not added again."
             ),
             nested_under="1",
             stack="headline",
         ),
         _row(
             "2",
-            label="Mineral rent",
+            label="Minerals and quarries",
             tag="proxy",
             status="not_yet",
             source="BritPits OGL quarry index only (full BritPits / BGS excluded)",
@@ -456,12 +455,12 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="Royalty/tonne, below ground; extraction only in this row (C-mineral).",
+            note="The royalty paid for each tonne taken from the ground.",
             stack="headline",
         ),
         _row(
             "3",
-            label="Onshore wind + hydro resource rent",
+            label="Wind and hydro sites on land",
             tag="proxy",
             status="partial",
             source="REPD onshore wind; SEPA / hydro sites inventory",
@@ -470,15 +469,12 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note=(
-                "Site rent minus footprint surface rent (C-turbine). Spatial inventory "
-                "partial; resource rent money figures not yet published."
-            ),
+            note="The extra rent a wind or hydro site earns over ordinary land rent.",
             stack="headline",
         ),
         _row(
             "4",
-            label="Seabed & foreshore",
+            label="Seabed and shore",
             tag="market",
             status="not_yet",
             source="CES ScotWind/INTOG, cables, moorings, foreshore (CES OGL credit)",
@@ -487,13 +483,16 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="Crown Estate Scotland offshore wind, cables, moorings, foreshore.",
+            note=(
+                "Rent Crown Estate Scotland charges for offshore wind, cables, "
+                "moorings and the shore."
+            ),
             stack="headline",
         ),
         _row(
             "5",
-            label="Aquaculture licence rent",
-            tag="shadow",
+            label="Fish farm sites",
+            tag="proxy",
             status="not_yet",
             source="CES aquaculture seabed; licence economics minus CES seabed paid",
             licence="OGL-3.0",
@@ -501,13 +500,13 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="Estimate stack; total licence rent minus CES seabed paid (C-aqua).",
-            stack="shadow",
+            note="Total minus the seabed lease paid to Crown Estate Scotland.",
+            stack="headline",
         ),
         _row(
             "6",
-            label="Fisheries quota",
-            tag="shadow",
+            label="Fishing quota",
+            tag="proxy",
             status="not_yet",
             source="ICES landings / quota — market if lease prices, else estimate",
             licence="OGL-3.0",
@@ -515,8 +514,8 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="No public lease-price series yet — treated as estimate until priced.",
-            stack="shadow",
+            note="Market if lease prices, else modelled.",
+            stack="headline",
         ),
         _row(
             "7",
@@ -537,7 +536,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
         ),
         _row(
             "8",
-            label="Unpriced peat/soil carbon",
+            label="Carbon held in peat and soil",
             tag="shadow",
             status="not_yet",
             source="Peatland ACTION; Carbon & Peatland 2016 (unpriced only)",
@@ -546,7 +545,9 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="Only unpriced carbon; priced timber/credits stay in row 1 (C-forest).",
+            note=(
+                "Carbon with no market price. Timber and carbon credits are counted with the land."
+            ),
             stack="shadow",
         ),
         _row(
@@ -566,7 +567,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
         ),
         _row(
             "10",
-            label="Ecosystem services",
+            label="Other services of nature, such as flood control",
             tag="shadow",
             status="not_yet",
             source="Eco module (later)",
@@ -575,7 +576,7 @@ def ledger_rows(*, internal: bool = False) -> list[dict[str, Any]]:
             vintage=None,
             coverage_pct=None,
             range_band=None,
-            note="Later — Estimate stack; not yet modelled.",
+            note="Estimate. Not worked out yet.",
             stack="shadow",
         ),
     ]

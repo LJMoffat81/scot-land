@@ -1,3 +1,4 @@
+import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Page } from "@playwright/test";
 
 const ROUTES: Array<{ path: string; current: string }> = [
@@ -140,6 +141,7 @@ test.beforeEach(async ({ page }) => {
       body: JSON.stringify({ generated_at: "2026-01-01", bundles: [] }),
     });
   });
+  await stubLayersAddQuiet(page);
 });
 
 test.afterEach(() => {

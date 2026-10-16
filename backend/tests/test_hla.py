@@ -43,7 +43,9 @@ def test_sources_yaml_records_ogl_hla():
     assert "PSGA" in " ".join(hla["gaps"]) or "Digimap" in " ".join(hla["gaps"])
 
 
-def test_catalog_lists_live_hla_layer():
+def test_catalog_lists_live_hla_layer(monkeypatch):
+    """LAYERS-ADD-1a: HLA omitted unless LAYER_HLS_ENABLED=true."""
+    monkeypatch.setenv("LAYER_HLS_ENABLED", "true")
     layers = {row["id"]: row for row in platform_catalog()["layers"]}
     hla = layers["hla"]
     assert hla["status"] == "live"
@@ -52,6 +54,12 @@ def test_catalog_lists_live_hla_layer():
     assert SPATIAL_HUB_URL in (hla.get("source_url") or "")
     assert "OGL" in LICENCE
     assert "Improvement Service" in ATTRIBUTION
+
+
+def test_catalog_omits_hla_when_flag_off(monkeypatch):
+    monkeypatch.delenv("LAYER_HLS_ENABLED", raising=False)
+    layers = {row["id"]: row for row in platform_catalog()["layers"]}
+    assert "hla" not in layers
 
 
 def test_hla_source_meta_from_registry():
@@ -87,6 +95,8 @@ def test_synthetic_fixture_exists_and_is_marked():
 
 
 def test_hla_503_when_not_loaded(client, monkeypatch):
+    monkeypatch.setenv("LAYER_HLS_ENABLED", "true")
+
     def _down(*_a, **_k):
         return {
             "type": "FeatureCollection",
@@ -111,6 +121,8 @@ def test_hla_503_when_not_loaded(client, monkeypatch):
 
 
 def test_hla_ok_empty_viewport_is_not_503(client, monkeypatch):
+    monkeypatch.setenv("LAYER_HLS_ENABLED", "true")
+
     def _empty(*_a, **_k):
         return {
             "type": "FeatureCollection",
@@ -134,6 +146,8 @@ def test_hla_ok_empty_viewport_is_not_503(client, monkeypatch):
 
 
 def test_hla_ok_returns_site_level_properties(client, monkeypatch):
+    monkeypatch.setenv("LAYER_HLS_ENABLED", "true")
+
     def _sites(*_a, **_k):
         return {
             "type": "FeatureCollection",
@@ -183,9 +197,10 @@ def test_hla_ok_returns_site_level_properties(client, monkeypatch):
     assert props["layer"] == "hla"
 
 
-def test_hla_catalog_is_ledger_row_1a():
+def test_hla_catalog_is_ledger_row_1a(monkeypatch):
     from layers.platform import platform_catalog
 
+    monkeypatch.setenv("LAYER_HLS_ENABLED", "true")
     layer = next(r for r in platform_catalog()["layers"] if r["id"] == "hla")
     assert layer["status"] == "live"
     assert layer["ledger_role"] == "ledger-row"

@@ -17,18 +17,21 @@ export const EMPTY_FC = { type: "FeatureCollection", features: [] };
 export const LIVE_LAYER_IDS = [
   "1",
   "access_services",
+  "flood",
   "vdl",
   "grid3",
-  "hla",
   "3",
   "4",
   "9",
   "8",
   "designations",
-  "flood",
   "crofting",
   "councils",
   "data_zones",
+  "deprivation",
+  "conservation",
+  "listed",
+  "stops",
 ] as const;
 
 export const BANNED_VISIBLE =
@@ -153,6 +156,11 @@ export type StubOpts = {
   /** Delayed platform/place responses keyed by lat (for race tests). */
   placeDelayMs?: number;
   placeByLat?: Record<string, Record<string, unknown>>;
+  /**
+   * Improvement Service layer ids whose extract is present.
+   * Default keeps vacant land (existing map tests). Other IS rows stay absent.
+   */
+  spatialHubLayerIds?: readonly string[];
 };
 
 /**
@@ -163,6 +171,7 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
   const place = opts.place ?? PLACE_FIXTURE;
   const gbpLive = opts.gbpLive ?? false;
   const delayMs = opts.placeDelayMs ?? 0;
+  const spatialHubLayerIds = opts.spatialHubLayerIds ?? ["vdl"];
 
   await page.route("**/api/gbp-live**", async (route) => {
     await route.fulfill({
@@ -186,6 +195,20 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify(HEALTH_OK),
+      });
+      return;
+    }
+    if (/\/layers\/add\/tiles-manifest/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          version: 1,
+          sources: spatialHubLayerIds.map((id) => ({
+            layer_id: id,
+            display_id: id,
+          })),
+        }),
       });
       return;
     }

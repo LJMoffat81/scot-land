@@ -24,7 +24,12 @@ from layers.dz_context import catalog_layers as dz_context_catalog_layers
 from layers.flood import catalog_layer as flood_catalog_layer
 from layers.hla import SPATIAL_HUB_URL as SPATIAL_HUB_HLA
 from layers.hla import query_point as hla_at_point
+from layers.layer_flags import FLAG_HLS, layer_hls_enabled
 from layers.ldp import catalog_layer as ldp_catalog_layer
+from layers.layers_add_catalog import (
+    public_layers_add_entries,
+    waiting_for_permission_rows,
+)
 from layers.registers import registers_for_council
 from layers.cadastral import OGL_V3_LICENCE_PHRASE as PARCELS_OGL_PHRASE
 from layers.cadastral import OGL_V3_URL as PARCELS_OGL_URL
@@ -133,24 +138,42 @@ def scotlis_links(lat: float, lng: float, postcode: str | None = None) -> dict[s
     }
 
 
-def platform_catalog() -> dict[str, Any]:
+def _hla_catalog_layer() -> dict[str, Any] | None:
+    """Housing land supply — omitted from public catalog when LAYER_HLS_ENABLED is off."""
+    enabled = layer_hls_enabled()
+    if not enabled:
+        return None
     return {
-        "version": 2,
-        "brief": "docs/PLATFORM.md",
-        "principle": (
-            "Annual Ground Rent for every place in Scotland; every figure labelled "
-            "Market, Modelled, or Estimate; figures not published yet"
+        "id": "hla",
+        "group": "spatial",
+        "status": "live",
+        "label": "Housing land audit",
+        "description": (
+            "Housing land audit / housing land supply sites. Planning: of which "
+            "figure inside the land part — never added again."
         ),
-        "choropleth_metrics": [
-            {
-                "id": mid,
-                **{k: v for k, v in defn.items() if k != "property"},
-                "property": defn["property"],
-            }
-            for mid, defn in METRIC_DEFS.items()
-            if mid in PUBLIC_CATALOG_METRIC_IDS
-        ],
-        "layers": [
+        "developer_note": (
+            "Spatial Hub Housing Land Supply (Housing Land Audit sites). PostGIS "
+            "ingest of the OGL open product (503 when unloaded). Annual Ground Rent "
+            "breakdown row 1a (planning uplift, already included in surface) — not a "
+            "LayersPanel toggle. Audit polygons, not a title. No public money figures. "
+            "LAYERS-ADD-1a: LAYER_HLS_ENABLED (default OFF; PSGA restriction)."
+        ),
+        "endpoint": "/layers/open/hla",
+        "licence": "OGL-3.0",
+        "licence_status": "ogl",
+        "flag_name": FLAG_HLS,
+        "minzoom": 8,
+        "source_url": SPATIAL_HUB_HLA,
+        "spatial_hub_url": SPATIAL_HUB_HLA,
+        "ledger_role": "ledger-row",
+        "ledger_row": "1a",
+        "ui_surface": "ledger",
+    }
+
+
+def platform_catalog() -> dict[str, Any]:
+    layers: list[dict[str, Any]] = [
             {
                 "id": "agr_value",
                 "group": "value",
@@ -289,22 +312,7 @@ def platform_catalog() -> dict[str, Any]:
             },
             flood_catalog_layer(),
             ldp_catalog_layer(),
-            {
-                "id": "hla",
-                "group": "spatial",
-                "status": "live",
-                "label": "Housing land audit",
-                "description": "Housing land audit / housing land supply sites. Planning: of which figure inside the land part — never added again.",
-                "developer_note": "Spatial Hub Housing Land Supply (Housing Land Audit sites). PostGIS ingest of the OGL open product (503 when unloaded). Annual Ground Rent breakdown row 1a (planning uplift, already included in surface) — not a LayersPanel toggle. Audit polygons, not a title. No public money figures.",
-                "endpoint": "/layers/open/hla",
-                "licence": "OGL-3.0",
-                "minzoom": 8,
-                "source_url": SPATIAL_HUB_HLA,
-                "spatial_hub_url": SPATIAL_HUB_HLA,
-                "ledger_role": "ledger-row",
-                "ledger_row": "1a",
-                "ui_surface": "ledger",
-            },
+            _hla_catalog_layer(),
             *dz_context_catalog_layers(),
             {
                 "id": "public_crown",
@@ -691,7 +699,39 @@ def platform_catalog() -> dict[str, Any]:
                 "label": "Private owners and Sasine land",
                 "description": "Incomplete or paid. Gaps are shown; names are not invented.",
             },
+    ]
+    # Drop None slots from gated catalog helpers (LDP/HLS when flags OFF).
+    layers = [row for row in layers if row is not None]
+    # Omit SEPA flood extent from the public list when its gate is OFF.
+    layers = [
+        row
+        for row in layers
+        if not (
+            row.get("id") == "flood"
+            and row.get("status") != "live"
+            and row.get("flag_name") == "LAYER_SEPA_FLOOD_EXTENT_ENABLED"
+        )
+    ]
+    return {
+        "version": 2,
+        "brief": "docs/PLATFORM.md",
+        "principle": (
+            "Annual Ground Rent for every place in Scotland; every figure labelled "
+            "Market, Modelled, or Estimate; figures not published yet"
+        ),
+        "choropleth_metrics": [
+            {
+                "id": mid,
+                **{k: v for k, v in defn.items() if k != "property"},
+                "property": defn["property"],
+            }
+            for mid, defn in METRIC_DEFS.items()
+            if mid in PUBLIC_CATALOG_METRIC_IDS
         ],
+        "layers": layers,
+        # LAYERS-ADD-1 public surfaces only (no flagged / prohibited ids).
+        "layers_add": public_layers_add_entries(),
+        "layers_add_waiting": waiting_for_permission_rows(),
         "tools": [
             {"id": "scenarios", "status": "live", "label": "LVT / AGR scenario calculators"},
             {"id": "api", "status": "live", "label": "Public assessment and layer API"},

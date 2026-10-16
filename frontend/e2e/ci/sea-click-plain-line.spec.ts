@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { stubLayersAddQuiet } from "./_layersAddStub";
 
 const OUT_OF_SCOTLAND_LINE = "We only cover land in Scotland.";
 
@@ -128,6 +129,7 @@ async function stubMapChrome(page: Page) {
       body: JSON.stringify({ layers: [] }),
     });
   });
+  await stubLayersAddQuiet(page);
 }
 
 /** Sea / outside-Scotland place APIs — 404 DZ miss, or 400 bounds reject. */

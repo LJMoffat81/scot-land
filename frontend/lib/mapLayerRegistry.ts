@@ -129,17 +129,46 @@ const VDL_CLASSES: MapLayerLegendClass[] = VDL_LEGEND_SWATCHES.map((row) => ({
   color: row.color,
 }));
 
-const HLA_CLASSES: MapLayerLegendClass[] = [
-  { label: "Housing land audit", color: "#7b5ea7" },
-];
-
 const OUTLINE_CLASSES: MapLayerLegendClass[] = [
   { label: "Boundary lines", color: "#334155" },
+];
+
+/** LAYERS-ADD-1 design: deprivation purple sequential (more → less deprived). */
+const DEPRIVATION_CLASSES: MapLayerLegendClass[] = [
+  { label: "More deprived", color: "#3f007d" },
+  { label: "·", color: "#6a51a3" },
+  { label: "·", color: "#9e9ac8" },
+  { label: "·", color: "#cbc9e2" },
+  { label: "Less deprived", color: "#f2f0f7" },
+  { label: "No figure here", color: "#bbbbbb" },
+];
+
+/** LAYERS-ADD-1 design: flood risk blue (high → very low). */
+const FLOOD_RISK_CLASSES: MapLayerLegendClass[] = [
+  { label: "high", color: "#08519c" },
+  { label: "medium", color: "#3182bd" },
+  { label: "low", color: "#9ecae1" },
+  { label: "very low", color: "#deebf7" },
+  { label: "No figure here", color: "#bbbbbb" },
+];
+
+const LISTED_CLASSES: MapLayerLegendClass[] = [
+  { label: "Category A", color: "#7f2704" },
+  { label: "Category B", color: "#d94801" },
+  { label: "Category C", color: "#fd8d3c" },
+];
+
+const STOP_CLASSES: MapLayerLegendClass[] = [
+  { label: "Bus", color: "#3a4a5c" },
+  { label: "Train", color: "#c0392b" },
+  { label: "Ferry", color: "#1f78b4" },
+  { label: "Tram or subway", color: "#e67e22" },
 ];
 
 /**
  * Live Layers switches only — no Coming soon / Coming later rows.
  * Ids match ScotlandMap paint toggles where they already exist.
+ * LAYERS-ADD-1: HLA/LDP gated off (roadmap); flood = NFRA grid (default off).
  */
 export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
   {
@@ -148,7 +177,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     group: "land",
     label: "Annual Ground Rent",
     minzoom: 5,
-    maxzoom: 19,
+    maxzoom: 20,
     sourceCaption: "Scot-LAND model · 2023",
     legendUnit: "£/year",
     classes: AGR_CLASSES,
@@ -160,20 +189,29 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     group: "land",
     label: "Why it's valuable: access to services (2020 data)",
     minzoom: 8,
-    maxzoom: 19,
+    maxzoom: 20,
     sourceCaption: "Scottish Government · 2020",
     classes: cividisLegendClasses(),
     chip: "proxy",
     defaultOn: false,
-    paintPending: true,
+  },
+  {
+    id: "flood",
+    group: "land",
+    label: "Flood risk",
+    minzoom: 8,
+    maxzoom: 20,
+    sourceCaption: "SEPA · NFRA flood risk grid",
+    classes: FLOOD_RISK_CLASSES,
+    defaultOn: false,
   },
   {
     id: "vdl",
     group: "land",
     label: "Vacant and derelict land",
-    minzoom: 8,
-    maxzoom: 19,
-    sourceCaption: "Scottish Government · SVDLS",
+    minzoom: 10,
+    maxzoom: 20,
+    sourceCaption: "Improvement Service · vacant and derelict land",
     classes: VDL_CLASSES,
     chip: "proxy",
     defaultOn: false,
@@ -192,14 +230,13 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     zoomHint: "Zoom in to see the grid",
   },
   {
-    id: "hla",
+    id: "contaminated_land",
     group: "land",
-    label: "Housing land audit",
-    minzoom: 8,
-    maxzoom: 19,
-    sourceCaption: "Spatial Hub · Housing land supply",
-    classes: HLA_CLASSES,
-    chip: "proxy",
+    label: "Contaminated land",
+    minzoom: 12,
+    maxzoom: 20,
+    sourceCaption: "Improvement Service · contaminated land",
+    classes: [{ label: "Land on a council's contaminated land register", color: "#4d4d4d" }],
     defaultOn: false,
   },
   {
@@ -207,7 +244,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     group: "resources",
     label: "Onshore wind and hydro",
     minzoom: 6,
-    maxzoom: 19,
+    maxzoom: 20,
     sourceCaption: "DESNZ REPD · open data",
     classes: [{ label: "Wind and hydro sites", color: "#0d9488" }],
     chip: "proxy",
@@ -218,7 +255,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     group: "resources",
     label: "Seabed and foreshore",
     minzoom: 5,
-    maxzoom: 19,
+    maxzoom: 20,
     sourceCaption: "Crown Estate Scotland · open data",
     classes: [{ label: "Seabed and foreshore leases", color: "#0369a1" }],
     chip: "market",
@@ -229,7 +266,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     group: "resources",
     label: "Oil and gas",
     minzoom: 5,
-    maxzoom: 19,
+    maxzoom: 20,
     sourceCaption: "North Sea Transition Authority · open data",
     classes: [{ label: "Oil and gas fields", color: "#57534e" }],
     nonCommercial: true,
@@ -240,7 +277,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     group: "nature",
     label: "Peat and soil carbon",
     minzoom: 6,
-    maxzoom: 19,
+    maxzoom: 20,
     sourceCaption: "NatureScot / soils research · open data",
     classes: [{ label: "Peat and soil carbon", color: "#78350f" }],
     nonCommercial: true,
@@ -252,19 +289,9 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     group: "nature",
     label: "Protected nature sites",
     minzoom: 6,
-    maxzoom: 19,
+    maxzoom: 20,
     sourceCaption: "NatureScot · open data",
     classes: [{ label: "Protected sites", color: "#15803d" }],
-    defaultOn: false,
-  },
-  {
-    id: "flood",
-    group: "nature",
-    label: "Flood",
-    minzoom: 7,
-    maxzoom: 19,
-    sourceCaption: "SEPA Flood Maps · open data",
-    classes: [{ label: "Flood risk", color: "#2563eb" }],
     defaultOn: false,
   },
   {
@@ -272,7 +299,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     group: "nature",
     label: "Crofting / common grazings",
     minzoom: 6,
-    maxzoom: 19,
+    maxzoom: 20,
     sourceCaption: "Crofting Commission · open lists",
     classes: [{ label: "Crofting areas", color: "#a16207" }],
     defaultOn: false,
@@ -282,19 +309,80 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     group: "places",
     label: "Council areas",
     minzoom: 5,
-    maxzoom: 19,
+    maxzoom: 20,
     sourceCaption: "Scottish Government · council boundaries",
     classes: OUTLINE_CLASSES,
     defaultOn: true,
   },
   {
     id: "data_zones",
+    aliases: ["dz2022"],
     group: "places",
     label: "Neighbourhood lines",
-    minzoom: 8,
-    maxzoom: 19,
+    minzoom: 10,
+    maxzoom: 20,
     sourceCaption: `Scottish Government · ${DZ2022_EXTRACTION_YEAR}`,
     classes: OUTLINE_CLASSES,
+    defaultOn: false,
+  },
+  {
+    id: "deprivation",
+    group: "places",
+    label: "Local deprivation by topic, 2020",
+    minzoom: 8,
+    maxzoom: 20,
+    sourceCaption: "Scottish Government · 2020",
+    classes: DEPRIVATION_CLASSES,
+    defaultOn: false,
+  },
+  {
+    id: "conservation",
+    group: "places",
+    label: "Conservation areas",
+    minzoom: 8,
+    maxzoom: 20,
+    sourceCaption: "Historic Environment Scotland · open data",
+    classes: [{ label: "Protected for their character", color: "#8a3b8f" }],
+    defaultOn: false,
+  },
+  {
+    id: "listed",
+    group: "places",
+    label: "Listed buildings",
+    minzoom: 14,
+    maxzoom: 20,
+    sourceCaption: "Historic Environment Scotland · open data",
+    classes: LISTED_CLASSES,
+    defaultOn: false,
+  },
+  {
+    id: "stops",
+    group: "places",
+    label: "Bus and train stops",
+    minzoom: 14,
+    maxzoom: 20,
+    sourceCaption: "Department for Transport · open data",
+    classes: STOP_CLASSES,
+    defaultOn: false,
+  },
+  {
+    id: "green_belt",
+    group: "places",
+    label: "Green belt",
+    minzoom: 8,
+    maxzoom: 20,
+    sourceCaption: "Improvement Service · green belt",
+    classes: [{ label: "Land kept open around towns", color: "#2e7d32" }],
+    defaultOn: false,
+  },
+  {
+    id: "school_catchments",
+    group: "places",
+    label: "School catchments",
+    minzoom: 10,
+    maxzoom: 20,
+    sourceCaption: "Improvement Service · council data, years vary",
+    classes: [{ label: "Area a school serves", color: "#5b6b7a" }],
     defaultOn: false,
   },
 ];

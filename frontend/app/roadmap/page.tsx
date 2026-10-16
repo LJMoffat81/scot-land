@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import ContentPageFooter from "@/components/ContentPageFooter";
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
+import { LAYERS_ADD_WAITING } from "@/lib/layersAddRegistry";
 import { absoluteOgImageUrl, OG_IMAGES } from "@/lib/socialMeta";
 
 export const metadata: Metadata = {
@@ -24,9 +25,20 @@ export const metadata: Metadata = {
 };
 
 const COMING_TO_THE_MAP: ReadonlyArray<{
+  id?: string;
   name: string;
+  blurb?: string;
   status: string;
+  statusShort?: string;
 }> = [
+  // LDP / HLS status comes from LAYERS_ADD_WAITING (the catalog copy).
+  ...LAYERS_ADD_WAITING.map((row) => ({
+    id: row.id,
+    name: row.title,
+    blurb: row.blurb,
+    status: row.status,
+    statusShort: row.statusShort,
+  })),
   {
     name: "Landscape character areas",
     status: "Waiting for permission — licence check",
@@ -72,9 +84,29 @@ export default function RoadmapPage() {
         </p>
         <ul className="roadmap-layer-list">
           {COMING_TO_THE_MAP.map((row) => (
-            <li key={row.name} data-testid="roadmap-layer-row">
+            <li
+              key={row.id ?? row.name}
+              data-testid={
+                row.id ? `roadmap-waiting-${row.id}` : "roadmap-layer-row"
+              }
+            >
               <span className="roadmap-layer-name">{row.name}</span>
-              <span className="roadmap-layer-status">{row.status}</span>
+              {row.blurb ? (
+                <span className="roadmap-layer-blurb">{row.blurb}</span>
+              ) : null}
+              <span
+                className="roadmap-layer-status"
+                data-testid={
+                  row.id ? `roadmap-waiting-status-${row.id}` : undefined
+                }
+              >
+                <span className="roadmap-waiting-status-full">{row.status}</span>
+                {row.statusShort ? (
+                  <span className="roadmap-waiting-status-short">
+                    {row.statusShort}
+                  </span>
+                ) : null}
+              </span>
             </li>
           ))}
         </ul>

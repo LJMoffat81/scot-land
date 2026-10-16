@@ -1,3 +1,4 @@
+import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import {
@@ -166,6 +167,7 @@ test.describe("SW-016 research banner strip 390x844", () => {
         body: JSON.stringify({ layers: [] }),
       });
     });
+    await stubLayersAddQuiet(page);
   });
 
   test.afterEach(() => {

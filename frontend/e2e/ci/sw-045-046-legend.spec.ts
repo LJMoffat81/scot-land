@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { stubLayersAddQuiet } from "./_layersAddStub";
 
 /**
  * MAP-CARDS — floating legend removed; inline legend + legend strip.
@@ -89,6 +90,7 @@ async function stubMapBackend(page: Page) {
       body: JSON.stringify({ enabled: false }),
     });
   });
+  await stubLayersAddQuiet(page);
 }
 
 test.beforeEach(async ({ page }) => {

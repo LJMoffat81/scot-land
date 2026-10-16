@@ -1,3 +1,4 @@
+import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
@@ -109,6 +110,7 @@ async function stubBackend(page: Page) {
       body: JSON.stringify({ layers: [] }),
     });
   });
+  await stubLayersAddQuiet(page);
 }
 
 async function boxOf(locator: Locator, label: string): Promise<Box> {

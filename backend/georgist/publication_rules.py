@@ -174,6 +174,43 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="SEPA flood hazard extents (OGL); no rent",
     ),
+    # LAYERS-ADD-1 — catalogue / tile stubs / v1.5 candidate aggregates (no rent).
+    "/layers/add/catalog": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="LAYERS-ADD-1 public catalogue slice; no rent",
+    ),
+    "/layers/add/waiting": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="LAYERS-ADD-1 roadmap waiting-for-permission rows; no rent",
+    ),
+    "/layers/add/tiles-manifest": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="LAYERS-ADD-1 public tile manifest; no rent",
+    ),
+    "/layers/add/viewport/{layer_id}": LayerRule(
+        "site",
+        "site",
+        "none",
+        note="LAYERS-ADD-1 viewport shapes for painted layers; no rent; absent IS extracts 404",
+    ),
+    "/layers/add/agg/{agg_name}": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="LAYERS-ADD-1 DZ aggregate stub for v1.5 inputs; no rent; gated ids 404",
+    ),
+    "/tiles/{layer_id}/{z}/{x}/{y}": LayerRule(
+        "site",
+        "site",
+        "none",
+        note="LAYERS-ADD-1 MVT stub; gated ids 404; empty until tiles built; no rent",
+    ),
     "/layers/open/scotwind-intog": LayerRule(
         "site",
         "site",

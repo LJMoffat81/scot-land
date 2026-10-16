@@ -25,7 +25,9 @@ GLASGOW_BBOX = {
 }
 
 
-def test_catalog_lists_flood_live_with_licence_and_source():
+def test_catalog_lists_flood_live_with_licence_and_source(monkeypatch):
+    """LAYERS-ADD-1: SEPA flood extent is gated OFF by default; on when flagged."""
+    monkeypatch.setenv("LAYER_SEPA_FLOOD_EXTENT_ENABLED", "true")
     layer = catalog_layer()
     assert layer["id"] == "flood"
     assert layer["ledger_role"] == "constraint"
@@ -52,6 +54,16 @@ def test_catalog_lists_flood_live_with_licence_and_source():
     assert flood.get("ledger_row") is None
     assert flood["ui_surface"] == "ledger"
     assert "mapserver_url" not in flood
+
+
+def test_catalog_omits_flood_extent_when_flag_off(monkeypatch):
+    monkeypatch.delenv("LAYER_SEPA_FLOOD_EXTENT_ENABLED", raising=False)
+    layer = catalog_layer()
+    assert layer["status"] == "gap"
+    assert layer["endpoint"] is None
+    catalog = platform_catalog()
+    ids = [row["id"] for row in catalog["layers"]]
+    assert "flood" not in ids
 
 
 def test_query_bbox_unloaded_is_honest(monkeypatch):
@@ -84,6 +96,7 @@ def test_query_bbox_503_path_when_unloaded(client, monkeypatch):
             },
         }
 
+    monkeypatch.setenv("LAYER_SEPA_FLOOD_EXTENT_ENABLED", "true")
     monkeypatch.setattr("api.platform_routes.flood_bbox", _boom)
     response = client.get("/layers/open/flood", params=GLASGOW_BBOX)
     assert response.status_code == 503
@@ -91,6 +104,7 @@ def test_query_bbox_503_path_when_unloaded(client, monkeypatch):
 
 
 def test_open_flood_ok(client, monkeypatch):
+    monkeypatch.setenv("LAYER_SEPA_FLOOD_EXTENT_ENABLED", "true")
     monkeypatch.setattr(
         "api.platform_routes.flood_bbox",
         lambda *a, **k: {

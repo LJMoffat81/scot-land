@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { stubLayersAddQuiet } from "./_layersAddStub";
 
 /**
  * SW-028 + suggestion 25 — sea stub card:
@@ -143,6 +144,7 @@ async function stubMapChrome(page: Page) {
       body: JSON.stringify({ enabled: false }),
     });
   });
+  await stubLayersAddQuiet(page);
 }
 
 async function stubSeaMissPlaceApis(page: Page, lat: number, lng: number) {

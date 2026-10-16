@@ -18,6 +18,8 @@ import psycopg2
 import yaml
 from psycopg2 import extras
 
+from layers.layer_flags import FLAG_LDP, layer_ldp_enabled
+
 logger = logging.getLogger(__name__)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -153,7 +155,10 @@ def coverage_summary() -> dict[str, Any]:
     }
 
 
-def catalog_layer() -> dict[str, Any]:
+def catalog_layer() -> dict[str, Any] | None:
+    """Omit from public catalog when LAYER_LDP_ENABLED is off (LICENCE-ADDENDUM-1a)."""
+    if not layer_ldp_enabled():
+        return None
     meta = source_meta()
     return {
         "id": "ldp_allocations",
@@ -167,10 +172,13 @@ def catalog_layer() -> dict[str, Any]:
         ),
         "developer_note": (
             "LDP polygons from OGL Spatial Hub / authority portals into PostGIS. "
-            "National coverage fragmented. Annual Ground Rent breakdown row 1a planning uplift."
+            "National coverage fragmented. Annual Ground Rent breakdown row 1a planning uplift. "
+            "LAYERS-ADD-1a: LAYER_LDP_ENABLED default OFF (PSGA / not commercially available)."
         ),
         "endpoint": "/layers/open/ldp",
         "licence": meta["licence"],
+        "licence_status": "ogl",
+        "flag_name": FLAG_LDP,
         "minzoom": 8,
         "source_url": meta["source_url"],
         "spatial_hub_url": meta["spatial_hub_url"],

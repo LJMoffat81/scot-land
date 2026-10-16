@@ -1,3 +1,4 @@
+import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Page } from "@playwright/test";
 
 /**
@@ -195,6 +196,7 @@ async function stubBackend(page: Page) {
       body: JSON.stringify({ generated_at: "2026-01-01", bundles: [] }),
     });
   });
+  await stubLayersAddQuiet(page);
 }
 
 test.describe("developers glossary", () => {

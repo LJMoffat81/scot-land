@@ -46,19 +46,36 @@ const liveIds = MAP_LAYER_REGISTRY.map((e) => e.id);
 assert.deepEqual(liveIds, [
   "1",
   "access_services",
+  "flood",
   "vdl",
   "grid3",
-  "hla",
+  "contaminated_land",
   "3",
   "4",
   "9",
   "8",
   "designations",
-  "flood",
   "crofting",
   "councils",
   "data_zones",
+  "deprivation",
+  "conservation",
+  "listed",
+  "stops",
+  "green_belt",
+  "school_catchments",
 ]);
+// LAYERS-ADD-1a: HLA / LDP are flagged OFF — roadmap only, not live switches.
+assert.equal(
+  MAP_LAYER_REGISTRY.find((e) => e.id === "hla"),
+  undefined,
+  "hla must not be a live Layers switch (LAYER_HLS_ENABLED default OFF)",
+);
+assert.equal(
+  MAP_LAYER_REGISTRY.find((e) => e.id === "ldp"),
+  undefined,
+  "ldp must not be a live Layers switch",
+);
 
 assert.equal(resolveMapLayerId("agr"), "1");
 assert.equal(resolveMapLayerId("1"), "1");
@@ -72,6 +89,11 @@ const removed = [
   "7",
   "10",
   "lca",
+  "hla",
+  "ldp",
+  "ldp_allocations",
+  "hls",
+  "sepa_frm_maps",
   "builtup_mask",
   "settlements",
   "localities",
@@ -124,6 +146,17 @@ assert.equal(
   MAP_LAYER_REGISTRY.find((e) => e.id === "councils")?.label,
   "Council areas",
 );
+assert.equal(
+  MAP_LAYER_REGISTRY.find((e) => e.id === "flood")?.label,
+  "Flood risk",
+);
+assert.equal(
+  MAP_LAYER_REGISTRY.find((e) => e.id === "flood")?.group,
+  "land",
+);
+assert.ok(
+  MAP_LAYER_REGISTRY.every((e) => e.defaultOn !== true || e.id === "councils"),
+);
 
 // Four accordion groups; every live id maps to one of them.
 assert.deepEqual([...MAP_LAYER_GROUP_ORDER], [
@@ -156,5 +189,47 @@ assert.equal(
   dz2022CopyrightLine(),
   `Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right ${dzJson.extraction_year}.`,
 );
+
+assert.equal(
+  MAP_LAYER_REGISTRY.filter((entry) => entry.paintPending).length,
+  0,
+  "paintPending rows must be painted or left off the live list",
+);
+
+const { visitorLayersAddRows, LAYERS_ADD_REGISTRY, LAYERS_ADD_WAITING } =
+  await import(pathToFileURL(join(frontendRoot, "lib/layersAddRegistry.ts")).href);
+const absent = visitorLayersAddRows().map((row) => row.id);
+for (const id of ["vdl", "green_belt", "school_catchments", "contaminated_land"]) {
+  assert.equal(absent.includes(id), false, `${id} hidden when extract absent`);
+}
+assert.equal(
+  LAYERS_ADD_REGISTRY.find((row) => row.id === "flood")?.layerId,
+  "sepa_nfra_grid",
+);
+const present = visitorLayersAddRows({
+  spatialHubPresent: {
+    vdl: true,
+    green_belt: true,
+    school_catchments: true,
+    contaminated_land: true,
+  },
+}).map((row) => row.id);
+assert.equal(present.includes("green_belt"), true);
+
+const roadmap = readFileSync(join(frontendRoot, "app/roadmap/page.tsx"), "utf8");
+assert.match(roadmap, /LAYERS_ADD_WAITING/);
+assert.equal(
+  roadmap.includes('id: "ldp"'),
+  false,
+  "roadmap LDP/HLS come from LAYERS_ADD_WAITING",
+);
+assert.equal(LAYERS_ADD_WAITING.map((row) => row.id).join(","), "ldp,hls");
+
+const mapSrc = readFileSync(
+  join(frontendRoot, "components/ScotlandMap.tsx"),
+  "utf8",
+);
+assert.match(mapSrc, /sepa_nfra_grid/);
+assert.match(mapSrc, /syncLayersAddPaint/);
 
 console.log("test-map-layer-registry: ok");

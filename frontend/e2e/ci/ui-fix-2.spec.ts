@@ -240,11 +240,14 @@ for (const viewport of [
           ).toHaveCount(1);
         }
 
-        await assertClear(
+        await expect(
           page.getByTestId("identify-at-centre"),
-          page.getByTestId("map-attribution-line"),
-          `centre vs attribution (${query})`,
-        );
+          `centre button absent after ${query}`,
+        ).toHaveCount(0);
+        await expect(
+          page.getByText("Show the area at map centre"),
+          `centre wording absent after ${query}`,
+        ).toHaveCount(0);
         await assertClear(
           page.getByTestId("basemap-switcher"),
           page.locator(".hud-search"),

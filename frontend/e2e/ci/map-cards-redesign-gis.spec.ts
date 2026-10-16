@@ -332,8 +332,26 @@ test.describe("MAP-CARDS tablet 768", () => {
       /coming soon/i,
     );
     await page.getByTestId("map-panel-slot-close").click();
-    // Closing Layers restores the place card at peek/half — identify sits above it.
-    await page.getByTestId("identify-at-centre").click({ force: true });
+    // Closing Layers restores the place card. A map click at the centre
+    // identifies again now that the centre button is gone.
+    await page.evaluate(() => {
+      const map = (
+        window as unknown as {
+          __map?: {
+            fire(type: string, ev: object): void;
+            project(lngLat: { lng: number; lat: number }): { x: number; y: number };
+            getCenter(): { lng: number; lat: number };
+          };
+        }
+      ).__map;
+      if (!map) throw new Error("window.__map missing");
+      const lngLat = map.getCenter();
+      map.fire("click", {
+        lngLat,
+        point: map.project(lngLat),
+        originalEvent: new MouseEvent("click"),
+      });
+    });
     await expect(page.getByTestId("place-card")).toBeVisible({
       timeout: 45_000,
     });

@@ -34,3 +34,27 @@ export function basemapAriaLabel(target: MapBasemapId): string {
 export function basemapStyleUrl(id: MapBasemapId): string {
   return MAP_BASEMAP_STYLE_URL[id];
 }
+
+/**
+ * Basemap CDN misses and aborted tile loads.
+ * MapLibre console.errors an Error object only when nothing listens for
+ * "error". Playwright then records the text "Error" (vdl-dz-2 on CI).
+ */
+const MAP_ERROR_NOISE =
+  /sprite|glyph|openfreemap|AJAXError|AbortError|Failed to fetch|net::ERR_|aborted/i;
+
+/** Text worth logging for a MapLibre error. Null means keep the console quiet. */
+export function mapErrorLogLine(err: unknown): string | null {
+  let message: string;
+  if (err instanceof Error) {
+    const url =
+      "url" in err && typeof (err as { url?: unknown }).url === "string"
+        ? ` ${(err as { url: string }).url}`
+        : "";
+    message = `${err.name}: ${err.message}${url}`.trim();
+  } else {
+    message = String(err ?? "").trim();
+  }
+  if (!message || MAP_ERROR_NOISE.test(message)) return null;
+  return message;
+}

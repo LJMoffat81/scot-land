@@ -68,6 +68,7 @@ import {
   basemapCaption,
   basemapStyleUrl,
   basemapSwitchTarget,
+  mapErrorLogLine,
   type MapBasemapId,
 } from "../lib/mapBasemap";
 import {
@@ -1496,7 +1497,7 @@ export default function ScotlandMap() {
     if (placeAsideRef.current && placeStub) {
       setPanelKind("place");
       // Layers opens at full — restore the place card at its search/tap detent,
-      // not full (otherwise identify-at-centre stays under the sheet on tablet).
+      // not full.
       setPanelDetent(placeStub.fromAddressSearch ? "half" : "peek");
       setLiveMessage("Place card restored");
       replaceMapUrl({ panel: "place" });
@@ -2090,6 +2091,14 @@ export default function ScotlandMap() {
       "bottom-right",
     );
     map.getCanvas().style.cursor = "pointer";
+    // Listen so MapLibre does not console.error(Error) for basemap CDN blips.
+    // Other map errors are logged as a message string, not a bare Error object.
+    map.on("error", (event) => {
+      const line = mapErrorLogLine(
+        (event as { error?: unknown }).error,
+      );
+      if (line) console.error(line);
+    });
 
     // MapLibre compact mode starts with maplibregl-compact-show (expanded).
     // Collapse to the (i) control by default; user click still expands.
@@ -4639,19 +4648,6 @@ export default function ScotlandMap() {
     placeStub?.card?.place_label ||
     null;
 
-  const identifyAtCentre = () => {
-    const map = mapRef.current;
-    if (!map) return;
-    // Drop a pending debounced map-click identify so centre wins immediately.
-    if (identifyTimerRef.current) {
-      clearTimeout(identifyTimerRef.current);
-      identifyTimerRef.current = null;
-    }
-    const c = map.getCenter();
-    void inspectRef.current(c.lat, c.lng, { fly: false });
-    grid3AfterIdentifyRef.current?.(c.lng, c.lat);
-  };
-
   return (
     <div className={shellClass}>
       <div className="map-stage">
@@ -4709,15 +4705,6 @@ export default function ScotlandMap() {
         <span className="basemap-switcher-caption">
           {basemapCaption(basemapTarget)}
         </span>
-      </button>
-
-      <button
-        type="button"
-        className="identify-at-centre"
-        data-testid="identify-at-centre"
-        onClick={identifyAtCentre}
-      >
-        Show the area at map centre
       </button>
 
       <header className="hud-top" ref={headerRef}>

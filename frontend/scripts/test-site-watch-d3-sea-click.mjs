@@ -19,7 +19,8 @@ function exists(relPath) {
   return existsSync(join(frontendRoot, relPath));
 }
 
-const LINE = "We only cover land in Scotland.";
+const LINE =
+  "We only cover land so far. Scotland's sea rents (offshore wind, oil and gas, fish farms and seabed) will come later as their own map layer.";
 
 const SHOW_SCOTLAND = "Show me Scotland";
 

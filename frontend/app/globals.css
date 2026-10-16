@@ -525,7 +525,8 @@ input {
   padding-left: 0.55rem;
 }
 
-.place-card-show-scotland {
+.place-card-show-scotland,
+.place-card-see-roadmap {
   min-height: 44px;
   min-width: 44px;
 }
@@ -710,11 +711,20 @@ input {
   margin-top: 0.45rem;
 }
 
-/* SW-028: link under the sea plain line — closes card + national view. */
-.place-card-show-scotland {
-  display: inline-block;
-  align-self: flex-start;
+/* SW-028 + COPY-SEA-1: Show me Scotland and See the roadmap sit side by side. */
+.place-card-sea-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.9rem;
   margin: 0.15rem 0.25rem 0.1rem;
+}
+
+.place-card-show-scotland,
+.place-card-see-roadmap {
+  display: inline-block;
+  align-self: center;
+  margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -727,7 +737,9 @@ input {
 }
 
 .place-card-show-scotland:hover,
-.place-card-show-scotland:focus-visible {
+.place-card-show-scotland:focus-visible,
+.place-card-see-roadmap:hover,
+.place-card-see-roadmap:focus-visible {
   color: var(--rugby-navy, var(--slrg-navy));
 }
 

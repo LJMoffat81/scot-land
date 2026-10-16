@@ -144,8 +144,36 @@ async function sourceFeatureCount(page: Page, id: string): Promise<number> {
   return page.evaluate((sourceId) => {
     const map = (window as unknown as { __SCOT_LAND_MAP__: MapHandle })
       .__SCOT_LAND_MAP__;
-    return map.getSource(sourceId)?._data?.features?.length ?? 0;
+    const src = map.getSource(sourceId) as unknown as {
+      _data?: GeoJSON.FeatureCollection;
+      serialize?: () => { data?: GeoJSON.FeatureCollection };
+    } | null;
+    if (!src) return 0;
+    const fromPrivate = src._data?.features?.length;
+    if (typeof fromPrivate === "number") return fromPrivate;
+    const data = src.serialize?.().data;
+    return data?.features?.length ?? 0;
   }, id);
+}
+
+async function waitGridLines(page: Page, min = 1) {
+  await page.waitForFunction(
+    (n) => {
+      const map = (window as unknown as { __SCOT_LAND_MAP__: MapHandle })
+        .__SCOT_LAND_MAP__;
+      const src = map.getSource("grid3-lines") as unknown as {
+        _data?: GeoJSON.FeatureCollection;
+        serialize?: () => { data?: GeoJSON.FeatureCollection };
+      } | null;
+      const count =
+        src?._data?.features?.length ??
+        src?.serialize?.().data?.features?.length ??
+        0;
+      return count >= n;
+    },
+    min,
+    { timeout: 15_000 },
+  );
 }
 
 test.describe("GRID-BASE-1", () => {
@@ -214,7 +242,17 @@ test.describe("GRID-BASE-1", () => {
     );
     expect(maxZoom).toBe(20);
 
+    await expect(page.getByTestId("hud-layers-btn")).toBeVisible();
+    // Confirm boot enabled grid3
+    await page.getByTestId("hud-layers-btn").click();
+    await expect(page.getByTestId("layer-toggle-grid3")).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    await page.keyboard.press("Escape");
+
     await setZoom(page, 17.2, [-3.1883, 55.9533]);
+    await waitGridLines(page, 1);
     const n17 = await sourceFeatureCount(page, "grid3-lines");
     expect(n17).toBeGreaterThan(0);
     expect(n17).toBeLessThanOrEqual(1500);
@@ -282,7 +320,7 @@ test.describe("GRID-BASE-1", () => {
     expect(filterNoise(gate.pageErrors)).toEqual([]);
   });
 
-  test("G5 touch z18.5 — identify only (no row 6 from grid)", async ({
+  test("G5 at z18.5 — click identify only (no row 6 from grid)", async ({
     page,
   }) => {
     const gate = attachConsoleGate(page);
@@ -290,12 +328,12 @@ test.describe("GRID-BASE-1", () => {
     await page.goto("/?layers=grid3");
     await waitMap(page);
     await setZoom(page, 18.5, [-3.1883, 55.9533]);
-    await page.touchscreen.tap(195, 420);
+    // Below tap-select zoom: click does area identify only (G5).
+    await page.mouse.click(195, 420);
     await expect(page.getByTestId("place-card")).toBeVisible({
       timeout: 10_000,
     });
     const row6 = page.getByTestId("place-card-row6-slot");
-    // Hidden empty slot or no grid text
     const text = (await row6.textContent())?.trim() ?? "";
     expect(text).not.toMatch(/Grid square/);
     expect(filterNoise(gate.consoleErrors)).toEqual([]);
@@ -307,6 +345,7 @@ test.describe("GRID-BASE-1", () => {
     await page.goto("/?layers=grid3");
     await waitMap(page);
     await setZoom(page, 17.5, [-12.5, 57.0]);
+    await page.waitForTimeout(300);
     expect(await sourceFeatureCount(page, "grid3-lines")).toBe(0);
     await expect(page.getByTestId("grid3-tooltip")).toHaveCount(0);
   });
@@ -316,6 +355,7 @@ test.describe("GRID-BASE-1", () => {
     await page.goto("/?layers=grid3");
     await waitMap(page);
     await setZoom(page, 18.2, [-3.1883, 55.9533]);
+    await waitGridLines(page, 1);
     const order = await page.evaluate(() => {
       const map = (
         window as unknown as {

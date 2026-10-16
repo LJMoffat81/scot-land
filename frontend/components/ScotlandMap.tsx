@@ -2999,6 +2999,7 @@ export default function ScotlandMap() {
         }
       }
       if (cancelled || myGen !== gen) return;
+      // Re-read zoom after await so a stale low-zoom rebuild cannot wipe z17+.
       const z = map.getZoom();
       if (z < GRID3_MIN_ZOOM) {
         clearLines();

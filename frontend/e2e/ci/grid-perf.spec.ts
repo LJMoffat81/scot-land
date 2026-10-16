@@ -81,12 +81,26 @@ test.describe("GRID-BASE-1 perf", () => {
         window as unknown as { __SCOT_LAND_MAP__: MapHandle }
       ).__SCOT_LAND_MAP__.jumpTo({ zoom: 17.2, center: [-3.1883, 55.9533] });
     });
-    await page.waitForFunction(() => {
-      const map = (window as unknown as { __SCOT_LAND_MAP__: MapHandle })
-        .__SCOT_LAND_MAP__;
-      const n = map.getSource("grid3-lines")?._data?.features?.length ?? 0;
-      return n > 0;
-    });
+    await page.waitForFunction(
+      () => {
+        const helper = (
+          window as unknown as { __SCOT_LAND_GRID3__?: unknown }
+        ).__SCOT_LAND_GRID3__;
+        const map = (window as unknown as { __SCOT_LAND_MAP__: MapHandle })
+          .__SCOT_LAND_MAP__;
+        const src = map.getSource("grid3-lines") as unknown as {
+          _data?: GeoJSON.FeatureCollection;
+          serialize?: () => { data?: GeoJSON.FeatureCollection };
+        } | null;
+        const n =
+          src?._data?.features?.length ??
+          src?.serialize?.().data?.features?.length ??
+          0;
+        return Boolean(helper) && n > 0;
+      },
+      null,
+      { timeout: 20_000 },
+    );
 
     const stats = await page.evaluate(async () => {
       const helper = (

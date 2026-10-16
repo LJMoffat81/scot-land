@@ -38,24 +38,57 @@ const KNOWN = new Set([
   "band",
 ]);
 
+/**
+ * Camera centres outside this box are not a Scotland view.
+ * Includes the Gulf of Guinea (0, 0). Inclusive edges are still Scotland.
+ */
+export const SCOTLAND_VIEW_BBOX = {
+  minLng: -9.5,
+  maxLng: -0.5,
+  minLat: 54.5,
+  maxLat: 61.0,
+} as const;
+
+export function isScotlandViewCenter(lng: number, lat: number): boolean {
+  return (
+    Number.isFinite(lng) &&
+    Number.isFinite(lat) &&
+    lng >= SCOTLAND_VIEW_BBOX.minLng &&
+    lng <= SCOTLAND_VIEW_BBOX.maxLng &&
+    lat >= SCOTLAND_VIEW_BBOX.minLat &&
+    lat <= SCOTLAND_VIEW_BBOX.maxLat
+  );
+}
+
+/** SW-060 — five decimal places is about one metre, inside a 5 m reopen. */
+export function formatMapCenterParam(lng: number, lat: number): string {
+  return `${lng.toFixed(5)},${lat.toFixed(5)}`;
+}
+
+function parseFinitePair(
+  lngRaw: string,
+  latRaw: string,
+): { lng: number; lat: number } | null {
+  if (lngRaw.trim() === "" || latRaw.trim() === "") return null;
+  const lng = Number(lngRaw);
+  const lat = Number(latRaw);
+  if (!isScotlandViewCenter(lng, lat)) return null;
+  return { lng, lat };
+}
+
 function parseCenter(params: URLSearchParams): { lng: number; lat: number } | null {
-  const c = params.get("c");
-  if (c) {
-    const parts = c.split(",").map((p) => Number(p.trim()));
-    if (
-      parts.length === 2 &&
-      Number.isFinite(parts[0]) &&
-      Number.isFinite(parts[1])
-    ) {
-      return { lng: parts[0]!, lat: parts[1]! };
-    }
+  // A present `c` wins. An out-of-Scotland `c` is ignored — do not fall
+  // through to lat/lng, and do not invent a centre from missing keys.
+  // Number(null) === 0, which is how a fresh URL became the Gulf of Guinea.
+  if (params.has("c")) {
+    const parts = (params.get("c") ?? "").split(",");
+    if (parts.length !== 2) return null;
+    return parseFinitePair(parts[0] ?? "", parts[1] ?? "");
   }
-  const lat = Number(params.get("lat"));
-  const lon = Number(params.get("lon") ?? params.get("lng"));
-  if (Number.isFinite(lat) && Number.isFinite(lon)) {
-    return { lng: lon, lat };
-  }
-  return null;
+  const latRaw = params.get("lat");
+  const lonRaw = params.get("lon") ?? params.get("lng");
+  if (latRaw == null || lonRaw == null) return null;
+  return parseFinitePair(lonRaw, latRaw);
 }
 
 /** Resolve comma-separated layer ids; unknown/coming-later ids dropped. */
@@ -141,11 +174,9 @@ export function writeMapUrlSearch(opts: WriteMapUrlOpts): string {
   if (place) next.set("place", place);
   if (layers && layers.length) next.set("layers", layers.join(","));
   if (z != null && Number.isFinite(z)) next.set("z", String(Math.round(z * 100) / 100));
-  if (center) {
-    next.set(
-      "c",
-      `${center.lng.toFixed(2)},${center.lat.toFixed(2)}`,
-    );
+  // Never persist a centre outside Scotland (null island included).
+  if (center && isScotlandViewCenter(center.lng, center.lat)) {
+    next.set("c", formatMapCenterParam(center.lng, center.lat));
   }
   if (panel) next.set("panel", panel);
 

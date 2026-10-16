@@ -78,6 +78,7 @@ import {
   defaultOnLayerIds,
 } from "../lib/mapLayerRegistry";
 import {
+  isScotlandViewCenter,
   pushMapUrl,
   readMapUrlState,
   replaceMapUrl,
@@ -2062,10 +2063,33 @@ export default function ScotlandMap() {
       }
       if (userMoved) return;
       if (container.clientWidth < 40 || container.clientHeight < 40) return;
+      const framed = container.dataset.framed === "1";
       // Panel open/close resizes the map and must still frame the national
       // view. Once the camera has left that view (GRID-BASE jumpTo ≥ z17),
       // do not fitBounds again — that yank cleared grid rebuilds (G19).
-      if (map.getZoom() > 8) return;
+      // A shared-link view is the initial camera; later resizes must not
+      // replace it with the national frame.
+      if (framed) {
+        if (container.dataset.viewSource === "url") return;
+        if (map.getZoom() > 8) return;
+      }
+      // Apply a Scotland `c` before the national fitBounds. #169 returned
+      // early whenever zoom was already > 8, so a bad or not-yet-applied
+      // camera never reached fitBounds. Missing / out-of-Scotland `c`
+      // (including 0,0) is not a view — still fit Scotland on the first frame.
+      if (!framed) {
+        const urlState = readMapUrlState(window.location.search);
+        if (urlState.center) {
+          map.jumpTo({
+            center: [urlState.center.lng, urlState.center.lat],
+            zoom: urlState.z ?? map.getZoom(),
+          });
+          syncCameraDataset();
+          container.dataset.framed = "1";
+          container.dataset.viewSource = "url";
+          return;
+        }
+      }
       const narrow = window.innerWidth <= 900;
       map.fitBounds(
         [
@@ -2082,6 +2106,7 @@ export default function ScotlandMap() {
       );
       syncCameraDataset();
       container.dataset.framed = "1";
+      container.dataset.viewSource = "scotland";
     };
 
     let seenWidth = -1;
@@ -2892,8 +2917,7 @@ export default function ScotlandMap() {
     } else if (
       bootLat != null &&
       bootLng != null &&
-      Number.isFinite(bootLat) &&
-      Number.isFinite(bootLng)
+      isScotlandViewCenter(bootLng, bootLat)
     ) {
       // URL deep-link is intentional navigation (like search → half), not a map tap.
       void inspectRef.current(bootLat, bootLng, {
@@ -4291,6 +4315,10 @@ export default function ScotlandMap() {
       const zoom = map.getZoom();
       setMapZoom(zoom);
       if (map.isMoving()) return;
+      // Do not write c= until the initial view (Scotland frame or a shared
+      // link inside Scotland) has been applied. A mount-time rewrite used to
+      // persist the unready camera — Number(null) === 0 — as c=0.00,0.00.
+      if (map.getContainer().dataset.framed !== "1") return;
       // data_zones stays off until the user toggles it (no auto-on at zoom 10).
       const center = map.getCenter();
       replaceMapUrl({

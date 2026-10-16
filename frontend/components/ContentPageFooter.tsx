@@ -27,6 +27,8 @@ export function ContentPageFooter() {
     <footer className="content-page-footer" data-testid="content-page-footer">
       <p data-testid="content-page-footer-line">
         Research estimate · Open data ·{" "}
+        <a href="/why-land-value">Why land value?</a>
+        {" · "}
         <a href="/data#licences">Sources and licences</a>
         {" · "}
         <a href="/roadmap#map-layers">What&apos;s coming next</a>

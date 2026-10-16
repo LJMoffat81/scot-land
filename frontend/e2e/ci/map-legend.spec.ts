@@ -1,4 +1,8 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * MAP-CARDS — population density legend removed from default map.

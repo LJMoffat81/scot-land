@@ -1,0 +1,29 @@
+name: Suggest a layer
+description: Suggest a dataset that would make the Scot-LAND map better.
+title: "Layer suggestion"
+labels: ["layer-suggestion"]
+body:
+  - type: textarea
+    id: layer
+    attributes:
+      label: What is the layer?
+    validations:
+      required: true
+  - type: input
+    id: data-source
+    attributes:
+      label: Data source link
+    validations:
+      required: true
+  - type: textarea
+    id: why-it-matters
+    attributes:
+      label: Why it matters for land value
+    validations:
+      required: true
+  - type: textarea
+    id: licence
+    attributes:
+      label: Licence (if known)
+    validations:
+      required: false

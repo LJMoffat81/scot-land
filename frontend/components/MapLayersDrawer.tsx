@@ -1,7 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import ConfidenceTag from "@/components/ConfidenceTag";
+import {
+  aimStatusPanelTag,
+  layersPanelAimRows,
+  type AimGroupId,
+  type AimRow,
+} from "@/lib/aimToCover";
 import {
   buildInlineLegendFromRegistry,
   getMapLayer,
@@ -12,6 +18,23 @@ import {
   mapDrawerLayersByGroup,
   type MapDrawerLayer,
 } from "@/lib/mapLayerGroups";
+
+const LAND_HEADER = "LAND";
+const LAND_SUBTITLE = "Everything nature provides and no one made";
+const PLACES_HEADER = "PLACES AND BOUNDARIES";
+const SERVICES_OF_NATURE_NOTE = "Estimates only. Never taxed.";
+
+const LAND_SUBGROUP_LABEL: Record<AimGroupId, string> = {
+  land: "Sites",
+  resources: "Natural resources",
+  nature: "Services of nature",
+};
+
+const LAND_SUBGROUP_ORDER: readonly AimGroupId[] = [
+  "land",
+  "resources",
+  "nature",
+];
 
 export type MapLayerToggleState = Record<string, boolean>;
 
@@ -58,7 +81,10 @@ function chipLabel(
 }
 
 function initialOpenGroups(
-  groups: ReturnType<typeof mapDrawerLayersByGroup>,
+  groups: ReadonlyArray<{
+    key: MapLayerGroupKey;
+    layers: ReadonlyArray<{ id: string }>;
+  }>,
   enabled: MapLayerToggleState,
 ): Set<MapLayerGroupKey> {
   const open = new Set<MapLayerGroupKey>();
@@ -91,13 +117,11 @@ export default function MapLayersDrawer({
   const groups = mapDrawerLayersByGroup({
     spatialHubPresent,
     floodLoaded: floodDzLoaded,
-  })
-    .map(({ key, label, layers }) => ({
+  }).map(({ key, layers }) => ({
       key,
-      label,
       layers: layers.filter((layer) => !unavailable.has(layer.id)),
-    }))
-    .filter(({ layers }) => layers.length > 0);
+    }),
+  );
 
   const [openGroups, setOpenGroups] = useState<Set<MapLayerGroupKey>>(() =>
     initialOpenGroups(groups, enabled),
@@ -126,6 +150,9 @@ export default function MapLayersDrawer({
       return changed ? next : prev;
     });
   }, [enabledGroupKeys]);
+
+  const placesLayers =
+    groups.find((entry) => entry.key === "places")?.layers ?? [];
 
   const setEnabled = (id: string, on: boolean) => {
     onEnabledChange?.({ ...enabled, [id]: on });
@@ -167,54 +194,43 @@ export default function MapLayersDrawer({
         <a href="/methodology#glossary-tags">What the labels mean</a>
       </p>
 
-      {groups.map(({ key, label, layers }) => {
-        const expanded = openGroups.has(key);
-        return (
-          <section
-            key={key}
-            className="layers-panel-group"
-            aria-label={label}
-            data-testid={`layers-group-${key}`}
-          >
-            <button
-              type="button"
-              className="layers-panel-accordion"
-              aria-expanded={expanded}
-              data-testid={`layers-group-toggle-${key}`}
-              onClick={() => toggleGroup(key)}
+      <section data-testid="layers-nav-land">
+        <p className="layers-nav-header" data-testid="layers-nav-header">
+          {LAND_HEADER}
+        </p>
+        <p className="layers-nav-subtitle" data-testid="layers-nav-land-subtitle">
+          {LAND_SUBTITLE}
+        </p>
+        {LAND_SUBGROUP_ORDER.map((key) => {
+          const group = groups.find((entry) => entry.key === key);
+          const layers = group?.layers ?? [];
+          return (
+            <LayersAccordion
+              key={key}
+              groupKey={key}
+              label={LAND_SUBGROUP_LABEL[key]}
+              subgroup
+              expanded={openGroups.has(key)}
+              onToggle={() => toggleGroup(key)}
+              note={key === "nature" ? SERVICES_OF_NATURE_NOTE : undefined}
             >
-              <span className="layer-select-label">{label}</span>
-              <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
-            </button>
-            {expanded ? (
-              <ul className="layers-panel-list">
-                {layers.map((layer) => {
-                  const on = Boolean(enabled[layer.id]);
-                  return (
-                    <DrawerLayerRow
-                      key={layer.id}
-                      layer={layer}
-                      on={on}
-                      mapZoom={mapZoom}
-                      floodKind={floodKind}
-                      onFloodKindChange={onFloodKindChange}
-                      onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
-                    />
-                  );
-                })}
-              </ul>
-            ) : null}
-          </section>
-        );
-      })}
-
-      <div className="layers-panel-footer">
-        <p className="layer-meta" data-testid="map-layers-roadmap-link">
-          <a href="/roadmap#map-layers">{"What's coming next →"}</a>
-        </p>
-        <p className="layer-meta" data-testid="map-layers-sources-licences">
-          <a href="/data#licences">Sources and licences →</a>
-        </p>
+              {layers.map((layer) => (
+                <DrawerLayerRow
+                  key={layer.id}
+                  layer={layer}
+                  on={Boolean(enabled[layer.id])}
+                  mapZoom={mapZoom}
+                  floodKind={floodKind}
+                  onFloodKindChange={onFloodKindChange}
+                  onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
+                />
+              ))}
+              {placeholdersFor(key, layers).map((row) => (
+                <AimPlaceholder key={row.id} row={row} />
+              ))}
+            </LayersAccordion>
+          );
+        })}
         <p
           className="layer-meta layers-limits-explainer"
           data-testid="map-layers-limits-explainer"
@@ -224,8 +240,126 @@ export default function MapLayersDrawer({
           Protected nature sites, flood risk and crofting change best use and
           add no value. They are not a rent.
         </p>
+      </section>
+
+      <section data-testid="layers-nav-places">
+        <LayersAccordion
+          groupKey="places"
+          label={PLACES_HEADER}
+          header
+          expanded={openGroups.has("places")}
+          onToggle={() => toggleGroup("places")}
+        >
+          {placesLayers.map((layer) => (
+            <DrawerLayerRow
+              key={layer.id}
+              layer={layer}
+              on={Boolean(enabled[layer.id])}
+              mapZoom={mapZoom}
+              onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
+            />
+          ))}
+        </LayersAccordion>
+      </section>
+
+      <div className="layers-panel-footer">
+        <p className="layer-meta" data-testid="map-layers-roadmap-link">
+          <a href="/roadmap#map-layers">{"What's coming next →"}</a>
+        </p>
+        <p className="layer-meta" data-testid="map-layers-sources-licences">
+          <a href="/data#licences">Sources and licences →</a>
+        </p>
       </div>
     </div>
+  );
+}
+
+function placeholdersFor(
+  groupKey: AimGroupId,
+  layers: readonly MapDrawerLayer[],
+): readonly AimRow[] {
+  const liveLabels = new Set(layers.map((layer) => layer.label));
+  return layersPanelAimRows(groupKey).filter((row) => !liveLabels.has(row.name));
+}
+
+function LayersAccordion({
+  groupKey,
+  label,
+  expanded,
+  onToggle,
+  subgroup,
+  header,
+  note,
+  children,
+}: {
+  groupKey: MapLayerGroupKey;
+  label: string;
+  expanded: boolean;
+  onToggle: () => void;
+  subgroup?: boolean;
+  header?: boolean;
+  note?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      className="layers-panel-group"
+      aria-label={label}
+      data-testid={`layers-group-${groupKey}`}
+    >
+      <button
+        type="button"
+        className="layers-panel-accordion"
+        aria-expanded={expanded}
+        data-testid={`layers-group-toggle-${groupKey}`}
+        onClick={onToggle}
+      >
+        <span
+          className={
+            header
+              ? "layer-select-label layers-nav-header"
+              : "layers-nav-subgroup"
+          }
+          data-testid={
+            header ? "layers-nav-header" : subgroup ? "layers-nav-subgroup" : undefined
+          }
+        >
+          {label}
+        </span>
+        <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
+      </button>
+      {note ? (
+        <p className="layer-meta layers-nav-note" data-testid="layers-nature-note">
+          {note}
+        </p>
+      ) : null}
+      {expanded ? <ul className="layers-panel-list">{children}</ul> : null}
+    </section>
+  );
+}
+
+function AimPlaceholder({ row }: { row: AimRow }) {
+  return (
+    <li
+      className="layers-panel-row layers-aim-placeholder"
+      data-testid={`layers-aim-${row.id}`}
+      data-aim-name={row.name}
+    >
+      {/* The row itself is not a switch. aria-disabled stays off the link so the roadmap target can be opened. */}
+      <div className="layers-aim-disabled" aria-disabled="true">
+        <span className="layers-aim-name">{row.name}</span>
+        <span className="layers-aim-tag" data-testid={`layers-aim-tag-${row.id}`}>
+          {aimStatusPanelTag(row.status)}
+        </span>
+      </div>
+      <a
+        className="layers-aim-link"
+        href={`/roadmap#${row.id}`}
+        data-testid={`layers-aim-link-${row.id}`}
+      >
+        Roadmap
+      </a>
+    </li>
   );
 }
 

@@ -1,5 +1,9 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * LOGO-H3 — header, map mark, and preload use /logo-mark-h3.png.
@@ -243,7 +247,10 @@ function expectVersionedHead(html: string, path: string) {
   }
 
   const manifestHrefs = linkHrefsByRel(html, "manifest");
-  expect(manifestHrefs, path).toContain("/site.webmanifest");
+  expect(manifestHrefs, path).toContain(`/site.webmanifest${CACHE_QUERY}`);
+  for (const href of manifestHrefs) {
+    expect(href, path).toBe(`/site.webmanifest${CACHE_QUERY}`);
+  }
   return { og, tw, iconHrefs };
 }
 

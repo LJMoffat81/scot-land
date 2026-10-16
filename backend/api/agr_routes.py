@@ -59,9 +59,9 @@ from georgist.tax_scenarios import (
 from layers.council_metrics import build_council_metrics_geojson, scrub_public_agr_properties
 from layers.councils_layer import build_councils_agr_geojson
 from layers.grid_layer import build_w3w_agr_grid
+from layers.naturescot import dumps_feature_collection
 from layers.platform import platform_catalog
 from spatial.address import NominatimUnavailable, search_door, search_place
-from layers.naturescot import dumps_feature_collection
 from spatial.context_tiles import (
     fetch_context_geojson,
     fetch_context_tile,

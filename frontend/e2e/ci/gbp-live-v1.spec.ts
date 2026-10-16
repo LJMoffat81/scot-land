@@ -1,4 +1,8 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * GBP-LIVE-V1 — flag OFF: no £. Flag ON (mocked): range + estimate label;

@@ -1,6 +1,10 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test } from "@playwright/test";
 
 import { CHECK_MEANINGS, type CheckMeaningId } from "../../lib/checkMeanings";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * /developers/checks — public “what the checks mean” lines (class check-meaning).

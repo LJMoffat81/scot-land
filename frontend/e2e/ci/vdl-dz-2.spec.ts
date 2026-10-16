@@ -1,3 +1,4 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test } from "@playwright/test";
 import {
   assertConsoleClean,
@@ -6,6 +7,9 @@ import {
   stubMapCardsBackend,
   waitForMap,
 } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * VDL-DZ-2 — no site-polygon overlay and no site-type legend classes.

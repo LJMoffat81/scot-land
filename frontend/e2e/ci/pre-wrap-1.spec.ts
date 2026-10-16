@@ -1,5 +1,9 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Page } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * PRE-WRAP-1 — no horizontal overflow on public pages.

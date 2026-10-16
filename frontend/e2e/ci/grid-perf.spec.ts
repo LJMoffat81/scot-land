@@ -1,5 +1,9 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page, type Route, type CDPSession } from "@playwright/test";
 import { ensureLayersGroupOpen } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * GRID-BASE-1 — G10–G12 performance budget (Moto G4, 4× CPU throttle).

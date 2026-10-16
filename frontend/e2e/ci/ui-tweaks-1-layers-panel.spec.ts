@@ -1,4 +1,8 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Locator, type Page } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * UI-TWEAKS-1 T1 — Layers panel height and position (MAP-CARDS one-panel slot).

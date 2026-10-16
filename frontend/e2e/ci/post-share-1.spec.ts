@@ -1,4 +1,8 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * POST-SHARE-1 (aligned with MAP-CARDS) — map reference removed; Aquaculture/LCA

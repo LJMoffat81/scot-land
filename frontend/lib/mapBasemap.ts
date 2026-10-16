@@ -34,3 +34,33 @@ export function basemapAriaLabel(target: MapBasemapId): string {
 export function basemapStyleUrl(id: MapBasemapId): string {
   return MAP_BASEMAP_STYLE_URL[id];
 }
+
+/**
+ * MapLibre's own abort is `new Error("AbortError")`.
+ * A cancelled fetch is a DOMException named AbortError.
+ */
+function isAbortError(err: unknown): boolean {
+  if (err instanceof Error) {
+    return err.name === "AbortError" || err.message === "AbortError";
+  }
+  return String(err ?? "").trim() === "AbortError";
+}
+
+/**
+ * Text for a MapLibre "error" event.
+ * MapLibre console.errors the Error object only when nothing listens.
+ * AbortError is the only skip. Every other error is logged.
+ */
+export function mapErrorLogLine(err: unknown): string | null {
+  if (isAbortError(err)) return null;
+  if (err instanceof Error) {
+    const url =
+      "url" in err && typeof (err as { url?: unknown }).url === "string"
+        ? ` ${(err as { url: string }).url}`
+        : "";
+    const message = `${err.name}: ${err.message}${url}`.trim();
+    return message || err.name || "Error";
+  }
+  const message = String(err ?? "").trim();
+  return message || "Error";
+}

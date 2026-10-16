@@ -130,7 +130,12 @@ export const PLACE_CARD_SCOTLIS_LABEL =
  * Sea / outside Scotland map click — one plain line (MAP-CARDS §5.2).
  */
 export const PLACE_CARD_OUT_OF_SCOTLAND_LINE =
-  "We only cover land in Scotland.";
+  "We only cover land so far. Scotland's sea rents (offshore wind, oil and gas, fish farms and seabed) will come later as their own map layer.";
+
+/** COPY-SEA-1: sits beside Show me Scotland on the sea miss card. */
+export const PLACE_CARD_SEE_ROADMAP_LABEL = "See the roadmap";
+
+export const PLACE_CARD_SEE_ROADMAP_HREF = "/roadmap";
 
 /** SW-028: link under the sea line — close card and reset to national map view. */
 export const PLACE_CARD_SHOW_SCOTLAND_LABEL = "Show me Scotland";

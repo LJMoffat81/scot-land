@@ -1,6 +1,10 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
 
 import { BANNED_VISIBLE } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * ROADMAP-VISION-1 — "Our vision" sits on /roadmap at desktop and phone widths.

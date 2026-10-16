@@ -5,9 +5,12 @@ import {
   ensureLayersGroupOpen,
   openLayers,
   openMap,
+  registerOpenFreeMapFontStub,
   stubMapCardsBackend,
   waitForMap,
 } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
 
 /**
  * LAYERS-PERF-3 — a size-capped oil and gas body shows the zoom hint

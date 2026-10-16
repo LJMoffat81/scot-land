@@ -1,5 +1,9 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
 import { stubLayersAddQuiet } from "./_layersAddStub";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * MAP-CARDS — floating legend removed; inline legend + legend strip.

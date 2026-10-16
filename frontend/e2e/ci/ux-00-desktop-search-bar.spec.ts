@@ -1,5 +1,9 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Page } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * UX-00 — desktop search bar in the top-bar row.

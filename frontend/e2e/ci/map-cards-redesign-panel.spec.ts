@@ -1,3 +1,4 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
 import {
   assertConsoleClean,
@@ -12,6 +13,9 @@ import {
   waitForMap,
   type Box,
 } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * MAP-CARDS checks 1–3, 5–7, 11, 16–19, 23 — panel slot, one-at-a-time,

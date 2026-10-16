@@ -109,7 +109,7 @@ export function visitorFacingError(err: unknown): string {
     message.toLowerCase().includes("outside scotland")
   ) {
     // Keep in sync with PLACE_CARD_OUT_OF_SCOTLAND_LINE (placeCard.ts).
-    return "We only cover land in Scotland.";
+    return "We only cover land so far. Scotland's sea rents (offshore wind, oil and gas, fish farms and seabed) will come later as their own map layer.";
   }
   if (!message || isDevFacing(message) || isServiceFailure(err)) return TRY_AGAIN;
   return message;

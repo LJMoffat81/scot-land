@@ -150,6 +150,8 @@ export default function MissionContent() {
         <a href="/methodology">How it works</a>
         {" · "}
         <a href="/how-we-built-this">How we built this</a>
+        {" · "}
+        <a href="/why-land-value">Why land value?</a>
       </p>
       <ContentPageFooter />
     </main>

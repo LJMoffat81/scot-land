@@ -151,15 +151,18 @@ input {
 }
 
 .hud-wordmark {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   line-height: 0;
-  /* Solid backing so map labels cannot show through the transparent mark. */
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: var(--hud-shadow);
+  /* LOGO-FIT-1: the mark sits alone, same as content pages. No badge. */
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
   text-decoration: none;
-  /* LOGO-SIZE-1: 40px mark; padding keeps the tap target ≥44px. */
+  /* 40px mark; transparent padding keeps the tap target ≥44px. */
   padding: 2px;
   min-width: 44px;
   min-height: 44px;
@@ -525,7 +528,8 @@ input {
   padding-left: 0.55rem;
 }
 
-.place-card-show-scotland {
+.place-card-show-scotland,
+.place-card-see-roadmap {
   min-height: 44px;
   min-width: 44px;
 }
@@ -710,11 +714,20 @@ input {
   margin-top: 0.45rem;
 }
 
-/* SW-028: link under the sea plain line — closes card + national view. */
-.place-card-show-scotland {
-  display: inline-block;
-  align-self: flex-start;
+/* SW-028 + COPY-SEA-1: Show me Scotland and See the roadmap sit side by side. */
+.place-card-sea-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.9rem;
   margin: 0.15rem 0.25rem 0.1rem;
+}
+
+.place-card-show-scotland,
+.place-card-see-roadmap {
+  display: inline-block;
+  align-self: center;
+  margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
@@ -727,7 +740,9 @@ input {
 }
 
 .place-card-show-scotland:hover,
-.place-card-show-scotland:focus-visible {
+.place-card-show-scotland:focus-visible,
+.place-card-see-roadmap:hover,
+.place-card-see-roadmap:focus-visible {
   color: var(--rugby-navy, var(--slrg-navy));
 }
 
@@ -3019,6 +3034,68 @@ button.primary:disabled {
   font-size: 1.5rem;
   line-height: 1;
   cursor: pointer;
+}
+
+.layers-nav-header {
+  margin: 0.85rem 0 0.15rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: var(--slrg-text);
+}
+
+.layers-panel-accordion .layers-nav-header {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.layers-nav-subgroup {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--slrg-text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.layers-nav-subtitle,
+.layers-nav-note {
+  margin: 0 0 0.35rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--slrg-muted);
+}
+
+.layers-aim-placeholder {
+  color: var(--slrg-muted);
+}
+
+.layers-aim-disabled {
+  cursor: default;
+}
+
+.layers-aim-name,
+.layers-aim-tag {
+  display: block;
+}
+
+.layers-aim-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.layers-aim-tag {
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+}
+
+.layers-aim-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 0.82rem;
+  color: var(--rugby-navy);
 }
 
 .layers-panel-group {

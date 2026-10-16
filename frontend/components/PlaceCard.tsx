@@ -24,6 +24,8 @@ import {
   PLACE_CARD_PRE_POUND,
   PLACE_CARD_RANK_BAND_ENABLED,
   PLACE_CARD_SEA_TITLE,
+  PLACE_CARD_SEE_ROADMAP_HREF,
+  PLACE_CARD_SEE_ROADMAP_LABEL,
   PLACE_CARD_SHOW_SCOTLAND_LABEL,
   PLACE_CARD_TOO_FEW_HOMES,
   PLACE_CARD_TRY_AGAIN_LABEL,
@@ -355,16 +357,25 @@ export function PlaceCard({
               {PLACE_CARD_OUT_OF_SCOTLAND_LINE}
             </span>
           </p>
-          {onShowScotland ? (
-            <button
-              type="button"
-              className="place-card-show-scotland"
-              data-testid="place-card-show-scotland"
-              onClick={onShowScotland}
+          <div className="place-card-sea-actions">
+            {onShowScotland ? (
+              <button
+                type="button"
+                className="place-card-show-scotland"
+                data-testid="place-card-show-scotland"
+                onClick={onShowScotland}
+              >
+                {PLACE_CARD_SHOW_SCOTLAND_LABEL}
+              </button>
+            ) : null}
+            <a
+              className="place-card-see-roadmap"
+              data-testid="place-card-see-roadmap"
+              href={PLACE_CARD_SEE_ROADMAP_HREF}
             >
-              {PLACE_CARD_SHOW_SCOTLAND_LABEL}
-            </button>
-          ) : null}
+              {PLACE_CARD_SEE_ROADMAP_LABEL}
+            </a>
+          </div>
         </>
       ) : null}
 

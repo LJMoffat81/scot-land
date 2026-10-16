@@ -1,4 +1,8 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * ROADMAP-VISION-1 coverage list — three groups and one status on every row.
@@ -10,7 +14,7 @@ const SECTION_HEADING = "What we aim to cover";
 const AIM_ROWS: ReadonlyArray<readonly [string, string, string]> = [
   ["Land (Annual Ground Rent)", "Site rent: homes", "In progress"],
   ["Land (Annual Ground Rent)", "Site rent: business", "Later"],
-  ["Land (Annual Ground Rent)", "Site rent: farmland", "Not started"],
+  ["Land (Annual Ground Rent)", "Rural and farmland values", "Later"],
   ["Land (Annual Ground Rent)", "Planning uplift", "Not started"],
   ["Land (Annual Ground Rent)", "Infrastructure commons uplift", "Later"],
   ["Land (Annual Ground Rent)", "Licences and franchises", "Later"],

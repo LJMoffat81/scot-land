@@ -6,8 +6,11 @@ import {
   ensureMapZoomAtLeast,
   openLayers,
   openMap,
+  registerOpenFreeMapFontStub,
   stubMapCardsBackend,
 } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
 
 /**
  * SEPA-FLOOD-1 — Data Zone choropleth.

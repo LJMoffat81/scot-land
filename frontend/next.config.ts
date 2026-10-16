@@ -88,7 +88,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: securityHeaders },
       { source: "/_next/static/:path*", headers: longImmutable },
-      { source: "/scot-land-mark.png", headers: longStatic },
+      { source: "/logo-mark-h3.png", headers: longStatic },
       { source: "/favicon.ico", headers: longStatic },
       { source: "/favicon.svg", headers: longStatic },
       { source: "/favicon-16.png", headers: longStatic },

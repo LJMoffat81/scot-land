@@ -60,6 +60,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preload" href="/logo-mark-h3.png" as="image" type="image/png" />
+      </head>
       <body className={mona.className}>
         <script
           dangerouslySetInnerHTML={{ __html: SWAGGER_VALIDATOR_NULL_PATCH }}

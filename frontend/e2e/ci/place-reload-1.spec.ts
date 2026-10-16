@@ -12,6 +12,12 @@ const OLD_NAME = "Old Town";
 const HIGH_CODE = "S01012001";
 const HIGH_NAME = "Sutherland South";
 const EH1 = { lat: 55.9533, lng: -3.1883 };
+const OLD_BOUNDS = {
+  west: EH1.lng - 0.01,
+  south: EH1.lat - 0.008,
+  east: EH1.lng + 0.01,
+  north: EH1.lat + 0.008,
+};
 const HIGHLAND_VIEW = { lng: -4.5, lat: 58.25 };
 
 const HEALTH_OK = {
@@ -146,6 +152,7 @@ async function stubMap(page: Page) {
             vintage: 2011,
             lat: EH1.lat,
             lng: EH1.lng,
+            bounds: OLD_BOUNDS,
           }),
         });
         return;
@@ -169,6 +176,7 @@ async function stubMap(page: Page) {
           code: old ? OLD_CODE : HIGH_CODE,
           name: old ? OLD_NAME : HIGH_NAME,
           vintage: 2011,
+          bounds: old ? OLD_BOUNDS : undefined,
         }),
       });
       return;
@@ -286,6 +294,28 @@ async function searchEh1ThenReload(page: Page) {
   await expect
     .poll(() => new URL(page.url()).searchParams.get("dz"))
     .toBe(OLD_CODE);
+  await expect
+    .poll(
+      async () =>
+        page.evaluate((point) => {
+          const map = (
+            window as unknown as {
+              __map?: {
+                getZoom(): number;
+                getBounds(): { contains(ll: [number, number]): boolean };
+              };
+            }
+          ).__map;
+          if (!map) return false;
+          return (
+            map.getZoom() >= 11 &&
+            map.getBounds().contains([point.lng, point.lat])
+          );
+        }, EH1),
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+  expect(page.url()).not.toMatch(/EH1/i);
 
   // Reload the selected zone with a Highland camera already in the address.
   // The card must come from dz=, not from that centre and not from the

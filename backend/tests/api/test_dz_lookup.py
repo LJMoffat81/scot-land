@@ -120,9 +120,16 @@ def test_by_code_point_is_inside_that_zone(client, boundary_dir):
     assert body["code"] == "S01008677"
     assert body["name"] == "Synthetic Old Town"
     assert body["vintage"] == 2011
+    bounds = body["bounds"]
+    assert bounds["west"] < body["lng"] < bounds["east"]
+    assert bounds["south"] < body["lat"] < bounds["north"]
     at = client.get("/layers/context/data-zones/at", params={"lat": body["lat"], "lng": body["lng"]})
     assert at.status_code == 200, at.text
-    assert at.json()["code"] == "S01008677"
+    at_body = at.json()
+    assert at_body["code"] == "S01008677"
+    at_bounds = at_body["bounds"]
+    assert at_bounds["west"] < body["lng"] < at_bounds["east"]
+    assert at_bounds["south"] < body["lat"] < at_bounds["north"]
     assert "unknown" not in r.text
 
 

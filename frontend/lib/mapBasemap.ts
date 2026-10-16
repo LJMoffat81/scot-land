@@ -10,6 +10,12 @@ export const MAP_BASEMAP_STYLE_URL: Readonly<Record<MapBasemapId, string>> = {
   detailed: "https://tiles.openfreemap.org/styles/liberty",
 };
 
+/**
+ * Cache-bust for the style document only. Tiles, sprites and glyphs stay on
+ * the URLs inside that document. A new value makes a stale style fetch a new URL.
+ */
+const BASEMAP_STYLE_VERSION = "20261016";
+
 /** Default rest basemap. */
 export const DEFAULT_MAP_BASEMAP: MapBasemapId = "light";
 
@@ -32,5 +38,7 @@ export function basemapAriaLabel(target: MapBasemapId): string {
 }
 
 export function basemapStyleUrl(id: MapBasemapId): string {
-  return MAP_BASEMAP_STYLE_URL[id];
+  const url = new URL(MAP_BASEMAP_STYLE_URL[id]);
+  url.searchParams.set("v", BASEMAP_STYLE_VERSION);
+  return url.toString();
 }

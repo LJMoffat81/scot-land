@@ -581,6 +581,80 @@ function mapPanelPadding(opts?: {
   };
 }
 
+/** Fit a matched Data Zone. Padding is about 40 px; do not zoom past 14. */
+const ZONE_FIT_PADDING = 40;
+const ZONE_FIT_MAX_ZOOM = 14;
+const ZONE_PIN_MIN_ZOOM = 12;
+
+type ZoneBounds = {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+};
+
+function parseZoneBounds(raw: unknown): ZoneBounds | null {
+  if (!raw || typeof raw !== "object") return null;
+  const box = raw as Partial<ZoneBounds>;
+  const { west, south, east, north } = box;
+  if (
+    typeof west !== "number" ||
+    typeof south !== "number" ||
+    typeof east !== "number" ||
+    typeof north !== "number" ||
+    !Number.isFinite(west) ||
+    !Number.isFinite(south) ||
+    !Number.isFinite(east) ||
+    !Number.isFinite(north) ||
+    !(west < east) ||
+    !(south < north)
+  ) {
+    return null;
+  }
+  return { west, south, east, north };
+}
+
+function readZoneBounds(data: {
+  bounds?: unknown;
+  dz2022?: { bounds?: unknown } | null;
+  dz2011?: { bounds?: unknown } | null;
+}): ZoneBounds | null {
+  return (
+    parseZoneBounds(data.bounds) ??
+    parseZoneBounds(data.dz2022?.bounds) ??
+    parseZoneBounds(data.dz2011?.bounds)
+  );
+}
+
+function frameMatchedZone(
+  map: Map,
+  lng: number,
+  lat: number,
+  bounds: ZoneBounds | null,
+  pinPadding?: maplibregl.PaddingOptions,
+) {
+  if (bounds) {
+    map.fitBounds(
+      [
+        [bounds.west, bounds.south],
+        [bounds.east, bounds.north],
+      ],
+      {
+        padding: ZONE_FIT_PADDING,
+        maxZoom: ZONE_FIT_MAX_ZOOM,
+        essential: true,
+      },
+    );
+    return;
+  }
+  map.flyTo({
+    center: [lng, lat],
+    zoom: Math.max(map.getZoom(), ZONE_PIN_MIN_ZOOM),
+    essential: true,
+    padding: pinPadding,
+  });
+}
+
 /** MapLibre Marker defaults to aria-label on a bare div — set role="img". */
 function placeSelectedMarker(
   map: Map,
@@ -1319,6 +1393,9 @@ export default function ScotlandMap() {
         generation?: number;
         /** Deep-link re-boot after a map remount must not pop a collapsed card open. */
         keepCollapsed?: boolean;
+        /** Search or dz= reload: fit the zone, or zoom to at least 12 on the pin. */
+        frameZone?: boolean;
+        zoneBounds?: ZoneBounds | null;
       } = {},
     ) => {
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -1327,23 +1404,24 @@ export default function ScotlandMap() {
           ? opts.generation
           : ++lookupGen.current;
       const map = mapRef.current;
+      // Desktop Layers stays in the right column. Mobile closes the sheet.
+      const layersHoldingFly =
+        desktopLayersOpenRef.current && !isNarrowPanelRef.current;
+      const pinPadding = mapPanelPadding({
+        panelOpen: !layersHoldingFly,
+        detent: opts.fromAddressSearch ? "half" : "peek",
+        collapsed: Boolean(opts.keepCollapsed),
+      });
       markerRef.current?.remove();
       if (map) {
         markerRef.current = placeSelectedMarker(map, lng, lat);
-        if (opts.fly) {
-          // Desktop Layers stays in the right column. Mobile closes the sheet.
-          const layersHoldingFly =
-            desktopLayersOpenRef.current && !isNarrowPanelRef.current;
+        if (opts.fly && !opts.frameZone) {
           map.flyTo({
             center: [lng, lat],
             zoom: Math.max(map.getZoom(), 15),
             essential: true,
             // GIS 12 — centre in the uncovered map (right of 380px desktop panel).
-            padding: mapPanelPadding({
-              panelOpen: !layersHoldingFly,
-              detent: opts.fromAddressSearch ? "half" : "peek",
-              collapsed: Boolean(opts.keepCollapsed),
-            }),
+            padding: pinPadding,
           });
         }
       }
@@ -1422,6 +1500,7 @@ export default function ScotlandMap() {
       identifyAbortRef.current?.abort();
       const identifyAbort = new AbortController();
       identifyAbortRef.current = identifyAbort;
+      let zoneBounds = opts.zoneBounds ?? null;
       try {
         if (!knownCode) {
           try {
@@ -1429,6 +1508,9 @@ export default function ScotlandMap() {
               code?: string;
               name?: string;
               vintage?: number;
+              bounds?: unknown;
+              dz2011?: { bounds?: unknown } | null;
+              dz2022?: { bounds?: unknown } | null;
             }>(
               `/layers/context/data-zones/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
               { cache: "no-store", signal: identifyAbort.signal },
@@ -1436,6 +1518,7 @@ export default function ScotlandMap() {
             if (gen !== lookupGen.current || identifyAbort.signal.aborted) return;
             const code = parseDataZoneCode(data.code);
             const name = data.name?.trim() || null;
+            zoneBounds = readZoneBounds(data) ?? zoneBounds;
             if (code) replaceMapUrl({ dz: code });
             setPlaceStub((prev) => {
               if (gen !== lookupGen.current) return prev;
@@ -1455,6 +1538,15 @@ export default function ScotlandMap() {
             // and the UI can show one plain line instead of No-data rows.
             if (identifyAbort.signal.aborted || gen !== lookupGen.current) return;
           }
+        }
+        if (opts.frameZone && gen === lookupGen.current) {
+          // The panel padding ease runs after this paint and would cancel a
+          // fit that started in the same turn.
+          window.setTimeout(() => {
+            if (gen !== lookupGen.current) return;
+            const liveMap = mapRef.current;
+            if (liveMap) frameMatchedZone(liveMap, lng, lat, zoneBounds, pinPadding);
+          }, 0);
         }
         // Designer place card (place_card_v1) — ownership / sources; no £.
         // SW-019: fetchPlaceCard turns outside-Scotland 400 into a sea-miss card.
@@ -1775,6 +1867,7 @@ export default function ScotlandMap() {
       postcode: payload.postcode?.postcode ?? postcode,
       label: payload.postcode?.postcode ?? postcode,
       fromAddressSearch: true,
+      frameZone: true,
       generation,
     });
   };
@@ -1791,6 +1884,7 @@ export default function ScotlandMap() {
         fly: true,
         label: body.label ?? `///${words}`,
         fromAddressSearch: true,
+        frameZone: true,
         generation,
       });
       return;
@@ -1800,6 +1894,7 @@ export default function ScotlandMap() {
         fly: true,
         label: `///${body.words ?? words}`,
         fromAddressSearch: true,
+        frameZone: true,
         generation,
       });
       return;
@@ -1845,6 +1940,7 @@ export default function ScotlandMap() {
       void inspectRef.current(body.lat, body.lng, {
         fly: true,
         fromAddressSearch: true,
+        frameZone: true,
         generation,
       });
     } catch (err) {
@@ -1875,6 +1971,7 @@ export default function ScotlandMap() {
           fly: true,
           label: `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`,
           fromAddressSearch: true,
+          frameZone: true,
           generation,
         });
         if (generation === lookupGen.current) setApiOk(true);
@@ -1908,6 +2005,7 @@ export default function ScotlandMap() {
           fly: true,
           label: body.label ?? null,
           fromAddressSearch: true,
+          frameZone: true,
           generation,
         });
       } else if (body.kind === "places" && body.matches && body.matches.length > 1) {
@@ -1925,6 +2023,7 @@ export default function ScotlandMap() {
           fly: true,
           label: match.label,
           fromAddressSearch: true,
+          frameZone: true,
           generation,
         });
       } else {
@@ -1982,6 +2081,7 @@ export default function ScotlandMap() {
           fly: true,
           label: item.label,
           fromAddressSearch: true,
+          frameZone: true,
           generation,
         });
       }
@@ -3030,11 +3130,21 @@ export default function ScotlandMap() {
       isScotlandViewCenter(bootLng, bootLat)
     ) {
       // URL deep-link is intentional navigation (like search → half), not a map tap.
-      void inspectRef.current(bootLat, bootLng, {
-        fly: true,
-        fromAddressSearch: true,
-        keepCollapsed: panelCollapsedRef.current,
-      });
+      // A card already open on this point (search raced the style load) must stay
+      // mounted. Identifying again sets the card loading and removes its box.
+      const stub = placeStubRef.current;
+      const alreadyThere =
+        panelKindRef.current === "place" &&
+        stub != null &&
+        Math.abs(stub.lat - bootLat) < 0.00002 &&
+        Math.abs(stub.lng - bootLng) < 0.00002;
+      if (!alreadyThere) {
+        void inspectRef.current(bootLat, bootLng, {
+          fly: true,
+          fromAddressSearch: true,
+          keepCollapsed: panelCollapsedRef.current,
+        });
+      }
     } else if (
       panelKindRef.current === "place" &&
       placeStubRef.current != null
@@ -3074,6 +3184,7 @@ export default function ScotlandMap() {
               vintage?: number;
               lat?: number;
               lng?: number;
+              bounds?: unknown;
             }>(
               `/layers/context/data-zones/by-code?code=${encodeURIComponent(zoneCode)}`,
               { cache: "no-store" },
@@ -3099,6 +3210,8 @@ export default function ScotlandMap() {
               dataZoneName: zone.name?.trim() || null,
               dataZoneVintage:
                 typeof zone.vintage === "number" ? zone.vintage : null,
+              frameZone: true,
+              zoneBounds: readZoneBounds(zone),
             });
           } catch {
             // No boundary for this code: leave the card unset. Do not

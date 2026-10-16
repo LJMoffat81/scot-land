@@ -93,14 +93,34 @@ class Lookup:
             "dz2022": by_vintage.get(2022),
             "source": self.source,
             "vintages_loaded": self.vintages_loaded,
+            "bounds": primary.get("bounds") if primary else None,
         }
 
 
-def _zone(code: str, vintage: int, name: str | None, hits: int) -> dict[str, Any] | None:
+def _zone(
+    code: str,
+    vintage: int,
+    name: str | None,
+    hits: int,
+    bounds: dict[str, float] | None = None,
+) -> dict[str, Any] | None:
     if vintage_for_code(code) != vintage:
         logger.error("Boundary source returned %r for %s; refused", code, vintage)
         return None
-    return {"code": code, "vintage": vintage, "name": (name or None), "on_boundary": hits > 1}
+    zone = {"code": code, "vintage": vintage, "name": (name or None), "on_boundary": hits > 1}
+    if bounds is not None:
+        zone["bounds"] = bounds
+    return zone
+
+
+def _finite_bounds(west: float, south: float, east: float, north: float) -> dict[str, float] | None:
+    values = (west, south, east, north)
+    if not all(isinstance(v, (int, float)) and math.isfinite(float(v)) for v in values):
+        return None
+    west_f, south_f, east_f, north_f = (float(v) for v in values)
+    if west_f >= east_f or south_f >= north_f:
+        return None
+    return {"west": west_f, "south": south_f, "east": east_f, "north": north_f}
 
 
 # --------------------------------------------------------------------------- PostGIS
@@ -110,18 +130,33 @@ _PG_LOADED = """
     WHERE EXISTS (SELECT 1 FROM dz_boundaries b WHERE b.vintage = v.vintage)
 """
 _PG_HITS = """
-    SELECT vintage, code, name, count(*) OVER (PARTITION BY vintage) AS hits
-    FROM dz_boundaries
-    WHERE ST_Intersects(geom, ST_Transform(ST_SetSRID(ST_MakePoint(%s, %s), 4326), 27700))
+    SELECT vintage, code, name,
+           count(*) OVER (PARTITION BY vintage) AS hits,
+           ST_XMin(env) AS west, ST_YMin(env) AS south,
+           ST_XMax(env) AS east, ST_YMax(env) AS north
+    FROM (
+        SELECT vintage, code, name,
+               ST_Envelope(ST_Transform(geom, 4326)) AS env
+        FROM dz_boundaries
+        WHERE ST_Intersects(
+            geom, ST_Transform(ST_SetSRID(ST_MakePoint(%s, %s), 4326), 27700)
+        )
+    ) hit
     ORDER BY vintage, code
 """
 _PG_POINT = """
     SELECT code, name, vintage,
            ST_Y(ST_Transform(ST_PointOnSurface(geom), 4326)) AS lat,
-           ST_X(ST_Transform(ST_PointOnSurface(geom), 4326)) AS lng
-    FROM dz_boundaries
-    WHERE code = %s AND vintage = %s
-    LIMIT 1
+           ST_X(ST_Transform(ST_PointOnSurface(geom), 4326)) AS lng,
+           ST_XMin(env) AS west, ST_YMin(env) AS south,
+           ST_XMax(env) AS east, ST_YMax(env) AS north
+    FROM (
+        SELECT code, name, vintage, geom,
+               ST_Envelope(ST_Transform(geom, 4326)) AS env
+        FROM dz_boundaries
+        WHERE code = %s AND vintage = %s
+        LIMIT 1
+    ) zone
 """
 
 
@@ -138,7 +173,13 @@ def lookup_postgis(lat: float, lon: float) -> Lookup:
                 if r["vintage"] in seen:
                     continue
                 seen.add(r["vintage"])
-                z = _zone(r["code"], r["vintage"], r["name"], int(r["hits"]))
+                z = _zone(
+                    r["code"],
+                    r["vintage"],
+                    r["name"],
+                    int(r["hits"]),
+                    _finite_bounds(r["west"], r["south"], r["east"], r["north"]),
+                )
                 if z:
                     zones.append(z)
     return Lookup("postgis:dz_boundaries", loaded, zones)
@@ -163,6 +204,17 @@ def _wgs84_from_bng(x: float, y: float) -> tuple[float, float]:
                 _bng_to_wgs84 = transformer
     lng, lat = transformer.transform(x, y)
     return lng, lat
+
+
+def _bounds_from_bng_geom(geom: Any) -> dict[str, float] | None:
+    minx, miny, maxx, maxy = geom.bounds
+    lngs: list[float] = []
+    lats: list[float] = []
+    for x, y in ((minx, miny), (minx, maxy), (maxx, miny), (maxx, maxy)):
+        lng, lat = _wgs84_from_bng(x, y)
+        lngs.append(lng)
+        lats.append(lat)
+    return _finite_bounds(min(lngs), min(lats), max(lngs), max(lats))
 
 
 def _field(props: dict, candidates: Iterable[str]) -> Any:
@@ -236,13 +288,13 @@ def lookup_file(lat: float, lon: float) -> Lookup:
         index = _file_index(vintage)
         if index is None:
             continue
-        tree, meta = index[0], index[1]
+        tree, meta, geoms = index
         loaded.append(vintage)
         names.append(BOUNDARY_FILES[vintage])
         hits = sorted(int(i) for i in tree.query(pt, predicate="intersects"))
         if hits:
             code, name = meta[hits[0]]
-            z = _zone(code, vintage, name, len(hits))
+            z = _zone(code, vintage, name, len(hits), _bounds_from_bng_geom(geoms[hits[0]]))
             if z:
                 zones.append(z)
     if not loaded:
@@ -253,7 +305,14 @@ def lookup_file(lat: float, lon: float) -> Lookup:
 # --------------------------------------------------------------------------- orchestration
 
 
-def _point_payload(code: str, vintage: int, name: str | None, lat: float, lng: float) -> dict[str, Any] | None:
+def _point_payload(
+    code: str,
+    vintage: int,
+    name: str | None,
+    lat: float,
+    lng: float,
+    bounds: dict[str, float] | None = None,
+) -> dict[str, Any] | None:
     if vintage_for_code(code) != vintage:
         return None
     if not (isinstance(lat, (int, float)) and isinstance(lng, (int, float))):
@@ -261,13 +320,16 @@ def _point_payload(code: str, vintage: int, name: str | None, lat: float, lng: f
     lat_f, lng_f = float(lat), float(lng)
     if not math.isfinite(lat_f) or not math.isfinite(lng_f):
         return None
-    return {
+    payload: dict[str, Any] = {
         "code": code,
         "name": name or None,
         "vintage": vintage,
         "lat": lat_f,
         "lng": lng_f,
     }
+    if bounds is not None:
+        payload["bounds"] = bounds
+    return payload
 
 
 def _point_postgis(code: str, vintage: int) -> dict[str, Any] | None:
@@ -276,7 +338,14 @@ def _point_postgis(code: str, vintage: int) -> dict[str, Any] | None:
         row = cur.fetchone()
     if not row:
         return None
-    return _point_payload(row["code"], int(row["vintage"]), row["name"], row["lat"], row["lng"])
+    return _point_payload(
+        row["code"],
+        int(row["vintage"]),
+        row["name"],
+        row["lat"],
+        row["lng"],
+        _finite_bounds(row["west"], row["south"], row["east"], row["north"]),
+    )
 
 
 def _point_file(code: str, vintage: int) -> dict[str, Any] | None:
@@ -291,7 +360,7 @@ def _point_file(code: str, vintage: int) -> dict[str, Any] | None:
             continue
         pt = geoms[i].representative_point()
         lng, lat = _wgs84_from_bng(pt.x, pt.y)
-        return _point_payload(code, vintage, name, lat, lng)
+        return _point_payload(code, vintage, name, lat, lng, _bounds_from_bng_geom(geoms[i]))
     return None
 
 

@@ -141,9 +141,11 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     # Tax scenario tools live under /internal only (publication_status=blocked until yield calibration).
     "/layers/georgist/resource-rent": LayerRule("site", "site", "measured", sources=SITE_PUBLIC_SOURCES),
     "/layers/georgist/eco-rent": LayerRule("site", "site", "measured", sources=SITE_PUBLIC_SOURCES),
-    "/layers/context/data-zones/at": LayerRule("zone", "zone", "none", note="code, vintage, name"),
+    "/layers/context/data-zones/at": LayerRule(
+        "zone", "zone", "none", note="code, vintage, name, bounds",
+    ),
     "/layers/context/data-zones/by-code": LayerRule(
-        "zone", "zone", "none", note="code, vintage, name, representative point",
+        "zone", "zone", "none", note="code, vintage, name, representative point, bounds",
     ),
     # Postcode search: a postcode centroid point (postcodes.io / ONSPD), no value or rent attached.
     "/geocode/postcode": LayerRule("site", "site", "none", note="postcode centroid lat/lng only; no values"),

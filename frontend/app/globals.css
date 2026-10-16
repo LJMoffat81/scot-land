@@ -151,15 +151,18 @@ input {
 }
 
 .hud-wordmark {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
   line-height: 0;
-  /* Solid backing so map labels cannot show through the transparent mark. */
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: var(--hud-shadow);
+  /* LOGO-FIT-1: the mark sits alone, same as content pages. No badge. */
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
   text-decoration: none;
-  /* LOGO-SIZE-1: 40px mark; padding keeps the tap target ≥44px. */
+  /* 40px mark; transparent padding keeps the tap target ≥44px. */
   padding: 2px;
   min-width: 44px;
   min-height: 44px;

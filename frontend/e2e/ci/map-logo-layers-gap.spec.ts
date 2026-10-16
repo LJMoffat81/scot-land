@@ -263,8 +263,8 @@ test.describe("SW-020 map logo vs Layers gap (390×844)", () => {
     await expect(logo).toBeVisible();
     await expect(layers).toBeVisible();
 
-    // Solid backing — opaque white so map labels cannot show through.
-    await expect(logo).toHaveCSS("background-color", "rgb(255, 255, 255)");
+    // LOGO-FIT-1: the mark has no white badge. Overlap and gap checks stay.
+    await expect(logo).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 
     const logoBox = await logo.boundingBox();
     const layersBox = await layers.boundingBox();

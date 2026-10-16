@@ -6,6 +6,12 @@ import csv
 import json
 from pathlib import Path
 
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from api.platform_routes import router
+import layers.open_stats as open_stats
+from layers.layers_add2_pipeline import suppress_site_totals
 from layers.open_stats import vdl_json
 from layers.svdls_geometry import (
     GEOMETRY_PRECEDENCE,
@@ -500,6 +506,93 @@ def test_public_vdl_downloads_hide_small_site_areas():
                     assert row[col].replace(".5", "", 1).lstrip("-").isdigit()
 
 
+def test_vdl_json_small_owner_class_counts(monkeypatch):
+    """Two sites publish '<3' and null hectares. Three sites publish 3 and a number.
+
+    Fails on 0cb94e2: the Scotland-wide owner-class rollup kept sites 1 and 2.
+    """
+
+    def _stats(*_args, **_kwargs):
+        return [
+            {"owner_1": "Property Services Agency", "n": 2, "sqm": 653_300},
+            {"owner_1": "Local Authority", "n": 3, "sqm": 100_000},
+            {"owner_1": "Single body", "n": 1, "sqm": 50_000},
+            {"owner_1": "Empty class", "n": 0, "sqm": 0},
+        ]
+
+    monkeypatch.setattr("layers.open_stats._stats", _stats)
+    body = vdl_json()
+    by_owner = {row["ownerClass"]: row for row in body["byOwnerClass"]}
+    assert by_owner["Property Services Agency"] == {
+        "ownerClass": "Property Services Agency",
+        "sites": "<3",
+        "hectares": None,
+    }
+    assert by_owner["Single body"]["sites"] == "<3"
+    assert by_owner["Single body"]["hectares"] is None
+    three = by_owner["Local Authority"]
+    assert three["sites"] == 3
+    assert isinstance(three["hectares"], (int, float))
+    assert three["hectares"] == 10.0
+    assert by_owner["Empty class"]["sites"] == 0
+    assert by_owner["Empty class"]["hectares"] == 0.0
+    assert body["totalHectares"] == 80.33
+    assert body["note"] == (
+        "Scotland-wide totals from the Scottish Vacant and Derelict Land Survey, "
+        "by owner type."
+    )
+    for row in body["byOwnerClass"]:
+        assert row["sites"] not in {1, 2, "1", "2"}
+
+
+def test_api_vdl_json_by_owner_class_has_no_one_or_two(monkeypatch):
+    """Build/CI check: /api/vdl.json never publishes a 1- or 2-site owner class."""
+
+    def _stats(*_args, **_kwargs):
+        return [
+            {"owner_1": "Property Services Agency", "n": 2, "sqm": 653_300},
+            {"owner_1": "Local Authority", "n": 3, "sqm": 250_000},
+            {"owner_1": "Single body", "n": 1, "sqm": 10_000},
+        ]
+
+    monkeypatch.setattr("layers.open_stats._stats", _stats)
+    app = FastAPI()
+    app.include_router(router)
+    response = TestClient(app).get("/api/vdl.json")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["byOwnerClass"]
+    for row in body["byOwnerClass"]:
+        assert row["sites"] not in {1, 2, "1", "2"}
+        if row["sites"] == "<3":
+            assert row["hectares"] is None
+    assert body["totalHectares"] == 91.33
+    assert "£" not in response.text
+
+
+def test_owner_class_rollup_uses_suppress_site_totals(monkeypatch):
+    """The Scotland-wide rollup calls the shared '<3' helper. It cannot skip it."""
+    calls: list[int] = []
+
+    def _wrapped(count: int, hectares: float):
+        calls.append(count)
+        return suppress_site_totals(count, hectares)
+
+    monkeypatch.setattr(open_stats, "suppress_site_totals", _wrapped)
+    monkeypatch.setattr(
+        open_stats,
+        "_stats",
+        lambda *_args, **_kwargs: [
+            {"owner_1": "Property Services Agency", "n": 2, "sqm": 65_330}
+        ],
+    )
+    body = open_stats.vdl_json()
+    assert calls == [2]
+    assert body["byOwnerClass"][0]["sites"] == "<3"
+    assert body["byOwnerClass"][0]["hectares"] is None
+    assert body["totalHectares"] == 6.53
+
+
 def test_sources_and_vdl_api_drop_retired_phrases(monkeypatch):
     """Retired survey phrases stay out of sources.yaml and /api/vdl.json."""
     root = Path(__file__).resolve().parents[2]
@@ -513,7 +606,8 @@ def test_sources_and_vdl_api_drop_retired_phrases(monkeypatch):
     body = vdl_json()
     api_text = json.dumps(body)
     assert body["note"] == (
-        "Totals from the Scottish Vacant and Derelict Land Survey, by council."
+        "Scotland-wide totals from the Scottish Vacant and Derelict Land Survey, "
+        "by owner type."
     )
     assert "owner class" not in body["note"].lower()
     assert "owner-class" not in body["note"].lower()

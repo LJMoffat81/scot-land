@@ -1407,17 +1407,30 @@
   .map-panel-slot--peek .place-card-agr-scope,
   .map-panel-slot--peek .place-card-pre-pound,
   .map-panel-slot--peek .place-card-fact,
-  .map-panel-slot--peek .place-card-parts,
-  .map-panel-slot--peek .place-card-row6 {
+  .map-panel-slot--peek .place-card-row6,
+  .map-panel-slot--peek .place-card-parts {
     display: none !important;
   }
 
-  .map-panel-slot--peek .place-card-experimental-footer {
+  /* UI-TWEAKS-2: disclaimer stays in flow. The shared sticky rule is more
+     specific than a single peek class, so pin static here. "More about
+     this area" stays hidden until half or full. */
+  .map-panel-slot.map-panel-slot--peek .place-card .place-card-experimental-footer,
+  .map-panel-slot.map-panel-slot--peek .hud-place .place-card-experimental-footer {
     position: static !important;
-    margin: 0.15rem 0 0 !important;
+    bottom: auto !important;
+    z-index: auto !important;
+    order: 1;
+    margin: 0.1rem 0 0 !important;
     padding: 0 !important;
     font-size: 0.68rem;
     line-height: 1.25;
+  }
+
+  .map-panel-slot--peek .place-card-body {
+    display: flex !important;
+    flex-direction: column;
+    gap: 0.1rem !important;
   }
 
   .map-panel-slot--peek .map-panel-slot-scroll,

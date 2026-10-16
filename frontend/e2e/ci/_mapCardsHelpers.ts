@@ -51,6 +51,8 @@ export function registerOpenFreeMapFontStub() {
 export const LIVE_LAYER_IDS = [
   "1",
   "access_services",
+  "flood_river",
+  "flood_coastal",
   "grid3",
   "3",
   "4",

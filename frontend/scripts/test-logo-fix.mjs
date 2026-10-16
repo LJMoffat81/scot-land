@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 const here = dirname(fileURLToPath(import.meta.url));
 const frontendRoot = join(here, "..");
 const PROD = "https://scot-land.scot";
-const OG_ABS = `${PROD}/og-image.png`;
+const OG_ABS = `${PROD}/og-image.png?v=h3`;
 
 function readSrc(relPath) {
   return readFileSync(join(frontendRoot, relPath), "utf8");
@@ -41,6 +41,7 @@ assert.match(social, /function getSiteUrl/);
 assert.match(social, /function getMetadataBase/);
 assert.match(social, /function absoluteOgImageUrl/);
 assert.match(social, /\/og-image\.png/);
+assert.match(social, /\?v=h3/);
 
 const layout = readSrc("app/layout.tsx");
 assert.match(layout, /metadataBase:\s*getMetadataBase\(\)/);

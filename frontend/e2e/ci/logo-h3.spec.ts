@@ -1,5 +1,5 @@
 import { stubLayersAddQuiet } from "./_layersAddStub";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
 /**
  * LOGO-H3 — header, map mark, and preload use /logo-mark-h3.png.
@@ -7,6 +7,24 @@ import { expect, test, type Page } from "@playwright/test";
  */
 
 const MARK = "/logo-mark-h3.png";
+const CACHE_QUERY = "?v=h3";
+
+const FAVICON_URLS = [
+  `/favicon.ico${CACHE_QUERY}`,
+  `/favicon.svg${CACHE_QUERY}`,
+  `/favicon-16.png${CACHE_QUERY}`,
+  `/favicon-32.png${CACHE_QUERY}`,
+  `/apple-touch-icon.png${CACHE_QUERY}`,
+] as const;
+
+const MANIFEST_ICON_URLS = [
+  `/icon-192.png${CACHE_QUERY}`,
+  `/icon-512.png${CACHE_QUERY}`,
+] as const;
+
+const OG_IMAGE_SUFFIX = `/og-image.png${CACHE_QUERY}`;
+
+const SOCIAL_PAGES = ["/", "/about", "/data", "/roadmap"] as const;
 
 const consoleErrors: string[] = [];
 const resourceFails: Array<{ url: string; status: number }> = [];
@@ -148,6 +166,120 @@ async function expectPreload(page: Page) {
   ).toBe(true);
 }
 
+function metaContents(html: string, attr: "property" | "name", key: string): string[] {
+  const tags = html.match(/<meta\b[^>]*>/gi) ?? [];
+  const values: string[] = [];
+  for (const tag of tags) {
+    if (!new RegExp(`\\b${attr}=["']${key}["']`, "i").test(tag)) continue;
+    const content = tag.match(/\bcontent=["']([^"']+)["']/i);
+    if (content) values.push(content[1]);
+  }
+  return values;
+}
+
+function linkHrefsByRel(html: string, rel: string): string[] {
+  const tags = html.match(/<link\b[^>]*>/gi) ?? [];
+  const hrefs: string[] = [];
+  for (const tag of tags) {
+    const relMatch = tag.match(/\brel=["']([^"']+)["']/i);
+    if (!relMatch) continue;
+    const rels = relMatch[1].toLowerCase().split(/\s+/);
+    if (!rels.includes(rel)) continue;
+    const href = tag.match(/\bhref=["']([^"']+)["']/i);
+    if (href) hrefs.push(href[1]);
+  }
+  return hrefs;
+}
+
+function localAssetUrl(url: string): string {
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    const parsed = new URL(url);
+    return `${parsed.pathname}${parsed.search}`;
+  }
+  return url;
+}
+
+async function expectAssetOk(request: APIRequestContext, url: string) {
+  expect(url.includes(CACHE_QUERY), url).toBe(true);
+  const target = localAssetUrl(url);
+  expect(target.includes(CACHE_QUERY), target).toBe(true);
+  const res = await request.get(target);
+  expect(res.status(), target).toBe(200);
+  return res;
+}
+
+function expectVersionedHead(html: string, path: string) {
+  expect(html, path).not.toContain("scot-land-mark");
+
+  const og = metaContents(html, "property", "og:image");
+  const tw = [
+    ...metaContents(html, "name", "twitter:image"),
+    ...metaContents(html, "property", "twitter:image"),
+  ];
+  expect(og.length, `${path} og:image`).toBeGreaterThan(0);
+  expect(tw.length, `${path} twitter:image`).toBeGreaterThan(0);
+  for (const url of og) {
+    expect(url.endsWith(OG_IMAGE_SUFFIX), `${path} og:image ${url}`).toBe(true);
+  }
+  for (const url of tw) {
+    expect(url.endsWith(OG_IMAGE_SUFFIX), `${path} twitter:image ${url}`).toBe(true);
+  }
+
+  const iconHrefs = [
+    ...linkHrefsByRel(html, "icon"),
+    ...linkHrefsByRel(html, "apple-touch-icon"),
+  ];
+  for (const expected of FAVICON_URLS) {
+    const matches = iconHrefs.filter(
+      (href) => href === expected || href.endsWith(expected),
+    );
+    expect(matches, `${path} missing ${expected}; got ${JSON.stringify(iconHrefs)}`).toEqual(
+      expect.arrayContaining([expect.stringContaining(CACHE_QUERY)]),
+    );
+    expect(matches.length, `${path} ${expected}`).toBeGreaterThan(0);
+    for (const href of matches) {
+      expect(href.includes(CACHE_QUERY), `${path} icon ${href}`).toBe(true);
+    }
+  }
+
+  const manifestHrefs = linkHrefsByRel(html, "manifest");
+  expect(manifestHrefs, path).toContain("/site.webmanifest");
+  return { og, tw, iconHrefs };
+}
+
+async function expectManifestIcons(request: APIRequestContext) {
+  const manifestRes = await request.get("/site.webmanifest");
+  expect(manifestRes.status()).toBe(200);
+  const manifest = (await manifestRes.json()) as {
+    icons: Array<{ src: string }>;
+  };
+  expect(manifest.icons.map((icon) => icon.src).sort()).toEqual(
+    [...MANIFEST_ICON_URLS].sort(),
+  );
+  for (const icon of manifest.icons) {
+    await expectAssetOk(request, icon.src);
+  }
+}
+
+async function expectHeadAssetsOk(
+  request: APIRequestContext,
+  html: string,
+  path: string,
+) {
+  const head = expectVersionedHead(html, path);
+  for (const url of [...head.og, ...head.tw]) {
+    await expectAssetOk(request, url);
+  }
+  for (const expected of FAVICON_URLS) {
+    const href =
+      head.iconHrefs.find((item) => item === expected || item.endsWith(expected)) ?? "";
+    expect(href.includes(CACHE_QUERY), `${path} ${expected} got ${href}`).toBe(true);
+    await expectAssetOk(request, href);
+  }
+  await expectManifestIcons(request);
+  return head;
+}
+
 for (const viewport of [
   { width: 1280, height: 800 },
   { width: 390, height: 844 },
@@ -169,6 +301,19 @@ for (const viewport of [
       await expectPreload(page);
       await expect(page.locator('footer img[src*="scot-land-mark"]')).toHaveCount(0);
     });
+
+    test("icons, manifest icons, and social images use ?v=h3 and return 200", async ({
+      page,
+      request,
+    }) => {
+      for (const path of SOCIAL_PAGES) {
+        await page.goto(path);
+        if (path === "/") {
+          await page.locator(".maplibregl-canvas").waitFor();
+        }
+        await expectHeadAssetsOk(request, await page.content(), path);
+      }
+    });
   });
 }
 
@@ -176,64 +321,16 @@ test.describe("LOGO-H3 static marks", () => {
   test("social images, manifest icons, and no retired filename in HTML", async ({
     request,
   }) => {
-    const pages = ["/", "/about", "/data", "/roadmap"];
-    for (const path of pages) {
+    for (const path of SOCIAL_PAGES) {
       const res = await request.get(path);
       expect(res.status(), path).toBe(200);
       const html = await res.text();
-      expect(html, path).not.toContain("scot-land-mark");
-
-      const og = [
-        ...html.matchAll(/property=["']og:image["'][^>]*content=["']([^"']+)["']/gi),
-      ]
-        .map((m) => m[1])
-        .concat(
-          [...html.matchAll(/content=["']([^"']+)["'][^>]*property=["']og:image["']/gi)].map(
-            (m) => m[1],
-          ),
-        );
-      const tw = [
-        ...html.matchAll(
-          /(?:name|property)=["']twitter:image["'][^>]*content=["']([^"']+)["']/gi,
-        ),
-      ]
-        .map((m) => m[1])
-        .concat(
-          [
-            ...html.matchAll(
-              /content=["']([^"']+)["'][^>]*(?:name|property)=["']twitter:image["']/gi,
-            ),
-          ].map((m) => m[1]),
-        );
-      expect(og.length, path).toBeGreaterThan(0);
-      expect(tw.length, path).toBeGreaterThan(0);
-      expect(og.every((url) => url.split("?")[0].endsWith("/og-image.png")), path).toBe(true);
-      expect(tw.every((url) => url.split("?")[0].endsWith("/og-image.png")), path).toBe(true);
-
-      const manifestHref = html.match(
-        /<link[^>]*rel=["']manifest["'][^>]*href=["']([^"']+)["']/i,
-      )?.[1];
-      expect(manifestHref, path).toBe("/site.webmanifest");
-    }
-
-    const ogRes = await request.get("/og-image.png");
-    expect(ogRes.status()).toBe(200);
-    const { width, height } = pngDimensions(Buffer.from(await ogRes.body()));
-    expect(width).toBe(1200);
-    expect(height).toBe(630);
-
-    const manifestRes = await request.get("/site.webmanifest");
-    expect(manifestRes.status()).toBe(200);
-    const manifest = (await manifestRes.json()) as {
-      icons: Array<{ src: string }>;
-    };
-    expect(manifest.icons.map((icon) => icon.src).sort()).toEqual([
-      "/icon-192.png",
-      "/icon-512.png",
-    ]);
-    for (const icon of ["/icon-192.png", "/icon-512.png"]) {
-      const iconRes = await request.get(icon);
-      expect(iconRes.status(), icon).toBe(200);
+      const { og } = await expectHeadAssetsOk(request, html, path);
+      const ogRes = await request.get(localAssetUrl(og[0]));
+      expect(ogRes.status(), path).toBe(200);
+      const { width, height } = pngDimensions(Buffer.from(await ogRes.body()));
+      expect(width, path).toBe(1200);
+      expect(height, path).toBe(630);
     }
 
     const mark = await request.get(MARK);

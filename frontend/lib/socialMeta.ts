@@ -19,9 +19,12 @@ export function getMetadataBase(): URL {
 
 export const OG_IMAGE_PATH = "/og-image.png";
 
+/** Cache-bust query so Cloudflare fetches the LOGO-H3 image instead of H2. */
+export const H3_ASSET_QUERY = "?v=h3";
+
 /** Absolute OG image URL (must start with https://scot-land.scot in prod). */
 export function absoluteOgImageUrl(): string {
-  return `${getSiteUrl()}${OG_IMAGE_PATH}`;
+  return `${getSiteUrl()}${OG_IMAGE_PATH}${H3_ASSET_QUERY}`;
 }
 
 export const OG_IMAGE = {

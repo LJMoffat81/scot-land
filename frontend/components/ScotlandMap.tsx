@@ -879,59 +879,70 @@ export default function ScotlandMap() {
     const searchAtLoad = window.location.search;
     const layersFromUrlAtLoad = new URLSearchParams(searchAtLoad).has("layers");
     const bootAtLoad = readMapUrlState(searchAtLoad);
+
+    const applyIds = (ids: string[]) => {
+      setShowCouncils(ids.includes("councils"));
+      setShowDataZones(ids.includes("data_zones"));
+      setShowVdl(ids.includes("vdl"));
+      setShowHla(ids.includes("hla"));
+      const ledger: LedgerToggleState = {};
+      for (const id of ids) {
+        if (
+          id === "councils" ||
+          id === "data_zones" ||
+          id === "vdl" ||
+          id === "hla"
+        ) {
+          continue;
+        }
+        ledger[id] = true;
+      }
+      setLedgerEnabled((cur) => ({ ...cur, ...ledger }));
+      // Keep constraint overlays in sync with URL / GBP-LIVE boot ids.
+      setContextOn((cur) => ({
+        ...cur,
+        flood: ids.includes("flood"),
+      }));
+    };
+
+    // Apply URL / default layers synchronously so a slow GBP-LIVE probe cannot
+    // wipe visitor toggles (legend-strip / inline legend e2e race).
+    if (!gbpLiveBootstrapped.current) {
+      gbpLiveBootstrapped.current = true;
+      if (layersFromUrlAtLoad) {
+        applyIds(bootAtLoad.layers);
+      } else {
+        applyIds(
+          bootAtLoad.layers.length ? bootAtLoad.layers : defaultOnLayerIds(),
+        );
+      }
+      if (bootAtLoad.panel === "layers") {
+        setPanelKind("layers");
+        setPanelDetent("full");
+        panelHistoryRef.current = true;
+      } else if (bootAtLoad.panel === "place") {
+        setPanelKind("place");
+        panelHistoryRef.current = true;
+      }
+      if (bootAtLoad.center && mapRef.current) {
+        mapRef.current.jumpTo({
+          center: [bootAtLoad.center.lng, bootAtLoad.center.lat],
+          zoom: bootAtLoad.z ?? mapRef.current.getZoom(),
+        });
+      }
+    }
+
     void fetchGbpLiveSettings().then((settings) => {
       if (cancelled) return;
       const on = Boolean(settings.enabled);
       setGbpLiveOn((prev) => (prev === on ? prev : on));
-      // §3.10 — GBP-LIVE on: AGR layer active unless URL already set layers.
-      if (!gbpLiveBootstrapped.current) {
-        gbpLiveBootstrapped.current = true;
-        const boot = bootAtLoad;
-        const applyIds = (ids: string[]) => {
-          setShowCouncils(ids.includes("councils"));
-          setShowDataZones(ids.includes("data_zones"));
-          setShowVdl(ids.includes("vdl"));
-          setShowHla(ids.includes("hla"));
-          const ledger: LedgerToggleState = {};
-          for (const id of ids) {
-            if (
-              id === "councils" ||
-              id === "data_zones" ||
-              id === "vdl" ||
-              id === "hla"
-            ) {
-              continue;
-            }
-            ledger[id] = true;
-          }
-          setLedgerEnabled((cur) => ({ ...cur, ...ledger }));
-          // Keep constraint overlays in sync with URL / GBP-LIVE boot ids.
-          setContextOn((cur) => ({
-            ...cur,
-            flood: ids.includes("flood"),
-          }));
-        };
-        if (layersFromUrlAtLoad) {
-          applyIds(boot.layers);
-        } else if (on) {
-          // §3.10 — GBP-LIVE on: AGR + councils
-          applyIds(["councils", "1"]);
-          setLegendPreferredId("1");
-        } else {
-          applyIds(boot.layers.length ? boot.layers : defaultOnLayerIds());
-        }
-        if (boot.panel === "layers") {
-          setPanelKind("layers");
-          setPanelDetent("full");
-        } else if (boot.panel === "place") {
-          setPanelKind("place");
-        }
-        if (boot.center && mapRef.current) {
-          mapRef.current.jumpTo({
-            center: [boot.center.lng, boot.center.lat],
-            zoom: boot.z ?? mapRef.current.getZoom(),
-          });
-        }
+      // §3.10 — GBP-LIVE on: enable AGR unless URL already set layers.
+      // Additive only — never reset councils/vdl/hla the visitor already chose.
+      if (on && !layersFromUrlAtLoad) {
+        setLedgerEnabled((cur) =>
+          cur["1"] ? cur : { ...cur, "1": true },
+        );
+        setLegendPreferredId((prev) => prev ?? "1");
       }
     });
     return () => {
@@ -1101,6 +1112,7 @@ export default function ScotlandMap() {
     setPanelKind((k) => (k === "place" ? "closed" : k));
     setPanelCollapsed(false);
     placeAsideRef.current = false;
+    setRestPromptVisible(true);
     markerRef.current?.remove();
     markerRef.current = null;
     parcelLabelRef.current?.remove();
@@ -1163,10 +1175,17 @@ export default function ScotlandMap() {
       if (map) {
         markerRef.current = placeSelectedMarker(map, lng, lat);
         if (opts.fly) {
+          const layersHoldingFly = panelKindRef.current === "layers";
           map.flyTo({
             center: [lng, lat],
             zoom: Math.max(map.getZoom(), 15),
             essential: true,
+            // GIS 12 — centre in the uncovered map (right of 380px desktop panel).
+            padding: mapPanelPadding({
+              panelOpen: !layersHoldingFly,
+              detent: opts.fromAddressSearch ? "half" : "peek",
+              collapsed: false,
+            }),
           });
         }
       }
@@ -1334,12 +1353,21 @@ export default function ScotlandMap() {
   const closeLayersPanel = useCallback(() => {
     if (placeAsideRef.current && placeStub) {
       setPanelKind("place");
+      // Layers opens at full — restore the place card at its search/tap detent,
+      // not full (otherwise identify-at-centre stays under the sheet on tablet).
+      setPanelDetent(placeStub.fromAddressSearch ? "half" : "peek");
       setLiveMessage("Place card restored");
       replaceMapUrl({ panel: "place" });
     } else {
       setPanelKind("closed");
       setLiveMessage("Layers closed");
-      replaceMapUrl({ panel: null });
+      // Push a closed entry when Layers was in history (deep-link or open push)
+      // so browser Back restores panel=layers (MAP-CARDS E1 / check 15+17).
+      if (panelHistoryRef.current) {
+        pushMapUrl({ panel: null });
+      } else {
+        replaceMapUrl({ panel: null });
+      }
       panelHistoryRef.current = false;
     }
     placeAsideRef.current = false;
@@ -2716,10 +2744,17 @@ export default function ScotlandMap() {
       Number.isFinite(bootLat) &&
       Number.isFinite(bootLng)
     ) {
-      void inspectRef.current(bootLat, bootLng, { fly: true });
+      // URL deep-link is intentional navigation (like search → half), not a map tap.
+      void inspectRef.current(bootLat, bootLng, {
+        fly: true,
+        fromAddressSearch: true,
+      });
     } else if (captured?.place && boot.center) {
       // place= + c= after rewrite — still identify at the captured centre.
-      void inspectRef.current(boot.center.lat, boot.center.lng, { fly: true });
+      void inspectRef.current(boot.center.lat, boot.center.lng, {
+        fly: true,
+        fromAddressSearch: true,
+      });
     } else {
       const map = mapRef.current;
       if (map && boot.center) {
@@ -4286,6 +4321,7 @@ export default function ScotlandMap() {
           type="button"
           className="legend-strip"
           data-testid="legend-strip"
+          aria-label={`Legend: ${stripLayer.label}`}
           onClick={() => openLayersPanel()}
         >
           <span className="legend-strip-name">{stripLayer.label}</span>
@@ -4355,7 +4391,15 @@ export default function ScotlandMap() {
             place={placeStub}
             loading={placeLoading}
             error={error}
-            onClose={() => dismissPanel()}
+            onClose={() => {
+              // Card × clears selection (not desktop collapse-to-tab).
+              clearPlace();
+              setPanelKind("closed");
+              setPanelCollapsed(false);
+              replaceMapUrl({ panel: null, place: null });
+              panelHistoryRef.current = false;
+              setLiveMessage("Panel closed");
+            }}
             onShowScotland={showScotlandNationalView}
           />
         ) : null}

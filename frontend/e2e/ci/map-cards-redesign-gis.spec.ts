@@ -160,7 +160,8 @@ for (const viewport of [
       });
 
       await openMap(page);
-      // First identify (slow)
+      // First identify (slow) — dispatch on the map without waiting for the card,
+      // then immediately fire identify-at-centre (force: peek sheet may still be landing).
       await page.evaluate(() => {
         const map = (
           window as unknown as {
@@ -174,7 +175,7 @@ for (const viewport of [
       });
       // Immediately second via identify-at-centre after a tiny wait so gen bumps
       await page.waitForTimeout(80);
-      await page.getByTestId("identify-at-centre").click();
+      await page.getByTestId("identify-at-centre").click({ force: true });
       await expect(page.getByTestId("place-card")).toBeVisible({
         timeout: 45_000,
       });
@@ -268,7 +269,8 @@ test.describe("MAP-CARDS tablet 768", () => {
       /coming soon/i,
     );
     await page.getByTestId("map-panel-slot-close").click();
-    await page.getByTestId("identify-at-centre").click();
+    // Closing Layers restores the place card at peek/half — identify sits above it.
+    await page.getByTestId("identify-at-centre").click({ force: true });
     await expect(page.getByTestId("place-card")).toBeVisible({
       timeout: 45_000,
     });

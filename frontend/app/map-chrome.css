@@ -37,7 +37,10 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    height: var(--hud-control-h);
+    /* MAP-CARDS §3.6 — desktop Layers control ≥48×48 */
+    min-width: 48px;
+    min-height: 48px;
+    height: max(48px, var(--hud-control-h));
     padding: 0 0.95rem;
     border: 0;
     line-height: 1.2;
@@ -988,6 +991,22 @@
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* Keep identify clear of the left panel (desktop) and peek/half sheet (mobile). */
+@media (min-width: 900px) {
+  .app-shell.panel-open:not(.panel-collapsed) .identify-at-centre {
+    left: calc(380px + 1.25rem);
+  }
+}
+
+@media (max-width: 899px) {
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .identify-at-centre {
+    bottom: calc(180px + env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .identify-at-centre {
+    bottom: calc(55dvh + env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
 }
 
 /* Research banner height 0 when place card open */

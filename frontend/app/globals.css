@@ -3701,8 +3701,14 @@ button.linkish:disabled {
   }
 
   .hud-layers-btn {
+    box-sizing: border-box;
+    min-width: 48px;
+    min-height: 48px;
     padding: 0.48rem 0.65rem;
     font-size: 0.78rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .hud-nav {
@@ -3957,11 +3963,19 @@ button.linkish:disabled {
  * UX-01 — mobile tap targets ≥44×44 via padding / min box.
  * Glyph and type sizes stay put; box-sizing keeps the extra padding inside.
  */
+/* MAP-CARDS §3.6 — zoom ± are 48×48 at every width (not only mobile). */
+.map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-in,
+.map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-out {
+  width: 48px;
+  height: 48px;
+  box-sizing: border-box;
+}
+
 @media (max-width: 900px) {
   .map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-in,
   .map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-out {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     box-sizing: border-box;
   }
 

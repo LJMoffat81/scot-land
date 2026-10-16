@@ -2062,10 +2062,10 @@ export default function ScotlandMap() {
       }
       if (userMoved) return;
       if (container.clientWidth < 40 || container.clientHeight < 40) return;
-      // MAP-CARDS panel open/close resizes the map. After the first national
-      // frame, do not fitBounds again — that yank races GRID-BASE jumpTo and
-      // clears z17+ grid rebuilds (G19 waitGridLines).
-      if (container.dataset.framed === "1") return;
+      // Panel open/close resizes the map and must still frame the national
+      // view. Once the camera has left that view (GRID-BASE jumpTo ≥ z17),
+      // do not fitBounds again — that yank cleared grid rebuilds (G19).
+      if (map.getZoom() > 8) return;
       const narrow = window.innerWidth <= 900;
       map.fitBounds(
         [
@@ -2599,7 +2599,13 @@ export default function ScotlandMap() {
       removePlotLevelMapBits(map);
 
       void import("../lib/grid3Runtime").then(({ ensureGrid3Layers }) => {
-        if (mapRef.current === map) ensureGrid3Layers(map);
+        if (mapRef.current !== map) return;
+        try {
+          if (!map.getStyle()?.layers) return;
+        } catch {
+          return;
+        }
+        ensureGrid3Layers(map);
       });
 
       setMapReady(true);
@@ -3009,7 +3015,16 @@ export default function ScotlandMap() {
     let gridMod: typeof import("../lib/grid3Map") | null = null;
     let runtime: typeof import("../lib/grid3Runtime") | null = null;
 
+    const styleLive = () => {
+      try {
+        return Boolean(map.getStyle()?.layers);
+      } catch {
+        return false;
+      }
+    };
+
     const clearLines = () => {
+      if (!styleLive()) return;
       const src = map.getSource("grid3-lines") as GeoJSONSource | undefined;
       src?.setData({ type: "FeatureCollection", features: [] });
       if (map.getLayer("grid3-lines-layer")) {
@@ -3019,7 +3034,7 @@ export default function ScotlandMap() {
 
     const rebuild = async () => {
       const myGen = ++gen;
-      if (cancelled || !mapRef.current) return;
+      if (cancelled || !mapRef.current || !styleLive()) return;
       if (!showGrid3Ref.current) {
         clearLines();
         return;
@@ -3048,7 +3063,7 @@ export default function ScotlandMap() {
           };
         }
       }
-      if (cancelled || myGen !== gen) return;
+      if (cancelled || myGen !== gen || !styleLive()) return;
       // Re-read zoom after await so a stale low-zoom rebuild cannot wipe z17+.
       const z = map.getZoom();
       if (z < GRID3_MIN_ZOOM) {

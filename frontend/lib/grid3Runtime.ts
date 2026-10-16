@@ -26,14 +26,60 @@ import {
   GRID3_SOURCE_LINES,
 } from "./grid3Map";
 
+/** Style is mid-swap (basemap) when MapLibre's internal style is gone. */
+function styleReady(map: MaplibreMap): boolean {
+  try {
+    return Boolean(map.getStyle()?.layers);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Empty outline slot above the grid (G19). Source id is not a plot/parcel
+ * source — GIS 16 still strips real parcel geometry. Visibility stays none
+ * until a selection paints into it.
+ */
+const ZONE_OUTLINE_SOURCE = "zone-outline";
+
+function ensureZoneOutlineSlot(map: MaplibreMap): void {
+  if (!map.getSource(ZONE_OUTLINE_SOURCE)) {
+    map.addSource(ZONE_OUTLINE_SOURCE, { type: "geojson", data: EMPTY_FC });
+  }
+  if (!map.getLayer("selected-square-fill")) {
+    map.addLayer({
+      id: "selected-square-fill",
+      type: "fill",
+      source: ZONE_OUTLINE_SOURCE,
+      layout: { visibility: "none" },
+      paint: { "fill-color": "#1d4f91", "fill-opacity": 0.12 },
+    });
+  }
+  if (!map.getLayer("selected-square-outline")) {
+    map.addLayer({
+      id: "selected-square-outline",
+      type: "line",
+      source: ZONE_OUTLINE_SOURCE,
+      layout: { visibility: "none" },
+      paint: {
+        "line-color": "#0b2340",
+        "line-width": 2,
+        "line-opacity": 0.95,
+      },
+    });
+  }
+}
+
 /** Ensure grid sources/layers exist below selected zone outline layers. */
 export function ensureGrid3Layers(map: MaplibreMap): void {
+  if (!styleReady(map)) return;
   if (!map.getSource(GRID3_SOURCE_LINES)) {
     map.addSource(GRID3_SOURCE_LINES, { type: "geojson", data: EMPTY_FC });
   }
   if (!map.getSource(GRID3_SOURCE_HIGHLIGHT)) {
     map.addSource(GRID3_SOURCE_HIGHLIGHT, { type: "geojson", data: EMPTY_FC });
   }
+  ensureZoneOutlineSlot(map);
 
   const beforeId = map.getLayer("selected-parcel-fill")
     ? "selected-parcel-fill"
@@ -143,6 +189,7 @@ export function setGrid3LinePaint(
   map: MaplibreMap,
   imagery: boolean,
 ): void {
+  if (!styleReady(map)) return;
   if (!map.getLayer(GRID3_LAYER_LINES)) return;
   if (imagery) {
     map.setPaintProperty(
@@ -176,6 +223,7 @@ export function setGrid3Visibility(
   linesOn: boolean,
   highlightOn: boolean,
 ): void {
+  if (!styleReady(map)) return;
   const lineVis = linesOn ? "visible" : "none";
   const hiVis = highlightOn ? "visible" : "none";
   for (const id of [GRID3_LAYER_LINES]) {

@@ -10,7 +10,7 @@ test.describe("cache headers (HOME-TUNNEL)", () => {
   test("static mark image has a long Cache-Control max-age", async ({
     request,
   }) => {
-    const res = await request.get("/scot-land-mark.png");
+    const res = await request.get("/logo-mark-h3.png");
     expect(res.ok()).toBeTruthy();
     const cache = res.headers()["cache-control"] || "";
     expect(cache.toLowerCase()).toMatch(/public/i);

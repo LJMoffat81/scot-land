@@ -168,7 +168,7 @@ export default function SiteNav({
         aria-label="Scot-LAND home"
         data-testid="site-nav-brand"
       >
-        <img src="/scot-land-mark.png" alt="" width={40} height={40} />
+        <img src="/logo-mark-h3.png" alt="" width={40} height={40} />
         <span className="site-nav-brand-text">
           {/* Logo mark already includes LAND; hide this text on mobile (SW-020). */}
           <span className="site-nav-wordmark">Scot-LAND</span>

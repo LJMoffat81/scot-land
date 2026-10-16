@@ -231,7 +231,7 @@ test.describe("LOGO-H2 static assets", () => {
       "/icon-192.png",
       "/icon-512.png",
       "/og-image.png",
-      "/scot-land-mark.png",
+      "/logo-mark-h3.png",
       "/site.webmanifest",
       "/logo-mark.svg",
     ];

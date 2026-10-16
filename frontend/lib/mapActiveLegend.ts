@@ -42,14 +42,13 @@ export const LAND_WORTH_CIVIDIS: readonly string[] = [
   "#fee838",
 ] as const;
 
-/** Vacant / derelict site-type fills — keep in sync with ScotlandMap VDL_FILL. */
+/** Site-count bands — keep in sync with mapLayerRegistry. No site-type classes. */
 export const VDL_LEGEND_SWATCHES: ReadonlyArray<{
   label: string;
   color: string;
 }> = [
-  { label: "Vacant Land", color: "#e8a317" },
-  { label: "Vacant Land and Buildings", color: "#c45c26" },
-  { label: "Derelict", color: "#7a2e00" },
+  { label: "<3", color: "#f4d35e" },
+  { label: "3 or more", color: "#c45c26" },
 ];
 
 /** Housing land audit fill — keep in sync with ScotlandMap HLA_FILL. */

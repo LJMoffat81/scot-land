@@ -10,8 +10,8 @@ import {
 
 /**
  * VDL-DZ-1 — a Data Zone place with vacant land must not show a site code.
- * The overlay stub still carries a site code (the leak on main). The card
- * and the map popup must not render it.
+ * The route stub still carries a site code. The card must not render it.
+ * VDL-DZ-2 removes the site polygon, so the map must not draw vdl-fill.
  */
 
 const SITE_CODE = "GLA-SITE-CODE-LEAK";
@@ -69,32 +69,24 @@ for (const viewport of [
       await ensureMapZoomAtLeast(page, 8);
 
       await expect
-        .poll(
-          async () =>
-            page.evaluate(() => {
-              const map = (
-                window as unknown as {
-                  __map?: {
-                    getLayer(id: string): unknown;
-                    queryRenderedFeatures(
-                      point: { x: number; y: number },
-                      opts: { layers: string[] },
-                    ): unknown[];
-                  };
-                }
-              ).__map;
-              if (!map?.getLayer("vdl-fill")) return 0;
-              const canvas = document.querySelector(".maplibregl-canvas");
-              if (!(canvas instanceof HTMLCanvasElement)) return 0;
-              const rect = canvas.getBoundingClientRect();
-              return map.queryRenderedFeatures(
-                { x: rect.width / 2, y: rect.height / 2 },
-                { layers: ["vdl-fill"] },
-              ).length;
-            }),
-          { timeout: 20_000 },
+        .poll(async () =>
+          page.evaluate(() => {
+            const map = (
+              window as unknown as {
+                __map?: {
+                  getLayer(id: string): unknown;
+                  getSource(id: string): unknown;
+                };
+              }
+            ).__map;
+            if (!map) return "missing-map";
+            if (map.getSource("vdl-overlay") || map.getLayer("vdl-fill") || map.getLayer("vdl-line")) {
+              return "overlay-present";
+            }
+            return "clear";
+          }),
         )
-        .toBeGreaterThan(0);
+        .toBe("clear");
 
       const canvas = page.locator(".maplibregl-canvas");
       const box = await canvas.boundingBox();
@@ -108,13 +100,10 @@ for (const viewport of [
       await expect(card).not.toContainText(SITE_CODE);
       await expect(card).not.toContainText("Site code");
 
-      const popup = page.locator(".maplibregl-popup");
-      await expect(popup).toBeVisible({ timeout: 10_000 });
-      await expect(popup).toContainText("Scottish Vacant and Derelict Land Survey");
-      await expect(popup).not.toContainText(SITE_CODE);
-      await expect(popup).not.toContainText("Site code");
-      await expect(popup).not.toContainText("1 High Street");
-      await expect(popup).not.toContainText("Former works");
+      await expect(page.locator(".maplibregl-popup")).toHaveCount(0);
+      await expect(page.locator("body")).not.toContainText(SITE_CODE);
+      await expect(page.locator("body")).not.toContainText("1 High Street");
+      await expect(page.locator("body")).not.toContainText("Former works");
 
       assertConsoleClean(gate);
     });

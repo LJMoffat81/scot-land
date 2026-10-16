@@ -10,6 +10,10 @@ import { getMapLayer } from "./mapLayerRegistry";
 export const OPENFREEMAP_ATTRIBUTION =
   "© OpenFreeMap © OpenStreetMap";
 
+/** Vacant-land credit when that layer is on. Zone totals only. */
+export const VDL_ZONE_TOTALS_ATTRIBUTION =
+  "Totals from the Scottish Vacant and Derelict Land Survey, grouped by Data Zone. Zones with one or two sites show no area.";
+
 /** RoS credit when any RoS-backed layer is on (parcels removed; keep for future). */
 export const ROS_LAYER_IDS = new Set<string>([
   "boundaries",
@@ -38,6 +42,9 @@ export function buildMapAttributionPieces(
 
   if (on.has("data_zones")) {
     pieces.push({ id: "data_zones", text: dzAttributionText() });
+  }
+  if (on.has("vdl")) {
+    pieces.push({ id: "vdl", text: VDL_ZONE_TOTALS_ATTRIBUTION });
   }
 
   let ros = false;

@@ -14,6 +14,7 @@ The live FeatureServer path is Spatial Hub survey only; see
 
 from __future__ import annotations
 
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
 import httpx
@@ -75,6 +76,18 @@ OPEN_VDL_META_KEYS = frozenset(
     }
 )
 OPEN_VDL_ZONE_KEYS = frozenset({"data_zone", "vintage", "site_count", "area_ha"})
+# Fewer than 3 sites: the count is this band and area is omitted.
+SMALL_SITE_COUNT = "<3"
+# Public source, gaps lead, and map attribution. Zone totals only.
+ZONE_TOTALS_TEXT = (
+    "Totals from the Scottish Vacant and Derelict Land Survey, grouped by Data Zone. "
+    "Zones with one or two sites show no area."
+)
+_STALE_VDL_PHRASES = (
+    "Survey sites, not a title",
+    "Owner class is a survey field",
+    "Survey polygons are indicative",
+)
 # Rejected anywhere in the public body — finer than Data Zone.
 OPEN_VDL_FORBIDDEN_KEYS = frozenset(
     {
@@ -171,9 +184,20 @@ def _feature_centroid(geom: Any) -> tuple[float, float] | None:
     return None
 
 
-def _zone_row(raw: Any) -> dict[str, Any] | None:
-    if not isinstance(raw, dict):
-        return None
+def round_area_ha(area: float) -> float:
+    """Nearest 0.5 hectare, half up (7.3 → 7.5)."""
+    doubled = (Decimal(str(area)) * 2).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+    return float(doubled / 2)
+
+
+def publish_zone_figures(site_count: int, area_ha: float) -> tuple[str | int, float | None]:
+    """Small counts hide area. Larger totals are rounded to 0.5 ha."""
+    if site_count < 3:
+        return SMALL_SITE_COUNT, None
+    return site_count, round_area_ha(area_ha)
+
+
+def _zone_identity(raw: dict[str, Any]) -> tuple[str, int] | None:
     if OPEN_VDL_FORBIDDEN_KEYS.intersection(raw):
         return None
     code = raw.get("data_zone")
@@ -182,34 +206,76 @@ def _zone_row(raw: Any) -> dict[str, Any] | None:
         return None
     if vintage_for_code(str(code) if code is not None else "") != vintage:
         return None
+    return str(code), vintage
+
+
+def _raw_measure(raw: dict[str, Any]) -> tuple[int, float] | None:
     count = raw.get("site_count")
     area = raw.get("area_ha")
     if isinstance(count, bool) or not isinstance(count, int) or count < 0:
         return None
     if isinstance(area, bool) or not isinstance(area, (int, float)):
         return None
-    return {
-        "data_zone": str(code),
-        "vintage": vintage,
-        "site_count": count,
-        "area_ha": round(float(area), 2),
-    }
+    return count, float(area)
 
 
 def _merge_zones(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    merged: dict[tuple[str, int], dict[str, Any]] = {}
+    """Sum raw counts, then apply the small-count band. Already-banded rows stay banded."""
+    raw_acc: dict[tuple[str, int], dict[str, float | int]] = {}
+    published: dict[tuple[str, int], dict[str, Any]] = {}
     for raw in rows:
-        row = _zone_row(raw)
-        if row is None:
+        if not isinstance(raw, dict):
             continue
-        key = (row["data_zone"], row["vintage"])
-        prev = merged.get(key)
-        if prev is None:
-            merged[key] = row
+        ident = _zone_identity(raw)
+        if ident is None:
             continue
-        prev["site_count"] += row["site_count"]
-        prev["area_ha"] = round(prev["area_ha"] + row["area_ha"], 2)
-    return [merged[key] for key in sorted(merged)]
+        measure = _raw_measure(raw)
+        if measure is not None:
+            count, area = measure
+            slot = raw_acc.get(ident)
+            if slot is None:
+                raw_acc[ident] = {"site_count": count, "area_ha": area}
+            else:
+                slot["site_count"] = int(slot["site_count"]) + count
+                slot["area_ha"] = float(slot["area_ha"]) + area
+            continue
+        if raw.get("site_count") == SMALL_SITE_COUNT:
+            published[ident] = {
+                "data_zone": ident[0],
+                "vintage": ident[1],
+                "site_count": SMALL_SITE_COUNT,
+                "area_ha": None,
+            }
+    out: list[dict[str, Any]] = []
+    for ident in sorted(set(raw_acc) | set(published)):
+        if ident in raw_acc:
+            slot = raw_acc[ident]
+            count, area = publish_zone_figures(
+                int(slot["site_count"]), float(slot["area_ha"])
+            )
+            out.append(
+                {
+                    "data_zone": ident[0],
+                    "vintage": ident[1],
+                    "site_count": count,
+                    "area_ha": area,
+                }
+            )
+        else:
+            out.append(published[ident])
+    return out
+
+
+def _public_gaps(raw: Any) -> list[str]:
+    kept: list[str] = []
+    if isinstance(raw, list):
+        for item in raw:
+            if not isinstance(item, str) or item == ZONE_TOTALS_TEXT:
+                continue
+            if any(phrase in item for phrase in _STALE_VDL_PHRASES):
+                continue
+            kept.append(item)
+    return [ZONE_TOTALS_TEXT, *kept]
 
 
 def _string_list(raw: Any, fallback: tuple[str, ...] | list[str]) -> list[str]:
@@ -243,8 +309,7 @@ def public_vdl_response(payload: dict[str, Any]) -> dict[str, Any]:
         if isinstance(props, dict):
             incoming.append(props)
     zones = _merge_zones(incoming)
-    gaps = _string_list(meta_in.get("gaps"), [])
-    source = meta_in.get("source")
+    gaps = _public_gaps(meta_in.get("gaps"))
     return {
         "type": "FeatureCollection",
         "features": [],
@@ -255,7 +320,7 @@ def public_vdl_response(payload: dict[str, Any]) -> dict[str, Any]:
             "capped": bool(meta_in.get("capped")),
             "grain": "data_zone",
             "licence": str(meta_in.get("licence") or "OGL-3.0"),
-            "source": source if isinstance(source, str) and source else ATTRIBUTION,
+            "source": ZONE_TOTALS_TEXT,
             "register_url": str(meta_in.get("register_url") or REGISTER_URL),
             "spatial_hub_url": str(meta_in.get("spatial_hub_url") or SPATIAL_HUB_URL),
             "publication_url": str(meta_in.get("publication_url") or PUBLICATION_URL),
@@ -348,7 +413,7 @@ def query_point(lat: float, lng: float) -> dict[str, Any]:
             response.raise_for_status()
             payload = response.json()
     except (httpx.HTTPError, ValueError) as exc:
-        return {"ok": False, "error": str(exc), "sites": [], "source": ATTRIBUTION}
+        return {"ok": False, "error": str(exc), "sites": [], "source": ZONE_TOTALS_TEXT}
 
     features = payload.get("features") or []
     return {
@@ -356,7 +421,7 @@ def query_point(lat: float, lng: float) -> dict[str, Any]:
         "intersects": bool(features),
         # Site rows stay off the public place payload (finer than Data Zone).
         "sites": [],
-        "source": ATTRIBUTION,
+        "source": ZONE_TOTALS_TEXT,
         "register_url": REGISTER_URL,
         "spatial_hub_url": SPATIAL_HUB_URL,
         "licence": "OGL-3.0",
@@ -437,8 +502,6 @@ def query_bbox(
         for (code, vintage), slot in sorted(buckets.items())
     ]
     gaps = [
-        "Owner class is a survey field, not legal title",
-        "Survey polygons are indicative — confirm extent on ScotLIS",
         "Sites removed or re-coded since the Spatial Hub vintage may differ "
         "from the latest SG site register",
         "RoS title-outline geometry stays internal until OS/RoS end-user "

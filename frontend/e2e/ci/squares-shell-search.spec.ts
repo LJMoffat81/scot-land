@@ -97,7 +97,8 @@ test.describe("squares shell mobile", () => {
     expect(box!.width).toBeGreaterThan(200);
     const basemap = page.getByTestId("basemap-toggle-narrow");
     await expect(basemap).toBeVisible();
-    await expect(basemap).toHaveAccessibleName("Detailed map");
+    await expect(basemap).toHaveAccessibleName("Detailed");
+    await expect(basemap).toHaveText("Detailed");
     await expect(basemap).not.toContainText(/Satellite/i);
     await expect(
       page.getByRole("button", { name: "Layers", exact: true }),

@@ -185,7 +185,7 @@ assert.doesNotMatch(developers, /\/layers\/…\?south=&west=&north=&east=/);
 assert.doesNotMatch(developers, /Full API reference/);
 assert.match(developers, /Developer API and bulk data/);
 assert.match(developers, /Technical checks/);
-assert.match(developers, /Source code/);
+assert.doesNotMatch(developers, /Source code/);
 
 // Each packaged bundle has bytes + a one-line grain note (e.g. One row per Data Zone).
 for (const bundle of manifest.bundles) {

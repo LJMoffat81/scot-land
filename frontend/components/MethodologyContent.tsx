@@ -4,6 +4,7 @@ import GlossaryBox from "@/components/GlossaryBox";
 import HashRedirect from "@/components/HashRedirect";
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
+import { AREA_LEVELS, AREA_LEVELS_EXPLANATION } from "@/lib/areaLevels";
 
 /**
  * How it works page copy — SLRG wording (site-watch PR C / SW-017).
@@ -69,6 +70,12 @@ export default function MethodologyContent() {
           We show each small area on its own. We don&apos;t add areas up into
           council or Scotland figures.
         </p>
+        <p data-testid="methodology-levels-note">{AREA_LEVELS_EXPLANATION}</p>
+        <ol data-testid="methodology-levels">
+          {AREA_LEVELS.map((level) => (
+            <li key={level}>{level}</li>
+          ))}
+        </ol>
       </section>
 
       <GlossaryBox title="Words we use" />

@@ -15,18 +15,28 @@ function nameHits(text: string, allowPhrase: boolean): string[] {
   return source.match(/Laurie|Moffat/g) ?? [];
 }
 
+function isSiteScript(src: string): boolean {
+  if (/swagger-ui/i.test(src)) return false;
+  if (/node_modules/i.test(src)) return false;
+  if (/polyfill/i.test(src)) return false;
+  return src.length > 0;
+}
+
 async function firstPartyJs(page: Page): Promise<string> {
   const srcs = await page.locator("script[src]").evaluateAll((els) =>
-    els
-      .map((el) => el.getAttribute("src") ?? "")
-      .filter((src) => src.length > 0 && !/swagger-ui/i.test(src)),
+    els.map((el) => el.getAttribute("src") ?? "").filter((src) => src.length > 0),
   );
   const chunks: string[] = [];
   for (const src of srcs) {
+    if (!isSiteScript(src)) continue;
     const url = new URL(src, page.url());
     if (url.origin !== new URL(page.url()).origin) continue;
     const response = await page.request.get(url.pathname + url.search);
-    if (response.ok()) chunks.push(await response.text());
+    if (!response.ok()) continue;
+    const text = await response.text();
+    // Vendored core-js polyfill, not this site's script.
+    if (/zloirock|core-js/i.test(text)) continue;
+    chunks.push(text);
   }
   return chunks.join("\n");
 }
@@ -106,22 +116,7 @@ test.describe("PRIVACY-1 crawl", () => {
           "led by Laurie Moffat",
         ]);
       }
+      await expect(page.locator('a[href="/about#contact"]')).toHaveCount(0);
     }
-
-    await page.goto("/roadmap");
-    await expect(page.getByRole("link", { name: "Suggest a layer" })).toHaveAttribute(
-      "href",
-      "/about#contact",
-    );
-    await page.goto("/developers/api");
-    await expect(page.getByRole("link", { name: "Register interest" })).toHaveAttribute(
-      "href",
-      "/about#contact",
-    );
-    await page.goto("/how-we-built-this");
-    await expect(page.getByRole("link", { name: "get in touch" })).toHaveAttribute(
-      "href",
-      "/about#contact",
-    );
   });
 });

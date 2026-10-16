@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import ContentPageFooter from "@/components/ContentPageFooter";
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
+import { contactFormEnabled } from "@/lib/contactFormFlag";
 import { OG_IMAGES } from "@/lib/socialMeta";
 
 export const metadata: Metadata = {
@@ -101,10 +102,12 @@ export default function HowWeBuiltThisPage() {
             ))}
           </ul>
           <p>This is unpaid and voluntary.</p>
-          <p>
-            If you spot a mistake or can help, please{" "}
-            <a href="/about#contact">get in touch</a>.
-          </p>
+          {contactFormEnabled() ? (
+            <p>
+              If you spot a mistake or can help, please{" "}
+              <a href="/about#contact">get in touch</a>.
+            </p>
+          ) : null}
         </section>
       </div>
       <ContentPageFooter />

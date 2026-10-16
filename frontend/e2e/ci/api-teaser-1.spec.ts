@@ -95,14 +95,9 @@ for (const viewport of [
         "Sources and method notes for every figure",
       );
       await expect(teaser).toContainText("The map stays free to use.");
-      await expect(page.getByTestId("api-register-interest")).toHaveAttribute(
-        "href",
-        "/about#contact",
-      );
-      await expect(page.getByRole("link", { name: "Register interest" })).toHaveAttribute(
-        "href",
-        "/about#contact",
-      );
+      await expect(page.getByTestId("api-register-interest")).toHaveCount(0);
+      await expect(page.getByRole("link", { name: "Register interest" })).toHaveCount(0);
+      await expect(page.locator('a[href="/about#contact"]')).toHaveCount(0);
 
       const html = await teaser.innerHTML();
       expect(html, "no /api/ paths").not.toContain("/api/");

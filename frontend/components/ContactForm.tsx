@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+
+import {
+  CONTACT_FORM_FLAG_ENV,
+  contactFormEnabled,
+} from "@/lib/contactFormFlag";
+
+export { CONTACT_FORM_FLAG_ENV, contactFormEnabled };
 
 export const CONTACT_FORM_ID_ENV = "NEXT_PUBLIC_CONTACT_FORM_ID";
-/** CONTACT-FORM-1: off until a public form id is supplied. */
-export const CONTACT_FORM_FLAG_ENV = "NEXT_PUBLIC_CONTACT_FORM_ENABLED";
 export const CONTACT_SOON = "Contact form coming soon";
 export const CONTACT_USE_LINE = "We use your message only to reply to you.";
 export const CONTACT_SENT = "Message sent.";
@@ -17,31 +22,12 @@ export function contactFormIdFromBuild(): string {
   return (process.env.NEXT_PUBLIC_CONTACT_FORM_ID ?? "").trim();
 }
 
-/** Default off. Only the exact string "true" turns the form on. */
-export function contactFormEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_CONTACT_FORM_ENABLED === "true";
-}
-
-/**
- * Build-time id wins. When it is empty, a test may set
- * `window.__SC_CONTACT_FORM_ID` so one production build can show both states.
- */
-export function resolveContactFormId(buildId: string, runtimeId: string): string {
-  const fromBuild = buildId.trim();
-  if (fromBuild) return fromBuild;
-  return runtimeId.trim();
-}
-
 export function contactFormEndpoint(formId: string): string {
   return `https://formspree.io/f/${formId}`;
 }
 
-type WindowWithContact = Window & { __SC_CONTACT_FORM_ID?: string };
-
 export default function ContactForm() {
-  const enabled = contactFormEnabled();
   const buildId = contactFormIdFromBuild();
-  const [runtimeId, setRuntimeId] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -49,12 +35,7 @@ export default function ContactForm() {
   const [status, setStatus] = useState<"idle" | "sent" | "error">("idle");
   const [note, setNote] = useState("");
 
-  useEffect(() => {
-    const injected = (window as WindowWithContact).__SC_CONTACT_FORM_ID;
-    if (typeof injected === "string") setRuntimeId(injected.trim());
-  }, []);
-
-  const formId = enabled ? resolveContactFormId(buildId, runtimeId) : "";
+  const formId = contactFormEnabled() ? buildId : "";
   if (!formId) {
     return (
       <p data-testid="contact-form-soon">{CONTACT_SOON}</p>

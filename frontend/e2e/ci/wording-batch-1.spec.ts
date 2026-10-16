@@ -353,10 +353,8 @@ test.describe("WORDING-BATCH-1 developers", () => {
           "Developer API and bulk data: coming",
         );
         await expect(page.getByTestId("catalog-developer-notes")).toHaveCount(0);
-        await expect(page.getByTestId("api-register-interest")).toHaveAttribute(
-          "href",
-          "/about#contact",
-        );
+        await expect(page.getByTestId("api-register-interest")).toHaveCount(0);
+        await expect(page.locator('a[href="/about#contact"]')).toHaveCount(0);
 
         const noHScroll = await page.evaluate(() => {
           const root = document.documentElement;

@@ -119,8 +119,28 @@
   }
 }
 
-/* BANNER-FIT-1 (SW-074): content pages wrap the collapsed strip onto two lines. */
+/* BANNER-FIT-1 (SW-074) and MAP-BANNER-WRAP-1 (SW-081): wrap the collapsed strip. */
 @media (max-width: 480px) {
+  .research-banner-map.research-banner-strip:not(.research-banner-expanded) {
+    align-items: flex-start;
+    overflow: visible;
+  }
+
+  .research-banner-map.research-banner-strip:not(.research-banner-expanded)
+    .research-banner-toggle {
+    align-items: flex-start;
+  }
+
+  .research-banner-map.research-banner-strip:not(.research-banner-expanded)
+    .research-banner-text {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+
   .research-banner-page.research-banner-strip:not(.research-banner-expanded) {
     align-items: flex-start;
     overflow: visible;

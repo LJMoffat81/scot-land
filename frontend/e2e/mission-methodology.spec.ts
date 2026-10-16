@@ -12,7 +12,7 @@ test.describe("about and how-it-works pages", () => {
     ).toBeVisible();
     for (const heading of [
       "What Scot-LAND is not",
-      "Why I am building this",
+      "Why we are building this",
       "Contact",
     ]) {
       await expect(page.getByRole("heading", { name: heading })).toBeVisible();

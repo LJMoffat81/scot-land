@@ -215,5 +215,25 @@ for (const viewport of VIEWPORTS) {
 
       assertConsoleClean(gate);
     });
+
+    test("EH1 1YZ tap-only cycle asserts half, full, and peek", async ({
+      page,
+    }) => {
+      test.setTimeout(120_000);
+      const gate = attachConsoleGate(page);
+      await stubMap(page);
+      const slot = await openSearchedCard(page);
+      const handle = page.getByTestId("map-panel-handle");
+
+      await expect(slot).toHaveAttribute("data-detent", "half");
+      await handle.click();
+      await expect(slot).toHaveAttribute("data-detent", "full");
+      await handle.click();
+      await expect(slot).toHaveAttribute("data-detent", "peek");
+      await handle.click();
+      await expect(slot).toHaveAttribute("data-detent", "half");
+
+      assertConsoleClean(gate);
+    });
   });
 }

@@ -142,6 +142,8 @@ async function assertPageCopy(page: Page) {
     await expect(reviewers.filter({ hasText: line })).toHaveCount(1);
   }
   await expect(copy).toContainText("This is unpaid and voluntary.");
+  await expect(copy.getByRole("link", { name: "get in touch" })).toHaveCount(0);
+  await expect(copy.locator('a[href="/about#contact"]')).toHaveCount(0);
   await expect(copy.getByRole("link", { name: "How it works" })).toHaveAttribute(
     "href",
     "/methodology",
@@ -149,10 +151,6 @@ async function assertPageCopy(page: Page) {
   await expect(copy.getByRole("link", { name: "Data & sources" })).toHaveAttribute(
     "href",
     "/data",
-  );
-  await expect(copy.getByRole("link", { name: "get in touch" })).toHaveAttribute(
-    "href",
-    "/about#contact",
   );
   const hrefs = await copy.locator("a").evaluateAll((els) =>
     els.map((el) => el.getAttribute("href") ?? ""),

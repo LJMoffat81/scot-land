@@ -29,6 +29,7 @@ from georgist.ros_c14_prices import (
 )
 from georgist.v14_primary_inputs import (
     cost_availability_for_scored,
+    dropped_scored_counts,
     primary_estimates,
     write_information_files,
     write_scored_inputs,
@@ -96,6 +97,12 @@ def main(argv: list[str] | None = None) -> int:
             for zone in inputs["dz2011"]
             if zone["status"] == "scored"
         ]
+        dropped = dropped_scored_counts(scored, means, drc)
+        sys.stdout.write(f"dropped_no_price={dropped['no_price']}\n")
+        sys.stdout.write(f"dropped_no_cost={dropped['no_cost']}\n")
+        if dropped["no_price"] > 0 or dropped["no_cost"] > 0:
+            sys.stdout.write("stop_before_scoring=true\n")
+            return 1
         costs = cost_availability_for_scored(scored, means, drc)
         estimates = primary_estimates(costs)
         write_scored_inputs(args.out_dir, costs, estimates)

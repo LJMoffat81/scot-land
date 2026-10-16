@@ -14,8 +14,6 @@ import {
  * Oil and gas is fetched once per session.
  */
 
-const BUDGET = 500 * 1024;
-
 const HIGHLAND_POLYGON = {
   type: "Feature",
   properties: { name: "Highland site" },
@@ -88,22 +86,26 @@ async function jump(page: Page, center: [number, number], zoom: number) {
 test.describe("LAYERS-PERF-1", () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  test("protected sites draw at Scotland z6 and Highlands z8 within 500 KB", async ({
+  test("protected sites draw at Scotland z6 and Highlands z8", async ({
     page,
   }) => {
     test.setTimeout(120_000);
     const gate = attachConsoleGate(page);
-    const sizes: number[] = [];
+    // CI has no live NatureScot extract, so this spec cannot measure a real
+    // payload. The 500 KB cap stays in the backend tests. Here we record the
+    // zoom the browser actually requests.
+    const requestedZooms: string[] = [];
     await stubMapCardsBackend(page);
     const body = featureCollection([HIGHLAND_POLYGON]);
     const fulfill = async (route: {
+      request(): { url(): string };
       fulfill(opts: {
         status: number;
         contentType: string;
         body: string;
       }): Promise<void>;
     }) => {
-      sizes.push(Buffer.byteLength(body));
+      requestedZooms.push(new URL(route.request().url()).searchParams.get("z") ?? "");
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -123,20 +125,22 @@ test.describe("LAYERS-PERF-1", () => {
         timeout: 20_000,
       })
       .toBeGreaterThan(0);
-    expect(sizes.length).toBeGreaterThan(0);
-    for (const size of sizes) expect(size).toBeLessThanOrEqual(BUDGET);
+    expect(requestedZooms.length).toBeGreaterThan(0);
+    for (const zoom of requestedZooms) expect(Number(zoom)).toBeGreaterThanOrEqual(6);
 
-    const beforeHighlands = sizes.length;
+    const beforeHighlands = requestedZooms.length;
     await jump(page, [-4.7, 57.25], 8);
     await expect
-      .poll(async () => sizes.length, { timeout: 20_000 })
+      .poll(async () => requestedZooms.length, { timeout: 20_000 })
       .toBeGreaterThan(beforeHighlands);
     await expect
       .poll(async () => renderedCount(page, ["designations-fill"]), {
         timeout: 20_000,
       })
       .toBeGreaterThan(0);
-    for (const size of sizes) expect(size).toBeLessThanOrEqual(BUDGET);
+    for (const zoom of requestedZooms.slice(beforeHighlands)) {
+      expect(Number(zoom)).toBeGreaterThanOrEqual(8);
+    }
     assertConsoleClean(gate);
   });
 

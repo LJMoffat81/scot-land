@@ -100,9 +100,10 @@ const AIM_TO_COVER: readonly AimGroup[] = [
         status: "Later",
       },
       {
-        name: "Site rent: farmland",
-        plain: "Yearly rental value of farmland, without farm buildings.",
-        status: "Not started",
+        name: "Rural and farmland values",
+        plain:
+          "Homes rarely sell in the countryside, so house-sale methods don't work there. We will use published farmland price and rent surveys, plus land capability (soil) maps.",
+        status: "Later",
       },
       {
         name: "Planning uplift",

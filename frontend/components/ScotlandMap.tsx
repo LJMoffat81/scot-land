@@ -302,7 +302,7 @@ function loadContextFeature(layerId: string): Promise<ContextFeaturePayload> {
 }
 const HLA_MIN_ZOOM = 8;
 const HLA_FILL = "#7b5ea7";
-/** Data Zone outlines / density colours — readable from neighbourhood zoom. */
+/** Data Zone outlines / density colours — readable from area zoom. */
 const DATA_ZONE_MIN_ZOOM = POP_DENSITY_COLOURS_MIN_ZOOM;
 const NFI_MIN_ZOOM = 7;
 const NATIVE_WOODLAND_MIN_ZOOM = 8;

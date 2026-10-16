@@ -27,6 +27,26 @@ const ROLES = [
   "Design: the look of the site and maps.",
   "Wording: keeps every page clear and plain.",
   "Quality checks: tests the live site after every change.",
+  "Engineering lead: writes specs and reviews code",
+  "Coordination: plans work and checks it against our rules",
+  "Outreach: drafts messages, only sent with Laurie's approval",
+] as const;
+
+const GAPS = [
+  "No qualified valuer has reviewed our method.",
+  "Values cover land as it is used today, not what planning might allow.",
+  "No legal or data-protection review yet.",
+  'No public-finance expert has reviewed our "Why land value?" page.',
+  "Rural land is not valued yet.",
+  "No independent review of our statistics.",
+] as const;
+
+const REVIEWERS = [
+  "a RICS-registered valuer, to check how we value land",
+  "a statistician, to test our model",
+  "a planner, to advise on planning use",
+  "a legal or data-protection reviewer",
+  "a public-finance economist, to review our tax explainer",
 ] as const;
 
 export default function HowWeBuiltThisPage() {
@@ -38,7 +58,7 @@ export default function HowWeBuiltThisPage() {
       <div data-testid="how-we-built-copy">
         <p>Scot-LAND is led by Laurie Moffat.</p>
         <p>The research and checking are done by a team of specialist AI assistants. Each has one job:</p>
-        <ul>
+        <ul data-testid="how-we-built-roles">
           {ROLES.map((line) => (
             <li key={line}>{line}</li>
           ))}
@@ -62,10 +82,26 @@ export default function HowWeBuiltThisPage() {
             </li>
           </ul>
         </section>
+        <section id="what-we-dont-have-yet">
+          <h2>What we don&apos;t have yet</h2>
+          <ul data-testid="how-we-built-gaps">
+            {GAPS.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <p>Automated values need human checking before anyone relies on them.</p>
+        </section>
         <section id="get-involved">
           <h2>Get involved</h2>
+          <p>We would welcome volunteer reviewers:</p>
+          <ul data-testid="how-we-built-reviewers">
+            {REVIEWERS.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <p>This is unpaid and voluntary.</p>
           <p>
-            We welcome review from independent experts in land economics, valuation, statistics and mapping. If you spot a mistake or can help, please get in touch through our{" "}
+            If you spot a mistake or can help, please get in touch through our{" "}
             <a
               href="https://github.com/LJMoffat81/scot-land"
               target="_blank"

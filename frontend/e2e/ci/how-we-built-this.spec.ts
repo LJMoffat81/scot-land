@@ -17,6 +17,26 @@ const ROLE_LINES = [
   "Design: the look of the site and maps.",
   "Wording: keeps every page clear and plain.",
   "Quality checks: tests the live site after every change.",
+  "Engineering lead: writes specs and reviews code",
+  "Coordination: plans work and checks it against our rules",
+  "Outreach: drafts messages, only sent with Laurie's approval",
+] as const;
+
+const GAP_LINES = [
+  "No qualified valuer has reviewed our method.",
+  "Values cover land as it is used today, not what planning might allow.",
+  "No legal or data-protection review yet.",
+  'No public-finance expert has reviewed our "Why land value?" page.',
+  "Rural land is not valued yet.",
+  "No independent review of our statistics.",
+] as const;
+
+const REVIEWER_LINES = [
+  "a RICS-registered valuer, to check how we value land",
+  "a statistician, to test our model",
+  "a planner, to advise on planning use",
+  "a legal or data-protection reviewer",
+  "a public-finance economist, to review our tax explainer",
 ] as const;
 
 const BANNED = [
@@ -89,14 +109,35 @@ async function assertPageCopy(page: Page) {
   ).toBeVisible();
   const copy = page.getByTestId("how-we-built-copy");
   await expect(copy).toContainText("Scot-LAND is led by Laurie Moffat.");
+  expect(ROLE_LINES).toHaveLength(13);
+  const roles = copy.getByTestId("how-we-built-roles").getByRole("listitem");
+  await expect(roles).toHaveCount(13);
   for (const line of ROLE_LINES) {
-    await expect(
-      copy.getByRole("listitem").filter({ hasText: line }),
-    ).toHaveCount(1);
+    await expect(roles.filter({ hasText: line })).toHaveCount(1);
   }
   await expect(copy).toContainText(
     "These are AI assistants, not people, and they hold no professional qualifications.",
   );
+  expect(GAP_LINES).toHaveLength(6);
+  const gaps = copy.getByTestId("how-we-built-gaps").getByRole("listitem");
+  await expect(gaps).toHaveCount(6);
+  for (const line of GAP_LINES) {
+    await expect(gaps.filter({ hasText: line })).toHaveCount(1);
+  }
+  await expect(
+    copy.getByRole("heading", { name: "What we don't have yet", exact: true }),
+  ).toBeVisible();
+  await expect(copy).toContainText(
+    "Automated values need human checking before anyone relies on them.",
+  );
+  await expect(copy).toContainText("We would welcome volunteer reviewers:");
+  expect(REVIEWER_LINES).toHaveLength(5);
+  const reviewers = copy.getByTestId("how-we-built-reviewers").getByRole("listitem");
+  await expect(reviewers).toHaveCount(5);
+  for (const line of REVIEWER_LINES) {
+    await expect(reviewers.filter({ hasText: line })).toHaveCount(1);
+  }
+  await expect(copy).toContainText("This is unpaid and voluntary.");
   await expect(copy.getByRole("link", { name: "How it works" })).toHaveAttribute(
     "href",
     "/methodology",
@@ -118,7 +159,8 @@ async function assertPageCopy(page: Page) {
   }
 
   const involvedText = await page.locator("#get-involved").innerText();
-  const outside = text.replace(involvedText, "");
+  const gapsText = await page.locator("#what-we-dont-have-yet").innerText();
+  const outside = text.replace(involvedText, "").replace(gapsText, "");
   expect(outside).not.toMatch(/\bqualified\b/i);
   expect(outside).not.toMatch(/\bchartered\b/i);
   expect(outside).not.toMatch(/\bcertified\b/i);
@@ -133,7 +175,7 @@ for (const width of [1280, 390] as const) {
   test.describe(`HOW-WE-BUILT-1 at ${width}px`, () => {
     test.use({ viewport: { width, height: width === 390 ? 844 : 800 } });
 
-    test("page renders the heading, ten roles, and the qualifications sentence", async ({
+    test("page renders the heading, thirteen roles, and the qualifications sentence", async ({
       page,
     }) => {
       await page.goto("/how-we-built-this");

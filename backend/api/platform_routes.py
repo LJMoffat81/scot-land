@@ -540,7 +540,7 @@ def layer_open_sssi(
     east: float = Query(..., description="BBox east longitude"),
     max_features: int = Query(default=80, ge=1, le=80),
     z: float | None = Query(default=None, ge=0, le=22),
-) -> JSONResponse:
+) -> Response:
     """NatureScot SSSI polygons (OGL-3.0). Constraint overlay — no money figures, no rent row.
 
     Geometry is simplified for zoom `z` (or the bbox span) and capped at 500 KB
@@ -564,7 +564,7 @@ def layer_open_naturescot_designations(
     east: float = Query(..., description="BBox east longitude"),
     max_features: int = Query(default=80, ge=1, le=80),
     z: float | None = Query(default=None, ge=0, le=22),
-) -> JSONResponse:
+) -> Response:
     """NatureScot SPA/SAC/NNR polygons (OGL-3.0). Constraint overlay — no money figures, no rent row.
 
     Geometry is simplified for zoom `z` (or the bbox span) and capped at 500 KB

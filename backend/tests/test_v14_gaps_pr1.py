@@ -26,6 +26,7 @@ from georgist.v14_score_report import (
 )
 from scripts.build_v14_check_inputs import CheckInputError, load_source
 from scripts.build_v14_hedonic_rows import HedonicRowError, _load_sold_tfa, screen_year_column
+from scripts.rerun_v14_score import _inputs_sha256
 from scripts.rerun_v14_score import main as score_main
 from test_v14_pipeline_b import _rows, _zone
 from test_v14_pipeline_c2 import _ByteTracker
@@ -142,7 +143,25 @@ def test_s_c3_too_few_groups_is_not_run_and_pgtol_reaches_lbfgs(monkeypatch: pyt
     assert seen["solver_kwargs"]["pgtol"] == S_C3_GTOL
     assert "gtol" not in seen["solver_kwargs"]
     assert "factr" not in seen["solver_kwargs"]
-    assert fitted["status"] in {"fit", "NOT_CONVERGED"}
+    assert fitted["status"] == "fit"
+
+    class _Unconverged:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        def fit(self, *args, **kwargs):
+            class _Result:
+                converged = False
+                fe_params = [0.0, 0.1]
+
+            return _Result()
+
+    monkeypatch.setattr(hedonic, "MixedLM", _Unconverged)
+    unconverged = hedonic._fit_s_c3(two_groups)
+    assert unconverged["status"] == "NOT_CONVERGED"
+    assert unconverged["reason"] == "MixedLM did not converge"
+    assert unconverged["status"] != "NOT_RUN"
+    assert unconverged["status"] != "ERROR"
     source = Path(hedonic.__file__).read_text(encoding="utf-8")
     assert 'kwargs["pgtol"] = S_C3_GTOL' in source
     assert "gtol=S_C3_GTOL" not in source
@@ -264,7 +283,29 @@ def _zones(year: int) -> list[dict]:
     return zones
 
 
-def test_lock_path_is_shared_and_2024_refuses_closed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+class _ShaArgs:
+    def __init__(self, path: Path) -> None:
+        self.check_inputs = path
+        self.secondary_estimator_json = None
+        self.merge_map = None
+
+
+def _year_only(year: int) -> dict:
+    rows = [{"zone": f"Z{index}", "year": year} for index in range(2)]
+    return {"primary_zones": rows, "secondary_zones": [dict(row) for row in rows]}
+
+
+def _refuse(capsys: pytest.CaptureFixture[str], message: str, calls: dict[str, int]) -> None:
+    err = capsys.readouterr().err
+    assert message in err
+    assert calls["n"] == 0
+
+
+def test_lock_path_is_shared_and_2024_refuses_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """SYNTHETIC. One lock path. Holdout and 2024 do not follow --out."""
     payload = tmp_path / "checks.json"
     payload.write_text(
@@ -287,6 +328,14 @@ def test_lock_path_is_shared_and_2024_refuses_closed(tmp_path: Path, monkeypatch
         ]
     ) == 0
     assert lock.is_file()
+    capsys.readouterr()
+    calls = {"n": 0}
+
+    def spy(*_args, **_kwargs):
+        calls["n"] += 1
+        raise AssertionError("scored")
+
+    monkeypatch.setattr("scripts.rerun_v14_score.score_both", spy)
     assert score_main(
         [
             "--out",
@@ -298,19 +347,29 @@ def test_lock_path_is_shared_and_2024_refuses_closed(tmp_path: Path, monkeypatch
             str(lock),
         ]
     ) == 1
+    _refuse(capsys, "second 2023 holdout run refused", calls)
     assert score_main(
         ["--out", str(out_b), "--score-2024", "--check-inputs", str(payload)]
     ) == 1
+    _refuse(capsys, "--lock-path is required", calls)
+    missing_lock = tmp_path / "absent" / "holdout_2023.lock"
+    assert not missing_lock.exists()
+    bare = tmp_path / "bare.json"
+    bare.write_text(json.dumps(_year_only(2024)), encoding="utf-8")
+    assert score_main(
+        [
+            "--out",
+            str(tmp_path / "missing" / "report.json"),
+            "--score-2024",
+            "--check-inputs",
+            str(bare),
+            "--lock-path",
+            str(missing_lock),
+        ]
+    ) == 1
+    _refuse(capsys, "2024 run refused unless the holdout lock exists", calls)
     other = tmp_path / "other.json"
-    other.write_text(
-        json.dumps({"primary_zones": _zones(2024), "secondary_zones": _zones(2024), "note": "different"}),
-        encoding="utf-8",
-    )
-
-    def boom(*_args, **_kwargs):
-        raise AssertionError("scored")
-
-    monkeypatch.setattr("scripts.rerun_v14_score.score_both", boom)
+    other.write_text(json.dumps(_year_only(2024)), encoding="utf-8")
     assert score_main(
         [
             "--out",
@@ -322,28 +381,14 @@ def test_lock_path_is_shared_and_2024_refuses_closed(tmp_path: Path, monkeypatch
             str(lock),
         ]
     ) == 1
+    _refuse(capsys, "2024 run refused: inputs sha differs", calls)
     early = tmp_path / "early.json"
-    early.write_text(
-        json.dumps({"primary_zones": _zones(2023), "secondary_zones": _zones(2023)}),
-        encoding="utf-8",
-    )
-    # Sha must match the lock, so reuse the holdout file and only change years in a copy
-    # after the sha check would pass. Write the same bytes as payload but with year 2023
-    # is a sha mismatch. Force the year refusal on a lock whose sha we set to this file.
+    early.write_text(json.dumps(_year_only(2023)), encoding="utf-8")
     year_lock = tmp_path / "year.lock"
-    year_lock.write_text(
-        json.dumps({"inputs_sha256": "pending-replace", "commit": "abc", "score_2024": False}) + "\n",
-        encoding="utf-8",
-    )
-    monkeypatch.undo()
-    # Direct year refusal does not score.
-    monkeypatch.setattr("scripts.rerun_v14_score.score_both", boom)
-    from georgist.v14_score_report import sha256_file as digest_file
-
     year_lock.write_text(
         json.dumps(
             {
-                "inputs_sha256": digest_file(early),
+                "inputs_sha256": _inputs_sha256(_ShaArgs(early)),
                 "commit": "abc123abc123",
                 "label": "seen, not out-of-sample",
             }
@@ -362,6 +407,10 @@ def test_lock_path_is_shared_and_2024_refuses_closed(tmp_path: Path, monkeypatch
             str(year_lock),
         ]
     ) == 1
+    err = capsys.readouterr().err
+    assert "2024 run refused: input year is not 2024" in err
+    assert "inputs sha differs" not in err
+    assert calls["n"] == 0
     monkeypatch.undo()
     assert score_main(
         [
@@ -379,6 +428,7 @@ def test_lock_path_is_shared_and_2024_refuses_closed(tmp_path: Path, monkeypatch
     assert "agreement" in second["score_2024"]
     assert "gating" in second["score_2024"]["primary"]
     assert "sha8" not in second
+    capsys.readouterr()
     assert score_main(
         [
             "--out",
@@ -390,6 +440,7 @@ def test_lock_path_is_shared_and_2024_refuses_closed(tmp_path: Path, monkeypatch
             str(lock),
         ]
     ) == 1
+    assert "second 2024 run refused" in capsys.readouterr().err
     recorded = tmp_path / "d" / "report.json"
     assert score_main(
         [

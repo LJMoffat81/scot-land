@@ -2,13 +2,13 @@
 
 Plain-English queue for maintainers (Laurie and agents). Update on main after merges — not in feature PRs (avoids serial conflict churn). Dedicated QUEUE-only follow-up is OK when nothing else is ready to piggyback.
 
-**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: 1 open non-draft ([#163](https://github.com/LJMoffat81/scot-land/pull/163)); draft [#169](https://github.com/LJMoffat81/scot-land/pull/169) does not count. This QUEUE sync opens as the 2nd non-draft. Hold #169 draft / do-not-merge for the release cap.
+**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: drafts [#163](https://github.com/LJMoffat81/scot-land/pull/163) and [#169](https://github.com/LJMoffat81/scot-land/pull/169) do not count. This QUEUE sync opens as the 1st non-draft. Hold #169 draft / do-not-merge for the release cap.
 
 ## In progress
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| MAP-CARDS-REDESIGN | Place card, Layers, legend redesign (+ ADDENDUM-1) | [#163](https://github.com/LJMoffat81/scot-land/pull/163) | Open (not draft); tip `bab579d…`; CI green |
+| MAP-CARDS-REDESIGN | Place card, Layers, legend redesign (+ ADDENDUM-1) | [#163](https://github.com/LJMoffat81/scot-land/pull/163) | Draft; tip `bab579d…`; CI green |
 | GRID-BASE-1 | Open 3 m BNG grid base layer (no values) | [#169](https://github.com/LJMoffat81/scot-land/pull/169) | Draft; tip `339d20d…`; CI green; Scot-LAND PASS; hold draft / do-not-merge for release cap |
 
 ## Next up (in order)

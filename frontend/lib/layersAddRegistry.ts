@@ -34,7 +34,7 @@ export const LAYERS_ADD_CREDITS = {
   "C-HES":
     "Contains Historic Environment Scotland and OS data © Historic Environment Scotland and Crown Copyright and database right 2026, licensed under the Open Government Licence v3.0.",
   "C-SEPA":
-    "©SEPA 2026; this SEPA product is licensed under the Open Government Licence version 3.0.",
+    "© SEPA 2025. Licensed under the Open Government Licence 3.0.",
   "C-GB": `Green belt: Improvement Service Spatial Hub. ${OGL_DEFAULT}`,
   "C-SC": `School catchments: Improvement Service Spatial Hub. ${OGL_DEFAULT}`,
   "C-VDL": `Vacant and derelict land: Scottish Vacant and Derelict Land Survey via Improvement Service Spatial Hub. ${OGL_DEFAULT}`,
@@ -111,7 +111,7 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
     id: "flood",
     layerId: "sepa_nfra_grid",
     group: "land",
-    label: "Flood risk",
+    label: "Flood risk (SEPA)",
     family: "fill",
     minzoom: 8,
     maxzoom: 20,

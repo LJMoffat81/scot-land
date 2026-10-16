@@ -69,6 +69,8 @@ export const MAP_DRAWER_LAYERS: MapDrawerLayer[] =
  */
 export function mapDrawerLayersByGroup(opts?: {
   spatialHubPresent?: Record<string, boolean> | null;
+  /** SEPA flood Data Zone table has rows — the flood switch may show. */
+  floodLoaded?: boolean;
 }): Array<{
   key: MapLayerGroupKey;
   label: string;
@@ -85,7 +87,10 @@ export function mapDrawerLayersByGroup(opts?: {
     label: mapLayerGroupLabel(key),
     layers: MAP_DRAWER_LAYERS.filter((layer) => {
       if (layer.group !== key) return false;
-      if (layer.paintPending || layer.coming) return false;
+      if (layer.paintPending) return false;
+      if (layer.coming && !(layer.id === "flood" && opts?.floodLoaded)) {
+        return false;
+      }
       const hub = LAYERS_ADD_REGISTRY.find(
         (row) => row.id === layer.id && row.isSpatialHub,
       );

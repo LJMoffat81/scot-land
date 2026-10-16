@@ -114,6 +114,25 @@ Cadastre ingest (one command each): `--pilot` (Edinburgh/MID + Fife), `--all` (3
 Woodland ingest: `python -m etl.ingest_woodland_layers --layer nfi --from-wfs --replace` (and `native_woodland`) — see `scripts/data/README-woodland.md`.
 SEPA flood ingest: `python -m etl.ingest_sepa_flood --from-gdb --replace --check-counts` — see `scripts/data/README-sepa.md` (vintage 2025-02-25 from v3.0 release notes).
 
+### SEPA Flood Maps v3.0 — Data Zone shares (one-off on the live host)
+
+Source page: https://www.sepa.org.uk/environment/environmental-data/ (downloads are the Flood Maps v3.0 files linked from that page). Use only the medium-likelihood present-day extent (`_M`) archives: River, Coastal, and Surface Water extent. Do not download `_M_CC`, high or low likelihood, depth, velocity, or use the online viewers.
+
+Compose project `scot-land`, file `docker-compose.home.yml`. Download on the host into `data/external/sepa_frm_v3/` (gitignored; the `./data` mount makes it visible in the `api` container). Keep each archive's attribution statement in that folder. The loader aborts unless a statement says Open Government Licence 3.0.
+
+```powershell
+New-Item -ItemType Directory -Force -Path data\external\sepa_frm_v3 | Out-Null
+curl.exe -L -o data\external\sepa_frm_v3\SEPA_River_Flood_Maps_v3_0.zip https://map.sepa.org.uk/atom/flood/SEPA_River_Flood_Maps_v3_0.zip
+curl.exe -L -o data\external\sepa_frm_v3\SEPA_Coastal_Flood_Maps_v3_0.zip https://map.sepa.org.uk/atom/flood/SEPA_Coastal_Flood_Maps_v3_0.zip
+curl.exe -L -o data\external\sepa_frm_v3\SEPA_Surface_Water_Flood_Maps_EXTENT_v3_0.zip https://map.sepa.org.uk/atom/flood/SEPA_Surface_Water_Flood_Maps_EXTENT_v3_0.zip
+Expand-Archive -Force data\external\sepa_frm_v3\SEPA_River_Flood_Maps_v3_0.zip data\external\sepa_frm_v3\river
+Expand-Archive -Force data\external\sepa_frm_v3\SEPA_Coastal_Flood_Maps_v3_0.zip data\external\sepa_frm_v3\coastal
+Expand-Archive -Force data\external\sepa_frm_v3\SEPA_Surface_Water_Flood_Maps_EXTENT_v3_0.zip data\external\sepa_frm_v3\surface
+docker compose -p scot-land -f docker-compose.home.yml exec api python -m etl.ingest_sepa_frm_v3 --replace
+```
+
+The loader reprojects to EPSG:27700, intersects the 2022 Data Zones, and replaces `sepa_flood_dz`. It stores no flood polygons. `GET /layers/open/flood-dz` stays **503** until that table has rows, and the Flood risk (SEPA) switch stays hidden.
+
 Data Zone boundaries (SG ATOM shapefiles → PostGIS EPSG:27700, provenance URL/vintage/sha256):  
 `python -m etl.ingest_dz_boundaries --fetch --replace` (expects **6,976** zones for 2011 and **7,392** for 2022). CI: `--fixture`. Self-fetch never writes `data/external/`. See `scripts/data/README-dz-boundaries.md`. Licence **OGL-3.0**. No £ rent.
 

@@ -176,6 +176,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="SEPA flood hazard extents (OGL); no rent",
     ),
+    "/layers/open/flood-dz": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note="Data Zone share of medium-likelihood flood extent; no rent",
+    ),
     # LAYERS-ADD-1 — catalogue / tile stubs / v1.5 candidate aggregates (no rent).
     "/layers/add/catalog": LayerRule(
         "zone",

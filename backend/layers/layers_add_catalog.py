@@ -24,8 +24,7 @@ SG_ATTRIBUTION = (
     "© Crown copyright and database right 2026."
 )
 SEPA_NFRA_ATTRIBUTION = (
-    "©SEPA 2026; this SEPA product is licensed under the Open Government "
-    "Licence version 3.0."
+    "© SEPA 2025. Licensed under the Open Government Licence 3.0."
 )
 HES_ATTRIBUTION = (
     "Contains Historic Environment Scotland and OS data © Historic Environment "
@@ -306,7 +305,7 @@ def layers_add_entries() -> list[dict[str, Any]]:
         ),
         _entry(
             layer_id="sepa_nfra_grid",
-            title="Flood risk",
+            title="Flood risk (SEPA)",
             publisher="SEPA",
             source_url=(
                 "https://map.sepa.org.uk/atom/NFRA/"

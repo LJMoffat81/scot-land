@@ -1,0 +1,13 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"data_zone": "S01013482"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[250000, 660000], [250100, 660000], [250100, 660100], [250000, 660100], [250000, 660000]]]
+      }
+    }
+  ]
+}

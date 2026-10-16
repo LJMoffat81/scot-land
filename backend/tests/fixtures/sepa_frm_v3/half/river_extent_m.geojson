@@ -1,0 +1,13 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {"layer": "FRM_FH_RIVER_EXTENT_M"},
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[250000, 660000], [250050, 660000], [250050, 660100], [250000, 660100], [250000, 660000]]]
+      }
+    }
+  ]
+}

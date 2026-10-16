@@ -156,7 +156,11 @@ for (const viewport of [
         }
         await expect(liveSwitch).toHaveCount(0);
         await expect(placeholder).toHaveCount(1);
-        await expect(placeholder).toHaveAttribute("aria-disabled", "true");
+        await expect(placeholder.locator("[aria-disabled='true']")).toHaveCount(1);
+        await expect(placeholder.getByRole("link")).toHaveCount(1);
+        await expect(
+          placeholder.locator("[aria-disabled='true']").getByRole("link"),
+        ).toHaveCount(0);
         await expect(placeholder.getByRole("switch")).toHaveCount(0);
         await expect(placeholder.getByTestId(`layers-aim-tag-${row.id}`)).toHaveText(
           panelTag(row.status),

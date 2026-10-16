@@ -3070,6 +3070,10 @@ button.primary:disabled {
   color: var(--slrg-muted);
 }
 
+.layers-aim-disabled {
+  cursor: default;
+}
+
 .layers-aim-name,
 .layers-aim-tag {
   display: block;

@@ -333,12 +333,14 @@ function AimPlaceholder({ row }: { row: AimRow }) {
       className="layers-panel-row layers-aim-placeholder"
       data-testid={`layers-aim-${row.id}`}
       data-aim-name={row.name}
-      aria-disabled="true"
     >
-      <span className="layers-aim-name">{row.name}</span>
-      <span className="layers-aim-tag" data-testid={`layers-aim-tag-${row.id}`}>
-        {aimStatusPanelTag(row.status)}
-      </span>
+      {/* The row itself is not a switch. aria-disabled stays off the link so the roadmap target can be opened. */}
+      <div className="layers-aim-disabled" aria-disabled="true">
+        <span className="layers-aim-name">{row.name}</span>
+        <span className="layers-aim-tag" data-testid={`layers-aim-tag-${row.id}`}>
+          {aimStatusPanelTag(row.status)}
+        </span>
+      </div>
       <a
         className="layers-aim-link"
         href={`/roadmap#${row.id}`}

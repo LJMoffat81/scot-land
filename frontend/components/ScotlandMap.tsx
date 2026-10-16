@@ -874,12 +874,11 @@ export default function ScotlandMap() {
   const gbpLiveBootstrapped = useRef(false);
   useEffect(() => {
     let cancelled = false;
-    // Capture before any await — the layers URL sync effect may write
-    // `?layers=` while gbp-live is in flight; that must not count as a
-    // visitor deep-link (§3.10 / check 36b).
-    const layersFromUrlAtLoad = new URLSearchParams(
-      window.location.search,
-    ).has("layers");
+    // Capture entry search before any await — the layers URL sync effect may
+    // rewrite `?layers=` while gbp-live is in flight (§3.10 / 36b / 36c).
+    const searchAtLoad = window.location.search;
+    const layersFromUrlAtLoad = new URLSearchParams(searchAtLoad).has("layers");
+    const bootAtLoad = readMapUrlState(searchAtLoad);
     void fetchGbpLiveSettings().then((settings) => {
       if (cancelled) return;
       const on = Boolean(settings.enabled);
@@ -887,7 +886,7 @@ export default function ScotlandMap() {
       // §3.10 — GBP-LIVE on: AGR layer active unless URL already set layers.
       if (!gbpLiveBootstrapped.current) {
         gbpLiveBootstrapped.current = true;
-        const boot = readMapUrlState(window.location.search);
+        const boot = bootAtLoad;
         const applyIds = (ids: string[]) => {
           setShowCouncils(ids.includes("councils"));
           setShowDataZones(ids.includes("data_zones"));

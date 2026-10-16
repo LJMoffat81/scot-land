@@ -919,11 +919,23 @@
   }
 }
 
-/* Lift above the mobile sheet at peek so "All sources" does not sit under it. */
+/* Lift above the mobile sheet so "All sources" does not sit under it. */
 @media (max-width: 899px) {
   .app-shell.panel-open:has(.map-panel-slot--peek) .map-attribution-line,
   .app-shell.place-open:has(.map-panel-slot--peek) .map-attribution-line {
     bottom: calc(180px + env(safe-area-inset-bottom, 0px) + 0.35rem);
+  }
+
+  .app-shell.panel-open:has(.map-panel-slot--half) .map-attribution-line {
+    bottom: calc(55dvh + 0.35rem);
+  }
+
+  /* Full Layers sheet covers the map — hide attribution (check 1). */
+  .app-shell.panel-open:has(.map-panel-slot--full) .map-attribution-line,
+  .app-shell.tools-open:has(.map-panel-slot--full) .map-attribution-line {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
   }
 }
 

@@ -129,11 +129,13 @@ test.describe("LAYERS-PERF-1", () => {
     const beforeHighlands = sizes.length;
     await jump(page, [-4.7, 57.25], 8);
     await expect
+      .poll(async () => sizes.length, { timeout: 20_000 })
+      .toBeGreaterThan(beforeHighlands);
+    await expect
       .poll(async () => renderedCount(page, ["designations-fill"]), {
         timeout: 20_000,
       })
       .toBeGreaterThan(0);
-    expect(sizes.length).toBeGreaterThan(beforeHighlands);
     for (const size of sizes) expect(size).toBeLessThanOrEqual(BUDGET);
     assertConsoleClean(gate);
   });

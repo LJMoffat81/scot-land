@@ -40,6 +40,12 @@
     z-index: 8;
   }
 
+  /* Layers sheet is open: the strip stays readable, but a map tap must
+     reach the canvas instead of the strip toggle. */
+  .app-shell.tools-open .research-banner-map {
+    pointer-events: none;
+  }
+
   /* UX-01: whole strip toggle is the hit target (≥44×44).
    * Keep strip padding tight so collapsed banner height stays <52 (SW-016 e2e). */
   .research-banner-toggle {

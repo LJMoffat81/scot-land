@@ -23,6 +23,57 @@ const FRESH_PATHS = ["/", "/map", "/?layers=grid3"] as const;
 const NULL_ISLAND = /^0(?:\.0+)?,0(?:\.0+)?$/;
 const FIVE_DP = /^-?\d+\.\d{5},-?\d+\.\d{5}$/;
 
+/** 1×1 PNG — stub raster tiles so MapLibre never depends on live CDN in CI. */
+const TINY_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+/** Minimal style replacing OpenFreeMap positron (no glyphs → no font CDN). */
+const STUB_MAP_STYLE = {
+  version: 8,
+  name: "e2e-stub",
+  sources: {
+    stub: {
+      type: "raster",
+      tiles: ["https://tiles.openfreemap.org/e2e-stub/{z}/{x}/{y}.png"],
+      tileSize: 256,
+    },
+  },
+  layers: [
+    {
+      id: "background",
+      type: "background",
+      paint: { "background-color": "#e8eef4" },
+    },
+    { id: "stub-raster", type: "raster", source: "stub" },
+  ],
+};
+
+/**
+ * z=19 loads live glyph ranges. A failed font response is logged as a
+ * one-character console error (the missing glyph), which the console gate
+ * keeps. Serve a glyph-free style instead, same as the other map specs.
+ */
+async function stubOpenFreeMap(page: Page) {
+  await page.route("**/tiles.openfreemap.org/**", async (route) => {
+    const url = route.request().url();
+    if (/\/styles\//i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(STUB_MAP_STYLE),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: TINY_PNG,
+    });
+  });
+}
+
 function centerFromSearch(search: string): string | null {
   const q = search.includes("?") ? search.slice(search.indexOf("?") + 1) : search.replace(/^\?/, "");
   return new URLSearchParams(q).get("c");
@@ -118,6 +169,7 @@ for (const viewport of VIEWPORTS) {
     }) => {
       test.setTimeout(180_000);
       const gate = attachConsoleGate(page);
+      await stubOpenFreeMap(page);
       await stubMapCardsBackend(page);
       await installEmptyStorage(page);
 
@@ -193,6 +245,7 @@ for (const viewport of VIEWPORTS) {
     }) => {
       test.setTimeout(120_000);
       const gate = attachConsoleGate(page);
+      await stubOpenFreeMap(page);
       await stubMapCardsBackend(page);
       await installEmptyStorage(page);
 
@@ -252,6 +305,7 @@ for (const viewport of VIEWPORTS) {
     }) => {
       test.setTimeout(120_000);
       const gate = attachConsoleGate(page);
+      await stubOpenFreeMap(page);
       await stubMapCardsBackend(page);
       await installEmptyStorage(page);
 

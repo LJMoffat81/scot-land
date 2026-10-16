@@ -379,6 +379,7 @@ input {
 .place-card-typical,
 .place-card-neighbourhood,
 .place-card-agr-subtitle,
+.place-card-agr-scope,
 .place-card-sales-basis,
 .place-card-fact,
 .place-card-parts-note,
@@ -391,6 +392,12 @@ input {
   font-size: 0.85rem;
   line-height: 1.4;
   color: var(--slrg-text);
+}
+
+.place-card-agr-scope {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--slrg-muted);
 }
 
 .place-card-figure-status a {

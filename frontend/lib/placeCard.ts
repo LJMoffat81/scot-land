@@ -32,7 +32,11 @@ export { PLACE_CARD_PART_GLOSS, PLACE_CARD_PART_NOT_YET };
 export const PLACE_CARD_AGR_LABEL = "Annual Ground Rent";
 
 export const PLACE_CARD_AGR_SUBTITLE =
-  "What the land here is worth each year";
+  "What the land under homes here is worth each year";
+
+/** Scope of the homes figure. Shown under the Annual Ground Rent line. */
+export const PLACE_CARD_AGR_SCOPE_NOTE =
+  "Covers land used for homes, as it is used today. Values for farm, business and development land will come later.";
 
 /** Pre-£ answer line (MAP-CARDS §5 row 6). Rank band stays OFF. */
 export const PLACE_CARD_PRE_POUND =

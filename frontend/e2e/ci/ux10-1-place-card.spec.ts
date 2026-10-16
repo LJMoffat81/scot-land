@@ -194,7 +194,14 @@ async function assertSkeletonCopy(page: Page) {
   );
   await expect(page.getByTestId("place-card-agr-label")).toHaveText(AGR);
   await expect(page.getByTestId("place-card-agr-subtitle")).toHaveText(
-    "What the land here is worth each year",
+    "What the land under homes here is worth each year",
+  );
+  await expect(page.getByTestId("place-card-agr-scope")).toHaveText(
+    "Covers land used for homes, as it is used today. Values for farm, business and development land will come later.",
+  );
+  await expect(page.getByTestId("place-card-agr-heading")).toHaveAttribute(
+    "aria-label",
+    "Annual Ground Rent. What the land under homes here is worth each year. Covers land used for homes, as it is used today. Values for farm, business and development land will come later.",
   );
   await expect(page.getByTestId("place-card-figure-status")).toHaveText(
     "Not published yet",

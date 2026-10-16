@@ -8,6 +8,7 @@ import {
 } from "../lib/gbpLive";
 import {
   PLACE_CARD_AGR_LABEL,
+  PLACE_CARD_AGR_SCOPE_NOTE,
   PLACE_CARD_AGR_SUBTITLE,
   PLACE_CARD_ERROR_LINE,
   PLACE_CARD_EXPERIMENTAL_FOOTER,
@@ -397,7 +398,7 @@ export function PlaceCard({
             {/* 4 Label + 5 Subtitle */}
             <section
               className="place-card-agr-heading"
-              aria-label={PLACE_CARD_AGR_LABEL}
+              aria-label={`${PLACE_CARD_AGR_LABEL}. ${PLACE_CARD_AGR_SUBTITLE} ${PLACE_CARD_AGR_SCOPE_NOTE}`}
               data-testid="place-card-agr-heading"
             >
               <h3
@@ -409,8 +410,16 @@ export function PlaceCard({
               <p
                 className="place-card-agr-subtitle"
                 data-testid="place-card-agr-subtitle"
+                aria-label={PLACE_CARD_AGR_SUBTITLE}
               >
                 {PLACE_CARD_AGR_SUBTITLE}
+              </p>
+              <p
+                className="place-card-agr-scope"
+                data-testid="place-card-agr-scope"
+                aria-label={PLACE_CARD_AGR_SCOPE_NOTE}
+              >
+                {PLACE_CARD_AGR_SCOPE_NOTE}
               </p>
             </section>
             {/* 6 Answer (+ addendum A4 hidden slot) */}

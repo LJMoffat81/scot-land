@@ -153,8 +153,11 @@ for (const width of [1280, 390] as const) {
 
     test("/about link reaches the page", async ({ page }) => {
       await page.goto("/about");
+      // The nav also says "How we built this". The About link is the one
+      // in the page copy, beside Back to map.
       await page
         .getByTestId("mission-page")
+        .locator("p.meta + p")
         .getByRole("link", { name: "How we built this", exact: true })
         .click();
       await expect(page).toHaveURL(/\/how-we-built-this$/);

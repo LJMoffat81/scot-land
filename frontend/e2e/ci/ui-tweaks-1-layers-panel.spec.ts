@@ -307,17 +307,20 @@ for (const viewport of [
       }
 
       // Place card + Layers: no bbox intersection (desktop side-by-side; mobile sheet).
+      // Layers button stays above the drawer (hud-top z-index) so this click works.
       await page.getByTestId("hud-layers-btn").click();
       await expect(page.getByTestId("layers-panel")).toBeHidden();
       const card = await openPlaceCard(page);
       await openLayers(page);
       const drawerOpen = page.locator("aside.hud-tools");
-      assertPairClear(
-        await boxOf(drawerOpen, "Layers drawer with card"),
-        await boxOf(card, "place card"),
-        "Layers vs place card",
-      );
-      // Card remains clickable (close control hit).
+      await expect(async () => {
+        assertPairClear(
+          await boxOf(drawerOpen, "Layers drawer with card"),
+          await boxOf(card, "place card"),
+          "Layers vs place card",
+        );
+      }).toPass({ timeout: 10_000 });
+      // Card remains clickable (close control present and enabled).
       const close = page.getByRole("button", { name: "Close place card" });
       await expect(close).toBeVisible();
       await expect(close).toBeEnabled();

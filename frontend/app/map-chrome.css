@@ -256,6 +256,13 @@
     overflow: visible;
   }
 
+  /* UI-TWEAKS-1: when Layers sheet is open, keep search-miss card above it. */
+  .app-shell.place-open.tools-open .hud-place.place-card.place-card-search-miss,
+  .app-shell.place-open.tools-open .place-card-stub.place-card-search-miss {
+    bottom: calc(var(--layers-sheet-height, 55dvh) + 0.5rem);
+    max-height: min(28dvh, 12rem);
+  }
+
   .app-shell.place-open .hud-scotland:not(.legend-open) {
     bottom: calc(
       7.4rem + min(52dvh, calc(100dvh - var(--hud-height, 8rem) - 8rem)) +

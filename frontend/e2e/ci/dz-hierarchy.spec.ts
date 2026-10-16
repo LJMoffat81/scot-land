@@ -230,7 +230,7 @@ async function assertNoZoneCodesOnCard(card: ReturnType<Page["getByTestId"]>) {
 test.describe("DZ-HIERARCHY place card desktop 1280", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test("EH1 1YZ IZ title; More about links to Data & sources; no zone codes", async ({
+  test("EH1 1YZ IZ title; More about fold + methodology; no zone codes", async ({
     page,
   }) => {
     test.setTimeout(90_000);

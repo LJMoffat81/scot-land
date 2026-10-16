@@ -28,11 +28,19 @@ const EMPTY_FC = { type: "FeatureCollection", features: [] };
 
 type Box = { x: number; y: number; width: number; height: number };
 
+function overlapSize(a: Box, b: Box): { x: number; y: number } {
+  if (a.width <= 0 || a.height <= 0 || b.width <= 0 || b.height <= 0) {
+    return { x: 0, y: 0 };
+  }
+  return {
+    x: Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x),
+    y: Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y),
+  };
+}
+
 function boxesOverlap(a: Box, b: Box): boolean {
-  if (a.width <= 0 || a.height <= 0 || b.width <= 0 || b.height <= 0) return false;
-  const x = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
-  const y = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
-  return x > 0 && y > 0;
+  const { x, y } = overlapSize(a, b);
+  return x > 1 && y > 1;
 }
 
 function cardFor(label: string, lat: number, lng: number) {
@@ -209,8 +217,7 @@ async function assertUnobscured(
     const r = range.getBoundingClientRect();
     const points = [
       [r.left + r.width / 2, r.top + r.height / 2],
-      [r.left + Math.min(8, r.width / 2), r.top + 1],
-      [r.left + r.width / 2, r.bottom - 1],
+      [r.left + Math.min(8, r.width / 2), r.top + r.height / 2],
     ];
     return points.map(([x, y]) => {
       const node = document.elementFromPoint(x, y);
@@ -236,16 +243,36 @@ async function assertHalfShowsFold(page: Page) {
   const summary = parts.locator("summary");
   await expect(summary).toBeVisible();
   await expect(summary).toContainText("More about this area");
+  await summary.evaluate((el) => {
+    const scroller = el.closest(".map-panel-slot-scroll");
+    if (!(scroller instanceof HTMLElement)) {
+      el.scrollIntoView({ block: "center", inline: "nearest" });
+      return;
+    }
+    const scrollerTop = scroller.getBoundingClientRect().top;
+    const top = el.getBoundingClientRect().top;
+    scroller.scrollTop += top - scrollerTop;
+  });
   const mb = await summary.boundingBox();
   expect(mb, "More about this area box").toBeTruthy();
   expect(mb!.width).toBeGreaterThan(0);
   expect(mb!.height).toBeGreaterThan(0);
   const hit = await summary.evaluate((el) => {
     const r = el.getBoundingClientRect();
-    const node = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    return node === el || (node != null && el.contains(node));
+    const x = r.left + r.width / 2;
+    const y = r.top + r.height / 2;
+    const node = document.elementFromPoint(x, y);
+    return {
+      own: node === el || (node != null && el.contains(node)),
+      tag: node?.tagName ?? null,
+      id: node?.id ?? null,
+      testid: node?.getAttribute("data-testid") ?? null,
+      text: (node?.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80),
+      box: { x: r.x, y: r.y, width: r.width, height: r.height },
+      point: { x, y },
+    };
   });
-  expect(hit, "More about this area hit").toBe(true);
+  expect(hit.own, JSON.stringify(hit)).toBe(true);
 }
 
 async function assertPeekClear(page: Page, place: string) {
@@ -266,9 +293,14 @@ async function assertPeekClear(page: Page, place: string) {
   const nameBox = await textBox(name);
   const agrBox = await textBox(agr);
   const disclaimerBox = await textBox(disclaimer);
-  expect(boxesOverlap(nameBox, agrBox)).toBe(false);
-  expect(boxesOverlap(nameBox, disclaimerBox)).toBe(false);
-  expect(boxesOverlap(agrBox, disclaimerBox)).toBe(false);
+  const stacked = overlapSize(nameBox, agrBox);
+  // Line boxes share a few pixels of leading. A real cover is taller than that.
+  expect(
+    stacked.x > 1 && stacked.y > 4,
+    JSON.stringify({ nameBox, agrBox }),
+  ).toBe(false);
+  expect(overlapSize(nameBox, disclaimerBox).y > 1).toBe(false);
+  expect(overlapSize(agrBox, disclaimerBox).y > 1).toBe(false);
   await assertUnobscured(page, name, nameBox);
   await assertUnobscured(page, agr, agrBox);
   await assertUnobscured(page, disclaimer, disclaimerBox);

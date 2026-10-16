@@ -631,6 +631,16 @@ function readZoneBounds(data: {
   );
 }
 
+function styleIsReady(map: Map): boolean {
+  try {
+    return Boolean(map.getStyle()?.layers);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err ?? "");
+    if (message.includes("Style is not done loading")) return false;
+    throw err;
+  }
+}
+
 function fitScotlandNational(map: Map) {
   const narrow =
     typeof window !== "undefined" && window.innerWidth <= 900;
@@ -647,6 +657,9 @@ function fitScotlandNational(map: Map) {
       maxZoom: 7.4,
     },
   );
+  const container = map.getContainer();
+  container.dataset.framed = "1";
+  container.dataset.viewSource = "scotland";
 }
 
 function frameMatchedZone(
@@ -741,6 +754,7 @@ export default function ScotlandMap() {
     lat: number;
     bounds: ZoneBounds | null;
     pinPadding?: maplibregl.PaddingOptions;
+    attempts: number;
   } | null>(null);
   /** Show Scotland: panel-close padding must not cancel the national fit. */
   const pendingNationalFitRef = useRef(false);
@@ -1394,9 +1408,7 @@ export default function ScotlandMap() {
     // this fitBounds mid-flight (sea-stub national maxZoom e2e on desktop).
     window.setTimeout(() => {
       const live = mapRef.current;
-      if (!live || !pendingNationalFitRef.current) return;
-      live.stop();
-      fitScotlandNational(live);
+      if (live) commitPendingCamera(live);
     }, 0);
   }, [clearPlace]);
 
@@ -1593,13 +1605,11 @@ export default function ScotlandMap() {
             lat,
             bounds: zoneBounds,
             pinPadding,
+            attempts: 0,
           };
           window.setTimeout(() => {
-            if (gen !== lookupGen.current) return;
             const liveMap = mapRef.current;
-            if (!liveMap) return;
-            liveMap.stop();
-            frameMatchedZone(liveMap, lng, lat, zoneBounds, pinPadding);
+            if (liveMap) commitPendingCamera(liveMap);
           }, 0);
         }
         // Designer place card (place_card_v1) — ownership / sources; no £.
@@ -1885,40 +1895,67 @@ export default function ScotlandMap() {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
+  function commitPendingCamera(map: Map) {
+    if (mapRef.current !== map) return;
+    if (pendingNationalFitRef.current) {
+      if (!styleIsReady(map)) {
+        map.once("idle", () => commitPendingCamera(map));
+        return;
+      }
+      map.stop();
+      fitScotlandNational(map);
+      pendingNationalFitRef.current = false;
+      return;
+    }
+    const pending = pendingZoneFrameRef.current;
+    if (!pending || pending.gen !== lookupGen.current) return;
+    const container = map.getContainer();
+    container.dataset.framed = "1";
+    container.dataset.viewSource = "place";
+    if (!styleIsReady(map)) {
+      map.once("idle", () => commitPendingCamera(map));
+      return;
+    }
+    map.stop();
+    frameMatchedZone(
+      map,
+      pending.lng,
+      pending.lat,
+      pending.bounds,
+      pending.pinPadding,
+    );
+    const box = map.getBounds();
+    const framed =
+      map.getZoom() >= 11 &&
+      Boolean(box?.contains([pending.lng, pending.lat]));
+    if (framed) {
+      pendingZoneFrameRef.current = null;
+      return;
+    }
+    pending.attempts += 1;
+    if (pending.attempts > 8) return;
+    map.once("idle", () => commitPendingCamera(map));
+  }
+
   // MapLibre padding follows the panel slot.
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map) return;
-    map.easeTo({
-      padding: mapPanelPadding({
-        panelOpen:
-          (panelKind === "place" && !panelCollapsed) ||
-          (isNarrowPanel && panelKind === "layers"),
-        detent: panelDetent,
-        collapsed: panelCollapsed,
-        layersSheet: isNarrowPanel && panelKind === "layers",
-      }),
-      duration: 0,
-    });
-    if (pendingNationalFitRef.current) {
-      pendingNationalFitRef.current = false;
-      map.stop();
-      fitScotlandNational(map);
-      return;
+    if (styleIsReady(map)) {
+      map.easeTo({
+        padding: mapPanelPadding({
+          panelOpen:
+            (panelKind === "place" && !panelCollapsed) ||
+            (isNarrowPanel && panelKind === "layers"),
+          detent: panelDetent,
+          collapsed: panelCollapsed,
+          layersSheet: isNarrowPanel && panelKind === "layers",
+        }),
+        duration: 0,
+      });
     }
-    const pending = pendingZoneFrameRef.current;
-    if (pending && pending.gen === lookupGen.current) {
-      pendingZoneFrameRef.current = null;
-      map.stop();
-      frameMatchedZone(
-        map,
-        pending.lng,
-        pending.lat,
-        pending.bounds,
-        pending.pinPadding,
-      );
-    }
+    commitPendingCamera(map);
   }, [mapReady, panelKind, panelDetent, panelCollapsed, isNarrowPanel]);
 
   const openPostcode = async (postcode: string, generation: number) => {
@@ -2401,6 +2438,7 @@ export default function ScotlandMap() {
       // replace it with the national frame.
       if (framed) {
         if (container.dataset.viewSource === "url") return;
+        if (container.dataset.viewSource === "place") return;
         if (map.getZoom() > 8) return;
         // A selected place owns the camera. Zooming out must not refit
         // Scotland over that zone (that put the Highland view back on reload).

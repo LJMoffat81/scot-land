@@ -202,6 +202,13 @@ test.describe("SW-020 map logo vs Layers gap (390×844)", () => {
         body: JSON.stringify(EMPTY_FC),
       });
     });
+    await page.route("**/backend/layers/open/dz2022-masked**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(EMPTY_FC),
+      });
+    });
     await page.route(
       "**/backend/layers/context/data-zones/at**",
       async (route) => {

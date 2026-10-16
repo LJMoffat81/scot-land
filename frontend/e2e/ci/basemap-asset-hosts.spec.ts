@@ -126,12 +126,13 @@ test("loaded style, tile, sprite and glyph URLs have no internal host", async ({
     )
     .toBe(true);
 
-  await page.getByTestId("basemap-switcher").click();
-  const liberty = await page.waitForResponse(
+  const libertyWait = page.waitForResponse(
     (response) =>
       /\/styles\/liberty(?:\?|$)/i.test(response.url()) && response.ok(),
     { timeout: 30_000 },
   );
+  await page.getByTestId("basemap-switcher").click();
+  const liberty = await libertyWait;
   expect(liberty.url()).toMatch(/[?&]v=/);
   const libertyUrls = [liberty.url(), ...urlsInStyle(await liberty.json())];
   expect(libertyUrls.length).toBeGreaterThan(1);

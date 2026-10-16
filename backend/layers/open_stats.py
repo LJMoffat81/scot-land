@@ -111,7 +111,7 @@ def vdl_json() -> dict[str, Any]:
     classes.sort(key=lambda c: c["hectares"], reverse=True)
     return {
         "ok": True,
-        "note": "SVDLS owner class is a survey field, not a title.",
+        "note": "Totals from the Scottish Vacant and Derelict Land Survey, by council.",
         "byOwnerClass": classes,
         "totalHectares": round(total_ha, 2),
         "source": VDL_ATTRIBUTION,

@@ -3,6 +3,8 @@ import ContentPageFooter from "@/components/ContentPageFooter";
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
 import { AIM_TO_COVER, ROADMAP_FINAL_ROW } from "@/lib/aimToCover";
+import { AREA_LEVELS, AREA_LEVELS_EXPLANATION } from "@/lib/areaLevels";
+import { contactFormEnabled } from "@/lib/contactFormFlag";
 import { LAYERS_ADD_WAITING } from "@/lib/layersAddRegistry";
 import { MAP_LAYER_REGISTRY } from "@/lib/mapLayerRegistry";
 import { absoluteOgImageUrl, OG_IMAGES } from "@/lib/socialMeta";
@@ -87,6 +89,18 @@ export default function RoadmapPage() {
         </p>
       </section>
 
+      <section id="levels" data-testid="roadmap-levels">
+        <h2>Levels</h2>
+        <p>{AREA_LEVELS_EXPLANATION}</p>
+        <ol>
+          {AREA_LEVELS.map((level) => (
+            <li key={level} data-testid="roadmap-level">
+              {level}
+            </li>
+          ))}
+        </ol>
+      </section>
+
       <section id="what-we-aim-to-cover" data-testid="roadmap-aim">
         <h2>What we aim to cover</h2>
         {AIM_TO_COVER.map((group) => (
@@ -113,9 +127,11 @@ export default function RoadmapPage() {
       <section id="suggest-a-layer" data-testid="roadmap-suggest-layer">
         <h2>Suggest a layer</h2>
         <p>{SUGGEST_LAYER_COPY}</p>
-        <p>
-          <a href={SUGGEST_LAYER_HREF}>Suggest a layer</a>
-        </p>
+        {contactFormEnabled() ? (
+          <p>
+            <a href={SUGGEST_LAYER_HREF}>Suggest a layer</a>
+          </p>
+        ) : null}
       </section>
 
       <section id="map-layers" data-testid="roadmap-map-layers">

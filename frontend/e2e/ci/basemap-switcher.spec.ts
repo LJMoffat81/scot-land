@@ -241,12 +241,17 @@ async function runBasemapChecks(page: Page) {
     await expect(page.locator(".basemap-switcher-wide")).toBeHidden();
     const toggle = page.getByTestId("basemap-toggle-narrow");
     await expect(toggle).toBeVisible();
-    await expect(toggle).toHaveAccessibleName("Detailed map");
+    await expect(toggle).toHaveAccessibleName("Detailed");
+    await expect(toggle).toHaveText("Detailed");
+    await expect(toggle.locator("svg")).toHaveCount(0);
     await expect(toggle).toHaveAttribute("aria-pressed", "false");
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await expect(toggle).toHaveAccessibleName("Simple");
+    await expect(toggle).toHaveText("Simple");
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await expect(toggle).toHaveText("Detailed");
   } else {
     await expect(page.getByTestId("basemap-toggle-narrow")).toBeHidden();
     const group = page.getByRole("radiogroup", { name: "Map style" });

@@ -61,7 +61,7 @@ export default function MissionContent() {
       </section>
 
       <section id="why">
-        <h2>Why I am building this</h2>
+        <h2>Why we are building this</h2>
         <p>Scot-LAND is being built because there is no tool like it.</p>
         <p>
           The spark was a run of official reports on how land is valued for tax.
@@ -106,7 +106,7 @@ export default function MissionContent() {
           </li>
         </ul>
         <p>
-          This map is my answer to that gap. You can look at any area and see a
+          This map is our answer to that gap. You can look at any area and see a
           research estimate of what its land is worth to use. The building stays
           with whoever made it. Annual Ground Rent figures are research
           estimates. They are not a bill or an official valuation. Scot-LAND does

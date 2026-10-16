@@ -127,6 +127,7 @@ jobs:
       - run: npm run test:privacy-1
       - run: npx tsc --noEmit
       - run: npm run build
+      - run: npm run test:no-test-hook
       - run: npm run test:logo-fix
       - run: npm run test:logo-h3
       - run: npm run test:site-watch-pr-c

@@ -77,6 +77,7 @@ import {
   MAP_MAX_ZOOM,
   basemapLabel,
   basemapStyleUrl,
+  basemapSwitchTarget,
   isBasemapFailureEvent,
   mapErrorLogLine,
   type MapBasemapId,
@@ -97,6 +98,7 @@ import {
   replaceMapUrl,
 } from "../lib/mapUrlState";
 import { grid3Row6Text } from "../lib/bng";
+import { isEmptyDataZoneAt } from "../lib/dataZoneAt";
 import {
   GRID3_HOVER_ZOOM,
   GRID3_LAYER_ID,
@@ -1454,6 +1456,16 @@ export default function ScotlandMap() {
               { cache: "no-store", signal: identifyAbort.signal },
             );
             if (gen !== lookupGen.current || identifyAbort.signal.aborted) return;
+            if (isEmptyDataZoneAt(data)) {
+              markerRef.current?.remove();
+              markerRef.current = null;
+              setPlaceStub(null);
+              setPlaceLoading(false);
+              setPanelKind((kind) => (kind === "place" ? "closed" : kind));
+              placeDetentMemory = null;
+              replaceMapUrl({ panel: null });
+              return;
+            }
             const code = data.code?.trim() || null;
             const name = data.name?.trim() || null;
             setPlaceStub((prev) => {
@@ -1468,11 +1480,22 @@ export default function ScotlandMap() {
                   }
                 : prev;
             });
-          } catch {
+          } catch (err) {
             // Sea / outside Scotland (404 no_data_zone_at_point) or boundaries
             // unavailable: still load place_card_v1 so miss/unavailable is honest
             // and the UI can show one plain line instead of No-data rows.
+            // An empty 200 body is not that miss: close the card and stay quiet.
             if (identifyAbort.signal.aborted || gen !== lookupGen.current) return;
+            if (err instanceof SyntaxError) {
+              markerRef.current?.remove();
+              markerRef.current = null;
+              setPlaceStub(null);
+              setPlaceLoading(false);
+              setPanelKind((kind) => (kind === "place" ? "closed" : kind));
+              placeDetentMemory = null;
+              replaceMapUrl({ panel: null });
+              return;
+            }
           }
         }
         // Designer place card (place_card_v1) — ownership / sources; no £.
@@ -3008,11 +3031,11 @@ export default function ScotlandMap() {
 
 
     mapRef.current = map;
-    // E2e / GIS checks (MAP-CARDS 26–32, A3): MapLibre instance for style/zoom probes.
-    (
-      window as unknown as { __map?: maplibregl.Map | null }
-    ).__map = map;
-    if (typeof window !== "undefined") {
+    // E2e builds set NEXT_PUBLIC_E2E_HOOKS. A visitor build drops this block.
+    if (E2E_HOOK_GATE) {
+      (
+        window as unknown as { __map?: maplibregl.Map | null }
+      ).__map = map;
       (window as unknown as { __SCOT_LAND_MAP__?: Map }).__SCOT_LAND_MAP__ =
         map;
     }
@@ -3030,10 +3053,10 @@ export default function ScotlandMap() {
       // Drop the ref before remove so moveend/styledata handlers still
       // attached on this map do not touch a style that is going away.
       mapRef.current = null;
-      (
-        window as unknown as { __map?: maplibregl.Map | null }
-      ).__map = null;
-      if (typeof window !== "undefined") {
+      if (E2E_HOOK_GATE) {
+        (
+          window as unknown as { __map?: maplibregl.Map | null }
+        ).__map = null;
         delete (window as unknown as { __SCOT_LAND_MAP__?: Map })
           .__SCOT_LAND_MAP__;
       }
@@ -3296,7 +3319,7 @@ export default function ScotlandMap() {
         if (cancelled || myGen !== gen) return;
         gridMod = gm;
         runtime = rt;
-        if (typeof window !== "undefined") {
+        if (E2E_HOOK_GATE && typeof window !== "undefined") {
           (
             window as unknown as {
               __SCOT_LAND_GRID3__?: {
@@ -4942,26 +4965,12 @@ export default function ScotlandMap() {
           }
           data-testid="basemap-toggle-narrow"
           aria-pressed={mapStyle === "detailed"}
-          aria-label="Detailed map"
-          title="Detailed map"
+          aria-label={basemapLabel(basemapSwitchTarget(mapStyle))}
           onClick={() =>
             selectBasemap(mapStyle === "detailed" ? "light" : "detailed")
           }
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              d="M12 3 2 8l10 5 10-5z"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            />
-            <path
-              d="m2 13 10 5 10-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            />
-          </svg>
+          {basemapLabel(basemapSwitchTarget(mapStyle))}
         </button>
       </div>
       {basemapNotice ? (

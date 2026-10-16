@@ -528,7 +528,8 @@
 
 .basemap-toggle-narrow {
   box-sizing: border-box;
-  width: var(--ctrl-h, 48px);
+  width: auto;
+  min-width: var(--ctrl-h, 48px);
   height: var(--ctrl-h, 48px);
   border-radius: var(--ctrl-radius, 24px);
   border: var(--ctrl-border, 1px solid #6b7684);
@@ -538,7 +539,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  padding: 0 0.75rem;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
 }
 

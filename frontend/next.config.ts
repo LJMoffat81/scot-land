@@ -1,23 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
 import type { NextConfig } from "next";
-
-// Next copies polyfill-nomodule.js into a script tag as a finished asset.
-// Turbopack loaders never see it, and that file embeds a core-js license URL.
-// Rewrite it when the config loads so every production build, including CI, ships without it.
-const nomodulePolyfill = path.join(
-  process.cwd(),
-  "node_modules/next/dist/build/polyfills/polyfill-nomodule.js",
-);
-if (fs.existsSync(nomodulePolyfill)) {
-  const polyfillSource = fs.readFileSync(nomodulePolyfill, "utf8");
-  if (/github\.com/i.test(polyfillSource)) {
-    fs.writeFileSync(
-      nomodulePolyfill,
-      polyfillSource.replace(/https?:\/\/github\.com/gi, "https://example.invalid"),
-    );
-  }
-}
 
 // Next injects inline bootstrap scripts and the UI sets style attributes.
 // A per-request nonce would need another file, so those two stay 'unsafe-inline'.
@@ -156,6 +137,11 @@ const nextConfig: NextConfig = {
         },
         loaders: ["./scripts/strip-github-url-loader.cjs"],
         as: "*.js",
+      },
+      "*.tsx": {
+        condition: { content: /E2E_HOOK_GATE/ },
+        loaders: ["./scripts/e2e-hooks-flag-loader.cjs"],
+        as: "*",
       },
     },
   },

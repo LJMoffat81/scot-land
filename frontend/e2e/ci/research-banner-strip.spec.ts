@@ -263,13 +263,52 @@ test.describe("SW-016 research banner strip 390x844", () => {
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
 
-    // One-line strip: height stays compact while collapsed.
-    const collapsedBox = await banner.boundingBox();
-    expect(collapsedBox).toBeTruthy();
-    expect(
-      collapsedBox!.height,
-      "collapsed strip should be one line",
-    ).toBeLessThan(52);
+    // SW-081: collapsed map strip wraps so More stays inside two lines.
+    const collapsedFit = await banner.locator(".research-banner-text").evaluate((el) => {
+      const style = getComputedStyle(el);
+      const lineHeight = parseFloat(style.lineHeight);
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const lines = [...range.getClientRects()].filter(
+        (rect) => rect.width > 0 && rect.height > 0,
+      );
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      let more: DOMRect | null = null;
+      let node = walker.nextNode();
+      while (node) {
+        const value = node.textContent ?? "";
+        const index = value.lastIndexOf("More");
+        if (index >= 0) {
+          const word = document.createRange();
+          word.setStart(node, index);
+          word.setEnd(node, index + "More".length);
+          more = word.getBoundingClientRect();
+          break;
+        }
+        node = walker.nextNode();
+      }
+      return {
+        lines: lines.length,
+        lineHeight,
+        scrollWidth: el.scrollWidth,
+        clientWidth: el.clientWidth,
+        moreTop: more?.top ?? -1,
+        moreBottom: more?.bottom ?? -1,
+        moreLeft: more?.left ?? -1,
+        moreRight: more?.right ?? -1,
+        moreWidth: more?.width ?? 0,
+        innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight,
+      };
+    });
+    expect(collapsedFit.moreWidth).toBeGreaterThan(0);
+    expect(collapsedFit.moreLeft).toBeGreaterThanOrEqual(0);
+    expect(collapsedFit.moreRight).toBeLessThanOrEqual(collapsedFit.innerWidth);
+    expect(collapsedFit.moreTop).toBeGreaterThanOrEqual(0);
+    expect(collapsedFit.moreBottom).toBeLessThanOrEqual(collapsedFit.innerHeight);
+    expect(collapsedFit.scrollWidth).toBeLessThanOrEqual(collapsedFit.clientWidth);
+    expect(collapsedFit.lines).toBeGreaterThan(0);
+    expect(collapsedFit.lines).toBeLessThanOrEqual(2);
 
     // Expand / collapse while the place card is closed (card stacks above the strip).
     await toggle.click();

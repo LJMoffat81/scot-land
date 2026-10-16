@@ -12,8 +12,6 @@ registerOpenFreeMapFontStub();
 const SUGGEST_COPY =
   "Know a dataset that would make this map better? Tell us what the layer is, where the data comes from (a link), and why it matters for land value. We check every suggestion against its licence and our method before adding it.";
 
-const SUGGEST_HREF = "/about#contact";
-
 async function assertRoadmapAdditions(page: Page) {
   await page.goto("/roadmap");
 
@@ -31,8 +29,8 @@ async function assertRoadmapAdditions(page: Page) {
 
   const suggest = page.getByTestId("roadmap-suggest-layer");
   await expect(suggest).toContainText(SUGGEST_COPY);
-  const link = suggest.getByRole("link", { name: "Suggest a layer", exact: true });
-  await expect(link).toHaveAttribute("href", SUGGEST_HREF);
+  await expect(suggest.getByRole("link", { name: "Suggest a layer", exact: true })).toHaveCount(0);
+  await expect(page.locator('a[href="/about#contact"]')).toHaveCount(0);
 
   const vision = page.getByTestId("roadmap-vision");
   await expect(vision).toContainText(

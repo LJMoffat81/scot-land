@@ -168,8 +168,9 @@ for (const viewport of [
         const toggle = page.getByTestId("basemap-toggle-narrow");
         await expect(toggle).toBeVisible();
         const box = await toggle.boundingBox();
-        expect(box!.width).toBeCloseTo(48, 0);
+        expect(box!.width).toBeGreaterThanOrEqual(48);
         expect(box!.height).toBeCloseTo(48, 0);
+        await expect(toggle).toHaveText("Detailed");
         await expect(toggle).toHaveAttribute("aria-pressed", "false");
         const before = await camera(page);
         await toggle.click();

@@ -1,5 +1,6 @@
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
+import { contactFormEnabled } from "@/lib/contactFormFlag";
 
 /**
  * API-TEASER-1 — public page is a short coming-soon note.
@@ -21,11 +22,13 @@ export default function ApiTeaserPage() {
         <li>Sources and method notes for every figure</li>
       </ul>
       <p>The map stays free to use.</p>
-      <p>
-        <a href="/about#contact" data-testid="api-register-interest">
-          Register interest
-        </a>
-      </p>
+      {contactFormEnabled() ? (
+        <p>
+          <a href="/about#contact" data-testid="api-register-interest">
+            Register interest
+          </a>
+        </p>
+      ) : null}
     </main>
   );
 }

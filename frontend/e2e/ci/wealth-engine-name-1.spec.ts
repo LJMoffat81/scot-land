@@ -41,9 +41,9 @@ for (const viewport of [
       const teaserText = await teaser.innerText();
       const headingAt = teaserText.indexOf("Developer API and bulk data: coming");
       const lineAt = teaserText.indexOf(API_LINE);
-      const registerAt = teaserText.indexOf("Register interest");
       expect(lineAt).toBeGreaterThan(headingAt);
-      expect(registerAt).toBeGreaterThan(lineAt);
+      expect(teaserText).not.toContain("Register interest");
+      await expect(page.locator('a[href="/about#contact"]')).toHaveCount(0);
     });
   });
 }

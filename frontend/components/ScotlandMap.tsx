@@ -2155,15 +2155,6 @@ export default function ScotlandMap() {
       },
     });
 
-    // A basemap swap removes the map while a style fetch or moveend handler
-    // is still in flight. MapLibre logs that as an unhandled error event.
-    // Keep every other map error visible.
-    map.on("error", (event) => {
-      const err = event.error;
-      const message = err instanceof Error ? err.message : String(err ?? "");
-      if (message.includes("Style is not done loading")) return;
-      console.error(err);
-    });
     map.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
       "bottom-right",

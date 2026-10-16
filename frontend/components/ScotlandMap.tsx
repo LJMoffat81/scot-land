@@ -816,6 +816,32 @@ export default function ScotlandMap() {
   } | null>(null);
   /** Deep-link boot (?lat/lng/words) once per ready map instance. */
   const urlBootDoneRef = useRef(false);
+  /**
+   * Capture entry URL identify coords before layers URL sync rewrites
+   * `?lat=&lng=` → `c=` (writeMapUrlSearch). Without this, mapReady boot
+   * only jumpTo's and never opens the place card (PR #163 e2e mode 1).
+   */
+  const deepLinkCaptureRef = useRef<{
+    lat: number | null;
+    lng: number | null;
+    words: string | null;
+    vacant: boolean;
+    community: boolean;
+    place: string | null;
+  } | null>(null);
+  if (deepLinkCaptureRef.current === null && typeof window !== "undefined") {
+    const p = new URLSearchParams(window.location.search);
+    const lat = Number(p.get("lat"));
+    const lng = Number(p.get("lng") ?? p.get("lon"));
+    deepLinkCaptureRef.current = {
+      lat: Number.isFinite(lat) ? lat : null,
+      lng: Number.isFinite(lng) ? lng : null,
+      words: p.get("words"),
+      vacant: p.get("vacant") === "1",
+      community: p.get("community") === "1",
+      place: p.get("place"),
+    };
+  }
 
   const registryEnabled: Record<string, boolean> = {
     ...ledgerEnabled,
@@ -880,6 +906,11 @@ export default function ScotlandMap() {
             ledger[id] = true;
           }
           setLedgerEnabled((cur) => ({ ...cur, ...ledger }));
+          // Keep constraint overlays in sync with URL / GBP-LIVE boot ids.
+          setContextOn((cur) => ({
+            ...cur,
+            flood: ids.includes("flood"),
+          }));
         };
         if (layersFromUrlAtLoad) {
           applyIds(boot.layers);
@@ -2640,17 +2671,29 @@ export default function ScotlandMap() {
   }, [mapStyle]);
 
   // Deep-link boot (?lat/lng/words) once mapReady — survives style remount.
+  // Prefer the mount-time capture: layers URL sync may already have rewritten
+  // lat/lng → c= by the time the style loads.
   useEffect(() => {
     if (!mapReady || urlBootDoneRef.current) return;
     urlBootDoneRef.current = true;
+    const captured = deepLinkCaptureRef.current;
     const bootParams = new URLSearchParams(window.location.search);
-    const bootWords = bootParams.get("words");
-    const bootLat = Number(bootParams.get("lat"));
-    const bootLng = Number(bootParams.get("lng"));
-    if (bootParams.get("vacant") === "1") {
+    const boot = readMapUrlState(bootParams);
+    const bootWords = captured?.words || bootParams.get("words");
+    const bootLat =
+      captured?.lat ??
+      (Number.isFinite(Number(bootParams.get("lat")))
+        ? Number(bootParams.get("lat"))
+        : null);
+    const bootLng =
+      captured?.lng ??
+      (Number.isFinite(Number(bootParams.get("lng") ?? bootParams.get("lon")))
+        ? Number(bootParams.get("lng") ?? bootParams.get("lon"))
+        : null);
+    if (captured?.vacant || bootParams.get("vacant") === "1") {
       setShowVdl(true);
     }
-    if (bootParams.get("community") === "1") {
+    if (captured?.community || bootParams.get("community") === "1") {
       setShowCommunityOwnership(true);
     }
     if (bootWords) {
@@ -2668,11 +2711,18 @@ export default function ScotlandMap() {
           }
         }
       })();
-    } else if (Number.isFinite(bootLat) && Number.isFinite(bootLng)) {
+    } else if (
+      bootLat != null &&
+      bootLng != null &&
+      Number.isFinite(bootLat) &&
+      Number.isFinite(bootLng)
+    ) {
       void inspectRef.current(bootLat, bootLng, { fly: true });
+    } else if (captured?.place && boot.center) {
+      // place= + c= after rewrite — still identify at the captured centre.
+      void inspectRef.current(boot.center.lat, boot.center.lng, { fly: true });
     } else {
       const map = mapRef.current;
-      const boot = readMapUrlState(bootParams);
       if (map && boot.center) {
         map.jumpTo({
           center: [boot.center.lng, boot.center.lat],

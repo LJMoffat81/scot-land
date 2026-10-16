@@ -16,9 +16,9 @@ Plain-English queue for maintainers (Laurie and agents). Update on main after me
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
 | UI-FIX-1 | Tap targets ≥44×44 and related map chrome fixes on MAP-CARDS layout | — | Frozen ready; waits on #163 merge; no PR yet |
-| LAYERS-ADD-1 | Open context layers + licence-gated catalog | — | Frozen ready; waits on #169 merge; no PR yet |
-| LAYERS-ADD-2 | Open-data sweep layers (after LAYERS-ADD-1) | — | Frozen ready; after LAYERS-ADD-1; no PR yet |
-| GBP-LIVE-V1c | £ per m² follow-ups before any flag enable (flag still default OFF) | — | Frozen ready; waits on #169 merge; flag OFF; no PR yet |
+| LAYERS-ADD-1 | Open context layers + licence-gated catalog | — | Can target main / opening now (not blocked on #169); no PR yet |
+| LAYERS-ADD-2 | Open-data sweep layers (after LAYERS-ADD-1) | — | Frozen ready; still after LAYERS-ADD-1; no PR yet |
+| GBP-LIVE-V1c | £ per m² follow-ups before any flag enable (flag still default OFF) | — | Can target main / opening now (not blocked on #169); flag OFF; no PR yet |
 
 ### Frozen backlog
 

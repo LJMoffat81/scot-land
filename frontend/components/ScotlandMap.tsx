@@ -2036,8 +2036,21 @@ export default function ScotlandMap() {
       el.classList.remove("maplibregl-compact-show");
       el.removeAttribute("open");
     };
+    // Style reloads can append another compact (i). Adding is idempotent.
+    const ensureSingleAttribution = () => {
+      const root = map.getContainer();
+      const controls = root.querySelectorAll(".maplibregl-ctrl-attrib");
+      for (let i = 1; i < controls.length; i += 1) {
+        controls[i]?.remove();
+      }
+      const toggles = root.querySelectorAll(".maplibregl-ctrl-attrib-button");
+      for (let i = 1; i < toggles.length; i += 1) {
+        toggles[i]?.remove();
+      }
+    };
     map.on("load", collapseCompactAttribution);
     map.once("idle", collapseCompactAttribution);
+    map.on("styledata", ensureSingleAttribution);
     map.on("resize", () => {
       queueMicrotask(collapseCompactAttribution);
     });

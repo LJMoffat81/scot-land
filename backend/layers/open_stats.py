@@ -13,7 +13,7 @@ import httpx
 
 from layers.catalog_copy import apply_visitor_catalog_copy
 from layers.council_metrics import build_council_metrics_geojson
-from layers.layers_add2_pipeline import suppress_site_totals
+from layers.layers_add2_pipeline import published_total_area, suppress_site_totals
 from layers.platform import platform_catalog
 from layers.public_land import ATTRIBUTION as PUBLIC_ATTRIBUTION
 from layers.public_land import BODIES, DASHBOARD_URL, FEATURE_URL as PUBLIC_URL
@@ -117,6 +117,12 @@ def _publish_owner_class(owner: Any, count: int, hectares: float) -> dict[str, A
     return row
 
 
+def _reject_hidden_owner_total(classes: list[dict[str, Any]], total: float | None) -> None:
+    """A '<3' owner type must not leave a Scotland-wide area that reveals it."""
+    if any(row.get("sites") == "<3" for row in classes) and total is not None:
+        raise ValueError("Scotland-wide total area would reveal a hidden owner type")
+
+
 def _owner_class_sort(row: dict[str, Any]) -> tuple[int, float, str]:
     hectares = row.get("hectares")
     if hectares is None:
@@ -140,11 +146,16 @@ def vdl_json() -> dict[str, Any]:
     classes.sort(key=_owner_class_sort)
     for item in classes:
         _reject_small_owner_count(item)
+    total_hectares = published_total_area(
+        round(total_ha, 2),
+        [item.get("sites") for item in classes],
+    )
+    _reject_hidden_owner_total(classes, total_hectares)
     return {
         "ok": True,
         "note": VDL_OWNER_NOTE,
         "byOwnerClass": classes,
-        "totalHectares": round(total_ha, 2),
+        "totalHectares": total_hectares,
         "source": VDL_ATTRIBUTION,
         "register_url": REGISTER_URL,
     }

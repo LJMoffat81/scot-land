@@ -377,6 +377,17 @@ def suppress_site_totals(count: int, hectares: float) -> tuple[str, float | None
     return str(count), float(hectares)
 
 
+def published_total_area(total: float | None, class_labels: Sequence[object]) -> float | None:
+    """Null a total that sits beside class rows when any class is '<3'.
+
+    The hidden class area would otherwise be the total minus the visible areas.
+    Site counts are left as published.
+    """
+    if any(label == "<3" for label in class_labels):
+        return None
+    return total
+
+
 # These measures always hide a 1- or 2-site class. Callers cannot turn that off.
 CANNOT_SKIP_SMALL_COUNT = frozenset({"vdl", "contaminated"})
 
@@ -399,6 +410,18 @@ def _guard_small_counts(
         )
         if leaked:
             raise ValueError("V&DL and contaminated land cannot skip the <3 rule")
+    if not use_class:
+        return
+    by_zone: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+    for row in rows:
+        by_zone[str(row.get("zone_id"))].append(row)
+    for zone_rows in by_zone.values():
+        hidden = any(zone_row.get("site_count_label") == "<3" for zone_row in zone_rows)
+        for zone_row in zone_rows:
+            if "total_hectares" not in zone_row:
+                raise ValueError("council class rollup is missing its total area")
+            if hidden and zone_row.get("total_hectares") is not None:
+                raise ValueError("council total area would reveal a hidden class")
 
 
 def rollup_council_measure(
@@ -413,7 +436,8 @@ def rollup_council_measure(
 
     Uncovered councils stay null. Covered councils with no sites are zero.
     Site names and geometry are not copied. use_class applies the "<3" rule
-    to each class. V&DL and contaminated land cannot skip that rule.
+    to each class and sets total_hectares to null when any class is "<3".
+    V&DL and contaminated land cannot skip that rule.
     """
     council_of: dict[str, str] = {}
     for council, zones in zones_by_council.items():
@@ -461,8 +485,26 @@ def rollup_council_measure(
             if use_class:
                 row["use_class"] = klass or "unspecified"
             rows.append(row)
+    if use_class:
+        _attach_class_roll_totals(rows)
     _guard_small_counts(rows, measure=measure, use_class=use_class)
     return rows
+
+
+def _attach_class_roll_totals(rows: list[dict[str, Any]]) -> None:
+    """A zone total beside class rows is null when any class is '<3'."""
+    by_zone: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        by_zone[str(row["zone_id"])].append(row)
+    for zone_rows in by_zone.values():
+        labels = [row.get("site_count_label") for row in zone_rows]
+        covered = all(row.get("coverage") == "covered" for row in zone_rows)
+        raw_total = None
+        if covered:
+            raw_total = sum(float(row["hectares"] or 0) for row in zone_rows)
+        shown = None if not covered else published_total_area(raw_total, labels)
+        for row in zone_rows:
+            row["total_hectares"] = shown
 
 
 def coverage_legend(row: Mapping[str, Any]) -> dict[str, str]:
@@ -516,6 +558,7 @@ __all__ = [
     "coverage_legend",
     "filter_tile_properties",
     "public_site_export",
+    "published_total_area",
     "rollup_council_measure",
     "rollup_ofcom",
     "run_epc_job",

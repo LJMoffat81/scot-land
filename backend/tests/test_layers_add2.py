@@ -457,6 +457,56 @@ def test_use_class_two_sites_hides_area():
         assert rows[0]["use_class"] == "derelict"
         assert rows[0]["site_count_label"] == "<3"
         assert rows[0]["hectares"] is None
+        assert rows[0]["total_hectares"] is None
+
+
+def test_class_rollup_hides_total_when_one_class_is_hidden():
+    """One hidden class nulls the zone total. None hidden, and the total shows.
+
+    Site counts stay as published. Unconditional: fixture zones only.
+    """
+    zone = dz2022_zone_ids()[0]
+    hidden = rollup_council_measure(
+        zones_by_council={"S12000049": [zone]},
+        covered_councils={"S12000049"},
+        sites=[
+            {"zone_id": zone, "hectares": 4.0, "use_class": "vacant"},
+            {"zone_id": zone, "hectares": 4.0, "use_class": "vacant"},
+            {"zone_id": zone, "hectares": 4.0, "use_class": "vacant"},
+            {"zone_id": zone, "hectares": 1.25, "use_class": "derelict"},
+        ],
+        use_class=True,
+        measure="vdl",
+    )
+    by_class = {row["use_class"]: row for row in hidden}
+    assert by_class["derelict"]["site_count_label"] == "<3"
+    assert by_class["derelict"]["hectares"] is None
+    assert by_class["vacant"]["site_count_label"] == "3"
+    assert by_class["vacant"]["hectares"] == 12.0
+    assert by_class["vacant"]["total_hectares"] is None
+    assert by_class["derelict"]["total_hectares"] is None
+
+    shown = rollup_council_measure(
+        zones_by_council={"S12000049": [zone]},
+        covered_councils={"S12000049"},
+        sites=[
+            {"zone_id": zone, "hectares": 4.0, "use_class": "vacant"},
+            {"zone_id": zone, "hectares": 4.0, "use_class": "vacant"},
+            {"zone_id": zone, "hectares": 4.0, "use_class": "vacant"},
+            {"zone_id": zone, "hectares": 1.0, "use_class": "derelict"},
+            {"zone_id": zone, "hectares": 1.0, "use_class": "derelict"},
+            {"zone_id": zone, "hectares": 1.0, "use_class": "derelict"},
+        ],
+        use_class=True,
+        measure="vdl",
+    )
+    by_class = {row["use_class"]: row for row in shown}
+    assert by_class["vacant"]["site_count_label"] == "3"
+    assert by_class["derelict"]["site_count_label"] == "3"
+    assert by_class["vacant"]["hectares"] == 12.0
+    assert by_class["derelict"]["hectares"] == 3.0
+    assert by_class["vacant"]["total_hectares"] == 15.0
+    assert by_class["derelict"]["total_hectares"] == 15.0
 
 
 def test_d5_no_site_polygons_or_site_fields():

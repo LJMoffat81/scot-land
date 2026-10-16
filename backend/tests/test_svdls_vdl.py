@@ -536,7 +536,7 @@ def test_vdl_json_small_owner_class_counts(monkeypatch):
     assert three["hectares"] == 10.0
     assert by_owner["Empty class"]["sites"] == 0
     assert by_owner["Empty class"]["hectares"] == 0.0
-    assert body["totalHectares"] == 80.33
+    assert body["totalHectares"] is None
     assert body["note"] == (
         "Scotland-wide totals from the Scottish Vacant and Derelict Land Survey, "
         "by owner type."
@@ -566,7 +566,7 @@ def test_api_vdl_json_by_owner_class_has_no_one_or_two(monkeypatch):
         assert row["sites"] not in {1, 2, "1", "2"}
         if row["sites"] == "<3":
             assert row["hectares"] is None
-    assert body["totalHectares"] == 91.33
+    assert body["totalHectares"] is None
     assert "£" not in response.text
 
 
@@ -590,7 +590,48 @@ def test_owner_class_rollup_uses_suppress_site_totals(monkeypatch):
     assert calls == [2]
     assert body["byOwnerClass"][0]["sites"] == "<3"
     assert body["byOwnerClass"][0]["hectares"] is None
-    assert body["totalHectares"] == 6.53
+    assert body["totalHectares"] is None
+
+
+def test_vdl_json_hides_total_area_when_one_owner_type_is_hidden(monkeypatch):
+    """One hidden owner type nulls the Scotland-wide area. None hidden, and it shows.
+
+    Site counts stay as published. Unconditional: fixture only, no network.
+    """
+
+    def _one_hidden(*_args, **_kwargs):
+        return [
+            {"owner_1": "Local Authority", "n": 3, "sqm": 100_000},
+            {"owner_1": "Property Services Agency", "n": 2, "sqm": 653_300},
+            {"owner_1": "Empty class", "n": 0, "sqm": 0},
+        ]
+
+    def _none_hidden(*_args, **_kwargs):
+        return [
+            {"owner_1": "Local Authority", "n": 3, "sqm": 100_000},
+            {"owner_1": "Other public", "n": 4, "sqm": 25_000},
+            {"owner_1": "Empty class", "n": 0, "sqm": 0},
+        ]
+
+    monkeypatch.setattr("layers.open_stats._stats", _one_hidden)
+    hidden = vdl_json()
+    by_owner = {row["ownerClass"]: row for row in hidden["byOwnerClass"]}
+    assert by_owner["Property Services Agency"]["sites"] == "<3"
+    assert by_owner["Property Services Agency"]["hectares"] is None
+    assert by_owner["Local Authority"]["sites"] == 3
+    assert by_owner["Local Authority"]["hectares"] == 10.0
+    assert by_owner["Empty class"]["sites"] == 0
+    assert by_owner["Empty class"]["hectares"] == 0.0
+    assert hidden["totalHectares"] is None
+
+    monkeypatch.setattr("layers.open_stats._stats", _none_hidden)
+    shown = vdl_json()
+    by_owner = {row["ownerClass"]: row for row in shown["byOwnerClass"]}
+    assert by_owner["Local Authority"]["sites"] == 3
+    assert by_owner["Other public"]["sites"] == 4
+    assert by_owner["Empty class"]["sites"] == 0
+    assert all(row["sites"] != "<3" for row in shown["byOwnerClass"])
+    assert shown["totalHectares"] == 12.5
 
 
 def test_sources_and_vdl_api_drop_retired_phrases(monkeypatch):

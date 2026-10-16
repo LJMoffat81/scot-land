@@ -170,20 +170,40 @@ const SPATIAL_HUB_CATALOG_IDS = new Set(
 );
 
 /** Show or hide each painted row and load viewport shapes when one is on. */
+function styleIsReady(map: Map): boolean {
+  try {
+    return Boolean(map.getStyle()?.layers);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err ?? "");
+    if (message.includes("Style is not done loading")) return false;
+    throw err;
+  }
+}
+
 export async function syncLayersAddPaint(
   map: Map,
   enabled: Record<string, boolean | undefined>,
   spatialHubPresent?: Record<string, boolean> | null,
 ): Promise<void> {
-  ensureLayersAddPaint(map);
+  if (!styleIsReady(map)) return;
   const bounds = map.getBounds();
   const jobs: Array<Promise<void>> = [];
-  for (const spec of LAYERS_ADD_PAINT) {
-    const layerId = layersAddLayerId(spec);
-    const on = Boolean(enabled[spec.displayId]);
-    if (map.getLayer(layerId)) {
-      map.setLayoutProperty(layerId, "visibility", on ? "visible" : "none");
+  try {
+    ensureLayersAddPaint(map);
+    for (const spec of LAYERS_ADD_PAINT) {
+      const layerId = layersAddLayerId(spec);
+      const on = Boolean(enabled[spec.displayId]);
+      if (map.getLayer(layerId)) {
+        map.setLayoutProperty(layerId, "visibility", on ? "visible" : "none");
+      }
     }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err ?? "");
+    if (message.includes("Style is not done loading")) return;
+    throw err;
+  }
+  for (const spec of LAYERS_ADD_PAINT) {
+    const on = Boolean(enabled[spec.displayId]);
     if (!on || !bounds || map.getZoom() < spec.minzoom) continue;
     // Improvement Service outlines are requested only once the extract exists.
     if (

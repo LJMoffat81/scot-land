@@ -156,19 +156,20 @@ input {
   line-height: 0;
   /* Solid backing so map labels cannot show through the transparent mark. */
   background: #fff;
-  padding: 0.2rem;
   border-radius: 12px;
   box-shadow: var(--hud-shadow);
   text-decoration: none;
-  /* LOGO-H2: ≥44×44 CSS px tap/click target on mobile. */
+  /* LOGO-SIZE-1: 40px mark; padding keeps the tap target ≥44px. */
+  padding: 2px;
   min-width: 44px;
   min-height: 44px;
 }
 
 .hud-wordmark img {
   display: block;
-  width: 88px;
-  height: 88px;
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
 }
 
 .hud-layers-btn {
@@ -220,8 +221,8 @@ input {
 }
 
 .squares-shell .hud-wordmark img {
-  width: 72px;
-  height: 72px;
+  width: 40px;
+  height: 40px;
 }
 
 .place-card,
@@ -3774,8 +3775,8 @@ button.linkish:disabled {
   }
 
   .hud-wordmark img {
-    width: 56px;
-    height: 56px;
+    width: 40px;
+    height: 40px;
   }
 
   .hud-layers-btn {

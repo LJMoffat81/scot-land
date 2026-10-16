@@ -4704,7 +4704,7 @@ export default function ScotlandMap() {
       <header className="hud-top" ref={headerRef}>
         <div className="hud-brand">
           <a className="hud-wordmark" href="/" aria-label="Scot-LAND home">
-            <img src="/logo-mark-h3.png" alt="" />
+            <img src="/logo-mark-h3.png" alt="" width={40} height={40} />
           </a>
         </div>
         <button

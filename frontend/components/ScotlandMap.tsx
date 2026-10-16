@@ -3012,6 +3012,7 @@ export default function ScotlandMap() {
 
     let cancelled = false;
     let gen = 0;
+    let retryQueued = false;
     let gridMod: typeof import("../lib/grid3Map") | null = null;
     let runtime: typeof import("../lib/grid3Runtime") | null = null;
 
@@ -3021,6 +3022,17 @@ export default function ScotlandMap() {
       } catch {
         return false;
       }
+    };
+
+    const queueRetry = () => {
+      if (cancelled || retryQueued) return;
+      retryQueued = true;
+      const kick = () => {
+        retryQueued = false;
+        if (!cancelled) void rebuild();
+      };
+      map.once("idle", kick);
+      map.once("styledata", kick);
     };
 
     const clearLines = () => {
@@ -3033,8 +3045,14 @@ export default function ScotlandMap() {
     };
 
     const rebuild = async () => {
+      if (cancelled || !mapRef.current) return;
+      // Basemap / panel resize can fire moveend before the style exists.
+      // Dropping that event left G10 stuck with no lines after jumpTo.
+      if (!styleLive()) {
+        queueRetry();
+        return;
+      }
       const myGen = ++gen;
-      if (cancelled || !mapRef.current || !styleLive()) return;
       if (!showGrid3Ref.current) {
         clearLines();
         return;
@@ -3063,7 +3081,11 @@ export default function ScotlandMap() {
           };
         }
       }
-      if (cancelled || myGen !== gen || !styleLive()) return;
+      if (cancelled || myGen !== gen) return;
+      if (!styleLive()) {
+        queueRetry();
+        return;
+      }
       // Re-read zoom after await so a stale low-zoom rebuild cannot wipe z17+.
       const z = map.getZoom();
       if (z < GRID3_MIN_ZOOM) {

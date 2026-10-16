@@ -98,6 +98,9 @@ test.describe("GRID-BASE-1 perf", () => {
       map.fire("zoomstart", { originalEvent: oe });
       map.stop();
       map.jumpTo({ zoom: 17.2, center: [-3.1883, 55.9533] });
+      // Panel close can coalesce moveend; kick the GRID-BASE rebuild explicitly.
+      map.fire("zoomend");
+      map.fire("moveend");
     });
     await page.waitForFunction(
       () => {

@@ -1,6 +1,6 @@
 """PR-C1: G1, G2, V1–V8, V10–V12, V15, V16.
 
-Synthetic fixtures only. No 2024 price file is read. V9, V13 and V14 stay open.
+Synthetic fixtures only. No 2024 price file is read.
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ FIXTURE = BACKEND / "tests" / "fixtures" / "v14" / "surface_v14_a81d627c.py"
 SURFACE = BACKEND / "georgist" / "surface_v14.py"
 GATING = ("1", "1a", "1b", "1d", "3", "4", "6")
 INFORMATION = ("1c", "1e", "2", "3-all", "3-dz22", "5", "7", "agreement", "gis_plot_median_ratio")
-OPEN_ROWS = ("V9", "V13", "V14")
+OPEN_ROWS = ()
 
 
 def _names(tree: ast.AST) -> dict[str, ast.AST]:
@@ -363,6 +363,7 @@ def test_v16_missing_exclusion_list_errors_and_wrong_sha_aborts(tmp_path: Path, 
 
 
 def test_c1_disagreement_table_leaves_only_v9_v13_v14_open():
+    """C2 closes V9, V13 and V14. This still requires every other C1 row to stay fixed."""
     rows = {row["id"]: row["status"] for row in code_text_disagreements()}
     assert set(rows) == {
         "G1",

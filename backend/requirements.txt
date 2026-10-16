@@ -9,7 +9,7 @@ pyshp==3.1.6
 # Wealth Engine: PostGIS access, surface-rent harvester, RoS sync and ETL
 psycopg2-binary>=2.9.9
 pandas>=2.2
-statsmodels>=0.14.0
+statsmodels==0.15.0
 openpyxl>=3.1
 # Schema migrations (baseline + future revisions)
 alembic>=1.14

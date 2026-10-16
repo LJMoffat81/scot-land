@@ -20,12 +20,20 @@ from georgist import surface_rent as sr
 from georgist import surface_v14 as v14
 from georgist import surface_v14_checks as checks
 from georgist.surface_paths import REPO_ROOT
-from georgist.v14_hedonic import BOOTSTRAP_SEED, FIDELITY_LIMITATION, land_share_for_zone
+from georgist.v14_hedonic import (
+    BOOTSTRAP_SEED,
+    FIDELITY_LIMITATION,
+    MEDIAN_2024_REASON,
+    S_G1_REASON,
+    SENSITIVITY_IDS,
+    land_share_for_zone,
+    sensitivity_manifest,
+)
 from georgist.v14_primary_inputs import DepreciationMethodError, remaining_factor_at_age, v14_depreciation
 
 EXPECTED_SHA8 = {
     "backend/georgist/surface_rent.py": "dc07f4fe",
-    "backend/georgist/surface_v14.py": "cdb69a4f",
+    "backend/georgist/surface_v14.py": "2eb4f6c2",
     "data/config/surface.yaml": "0ad64260",
     "backend/georgist/ros_c14_input.py": "ca8718fa",
 }
@@ -97,7 +105,6 @@ ROW_IDS = (
     "V15",
     "V16",
 )
-C1_OPEN = frozenset({"V9", "V13", "V14"})
 
 
 class PriceColumnReadLog:
@@ -319,10 +326,24 @@ def _status_v8() -> str:
 
 
 def _status_v9() -> str:
+    manifest = sensitivity_manifest()
+    ids = [item["id"] for item in manifest]
+    if ids != list(SENSITIVITY_IDS):
+        return "pending"
+    allowed = {"fit", "NOT_RUN"}
+    if any(item["status"] not in allowed or item["gates"] or item["swapped_in"] for item in manifest):
+        return "pending"
+    declared = {item["id"]: item for item in manifest}
+    if declared["S-g1"]["status"] != "NOT_RUN" or declared["S-g1"]["reason"] != S_G1_REASON:
+        return "pending"
     text = _source("backend/georgist/v14_hedonic.py")
-    if "MixedLM" in text and "def build_v14_hedonic_rows" in text:
-        return "fixed"
-    return "pending"
+    if "MixedLM" not in text or 'method=S_C3_METHOD' not in text:
+        return "pending"
+    if "S_C3_METHOD = \"lbfgs\"" not in text or "S_C3_MAXITER = 1000" not in text or "S_C3_GTOL = 1e-8" not in text:
+        return "pending"
+    if "S_C3_REML = True" not in text:
+        return "pending"
+    return "fixed"
 
 
 def _status_v10() -> str:
@@ -361,12 +382,26 @@ def _status_v12() -> str:
 
 def _status_v13() -> str:
     path = REPO_ROOT / "backend/scripts/build_v14_check_inputs.py"
-    return "pending" if not path.is_file() else "fixed"
+    if not path.is_file():
+        return "pending"
+    text = path.read_text(encoding="utf-8")
+    if "def build_v14_check_inputs" not in text or "primary_zones" not in text or "secondary_zones" not in text:
+        return "pending"
+    if "inputs without a pinned sha" not in text or "field not in the frozen text" not in text:
+        return "pending"
+    return "fixed"
 
 
 def _status_v14() -> str:
     path = REPO_ROOT / "backend/scripts/build_v14_hedonic_rows.py"
-    return "pending" if not path.is_file() else "fixed"
+    if not path.is_file():
+        return "pending"
+    text = path.read_text(encoding="utf-8")
+    if "def build_v14_hedonic_rows" not in text or "702c9ada" not in text:
+        return "pending"
+    if "year >= 2024 refused" not in text or "COLUMN_MAP" not in text:
+        return "pending"
+    return "fixed"
 
 
 def _status_v15() -> str:
@@ -486,7 +521,7 @@ _ROW_TEXT = {
     "V9": (
         "backend/georgist/v14_hedonic.py",
         "def sensitivity_table",
-        "sensitivities are not all computed yet",
+        "every listed sensitivity is fit or NOT_RUN and none gates",
         "Every listed sensitivity is computed, information only.",
     ),
     "V10": (
@@ -510,13 +545,13 @@ _ROW_TEXT = {
     "V13": (
         "backend/scripts/build_v14_check_inputs.py",
         "build_v14_check_inputs",
-        "check-input builder is not in this change",
+        "check-input builder writes primary_zones and secondary_zones",
         "Build primary_zones and secondary_zones for --check-inputs.",
     ),
     "V14": (
         "backend/scripts/build_v14_hedonic_rows.py",
         "build_v14_hedonic_rows",
-        "hedonic-row builder is not in this change",
+        "hedonic-row builder asserts the pinned shas and refuses year >= 2024",
         "Build hedonic rows and refuse any year at or after 2024.",
     ),
     "V15": (
@@ -535,13 +570,23 @@ _ROW_TEXT = {
 
 
 def predeclared_not_run() -> list[dict[str, str]]:
-    """HBU is pre-declared. Sensitivity NOT_RUN rows stay with V9 until that change lands."""
+    """HBU and the sensitivities declared NOT_RUN before the 2023 run."""
     return [
         {
             "id": "HBU",
             "status": "NOT_RUN",
             "reason": checks.HBU_NOT_RUN,
-        }
+        },
+        {
+            "id": "S-g1",
+            "status": "NOT_RUN",
+            "reason": S_G1_REASON,
+        },
+        {
+            "id": "median_price_2024",
+            "status": "NOT_RUN",
+            "reason": MEDIAN_2024_REASON,
+        },
     ]
 
 

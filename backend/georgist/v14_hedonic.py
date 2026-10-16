@@ -11,6 +11,7 @@ import math
 from typing import Mapping, Sequence
 
 import numpy as np
+from statsmodels.regression.mixed_linear_model import MixedLM
 
 BOOTSTRAP_SEED = 20261015
 BOOTSTRAP_REPS = 1999
@@ -35,6 +36,28 @@ SENSITIVITY_IDS = (
     "median_price",
 )
 INTERNAL_ONLY = frozenset({"S-x4"})
+S_G1_REASON = "no frozen DZ2022 price input"
+MEDIAN_2024_REASON = "not_crosswalkable"
+D7_SHA256 = "d99b8daa6e03843923799d249714fa850bd360c6e9cd01a922d43b6000ba2d6e"
+S_C3_REML = True
+S_C3_METHOD = "lbfgs"
+S_C3_MAXITER = 1000
+S_C3_GTOL = 1e-8
+DECLARED_STATUS = {
+    "S-c1": ("fit", "UR6 x ITL3"),
+    "S-c2": ("fit", "national UR3 with IZ2011 fixed effects"),
+    "S-c3": ("fit", "REML MixedLM on the fit-window rows"),
+    "S-x1": ("fit", "drops F"),
+    "S-x2": ("fit", "fit when the D7 sha matches, otherwise NOT_RUN"),
+    "S-x3": ("fit", "flat share above 0.5 and at or below 0.5, reported separately"),
+    "S-x4": ("fit", "internal only, never published"),
+    "S-x5": ("fit", "RoS median on the fit window"),
+    "S-x6": ("fit", "drops flagged zones"),
+    "r20": ("fit", "plot split r20, with the FRAGILE rule"),
+    "r40": ("fit", "plot split r40, with the FRAGILE rule"),
+    "S-g1": ("NOT_RUN", S_G1_REASON),
+    "median_price": ("fit", "fit window; 2024 median NOT_RUN: not_crosswalkable"),
+}
 FIDELITY_LIMITATION = (
     "Fidelity limitation: the frozen 'negative location premium' test is not "
     "operationalised in e1ab6d0a; only β̂ ≤0 is applied. No post-hoc definition."
@@ -333,10 +356,20 @@ def _levels_beta(rows: Sequence[Mapping]) -> dict[str, float]:
     }
 
 
-def _sensitivity_row(name: str, *, status: str, beta: Mapping[str, float] | None = None) -> dict:
-    return {
+def _sensitivity_row(
+    name: str,
+    *,
+    status: str,
+    beta: Mapping[str, float] | None = None,
+    reason: str = "",
+    converged: bool | None = None,
+    fragile: bool | None = None,
+    by_split: Mapping | None = None,
+) -> dict:
+    row = {
         "id": name,
         "status": status,
+        "reason": reason,
         "gates": False,
         "information_only": True,
         "swapped_in": False,
@@ -344,39 +377,263 @@ def _sensitivity_row(name: str, *, status: str, beta: Mapping[str, float] | None
         "publish": name not in INTERNAL_ONLY,
         "beta_by_cell": None if beta is None else {key: float(value) for key, value in beta.items()},
     }
+    if converged is not None:
+        row["converged"] = converged
+    if fragile is not None:
+        row["fragile"] = fragile
+    if by_split is not None:
+        row["by_split"] = by_split
+    return row
 
 
-def sensitivity_table(rows: Sequence[Mapping], headline: Mapping[str, float]) -> list[dict]:
-    """Named sensitivities. None of them replaces the headline log coefficients."""
-    table = [
-        _sensitivity_row("levels", status="fit", beta=_levels_beta(rows)),
-    ]
-    try:
-        _coef, _names, dropped = _fit_rows(rows, include_floor=False)
-        table.append(_sensitivity_row("S-x1", status="fit", beta=dropped))
-    except HedonicError:
-        table.append(_sensitivity_row("S-x1", status="not_in_fixture"))
-    if rows and "median_price" in rows[0]:
-        _coef, _names, median_beta = _fit_rows(rows, price_field="median_price")
-        table.append(_sensitivity_row("median_price", status="reported_never_swapped_in", beta=median_beta))
-    else:
-        table.append(_sensitivity_row("median_price", status="not_crosswalkable"))
-    for name, field in (("r20", "a_r20"), ("r40", "a_r40")):
-        if rows and field in rows[0]:
-            _coef, _names, beta = _fit_rows(rows, area_field=field)
-            table.append(_sensitivity_row(name, status="fit", beta=beta))
-        else:
-            table.append(_sensitivity_row(name, status="not_in_fixture"))
+def sensitivity_manifest() -> list[dict]:
+    """Declared before any 2023 outcome. No id can be added after this list."""
+    manifest = []
     for name in SENSITIVITY_IDS:
-        if any(item["id"] == name for item in table):
+        status, reason = DECLARED_STATUS[name]
+        manifest.append(
+            {
+                "id": name,
+                "status": status,
+                "reason": reason,
+                "gates": False,
+                "information_only": True,
+                "swapped_in": False,
+                "internal_only": name in INTERNAL_ONLY,
+                "publish": name not in INTERNAL_ONLY,
+            }
+        )
+    return manifest
+
+
+def _with_cell(rows: Sequence[Mapping], cell_of) -> list[dict]:
+    copied: list[dict] = []
+    for row in rows:
+        item = dict(row)
+        item["cell"] = cell_of(row)
+        copied.append(item)
+    return copied
+
+
+def _fit_named(name: str, rows: Sequence[Mapping], **kwargs) -> dict:
+    try:
+        _coef, _names, beta = _fit_rows(rows, **kwargs)
+    except (HedonicError, np.linalg.LinAlgError, ValueError, KeyError, ZeroDivisionError) as exc:
+        return _sensitivity_row(name, status="NOT_RUN", reason=str(exc))
+    return _sensitivity_row(name, status="fit", beta=beta)
+
+
+def _iz_code(row: Mapping) -> str:
+    return str(row.get("iz2011") or row.get("iz") or "")
+
+
+def _ur3(row: Mapping) -> str:
+    if row.get("ur3"):
+        return str(row["ur3"])
+    ur6 = row.get("ur6")
+    if ur6 is None:
+        return ""
+    klass = int(ur6)
+    if klass in (1, 2):
+        return "urban"
+    if klass in (3, 4):
+        return "towns"
+    if klass in (5, 6):
+        return "rural"
+    return ""
+
+
+def _fit_s_c1(rows: Sequence[Mapping]) -> dict:
+    if any("ur6" not in row or "itl3" not in row for row in rows):
+        return _sensitivity_row("S-c1", status="NOT_RUN", reason="UR6 or ITL3 is not on the rows")
+    return _fit_named("S-c1", _with_cell(rows, lambda row: f"{row['ur6']}|{row['itl3']}"))
+
+
+def _fit_s_c2(rows: Sequence[Mapping]) -> dict:
+    if any(not _iz_code(row) or not _ur3(row) for row in rows):
+        return _sensitivity_row("S-c2", status="NOT_RUN", reason="UR3 or IZ2011 is not on the rows")
+    iz_codes = sorted({_iz_code(row) for row in rows})
+    kept_effects = iz_codes[1:]
+    prepared = []
+    for row in rows:
+        item = dict(row)
+        item["cell"] = _ur3(row)
+        code = _iz_code(row)
+        for effect in kept_effects:
+            item[f"x_iz_{effect}"] = 1.0 if code == effect else 0.0
+        prepared.append(item)
+    return _fit_named("S-c2", prepared)
+
+
+def _fit_s_c3(rows: Sequence[Mapping]) -> dict:
+    """Partial pooling of the land slope. No second solver and no retune."""
+    try:
+        y = np.array([math.log(float(row["price"])) for row in rows])
+        area = np.array([math.log(float(row["a_m2"])) for row in rows])
+        exog = np.column_stack([np.ones(len(rows)), area])
+        groups = np.array([str(row.get("ur3") or row.get("cell") or "") for row in rows])
+        if len(set(groups)) < 2 or any(not group for group in groups):
+            return _sensitivity_row(
+                "S-c3",
+                status="NOT_CONVERGED",
+                reason="MixedLM needs two or more groups",
+                converged=False,
+            )
+        result = MixedLM(y, exog, groups, exog_re=area.reshape(-1, 1)).fit(
+            reml=S_C3_REML,
+            method=S_C3_METHOD,
+            maxiter=S_C3_MAXITER,
+            gtol=S_C3_GTOL,
+        )
+    except Exception as exc:
+        return _sensitivity_row("S-c3", status="NOT_CONVERGED", reason=str(exc), converged=False)
+    converged = bool(getattr(result, "converged", False))
+    if not converged:
+        return _sensitivity_row(
+            "S-c3",
+            status="NOT_CONVERGED",
+            reason="MixedLM did not converge",
+            converged=False,
+        )
+    slope = float(np.asarray(result.fe_params, dtype=float)[1])
+    return _sensitivity_row("S-c3", status="fit", reason="converged", beta={"pooled": slope}, converged=True)
+
+
+def _fit_s_x2(rows: Sequence[Mapping], d7_sha256: str | None) -> dict:
+    if d7_sha256 != D7_SHA256:
+        return _sensitivity_row("S-x2", status="NOT_RUN", reason="D7 sha does not match")
+    if any("ratio_mean" not in row for row in rows):
+        return _sensitivity_row("S-x2", status="NOT_RUN", reason="D7 ratio_mean is not on the rows")
+    kept = [row for row in rows if 0.9 <= float(row["ratio_mean"]) <= 1.1]
+    if len(kept) < 4:
+        return _sensitivity_row("S-x2", status="NOT_RUN", reason="sold/stock band has too few rows")
+    return _fit_named("S-x2", kept)
+
+
+def _flat_share(row: Mapping) -> float | None:
+    if "flat_share" in row:
+        return float(row["flat_share"])
+    if "pt_flat_share" in row:
+        return float(row["pt_flat_share"]) + float(row.get("pt_maisonette_share") or 0.0)
+    return None
+
+
+def _fit_s_x3(rows: Sequence[Mapping]) -> dict:
+    shares = [_flat_share(row) for row in rows]
+    if any(share is None for share in shares):
+        return _sensitivity_row("S-x3", status="NOT_RUN", reason="flat share is not on the rows")
+    above = [row for row, share in zip(rows, shares) if share is not None and share > 0.5]
+    at_or_below = [row for row, share in zip(rows, shares) if share is not None and share <= 0.5]
+    high = _fit_named("S-x3", above)
+    low = _fit_named("S-x3", at_or_below)
+    if high["status"] != "fit" and low["status"] != "fit":
+        return _sensitivity_row("S-x3", status="NOT_RUN", reason=high["reason"] or low["reason"])
+    return _sensitivity_row(
+        "S-x3",
+        status="fit",
+        by_split={">0.5": high["beta_by_cell"], "<=0.5": low["beta_by_cell"]},
+    )
+
+
+def _fit_s_x4(rows: Sequence[Mapping]) -> dict:
+    if any("other_land_per_home" not in row for row in rows):
+        return _sensitivity_row("S-x4", status="NOT_RUN", reason="D5 other land per home is not on the rows")
+    prepared = []
+    for row in rows:
+        item = dict(row)
+        item["x_other_land_per_home"] = math.log(1.0 + float(row["other_land_per_home"]))
+        prepared.append(item)
+    fitted = _fit_named("S-x4", prepared)
+    fitted["internal_only"] = True
+    fitted["publish"] = False
+    return fitted
+
+
+def _median_fit(name: str, rows: Sequence[Mapping]) -> dict:
+    if any(int(row["year"]) >= 2024 for row in rows):
+        return _sensitivity_row(name, status="NOT_RUN", reason=MEDIAN_2024_REASON)
+    if any("median_price" not in row for row in rows):
+        return _sensitivity_row(name, status="NOT_RUN", reason="median price is not on the fit-window rows")
+    return _fit_named(name, rows, price_field="median_price")
+
+
+def _fit_s_x6(rows: Sequence[Mapping]) -> dict:
+    if not any("low_parcel_coverage" in row or "flagged" in row for row in rows):
+        return _sensitivity_row("S-x6", status="NOT_RUN", reason="zone flags are not on the rows")
+    kept = []
+    for row in rows:
+        flagged = bool(row.get("flagged")) or float(row.get("low_parcel_coverage") or 0.0) >= 0.5
+        if not flagged:
+            kept.append(row)
+    if len(kept) < 4:
+        return _sensitivity_row("S-x6", status="NOT_RUN", reason="dropping flagged zones leaves too few rows")
+    return _fit_named("S-x6", kept)
+
+
+def _fragile(left: Mapping[str, float] | None, right: Mapping[str, float] | None) -> bool:
+    if not left or not right:
+        return False
+    for cell in set(left) | set(right):
+        if cell not in left or cell not in right:
             continue
-        table.append(_sensitivity_row(name, status="specified_information_only"))
+        a = float(left[cell])
+        b = float(right[cell])
+        if (a > 0) != (b > 0) or (a < 0) != (b < 0) or abs(a - b) > CI_WIDTH_NOT_INFORMATIVE:
+            return True
+    return False
+
+
+def sensitivity_table(
+    rows: Sequence[Mapping],
+    headline: Mapping[str, float],
+    *,
+    d7_sha256: str | None = None,
+) -> list[dict]:
+    """Named sensitivities. None of them replaces the headline log coefficients."""
+    listed = list(rows)
+    if any(int(row.get("year", 0)) >= 2024 for row in listed):
+        raise PriceYearError("2024 prices are not read in development or test")
+    r20 = (
+        _fit_named("r20", listed, area_field="a_r20")
+        if listed and "a_r20" in listed[0]
+        else _sensitivity_row("r20", status="NOT_RUN", reason="r20 plot area is not on the rows")
+    )
+    r40 = (
+        _fit_named("r40", listed, area_field="a_r40")
+        if listed and "a_r40" in listed[0]
+        else _sensitivity_row("r40", status="NOT_RUN", reason="r40 plot area is not on the rows")
+    )
+    fragile = _fragile(r20.get("beta_by_cell"), r40.get("beta_by_cell"))
+    if r20["status"] == "fit" and r40["status"] == "fit":
+        r20["fragile"] = fragile
+        r40["fragile"] = fragile
+    by_id = {
+        "S-c1": _fit_s_c1(listed),
+        "S-c2": _fit_s_c2(listed),
+        "S-c3": _fit_s_c3(listed),
+        "S-x1": _fit_named("S-x1", listed, include_floor=False),
+        "S-x2": _fit_s_x2(listed, d7_sha256),
+        "S-x3": _fit_s_x3(listed),
+        "S-x4": _fit_s_x4(listed),
+        "S-x5": _median_fit("S-x5", listed),
+        "S-x6": _fit_s_x6(listed),
+        "r20": r20,
+        "r40": r40,
+        "S-g1": _sensitivity_row("S-g1", status="NOT_RUN", reason=S_G1_REASON),
+        "median_price": _median_fit("median_price", listed),
+    }
+    table = [_sensitivity_row("levels", status="fit", beta=_levels_beta(listed))]
+    table.extend(by_id[name] for name in SENSITIVITY_IDS)
+    allowed = set(SENSITIVITY_IDS) | {"levels"}
+    extra = [item["id"] for item in table if item["id"] not in allowed]
+    if extra:
+        raise HedonicError(f"sensitivity added after the manifest: {extra}")
     for item in table:
         if item["gates"] or item["swapped_in"]:
             raise HedonicError("a sensitivity would gate or replace the headline")
-        if item["beta_by_cell"] is not None and item["id"] == "levels":
-            continue
-        if item["beta_by_cell"] == dict(headline) and item["id"] not in {"levels"}:
+        if item["status"] in {"NOT_RUN", "NOT_CONVERGED"} and not item["reason"]:
+            raise HedonicError(f"{item['id']} has no reason")
+        if item["id"] != "levels" and item["beta_by_cell"] == dict(headline):
             continue
     return table
 

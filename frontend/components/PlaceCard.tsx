@@ -105,7 +105,7 @@ function surfaceLiveRange(
     display.central != null &&
     display.high != null
   ) {
-    const range = formatPlaceCardGbpRange(display.low, display.high);
+    const range = formatPlaceCardGbpRange(display.low, display.central, display.high);
     // Fail-closed: invalid rates surface as unavailable, not a £ string.
     if (range === GBP_LIVE_ESTIMATE_UNAVAILABLE) {
       return GBP_LIVE_ESTIMATE_UNAVAILABLE;

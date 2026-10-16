@@ -25,6 +25,7 @@
     "test:dz-hierarchy": "node --experimental-strip-types scripts/test-dz-hierarchy.mjs",
     "test:gbp-live-v1": "node --experimental-strip-types scripts/test-gbp-live-v1.mjs",
     "test:gbp-live-v1c": "node --experimental-strip-types scripts/test-gbp-live-v1c.mjs",
+    "test:gbp-live-v1d": "node --experimental-strip-types scripts/test-gbp-live-v1d.mjs",
     "test:site-rewrite-pr1": "node --experimental-strip-types scripts/test-site-rewrite-pr1.mjs",
     "test:site-rewrite-pr2": "node --experimental-strip-types scripts/test-site-rewrite-pr2.mjs",
     "build:downloads": "node --experimental-strip-types scripts/build-download-bundles.mjs",

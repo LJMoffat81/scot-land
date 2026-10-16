@@ -3,8 +3,9 @@ import { expect, test, type Page } from "@playwright/test";
 /**
  * UI-TWEAKS-2 — mobile peek never covers the disclaimer.
  * 390×844 and 360×740. EH1 1YZ, IV27 4HN, Inverness.
- * Peek = name + rent + disclaimer. "More about this area" stays in
- * normal flow under the disclaimer. Asserts can fail.
+ * Peek shows the place name, the Annual Ground Rent line, and the
+ * disclaimer, each visible and unobscured. "More about this area" is
+ * hidden in peek and visible in half. Asserts can fail.
  */
 
 const PLACES = ["EH1 1YZ", "Inverness", "IV27 4HN"] as const;
@@ -47,7 +48,7 @@ function cardFor(label: string, lat: number, lng: number) {
       name: "Zone",
       vintage: 2022,
     },
-    intermediate_zone: { status: "ok", name: "IZ", code: "S02001607" },
+    intermediate_zone: { status: "ok", name: label, code: "S02001607" },
     agr_rows: [
       {
         id: "surface",
@@ -133,7 +134,7 @@ async function stubMap(page: Page) {
   });
 }
 
-async function openPeek(page: Page, query: string) {
+async function openSearchedCard(page: Page, query: string) {
   await page.goto("/");
   await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
   const input = page.locator("#place-query");
@@ -144,6 +145,11 @@ async function openPeek(page: Page, query: string) {
   await expect(page.getByTestId("place-card-place")).toBeVisible({
     timeout: 30_000,
   });
+  await expect(slot).toHaveAttribute("data-detent", "half");
+}
+
+async function stepToPeek(page: Page) {
+  const slot = page.getByTestId("map-panel-slot");
   const detent = await slot.getAttribute("data-detent");
   if (detent === "half") {
     await page.keyboard.press("Escape");
@@ -154,50 +160,129 @@ async function openPeek(page: Page, query: string) {
   await expect(slot).toHaveAttribute("data-detent", "peek");
 }
 
-async function assertDisclaimerClear(page: Page) {
-  const slot = page.getByTestId("map-panel-slot");
-  await expect(slot).toHaveAttribute("data-detent", "peek");
-  const disclaimer = page.getByTestId("place-card-footer");
-  await expect(disclaimer).toBeVisible();
-  const box = await disclaimer.boundingBox();
-  expect(box, "disclaimer bounding box").toBeTruthy();
-  expect(box!.width).toBeGreaterThan(0);
-  expect(box!.height).toBeGreaterThan(0);
+async function textBox(locator: ReturnType<Page["getByTestId"]>): Promise<Box> {
+  await expect(locator).toBeVisible();
+  const box = await locator.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const r = range.getBoundingClientRect();
+    const s = getComputedStyle(el);
+    return {
+      x: r.x,
+      y: r.y,
+      width: r.width,
+      height: r.height,
+      display: s.display,
+      visibility: s.visibility,
+    };
+  });
+  expect(box.display).not.toBe("none");
+  expect(box.visibility).not.toBe("hidden");
+  expect(box.width).toBeGreaterThan(0);
+  expect(box.height).toBeGreaterThan(0);
+  return box;
+}
 
-  const more = page.locator("summary", { hasText: "More about this area" });
-  const moreCount = await more.count();
-  expect(moreCount, "More about this area").toBeGreaterThan(0);
-  for (let i = 0; i < moreCount; i += 1) {
-    const mb = await more.nth(i).boundingBox();
-    expect(mb, "More about this area box").toBeTruthy();
-    expect(mb!.width).toBeGreaterThan(0);
-    expect(mb!.height).toBeGreaterThan(0);
-    expect(boxesOverlap(box!, mb!)).toBe(false);
-    expect(mb!.y).toBeGreaterThanOrEqual(box!.y + box!.height - 1);
-  }
+async function assertUnobscured(
+  page: Page,
+  locator: ReturnType<Page["getByTestId"]>,
+  box: Box,
+) {
+  const slotBox = await page.getByTestId("map-panel-slot").boundingBox();
+  expect(slotBox, "sheet box").toBeTruthy();
+  expect(box.y).toBeGreaterThanOrEqual(slotBox!.y - 1);
+  expect(box.x).toBeGreaterThanOrEqual(slotBox!.x - 1);
+  expect(box.y + box.height).toBeLessThanOrEqual(slotBox!.y + slotBox!.height + 1);
+  expect(box.x + box.width).toBeLessThanOrEqual(slotBox!.x + slotBox!.width + 1);
 
-  const buttons = slot.getByRole("button");
+  const buttons = page.getByTestId("map-panel-slot").getByRole("button");
   const buttonCount = await buttons.count();
   for (let i = 0; i < buttonCount; i += 1) {
     const bb = await buttons.nth(i).boundingBox();
     if (!bb || bb.width <= 0 || bb.height <= 0) continue;
-    expect(boxesOverlap(box!, bb)).toBe(false);
+    expect(boxesOverlap(box, bb)).toBe(false);
   }
 
-  const covers = await disclaimer.evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    const x = r.left + r.width / 2;
-    const y = r.top + r.height / 2;
-    const node = document.elementFromPoint(x, y);
-    const own = node === el || (node != null && el.contains(node));
-    return {
-      own,
-      tag: node?.tagName ?? null,
-      testid: node?.getAttribute("data-testid") ?? null,
-      text: (node?.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80),
-    };
+  const covers = await locator.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const r = range.getBoundingClientRect();
+    const points = [
+      [r.left + r.width / 2, r.top + r.height / 2],
+      [r.left + Math.min(8, r.width / 2), r.top + 1],
+      [r.left + r.width / 2, r.bottom - 1],
+    ];
+    return points.map(([x, y]) => {
+      const node = document.elementFromPoint(x, y);
+      return {
+        own: node === el || (node != null && el.contains(node)),
+        tag: node?.tagName ?? null,
+        testid: node?.getAttribute("data-testid") ?? null,
+        text: (node?.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80),
+      };
+    });
   });
-  expect(covers.own, JSON.stringify(covers)).toBe(true);
+  for (const hit of covers) {
+    expect(hit.own, JSON.stringify(hit)).toBe(true);
+  }
+}
+
+async function assertHalfShowsFold(page: Page) {
+  const slot = page.getByTestId("map-panel-slot");
+  await expect(slot).toHaveAttribute("data-detent", "half");
+  const parts = page.getByTestId("place-card-parts");
+  await expect(parts).toHaveCount(1);
+  await expect(parts).toBeVisible();
+  const summary = parts.locator("summary");
+  await expect(summary).toBeVisible();
+  await expect(summary).toContainText("More about this area");
+  const mb = await summary.boundingBox();
+  expect(mb, "More about this area box").toBeTruthy();
+  expect(mb!.width).toBeGreaterThan(0);
+  expect(mb!.height).toBeGreaterThan(0);
+  const hit = await summary.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const node = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return node === el || (node != null && el.contains(node));
+  });
+  expect(hit, "More about this area hit").toBe(true);
+}
+
+async function assertPeekClear(page: Page, place: string) {
+  const slot = page.getByTestId("map-panel-slot");
+  await expect(slot).toHaveAttribute("data-detent", "peek");
+
+  const name = page.getByTestId("place-card-place");
+  await expect(name).toHaveText(place);
+  const agr = page.getByTestId("place-card-agr-label");
+  await expect(agr).toHaveText("Annual Ground Rent");
+  const disclaimer = page.getByTestId("place-card-footer");
+  await expect(disclaimer).toBeVisible();
+  const position = await disclaimer.evaluate(
+    (el) => getComputedStyle(el).position,
+  );
+  expect(position).toBe("static");
+
+  const nameBox = await textBox(name);
+  const agrBox = await textBox(agr);
+  const disclaimerBox = await textBox(disclaimer);
+  expect(boxesOverlap(nameBox, agrBox)).toBe(false);
+  expect(boxesOverlap(nameBox, disclaimerBox)).toBe(false);
+  expect(boxesOverlap(agrBox, disclaimerBox)).toBe(false);
+  await assertUnobscured(page, name, nameBox);
+  await assertUnobscured(page, agr, agrBox);
+  await assertUnobscured(page, disclaimer, disclaimerBox);
+
+  const parts = page.getByTestId("place-card-parts");
+  await expect(parts).toHaveCount(1);
+  await expect(parts).toBeHidden();
+  const summary = parts.locator("summary");
+  await expect(summary).toHaveCount(1);
+  await expect(summary).toContainText("More about this area");
+  await expect(summary).toBeHidden();
+  expect(await summary.boundingBox()).toBeNull();
+  const folded = await parts.evaluate((el) => getComputedStyle(el).display);
+  expect(folded).toBe("none");
 }
 
 const VIEWPORTS = [
@@ -213,20 +298,22 @@ for (const viewport of VIEWPORTS) {
       test(`${place} peek disclaimer stays clear`, async ({ page }) => {
         test.setTimeout(120_000);
         await stubMap(page);
-        await openPeek(page, place);
-        await assertDisclaimerClear(page);
+        await openSearchedCard(page, place);
+        await assertHalfShowsFold(page);
+        await stepToPeek(page);
+        await assertPeekClear(page, place);
 
         await page.setViewportSize({
           width: viewport.height,
           height: viewport.width,
         });
-        await assertDisclaimerClear(page);
+        await assertPeekClear(page, place);
 
         await page.setViewportSize({
           width: viewport.width,
           height: viewport.height,
         });
-        await assertDisclaimerClear(page);
+        await assertPeekClear(page, place);
       });
     }
   });

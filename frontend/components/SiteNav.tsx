@@ -20,7 +20,7 @@ export type SiteNavProps = {
 const MOBILE_MAX = 600;
 
 /**
- * Site-wide nav: Map · About · How it works · Data & sources · Downloads & API.
+ * Site-wide nav: Map · About · How we built this · How it works · Data & sources · Downloads & API.
  * Mobile (≤600px): hamburger menu with backdrop (SW-011).
  */
 export default function SiteNav({

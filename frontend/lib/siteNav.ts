@@ -3,6 +3,7 @@
 export const SITE_NAV_ITEMS = [
   { id: "map", href: "/", label: "Map" },
   { id: "about", href: "/about", label: "About" },
+  { id: "built", href: "/how-we-built-this", label: "How we built this" },
   { id: "how", href: "/methodology", label: "How it works" },
   { id: "data", href: "/data", label: "Data & sources" },
   { id: "developers", href: "/developers", label: "Downloads & API" },

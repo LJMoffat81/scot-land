@@ -21,10 +21,21 @@ const {
   RESEARCH_BANNER_TEXT,
 } = await import(pathToFileURL(join(frontendRoot, "lib/siteNav.ts")).href);
 
-assert.equal(SITE_NAV_ITEMS.length, 5);
+assert.equal(SITE_NAV_ITEMS.length, 6);
 assert.deepEqual(
   SITE_NAV_ITEMS.map((i) => i.label),
-  ["Map", "About", "How it works", "Data & sources", "Downloads & API"],
+  [
+    "Map",
+    "About",
+    "How we built this",
+    "How it works",
+    "Data & sources",
+    "Downloads & API",
+  ],
+);
+assert.deepEqual(
+  SITE_NAV_ITEMS.map((i) => i.href),
+  ["/", "/about", "/how-we-built-this", "/methodology", "/data", "/developers"],
 );
 assert.equal(RESEARCH_BANNER_LEAD, "Research estimate.");
 assert.equal(
@@ -103,6 +114,7 @@ const titles = {
   "app/methodology/page.tsx": "How it works | Scot-LAND",
   "app/data/layout.tsx": "Data & sources | Scot-LAND",
   "app/about/page.tsx": "About | Scot-LAND",
+  "app/how-we-built-this/page.tsx": "How we built this | Scot-LAND",
   "app/developers/layout.tsx": "Downloads & API | Scot-LAND",
   "app/layout.tsx": "Map | Scot-LAND",
 };
@@ -137,6 +149,7 @@ const publicGlobs = [
   "app/developers/page.tsx",
   "app/about/page.tsx",
   "app/methodology/page.tsx",
+  "app/how-we-built-this/page.tsx",
   "app/layout.tsx",
 ];
 for (const rel of publicGlobs) {

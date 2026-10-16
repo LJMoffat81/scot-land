@@ -2132,6 +2132,15 @@ export default function ScotlandMap() {
       },
     });
 
+    // A basemap swap removes the map while a style fetch or moveend handler
+    // is still in flight. MapLibre logs that as an unhandled error event.
+    // Keep every other map error visible.
+    map.on("error", (event) => {
+      const err = event.error;
+      const message = err instanceof Error ? err.message : String(err ?? "");
+      if (message.includes("Style is not done loading")) return;
+      console.error(err);
+    });
     map.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
       "bottom-right",
@@ -2756,10 +2765,12 @@ export default function ScotlandMap() {
         if (mapRef.current !== map) return;
         try {
           if (!map.getStyle()?.layers) return;
-        } catch {
-          return;
+          ensureGrid3Layers(map);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err ?? "");
+          if (message.includes("Style is not done loading")) return;
+          throw err;
         }
-        ensureGrid3Layers(map);
       });
 
       setMapReady(true);
@@ -2948,7 +2959,8 @@ export default function ScotlandMap() {
       parcelLabelRef.current = null;
       layerPopupRef.current?.remove();
       layerPopupRef.current = null;
-      map.remove();
+      // Drop the ref before remove so moveend/styledata handlers still
+      // attached on this map do not touch a style that is going away.
       mapRef.current = null;
       (
         window as unknown as { __map?: maplibregl.Map | null }
@@ -2956,6 +2968,12 @@ export default function ScotlandMap() {
       if (typeof window !== "undefined") {
         delete (window as unknown as { __SCOT_LAND_MAP__?: Map })
           .__SCOT_LAND_MAP__;
+      }
+      try {
+        map.remove();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err ?? "");
+        if (!message.includes("Style is not done loading")) throw err;
       }
       setMapReady(false);
       // Allow deep-link boot on the next map instance (Strict Mode / style remount).
@@ -3234,8 +3252,17 @@ export default function ScotlandMap() {
         clearLines();
         return;
       }
-      runtime.ensureGrid3Layers(map);
-      runtime.setGrid3LinePaint(map, false);
+      try {
+        runtime.ensureGrid3Layers(map);
+        runtime.setGrid3LinePaint(map, false);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err ?? "");
+        if (message.includes("Style is not done loading")) {
+          queueRetry();
+          return;
+        }
+        throw err;
+      }
       const b = map.getBounds();
       if (!b) return;
       const corners = [
@@ -3250,12 +3277,18 @@ export default function ScotlandMap() {
         | GeoJSONSource
         | undefined;
       src?.setData(collection);
-      if (map.getLayer(gridMod.GRID3_LAYER_LINES)) {
-        map.setLayoutProperty(
-          gridMod.GRID3_LAYER_LINES,
-          "visibility",
-          "visible",
-        );
+      try {
+        if (map.getLayer(gridMod.GRID3_LAYER_LINES)) {
+          map.setLayoutProperty(
+            gridMod.GRID3_LAYER_LINES,
+            "visibility",
+            "visible",
+          );
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err ?? "");
+        if (message.includes("Style is not done loading")) return;
+        throw err;
       }
     };
 
@@ -4668,7 +4701,7 @@ export default function ScotlandMap() {
     if (!map) return;
     let cancelled = false;
     const run = () => {
-      if (cancelled) return;
+      if (cancelled || mapRef.current !== map) return;
       void syncLayersAddPaint(map, ledgerEnabled, spatialHubPresent, floodKind);
     };
     run();

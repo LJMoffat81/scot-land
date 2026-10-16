@@ -226,8 +226,10 @@ def test_place_card_flag_on_shows_range_and_label(monkeypatch, tmp_path):
     assert display["central"] == 0.12
     assert display["high"] == 0.18
     assert display["unit"] == "per m²"
-    assert display["unit_wording"] == "per m² of land a year"
+    assert display["unit_wording"] == "per square metre of land, per year"
+    assert "£" not in display["unit_wording"]
     assert display["central_label"] == "most likely"
+    assert display["numerator"] == "measured_rent"
     assert display["denominator"] == "residential_land_ha"
     assert display["estimate_label"] == "Measured"
     assert display["rent_rate_wording"] == gl.rent_rate_wording_card()
@@ -239,38 +241,102 @@ def test_place_card_flag_on_shows_range_and_label(monkeypatch, tmp_path):
     assert "£" not in str(display)
 
 
-def test_per_m2_uses_residential_land_ha(tmp_path):
+def test_numerator_is_residential_surface_rent_fields():
+    """GBP-LIVE-V1c: numerator fields are residential surface rent only."""
+    assert gl.NUMERATOR_CENTRAL_FIELD == "measured_rent"
+    assert gl.NUMERATOR_LOW_FIELD == "uncertainty_low"
+    assert gl.NUMERATOR_HIGH_FIELD == "uncertainty_high"
+    assert gl.NUMERATOR_FIELDS == (
+        "uncertainty_low",
+        "measured_rent",
+        "uncertainty_high",
+    )
+    assert gl.AREA_FIELD == "residential_land_ha"
+    assert "farmland" not in "".join(gl.NUMERATOR_FIELDS)
+    assert "other_land" not in "".join(gl.NUMERATOR_FIELDS)
+    for banned in gl.EXCLUDED_AREA_FIELDS:
+        assert banned != gl.AREA_FIELD
+        assert banned not in gl.NUMERATOR_FIELDS
+
+
+def test_per_m2_uses_residential_land_ha_not_other_land(tmp_path):
     path = _write_cfg(tmp_path, enabled=True)
     row = _publishable_row(
         measured_rent=20_000.0,
         uncertainty_low=10_000.0,
         uncertainty_high=30_000.0,
         residential_land_ha=2.0,
+        # Farmland / other-land area must not affect the per-m² rate.
+        other_land_ha=999.0,
+        farmland_ha=500.0,
+        zone_ha=1000.0,
     )
     display = gl.surface_rent_display_for_row(row, code=row["code"], path=path)
     assert display["state"] == "ok"
     assert display["central"] == 1.0  # 20000 / (2 * 10000)
     assert display["low"] == 0.5
     assert display["high"] == 1.5
+    assert display["numerator"] == "measured_rent"
     assert display["denominator"] == "residential_land_ha"
+    assert display["numerator_fields"] == list(gl.NUMERATOR_FIELDS)
 
 
-def test_missing_area_under_review_no_pound(tmp_path):
+def test_missing_area_estimate_unavailable_no_pound(tmp_path):
     path = _write_cfg(tmp_path, enabled=True)
     row = _publishable_row()
     del row["residential_land_ha"]
     display = gl.surface_rent_display_for_row(row, code=row["code"], path=path)
     assert display["state"] == "under_review"
-    assert display["label"] == gl.UNDER_REVIEW_LABEL
+    assert display["label"] == gl.ESTIMATE_UNAVAILABLE_LABEL
+    assert display["label"] == "estimate unavailable"
     assert display["central"] is None
     assert "£" not in str(display)
 
 
-def test_zero_area_under_review(tmp_path):
+def test_zero_area_estimate_unavailable(tmp_path):
     path = _write_cfg(tmp_path, enabled=True)
     row = _publishable_row(residential_land_ha=0.0)
     display = gl.surface_rent_display_for_row(row, code=row["code"], path=path)
     assert display["state"] == "under_review"
+    assert display["label"] == "estimate unavailable"
+    assert display["central"] is None
+
+
+def test_negative_area_estimate_unavailable(tmp_path):
+    path = _write_cfg(tmp_path, enabled=True)
+    row = _publishable_row(residential_land_ha=-1.0)
+    display = gl.surface_rent_display_for_row(row, code=row["code"], path=path)
+    assert display["state"] == "under_review"
+    assert display["label"] == "estimate unavailable"
+    assert display["central"] is None
+
+
+def test_clamped_negative_residual_estimate_unavailable(tmp_path):
+    path = _write_cfg(tmp_path, enabled=True)
+    row = _publishable_row(
+        measured_rent=0.0,
+        uncertainty_low=0.0,
+        uncertainty_high=0.0,
+        negative_residual=True,
+    )
+    display = gl.surface_rent_display_for_row(row, code=row["code"], path=path)
+    assert display["state"] == "under_review"
+    assert display["label"] == "estimate unavailable"
+    assert display["central"] is None
+    assert "£" not in str(display)
+
+
+def test_zero_measured_rent_estimate_unavailable(tmp_path):
+    path = _write_cfg(tmp_path, enabled=True)
+    row = _publishable_row(
+        measured_rent=0.0,
+        uncertainty_low=0.0,
+        uncertainty_high=100.0,
+        negative_residual=False,
+    )
+    display = gl.surface_rent_display_for_row(row, code=row["code"], path=path)
+    assert display["state"] == "under_review"
+    assert display["label"] == "estimate unavailable"
     assert display["central"] is None
 
 
@@ -289,13 +355,13 @@ def test_place_card_flag_on_under_review_no_pound(monkeypatch, tmp_path):
     card = place_context(55.86, -4.25)
     display = card["surface_rent_display"]
     assert display["state"] == "under_review"
-    assert display["label"] == gl.UNDER_REVIEW_LABEL
+    assert display["label"] == gl.ESTIMATE_UNAVAILABLE_LABEL
     assert display["low"] is None
     assert display["central"] is None
     assert display["high"] is None
     assert "£" not in str(display)
     surface = next(r for r in card["agr_rows"] if r["id"] == "surface")
-    assert surface["range"] == gl.UNDER_REVIEW_LABEL
+    assert surface["range"] == gl.ESTIMATE_UNAVAILABLE_LABEL
 
 
 def test_placeholder_never_shows_money(tmp_path):
@@ -323,3 +389,5 @@ def test_early_estimates_banner_copy():
     assert gl.EARLY_ESTIMATES_BANNER == (
         "Early estimates; ranges are wide and will change."
     )
+    assert gl.ESTIMATE_UNAVAILABLE_LABEL == "estimate unavailable"
+    assert gl.UNIT_WORDING == "per square metre of land, per year"

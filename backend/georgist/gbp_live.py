@@ -3,12 +3,17 @@
 Reads ``data/config/gbp_live.yaml``. When disabled, place card / legend / How it
 works stay pre-£ (existing publishable guards). When enabled, Data Zone surface
 rent is shown as £ per m² of land a year (low–central–high + estimate label);
-zones listed in ``under_review_zones`` or missing a land-area denominator show
-under-review with no £. Placeholders never show £. Totals stay off; nothing
-finer than Data Zone.
+zones listed in ``under_review_zones``, clamped residuals, or missing/invalid
+land-area denominators show "estimate unavailable" with no £. Placeholders
+never show £. Totals stay off; nothing finer than Data Zone.
 
-GBP-LIVE-V1b: display-layer only — divide zone rent by ``residential_land_ha``
-(existing field) × 10_000. Never touch the surface model.
+GBP-LIVE-V1c (display layer only; surface model untouched):
+  - Numerator = residential surface rent only (``uncertainty_low`` /
+    ``measured_rent`` / ``uncertainty_high``). Farmland / other-land lines are
+    never used.
+  - Denominator = ``residential_land_ha`` (v1.3 plot-split residential land),
+    never ``other_land_ha`` / whole-zone area.
+  - Visitor unit label (frontend) is exact; API ``unit_wording`` carries no £.
 """
 
 from __future__ import annotations
@@ -36,19 +41,35 @@ ESTIMATE_VISITOR: dict[str, str] = {
     ESTIMATE_FULLY: "Fully estimated",
 }
 
-UNDER_REVIEW_LABEL = "Under review"
+# GBP-LIVE-V1c: replaces "Under review" — never show £0 for these cases.
+ESTIMATE_UNAVAILABLE_LABEL = "estimate unavailable"
+# Back-compat alias for imports that still name the under-review path.
+UNDER_REVIEW_LABEL = ESTIMATE_UNAVAILABLE_LABEL
+
 EARLY_ESTIMATES_BANNER = "Early estimates; ranges are wide and will change."
 # Signed-off visitor rent-rate lines (Scot-LAND) — never the banned word "yield".
 RENT_RATE_WORDING_CARD = "Yearly rent: up to 4.5% of the land's value"
 RENT_RATE_WORDING_HOW_IT_WORKS = (
     "We turn land value into a yearly rent of up to 4.5% of that value."
 )
-# GBP-LIVE-V1b unit — API strings carry no £ glyph; frontend formats sterling.
+# API unit strings carry no £ glyph; frontend formats the exact on-screen label.
 UNIT = "per m²"
-UNIT_WORDING = "per m² of land a year"
+# Prose without £ — frontend prepends £ for the signed-off screen label.
+UNIT_WORDING = "per square metre of land, per year"
 CENTRAL_LABEL = "most likely"
-# Existing valuation/display area field (hectares of residential land).
+
+# Residential surface-rent numerator (zone £/year). Never farmland / other-land.
+NUMERATOR_LOW_FIELD = "uncertainty_low"
+NUMERATOR_CENTRAL_FIELD = "measured_rent"
+NUMERATOR_HIGH_FIELD = "uncertainty_high"
+NUMERATOR_FIELDS = (
+    NUMERATOR_LOW_FIELD,
+    NUMERATOR_CENTRAL_FIELD,
+    NUMERATOR_HIGH_FIELD,
+)
+# v1.3 plot-split residential land (hectares). Never other_land_ha / zone_ha.
 AREA_FIELD = "residential_land_ha"
+EXCLUDED_AREA_FIELDS = ("other_land_ha", "zone_ha", "farmland_ha", "settlement_area_ha")
 HA_TO_M2 = 10_000
 
 
@@ -130,11 +151,11 @@ def rent_rate_wording_how_it_works() -> str:
 
 
 def _money_fields(row: Mapping[str, Any]) -> dict[str, float] | None:
-    """Return low/central/high zone rent when all three are finite numbers; else None."""
+    """Return low/central/high residential surface rent when all three are finite."""
     try:
-        low = float(row["uncertainty_low"])
-        central = float(row["measured_rent"])
-        high = float(row["uncertainty_high"])
+        low = float(row[NUMERATOR_LOW_FIELD])
+        central = float(row[NUMERATOR_CENTRAL_FIELD])
+        high = float(row[NUMERATOR_HIGH_FIELD])
     except (KeyError, TypeError, ValueError):
         return None
     if not all(map(_finite, (low, central, high))):
@@ -147,7 +168,10 @@ def _finite(value: float) -> bool:
 
 
 def _area_ha(row: Mapping[str, Any]) -> float | None:
-    """Positive ``residential_land_ha`` from the existing valuation/display row, or None."""
+    """Positive ``residential_land_ha`` (v1.3 plot-split residential), or None.
+
+    Never falls back to ``other_land_ha`` / farmland / whole-zone area.
+    """
     raw = row.get(AREA_FIELD)
     if raw is None or raw == "":
         return None
@@ -160,15 +184,24 @@ def _area_ha(row: Mapping[str, Any]) -> float | None:
     return ha
 
 
+def _is_clamped(row: Mapping[str, Any], money: Mapping[str, float]) -> bool:
+    """Negative residual floored to zero — never publish £0 behind the flag."""
+    if bool(row.get("negative_residual")):
+        return True
+    if money["central"] <= 0 or money["low"] < 0 or money["high"] < 0:
+        return True
+    return False
+
+
 def _per_m2(zone_rent: float, area_ha: float) -> float:
-    """Zone £/year → £ per m² of land a year (display only)."""
-    return round(zone_rent / (area_ha * HA_TO_M2), 2)
+    """Zone £/year → £ per m² of land a year (display only; full precision)."""
+    return zone_rent / (area_ha * HA_TO_M2)
 
 
-def _under_review_payload() -> dict[str, Any]:
+def _unavailable_payload() -> dict[str, Any]:
     return {
         "state": "under_review",
-        "label": UNDER_REVIEW_LABEL,
+        "label": ESTIMATE_UNAVAILABLE_LABEL,
         "estimate_label": None,
         "low": None,
         "central": None,
@@ -204,12 +237,12 @@ def surface_rent_display_for_row(
     """Build the public place-card surface_rent_display block.
 
     States:
-      - under_review: zone in config list, or land area missing — label only, no £
+      - under_review: config list, clamped, or invalid area — label only, no £
       - hidden: placeholder / not publishable / missing money — no £
       - ok: low/central/high as £ per m² + estimate label (flag must already be on)
     """
     if is_under_review(code, path):
-        return _under_review_payload()
+        return _unavailable_payload()
     if row is None or not publicly_served(row):
         return _hidden_payload()
     if row.get("quality") == "placeholder":
@@ -217,10 +250,12 @@ def surface_rent_display_for_row(
     money = _money_fields(row)
     if money is None:
         return _hidden_payload()
+    if _is_clamped(row, money):
+        return _unavailable_payload()
     area_ha = _area_ha(row)
     if area_ha is None:
-        # GBP-LIVE-V1b: no area → Under review and no £ (display layer only).
-        return _under_review_payload()
+        # Missing / zero / negative residential_land_ha → estimate unavailable.
+        return _unavailable_payload()
     machine = resolve_estimate_label(row)
     return {
         "state": "ok",
@@ -234,6 +269,8 @@ def surface_rent_display_for_row(
         "unit": UNIT,
         "unit_wording": UNIT_WORDING,
         "central_label": CENTRAL_LABEL,
+        "numerator": NUMERATOR_CENTRAL_FIELD,
+        "numerator_fields": list(NUMERATOR_FIELDS),
         "denominator": AREA_FIELD,
         "grain": "data_zone",
     }
@@ -257,7 +294,7 @@ def public_settings(path: Path | str | None = None) -> dict[str, Any]:
 _ZONE_ROW_SQL = (
     "SELECT DISTINCT ON (code) code, vintage, measured_rent, uncertainty_low, uncertainty_high, "
     "residential_land_ha, quality, publish_level, publication_status, fill_method, proxy_tags, "
-    "value_tier "
+    "value_tier, negative_residual "
     "FROM surface_rent_dz WHERE code = %s AND vintage = %s "
     "ORDER BY code, valuation_date DESC"
 )
@@ -329,15 +366,15 @@ def attach_gbp_live_to_place_card(
     display = surface_rent_display_for_zone(code, vintage, path=path, row=row)
     card["surface_rent_display"] = display
 
-    # Surface AGR part: under-review label only (money stays on surface_rent_display;
+    # Surface AGR part: unavailable label only (money stays on surface_rent_display;
     # frontend formats £ so API JSON never needs a currency glyph).
     rows = card.get("agr_rows") or []
     for agr in rows:
         if agr.get("id") != "surface":
             continue
         if display["state"] == "under_review":
-            agr["range"] = UNDER_REVIEW_LABEL
-            agr["amount_label"] = UNDER_REVIEW_LABEL
+            agr["range"] = ESTIMATE_UNAVAILABLE_LABEL
+            agr["amount_label"] = ESTIMATE_UNAVAILABLE_LABEL
         elif display["state"] == "ok":
             agr["estimate_label"] = display["estimate_label"]
             agr["amount_label"] = display["estimate_label"]

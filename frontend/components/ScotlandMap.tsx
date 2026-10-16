@@ -272,6 +272,29 @@ const PUBLIC_LAND_MIN_ZOOM = 8;
 /** Protected sites: do not fetch the multi-megabyte extract below this zoom. */
 const DESIGNATIONS_MIN_ZOOM = 6;
 
+type ProtectedPayload = GeoJSON.FeatureCollection & {
+  meta?: { hidden_below_zoom?: boolean };
+};
+
+/** Draw returned outlines. A layer over the size budget contributes nothing. */
+function protectedSitesToDraw(parts: ProtectedPayload[]): {
+  features: GeoJSON.Feature[];
+  hint: boolean;
+} {
+  const features: GeoJSON.Feature[] = [];
+  let withheld = false;
+  for (const part of parts) {
+    if (part?.meta?.hidden_below_zoom === true) {
+      withheld = true;
+      continue;
+    }
+    if (part?.type !== "FeatureCollection") continue;
+    features.push(...(part.features ?? []));
+  }
+  if (features.length === 0 && withheld) return { features: [], hint: true };
+  return { features, hint: false };
+}
+
 type ContextFeaturePayload = GeoJSON.FeatureCollection & {
   meta?: { ok?: boolean; note?: string };
 };
@@ -652,6 +675,7 @@ export default function ScotlandMap() {
   /** CES offshore leases paint when ledger row 4 (seabed & foreshore) is on. */
   const showCrownLeases = Boolean(ledgerEnabled["4"]);
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
+  const [protectedSitesHint, setProtectedSitesHint] = useState(false);
   const layerPopupRef = useRef<maplibregl.Popup | null>(null);
   const dzHoverPopupRef = useRef<maplibregl.Popup | null>(null);
   const identifyAbortRef = useRef<AbortController | null>(null);
@@ -3719,6 +3743,11 @@ export default function ScotlandMap() {
 
     if (!on) {
       setVis("none");
+      setProtectedSitesHint(false);
+      safeSetGeoJson(
+        map.getSource("designations-overlay") as GeoJSONSource | undefined,
+        emptyCollection,
+      );
       return;
     }
 
@@ -3732,6 +3761,11 @@ export default function ScotlandMap() {
       if (!b) return;
       if (map.getZoom() < DESIGNATIONS_MIN_ZOOM) {
         setVis("none");
+        setProtectedSitesHint(false);
+        safeSetGeoJson(
+          map.getSource("designations-overlay") as GeoJSONSource | undefined,
+          emptyCollection,
+        );
         return;
       }
       inFlight = true;
@@ -3745,21 +3779,20 @@ export default function ScotlandMap() {
       ];
       void Promise.all(
         paths.map((path) =>
-          apiJson<GeoJSON.FeatureCollection>(path).catch(
-            () => ({ type: "FeatureCollection", features: [] }) as GeoJSON.FeatureCollection,
+          apiJson<ProtectedPayload>(path).catch(
+            () => ({ type: "FeatureCollection", features: [] }) as ProtectedPayload,
           ),
         ),
       )
         .then((parts) => {
           if (cancelled) return;
-          const features = parts.flatMap((part) =>
-            part?.type === "FeatureCollection" ? part.features ?? [] : [],
-          );
+          const drawn = protectedSitesToDraw(parts);
           safeSetGeoJson(
             map.getSource("designations-overlay") as GeoJSONSource | undefined,
-            { type: "FeatureCollection", features },
+            { type: "FeatureCollection", features: drawn.features },
           );
-          setVis(features.length > 0 ? "visible" : "none");
+          setProtectedSitesHint(drawn.hint);
+          setVis(drawn.features.length > 0 ? "visible" : "none");
         })
         .finally(() => {
           inFlight = false;
@@ -3775,6 +3808,7 @@ export default function ScotlandMap() {
     map.on("moveend", onMove);
     return () => {
       cancelled = true;
+      setProtectedSitesHint(false);
       if (timer) clearTimeout(timer);
       map.off("moveend", onMove);
     };
@@ -4662,6 +4696,14 @@ export default function ScotlandMap() {
           role="application"
           aria-label="Scotland map"
         />
+        {protectedSitesHint ? (
+          <p
+            className="protected-sites-zoom-hint"
+            data-testid="protected-sites-zoom-hint"
+          >
+            Zoom in to see protected sites
+          </p>
+        ) : null}
         {grid3Tooltip ? (
           <div
             className="grid3-tooltip"

@@ -185,10 +185,10 @@ def _area_ha(row: Mapping[str, Any]) -> float | None:
 
 
 def _is_clamped(row: Mapping[str, Any], money: Mapping[str, float]) -> bool:
-    """Negative residual floored to zero — never publish £0 behind the flag."""
+    """Zero / negative residual — never publish £0 behind the flag."""
     if bool(row.get("negative_residual")):
         return True
-    if money["central"] <= 0 or money["low"] < 0 or money["high"] < 0:
+    if money["central"] <= 0 or money["low"] <= 0 or money["high"] <= 0:
         return True
     return False
 

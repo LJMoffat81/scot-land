@@ -76,7 +76,7 @@ export function formatGbp(value: number): string {
 
 /**
  * Format a £/m² rate body with 3 significant figures.
- * Non-finite / negative → "estimate unavailable" (fail closed; never `<£0.01`).
+ * Non-finite / zero / negative (incl. -0) → "estimate unavailable" (fail closed).
  * Finite values below £0.01 → "<£0.01". Never returns "£0.00".
  */
 export function formatGbpPerM2Amount(value: number | null | undefined): string {
@@ -85,8 +85,8 @@ export function formatGbpPerM2Amount(value: number | null | undefined): string {
     return GBP_LIVE_ESTIMATE_UNAVAILABLE;
   }
   const n = typeof value === "number" ? value : Number(value);
-  // NaN / Infinity / negative: unavailable — not a tiny £ rate.
-  if (!Number.isFinite(n) || n < 0) {
+  // NaN / Infinity / zero / negative (incl. -0): unavailable — not a tiny £ rate.
+  if (!Number.isFinite(n) || n <= 0) {
     return GBP_LIVE_ESTIMATE_UNAVAILABLE;
   }
   if (n < GBP_LIVE_MIN_DISPLAY_GBP) {
@@ -126,14 +126,14 @@ export function formatGbpCentralWithRange(
 }
 
 /**
- * GBP-LIVE-V1c: central + range as £ per m² (3 sf; <£0.01 floor).
+ * GBP-LIVE-V1d: central + range as £ per m² (3 sf; <£0.01 floor).
  * Each returned string that carries £ also carries "per m²".
- * Invalid inputs fail closed to "estimate unavailable" (no £).
+ * Invalid / zero / out-of-order inputs fail closed to "estimate unavailable" (no £).
  */
 export function formatGbpCentralWithRangePerM2(
-  low: number,
-  central: number,
-  high: number,
+  low: number | null | undefined,
+  central: number | null | undefined,
+  high: number | null | undefined,
 ): { central: string; range: string } {
   const lo = formatGbpPerM2Amount(low);
   const mid = formatGbpPerM2(central);
@@ -148,11 +148,58 @@ export function formatGbpCentralWithRangePerM2(
       range: GBP_LIVE_ESTIMATE_UNAVAILABLE,
     };
   }
+  // Out-of-order low/central/high → unavailable (no £).
+  if (
+    typeof low === "number" &&
+    typeof central === "number" &&
+    typeof high === "number" &&
+    (low > central || central > high)
+  ) {
+    return {
+      central: GBP_LIVE_ESTIMATE_UNAVAILABLE,
+      range: GBP_LIVE_ESTIMATE_UNAVAILABLE,
+    };
+  }
   return {
     central: mid,
     // Single unit suffix on the range so the string still contains "per m²".
     range: `${lo}\u2013${hi} ${GBP_LIVE_UNIT}`,
   };
+}
+
+
+/**
+ * GBP-LIVE-V1d place-card answer range: per-m² low–high with 3 sf.
+ * Takes low/central/high; returns "estimate unavailable" if any is unavailable
+ * or if low > central or central > high. Values below £0.01 render as "<£0.01".
+ * Never "£0.00". No single-point £, no total.
+ * Exported from placeCard.ts for callers; lives here so Node unit tests can load it.
+ */
+export function formatPlaceCardGbpRange(
+  low: number | null | undefined,
+  central: number | null | undefined,
+  high: number | null | undefined,
+): string {
+  const lo = formatGbpPerM2Amount(low);
+  const mid = formatGbpPerM2Amount(central);
+  const hi = formatGbpPerM2Amount(high);
+  if (
+    lo === GBP_LIVE_ESTIMATE_UNAVAILABLE ||
+    mid === GBP_LIVE_ESTIMATE_UNAVAILABLE ||
+    hi === GBP_LIVE_ESTIMATE_UNAVAILABLE
+  ) {
+    return GBP_LIVE_ESTIMATE_UNAVAILABLE;
+  }
+  // Out-of-order low/central/high → unavailable (no £).
+  if (
+    typeof low === "number" &&
+    typeof central === "number" &&
+    typeof high === "number" &&
+    (low > central || central > high)
+  ) {
+    return GBP_LIVE_ESTIMATE_UNAVAILABLE;
+  }
+  return `${lo} to ${hi} ${GBP_LIVE_UNIT}`;
 }
 
 export function gbpLiveFromCard(card: {

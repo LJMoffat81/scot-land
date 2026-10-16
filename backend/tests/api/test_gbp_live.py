@@ -340,6 +340,38 @@ def test_zero_measured_rent_estimate_unavailable(tmp_path):
     assert display["central"] is None
 
 
+def test_zero_low_estimate_unavailable(tmp_path):
+    """GBP-LIVE-V1d: low <= 0 clamps even when central/high are positive."""
+    path = _write_cfg(tmp_path, enabled=True)
+    row = _publishable_row(
+        measured_rent=100.0,
+        uncertainty_low=0.0,
+        uncertainty_high=200.0,
+        negative_residual=False,
+    )
+    display = gl.surface_rent_display_for_row(row, code=row["code"], path=path)
+    assert display["state"] == "under_review"
+    assert display["label"] == "estimate unavailable"
+    assert display["central"] is None
+    assert "£" not in str(display)
+
+
+def test_zero_high_estimate_unavailable(tmp_path):
+    """GBP-LIVE-V1d: high <= 0 clamps even when central is positive."""
+    path = _write_cfg(tmp_path, enabled=True)
+    row = _publishable_row(
+        measured_rent=100.0,
+        uncertainty_low=50.0,
+        uncertainty_high=0.0,
+        negative_residual=False,
+    )
+    display = gl.surface_rent_display_for_row(row, code=row["code"], path=path)
+    assert display["state"] == "under_review"
+    assert display["label"] == "estimate unavailable"
+    assert display["central"] is None
+    assert "£" not in str(display)
+
+
 def test_place_card_flag_on_under_review_no_pound(monkeypatch, tmp_path):
     _stub_place_seams(monkeypatch)
     path = _write_cfg(tmp_path, enabled=True, under_review=["S01014713"])

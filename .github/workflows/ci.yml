@@ -102,6 +102,7 @@ jobs:
       - run: npm run test:dz-hierarchy
       - run: npm run test:gbp-live-v1
       - run: npm run test:gbp-live-v1c
+      - run: npm run test:gbp-live-v1d
       - run: npm run test:site-rewrite-pr1
       - run: npm run test:site-rewrite-pr2
       - run: npm run check:download-bundles-fresh

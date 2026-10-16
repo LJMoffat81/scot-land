@@ -41,12 +41,15 @@ assert.equal(gbp.formatGbpPerM2(0.12), "\u00a30.120 per m²");
 assert.equal(gbp.formatGbpPerM2(0.06), "\u00a30.0600 per m²");
 assert.equal(gbp.formatGbpPerM2(1.234), "\u00a31.23 per m²");
 
-// Below £0.01 → <£0.01; never £0.00
+// Below £0.01 → <£0.01; never £0.00. Zero / -0 → estimate unavailable (V1d).
 assert.equal(gbp.formatGbpPerM2(0.006), "<\u00a30.01 per m²");
-assert.equal(gbp.formatGbpPerM2(0), "<\u00a30.01 per m²");
+assert.equal(gbp.formatGbpPerM2(0), "estimate unavailable");
+assert.equal(gbp.formatGbpPerM2Amount(0), "estimate unavailable");
+assert.equal(gbp.formatGbpPerM2Amount(-0), "estimate unavailable");
 assert.equal(gbp.formatGbpPerM2Amount(0.009), "<\u00a30.01");
 assert.ok(!gbp.formatGbpPerM2(0.006).includes("\u00a30.00"));
-assert.ok(!gbp.formatGbpPerM2(0).includes("0.00 per"));
+assert.ok(!gbp.formatGbpPerM2(0).includes("£"));
+assert.ok(!gbp.formatGbpPerM2(0).includes("\u00a3"));
 
 // Fail-closed: NaN / undefined / non-finite / negative → estimate unavailable
 assert.equal(gbp.formatGbpPerM2Amount(Number.NaN), "estimate unavailable");
@@ -86,8 +89,10 @@ assert.equal(badRange.range, "estimate unavailable");
 
 {
   const placeCard = readSrc("lib/placeCard.ts");
-  assert.match(placeCard, /formatGbpPerM2Amount/);
-  assert.match(placeCard, /GBP_LIVE_UNIT/);
+  assert.match(
+    placeCard,
+    /export \{ formatPlaceCardGbpRange \} from "\.\/gbpLive"/,
+  );
   assert.match(placeCard, /formatPlaceCardGbpRange/);
 }
 

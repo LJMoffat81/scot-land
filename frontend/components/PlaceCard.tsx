@@ -269,6 +269,8 @@ export function PlaceCard({
       data-testid="place-card"
       data-unit={unitEffective}
       data-fully-estimated={card?.fully_estimated ? "true" : "false"}
+      data-zone-code={card?.data_zone?.code?.trim() || undefined}
+      data-zone-name={card?.data_zone?.name?.trim() || undefined}
     >
       {onClose ? (
         <button

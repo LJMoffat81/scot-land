@@ -81,6 +81,7 @@ import {
 } from "../lib/mapLayerRegistry";
 import {
   isScotlandViewCenter,
+  parseDataZoneCode,
   pushMapUrl,
   readMapUrlState,
   replaceMapUrl,
@@ -872,6 +873,7 @@ export default function ScotlandMap() {
     vacant: boolean;
     community: boolean;
     place: string | null;
+    dz: string | null;
   } | null>(null);
   if (deepLinkCaptureRef.current === null && typeof window !== "undefined") {
     const p = new URLSearchParams(window.location.search);
@@ -887,6 +889,7 @@ export default function ScotlandMap() {
       vacant: p.get("vacant") === "1",
       community: p.get("community") === "1",
       place: p.get("place"),
+      dz: parseDataZoneCode(p.get("dz")),
     };
   }
 
@@ -989,7 +992,10 @@ export default function ScotlandMap() {
         panelHistoryRef.current = true;
       } else if (bootAtLoad.panel === "place") {
         // Content comes from the deep-link identify. An empty slot is a blank card.
-        const canRestore = Boolean(bootAtLoad.place || bootAtLoad.center);
+        // dz= is the selected zone; a centre alone is only the camera.
+        const canRestore = Boolean(
+          bootAtLoad.place || bootAtLoad.dz || bootAtLoad.center,
+        );
         if (!canRestore) {
           replaceMapUrl({ panel: null });
         } else {
@@ -1211,7 +1217,7 @@ export default function ScotlandMap() {
     markerRef.current = null;
     parcelLabelRef.current?.remove();
     parcelLabelRef.current = null;
-    replaceMapUrl({ place: null, panel: null, center: null });
+    replaceMapUrl({ place: null, panel: null, center: null, dz: null });
   }, []);
 
   /** SW-028: close sea stub and reset camera to Scotland national view. */
@@ -1311,21 +1317,25 @@ export default function ScotlandMap() {
       const detent = opts.fromAddressSearch ? "half" : "peek";
       placeDetentMemory = detent;
       setPanelDetent(detent);
+      const knownCode = parseDataZoneCode(opts.dataZoneCode);
+      const knownName = opts.dataZoneName?.trim() || null;
+      const zoneForUrl = knownCode;
       if (!panelHistoryRef.current) {
         pushMapUrl({
           center: { lng, lat },
           panel: keepLayersOpen ? "layers" : "place",
+          // Drop a previous zone until this point's code is known.
+          dz: zoneForUrl,
         });
         panelHistoryRef.current = true;
       } else {
         replaceMapUrl({
           center: { lng, lat },
           panel: keepLayersOpen ? "layers" : "place",
+          dz: zoneForUrl,
         });
       }
       setAddressLine(opts.label ?? null);
-      const knownCode = opts.dataZoneCode?.trim() || null;
-      const knownName = opts.dataZoneName?.trim() || null;
       // Keep the prior card when re-inspecting the same point so the sea-line
       // (and its × padding) is not unmounted mid-paint (SW-030 / UX-01 e2e).
       // Honour lookupGen inside the updater so a clearPlace that landed after
@@ -1377,8 +1387,9 @@ export default function ScotlandMap() {
               { cache: "no-store", signal: identifyAbort.signal },
             );
             if (gen !== lookupGen.current || identifyAbort.signal.aborted) return;
-            const code = data.code?.trim() || null;
+            const code = parseDataZoneCode(data.code);
             const name = data.name?.trim() || null;
+            if (code) replaceMapUrl({ dz: code });
             setPlaceStub((prev) => {
               if (gen !== lookupGen.current) return prev;
               return prev && prev.lat === lat && prev.lng === lng
@@ -1407,6 +1418,9 @@ export default function ScotlandMap() {
           signal: identifyAbort.signal,
         });
         if (gen !== lookupGen.current || identifyAbort.signal.aborted) return;
+        const cardZone = parseDataZoneCode(card.data_zone?.code);
+        const pinnedZone = knownCode || cardZone;
+        if (pinnedZone) replaceMapUrl({ dz: pinnedZone });
         setPlaceStub((prev) => {
           if (gen !== lookupGen.current) return prev;
           return prev && prev.lat === lat && prev.lng === lng
@@ -1414,7 +1428,7 @@ export default function ScotlandMap() {
                 ...prev,
                 card,
                 dataZoneCode:
-                  prev.dataZoneCode || card.data_zone?.code || null,
+                  prev.dataZoneCode || cardZone,
                 dataZoneName:
                   prev.dataZoneName || card.data_zone?.name || null,
                 dataZoneVintage:
@@ -2970,13 +2984,65 @@ export default function ScotlandMap() {
         fromAddressSearch: true,
         keepCollapsed: panelCollapsedRef.current,
       });
-    } else if (captured?.place && boot.center) {
+    } else if (captured?.place && boot.center && !(boot.dz || captured.dz)) {
       // place= + c= after rewrite — still identify at the captured centre.
+      // A selected Data Zone wins over that centre.
       void inspectRef.current(boot.center.lat, boot.center.lng, {
         fly: true,
         fromAddressSearch: true,
         keepCollapsed: panelCollapsedRef.current,
       });
+    } else if (boot.panel === "place" && (boot.dz || captured?.dz)) {
+      // Reload restores the selected Data Zone. Never the map centre.
+      const zoneCode = boot.dz || captured?.dz || null;
+      const remembered = placeDetentMemory;
+      const stub = placeStubRef.current;
+      const alreadyOpen =
+        zoneCode != null &&
+        remembered != null &&
+        panelKindRef.current === "place" &&
+        stub?.dataZoneCode === zoneCode;
+      if (zoneCode && !alreadyOpen) {
+        void (async () => {
+          try {
+            const zone = await apiJson<{
+              code?: string;
+              name?: string | null;
+              vintage?: number;
+              lat?: number;
+              lng?: number;
+            }>(
+              `/layers/context/data-zones/by-code?code=${encodeURIComponent(zoneCode)}`,
+              { cache: "no-store" },
+            );
+            const code = parseDataZoneCode(zone.code);
+            const lat = zone.lat;
+            const lng = zone.lng;
+            if (
+              code !== zoneCode ||
+              typeof lat !== "number" ||
+              typeof lng !== "number" ||
+              !Number.isFinite(lat) ||
+              !Number.isFinite(lng)
+            ) {
+              return;
+            }
+            await inspectRef.current(lat, lng, {
+              fly: remembered == null,
+              fromAddressSearch: remembered !== "peek",
+              keepCollapsed: panelCollapsedRef.current,
+              label: zone.name?.trim() || null,
+              dataZoneCode: code,
+              dataZoneName: zone.name?.trim() || null,
+              dataZoneVintage:
+                typeof zone.vintage === "number" ? zone.vintage : null,
+            });
+          } catch {
+            // No boundary for this code: leave the card unset. Do not
+            // identify at the map centre or substitute another zone.
+          }
+        })();
+      }
     } else if (boot.panel === "place" && boot.center) {
       // panel=place with a centre and no lat/lng pair — reopen that place.
       // A map-tap or search URL write remounts the map. If this card is

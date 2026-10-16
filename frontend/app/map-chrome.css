@@ -743,6 +743,12 @@
   color: inherit;
 }
 
+/* UI-FIX-3: place card already has the close control. Hide the sheet ×
+   while a place card is open so only one close shows. Layers keeps this ×. */
+.map-panel-slot--place .map-panel-slot-close {
+  display: none !important;
+}
+
 .map-panel-slot-scroll {
   flex: 1 1 auto;
   overflow-x: hidden;
@@ -1240,6 +1246,27 @@
   z-index: 1;
   padding-top: 0.35rem;
   padding-bottom: 0.15rem;
+}
+
+/* UI-FIX-3: drop the empty tail under the disclaimer (.hud-place padding)
+   and the yellow focus rule on .map-panel-slot-focus (outline #ffdd00). */
+.map-panel-slot--place .hud-place.place-card,
+.map-panel-slot--place .place-card-stub.place-card {
+  padding-bottom: 0 !important;
+}
+
+.map-panel-slot.map-panel-slot--place .place-card .place-card-experimental-footer,
+.map-panel-slot.map-panel-slot--place .hud-place .place-card-experimental-footer,
+.map-panel-slot.map-panel-slot--place .place-card .place-card-experimental-footer-sticky,
+.map-panel-slot.map-panel-slot--place .hud-place .place-card-experimental-footer-sticky {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.map-panel-slot--place .map-panel-slot-focus:focus,
+.map-panel-slot--place .map-panel-slot-focus:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .map-panel-slot .layers-panel {

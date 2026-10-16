@@ -251,7 +251,7 @@ test.describe("UX10-1 / MAP-CARDS place card desktop 1280", () => {
     expect(box).toBeTruthy();
     expect(box!.y + box!.height).toBeLessThanOrEqual(800);
 
-    const close = page.getByTestId("map-panel-slot-close");
+    const close = page.getByRole("button", { name: "Close place card" });
     const closeBox = await close.boundingBox();
     expect(closeBox!.height).toBeGreaterThanOrEqual(44);
 

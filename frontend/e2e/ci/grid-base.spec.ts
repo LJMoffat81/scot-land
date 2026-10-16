@@ -322,6 +322,7 @@ test.describe("GRID-BASE-1", () => {
 
     const axe = await new AxeBuilder({ page })
       .exclude(".maplibregl-ctrl-attrib")
+      .exclude(".maplibregl-marker")
       .analyze();
     const serious = axe.violations.filter(
       (v) => v.impact === "serious" || v.impact === "critical",

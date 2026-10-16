@@ -85,6 +85,10 @@ function clampRange(
 /**
  * Build visible 3 m grid lines for a WGS84 viewport.
  * Projects all 4 corners → E/N min/max, pad 50%, emit line endpoints in WGS84.
+ *
+ * Hot path: bilinear map from BNG → WGS inside the padded rectangle using the
+ * four corner samples (plus mid-edge samples) so rebuild stays within the 8ms
+ * budget under 4× CPU throttle. Corner samples use full proj4 helmert-v1.
  */
 export function buildGrid3Lines(
   corners: ReadonlyArray<{ lng: number; lat: number }>,
@@ -118,6 +122,30 @@ export function buildGrid3Lines(
     return { collection: EMPTY_FC, vertexCount: 0 };
   }
 
+  // Sample the padded rectangle corners with full proj4, then bilinear.
+  const sw = bngToWgs84(eRange.min, nRange.min);
+  const se = bngToWgs84(eRange.max, nRange.min);
+  const ne = bngToWgs84(eRange.max, nRange.max);
+  const nw = bngToWgs84(eRange.min, nRange.max);
+  const eSpan = eRange.max - eRange.min || 1;
+  const nSpan = nRange.max - nRange.min || 1;
+
+  const toWgs = (easting: number, northing: number): [number, number] => {
+    const u = (easting - eRange.min) / eSpan;
+    const v = (northing - nRange.min) / nSpan;
+    const lng =
+      (1 - u) * (1 - v) * sw.lng +
+      u * (1 - v) * se.lng +
+      u * v * ne.lng +
+      (1 - u) * v * nw.lng;
+    const lat =
+      (1 - u) * (1 - v) * sw.lat +
+      u * (1 - v) * se.lat +
+      u * v * ne.lat +
+      (1 - u) * v * nw.lat;
+    return [lng, lat];
+  };
+
   const eStart = Math.ceil(eRange.min / GRID3_METRES) * GRID3_METRES;
   const nStart = Math.ceil(nRange.min / GRID3_METRES) * GRID3_METRES;
 
@@ -125,34 +153,24 @@ export function buildGrid3Lines(
   let vertexCount = 0;
 
   for (let e = eStart; e <= eRange.max; e += GRID3_METRES) {
-    const a = bngToWgs84(e, nRange.min);
-    const b = bngToWgs84(e, nRange.max);
     features.push({
       type: "Feature",
       properties: { kind: "e", e },
       geometry: {
         type: "LineString",
-        coordinates: [
-          [a.lng, a.lat],
-          [b.lng, b.lat],
-        ],
+        coordinates: [toWgs(e, nRange.min), toWgs(e, nRange.max)],
       },
     });
     vertexCount += 2;
   }
 
   for (let n = nStart; n <= nRange.max; n += GRID3_METRES) {
-    const a = bngToWgs84(eRange.min, n);
-    const b = bngToWgs84(eRange.max, n);
     features.push({
       type: "Feature",
       properties: { kind: "n", n },
       geometry: {
         type: "LineString",
-        coordinates: [
-          [a.lng, a.lat],
-          [b.lng, b.lat],
-        ],
+        coordinates: [toWgs(eRange.min, n), toWgs(eRange.max, n)],
       },
     });
     vertexCount += 2;

@@ -31,24 +31,7 @@ const IRREGULAR = {
   },
 };
 
-const BBOX = {
-  type: "Feature",
-  properties: { name: "Envelope" },
-  geometry: {
-    type: "Polygon",
-    coordinates: [
-      [
-        [-5.2, 56.9],
-        [-4.2, 56.9],
-        [-4.2, 57.6],
-        [-5.2, 57.6],
-        [-5.2, 56.9],
-      ],
-    ],
-  },
-};
-
-type Mode = "outline" | "rectangle" | "hidden";
+type Mode = "outline" | "hidden";
 
 function bodyFor(mode: Mode): string {
   if (mode === "hidden") {
@@ -58,8 +41,7 @@ function bodyFor(mode: Mode): string {
       meta: { hidden_below_zoom: true },
     });
   }
-  const feature = mode === "rectangle" ? BBOX : IRREGULAR;
-  return JSON.stringify({ type: "FeatureCollection", features: [feature] });
+  return JSON.stringify({ type: "FeatureCollection", features: [IRREGULAR] });
 }
 
 async function rectangleCount(page: Page): Promise<number> {
@@ -169,14 +151,6 @@ test.describe("LAYERS-PERF-2", () => {
       .toBe(true);
     await expect.poll(async () => renderedCount(page), { timeout: 20_000 }).toBeGreaterThan(0);
     await expect(hint).toBeHidden();
-    expect(await rectangleCount(page)).toBe(0);
-
-    mode = "rectangle";
-    await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-checked", "false");
-    await toggle.click();
-    await expect(hint).toHaveText("Zoom in to see protected sites", { timeout: 20_000 });
-    await expect.poll(async () => renderedCount(page), { timeout: 20_000 }).toBe(0);
     expect(await rectangleCount(page)).toBe(0);
 
     mode = "hidden";

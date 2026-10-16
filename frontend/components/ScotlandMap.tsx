@@ -276,40 +276,7 @@ type ProtectedPayload = GeoJSON.FeatureCollection & {
   meta?: { hidden_below_zoom?: boolean };
 };
 
-function isFivePointAxisAlignedRectangle(
-  geometry: GeoJSON.Geometry | null | undefined,
-): boolean {
-  if (!geometry) return false;
-  if (geometry.type === "MultiPolygon") {
-    if (geometry.coordinates.length !== 1) return false;
-    return isFivePointAxisAlignedRectangle({
-      type: "Polygon",
-      coordinates: geometry.coordinates[0],
-    });
-  }
-  if (geometry.type !== "Polygon") return false;
-  if (geometry.coordinates.length !== 1) return false;
-  const ring = geometry.coordinates[0];
-  if (!ring || ring.length !== 5) return false;
-  const [first, , , , last] = ring;
-  if (!first || !last || first[0] !== last[0] || first[1] !== last[1]) return false;
-  const corners = ring.slice(0, 4);
-  const xs = corners.map((point) => point[0]);
-  const ys = corners.map((point) => point[1]);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  if (minX === maxX || minY === maxY) return false;
-  if (new Set(xs).size !== 2 || new Set(ys).size !== 2) return false;
-  return corners.every(
-    (point) =>
-      (point[0] === minX || point[0] === maxX) &&
-      (point[1] === minY || point[1] === maxY),
-  );
-}
-
-/** Real outlines, or nothing when the API hid the layer or sent a bounding box. */
+/** Draw returned outlines. A layer over the size budget contributes nothing. */
 function protectedSitesToDraw(parts: ProtectedPayload[]): {
   features: GeoJSON.Feature[];
   hint: boolean;
@@ -322,13 +289,7 @@ function protectedSitesToDraw(parts: ProtectedPayload[]): {
       continue;
     }
     if (part?.type !== "FeatureCollection") continue;
-    for (const feature of part.features ?? []) {
-      if (isFivePointAxisAlignedRectangle(feature.geometry)) {
-        withheld = true;
-        continue;
-      }
-      features.push(feature);
-    }
+    features.push(...(part.features ?? []));
   }
   if (features.length === 0 && withheld) return { features: [], hint: true };
   return { features, hint: false };

@@ -816,8 +816,11 @@
   .map-cards-shell .map-panel-slot--full ~ .basemap-switcher,
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .basemap-switcher,
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .maplibregl-ctrl-bottom-right,
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .hud-layers-btn {
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .hud-layers-btn,
+  .app-shell.map-narrow.tools-open:has(.map-panel-slot--full) .basemap-switcher,
+  .app-shell.map-narrow.tools-open:has(.map-panel-slot--full) .maplibregl-ctrl-bottom-right {
     opacity: 0;
+    visibility: hidden;
     pointer-events: none;
   }
 

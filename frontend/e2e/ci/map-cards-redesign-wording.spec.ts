@@ -206,6 +206,7 @@ test.describe("MAP-CARDS default view gbp-live on (1280)", () => {
     await page.goto("/?layers=flood&place=S01014567&lat=55.86&lng=-4.25");
     await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
     await openLayers(page);
+    await ensureLayersGroupOpen(page, "nature");
     await ensureLayersGroupOpen(page, "land");
     await expect(page.getByTestId("layer-toggle-flood")).toHaveAttribute(
       "aria-checked",

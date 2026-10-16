@@ -1,7 +1,10 @@
 /**
  * MAP-CARDS basemap — OpenFreeMap Positron (light) ↔ Liberty (detailed).
  * Esri satellite is not offered (licence).
+ * The map requests the style through /api/ofm so TileJSON stays same-origin.
  */
+
+import { ofmProxyUrl } from "./ofmProxy";
 
 export type MapBasemapId = "light" | "detailed";
 
@@ -32,5 +35,5 @@ export function basemapAriaLabel(target: MapBasemapId): string {
 }
 
 export function basemapStyleUrl(id: MapBasemapId): string {
-  return MAP_BASEMAP_STYLE_URL[id];
+  return ofmProxyUrl(MAP_BASEMAP_STYLE_URL[id]);
 }

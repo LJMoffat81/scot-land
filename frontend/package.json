@@ -24,6 +24,7 @@
     "test:map-reference-osgb": "node --experimental-strip-types scripts/test-map-reference-osgb.mjs",
     "test:bng": "node --experimental-strip-types scripts/test-bng.mjs",
     "test:map-url-state": "node --experimental-strip-types scripts/test-map-url-state.mjs",
+    "test:ofm-proxy": "node --experimental-strip-types scripts/test-ofm-proxy.mjs",
     "test:dz-hierarchy": "node --experimental-strip-types scripts/test-dz-hierarchy.mjs",
     "test:gbp-live-v1": "node --experimental-strip-types scripts/test-gbp-live-v1.mjs",
     "test:gbp-live-v1c": "node --experimental-strip-types scripts/test-gbp-live-v1c.mjs",

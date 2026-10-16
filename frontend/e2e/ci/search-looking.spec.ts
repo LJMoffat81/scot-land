@@ -71,6 +71,23 @@ function attachConsoleTraps(
 
 /** Stub basemap style/tiles so CDN flakes cannot throw bare pageerror "Error". */
 async function stubMapBasemap(page: Page) {
+  // The map loads the style from /api/ofm. Keep that on the stub too.
+  await page.route("**/api/ofm/**", async (route) => {
+    const url = route.request().url();
+    if (/\/styles\//i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(STUB_MAP_STYLE),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: TINY_PNG,
+    });
+  });
   // One host handler: style JSON vs raster (LIFO would otherwise serve PNG for
   // https://tiles.openfreemap.org/styles/positron).
   await page.route("**/tiles.openfreemap.org/**", async (route) => {

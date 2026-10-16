@@ -609,8 +609,29 @@ export default function ScotlandMap() {
   const [scenario, setScenario] = useState<ScenarioId>("full_agr");
   // Public shell: never paint council-area AGR £ / rent £/m² (internal-only until calibration).
   const choropleth: MetricId | "off" = "off";
+<<<<<<< HEAD
   /** Council boundary lines — registry defaultOn. */
   const [showCouncils, setShowCouncils] = useState(true);
+=======
+  const [showBoundaries, setShowBoundaries] = useState(false);
+  const [showCellGrid] = useState(false);
+  /** GRID-BASE-1 — open 3 m BNG grid (default off; boot from ?layers=grid3). */
+  const [showGrid3, setShowGrid3] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const layers = new URL(window.location.href).searchParams.get("layers");
+    if (!layers) return false;
+    return layers
+      .split(",")
+      .map((s) => s.trim())
+      .includes(GRID3_LAYER_ID);
+  });
+  const [grid3Square, setGrid3Square] = useState<Grid3Square | null>(null);
+  const [grid3Tooltip, setGrid3Tooltip] = useState<{
+    x: number;
+    y: number;
+    ref: string;
+  } | null>(null);
+>>>>>>> b75e223 (fix(map): boot grid3 from layers= before URL sync strips it)
   const [showVdl, setShowVdl] = useState(false);
   const [showHla, setShowHla] = useState(false);
   // SG 2024 public/Crown dashboard: licence unverified/not open — never paint
@@ -2939,6 +2960,7 @@ export default function ScotlandMap() {
     const lineVis = showCouncils ? "visible" : "none";
     map.setLayoutProperty("council-line", "visibility", lineVis);
 
+<<<<<<< HEAD
     // Fill only when AGR/value layer is on and at overview zooms (z5–7).
     const fillOn = showCouncils && showAgr && zoom >= 5 && zoom < 8;
     map.setLayoutProperty(
@@ -2948,6 +2970,8 @@ export default function ScotlandMap() {
     );
   }, [mapReady, choropleth, showCouncils, showAgr, mapZoom]);
 
+=======
+>>>>>>> b75e223 (fix(map): boot grid3 from layers= before URL sync strips it)
   // GRID-BASE-1 — device-drawn lines on moveend; lazy-load proj4 chunk (G9).
   useEffect(() => {
     if (!mapReady) return;

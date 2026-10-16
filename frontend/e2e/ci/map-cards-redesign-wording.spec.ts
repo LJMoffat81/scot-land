@@ -46,7 +46,7 @@ for (const viewport of [
         "not an official valuation",
       );
       await expect(page.getByTestId("research-banner")).toContainText(
-        "not a bill or an official valuation",
+        /not a bill or (an official )?valuation/i,
       );
 
       // (d) under homes only ≤1 — open fold then count

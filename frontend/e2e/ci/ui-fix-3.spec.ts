@@ -135,6 +135,10 @@ async function openCard(page: Page, query: string) {
   await page.locator(".hud-search-go").click();
   await expect(page.getByTestId("place-card")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId("place-card-close")).toBeVisible();
+  await expect(page.getByTestId("place-card-placeholders")).toHaveCount(0);
+  await expect(page.getByTestId("place-card-place")).toBeVisible({
+    timeout: 30_000,
+  });
 }
 
 type EmptyAudit = {

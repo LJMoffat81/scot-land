@@ -653,7 +653,7 @@
   }
 
   .map-cards-shell.tools-open .map-stage .maplibregl-ctrl-bottom-right {
-    right: 10px;
+    right: 0;
   }
 
   /* UI-TWEAKS-1 T1: shell clips; .layer-panel is the only scroller. */
@@ -1004,6 +1004,19 @@
   .app-shell.place-open .map-attribution-line {
     left: calc(380px + 1.5rem);
     max-width: calc(100% - 380px - 6rem);
+  }
+
+  /* Layers sits in the right column, so the line stays left of that column. */
+  .app-shell.tools-open:not(.place-open) .map-attribution-line {
+    left: 0.5rem;
+    right: calc(380px + 1.5rem);
+    max-width: calc(100% - 380px - 2.5rem);
+  }
+
+  .app-shell.tools-open.place-open .map-attribution-line {
+    left: calc(380px + 1.5rem);
+    right: calc(380px + 1.5rem);
+    max-width: calc(100% - 760px - 3rem);
   }
 }
 

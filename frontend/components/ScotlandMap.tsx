@@ -469,6 +469,12 @@ const PANEL_DESKTOP_WIDTH = 380;
 const PANEL_DESKTOP_GAP = 12;
 const PANEL_MOBILE_BREAKPOINT = 900;
 
+/**
+ * Survives a map remount caused by the place URL write.
+ * A map tap stays peek; address search stays half. A full reload clears it.
+ */
+let placeDetentMemory: "peek" | "half" | null = null;
+
 /** MapLibre padding so flyTo centres in the uncovered map (GIS 12). */
 function mapPanelPadding(opts?: {
   panelOpen?: boolean;
@@ -1072,6 +1078,7 @@ export default function ScotlandMap() {
     }
     setPanelKind("place");
     setPanelCollapsed(false);
+    placeDetentMemory = "half";
     setPanelDetent("half");
     setRestPromptVisible(false);
 
@@ -1164,6 +1171,7 @@ export default function ScotlandMap() {
     setError(null);
     setAddressLine(null);
     setPlaceStub(null);
+    placeDetentMemory = null;
     setPlaceLoading(false);
     setGrid3Square(null);
     setSearchNoMatch(false);
@@ -1272,7 +1280,9 @@ export default function ScotlandMap() {
       placeAsideRef.current = false;
       setPanelKind("place");
       if (!opts.keepCollapsed) setPanelCollapsed(false);
-      setPanelDetent(opts.fromAddressSearch ? "half" : "peek");
+      const detent = opts.fromAddressSearch ? "half" : "peek";
+      placeDetentMemory = detent;
+      setPanelDetent(detent);
       if (!panelHistoryRef.current) {
         pushMapUrl({
           center: { lng, lat },
@@ -2941,12 +2951,25 @@ export default function ScotlandMap() {
       });
     } else if (boot.panel === "place" && boot.center) {
       // panel=place with a centre and no lat/lng pair — reopen that place.
-      void inspectRef.current(boot.center.lat, boot.center.lng, {
-        fly: true,
-        fromAddressSearch: true,
-        keepCollapsed: panelCollapsedRef.current,
-        label: boot.place,
-      });
+      // A map-tap or search URL write remounts the map. If this card is
+      // already open on that point, do not identify again (that forced
+      // peek taps to half and put the loading rows back under the card).
+      const remembered = placeDetentMemory;
+      const stub = placeStubRef.current;
+      const alreadyOpen =
+        remembered != null &&
+        panelKindRef.current === "place" &&
+        stub != null &&
+        Math.abs(stub.lat - boot.center.lat) < 0.00002 &&
+        Math.abs(stub.lng - boot.center.lng) < 0.00002;
+      if (!alreadyOpen) {
+        void inspectRef.current(boot.center.lat, boot.center.lng, {
+          fly: remembered == null,
+          fromAddressSearch: remembered !== "peek",
+          keepCollapsed: panelCollapsedRef.current,
+          label: boot.place,
+        });
+      }
     } else if (boot.panel === "place") {
       replaceMapUrl({ panel: null });
     } else {

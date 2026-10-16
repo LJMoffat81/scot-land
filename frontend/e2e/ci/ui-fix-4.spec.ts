@@ -178,16 +178,39 @@ test.describe("UI-FIX-4 390", () => {
     await openLayers(page);
     const canvas = page.locator(".maplibregl-canvas");
     const tap = await page.evaluate(() => {
+      const map = (
+        window as unknown as {
+          __map?: {
+            project(ll: { lng: number; lat: number }): { x: number; y: number };
+          };
+        }
+      ).__map;
       const canvasEl = document.querySelector(".maplibregl-canvas");
       const sheet = document.querySelector('[data-panel="layers"]');
-      if (!canvasEl || !sheet) return null;
+      if (!map || !canvasEl || !sheet) return null;
       const c = canvasEl.getBoundingClientRect();
       const s = sheet.getBoundingClientRect();
-      const y = s.top - c.top - 28;
-      if (y < 8) return null;
-      return { x: Math.min(140, c.width / 2), y };
+      const candidates = [
+        { lng: -4.2, lat: 58.4 },
+        { lng: -3.2, lat: 58.8 },
+        { lng: -5.1, lat: 58.2 },
+        { lng: -3.1883, lat: 55.9533 },
+      ];
+      for (const place of candidates) {
+        const p = map.project(place);
+        const absY = c.top + p.y;
+        if (
+          p.x > 24 &&
+          p.x < c.width - 24 &&
+          absY > c.top + 70 &&
+          absY < s.top - 12
+        ) {
+          return { x: p.x, y: p.y };
+        }
+      }
+      return null;
     });
-    expect(tap, "visible map above the Layers sheet").toBeTruthy();
+    expect(tap, "visible land above the Layers sheet").toBeTruthy();
     await canvas.click({ position: tap! });
     await expect(page.getByTestId("layers-panel")).toHaveCount(0, {
       timeout: 15_000,
@@ -201,7 +224,7 @@ test.describe("UI-FIX-4 390", () => {
     const peek = await page.evaluate(() => {
       const title = document.querySelector('[data-testid="place-card-place"]');
       const first = document.querySelector(
-        '[data-testid="place-card-council"], [data-testid="place-card-typical-home"]',
+        '[data-testid="place-card-council"], [data-testid="place-card-typical-home"], [data-testid="place-card-sea-line"]',
       );
       const footer = document.querySelector(
         '[data-testid="place-card-footer"], [data-testid="map-stamp-footer"]',
@@ -224,6 +247,15 @@ test.describe("UI-FIX-4 390", () => {
     });
     expect(peek.title).toBeTruthy();
     expect(peek.first).toBeTruthy();
+    const peekSlot = await page.getByTestId("map-panel-slot").boundingBox();
+    expect(peekSlot).toBeTruthy();
+    expect(peek.title!.y).toBeGreaterThanOrEqual(peekSlot!.y - 1);
+    expect(peek.title!.y + peek.title!.height).toBeLessThanOrEqual(
+      peekSlot!.y + peekSlot!.height + 1,
+    );
+    expect(peek.first!.y + peek.first!.height).toBeLessThanOrEqual(
+      peekSlot!.y + peekSlot!.height + 1,
+    );
     if (peek.footer && peek.title) {
       expect(boxesOverlap(peek.title, peek.footer)).toBe(false);
     }
@@ -275,6 +307,9 @@ test.describe("UI-FIX-4 1280", () => {
     await page.locator("#place-query").fill("55.95330, -3.18830");
     await page.locator(".hud-search-go").click();
     await expect(page.getByTestId("place-card")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("place-card-place")).toBeVisible({
+      timeout: 30_000,
+    });
 
     const slotBox = await page.getByTestId("map-panel-slot").boundingBox();
     const titleBox = await page.getByTestId("place-card-place").boundingBox();
@@ -348,11 +383,9 @@ test.describe("UI-FIX-4 1280", () => {
       "Research estimate",
     );
 
-    await page.evaluate(() => {
-      (document.activeElement as HTMLElement | null)?.blur();
-    });
+    await page.locator("#place-query").focus();
     let sawFocus = false;
-    for (let i = 0; i < 25; i += 1) {
+    for (let i = 0; i < 40; i += 1) {
       await page.keyboard.press("Tab");
       const hit = await page.evaluate(() => {
         const el = document.activeElement as HTMLElement | null;

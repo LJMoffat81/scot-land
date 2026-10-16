@@ -124,3 +124,25 @@
     text-overflow: ellipsis;
   }
 }
+
+/* BANNER-FIT-1 (SW-074): content pages wrap the collapsed strip onto two lines. */
+@media (max-width: 480px) {
+  .research-banner-page.research-banner-strip:not(.research-banner-expanded) {
+    align-items: flex-start;
+    overflow: visible;
+  }
+
+  .research-banner-page.research-banner-strip:not(.research-banner-expanded)
+    .research-banner-toggle {
+    align-items: flex-start;
+  }
+
+  .research-banner-page.research-banner-strip:not(.research-banner-expanded)
+    .research-banner-text {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+}

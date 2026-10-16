@@ -1,3 +1,4 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test } from "@playwright/test";
 import {
   assertConsoleClean,
@@ -13,6 +14,9 @@ import {
   stubMapCardsBackend,
   visibleMapText,
 } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * MAP-CARDS checks 8–10, 12, 20–22, 36 — say-it-once, wording, no-match,
@@ -140,7 +144,13 @@ for (const viewport of [
       await openLayers(page);
 
       const panel = page.getByTestId("layers-panel");
-      await expect(panel).not.toContainText(/coming soon|coming later/i);
+      await expect(panel).not.toContainText(/coming soon/i);
+      // LAYERS-NAV-1 placeholders use the roadmap tag "Coming later".
+      // Live switches still must not.
+      const switchText = await panel.getByRole("switch").allInnerTexts();
+      for (const line of switchText) {
+        expect(line).not.toMatch(/coming soon|coming later/i);
+      }
 
       await ensureLayersGroupOpen(page, "land");
       await page.getByTestId("layer-toggle-1").click();

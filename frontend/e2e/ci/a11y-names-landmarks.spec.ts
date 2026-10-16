@@ -1,7 +1,11 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * UX-04 — accessible names on buttons; unique landmark labels.

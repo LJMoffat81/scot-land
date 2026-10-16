@@ -5,9 +5,12 @@ import {
   ensureLayersGroupOpen,
   openLayers,
   openMap,
+  registerOpenFreeMapFontStub,
   stubMapCardsBackend,
   waitForMap,
 } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
 
 /**
  * LAYERS-PERF-2 — at z6 the map shows real outlines or the zoom hint.

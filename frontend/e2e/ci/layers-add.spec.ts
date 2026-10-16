@@ -1,3 +1,4 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
 import {
   assertConsoleClean,
@@ -8,6 +9,9 @@ import {
   openMap,
   stubMapCardsBackend,
 } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * LAYERS-ADD-1 — registry rows default OFF; LDP/HLS on roadmap; no £; banned names.

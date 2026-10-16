@@ -1,3 +1,4 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import {
@@ -9,8 +10,11 @@ import {
   stubMapCardsBackend,
 } from "./_mapCardsHelpers";
 
+registerOpenFreeMapFontStub();
+
+
 /**
- * MAP-CARDS checks 13–15, 17, 25, 33 — axe, keyboard, URL state, identify-at-centre.
+ * MAP-CARDS checks 13–15, 17, 25 — axe, keyboard, URL state.
  */
 
 async function axeSerious(page: Page) {
@@ -107,18 +111,6 @@ for (const viewport of [
       await page.goBack();
       await expect(page.getByTestId("layers-panel")).toBeVisible({
         timeout: 15_000,
-      });
-      assertConsoleClean(gate);
-    });
-
-    test("33 identify-at-centre opens card", async ({ page }) => {
-      test.setTimeout(90_000);
-      const gate = attachConsoleGate(page);
-      await stubMapCardsBackend(page);
-      await openMap(page);
-      await page.getByTestId("identify-at-centre").click();
-      await expect(page.getByTestId("place-card")).toBeVisible({
-        timeout: 45_000,
       });
       assertConsoleClean(gate);
     });

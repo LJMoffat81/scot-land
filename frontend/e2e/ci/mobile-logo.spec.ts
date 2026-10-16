@@ -1,5 +1,9 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Locator } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /** Collect console errors / pageerror for every test (data-page.spec.ts pattern). */
 const consoleErrors: string[] = [];

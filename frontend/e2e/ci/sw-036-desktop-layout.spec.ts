@@ -1,5 +1,9 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Locator, type Page } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * MAP-CARDS desktop layout at 1280×800 — one panel slot (place XOR Layers);

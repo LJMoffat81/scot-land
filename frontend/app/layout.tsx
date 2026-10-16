@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     ],
     apple: [{ url: `/apple-touch-icon.png${H3_ASSET_QUERY}`, sizes: "180x180" }],
   },
-  manifest: "/site.webmanifest",
+  manifest: `/site.webmanifest${H3_ASSET_QUERY}`,
   openGraph: {
     title: "Map | Scot-LAND",
     description: OG_DESCRIPTION,

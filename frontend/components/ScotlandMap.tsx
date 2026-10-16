@@ -82,6 +82,14 @@ import {
   readMapUrlState,
   replaceMapUrl,
 } from "../lib/mapUrlState";
+import { grid3Row6Text } from "../lib/bng";
+import {
+  GRID3_HOVER_ZOOM,
+  GRID3_LAYER_ID,
+  GRID3_MIN_ZOOM,
+  GRID3_TAP_ZOOM,
+} from "../lib/grid3Map";
+import type { Grid3Square } from "../lib/grid3Map";
 
 type ParcelFeature = GeoJSON.Feature<
   GeoJSON.Polygon | GeoJSON.MultiPolygon,
@@ -473,6 +481,7 @@ function activeRegistryLayerIds(opts: {
   showRepd: boolean;
   showCrownLeases: boolean;
   showCroftingConstraint: boolean;
+  showGrid3: boolean;
   ledgerEnabled: LedgerToggleState;
   contextOn: Record<string, boolean>;
 }): string[] {
@@ -490,6 +499,7 @@ function activeRegistryLayerIds(opts: {
   if (opts.showCouncils) ids.push("councils");
   if (opts.showDataZones) ids.push("data_zones");
   if (opts.ledgerEnabled.access_services) ids.push("access_services");
+  if (opts.showGrid3) ids.push(GRID3_LAYER_ID);
   return ids;
 }
 
@@ -609,16 +619,12 @@ export default function ScotlandMap() {
   const [scenario, setScenario] = useState<ScenarioId>("full_agr");
   // Public shell: never paint council-area AGR £ / rent £/m² (internal-only until calibration).
   const choropleth: MetricId | "off" = "off";
-<<<<<<< HEAD
   /** Council boundary lines — registry defaultOn. */
   const [showCouncils, setShowCouncils] = useState(true);
-=======
-  const [showBoundaries, setShowBoundaries] = useState(false);
-  const [showCellGrid] = useState(false);
   /** GRID-BASE-1 — open 3 m BNG grid (default off; boot from ?layers=grid3). */
   const [showGrid3, setShowGrid3] = useState(() => {
     if (typeof window === "undefined") return false;
-    const layers = new URL(window.location.href).searchParams.get("layers");
+    const layers = new URLSearchParams(window.location.search).get("layers");
     if (!layers) return false;
     return layers
       .split(",")
@@ -631,7 +637,6 @@ export default function ScotlandMap() {
     y: number;
     ref: string;
   } | null>(null);
->>>>>>> b75e223 (fix(map): boot grid3 from layers= before URL sync strips it)
   const [showVdl, setShowVdl] = useState(false);
   const [showHla, setShowHla] = useState(false);
   // SG 2024 public/Crown dashboard: licence unverified/not open — never paint
@@ -666,6 +671,13 @@ export default function ScotlandMap() {
   const dzHoverPopupRef = useRef<maplibregl.Popup | null>(null);
   const identifyAbortRef = useRef<AbortController | null>(null);
   const identifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showGrid3Ref = useRef(false);
+  showGrid3Ref.current = showGrid3;
+  const grid3SquareRef = useRef<Grid3Square | null>(null);
+  grid3SquareRef.current = grid3Square;
+  const grid3AfterIdentifyRef = useRef<
+    ((lng: number, lat: number) => void) | null
+  >(null);
 
   const onMapLayersChange = (next: LedgerToggleState) => {
     // SHARE-FIX — refuse on for Coming soon tile layers.
@@ -683,6 +695,7 @@ export default function ScotlandMap() {
       data_zones: showDataZones,
       vdl: showVdl,
       hla: showHla,
+      [GRID3_LAYER_ID]: showGrid3,
     };
     const nextEnabled: Record<string, boolean> = {
       ...sanitized,
@@ -696,6 +709,10 @@ export default function ScotlandMap() {
           : showDataZones,
       vdl: "vdl" in sanitized ? Boolean(sanitized.vdl) : showVdl,
       hla: "hla" in sanitized ? Boolean(sanitized.hla) : showHla,
+      [GRID3_LAYER_ID]:
+        GRID3_LAYER_ID in sanitized
+          ? Boolean(sanitized[GRID3_LAYER_ID])
+          : showGrid3,
     };
     const activated = newlyEnabledLegendLayer(prevEnabled, nextEnabled);
     if (activated) {
@@ -714,6 +731,9 @@ export default function ScotlandMap() {
       setShowDataZones(Boolean(sanitized.data_zones));
     }
     if ("vdl" in sanitized) setShowVdl(Boolean(sanitized.vdl));
+    if (GRID3_LAYER_ID in sanitized) {
+      setShowGrid3(Boolean(sanitized[GRID3_LAYER_ID]));
+    }
     if ("hla" in sanitized) {
       const turnOn =
         Boolean(sanitized.hla) && !tileUnavailableIds.has("hla");
@@ -878,6 +898,7 @@ export default function ScotlandMap() {
     data_zones: showDataZones,
     vdl: showVdl,
     hla: showHla,
+    [GRID3_LAYER_ID]: showGrid3,
   };
   const activeLayerIds = activeRegistryLayerIds({
     showCouncils,
@@ -888,6 +909,7 @@ export default function ScotlandMap() {
     showRepd,
     showCrownLeases,
     showCroftingConstraint,
+    showGrid3,
     ledgerEnabled,
     contextOn,
   });
@@ -924,13 +946,15 @@ export default function ScotlandMap() {
       setShowDataZones(ids.includes("data_zones"));
       setShowVdl(ids.includes("vdl"));
       setShowHla(ids.includes("hla"));
+      setShowGrid3(ids.includes(GRID3_LAYER_ID));
       const ledger: LedgerToggleState = {};
       for (const id of ids) {
         if (
           id === "councils" ||
           id === "data_zones" ||
           id === "vdl" ||
-          id === "hla"
+          id === "hla" ||
+          id === GRID3_LAYER_ID
         ) {
           continue;
         }
@@ -1166,6 +1190,7 @@ export default function ScotlandMap() {
     setAddressLine(null);
     setPlaceStub(null);
     setPlaceLoading(false);
+    setGrid3Square(null);
     setSearchNoMatch(false);
     setPanelKind((k) => (k === "place" ? "closed" : k));
     setPanelCollapsed(false);
@@ -2960,7 +2985,6 @@ export default function ScotlandMap() {
     const lineVis = showCouncils ? "visible" : "none";
     map.setLayoutProperty("council-line", "visibility", lineVis);
 
-<<<<<<< HEAD
     // Fill only when AGR/value layer is on and at overview zooms (z5–7).
     const fillOn = showCouncils && showAgr && zoom >= 5 && zoom < 8;
     map.setLayoutProperty(
@@ -2970,8 +2994,6 @@ export default function ScotlandMap() {
     );
   }, [mapReady, choropleth, showCouncils, showAgr, mapZoom]);
 
-=======
->>>>>>> b75e223 (fix(map): boot grid3 from layers= before URL sync strips it)
   // GRID-BASE-1 — device-drawn lines on moveend; lazy-load proj4 chunk (G9).
   useEffect(() => {
     if (!mapReady) return;

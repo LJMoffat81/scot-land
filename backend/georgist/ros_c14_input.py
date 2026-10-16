@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Mapping, Sequence
 
 import openpyxl
+from openpyxl.cell.cell import MergedCell
+from openpyxl.cell.read_only import EmptyCell
 
 from georgist import surface_rent as sr
 
@@ -153,6 +155,25 @@ def _header_index(cells: Sequence[str]) -> dict[str, int] | None:
     return {name: index for index, name in enumerate(normalised) if name}
 
 
+def _cell_text(cell: object) -> str:
+    """Text of a real cell. Empty and merged fillers contribute nothing."""
+    if cell is None or isinstance(cell, (EmptyCell, MergedCell)):
+        return ""
+    raw = getattr(cell, "value", None)
+    return "" if raw is None else str(raw)
+
+
+def _content_key(fields: Sequence[str], width: int, code_index: int) -> tuple[str, ...]:
+    """Every column except the zone code. The code is not part of the key."""
+    parts: list[str] = []
+    for index in range(width):
+        if index == code_index:
+            continue
+        value = fields[index] if index < len(fields) else ""
+        parts.append("" if value is None else str(value).strip())
+    return tuple(parts)
+
+
 def _project(fields: Sequence[str], index_by_name: Mapping[str, int], names: Sequence[str]) -> dict[str, str]:
     """Copy only the requested columns. Other cells are not stored."""
     projected: dict[str, str] = {}
@@ -179,11 +200,17 @@ def _read_csv_rows(path: Path, names: Sequence[str]) -> list[dict[str, str]]:
             break
     if header_at is None or index_by_name is None:
         raise InputBuildError("C14 header row not found")
+    header_width = len(rows[header_at])
+    code_index = index_by_name["data zone code"]
     projected: list[dict[str, str]] = []
     for cells in rows[header_at + 1 :]:
         if not any(str(cell).strip() for cell in cells):
             continue
-        projected.append(_project(cells, index_by_name, names))
+        item = _project(cells, index_by_name, names)
+        if not any(item.get(name, "").strip() for name in names):
+            continue
+        item["row_identity"] = _content_key(cells, header_width, code_index)
+        projected.append(item)
     return projected
 
 
@@ -194,31 +221,25 @@ def _read_xlsx_rows(path: Path, names: Sequence[str]) -> list[dict[str, str]]:
             raise InputBuildError("workbook has no C14 sheet")
         sheet = workbook["C14"]
         index_by_name: dict[str, int] | None = None
-        wanted: set[int] | None = None
+        header_width = 0
+        code_index = -1
         projected: list[dict[str, str]] = []
         for row in sheet.iter_rows():
-            if wanted is None or index_by_name is None:
-                texts = ["" if cell.value is None else str(cell.value) for cell in row]
+            texts = [_cell_text(cell) for cell in row]
+            if index_by_name is None:
                 found = _header_index(texts)
                 if found is not None and all(name in found for name in names):
                     index_by_name = found
-                    wanted = {found[name] for name in names}
+                    header_width = len(texts)
+                    code_index = found["data zone code"]
                 continue
-            fields = [""] * (max(wanted) + 1)
-            saw_value = False
-            for cell in row:
-                index = cell.column - 1
-                if index not in wanted:
-                    continue
-                raw = cell.value
-                text = "" if raw is None else str(raw)
-                if text.strip():
-                    saw_value = True
-                if index < len(fields):
-                    fields[index] = text
-            if not saw_value:
+            if not any(text.strip() for text in texts):
                 continue
-            projected.append(_project(fields, index_by_name, names))
+            item = _project(texts, index_by_name, names)
+            if not any(item.get(name, "").strip() for name in names):
+                continue
+            item["row_identity"] = _content_key(texts, header_width, code_index)
+            projected.append(item)
         if index_by_name is None:
             raise InputBuildError("C14 header row not found")
         return projected
@@ -491,6 +512,7 @@ def _prepare_rows(raw_rows: Sequence[Mapping[str, str]]) -> tuple[list[dict], di
                 "volume": volume,
                 "suppressed": suppressed,
                 "volume_text": str(raw.get("volume", "")).strip(),
+                "row_identity": raw.get("row_identity"),
             }
         )
     if scotland_volume is None:
@@ -543,7 +565,9 @@ def _dz2022_status(
             "c14_rows": len(by_code.get(code, [])),
         }
 
-    # One sum per lookup pair. The key omits the code, so a cartesian join is not doubled.
+    # One sum per lookup pair. The key is the whole row except the zone code,
+    # so two different rows with the same volume are both counted, and a
+    # cartesian copy under the other code is not.
     seen: set[tuple] = set()
     pair_volume: dict[str, int] = {name: 0 for name in pairs}
     raw_sum = 0
@@ -554,7 +578,12 @@ def _dz2022_status(
         if code not in collision_codes:
             continue
         pair_name = name_for_code[code]
-        key = (row["year"], pair_name, row["volume_text"])
+        identity = row.get("row_identity")
+        if not isinstance(identity, tuple):
+            raise InputBuildError("C14 row has no content key")
+        if code in identity:
+            raise InputBuildError("zone code is in the pair content key")
+        key = (pair_name, identity)
         if key in seen:
             continue
         seen.add(key)

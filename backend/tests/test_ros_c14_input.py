@@ -981,3 +981,91 @@ def test_exclusion_set_diff_names_every_mismatch():
     assert any("in_scored_set" in err for err in diff_exclusion_sets(scored, pinned))
     overlap = diff_exclusion_sets(observed, pinned, ordinary_codes={"S01006564"})
     assert any("ordinary suppression" in err for err in overlap)
+
+
+def test_xlsx_empty_and_merged_cells_keep_data_rows(tmp_path: Path):
+    """Empty and merged cells must not crash the reader or drop a data row."""
+    path = tmp_path / "c14.xlsx"
+    book = openpyxl.Workbook()
+    sheet = book.active
+    sheet.title = "C14"
+    sheet["A1"] = "preamble"
+    sheet.merge_cells("A1:C1")
+    for column, value in enumerate(HEADER, start=1):
+        sheet.cell(3, column, value)
+    sheet.cell(4, 1, 2024)
+    sheet.cell(4, 2, "Scotland")
+    sheet.cell(4, 3, "S92000003")
+    sheet.merge_cells("D4:F4")
+    sheet.cell(4, 7, 50)
+    sheet.cell(5, 1, 2024)
+    sheet.cell(5, 2, "Ok")
+    sheet.cell(5, 3, "S01013482")
+    sheet.merge_cells("D5:F5")
+    sheet.cell(5, 7, 6)
+    sheet.cell(6, 1, 2024)
+    sheet.cell(6, 3, "S01013483")
+    sheet.merge_cells("D6:F6")
+    sheet.cell(6, 7, 9)
+    book.save(path)
+    book.close()
+    paths = _simple(
+        tmp_path,
+        path,
+        ["S01013482", "S01013483"],
+        [("S01007000", "S01013482", 10), ("S01007001", "S01013483", 10)],
+        ["S01007000", "S01007001"],
+    )
+    result = _build(tmp_path, **paths)
+    by_code = {zone["code"]: zone for zone in result["dz2022"]}
+    assert by_code["S01013482"]["count"] == 6
+    assert by_code["S01013483"]["count"] == 9
+    assert by_code["S01013483"]["status"] == "ok"
+    assert result["national"]["scotland_row_volume"] == 50
+    assert result["national"]["raw_dz_sum"] == 15
+    encoded = json.dumps(result)
+    for label in ("Median", "Lower quartile", "Upper quartile", "Total value"):
+        assert label not in encoded
+
+
+def test_equal_volume_rows_in_a_pair_are_both_counted(tmp_path: Path):
+    """City Centre - 04, City Centre West - 05 and Muirhouse - 02 each have two rows of equal volume."""
+    pairs = (
+        ("City Centre - 04", "S01015382", "S01020441", 6, "STAT-CC04-A", "STAT-CC04-B"),
+        ("City Centre West - 05", "S01013565", "S01017420", 17, "STAT-CCW05-A", "STAT-CCW05-B"),
+        ("Muirhouse - 02", "S01014988", "S01018617", 6, "STAT-MH02-A", "STAT-MH02-B"),
+    )
+    body = []
+    names = {}
+    codes = []
+    for name, left, right, volume, marker_a, marker_b in pairs:
+        for code in (left, right):
+            codes.append(code)
+            names[code] = name
+            body.append([2024, name, code, marker_a, "lq-same", "uq-same", volume, "tv-same"])
+            body.append([2024, name, code, marker_b, "lq-same", "uq-same", volume, "tv-same"])
+    c14 = tmp_path / "c14.csv"
+    _c14(c14, body)
+    paths = _simple(
+        tmp_path,
+        c14,
+        codes,
+        [("S01007000", codes[0], 10)],
+        ["S01007000"],
+        names=names,
+    )
+    result = _build(tmp_path, **paths)
+    assert result["national"]["pair_volume"]["City Centre - 04"] == 12
+    assert result["national"]["pair_volume"]["City Centre West - 05"] == 34
+    assert result["national"]["pair_volume"]["Muirhouse - 02"] == 12
+    assert result["national"]["pair_dedup_sum"] == 58
+    assert result["national"]["raw_dz_sum"] == 116
+    encoded = json.dumps(result)
+    for _name, left, right, _volume, marker_a, marker_b in pairs:
+        assert marker_a not in encoded
+        assert marker_b not in encoded
+        assert left not in result["national"]["pair_volume"]
+        by_code = {zone["code"]: zone for zone in result["dz2022"]}
+        assert by_code[left]["c14_rows"] == 2
+        assert by_code[right]["c14_rows"] == 2
+        assert by_code[left]["count"] == 0

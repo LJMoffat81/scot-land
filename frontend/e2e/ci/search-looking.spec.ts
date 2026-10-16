@@ -1,5 +1,8 @@
+import { fulfillEmptyGlyph, registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
-import { fulfillEmptyGlyph } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
+
 
 const POSTCODE = "EH1 1YZ";
 const LOOKING = "Looking…";

@@ -1,3 +1,4 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test } from "@playwright/test";
 import { execFileSync } from "child_process";
 import path from "path";
@@ -15,6 +16,9 @@ import {
   stubMapCardsBackend,
   waitForMap,
 } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * MAP-CARDS ADDENDUM A1–A6.

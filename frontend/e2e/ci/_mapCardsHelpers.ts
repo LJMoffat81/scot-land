@@ -2,7 +2,7 @@
  * Shared stubs and probes for MAP-CARDS-REDESIGN e2e under e2e/ci/.
  * Not a Playwright spec — imported by *.spec.ts only.
  */
-import { expect, type Page, type Route } from "@playwright/test";
+import { expect, test, type Page, type Route } from "@playwright/test";
 
 export const HEALTH_OK = {
   status: "ok",
@@ -28,6 +28,23 @@ export async function fulfillEmptyGlyph(route: Route) {
     status: 200,
     contentType: "application/x-protobuf",
     body: EMPTY_GLYPH_PBF,
+  });
+}
+
+/** Answer glyph ranges here so CI never fetches tiles.openfreemap.org fonts. */
+export async function stubOpenFreeMapFonts(page: Page) {
+  await page.route("**/tiles.openfreemap.org/fonts/**", async (route) => {
+    await fulfillEmptyGlyph(route);
+  });
+}
+
+/**
+ * File-level hook. Call at the top of each CI spec so the route is registered
+ * on that file. A shared module body would attach only to the first importer.
+ */
+export function registerOpenFreeMapFontStub() {
+  test.beforeEach(async ({ page }) => {
+    await stubOpenFreeMapFonts(page);
   });
 }
 
@@ -310,9 +327,7 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
   });
   // Same idea as the raster tile stub: answer glyph ranges here so CI never
   // fetches tiles.openfreemap.org fonts. The live map still requests that host.
-  await page.route("**/tiles.openfreemap.org/fonts/**", async (route) => {
-    await fulfillEmptyGlyph(route);
-  });
+  await stubOpenFreeMapFonts(page);
   await page.route("**/health**", async (route) => {
     // Fulfill all health probes (including /backend/health). Continuing to the
     // Next rewrite yields 503 and noisy console errors in CI without an API.

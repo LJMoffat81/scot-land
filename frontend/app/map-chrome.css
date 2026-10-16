@@ -1164,39 +1164,6 @@
   color: #7a1f1f;
 }
 
-.identify-at-centre {
-  position: absolute;
-  z-index: 4;
-  left: 0.75rem;
-  bottom: 5.5rem;
-  min-height: 44px;
-  padding: 0.4rem 0.75rem;
-  border: 1px solid rgba(11, 30, 58, 0.2);
-  border-radius: 8px;
-  background: #fff;
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* Keep identify clear of the left panel (desktop) and peek/half sheet (mobile). */
-@media (min-width: 900px) {
-  .app-shell.panel-open:not(.panel-collapsed) .identify-at-centre {
-    left: calc(380px + 1.25rem);
-  }
-}
-
-@media (max-width: 899px) {
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .identify-at-centre {
-    bottom: calc(196px + env(safe-area-inset-bottom, 0px) + 0.35rem + 44px + 8px);
-  }
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .identify-at-centre {
-    /* Attribution line is ~44px (All sources hit target) above the sheet. */
-    bottom: calc(55dvh + env(safe-area-inset-bottom, 0px) + 0.35rem + 44px + 8px);
-  }
-}
-
 /* Research banner height 0 when place card open */
 .app-shell.place-open .research-banner {
   height: 0 !important;
@@ -1235,7 +1202,6 @@
 .map-cards-shell .map-panel-handle:focus-visible,
 .map-cards-shell .map-panel-slot-close:focus-visible,
 .map-cards-shell .map-panel-collapse-tab:focus-visible,
-.map-cards-shell .identify-at-centre:focus-visible,
 .map-cards-shell .hud-search input:focus-visible,
 .map-cards-shell .hud-search-go:focus-visible {
   outline: 3px solid #ffdd00;

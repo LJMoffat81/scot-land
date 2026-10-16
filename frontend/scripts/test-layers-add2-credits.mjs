@@ -11,7 +11,7 @@ const frontendRoot = join(here, "..");
 
 const { LAYERS_ADD2_CREDITS, coverageLegend, assertFreeStyleUrl, layersAdd2Credit } =
   await import(pathToFileURL(join(frontendRoot, "lib/layersAdd2Credits.ts")).href);
-const { MAP_BASEMAP_STYLE_URL } = await import(
+const { MAP_BASEMAP_STYLE_URL, mapErrorLogLine } = await import(
   pathToFileURL(join(frontendRoot, "lib/mapBasemap.ts")).href
 );
 
@@ -53,5 +53,20 @@ for (const id of ["epc_domestic", "os_open_uprn", "ldp_highland", "vdl_glasgow_c
   assert.equal(registry.includes(`id: "${id}"`), false, `${id} must not be an empty switch`);
 }
 assert.equal(registry.includes('id: "os_open_roads"'), false);
+
+const ajax = new Error(
+  "Not Found (404): https://tiles.openfreemap.org/fonts/Noto%20Sans%20Regular/0-255.pbf",
+);
+ajax.name = "AJAXError";
+assert.match(mapErrorLogLine(ajax), /openfreemap/);
+assert.match(mapErrorLogLine(ajax), /AJAXError/);
+assert.match(mapErrorLogLine(new Error("Failed to fetch")), /Failed to fetch/);
+assert.match(mapErrorLogLine(new Error("net::ERR_FAILED")), /net::ERR_FAILED/);
+assert.match(mapErrorLogLine(new Error("glyph load failed")), /glyph/);
+assert.match(mapErrorLogLine(new Error("sprite load failed")), /sprite/);
+assert.equal(mapErrorLogLine(new Error("AbortError")), null);
+const domAbort = new Error("The user aborted a request.");
+domAbort.name = "AbortError";
+assert.equal(mapErrorLogLine(domAbort), null);
 
 console.log("test-layers-add2-credits: ok");

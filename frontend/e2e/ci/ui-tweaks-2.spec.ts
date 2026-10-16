@@ -1,4 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+
+registerOpenFreeMapFontStub();
 
 /**
  * UI-TWEAKS-2 — mobile peek never covers the disclaimer.

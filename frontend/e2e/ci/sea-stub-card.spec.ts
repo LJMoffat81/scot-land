@@ -1,5 +1,9 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { stubLayersAddQuiet } from "./_layersAddStub";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * SW-028 + suggestion 25 — sea stub card:
@@ -10,7 +14,8 @@ import { stubLayersAddQuiet } from "./_layersAddStub";
  */
 
 /** MAP-CARDS §5.2 — exact sea / outside-Scotland line. */
-const OUT_OF_SCOTLAND_LINE = "We only cover land in Scotland.";
+const OUT_OF_SCOTLAND_LINE =
+  "We only cover land so far. Scotland's sea rents (offshore wind, oil and gas, fish farms and seabed) will come later as their own map layer.";
 const SHOW_SCOTLAND = "Show me Scotland";
 
 /** SW-019 sample: west of the public bounds check (lng < -8.5). */

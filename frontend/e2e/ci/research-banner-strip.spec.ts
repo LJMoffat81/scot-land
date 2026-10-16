@@ -1,3 +1,4 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
@@ -6,6 +7,9 @@ import {
   RESEARCH_BANNER_LEAD,
   RESEARCH_BANNER_STRIP_COLLAPSED,
 } from "../../lib/siteNav";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * SW-016 — ≤768px research banner is a one-line strip under the header;

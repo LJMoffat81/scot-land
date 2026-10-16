@@ -71,6 +71,7 @@ import {
   basemapCaption,
   basemapStyleUrl,
   basemapSwitchTarget,
+  mapErrorLogLine,
   type MapBasemapId,
 } from "../lib/mapBasemap";
 import {
@@ -343,7 +344,7 @@ function loadContextFeature(layerId: string): Promise<ContextFeaturePayload> {
 }
 const HLA_MIN_ZOOM = 8;
 const HLA_FILL = "#7b5ea7";
-/** Data Zone outlines / density colours — readable from neighbourhood zoom. */
+/** Data Zone outlines / density colours — readable from area zoom. */
 const DATA_ZONE_MIN_ZOOM = POP_DENSITY_COLOURS_MIN_ZOOM;
 const NFI_MIN_ZOOM = 7;
 const NATIVE_WOODLAND_MIN_ZOOM = 8;
@@ -851,6 +852,11 @@ export default function ScotlandMap() {
   const isNarrowPanelRef = useRef(isNarrowPanel);
   isNarrowPanelRef.current = isNarrowPanel;
   /**
+   * Set synchronously when the visitor opens Layers on a narrow screen.
+   * A deep-link place boot that lands afterwards must not take the sheet.
+   */
+  const narrowLayersOpenRef = useRef(false);
+  /**
    * Most recently activated legend-capable layer (drawer id) for strip chip.
    */
   const [legendPreferredId, setLegendPreferredId] = useState<string | null>(
@@ -1313,6 +1319,11 @@ export default function ScotlandMap() {
         generation?: number;
         /** Deep-link re-boot after a map remount must not pop a collapsed card open. */
         keepCollapsed?: boolean;
+        /**
+         * URL boot (?lat=&lng=), not a map tap or search. If the visitor
+         * already opened Layers, keep that sheet (the sources link stays).
+         */
+        fromDeepLink?: boolean;
       } = {},
     ) => {
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -1349,15 +1360,24 @@ export default function ScotlandMap() {
       // Mobile: map tap / search closes Layers and opens the card (SW-056 / SW-065).
       const narrow = isNarrowPanelRef.current;
       const layersOpenNow = narrow
-        ? panelKindRef.current === "layers"
+        ? panelKindRef.current === "layers" || narrowLayersOpenRef.current
         : desktopLayersOpenRef.current;
-      const keepLayersOpen = layersOpenNow && !narrow;
-      placeAsideRef.current = false;
-      setPanelKind("place");
-      if (!opts.keepCollapsed) setPanelCollapsed(false);
-      const detent = opts.fromAddressSearch ? "half" : "peek";
-      placeDetentMemory = detent;
-      setPanelDetent(detent);
+      // A late ?lat=&lng= boot must not dismiss Layers the visitor just opened.
+      // A map tap or search still collapses the sheet (SW-056).
+      const deepLinkYieldsToLayers =
+        Boolean(opts.fromDeepLink) && narrow && narrowLayersOpenRef.current;
+      const keepLayersOpen = (layersOpenNow && !narrow) || deepLinkYieldsToLayers;
+      if (deepLinkYieldsToLayers) {
+        placeAsideRef.current = true;
+      } else {
+        placeAsideRef.current = false;
+        if (narrow) narrowLayersOpenRef.current = false;
+        setPanelKind("place");
+        if (!opts.keepCollapsed) setPanelCollapsed(false);
+        const detent = opts.fromAddressSearch ? "half" : "peek";
+        placeDetentMemory = detent;
+        setPanelDetent(detent);
+      }
       if (!panelHistoryRef.current) {
         pushMapUrl({
           center: { lng, lat },
@@ -1498,6 +1518,8 @@ export default function ScotlandMap() {
   const openLayersPanel = useCallback(() => {
     const narrow = isNarrowPanelRef.current;
     if (narrow) {
+      // Before setState, so an in-flight deep-link boot sees Layers as open.
+      narrowLayersOpenRef.current = true;
       if (panelKind === "place" || placeStub) {
         placeAsideRef.current = true;
       }
@@ -1540,10 +1562,11 @@ export default function ScotlandMap() {
       layersBtnRef.current?.focus();
       return;
     }
+    narrowLayersOpenRef.current = false;
     if (placeAsideRef.current && placeStub) {
       setPanelKind("place");
       // Layers opens at full — restore the place card at its search/tap detent,
-      // not full (otherwise identify-at-centre stays under the sheet on tablet).
+      // not full.
       setPanelDetent(placeStub.fromAddressSearch ? "half" : "peek");
       setLiveMessage("Place card restored");
       replaceMapUrl({ panel: "place" });
@@ -2132,20 +2155,19 @@ export default function ScotlandMap() {
       },
     });
 
-    // A basemap swap removes the map while a style fetch or moveend handler
-    // is still in flight. MapLibre logs that as an unhandled error event.
-    // Keep every other map error visible.
-    map.on("error", (event) => {
-      const err = event.error;
-      const message = err instanceof Error ? err.message : String(err ?? "");
-      if (message.includes("Style is not done loading")) return;
-      console.error(err);
-    });
     map.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
       "bottom-right",
     );
     map.getCanvas().style.cursor = "pointer";
+    // Listen so MapLibre does not console.error the Error object itself.
+    // Log every map error as a message string. AbortError is the only skip.
+    map.on("error", (event) => {
+      const line = mapErrorLogLine(
+        (event as { error?: unknown }).error,
+      );
+      if (line) console.error(line);
+    });
 
     // MapLibre compact mode starts with maplibregl-compact-show (expanded).
     // Collapse to the (i) control by default; user click still expands.
@@ -3033,6 +3055,7 @@ export default function ScotlandMap() {
       void inspectRef.current(bootLat, bootLng, {
         fly: true,
         fromAddressSearch: true,
+        fromDeepLink: true,
         keepCollapsed: panelCollapsedRef.current,
       });
     } else if (captured?.place && boot.center) {
@@ -3040,6 +3063,7 @@ export default function ScotlandMap() {
       void inspectRef.current(boot.center.lat, boot.center.lng, {
         fly: true,
         fromAddressSearch: true,
+        fromDeepLink: true,
         keepCollapsed: panelCollapsedRef.current,
       });
     } else if (boot.panel === "place" && boot.center) {
@@ -3059,6 +3083,7 @@ export default function ScotlandMap() {
         void inspectRef.current(boot.center.lat, boot.center.lng, {
           fly: remembered == null,
           fromAddressSearch: remembered !== "peek",
+          fromDeepLink: true,
           keepCollapsed: panelCollapsedRef.current,
           label: boot.place,
         });
@@ -4742,19 +4767,6 @@ export default function ScotlandMap() {
     placeStub?.card?.place_label ||
     null;
 
-  const identifyAtCentre = () => {
-    const map = mapRef.current;
-    if (!map) return;
-    // Drop a pending debounced map-click identify so centre wins immediately.
-    if (identifyTimerRef.current) {
-      clearTimeout(identifyTimerRef.current);
-      identifyTimerRef.current = null;
-    }
-    const c = map.getCenter();
-    void inspectRef.current(c.lat, c.lng, { fly: false });
-    grid3AfterIdentifyRef.current?.(c.lng, c.lat);
-  };
-
   return (
     <div className={shellClass}>
       <div className="map-stage">
@@ -4840,15 +4852,6 @@ export default function ScotlandMap() {
         <span className="basemap-switcher-caption">
           {basemapCaption(basemapTarget)}
         </span>
-      </button>
-
-      <button
-        type="button"
-        className="identify-at-centre"
-        data-testid="identify-at-centre"
-        onClick={identifyAtCentre}
-      >
-        Show the area at map centre
       </button>
 
       <header className="hud-top" ref={headerRef}>

@@ -1,6 +1,9 @@
-import { fulfillEmptyGlyph } from "./_mapCardsHelpers";
+import { fulfillEmptyGlyph, registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Page } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * SW-020 follow-up — at 390px the map logo must not touch Layers, and the
@@ -268,8 +271,8 @@ test.describe("SW-020 map logo vs Layers gap (390×844)", () => {
     await expect(logo).toBeVisible();
     await expect(layers).toBeVisible();
 
-    // Solid backing — opaque white so map labels cannot show through.
-    await expect(logo).toHaveCSS("background-color", "rgb(255, 255, 255)");
+    // LOGO-FIT-1: the mark has no white badge. Overlap and gap checks stay.
+    await expect(logo).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
 
     const logoBox = await logo.boundingBox();
     const layersBox = await layers.boundingBox();

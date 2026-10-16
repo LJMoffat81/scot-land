@@ -1,3 +1,4 @@
+import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import {
   expect,
   test,
@@ -5,6 +6,9 @@ import {
   type Page,
   type Route,
 } from "@playwright/test";
+
+registerOpenFreeMapFontStub();
+
 
 /**
  * UX-01 — mobile tap targets ≥44×44 at 390×844 (MAP-CARDS aligned).

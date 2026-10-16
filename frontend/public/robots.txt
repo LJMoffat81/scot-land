@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://scot-land.scot/sitemap.xml

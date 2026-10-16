@@ -264,7 +264,7 @@ def test_report_missing_method_or_sha8_aborts(tmp_path: Path):
     report = build_report(commit="abc123")
     assert report["depreciation"]["method"] == "straight_line_v14"
     assert report["sha8"]["backend/georgist/surface_rent.py"] == "dc07f4fe"
-    assert report["sha8"]["backend/georgist/surface_v14.py"] == "cdb69a4f"
+    assert report["sha8"]["backend/georgist/surface_v14.py"] == "2eb4f6c2"
     assert report["sha8"]["data/config/surface.yaml"] == "0ad64260"
     assert report["seed"] == BOOTSTRAP_SEED
     assert report["code_text_disagreements"] == code_text_disagreements()

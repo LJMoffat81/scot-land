@@ -202,8 +202,8 @@ def score_estimators(
 
     ``surface_v14_checks`` is imported here because that module imports
     ``surface_v14`` at module scope (circular dependency). Missing inputs are
-    reported as ``pending`` and are never omitted. Share-only calls still gate
-    on checks 1 and 1d, which are the inputs that call actually carries.
+    reported as ``pending`` and are never omitted. A pending gating check fails
+    closed. The list of those checks is ``surface_v14_checks.GATING_MARKS``.
     """
     from georgist import surface_v14_checks as checks
 
@@ -213,7 +213,7 @@ def score_estimators(
     band = list(lsc.get("national_range") or [0.10, 0.40])
     zero_max = float(lsc.get("zero_mass_max_share", 0.10))
     c4cfg = (v14_config(c).get("check4") or (c.get("v13") or {}).get("check4") or {})
-    gating_names = ("1", "1a", "1b", "1d", "3", "4", "6")
+    gating_names = tuple(checks.GATING_MARKS)
     information_names = (
         "1c",
         "1e",
@@ -226,14 +226,31 @@ def score_estimators(
         "gis_plot_median_ratio",
     )
 
-    def _pending(name: str) -> dict:
-        return {"check": name, "status": "pending", "pass": None}
+    def _pending(name: str, error: str | None = None) -> dict:
+        out = {"check": name, "status": "pending", "pass": None}
+        if error:
+            out["error"] = error
+        return out
 
     def _safe(name: str, fn):
         try:
             return fn()
-        except (KeyError, TypeError, ValueError):
-            return _pending(name)
+        except (KeyError, TypeError, ValueError) as exc:
+            return _pending(name, error=str(exc))
+
+    def _fail_closed(gating: dict, decided: bool) -> bool:
+        """Pending gating checks come from ``GATING_MARKS``, not a second list."""
+        if any(gating.get(name, {}).get("status") == "pending" for name in checks.GATING_MARKS):
+            return False
+        return decided
+
+    def _stamp_pending_error(gating: dict, error: str | None) -> None:
+        if not error:
+            return
+        for name in checks.GATING_MARKS:
+            item = gating.get(name)
+            if item and item.get("status") == "pending" and not item.get("error"):
+                item["error"] = error
 
     def _pack(gating: dict, information: dict, gating_pass: bool, check4: dict | None) -> dict:
         out = {
@@ -267,17 +284,22 @@ def score_estimators(
                 for item in gating.values()
                 if item.get("status") != "pending" and item.get("pass") is not None
             ]
-            gating_pass = bool(decided) and all(decided) and all(
-                item.get("status") != "pending" for item in gating.values()
+            gating_pass = _fail_closed(
+                gating,
+                bool(decided) and all(decided) and all(
+                    item.get("status") != "pending" for item in gating.values()
+                ),
             )
+            _stamp_pending_error(gating, detailed.get("error"))
             return _pack(gating, information, gating_pass, check4)
         gating = dict(detailed["gating"])
         information = dict(detailed["information"])
         information.setdefault("agreement", _pending("agreement"))
         if check4 is not None:
             gating["4"] = check4
-        gating_pass = all(
-            item.get("status") != "pending" and bool(item.get("pass")) for item in gating.values()
+        gating_pass = _fail_closed(
+            gating,
+            all(item.get("status") != "pending" and bool(item.get("pass")) for item in gating.values()),
         )
         return _pack(gating, information, gating_pass, check4)
 
@@ -304,8 +326,7 @@ def score_estimators(
         gating_pass = bool(gating["1"].get("pass")) and bool(gating["1d"].get("pass"))
         if check4 is not None:
             gating_pass = gating_pass and bool(check4.get("pass"))
-        if any(gating[name].get("status") == "pending" for name in ("1a", "1b", "3", "4", "6")):
-            gating_pass = False
+        gating_pass = _fail_closed(gating, gating_pass)
         return _pack(gating, information, gating_pass, check4)
 
     if primary_zones is not None:

@@ -116,7 +116,6 @@ for (const viewport of [
         links: [],
       };
 
-      let call = 0;
       await page.route("**/api/gbp-live**", async (route) => {
         await route.fulfill({
           status: 200,
@@ -134,11 +133,20 @@ for (const viewport of [
           });
           return;
         }
+        if (/\/layers\/catalog/i.test(url)) {
+          await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ version: 2, layers: [] }),
+          });
+          return;
+        }
+        // Route by lat so call-order races cannot swap slow/fast bodies.
         if (/\/platform\/place/i.test(url)) {
-          call += 1;
-          const n = call;
-          const body = n === 1 ? slow : fast;
-          const delay = n === 1 ? 1200 : 50;
+          const lat = new URL(url).searchParams.get("lat") || "";
+          const isSlow = lat.startsWith("55.95");
+          const body = isSlow ? slow : fast;
+          const delay = isSlow ? 1200 : 50;
           await new Promise((r) => setTimeout(r, delay));
           await route.fulfill({
             status: 200,
@@ -170,28 +178,66 @@ for (const viewport of [
       });
 
       await openMap(page);
-      // First identify (slow) — dispatch on the map without waiting for the card,
-      // then immediately fire identify-at-centre (force: peek sheet may still be landing).
+      await waitForMap(page);
+      // First identify (slow) via MapLibre fire — synthetic MouseEvent does not
+      // always reach map.on("click") under Playwright.
       await page.evaluate(() => {
         const map = (
           window as unknown as {
-            __map?: { getCanvas(): HTMLCanvasElement };
+            __map?: {
+              fire(type: string, ev: object): void;
+              project(lngLat: { lng: number; lat: number }): { x: number; y: number };
+            };
           }
         ).__map;
-        const canvas = map?.getCanvas() || document.querySelector(".maplibregl-canvas");
-        canvas?.dispatchEvent(
-          new MouseEvent("click", { bubbles: true, clientX: 200, clientY: 300 }),
-        );
+        if (!map) throw new Error("window.__map missing");
+        const lngLat = { lng: -3.19, lat: 55.95 };
+        map.fire("click", {
+          lngLat,
+          point: map.project(lngLat),
+          originalEvent: new MouseEvent("click"),
+        });
       });
-      // Immediately second via identify-at-centre after a tiny wait so gen bumps
-      await page.waitForTimeout(80);
-      await page.getByTestId("identify-at-centre").click({ force: true });
+      // Wait past the 150ms map-click debounce so the slow identify is in flight.
+      await page.waitForTimeout(220);
+      // Second identify (fast) via map.fire — peek/half sheet can cover
+      // identify-at-centre on 390 even with force:true.
+      await page.evaluate(() => {
+        const map = (
+          window as unknown as {
+            __map?: {
+              fire(type: string, ev: object): void;
+              project(lngLat: { lng: number; lat: number }): {
+                x: number;
+                y: number;
+              };
+              jumpTo(opts: { center: [number, number]; zoom?: number }): void;
+              getZoom(): number;
+            };
+          }
+        ).__map;
+        if (!map) throw new Error("window.__map missing");
+        const lngLat = { lng: -4.25, lat: 55.86 };
+        map.jumpTo({
+          center: [lngLat.lng, lngLat.lat],
+          zoom: Math.max(map.getZoom(), 10),
+        });
+        map.fire("click", {
+          lngLat,
+          point: map.project(lngLat),
+          originalEvent: new MouseEvent("click"),
+        });
+      });
+      // Second fire is also debounced 150ms — wait for it to start + settle.
+      await page.waitForTimeout(220);
       await expect(page.getByTestId("place-card")).toBeVisible({
         timeout: 45_000,
       });
       // After both settle, title must be the second (fast) place — not First Slow
-      await page.waitForTimeout(1500);
-      await expect(page.getByTestId("place-card-place")).toHaveText(/Second Fast|Fast Zone|Glasgow/i);
+      await expect(page.getByTestId("place-card-place")).toHaveText(
+        /Second Fast|Fast Zone|Glasgow/i,
+        { timeout: 15_000 },
+      );
       await expect(page.getByTestId("place-card-place")).not.toHaveText(
         /First Slow/,
       );

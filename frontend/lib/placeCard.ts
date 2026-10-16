@@ -376,6 +376,8 @@ export type FetchPlaceCardArgs = {
   lat: number;
   lng: number;
   postcode?: string | null;
+  /** Abort in-flight identify when a newer map/search select wins (MAP-CARDS 24). */
+  signal?: AbortSignal;
 };
 
 /**
@@ -693,6 +695,7 @@ export async function fetchPlaceCard({
   lat,
   lng,
   postcode,
+  signal,
 }: FetchPlaceCardArgs): Promise<PlaceCardPayload> {
   const params = new URLSearchParams({
     lat: String(lat),
@@ -702,9 +705,10 @@ export async function fetchPlaceCard({
   try {
     return await apiJson<PlaceCardPayload>(
       `/platform/place?${params.toString()}`,
-      { retryStatuses: [502, 503, 504], maxAttempts: 3 },
+      { retryStatuses: [502, 503, 504], maxAttempts: 3, signal },
     );
   } catch (err) {
+    if (signal?.aborted) throw err;
     if (isOutsideScotlandError(err)) {
       return outsideScotlandPlaceCard(lat, lng);
     }

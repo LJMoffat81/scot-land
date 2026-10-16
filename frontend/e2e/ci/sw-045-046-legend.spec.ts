@@ -136,6 +136,16 @@ test.describe("MAP-CARDS legend strip / inline (1280)", () => {
     await expect(page.getByTestId("map-legend-panel")).toHaveCount(0);
     await expect(page.getByTestId("map-range-legend")).toHaveCount(0);
 
+    // VDL minzoom 8 — class key still renders when gated, but match GIS zoom.
+    await page.evaluate(() => {
+      const map = (
+        window as unknown as {
+          __map?: { setZoom(n: number): void; getZoom(): number };
+        }
+      ).__map;
+      if (map && map.getZoom() < 8) map.setZoom(8);
+    });
+
     await openLayers(page);
     const landToggle = page.getByTestId("layers-group-toggle-land");
     if ((await landToggle.getAttribute("aria-expanded")) !== "true") {

@@ -278,28 +278,26 @@ function DrawerLayerRow({
             >
               {legend.zoomHint}
             </p>
-          ) : (
-            <>
-              {legend.rampScale ? (
-                <p className="layers-inline-legend-scale">{legend.rampScale}</p>
-              ) : null}
-              <ul className="layer-legend" aria-label={`${layer.label} key`}>
-                {legend.classes.map((row) => (
-                  <li key={`${layer.id}-${row.label}-${row.color}`}>
-                    <span
-                      className={
-                        row.striped
-                          ? "layer-legend-swatch striped"
-                          : "layer-legend-swatch"
-                      }
-                      style={{ backgroundColor: row.color }}
-                    />
-                    <span>{row.label}</span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
+          ) : null}
+          {/* Class key stays visible while zoom-gated so toggles still show Vacant/Derelict etc. */}
+          {legend.rampScale ? (
+            <p className="layers-inline-legend-scale">{legend.rampScale}</p>
+          ) : null}
+          <ul className="layer-legend" aria-label={`${layer.label} key`}>
+            {legend.classes.map((row) => (
+              <li key={`${layer.id}-${row.label}-${row.color}`}>
+                <span
+                  className={
+                    row.striped
+                      ? "layer-legend-swatch striped"
+                      : "layer-legend-swatch"
+                  }
+                  style={{ backgroundColor: row.color }}
+                />
+                <span>{row.label}</span>
+              </li>
+            ))}
+          </ul>
           <p
             className="layer-meta layers-source-caption"
             data-testid={`layer-source-caption-${layer.id}`}

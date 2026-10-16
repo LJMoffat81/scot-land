@@ -1276,6 +1276,11 @@ export default function ScotlandMap() {
         };
       });
       setPlaceLoading(true);
+      // Cancel debounce + prior identify so only the latest selectPlace wins (24).
+      if (identifyTimerRef.current) {
+        clearTimeout(identifyTimerRef.current);
+        identifyTimerRef.current = null;
+      }
       identifyAbortRef.current?.abort();
       const identifyAbort = new AbortController();
       identifyAbortRef.current = identifyAbort;
@@ -1290,7 +1295,7 @@ export default function ScotlandMap() {
               `/layers/context/data-zones/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
               { cache: "no-store", signal: identifyAbort.signal },
             );
-            if (gen !== lookupGen.current) return;
+            if (gen !== lookupGen.current || identifyAbort.signal.aborted) return;
             const code = data.code?.trim() || null;
             const name = data.name?.trim() || null;
             setPlaceStub((prev) => {
@@ -1309,6 +1314,7 @@ export default function ScotlandMap() {
             // Sea / outside Scotland (404 no_data_zone_at_point) or boundaries
             // unavailable: still load place_card_v1 so miss/unavailable is honest
             // and the UI can show one plain line instead of No-data rows.
+            if (identifyAbort.signal.aborted || gen !== lookupGen.current) return;
           }
         }
         // Designer place card (place_card_v1) — ownership / sources; no £.
@@ -1317,8 +1323,9 @@ export default function ScotlandMap() {
           lat,
           lng,
           postcode: opts.postcode,
+          signal: identifyAbort.signal,
         });
-        if (gen !== lookupGen.current) return;
+        if (gen !== lookupGen.current || identifyAbort.signal.aborted) return;
         setPlaceStub((prev) => {
           if (gen !== lookupGen.current) return prev;
           return prev && prev.lat === lat && prev.lng === lng
@@ -4110,6 +4117,11 @@ export default function ScotlandMap() {
   const identifyAtCentre = () => {
     const map = mapRef.current;
     if (!map) return;
+    // Drop a pending debounced map-click identify so centre wins immediately.
+    if (identifyTimerRef.current) {
+      clearTimeout(identifyTimerRef.current);
+      identifyTimerRef.current = null;
+    }
     const c = map.getCenter();
     void inspectRef.current(c.lat, c.lng, { fly: false });
   };

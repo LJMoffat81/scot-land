@@ -1146,19 +1146,26 @@ export default function ScotlandMap() {
     const map = mapRef.current;
     if (!map) return;
     const narrow = window.innerWidth <= 900;
-    map.fitBounds(
-      [
-        [-8.05, 54.48],
-        [-0.55, 60.88],
-      ],
-      {
-        padding: narrow
-          ? { top: 132, bottom: 72, left: 12, right: 16 }
-          : { top: 96, bottom: 36, left: 24, right: 28 },
-        animate: true,
-        maxZoom: 7.4,
-      },
-    );
+    // Defer past panel-close padding easeTo(duration:0) so it cannot cancel
+    // this fitBounds mid-flight (sea-stub national maxZoom e2e on desktop).
+    window.setTimeout(() => {
+      const live = mapRef.current;
+      if (!live) return;
+      live.stop();
+      live.fitBounds(
+        [
+          [-8.05, 54.48],
+          [-0.55, 60.88],
+        ],
+        {
+          padding: narrow
+            ? { top: 132, bottom: 72, left: 12, right: 16 }
+            : { top: 96, bottom: 36, left: 24, right: 28 },
+          animate: true,
+          maxZoom: 7.4,
+        },
+      );
+    }, 0);
   }, [clearPlace]);
 
   // Public path for a point (map click, search, ?lat=&lng=): marker, optional fly,

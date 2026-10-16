@@ -227,6 +227,7 @@ for (const viewport of [
         await expect(layersSlot).toHaveAttribute("data-detent", "full");
         await expect(layersSlot).toHaveAttribute("role", "dialog");
         await expect(layersSlot).toHaveAttribute("aria-modal", "true");
+        // Map stays live so a tap can close Layers and open the place (SW-065).
         await expect(page.locator(".map-stage")).not.toHaveAttribute("inert");
       }
       await page.keyboard.press("Escape");

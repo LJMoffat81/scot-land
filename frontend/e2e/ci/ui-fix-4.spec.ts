@@ -151,6 +151,20 @@ test.describe("UI-FIX-4 390", () => {
     await page.goto("/");
     await waitMap(page);
 
+    const detailed = page.getByTestId("basemap-switcher");
+    const strip = page.locator(".research-banner-map");
+    await expect(detailed).toBeVisible();
+    await expect(strip).toBeVisible();
+    const detailedBox = await detailed.boundingBox();
+    const stripBox = await strip.boundingBox();
+    expect(detailedBox).toBeTruthy();
+    expect(stripBox).toBeTruthy();
+    expect(detailedBox!.width).toBeGreaterThan(0);
+    expect(detailedBox!.height).toBeGreaterThan(0);
+    expect(stripBox!.width).toBeGreaterThan(0);
+    expect(stripBox!.height).toBeGreaterThan(0);
+    expect(boxesOverlap(detailedBox!, stripBox!)).toBe(false);
+
     await openLayers(page);
     const pad = await page.locator(".layers-panel").evaluate((el) => {
       const s = getComputedStyle(el);
@@ -269,16 +283,6 @@ test.describe("UI-FIX-4 390", () => {
     expect(boxesOverlap(peek.rent!, peek.disclaimer!)).toBe(false);
     const peekScroll = await page.getByTestId("map-panel-scroll").evaluate((el) => el.scrollTop);
     expect(peekScroll).toBe(0);
-
-    const detailed = page.getByTestId("basemap-switcher");
-    const strip = page.locator(".research-banner-map");
-    if (await detailed.isVisible()) {
-      const d = await detailed.boundingBox();
-      const s = await strip.boundingBox();
-      if (d && s && d.width > 0 && s.height > 0) {
-        expect(boxesOverlap(d, s)).toBe(false);
-      }
-    }
 
     await expect(page.getByTestId("place-card-footer")).toContainText(EXPERIMENTAL);
     await expect(page.getByTestId("research-banner")).toContainText(

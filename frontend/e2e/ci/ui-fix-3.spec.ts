@@ -135,6 +135,7 @@ async function openCard(page: Page, query: string) {
   await page.locator(".hud-search-go").click();
   await expect(page.getByTestId("place-card")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId("place-card-close")).toBeVisible();
+  await expect(page.getByTestId("place-card-footer")).toBeVisible();
   await expect(page.getByTestId("place-card-placeholders")).toHaveCount(0);
   await expect(page.getByTestId("place-card-place")).toBeVisible({
     timeout: 30_000,
@@ -154,15 +155,7 @@ async function auditOpenCard(page: Page): Promise<EmptyAudit> {
     if (scroll) scroll.scrollTop = scroll.scrollHeight;
 
     const card = slot.querySelector('[data-testid="place-card"]');
-    const footer =
-      slot.querySelector('[data-testid="place-card-footer"]') ??
-      (card
-        ? [...card.querySelectorAll("*")].reverse().find((el) => {
-            const r = el.getBoundingClientRect();
-            const text = (el.textContent || "").replace(/\s+/g, " ").trim();
-            return r.height > 0 && r.width > 0 && text.length > 0 && el.children.length === 0;
-          }) ?? card
-        : null);
+    const footer = slot.querySelector('[data-testid="place-card-footer"]');
     if (!footer || !card) {
       return {
         closeCount: 0,

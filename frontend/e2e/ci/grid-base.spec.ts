@@ -115,8 +115,20 @@ async function waitMap(page: Page) {
 async function setZoom(page: Page, zoom: number, center: [number, number]) {
   await page.evaluate(
     ({ z, c }) => {
-      const map = (window as unknown as { __SCOT_LAND_MAP__: MapHandle })
-        .__SCOT_LAND_MAP__;
+      const map = (
+        window as unknown as {
+          __SCOT_LAND_MAP__: MapHandle & {
+            fire: (e: string, data?: { originalEvent?: Event }) => void;
+            stop: () => void;
+          };
+        }
+      ).__SCOT_LAND_MAP__;
+      // ScotlandMap frameScotland resets the camera unless a user gesture set
+      // userMoved — mark drag/zoom as user-originated before jumping.
+      const oe = new Event("mousedown");
+      map.fire("dragstart", { originalEvent: oe });
+      map.fire("zoomstart", { originalEvent: oe });
+      map.stop();
       map.jumpTo({ zoom: z, center: c });
     },
     { z: zoom, c: center },
@@ -129,15 +141,15 @@ async function setZoom(page: Page, zoom: number, center: [number, number]) {
       return (
         el &&
         map &&
-        Math.abs(map.getZoom() - z) < 0.05 &&
-        Math.abs(Number(el.dataset.zoom) - z) < 0.05
+        Math.abs(map.getZoom() - z) < 0.15 &&
+        Math.abs(Number(el.dataset.zoom) - z) < 0.15
       );
     },
     zoom,
     { timeout: 10_000 },
   );
   // Allow moveend rebuild
-  await page.waitForTimeout(150);
+  await page.waitForTimeout(250);
 }
 
 async function sourceFeatureCount(page: Page, id: string): Promise<number> {

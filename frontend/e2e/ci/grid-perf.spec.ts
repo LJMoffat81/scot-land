@@ -83,9 +83,19 @@ test.describe("GRID-BASE-1 perf", () => {
 
     // Warm the lazy chunk, then measure rebuild via exposed helper.
     await page.evaluate(() => {
-      (
-        window as unknown as { __SCOT_LAND_MAP__: MapHandle }
-      ).__SCOT_LAND_MAP__.jumpTo({ zoom: 17.2, center: [-3.1883, 55.9533] });
+      const map = (
+        window as unknown as {
+          __SCOT_LAND_MAP__: MapHandle & {
+            fire: (e: string, data?: { originalEvent?: Event }) => void;
+            stop: () => void;
+          };
+        }
+      ).__SCOT_LAND_MAP__;
+      const oe = new Event("mousedown");
+      map.fire("dragstart", { originalEvent: oe });
+      map.fire("zoomstart", { originalEvent: oe });
+      map.stop();
+      map.jumpTo({ zoom: 17.2, center: [-3.1883, 55.9533] });
     });
     await page.waitForFunction(
       () => {

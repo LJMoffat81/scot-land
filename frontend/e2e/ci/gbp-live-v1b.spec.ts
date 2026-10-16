@@ -1,8 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * GBP-LIVE-V1b — every £ behind the flag is per m² (range + most likely +
- * estimate label). Flag OFF: no £. Widths 390 and 1280 (_COMMON.md).
+ * GBP-LIVE-V1b — MAP-CARDS §5 answer row: flag OFF shows status + pre-pound
+ * (no £); flag ON shows £a to £b a year + chip. Widths 390 and 1280.
+ * Surface Rent per-m² lens is not the public PlaceCard figure (AGR residual).
  */
 
 const PRE_POUND =
@@ -123,15 +124,11 @@ async function stubShell(
         enabled: true,
         banner: "Early estimates; ranges are wide and will change.",
         rent_rate_wording: RENT_RATE_HOW_IT_WORKS,
-        unit: "per m²",
-        unit_wording: "per m² of land a year",
       }
     : {
         enabled: false,
         banner: null,
         rent_rate_wording: null,
-        unit: null,
-        unit_wording: null,
       };
   await page.route("**/api/gbp-live**", async (route) => {
     await route.fulfill({
@@ -162,38 +159,53 @@ async function stubShell(
     });
   });
   await page.route("**/layers/**", async (route) => {
+    const url = route.request().url();
+    if (/\/layers\/catalog/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ version: 2, layers: [] }),
+      });
+      return;
+    }
+    if (/\/layers\/context\/data-zones\/at/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code: "S01014567",
+          name: "City Centre South",
+          vintage: 2022,
+        }),
+      });
+      return;
+    }
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(EMPTY_FC),
     });
   });
+  await page.route("**/boundaries/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(EMPTY_FC),
+    });
+  });
+  await page.route("**/api/catalog.json", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ layers: [] }),
+    });
+  });
 }
 
-/** Open via search/coords query — map tap is unreliable at 390 (mobile sheet). */
+/** Open via deep-link coords — map tap is unreliable at 390 (mobile sheet). */
 async function openPlaceCard(page: Page) {
   await page.goto("/?lat=55.860900&lng=-4.251400");
   await expect(page.getByTestId("place-card")).toBeVisible({ timeout: 30_000 });
-}
-
-/** Every text node that contains £ must also contain "per m²". */
-async function assertEveryPoundHasPerM2(page: Page, rootTestId: string) {
-  const violations = await page.locator(`[data-testid="${rootTestId}"]`).evaluate(
-    (root) => {
-      const bad: string[] = [];
-      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-      let node = walker.nextNode();
-      while (node) {
-        const text = (node.textContent || "").trim();
-        if (text.includes("£") && !text.includes("per m²")) {
-          bad.push(text);
-        }
-        node = walker.nextNode();
-      }
-      return bad;
-    },
-  );
-  expect(violations, `£ without per m²: ${violations.join(" | ")}`).toEqual([]);
 }
 
 const okPlace = () =>
@@ -202,19 +214,14 @@ const okPlace = () =>
       enabled: true,
       banner: "Early estimates; ranges are wide and will change.",
       rent_rate_wording: RENT_RATE_HOW_IT_WORKS,
-      unit: "per m²",
-      unit_wording: "per m² of land a year",
     },
     surface_rent_display: {
       state: "ok",
-      low: 0.06,
-      central: 0.12,
-      high: 0.18,
+      low: 6000,
+      central: 12000,
+      high: 18000,
       estimate_label: "Partly estimated",
       rent_rate_wording: RENT_RATE_CARD,
-      unit: "per m²",
-      unit_wording: "per m² of land a year",
-      central_label: "most likely",
       grain: "data_zone",
     },
   });
@@ -230,35 +237,32 @@ for (const viewport of [
       await stubShell(page, placeFixture(), false);
       await openPlaceCard(page);
       const card = page.getByTestId("place-card");
-      await expect(card.getByTestId("place-card-figure")).toHaveText(PRE_POUND);
+      const figure = card.getByTestId("place-card-figure");
+      await expect(figure.getByTestId("place-card-figure-status")).toHaveText(
+        "Not published yet",
+      );
+      await expect(figure).toContainText(PRE_POUND);
       await expect(card).not.toContainText("£");
+      await expect(card.getByTestId("place-card-figure-range")).toHaveCount(0);
     });
 
-    test("flag ON: every £ has per m², range, most likely, estimate label", async ({
+    test("flag ON: £a to £b a year range and chip (MAP-CARDS §5)", async ({
       page,
     }) => {
       await stubShell(page, okPlace(), true);
       await openPlaceCard(page);
       const card = page.getByTestId("place-card");
-      await expect(card.getByTestId("place-card-figure")).toContainText(
-        "£0.12 per m²",
+      const range = card.getByTestId("place-card-figure-range");
+      await expect(range).toContainText("£6,000");
+      await expect(range).toContainText("to");
+      await expect(range).toContainText("£18,000");
+      await expect(range).toContainText("a year");
+      await expect(card.getByTestId("place-card-figure")).not.toContainText(
+        /^£12,000$/,
       );
-      await expect(card.getByTestId("place-card-figure-range")).toContainText(
-        "per m²",
-      );
-      await expect(card.getByTestId("place-card-figure-central-label")).toHaveText(
-        "most likely",
-      );
-      await expect(card.getByTestId("place-card-figure-estimate")).toHaveText(
-        "Partly estimated",
-      );
-      await expect(card.getByTestId("place-card-figure-unit")).toContainText(
-        "per m² of land a year",
-      );
-      await expect(card.getByTestId("place-card-range-surface")).toContainText(
-        "per m²",
-      );
-      await assertEveryPoundHasPerM2(page, "place-card");
+      await expect(
+        card.getByTestId("place-card-figure").getByTestId("place-tag-proxy"),
+      ).toBeVisible();
       await expect(card).not.toContainText(/Scotland total|national total/i);
       await expect(card).not.toContainText(/\byield\b/i);
     });
@@ -281,7 +285,7 @@ for (const viewport of [
       await stubShell(page, place, true);
       await openPlaceCard(page);
       const card = page.getByTestId("place-card");
-      await expect(card.getByTestId("place-card-figure")).toHaveText(
+      await expect(card.getByTestId("place-card-under-review")).toHaveText(
         "Under review",
       );
       await expect(card).not.toContainText("£");

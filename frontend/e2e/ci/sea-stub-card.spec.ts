@@ -112,7 +112,7 @@ async function stubMapChrome(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ layers: [] }),
+      body: JSON.stringify({ version: 2, layers: [] }),
     });
   });
   await page.route("**/backend/place**", async (route) => {
@@ -122,7 +122,7 @@ async function stubMapChrome(page: Page) {
       body: JSON.stringify({ kind: "places", matches: [] }),
     });
   });
-  await page.route("**/backend/layers/open/data-zones**", async (route) => {
+  await page.route("**/backend/layers/open/**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -134,6 +134,13 @@ async function stubMapChrome(page: Page) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ layers: [] }),
+    });
+  });
+  await page.route("**/api/gbp-live**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ enabled: false }),
     });
   });
 }

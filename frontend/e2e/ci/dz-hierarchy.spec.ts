@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 /**
  * DZ-HIERARCHY — Intermediate Zone title, council second line;
- * "More about this area" links to Data & sources (no DZ2011 / IZ codes on card).
+ * MAP-CARDS §5 "More about this area ▾" fold (no DZ2011 / IZ codes on card).
  * Widths: 390 and 1280. Console/pageerror gate.
  */
 
@@ -10,8 +10,8 @@ const IZ_NAME = "Old Town, Princes Street and Leith Street";
 const IZ_CODE = "S02002727";
 const COUNCIL = "City of Edinburgh";
 const DZ2011_CODE = "S01008677";
-const MORE_ABOUT = "More about this area";
-const DATA_SOURCES = "Data & sources";
+const MORE_ABOUT = "More about this area ▾";
+const HOW_LINK = "How we work this out →";
 
 const HEALTH_OK = {
   status: "ok",
@@ -152,7 +152,14 @@ async function stubMapChrome(page: Page, fixture = eh1PlaceFixture()) {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ layers: [] }),
+      body: JSON.stringify({ version: 2, layers: [] }),
+    });
+  });
+  await page.route("**/backend/boundaries/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(EMPTY_FC),
     });
   });
   await page.route("**/backend/layers/**", async (route) => {
@@ -182,11 +189,25 @@ async function stubMapChrome(page: Page, fixture = eh1PlaceFixture()) {
       body: JSON.stringify(fixture),
     });
   });
-  await page.route("**/backend/api/place.json**", async (route) => {
+  await page.route("**/api/place.json**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(fixture),
+    });
+  });
+  await page.route("**/api/catalog.json", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ layers: [] }),
+    });
+  });
+  await page.route("**/api/gbp-live**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ enabled: false }),
     });
   });
 }
@@ -223,15 +244,15 @@ test.describe("DZ-HIERARCHY place card desktop 1280", () => {
       "Edinburgh Old Town",
     );
 
-    // Desktop: summary is present but visually hidden; label must stay exact.
-    await expect(page.getByTestId("place-card-more-about-summary")).toHaveText(
-      MORE_ABOUT,
-    );
-    await expect(page.getByTestId("place-card-more-about-summary")).toBeHidden();
-    const dataLink = page.getByTestId("place-card-data-sources-link");
-    await expect(dataLink).toBeVisible();
-    await expect(dataLink).toHaveText(DATA_SOURCES);
-    await expect(dataLink).toHaveAttribute("href", "/data");
+    // MAP-CARDS §5: parts fold summary is exact; methodology under the fold.
+    const parts = page.getByTestId("place-card-parts");
+    await expect(parts).toBeVisible();
+    await expect(parts.locator("summary")).toHaveText(MORE_ABOUT);
+    await parts.locator("summary").click();
+    const howLink = page.getByTestId("place-card-methodology-link");
+    await expect(howLink).toBeVisible();
+    await expect(howLink).toHaveText(HOW_LINK);
+    await expect(howLink).toHaveAttribute("href", "/methodology");
     await assertNoZoneCodesOnCard(card);
     await expect(card).not.toContainText(/\bunknown\b/i);
     await expect(card).not.toContainText("£");
@@ -266,7 +287,7 @@ test.describe("DZ-HIERARCHY place card desktop 1280", () => {
 test.describe("DZ-HIERARCHY place card mobile 390", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("EH1 1YZ IZ title; More about closed; Data & sources; value rows above fold", async ({
+  test("EH1 1YZ IZ title; More about closed; methodology under fold; answer above fold", async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -277,32 +298,33 @@ test.describe("DZ-HIERARCHY place card mobile 390", () => {
     await expect(page.getByTestId("place-card-place")).toHaveText(IZ_NAME);
     await expect(page.getByTestId("place-card-council")).toHaveText(COUNCIL);
 
-    const more = page.getByTestId("place-card-more-about");
-    await expect(more).toBeVisible();
-    await expect(page.getByTestId("place-card-more-about-summary")).toBeVisible();
-    await expect(page.getByTestId("place-card-more-about-summary")).toHaveText(
-      MORE_ABOUT,
-    );
+    const parts = page.getByTestId("place-card-parts");
+    await expect(parts).toBeVisible();
+    await expect(parts.locator("summary")).toHaveText(MORE_ABOUT);
     await expect
-      .poll(async () => more.evaluate((el) => (el as HTMLDetailsElement).open))
+      .poll(async () => parts.evaluate((el) => (el as HTMLDetailsElement).open))
       .toBe(false);
-    await expect(page.getByTestId("place-card-data-sources-link")).toBeHidden();
+    await expect(page.getByTestId("place-card-methodology-link")).toBeHidden();
 
-    const valueRows = page.getByTestId("place-card-value-rows");
-    await expect(valueRows).toBeVisible();
+    // Answer row sits above the closed fold; value rows live inside it.
+    const figure = page.getByTestId("place-card-figure");
+    await expect(figure).toBeVisible();
+    const figureBox = await figure.boundingBox();
+    const partsBox = await parts.boundingBox();
+    expect(figureBox).toBeTruthy();
+    expect(partsBox).toBeTruthy();
+    expect(figureBox!.y + figureBox!.height).toBeLessThanOrEqual(
+      partsBox!.y + 1,
+    );
+
+    await parts.locator("summary").click();
+    await expect(parts).toHaveAttribute("open", "");
+    await expect(page.getByTestId("place-card-value-rows")).toBeVisible();
     await expect(page.getByTestId("place-card-agr-surface")).toBeVisible();
-    const valueBox = await valueRows.boundingBox();
-    const moreBox = await more.boundingBox();
-    expect(valueBox).toBeTruthy();
-    expect(moreBox).toBeTruthy();
-    expect(valueBox!.y + valueBox!.height).toBeLessThanOrEqual(moreBox!.y + 1);
-
-    await page.getByTestId("place-card-more-about-summary").click();
-    await expect(more).toHaveAttribute("open", "");
-    const dataLink = page.getByTestId("place-card-data-sources-link");
-    await expect(dataLink).toBeVisible();
-    await expect(dataLink).toHaveText(DATA_SOURCES);
-    await expect(dataLink).toHaveAttribute("href", "/data");
+    const howLink = page.getByTestId("place-card-methodology-link");
+    await expect(howLink).toBeVisible();
+    await expect(howLink).toHaveText(HOW_LINK);
+    await expect(howLink).toHaveAttribute("href", "/methodology");
     await assertNoZoneCodesOnCard(card);
 
     await expect(card).not.toContainText(/\bunknown\b/i);

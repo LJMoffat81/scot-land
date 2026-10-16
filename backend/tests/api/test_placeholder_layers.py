@@ -52,7 +52,9 @@ def test_internal_endpoints_off_by_default(monkeypatch, flag):
                  "/internal/georgist/wealth?lat=55.95&lng=-3.19&zone_id=S01008677",
                  "/internal/georgist/surface-rent/S01008677"]:
         assert c.get(path).status_code == 404, path
-    assert c.get("/health").json()["routers"]["api.internal_routes"]["loaded"] is False
+    from api.main import ROUTER_STATUS
+
+    assert ROUTER_STATUS["api.internal_routes"]["loaded"] is False
 
 
 @pytest.mark.parametrize("path", ["/internal/layers/georgist/resource-rent", "/internal/layers/georgist/eco-rent"])

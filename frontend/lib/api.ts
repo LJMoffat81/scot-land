@@ -232,9 +232,10 @@ export async function pingApi(): Promise<{ ok: boolean; message: string }> {
 }
 
 /**
- * Which optional API routers this server mounts (from /health `routers`). The AGR
- * router is optional: when it is not loaded, public place/search endpoints 404, so
- * the map must not call them. The public shell never fetches council AGR metrics
+ * Which optional API routers this server mounts. HEALTH-TRIM: `/health` is
+ * status + version only, so we probe a public path unique to each optional
+ * router. When AGR is not loaded, public place/search endpoints 404, so the
+ * map must not call them. The public shell never fetches council AGR metrics
  * (/layers/councils) or paints rent £/m² — modelled AGR £ stays internal-only.
  * Cached for the page; a failed probe is retried on the next call.
  */
@@ -242,18 +243,37 @@ export type ApiCapabilities = { reachable: boolean; agr: boolean; platform: bool
 
 let capabilitiesPromise: Promise<ApiCapabilities> | null = null;
 
+async function probeOk(path: string): Promise<boolean> {
+  const base = getApiBaseUrl().replace(/\/$/, "");
+  const url = `${base}${path.startsWith("/") ? "" : "/"}${path}`;
+  try {
+    const response = await fetch(url, {
+      credentials: "omit",
+      headers: { Accept: "application/json" },
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function fetchCapabilities(): Promise<ApiCapabilities> {
   if (!capabilitiesPromise) {
-    capabilitiesPromise = apiJson<{ routers?: Record<string, { loaded?: boolean }> }>("/health")
-      .then((data) => ({
-        reachable: true,
-        agr: data.routers?.["api.agr_routes"]?.loaded === true,
-        platform: data.routers?.["api.platform_routes"]?.loaded === true,
-      }))
-      .catch(() => {
+    capabilitiesPromise = (async () => {
+      const reachable = await probeOk("/health");
+      if (!reachable) {
         capabilitiesPromise = null;
         return { reachable: false, agr: false, platform: false };
-      });
+      }
+      const [agr, platform] = await Promise.all([
+        probeOk("/layers/catalog"),
+        probeOk("/platform/gaps"),
+      ]);
+      return { reachable: true, agr, platform };
+    })().catch(() => {
+      capabilitiesPromise = null;
+      return { reachable: false, agr: false, platform: false };
+    });
   }
   return capabilitiesPromise;
 }

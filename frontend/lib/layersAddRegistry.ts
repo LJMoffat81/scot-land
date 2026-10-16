@@ -85,6 +85,7 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
   {
     id: "conservation",
     layerId: "hes_conservation_areas",
+    // Tile property `name` is the published conservation-area designation.
     group: "places",
     label: "Conservation areas",
     family: "context",
@@ -134,6 +135,8 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
   {
     id: "school_catchments",
     layerId: "school_catchments",
+    // school_name is the published name of the school (a public institution).
+    // LICENCE-ADDENDUM-1a: allowed on tiles; not a personal-data field.
     group: "places",
     label: "School catchments",
     family: "context",
@@ -209,7 +212,28 @@ export function visitorLayersAddRows(opts?: {
   const present = opts?.spatialHubPresent ?? {};
   return LAYERS_ADD_REGISTRY.filter((row) => {
     if (row.gated) return false;
-    if (row.isSpatialHub && present[row.layerId] === false) return false;
+    // Missing or false means the extract is absent — hide the row.
+    if (row.isSpatialHub && present[row.layerId] !== true) return false;
     return true;
   });
+}
+
+/** Map a tile-manifest payload onto Improvement Service presence flags. */
+export function spatialHubPresenceFromManifest(
+  sources: ReadonlyArray<{ layer_id?: string; display_id?: string | null }>,
+): Record<string, boolean> {
+  const present: Record<string, boolean> = {};
+  for (const row of LAYERS_ADD_REGISTRY) {
+    if (row.isSpatialHub) present[row.layerId] = false;
+  }
+  for (const src of sources) {
+    for (const id of [src.layer_id, src.display_id]) {
+      if (!id) continue;
+      const row = LAYERS_ADD_REGISTRY.find(
+        (entry) => entry.layerId === id || entry.id === id,
+      );
+      if (row?.isSpatialHub) present[row.layerId] = true;
+    }
+  }
+  return present;
 }

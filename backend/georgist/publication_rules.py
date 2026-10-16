@@ -193,6 +193,12 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="LAYERS-ADD-1 public tile manifest; no rent",
     ),
+    "/layers/add/viewport/{layer_id}": LayerRule(
+        "site",
+        "site",
+        "none",
+        note="LAYERS-ADD-1 viewport shapes for painted layers; no rent; absent IS extracts 404",
+    ),
     "/layers/add/agg/{agg_name}": LayerRule(
         "zone",
         "zone",

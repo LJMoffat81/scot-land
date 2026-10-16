@@ -3,6 +3,7 @@
  * Live switches only; deferred layers live on /roadmap (MAP-CARDS E7).
  */
 
+import { LAYERS_ADD_REGISTRY, visitorLayersAddRows } from "./layersAddRegistry";
 import {
   MAP_LAYER_GROUP_ORDER,
   MAP_LAYER_REGISTRY,
@@ -58,14 +59,35 @@ function toDrawerLayer(entry: MapLayerRegistryEntry): MapDrawerLayer {
 export const MAP_DRAWER_LAYERS: MapDrawerLayer[] =
   MAP_LAYER_REGISTRY.map(toDrawerLayer);
 
-export function mapDrawerLayersByGroup(): Array<{
+/**
+ * Visitor drawer groups.
+ * Improvement Service rows stay off the list until the extract is present.
+ * A row still marked paintPending stays hidden (no dead switch).
+ */
+export function mapDrawerLayersByGroup(opts?: {
+  spatialHubPresent?: Record<string, boolean> | null;
+}): Array<{
   key: MapLayerGroupKey;
   label: string;
   layers: MapDrawerLayer[];
 }> {
+  const present = opts?.spatialHubPresent ?? {};
+  const visibleHub = new Set(
+    visitorLayersAddRows({ spatialHubPresent: present })
+      .filter((row) => row.isSpatialHub)
+      .map((row) => row.id),
+  );
   return MAP_LAYER_GROUP_ORDER.map((key) => ({
     key,
     label: mapLayerGroupLabel(key),
-    layers: MAP_DRAWER_LAYERS.filter((layer) => layer.group === key),
+    layers: MAP_DRAWER_LAYERS.filter((layer) => {
+      if (layer.group !== key) return false;
+      if (layer.paintPending) return false;
+      const hub = LAYERS_ADD_REGISTRY.find(
+        (row) => row.id === layer.id && row.isSpatialHub,
+      );
+      if (hub && !visibleHub.has(layer.id)) return false;
+      return true;
+    }),
   }));
 }

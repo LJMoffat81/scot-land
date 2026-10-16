@@ -194,7 +194,6 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     classes: cividisLegendClasses(),
     chip: "proxy",
     defaultOn: false,
-    paintPending: true,
   },
   {
     id: "flood",
@@ -205,7 +204,6 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "SEPA · NFRA flood risk grid",
     classes: FLOOD_RISK_CLASSES,
     defaultOn: false,
-    paintPending: true,
   },
   {
     id: "vdl",
@@ -240,7 +238,6 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "Improvement Service · contaminated land",
     classes: [{ label: "Land on a council's contaminated land register", color: "#4d4d4d" }],
     defaultOn: false,
-    paintPending: true,
   },
   {
     id: "3",
@@ -337,7 +334,6 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "Scottish Government · 2020",
     classes: DEPRIVATION_CLASSES,
     defaultOn: false,
-    paintPending: true,
   },
   {
     id: "conservation",
@@ -348,7 +344,6 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "Historic Environment Scotland · open data",
     classes: [{ label: "Protected for their character", color: "#8a3b8f" }],
     defaultOn: false,
-    paintPending: true,
   },
   {
     id: "listed",
@@ -359,7 +354,6 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "Historic Environment Scotland · open data",
     classes: LISTED_CLASSES,
     defaultOn: false,
-    paintPending: true,
   },
   {
     id: "stops",
@@ -370,7 +364,6 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "Department for Transport · open data",
     classes: STOP_CLASSES,
     defaultOn: false,
-    paintPending: true,
   },
   {
     id: "green_belt",
@@ -381,7 +374,6 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "Improvement Service · green belt",
     classes: [{ label: "Land kept open around towns", color: "#2e7d32" }],
     defaultOn: false,
-    paintPending: true,
   },
   {
     id: "school_catchments",
@@ -392,7 +384,6 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "Improvement Service · council data, years vary",
     classes: [{ label: "Area a school serves", color: "#5b6b7a" }],
     defaultOn: false,
-    paintPending: true,
   },
 ];
 

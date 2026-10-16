@@ -54,20 +54,41 @@ DISPLAY_ID_BY_LAYER: Final[dict[str, str]] = {
 }
 
 # Tile / API property allowlists (L9). Listed buildings: category + HES link only.
+# Vacant/derelict tiles are outline and fill only. Hectares stay on the Data
+# Zone aggregate (agg_vdl), never as a per-site tile property.
 TILE_PROPERTY_ALLOWLIST: Final[dict[str, frozenset[str]]] = {
     "naptan_stops": frozenset({"stop_type"}),
     "hes_listed_buildings": frozenset({"category", "hes_link"}),
+    # `name` is the published conservation-area designation (a public name).
     "hes_conservation_areas": frozenset({"name"}),
     "sepa_nfra_grid": frozenset({"grid_id", "aad_score_res", "class"}),
     "contaminated_land": frozenset({"dz_code", "present"}),
     "housing_land_supply": frozenset({"geometry_type"}),
-    "vdl": frozenset({"site_code", "site_type", "site_size_ha"}),
+    "vdl": frozenset(),
     "green_belt": frozenset({"local_authority"}),
+    # school_name is the published name of the school (a public institution).
+    # LICENCE-ADDENDUM-1a: allowed on tiles; not a personal-data field.
     "school_catchments": frozenset({"school_name", "stage", "data_year"}),
     "ldp_allocations": frozenset({"use_class", "local_authority"}),
     "simd2020_domains": frozenset({"q", "topic"}),
     "dz2022_boundaries": frozenset({"dz_code"}),
 }
+
+# GeoJSON viewport paint. Flood risk uses sepa_nfra_grid, not the gated extent.
+VIEWPORT_PAINT_LAYER_IDS: Final[frozenset[str]] = frozenset(
+    {
+        "access_services",
+        "sepa_nfra_grid",
+        "simd2020_domains",
+        "hes_conservation_areas",
+        "hes_listed_buildings",
+        "naptan_stops",
+        "green_belt",
+        "school_catchments",
+        "contaminated_land",
+        "vdl",
+    }
+)
 
 # Improvement Service / Spatial Hub sourced layers — skip when extract absent.
 IS_LAYER_IDS: Final[frozenset[str]] = frozenset(
@@ -262,6 +283,7 @@ def layers_add_entries() -> list[dict[str, Any]]:
             maxzoom=20,
             family="context",
             caption="Historic Environment Scotland · {YEAR}",
+            note="Tile property name is the published conservation-area designation.",
         ),
         _entry(
             layer_id="hes_listed_buildings",
@@ -386,6 +408,7 @@ def layers_add_entries() -> list[dict[str, Any]]:
             maxzoom=20,
             family="context",
             caption="Improvement Service · council data, years vary",
+            note="school_name is the published name of the school.",
         ),
         _entry(
             layer_id="contaminated_land",

@@ -23,6 +23,11 @@ export type MapLayersDrawerProps = {
    * Unavailable layers are not listed at all (roadmap handles deferred layers).
    */
   unavailableIds?: ReadonlySet<string> | ReadonlyArray<string>;
+  /**
+   * Improvement Service extracts present in the tile manifest.
+   * Null or omitted hides those rows (skip when the extract is absent).
+   */
+  spatialHubPresent?: Record<string, boolean> | null;
   /** Current map zoom for inline legend zoom gates. */
   mapZoom?: number;
   /** Close control — parent owns open state (opening must not change layers). */
@@ -69,13 +74,14 @@ export default function MapLayersDrawer({
   enabled = {},
   onEnabledChange,
   unavailableIds,
+  spatialHubPresent = null,
   mapZoom,
   onClose,
   className,
   title = "Map layers",
 }: MapLayersDrawerProps) {
   const unavailable = asUnavailableSet(unavailableIds);
-  const groups = mapDrawerLayersByGroup()
+  const groups = mapDrawerLayersByGroup({ spatialHubPresent })
     .map(({ key, label, layers }) => ({
       key,
       label,

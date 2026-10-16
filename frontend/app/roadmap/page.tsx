@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import ContentPageFooter from "@/components/ContentPageFooter";
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
+import { LAYERS_ADD_WAITING } from "@/lib/layersAddRegistry";
 import { absoluteOgImageUrl, OG_IMAGES } from "@/lib/socialMeta";
 
 export const metadata: Metadata = {
@@ -30,21 +31,14 @@ const COMING_TO_THE_MAP: ReadonlyArray<{
   status: string;
   statusShort?: string;
 }> = [
-  // LAYERS-ADD-1a — flagged OFF (PSGA). Exact visitor strings from design L11.
-  {
-    id: "ldp",
-    name: "Planned development land",
-    blurb: "Land councils have set aside for building",
-    status: "Waiting for permission to use the data",
-    statusShort: "Waiting for permission",
-  },
-  {
-    id: "hls",
-    name: "Land for new homes",
-    blurb: "Sites a council expects to be built for homes",
-    status: "Waiting for permission to use the data",
-    statusShort: "Waiting for permission",
-  },
+  // LDP / HLS status comes from LAYERS_ADD_WAITING (the catalog copy).
+  ...LAYERS_ADD_WAITING.map((row) => ({
+    id: row.id,
+    name: row.title,
+    blurb: row.blurb,
+    status: row.status,
+    statusShort: row.statusShort,
+  })),
   {
     name: "Landscape character areas",
     status: "Waiting for permission — licence check",

@@ -42,6 +42,9 @@ from layers.layer_flags import (
 )
 from layers.layers_add_catalog import (
     GATED_LAYER_IDS,
+    IS_LAYER_IDS,
+    VIEWPORT_PAINT_LAYER_IDS,
+    is_layer_extract_present,
     tile_manifest,
     waiting_for_permission_rows,
 )
@@ -817,6 +820,30 @@ def layers_add_waiting() -> dict:
 def layers_add_tiles_manifest() -> dict:
     """Public tile sources with flags OFF — no gated layer ids (L5)."""
     return tile_manifest()
+
+
+@router.get("/layers/add/viewport/{layer_id}")
+def layers_add_viewport(
+    layer_id: str,
+    south: float = Query(..., description="BBox south latitude"),
+    west: float = Query(..., description="BBox west longitude"),
+    north: float = Query(..., description="BBox north latitude"),
+    east: float = Query(..., description="BBox east longitude"),
+) -> JSONResponse:
+    """Viewport shapes for a painted LAYERS-ADD layer.
+
+    Empty until tiles are built — never invents geometry. Improvement Service
+    layers 404 when the manual extract is absent. Flood risk is
+    ``sepa_nfra_grid``, not the gated SEPA flood extent.
+    """
+    if layer_id in GATED_LAYER_IDS or layer_id == "sepa_frm_maps":
+        raise HTTPException(status_code=404, detail="Not Found")
+    if layer_id in IS_LAYER_IDS and not is_layer_extract_present(layer_id):
+        raise HTTPException(status_code=404, detail="Not Found")
+    if layer_id not in VIEWPORT_PAINT_LAYER_IDS:
+        raise HTTPException(status_code=404, detail="Not Found")
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    return JSONResponse({"type": "FeatureCollection", "features": []})
 
 
 @router.get("/tiles/{layer_id}/{z}/{x}/{y}")

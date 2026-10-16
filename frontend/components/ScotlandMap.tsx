@@ -40,6 +40,8 @@ import {
   visitorFacingError,
 } from "../lib/api";
 import { CONTEXT_LAYERS } from "../lib/contextLayers";
+import { syncLayersAddPaint } from "../lib/layersAddMapPaint";
+import { spatialHubPresenceFromManifest } from "../lib/layersAddRegistry";
 import {
   fetchLayerCatalog,
   type CatalogLayer,
@@ -769,8 +771,8 @@ export default function ScotlandMap() {
         }
       });
     }
-    // Constraint flood paints the existing flood context overlay when available.
-    setContextOn((cur) => ({ ...cur, flood: Boolean(sanitized.flood) }));
+    // Flood risk (toggle id "flood") paints catalog layer sepa_nfra_grid.
+    // The gated SEPA flood-extent overlay is not this switch.
   };
 
   // Public place card (stub). Modelled AGR £ / Wealth / tax stay off the public shell.
@@ -846,6 +848,11 @@ export default function ScotlandMap() {
   const [tileUnavailableIds, setTileUnavailableIds] = useState<Set<string>>(
     () => new Set(),
   );
+  /** Null until the tile manifest loads; absent extracts stay off the list. */
+  const [spatialHubPresent, setSpatialHubPresent] = useState<Record<
+    string,
+    boolean
+  > | null>(null);
   const markTileUnavailable = useCallback((id: string) => {
     setTileUnavailableIds((prev) => {
       if (prev.has(id)) return prev;
@@ -4504,6 +4511,43 @@ export default function ScotlandMap() {
     };
   }, [result]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void apiJson<{
+      sources?: Array<{ layer_id?: string; display_id?: string | null }>;
+    }>("/layers/add/tiles-manifest")
+      .then((data) => {
+        if (cancelled) return;
+        setSpatialHubPresent(
+          spatialHubPresenceFromManifest(data.sources ?? []),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setSpatialHubPresent({});
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Flood risk paints sepa_nfra_grid (layersAddMapPaint), not /layers/open/flood.
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    let cancelled = false;
+    const run = () => {
+      if (cancelled) return;
+      void syncLayersAddPaint(map, ledgerEnabled);
+    };
+    run();
+    map.on("moveend", run);
+    return () => {
+      cancelled = true;
+      map.off("moveend", run);
+    };
+  }, [mapReady, ledgerEnabled]);
+
   const placeOpen = panelKind === "place" && Boolean(placeStub || result);
   const layersOpen = panelKind === "layers";
   /** Tile-unavailable ids for the drawer (builtup is not a switch). */
@@ -4861,6 +4905,7 @@ export default function ScotlandMap() {
               [GRID3_LAYER_ID]: showGrid3,
             }}
             unavailableIds={unavailableLayerIds}
+            spatialHubPresent={spatialHubPresent}
             onEnabledChange={onMapLayersChange}
           />
         ) : placeStub ? (

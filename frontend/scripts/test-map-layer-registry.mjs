@@ -190,4 +190,46 @@ assert.equal(
   `Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right ${dzJson.extraction_year}.`,
 );
 
+assert.equal(
+  MAP_LAYER_REGISTRY.filter((entry) => entry.paintPending).length,
+  0,
+  "paintPending rows must be painted or left off the live list",
+);
+
+const { visitorLayersAddRows, LAYERS_ADD_REGISTRY, LAYERS_ADD_WAITING } =
+  await import(pathToFileURL(join(frontendRoot, "lib/layersAddRegistry.ts")).href);
+const absent = visitorLayersAddRows().map((row) => row.id);
+for (const id of ["vdl", "green_belt", "school_catchments", "contaminated_land"]) {
+  assert.equal(absent.includes(id), false, `${id} hidden when extract absent`);
+}
+assert.equal(
+  LAYERS_ADD_REGISTRY.find((row) => row.id === "flood")?.layerId,
+  "sepa_nfra_grid",
+);
+const present = visitorLayersAddRows({
+  spatialHubPresent: {
+    vdl: true,
+    green_belt: true,
+    school_catchments: true,
+    contaminated_land: true,
+  },
+}).map((row) => row.id);
+assert.equal(present.includes("green_belt"), true);
+
+const roadmap = readFileSync(join(frontendRoot, "app/roadmap/page.tsx"), "utf8");
+assert.match(roadmap, /LAYERS_ADD_WAITING/);
+assert.equal(
+  roadmap.includes('id: "ldp"'),
+  false,
+  "roadmap LDP/HLS come from LAYERS_ADD_WAITING",
+);
+assert.equal(LAYERS_ADD_WAITING.map((row) => row.id).join(","), "ldp,hls");
+
+const mapSrc = readFileSync(
+  join(frontendRoot, "components/ScotlandMap.tsx"),
+  "utf8",
+);
+assert.match(mapSrc, /sepa_nfra_grid/);
+assert.match(mapSrc, /syncLayersAddPaint/);
+
 console.log("test-map-layer-registry: ok");

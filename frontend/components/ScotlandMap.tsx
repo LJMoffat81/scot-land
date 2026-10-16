@@ -840,6 +840,52 @@ export default function ScotlandMap() {
     return () => observer.disconnect();
   }, []);
 
+  // UI-TWEAKS-1 T1: pin Layers drawer top to the Layers button (±2 px in e2e)
+  // and stretch to the attribution / bottom inset; mobile keeps the sheet.
+  useEffect(() => {
+    if (!toolsOpen) return;
+    const stage =
+      layersBtnRef.current?.closest(".map-stage") ??
+      headerRef.current?.parentElement;
+    if (!stage || !(stage instanceof HTMLElement)) return;
+
+    const applyPanelGeometry = () => {
+      const btn = layersBtnRef.current;
+      if (!btn) return;
+      const stageRect = stage.getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
+      const top = Math.max(0, btnRect.top - stageRect.top);
+      stage.style.setProperty("--layers-panel-top", `${Math.round(top)}px`);
+
+      // Bottom inset: attribution / safe gap above the map-stage floor.
+      // Zoom controls shift sideways while the drawer is open — do not reserve
+      // their full stack height or the panel stays artificially short.
+      let bottomInset = Math.round(1.75 * 16);
+      const attribBtn = stage.querySelector(
+        ".maplibregl-ctrl-attrib",
+      ) as HTMLElement | null;
+      if (attribBtn && attribBtn.offsetParent !== null) {
+        const a = attribBtn.getBoundingClientRect();
+        const fromFloor = Math.round(stageRect.bottom - a.bottom);
+        bottomInset = Math.max(bottomInset, fromFloor + 8);
+      }
+      stage.style.setProperty(
+        "--layers-panel-bottom",
+        `${bottomInset}px`,
+      );
+    };
+
+    applyPanelGeometry();
+    const observer = new ResizeObserver(applyPanelGeometry);
+    observer.observe(stage);
+    if (layersBtnRef.current) observer.observe(layersBtnRef.current);
+    window.addEventListener("resize", applyPanelGeometry);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", applyPanelGeometry);
+    };
+  }, [toolsOpen]);
+
   const applyResult = useCallback((payload: SquareResponse) => {
     setResult(payload);
     if (payload.agr?.active_scenario) {

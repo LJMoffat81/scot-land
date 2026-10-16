@@ -194,8 +194,13 @@ test.describe("UX-04 a11y names and landmarks at 1280", () => {
 
     // MAP-CARDS GIS 14: one attribution line + All sources (no floating
     // MapLicenceCredits panel).
-    await page.getByTestId("layers-group-toggle-places").click().catch(() => undefined);
-    await ensurePlacesOpen(page);
+    const placesToggle = page.getByTestId("layers-group-toggle-places");
+    if (
+      (await placesToggle.count()) &&
+      (await placesToggle.getAttribute("aria-expanded")) !== "true"
+    ) {
+      await placesToggle.click();
+    }
     await page.getByTestId("layer-toggle-data_zones").click();
     await expect(page.getByTestId("map-attribution-line")).toBeVisible({
       timeout: 15_000,

@@ -584,6 +584,7 @@ def validate_entry(row: dict[str, Any]) -> list[str]:
         str(status),
         row.get("flag_name"),
         flag_on=flag_enabled(row.get("flag_name")) if row.get("flag_name") else None,
+        internal_only=bool(row.get("internal_only")),
     )
     if row.get("public") != expected:
         problems.append(

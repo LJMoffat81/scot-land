@@ -19,6 +19,7 @@
     "test:forbidden-agr-properties": "node scripts/test-forbidden-agr-properties.mjs",
     "test:quality-tags": "node scripts/test-quality-tags.mjs",
     "test:layer-licence-credits": "node scripts/test-layer-licence-credits.mjs",
+    "test:layers-add2": "node --experimental-strip-types scripts/test-layers-add2-credits.mjs",
     "test:place-card-hotfix": "node --experimental-strip-types scripts/test-place-card-hotfix.mjs",
     "test:map-reference-osgb": "node --experimental-strip-types scripts/test-map-reference-osgb.mjs",
     "test:bng": "node --experimental-strip-types scripts/test-bng.mjs",

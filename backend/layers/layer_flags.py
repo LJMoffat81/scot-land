@@ -56,13 +56,17 @@ def derive_public(
     flag_name: str | None,
     *,
     flag_on: bool | None = None,
+    internal_only: bool = False,
 ) -> bool:
-    """public = licence_status in {ogl, confirmed, open_other} and flag allows.
+    """public = licence in {ogl, confirmed, open_other} and not internal_only and flag allows.
 
-    ``prohibited`` and ``unconfirmed`` are never public. When ``flag_name`` is
-    set, the flag must be ON. ``sepa_frm_maps`` stays non-public even if its
-    flag is forced on (licence_status=prohibited).
+    ``prohibited`` and ``unconfirmed`` are never public. ``internal_only`` is
+    never public, whatever the status or flag. When ``flag_name`` is set, the
+    flag must be ON. ``sepa_frm_maps`` stays non-public even if its flag is
+    forced on (licence_status=prohibited).
     """
+    if internal_only:
+        return False
     if licence_status == "prohibited":
         return False
     if licence_status not in {"ogl", "confirmed", "open_other"}:

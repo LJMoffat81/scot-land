@@ -163,7 +163,9 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "site", "site", "none", note="locality containing a point; no rent",
     ),
     # Open-land platform router (mounted when imports + declarations succeed).
-    "/layers/open/vdl": LayerRule("site", "site", "none", note="vacant/derelict survey polygons; no rent"),
+    "/layers/open/vdl": LayerRule(
+        "zone", "zone", "none", note="vacant/derelict Data Zone totals; no rent; no site identifiers",
+    ),
     "/layers/open/hla": LayerRule(
         "site", "site", "none", note="housing land audit / supply polygons; no rent"
     ),

@@ -33,19 +33,34 @@ def test_place_hectare_stack_nested_and_shadow_rules():
     assert headline is not None and shadow is not None and outside is not None
 
     h_ids = [r["id"] for r in headline["rows"]]
-    assert h_ids == ["1", "1a", "2", "3", "4"]
+    assert h_ids == ["1", "1a", "2", "3", "4", "5", "6"]
     nested = next(r for r in headline["rows"] if r["id"] == "1a")
     assert nested["nested"] is True
     assert nested["parent_id"] == "1"
     assert nested["in_total"] is False
 
     sum_ids = headline["sum_row_ids"]
-    assert sum_ids == ["1", "2", "3", "4"]
+    assert sum_ids == ["1", "2", "3", "4", "5", "6"]
     assert "1a" not in sum_ids
     assert headline_sum_row_ids(headline["rows"]) == sum_ids
 
     s_ids = [r["id"] for r in shadow["rows"]]
-    assert s_ids == ["5", "6", "7", "8", "10"]
+    assert s_ids == ["7", "8", "10"]
+    headline_labels = {r["label"] for r in headline["rows"]}
+    shadow_labels = {r["label"] for r in shadow["rows"]}
+    assert "Fish farm sites" in headline_labels
+    assert "Fishing quota" in headline_labels
+    assert "Fish farm sites" not in shadow_labels
+    assert "Fishing quota" not in shadow_labels
+    assert shadow["label"] == (
+        "Services of nature (estimates, shown on their own and never added in)"
+    )
+    assert body["publication_note"] == (
+        "Rent for each hectare. Figures are being checked and aren't published yet. "
+        "Planning permission value is shown inside land, not added again. "
+        "Services of nature are shown on their own and never added in. "
+        "Oil and gas are offshore and kept out of Scotland's land total."
+    )
     assert shadow["sum_row_ids"] == shadow_sum_row_ids(shadow["rows"])
     # Shadow never overlaps headline sum ids (C-totals).
     assert set(sum_ids).isdisjoint(set(shadow["sum_row_ids"]))
@@ -57,8 +72,8 @@ def test_place_hectare_stack_nested_and_shadow_rules():
     assert oil["id"] not in shadow["sum_row_ids"]
 
     labels = {b["label"] for b in outside["benchmarks"]}
-    assert "Spectrum / airspace" in labels
-    assert "Wightman" in labels
+    assert "Radio spectrum and airspace" in labels
+    assert "Andy Wightman's land estimates" in labels
     assert outside["benchmark_label"] == "benchmark only, not inputs"
 
     for c in body["constraints"]:
@@ -107,11 +122,11 @@ def test_api_place_stack_json(monkeypatch):
     body = response.json()
     assert body["contract"] == "place_hectare_stack_v1"
     assert body["published"] is True
-    assert body["headline"]["sum_row_ids"] == ["1", "2", "3", "4"]
+    assert body["headline"]["sum_row_ids"] == ["1", "2", "3", "4", "5", "6"]
     assert "1a" not in body["headline"]["sum_row_ids"]
     nested = next(r for r in body["headline"]["rows"] if r["id"] == "1a")
     assert nested["nested"] is True
-    assert body["shadow"]["sum_row_ids"] == ["5", "6", "7", "8", "10"]
+    assert body["shadow"]["sum_row_ids"] == ["7", "8", "10"]
     assert "stamp" in body
     dumped = response.text
     assert "annual_ground_rent" not in dumped

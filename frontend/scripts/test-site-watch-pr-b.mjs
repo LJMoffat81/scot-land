@@ -39,7 +39,8 @@ assert.doesNotMatch(
   "map attribution must not default to 2011",
 );
 const layerRegistry = read(join(frontendRoot, "lib/mapLayerRegistry.ts"));
-assert.match(layerRegistry, /Neighbourhood lines/);
+assert.match(layerRegistry, /Area boundaries/);
+assert.doesNotMatch(layerRegistry, /neighbo(u)?rhood/i);
 assert.match(layerRegistry, /DZ2022_EXTRACTION_YEAR/);
 const dzAttr = read(join(frontendRoot, "lib/dzAttribution.mjs"));
 assert.match(dzAttr, /Copyright Scottish Government/);
@@ -175,8 +176,10 @@ assert.match(catalogCopy, /PLAIN_DESCRIPTIONS/);
 assert.match(catalogCopy, /developer_note/);
 assert.doesNotMatch(catalogCopy, /PLAIN_DESCRIPTIONS[\s\S]{0,200}PostGIS/);
 const apiPage = read(join(frontendRoot, "app/developers/api/page.tsx"));
-assert.match(apiPage, /catalog-developer-notes/);
-assert.match(apiPage, /developer_note/);
+assert.match(apiPage, /Developer API and bulk data: coming/);
+assert.doesNotMatch(apiPage, /catalog-developer-notes/);
+assert.doesNotMatch(apiPage, /developer_note/);
+assert.doesNotMatch(apiPage, /\/api\//);
 
 // --- 10. Item 7: /data groups harden ---
 const dataPage = read(join(frontendRoot, "app/data/page.tsx"));

@@ -47,7 +47,7 @@ const PLACE_STUB = {
       unit: null,
       confidence: null,
       method: null,
-      gloss: "The yearly value of the land under homes.",
+      gloss: "The yearly rental value of the land under homes, without the buildings.",
       of_which: [],
     },
   ],
@@ -363,14 +363,12 @@ test.describe("POST-SHARE-1 SW-033 swagger badge", () => {
     });
 
     await page.goto("/developers/api");
-    await expect(page.getByTestId("api-reference-title")).toHaveText(
-      "Scot-LAND API",
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "Developer API and bulk data: coming",
     );
-    await expect(page.locator(".swagger-ui .info .title").first()).toContainText(
-      "Scot-LAND API",
-      { timeout: 15_000 },
-    );
+    await expect(page.locator(".swagger-ui")).toHaveCount(0);
     await expect(page.locator("body")).not.toContainText("wealth-api-boot");
+    await expect(page.locator("body")).not.toContainText("Scot-LAND API");
 
     expect(filterNoise(gate.consoleErrors)).toEqual([]);
     expect(filterNoise(gate.pageErrors)).toEqual([]);

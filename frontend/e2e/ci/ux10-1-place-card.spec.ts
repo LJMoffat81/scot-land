@@ -10,7 +10,7 @@ const PRE_POUND =
 const EXPERIMENTAL_FOOTER =
   "Experimental estimate, not an official valuation. It is not a bill, and it does not change what you pay.";
 const TYPICAL_HOME =
-  "For a typical home in this neighbourhood, not your home.";
+  "For a typical home in this area, not your home.";
 const AGR = "Annual Ground Rent";
 const HOW_HOMES =
   "This covers land under homes only. Shops, offices and industrial land aren't included yet.";
@@ -58,7 +58,7 @@ function placeFixture(overrides: Record<string, unknown> = {}) {
         unit: null,
         confidence: null,
         method: null,
-        gloss: "The yearly value of the land under homes.",
+        gloss: "The yearly rental value of the land under homes, without the buildings.",
         of_which: [],
       },
       {
@@ -72,7 +72,7 @@ function placeFixture(overrides: Record<string, unknown> = {}) {
         unit: null,
         confidence: null,
         method: null,
-        gloss: "Rents from things like wind, minerals and fish farming.",
+        gloss: "Rent from natural resources such as wind, water, minerals and fish farm sites.",
       },
       {
         id: "nature",
@@ -85,7 +85,7 @@ function placeFixture(overrides: Record<string, unknown> = {}) {
         unit: null,
         confidence: null,
         method: null,
-        gloss: "Value from nature's services, such as peat holding carbon.",
+        gloss: "What nature gives us for free, such as peat holding carbon. Estimate only.",
       },
     ],
     constraints: [],
@@ -194,7 +194,14 @@ async function assertSkeletonCopy(page: Page) {
   );
   await expect(page.getByTestId("place-card-agr-label")).toHaveText(AGR);
   await expect(page.getByTestId("place-card-agr-subtitle")).toHaveText(
-    "What the land here is worth each year",
+    "What the land under homes here is worth each year",
+  );
+  await expect(page.getByTestId("place-card-agr-scope")).toHaveText(
+    "Covers land used for homes, as it is used today. Values for farm, business and development land will come later.",
+  );
+  await expect(page.getByTestId("place-card-agr-heading")).toHaveAttribute(
+    "aria-label",
+    "Annual Ground Rent. What the land under homes here is worth each year. Covers land used for homes, as it is used today. Values for farm, business and development land will come later.",
   );
   await expect(page.getByTestId("place-card-figure-status")).toHaveText(
     "Not published yet",

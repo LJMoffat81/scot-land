@@ -992,9 +992,9 @@ _RENT_GROUP_LABELS = {
 }
 
 _PART_GLOSS = {
-    "surface": "The yearly value of the land under homes.",
-    "resource": "Rents from things like wind, minerals and fish farming.",
-    "nature": "Value from nature's services, such as peat holding carbon.",
+    "surface": "The yearly rental value of the land under homes, without the buildings.",
+    "resource": "Rent from natural resources such as wind, water, minerals and fish farm sites.",
+    "nature": "What nature gives us for free, such as peat holding carbon. Estimate only.",
 }
 
 # UX-10 / FP1: pre-£ range text until modules publish amounts.

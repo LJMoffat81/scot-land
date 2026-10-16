@@ -21,7 +21,7 @@ export const RESEARCH_BANNER_TEXT = `${RESEARCH_BANNER_LEAD} ${RESEARCH_BANNER_B
 
 /** SW-016 collapsed strip (≤768px) — exact one-line copy including expand cue. */
 export const RESEARCH_BANNER_STRIP_COLLAPSED =
-  "Research estimate — not a bill or valuation. More";
+  "Research estimate. Not a bill or an official valuation. More";
 
 /** /methodology only — includes approved "experimental" sentence. */
 export const METHODOLOGY_RESEARCH_BANNER_BODY =

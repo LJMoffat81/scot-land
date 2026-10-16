@@ -17,6 +17,12 @@
     gap: 0.65rem;
   }
 
+  /* Brand box matches the 48px search row so the logo stays on the same edges. */
+  .hud-top .hud-brand {
+    min-height: var(--hud-control-h);
+    align-items: center;
+  }
+
   .hud-top .site-nav-map {
     order: 15;
     margin-left: 0;
@@ -1374,6 +1380,7 @@
   .map-panel-slot--peek .place-card-council,
   .map-panel-slot--peek .place-card-typical,
   .map-panel-slot--peek .place-card-agr-subtitle,
+  .map-panel-slot--peek .place-card-agr-scope,
   .map-panel-slot--peek .place-card-pre-pound,
   .map-panel-slot--peek .place-card-fact,
   .map-panel-slot--peek .place-card-parts,

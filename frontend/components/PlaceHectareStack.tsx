@@ -86,8 +86,7 @@ function StackRow({ row }: { row: PlaceStackRow }) {
       </div>
       {row.nested ? (
         <p className="place-stack-nested-note" data-testid="place-stack-1a-note">
-          Planning uplift: an &apos;of which&apos; figure inside the land part,
-          never added again
+          Value from planning permission. Part of the land figure, not added again.
         </p>
       ) : null}
       {!row.in_total && !row.nested && row.outside_scottish_total ? (

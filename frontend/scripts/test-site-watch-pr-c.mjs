@@ -316,6 +316,7 @@ if (existsSync(nextHtml)) {
     { name: "rates bill", re: /rates bill/i },
     { name: "tax proposal", re: /tax proposal/i },
     { name: "£", re: /£/ },
+    { name: "neighbourhood", re: /neighbo(u)?rhood/i },
     { name: "chip Proxy", re: />\s*Proxy\s*</ },
     { name: "chip Shadow", re: />\s*Shadow\s*</ },
     { name: ".env", re: /\.env\b/ },

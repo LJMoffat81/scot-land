@@ -28,9 +28,11 @@ AMOUNT_PH = "—"
 
 # Rows that belong in the market and proxy headline stack (and may sum).
 # 1a is already included in 1 and is listed for indent drawing only (in_total=False).
-# Row 6 is market_or_shadow: default shadow until lease prices exist.
-HEADLINE_ROW_IDS = ("1", "2", "3", "4")
-SHADOW_ROW_IDS = ("5", "6", "7", "8", "10")
+# Rows 5 and 6 are natural resource rents (fish-farm seabed leases and
+# fishing quota), summed with the other resource rows. They are not
+# services of nature.
+HEADLINE_ROW_IDS = ("1", "2", "3", "4", "5", "6")
+SHADOW_ROW_IDS = ("7", "8", "10")
 OUTSIDE_ROW_IDS = ("9",)
 
 _ROW_DEFS: dict[str, dict[str, Any]] = {
@@ -51,7 +53,7 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "tag": "already_included",
         "status": "not_yet",
         "status_note": (
-            "Already included in Surface site rent — never added as a sibling total."
+            "Value from planning permission. Part of the land figure, not added again."
         ),
         "parent_id": "1",
         "nested": True,
@@ -59,21 +61,21 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "stack": "headline",
     },
     "2": {
-        "label": "Mineral rent",
+        "label": "Minerals and quarries",
         "tag": "proxy",
         "status": "not_yet",
-        "status_note": "Royalty/tonne, below ground. Stated difference only (C-hectare).",
+        "status_note": "The royalty paid for each tonne taken from the ground.",
         "parent_id": None,
         "nested": False,
         "in_total": True,
         "stack": "headline",
     },
     "3": {
-        "label": "Onshore wind + hydro resource rent",
+        "label": "Wind and hydro sites on land",
         "tag": "proxy",
         "status": "partial",
         "status_note": (
-            "Site rent minus footprint surface rent. Inventory may paint; money figures withheld."
+            "The extra rent a wind or hydro site earns over ordinary land rent."
         ),
         "parent_id": None,
         "nested": False,
@@ -81,34 +83,37 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "stack": "headline",
     },
     "4": {
-        "label": "Seabed & foreshore",
+        "label": "Seabed and shore",
         "tag": "market",
         "status": "not_yet",
-        "status_note": "CES offshore wind, cables, moorings, foreshore.",
+        "status_note": (
+            "Rent Crown Estate Scotland charges for offshore wind, cables, "
+            "moorings and the shore."
+        ),
         "parent_id": None,
         "nested": False,
         "in_total": True,
         "stack": "headline",
     },
     "5": {
-        "label": "Aquaculture licence rent",
-        "tag": "shadow",
+        "label": "Fish farm sites",
+        "tag": "proxy",
         "status": "not_yet",
-        "status_note": "Estimate — total minus CES seabed paid. Separate stack.",
+        "status_note": "Total minus the seabed lease paid to Crown Estate Scotland.",
         "parent_id": None,
         "nested": False,
         "in_total": True,
-        "stack": "shadow",
+        "stack": "headline",
     },
     "6": {
-        "label": "Fisheries quota",
-        "tag": "shadow",
+        "label": "Fishing quota",
+        "tag": "proxy",
         "status": "not_yet",
-        "status_note": "Market if lease prices, else estimate (default: estimate stack).",
+        "status_note": "Market if lease prices, else modelled.",
         "parent_id": None,
         "nested": False,
         "in_total": True,
-        "stack": "shadow",
+        "stack": "headline",
     },
     "7": {
         "label": "Water scarcity",
@@ -123,10 +128,12 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "stack": "shadow",
     },
     "8": {
-        "label": "Unpriced peat/soil carbon",
+        "label": "Carbon held in peat and soil",
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Only unpriced carbon; timber/credits stay in row 1.",
+        "status_note": (
+            "Carbon with no market price. Timber and carbon credits are counted with the land."
+        ),
         "parent_id": None,
         "nested": False,
         "in_total": True,
@@ -144,10 +151,10 @@ _ROW_DEFS: dict[str, dict[str, Any]] = {
         "outside_scottish_total": True,
     },
     "10": {
-        "label": "Ecosystem services",
+        "label": "Other services of nature, such as flood control",
         "tag": "shadow",
         "status": "not_yet",
-        "status_note": "Estimate, later.",
+        "status_note": "Estimate. Not worked out yet.",
         "parent_id": None,
         "nested": False,
         "in_total": True,
@@ -247,7 +254,7 @@ def place_hectare_stack(
         return _blocked_payload(code, zone_name=zone_name)
 
     # Headline visual order: surface, nested 1a under it, then 2–4.
-    headline_rows = [_row("1"), _row("1a"), _row("2"), _row("3"), _row("4")]
+    headline_rows = [_row("1"), _row("1a"), _row("2"), _row("3"), _row("4"), _row("5"), _row("6")]
     shadow_rows = [_row(i) for i in SHADOW_ROW_IDS]
     outside_rows = [_row(i) for i in OUTSIDE_ROW_IDS]
 
@@ -261,12 +268,10 @@ def place_hectare_stack(
             "publication_status": status if status else "ok",
         },
         "publication_note": (
-            "Per-hectare stack (Annual Ground Rent breakdown). "
-            "Public money figures withheld until ECONOMIC_RULES / calibration. "
-            "Placeholders are not a money value. Row 1a is already included "
-            "in Surface site rent (indented, never added). "
-            "Estimate total is separate and never summed into the Scottish totals. "
-            "Oil & gas and benchmarks sit outside both."
+            "Rent for each hectare. Figures are being checked and aren't published yet. "
+            "Planning permission value is shown inside land, not added again. "
+            "Services of nature are shown on their own and never added in. "
+            "Oil and gas are offshore and kept out of Scotland's land total."
         ),
         "headline": {
             "label": "Scottish totals (Market and Modelled)",
@@ -281,7 +286,7 @@ def place_hectare_stack(
             ),
         },
         "shadow": {
-            "label": "Estimate (separate — never summed into Scottish totals)",
+            "label": "Services of nature (estimates, shown on their own and never added in)",
             "unit": "£/ha/year",
             "rows": shadow_rows,
             "sum_row_ids": shadow_sum_row_ids(shadow_rows),

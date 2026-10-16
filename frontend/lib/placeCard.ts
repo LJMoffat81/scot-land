@@ -32,31 +32,25 @@ export { PLACE_CARD_PART_GLOSS, PLACE_CARD_PART_NOT_YET };
 export const PLACE_CARD_AGR_LABEL = "Annual Ground Rent";
 
 export const PLACE_CARD_AGR_SUBTITLE =
-  "What the land here is worth each year";
+  "What the land under homes here is worth each year";
+
+/** Scope of the homes figure. Shown under the Annual Ground Rent line. */
+export const PLACE_CARD_AGR_SCOPE_NOTE =
+  "Covers land used for homes, as it is used today. Values for farm, business and development land will come later.";
 
 /** Pre-£ answer line (MAP-CARDS §5 row 6). Rank band stays OFF. */
 export const PLACE_CARD_PRE_POUND =
   "We're not showing amounts yet while we check our method.";
 
-/**
- * Home / legend coming-soon line (WORDING-BATCH-1). Not shown on the place card
- * (MAP-CARDS §6 — say it once via the answer status pill).
- */
-export const LAND_VALUES_COMING_SOON_HOME =
-  "Land values coming soon — our method is still being tested.";
-
-/** @deprecated MAP-CARDS §6 — do not show on the place card. */
-export const PLACE_CARD_LAND_VALUES_COMING_SOON = LAND_VALUES_COMING_SOON_HOME;
-
-/** Rank band UI — OFF until £ unblocked (UX-10). */
+/** Rank band UI — OFF until the rent display flag is on (UX-10). */
 export const PLACE_CARD_RANK_BAND_ENABLED = false;
 
 export const PLACE_CARD_TYPICAL_HOME =
-  "For a typical home in this neighbourhood, not your home.";
+  "For a typical home in this area, not your home.";
 
 /** @deprecated MAP-CARDS §6 — covered by PLACE_CARD_TYPICAL_HOME. */
 export const PLACE_CARD_NEIGHBOURHOOD_NOT_ADDRESS =
-  "We show your neighbourhood, not your address.";
+  "We show your area, not your address.";
 
 /** @deprecated MAP-CARDS §6 — use PLACE_CARD_HOW_WE_WORK_HOMES in the fold only. */
 export const PLACE_CARD_COVERS_HOMES_ONLY = "Covers land under homes only.";

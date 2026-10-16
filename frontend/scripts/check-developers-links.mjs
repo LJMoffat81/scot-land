@@ -179,8 +179,14 @@ assert.match(
   glossaryTs,
   /what remains of a sale price after taking off the depreciated cost of rebuilding the home \(allowing for its age\)\. The residual is the land value\./,
 );
-assert.match(glossaryMd, /\*\*shadow\*\*/);
-assert.match(glossaryMd, /\*\*Yield\*\*/);
+assert.match(
+  glossaryMd,
+  /\*\*Estimate\*\* \(chip: Estimate\): a value for something with no market price, such as peat holding carbon\. It is shown for information only, and never added to other figures\./,
+);
+assert.match(
+  glossaryMd,
+  /\*\*Rent rate\*\*: the yearly share of a land's value used to turn it into a yearly rent\. It reflects long-run interest rates, risk and expected growth\./,
+);
 assert.doesNotMatch(glossaryMd, /£/);
 assert.doesNotMatch(glossaryTs, /£/);
 

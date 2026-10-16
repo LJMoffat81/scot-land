@@ -191,7 +191,9 @@ def test_place_stack_runtime_copy_has_no_ledger_word():
     )
     assert "Scottish totals" in body["headline"]["label"]
     assert "Market and Modelled" in body["headline"]["label"]
-    assert "Estimate" in body["shadow"]["label"]
+    assert body["shadow"]["label"] == (
+        "Services of nature (estimates, shown on their own and never added in)"
+    )
     assert "into Market or Modelled totals" in body["shadow"]["total_note"]
     assert "headline" not in body["headline"]["label"].lower()
     assert "shadow" not in body["shadow"]["label"].lower()
@@ -250,7 +252,11 @@ def test_api_tag_values_still_market_proxy_shadow():
     # Explicit row pins — API values unchanged by SW-015 wording.
     by_id = {r["id"]: r for r in ledger["rows"]}
     assert by_id["1"]["tag"] in {"market", "proxy", "market_or_proxy"}
-    assert by_id["5"]["tag"] == "shadow"
+    assert by_id["5"]["tag"] == "proxy"
+    assert by_id["5"]["stack"] == "headline"
+    assert by_id["6"]["tag"] == "proxy"
+    assert by_id["6"]["stack"] == "headline"
+    assert by_id["10"]["tag"] == "shadow"
     assert by_id["2"]["tag"] == "proxy"
     shadow_rows = stack["shadow"]["rows"]
     assert any(r["tag"] == "shadow" for r in shadow_rows)

@@ -75,7 +75,7 @@ export const PLACE_FIXTURE = {
       unit: null,
       confidence: null,
       method: null,
-      gloss: "The yearly value of the land under homes.",
+      gloss: "The yearly rental value of the land under homes, without the buildings.",
       of_which: [],
     },
     {
@@ -89,7 +89,7 @@ export const PLACE_FIXTURE = {
       unit: null,
       confidence: null,
       method: null,
-      gloss: "Rents from things like wind, minerals and fish farming.",
+      gloss: "Rent from natural resources such as wind, water, minerals and fish farm sites.",
     },
     {
       id: "nature",
@@ -102,7 +102,7 @@ export const PLACE_FIXTURE = {
       unit: null,
       confidence: null,
       method: null,
-      gloss: "Value from nature's services, such as peat holding carbon.",
+      gloss: "What nature gives us for free, such as peat holding carbon. Estimate only.",
     },
   ],
   constraints: [],

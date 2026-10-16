@@ -31,7 +31,7 @@ export const DEVELOPERS_GLOSSARY_TERMS: readonly DevelopersGlossaryEntry[] = [
   {
     term: "Annual Ground Rent",
     definition:
-      "the project's name for land rent shown on a place card. It measures the same thing as land rent.",
+      "the yearly rental value of a site, created by nature and by the community around it, not by the owner. It is the same thing as land rent.",
   },
   {
     term: "market",
@@ -45,10 +45,10 @@ export const DEVELOPERS_GLOSSARY_TERMS: readonly DevelopersGlossaryEntry[] = [
       "a value estimated by the model where local prices are thin or withheld.",
   },
   {
-    term: "shadow",
+    term: "Estimate",
     chip: "(chip: Estimate)",
     definition:
-      "a value for something with no market, shown for information. A shadow value is never taxed and never added to totals.",
+      "a value for something with no market price, such as peat holding carbon. It is shown for information only, and never added to other figures.",
   },
   {
     term: "Best permitted use",
@@ -66,14 +66,14 @@ export const DEVELOPERS_GLOSSARY_TERMS: readonly DevelopersGlossaryEntry[] = [
       "what remains of a sale price after taking off the depreciated cost of rebuilding the home (allowing for its age). The residual is the land value.",
   },
   {
-    term: "Yield",
+    term: "Rent rate",
     definition:
-      "the yearly return used to turn a land value into a yearly land rent. It reflects long-run interest rates, risk and expected growth.",
+      "the yearly share of a land's value used to turn it into a yearly rent. It reflects long-run interest rates, risk and expected growth.",
   },
   {
     term: "Data zone",
     definition:
-      "a small official area of about 500 to 1,000 people. The 2011 and 2022 versions are never mixed in one calculation. Data zones are the most detailed level we publish.",
+      "a small official area of about 500 to 1,000 people. The 2011 and 2022 versions are never mixed in one calculation. Data zones are the most detailed level we publish for now. We aim to value each piece of land, step by step, as accurate public data allows.",
   },
   {
     term: "Blocked",
@@ -83,7 +83,7 @@ export const DEVELOPERS_GLOSSARY_TERMS: readonly DevelopersGlossaryEntry[] = [
   {
     term: "Research estimate",
     definition:
-      "an internal figure kept for calibration and checks, and not for publishing.",
+      "a figure we have worked out from public data. It is a guide, not a bill or an official valuation.",
   },
   {
     term: "Partly estimated",

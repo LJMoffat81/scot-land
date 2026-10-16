@@ -7,10 +7,13 @@ are missing or empty — never invent designations.
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import math
 import os
+import threading
+from collections import OrderedDict
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -32,6 +35,12 @@ MAX_FEATURES = 80
 BUDGET_Z6_TO_Z9 = 500 * 1024
 BUDGET_ANY_ZOOM = 1024 * 1024
 COORD_DECIMALS = 5
+# Repeat views at z6, z7, and z8 skip PostGIS. The first view fills the slot.
+_LOW_ZOOM_CACHE_MIN = 6
+_LOW_ZOOM_CACHE_MAX = 8
+_LOW_ZOOM_CACHE_LIMIT = 64
+_low_zoom_cache: OrderedDict[tuple, dict[str, Any]] = OrderedDict()
+_low_zoom_cache_lock = threading.Lock()
 
 DESIGNATION_TYPES = ("spa", "sac", "nnr")
 
@@ -183,6 +192,52 @@ def simplify_tolerance_m(zoom: float) -> float:
         2.0 ** zoom
     )
     return max(metres_per_pixel * 2.0, 1.0)
+
+
+def _designation_cache_key(
+    south: float,
+    west: float,
+    north: float,
+    east: float,
+    cap: int,
+    view_zoom: float,
+) -> tuple | None:
+    """Cache slot for a settled z6, z7, or z8 view. None outside that range."""
+    if view_zoom < _LOW_ZOOM_CACHE_MIN or view_zoom >= _LOW_ZOOM_CACHE_MAX + 1:
+        return None
+    return (
+        "naturescot_designations",
+        round(view_zoom, 1),
+        round(float(south), 2),
+        round(float(west), 2),
+        round(float(north), 2),
+        round(float(east), 2),
+        int(cap),
+    )
+
+
+def clear_low_zoom_cache() -> None:
+    """Drop cached z6–z8 designation responses."""
+    with _low_zoom_cache_lock:
+        _low_zoom_cache.clear()
+
+
+def _cached_designations(key: tuple | None, build) -> dict[str, Any]:
+    if key is not None:
+        with _low_zoom_cache_lock:
+            hit = _low_zoom_cache.get(key)
+            if hit is not None:
+                _low_zoom_cache.move_to_end(key)
+                return copy.deepcopy(hit)
+    payload = build()
+    if key is None:
+        return payload
+    with _low_zoom_cache_lock:
+        _low_zoom_cache[key] = payload
+        _low_zoom_cache.move_to_end(key)
+        while len(_low_zoom_cache) > _LOW_ZOOM_CACHE_LIMIT:
+            _low_zoom_cache.popitem(last=False)
+    return copy.deepcopy(payload)
 
 
 def payload_byte_budget(zoom: float) -> int:
@@ -390,10 +445,31 @@ def query_designations_bbox(
     max_features: int = MAX_FEATURES,
     zoom: float | None = None,
 ) -> dict[str, Any]:
-    """Viewport SPA / SAC / NNR polygons as GeoJSON (WGS84), simplified for the zoom."""
+    """Viewport SPA / SAC / NNR polygons as GeoJSON (WGS84), simplified for the zoom.
+
+    z6, z7, and z8 keep the finished body in memory. A repeat of that view
+    does not run PostGIS again.
+    """
     require_designations_loaded()
     cap = max(1, min(int(max_features), MAX_FEATURES))
     view_zoom = zoom_for_view(south, west, north, east, zoom)
+    cache_key = _designation_cache_key(south, west, north, east, cap, view_zoom)
+    return _cached_designations(
+        cache_key,
+        lambda: _query_designations_uncached(
+            south, west, north, east, cap, view_zoom
+        ),
+    )
+
+
+def _query_designations_uncached(
+    south: float,
+    west: float,
+    north: float,
+    east: float,
+    cap: int,
+    view_zoom: float,
+) -> dict[str, Any]:
     tolerance = simplify_tolerance_m(view_zoom)
     meta = designations_source_meta()
     sql = f"""

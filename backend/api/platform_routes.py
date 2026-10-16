@@ -570,7 +570,8 @@ def layer_open_naturescot_designations(
 
     Geometry is simplified in EPSG:27700 for zoom `z` (or the bbox span) and
     capped at 500 KB for z6–z9 and 1 MB at any finer zoom. Over budget, the
-    body has no features and ``meta.hidden_below_zoom`` is set.
+    body has no features and ``meta.hidden_below_zoom`` is set. A repeat view
+    at z6, z7, or z8 is served from memory.
     """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     try:

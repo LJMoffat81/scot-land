@@ -7,6 +7,7 @@ z6–z8. These checks fail while that fallback exists.
 from __future__ import annotations
 
 import re
+import time
 
 from tests.test_layers_perf_1 import BUDGET_Z6, _patch_query
 
@@ -136,3 +137,55 @@ def test_cap_feature_collection_never_emits_an_envelope():
     assert capped["meta"]["hidden_below_zoom"] is True
     assert len(dumps_feature_collection(capped)) <= BUDGET_Z6
     assert "envelope" not in dumps_feature_collection(capped).decode("utf-8")
+
+
+def test_designations_z6_z7_z8_warm_under_two_seconds(client, monkeypatch):
+    """A repeat view must not run the slow query again.
+
+    The stand-in query sleeps past two seconds, which is what z6 used to cost.
+    The warm call has to come back from the z6–z8 cache inside that limit.
+    """
+    conn = _patch_query(
+        monkeypatch,
+        "layers.naturescot",
+        {
+            "site_key": "sac:warm",
+            "designation_type": "sac",
+            "pa_code": "SAC-WARM",
+            "name": "Warm site",
+            "status": "Current",
+            "site_type": "SAC",
+            "site_ha": 12.0,
+            "european_code": None,
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [[-4.4, 57.1], [-4.1, 57.3], [-4.6, 57.5], [-4.4, 57.1]]
+                ],
+            },
+        },
+    )
+    original_execute = conn.cursor_obj.execute
+
+    def slow_execute(sql, params):
+        time.sleep(2.05)
+        return original_execute(sql, params)
+
+    conn.cursor_obj.execute = slow_execute
+    view = {"south": 54.7, "west": -7.4, "north": 60.6, "east": -1.2}
+    for zoom in (6, 7, 8):
+        cold = client.get(
+            "/layers/open/naturescot-designations",
+            params={**view, "z": zoom},
+        )
+        assert cold.status_code == 200, cold.text
+        started = time.perf_counter()
+        warm = client.get(
+            "/layers/open/naturescot-designations",
+            params={**view, "z": zoom},
+        )
+        elapsed = time.perf_counter() - started
+        assert warm.status_code == 200, warm.text
+        assert elapsed < 2.0
+        assert warm.content == cold.content
+        assert len(warm.content) <= BUDGET_Z6

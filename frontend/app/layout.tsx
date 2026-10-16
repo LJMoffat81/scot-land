@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 
-import { OG_IMAGES } from "@/lib/socialMeta";
+import {
+  absoluteOgImageUrl,
+  getMetadataBase,
+  OG_IMAGES,
+} from "@/lib/socialMeta";
 
 import "./globals.css";
 import "./platform.css";
@@ -20,6 +24,7 @@ const OG_DESCRIPTION =
   "Find a place on Scotland’s open land map. Research estimate — land rent figures are not published yet.";
 
 export const metadata: Metadata = {
+  metadataBase: getMetadataBase(),
   title: "Map | Scot-LAND",
   description: SITE_DESCRIPTION,
   icons: {
@@ -41,7 +46,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Map | Scot-LAND",
     description: OG_DESCRIPTION,
-    images: ["/og-image.png"],
+    images: [absoluteOgImageUrl()],
   },
 };
 

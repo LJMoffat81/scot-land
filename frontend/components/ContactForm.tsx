@@ -3,6 +3,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 
 export const CONTACT_FORM_ID_ENV = "NEXT_PUBLIC_CONTACT_FORM_ID";
+/** CONTACT-FORM-1: off until a public form id is supplied. */
+export const CONTACT_FORM_FLAG_ENV = "NEXT_PUBLIC_CONTACT_FORM_ENABLED";
 export const CONTACT_SOON = "Contact form coming soon";
 export const CONTACT_USE_LINE = "We use your message only to reply to you.";
 export const CONTACT_SENT = "Message sent.";
@@ -13,6 +15,11 @@ export const CONTACT_MAX_CHARS = 5000;
 /** Public form id. The destination address lives only in the form service. */
 export function contactFormIdFromBuild(): string {
   return (process.env.NEXT_PUBLIC_CONTACT_FORM_ID ?? "").trim();
+}
+
+/** Default off. Only the exact string "true" turns the form on. */
+export function contactFormEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_CONTACT_FORM_ENABLED === "true";
 }
 
 /**
@@ -32,6 +39,7 @@ export function contactFormEndpoint(formId: string): string {
 type WindowWithContact = Window & { __SC_CONTACT_FORM_ID?: string };
 
 export default function ContactForm() {
+  const enabled = contactFormEnabled();
   const buildId = contactFormIdFromBuild();
   const [runtimeId, setRuntimeId] = useState("");
   const [name, setName] = useState("");
@@ -46,7 +54,7 @@ export default function ContactForm() {
     if (typeof injected === "string") setRuntimeId(injected.trim());
   }, []);
 
-  const formId = resolveContactFormId(buildId, runtimeId);
+  const formId = enabled ? resolveContactFormId(buildId, runtimeId) : "";
   if (!formId) {
     return (
       <p data-testid="contact-form-soon">{CONTACT_SOON}</p>

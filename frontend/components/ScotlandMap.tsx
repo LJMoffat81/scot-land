@@ -918,6 +918,8 @@ export default function ScotlandMap() {
     lng: number;
     lat: number;
     zoom: number;
+    width: number;
+    height: number;
   } | null>(null);
   /** Deep-link boot (?lat/lng/words) once per ready map instance. */
   const urlBootDoneRef = useRef(false);
@@ -2144,11 +2146,14 @@ export default function ScotlandMap() {
     if (!container || mapRef.current) return;
 
     const bootStyle = basemapStyleUrl(mapStyle);
+    const preservedCamera = cameraPreserveRef.current;
     const map = new maplibregl.Map({
       container,
       style: bootStyle,
-      center: [-4.2, 57.5],
-      zoom: 5.7,
+      center: preservedCamera
+        ? [preservedCamera.lng, preservedCamera.lat]
+        : [-4.2, 57.5],
+      zoom: preservedCamera ? preservedCamera.zoom : 5.7,
       maxZoom: MAP_MAX_ZOOM,
       // Map footer is one line; legal credits live behind the (i) control.
       attributionControl: {
@@ -2234,6 +2239,10 @@ export default function ScotlandMap() {
     map.on("dragstart", noteUserMove);
     map.on("zoomstart", noteUserMove);
     const syncCameraDataset = () => {
+      // The boot center is not the Scotland frame. Publishing it makes a
+      // basemap switch look like a pan before fitBounds or the preserved
+      // camera has been applied.
+      if (container.dataset.framed !== "1") return;
       const center = map.getCenter();
       container.dataset.lng = center.lng.toFixed(5);
       container.dataset.lat = center.lat.toFixed(5);
@@ -2244,13 +2253,12 @@ export default function ScotlandMap() {
     const frameScotland = () => {
       if (cameraPreserveRef.current) {
         const cam = cameraPreserveRef.current;
-        cameraPreserveRef.current = null;
+        container.dataset.framed = "1";
         map.jumpTo({
           center: [cam.lng, cam.lat],
           zoom: cam.zoom,
         });
         syncCameraDataset();
-        container.dataset.framed = "1";
         return;
       }
       if (userMoved) return;
@@ -2272,17 +2280,19 @@ export default function ScotlandMap() {
       if (!framed) {
         const urlState = readMapUrlState(window.location.search);
         if (urlState.center) {
+          container.dataset.framed = "1";
+          container.dataset.viewSource = "url";
           map.jumpTo({
             center: [urlState.center.lng, urlState.center.lat],
             zoom: urlState.z ?? map.getZoom(),
           });
           syncCameraDataset();
-          container.dataset.framed = "1";
-          container.dataset.viewSource = "url";
           return;
         }
       }
       const narrow = window.innerWidth <= 900;
+      container.dataset.framed = "1";
+      container.dataset.viewSource = "scotland";
       map.fitBounds(
         [
           [-8.05, 54.48],
@@ -2297,8 +2307,6 @@ export default function ScotlandMap() {
         },
       );
       syncCameraDataset();
-      container.dataset.framed = "1";
-      container.dataset.viewSource = "scotland";
     };
 
     let seenWidth = -1;
@@ -2310,6 +2318,12 @@ export default function ScotlandMap() {
       seenWidth = nextWidth;
       seenHeight = nextHeight;
       map.resize();
+      if (nextWidth < 40 || nextHeight < 40) return;
+      const held = cameraPreserveRef.current;
+      if (held && nextWidth === held.width && nextHeight === held.height) {
+        return;
+      }
+      if (held) cameraPreserveRef.current = null;
       if (map.loaded()) frameScotland();
     });
     resizeObserver.observe(container);
@@ -4797,10 +4811,13 @@ export default function ScotlandMap() {
     const map = mapRef.current;
     if (map) {
       const c = map.getCenter();
+      const box = map.getContainer();
       cameraPreserveRef.current = {
         lng: c.lng,
         lat: c.lat,
         zoom: map.getZoom(),
+        width: box.clientWidth,
+        height: box.clientHeight,
       };
     }
     setMapStyle(next);

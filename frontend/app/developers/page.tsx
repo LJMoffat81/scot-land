@@ -187,6 +187,8 @@ function DevelopersPageInner() {
           <a href="/developers/checks">Technical checks</a>
           {" · "}
           <a href="/developers/glossary">Glossary</a>
+          {" · "}
+          <span>Source code</span>
         </p>
       </section>
     </main>

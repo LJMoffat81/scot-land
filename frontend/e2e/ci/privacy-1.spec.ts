@@ -45,7 +45,7 @@ test.describe("PRIVACY-1 contact form", () => {
     expect(html).not.toMatch(/mailto:/i);
   });
 
-  test("set id posts to the stubbed endpoint", async ({ page }) => {
+  test("flag off stays coming soon even if an id is injected", async ({ page }) => {
     const posts: string[] = [];
     await page.addInitScript((id) => {
       (window as Window & { __SC_CONTACT_FORM_ID?: string }).__SC_CONTACT_FORM_ID =
@@ -60,37 +60,15 @@ test.describe("PRIVACY-1 contact form", () => {
       });
     });
     await page.goto("/about#contact");
-    const form = page.getByTestId("contact-form");
-    await expect(form).toBeVisible();
-    await expect(page.getByLabel("Name (optional)")).toBeVisible();
-    await expect(page.getByLabel("Email")).toHaveAttribute("type", "email");
-    await expect(page.getByLabel("Message")).toHaveAttribute("maxlength", "5000");
-    await expect(page.getByTestId("contact-honeypot")).toHaveCount(1);
-    await expect(form).toContainText("We use your message only to reply to you.");
-
-    await page.getByLabel("Email").fill("visitor@example.com");
-    await page.getByLabel("Message").fill("Hello from the test.");
-    await form.locator("button[type=submit]").click();
-    await expect(page.getByTestId("contact-form-status")).toHaveText("Message sent.");
-    expect(posts.length).toBe(1);
-    expect(posts[0]).toContain("Hello from the test.");
-    expect(posts[0]).not.toMatch(/scot-land\.scot/i);
-
-    await page.getByLabel("Email").fill("visitor@example.com");
-    await page.getByLabel("Message").fill("Short");
-    await page.getByTestId("contact-honeypot").fill("bot");
-    await form.locator("button[type=submit]").click();
-    await expect(page.getByTestId("contact-form-status")).toHaveText("Message sent.");
-    expect(posts.length).toBe(1);
-
-    await page.getByLabel("Message").evaluate((el) => {
-      el.removeAttribute("maxlength");
-    });
-    await page.getByLabel("Message").fill("x".repeat(5001));
-    await page.getByTestId("contact-honeypot").fill("");
-    await form.locator("button[type=submit]").click();
-    await expect(page.getByTestId("contact-form-status")).toContainText("5,000");
-    expect(posts.length).toBe(1);
+    await expect(page.getByTestId("contact-form-soon")).toHaveText(
+      "Contact form coming soon",
+    );
+    await expect(page.getByTestId("contact-form")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Send" })).toHaveCount(0);
+    expect(posts).toEqual([]);
+    const html = await page.locator("#contact").innerHTML();
+    expect(html).not.toMatch(EMAIL_RE);
+    expect(html).not.toMatch(/mailto:/i);
   });
 });
 

@@ -181,16 +181,17 @@ async function assertInnerListScrolls(page: Page) {
     if (!shell || !scroller) {
       return { ok: false as const, reason: "missing shell or scroller" };
     }
-    const probe = document.createElement("div");
+
+    // Spacer that cannot flex-shrink: a table row forces layout height.
+    const probe = document.createElement("table");
     probe.dataset.testid = "layers-overflow-probe";
-    probe.style.cssText =
-      "height:2400px;min-height:2400px;flex-shrink:0;display:block;";
     probe.setAttribute("aria-hidden", "true");
-    const mount =
-      (scroller.querySelector(
-        ".map-panel-slot-focus",
-      ) as HTMLElement | null) ?? scroller;
-    mount.appendChild(probe);
+    probe.style.cssText = "width:100%;border-collapse:collapse;";
+    const row = probe.insertRow();
+    const cell = row.insertCell();
+    cell.style.cssText = "height:2400px;padding:0;margin:0;line-height:2400px;";
+    cell.textContent = ".";
+    scroller.appendChild(probe);
 
     const shellOy = getComputedStyle(shell).overflowY;
     const scrollerOy = getComputedStyle(scroller).overflowY;
@@ -201,6 +202,9 @@ async function assertInnerListScrolls(page: Page) {
       document.documentElement.scrollTop + document.body.scrollTop;
     const mapWrap = document.querySelector(".map-wrap") as HTMLElement | null;
     const mapScrolled = mapWrap ? mapWrap.scrollTop : 0;
+    const scrollHeight = scroller.scrollHeight;
+    const clientHeight = scroller.clientHeight;
+    const probeHeight = probe.getBoundingClientRect().height;
 
     probe.remove();
 
@@ -208,13 +212,12 @@ async function assertInnerListScrolls(page: Page) {
       ok: true as const,
       shellOy,
       scrollerOy,
-      scrollHeight: scroller.scrollHeight,
-      clientHeight: scroller.clientHeight,
+      scrollHeight,
+      clientHeight,
+      probeHeight,
       scrolled: after > before,
       bodyScrolled,
       mapScrolled,
-      shellScrollHeight: shell.scrollHeight,
-      shellClientHeight: shell.clientHeight,
     };
   });
 
@@ -228,10 +231,11 @@ async function assertInnerListScrolls(page: Page) {
     scrollState.shellOy === "hidden" || scrollState.shellOy === "clip",
     `shell overflow-y=${scrollState.shellOy}`,
   ).toBe(true);
+  expect(scrollState.probeHeight, "probe laid out tall").toBeGreaterThan(2000);
   expect(
     scrollState.scrollHeight,
     "inner content taller than panel",
-  ).toBeGreaterThan(scrollState.clientHeight + 1);
+  ).toBeGreaterThan(scrollState.clientHeight);
   expect(scrollState.scrolled, "inner list scrolls").toBe(true);
   expect(scrollState.bodyScrolled, "page must not scroll").toBe(0);
   expect(scrollState.mapScrolled, "map must not scroll").toBe(0);

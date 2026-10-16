@@ -7,7 +7,9 @@ are missing or empty — never invent designations.
 
 from __future__ import annotations
 
+import json
 import logging
+import math
 import os
 from functools import lru_cache
 from pathlib import Path
@@ -16,6 +18,7 @@ from typing import Any
 import psycopg2
 import yaml
 from psycopg2 import extras
+from shapely.geometry import mapping, shape
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +28,10 @@ SOURCES_PATH = REPO_ROOT / "data" / "config" / "sources.yaml"
 SSSI_TABLE = "naturescot_sssi"
 DESIGNATIONS_TABLE = "naturescot_designations"
 MAX_FEATURES = 80
+# z6–z9 responses stay within 500 KB. Every zoom stays within 1 MB.
+BUDGET_Z6_TO_Z9 = 500 * 1024
+BUDGET_ANY_ZOOM = 1024 * 1024
+COORD_DECIMALS = 5
 
 DESIGNATION_TYPES = ("spa", "sac", "nnr")
 
@@ -151,6 +158,143 @@ def require_sssi_loaded() -> None:
         )
 
 
+def zoom_for_view(
+    south: float,
+    west: float,
+    north: float,
+    east: float,
+    zoom: float | None = None,
+) -> float:
+    """Use the caller zoom, or estimate it from the bbox span."""
+    if zoom is not None:
+        try:
+            parsed = float(zoom)
+        except (TypeError, ValueError):
+            parsed = float("nan")
+        if math.isfinite(parsed):
+            return max(0.0, min(22.0, parsed))
+    span = max(abs(float(north) - float(south)), abs(float(east) - float(west)), 1e-9)
+    return max(0.0, min(22.0, math.log2(360.0 / span)))
+
+
+def simplify_tolerance_deg(zoom: float) -> float:
+    """About two screen pixels in degrees at this Web Mercator zoom."""
+    pixel = 360.0 / (256.0 * (2.0 ** zoom))
+    return max(pixel * 2.0, 1e-5)
+
+
+def payload_byte_budget(zoom: float) -> int:
+    """500 KB at z6–z9 (and coarser). 1 MB at finer zooms."""
+    if zoom <= 9.0:
+        return BUDGET_Z6_TO_Z9
+    return BUDGET_ANY_ZOOM
+
+
+def dumps_feature_collection(payload: dict[str, Any]) -> bytes:
+    """Compact JSON, matching the protected-site response body."""
+    return json.dumps(
+        payload,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        default=str,
+    ).encode("utf-8")
+
+
+def _round_coords(node: Any, digits: int = COORD_DECIMALS) -> Any:
+    if isinstance(node, (list, tuple)):
+        if (
+            len(node) >= 2
+            and isinstance(node[0], (int, float))
+            and not isinstance(node[0], bool)
+            and isinstance(node[1], (int, float))
+            and not isinstance(node[1], bool)
+        ):
+            return [round(float(node[0]), digits), round(float(node[1]), digits)]
+        return [_round_coords(item, digits) for item in node]
+    return node
+
+
+def _geometry_under(geom: dict[str, Any] | None, tolerance: float) -> dict[str, Any] | None:
+    if not geom:
+        return None
+    if tolerance <= 0:
+        rounded = dict(geom)
+        if "coordinates" in rounded:
+            rounded["coordinates"] = _round_coords(rounded["coordinates"])
+        return rounded
+    try:
+        parsed = shape(geom)
+        if parsed.is_empty:
+            return None
+        simple = parsed.simplify(tolerance, preserve_topology=True)
+        if simple.is_empty:
+            simple = parsed.envelope
+        if simple.is_empty:
+            return None
+        mapped = mapping(simple)
+        if "coordinates" in mapped:
+            mapped["coordinates"] = _round_coords(mapped["coordinates"])
+        return mapped
+    except Exception:
+        rounded = dict(geom)
+        if "coordinates" in rounded:
+            rounded["coordinates"] = _round_coords(rounded["coordinates"])
+        return rounded
+
+
+def _with_features(payload: dict[str, Any], features: list[dict[str, Any]]) -> dict[str, Any]:
+    meta = dict(payload.get("meta") or {})
+    meta["count"] = len(features)
+    return {**payload, "features": features, "meta": meta}
+
+
+def cap_feature_collection(payload: dict[str, Any], budget: int) -> dict[str, Any]:
+    """Simplify until the compact JSON body is within `budget`. Keep a feature."""
+    original = [row for row in (payload.get("features") or []) if isinstance(row, dict)]
+    if not original:
+        return payload
+    last = payload
+    for tolerance in (0.0, 0.001, 0.005, 0.02, 0.08, 0.25, 1.0):
+        features: list[dict[str, Any]] = []
+        for feature in original:
+            geom = _geometry_under(feature.get("geometry"), tolerance)
+            if not geom:
+                continue
+            features.append({**feature, "geometry": geom})
+        if not features:
+            continue
+        candidate = _with_features(payload, features)
+        last = candidate
+        if len(dumps_feature_collection(candidate)) <= budget:
+            return candidate
+    envelopes: list[dict[str, Any]] = []
+    for feature in original:
+        try:
+            parsed = shape(feature["geometry"])
+            if parsed.is_empty:
+                continue
+            geom = mapping(parsed.envelope)
+            if "coordinates" in geom:
+                geom["coordinates"] = _round_coords(geom["coordinates"])
+        except Exception:
+            continue
+        envelopes.append({**feature, "geometry": geom})
+    if not envelopes:
+        return last
+    kept = list(envelopes)
+    while len(kept) > 1 and len(dumps_feature_collection(_with_features(payload, kept))) > budget:
+        kept.pop()
+    return _with_features(payload, kept)
+
+
+def _protected_geom_sql() -> str:
+    return f"""
+            ST_AsGeoJSON(
+                ST_SimplifyPreserveTopology(ST_MakeValid(geom), %s),
+                {COORD_DECIMALS}
+            )::json AS geometry"""
+
+
 def require_designations_loaded() -> None:
     if not designations_is_loaded():
         raise LayerUnavailable(
@@ -166,10 +310,13 @@ def query_sssi_bbox(
     north: float,
     east: float,
     max_features: int = MAX_FEATURES,
+    zoom: float | None = None,
 ) -> dict[str, Any]:
-    """Viewport SSSI polygons as GeoJSON (WGS84)."""
+    """Viewport SSSI polygons as GeoJSON (WGS84), simplified for the zoom."""
     require_sssi_loaded()
     cap = max(1, min(int(max_features), MAX_FEATURES))
+    view_zoom = zoom_for_view(south, west, north, east, zoom)
+    tolerance = simplify_tolerance_deg(view_zoom)
     meta = sssi_source_meta()
     sql = f"""
         SELECT
@@ -179,7 +326,7 @@ def query_sssi_bbox(
             site_type,
             site_ha,
             european_code,
-            ST_AsGeoJSON(geom)::json AS geometry
+            {_protected_geom_sql()}
         FROM {SSSI_TABLE}
         WHERE geom && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
           AND ST_Intersects(geom, ST_MakeEnvelope(%s, %s, %s, %s, 4326))
@@ -192,7 +339,10 @@ def query_sssi_bbox(
         raise LayerUnavailable(f"NatureScot PostGIS unavailable: {exc}") from exc
     try:
         with conn.cursor(cursor_factory=extras.RealDictCursor) as cur:
-            cur.execute(sql, (west, south, east, north, west, south, east, north, cap))
+            cur.execute(
+                sql,
+                (tolerance, west, south, east, north, west, south, east, north, cap),
+            )
             rows = cur.fetchall()
     except Exception as exc:
         raise LayerUnavailable(f"SSSI query failed: {exc}") from exc
@@ -222,7 +372,7 @@ def query_sssi_bbox(
                 },
             }
         )
-    return {
+    payload = {
         "type": "FeatureCollection",
         "features": features,
         "meta": {
@@ -233,6 +383,7 @@ def query_sssi_bbox(
             **meta,
         },
     }
+    return cap_feature_collection(payload, payload_byte_budget(view_zoom))
 
 
 def query_designations_bbox(
@@ -241,10 +392,13 @@ def query_designations_bbox(
     north: float,
     east: float,
     max_features: int = MAX_FEATURES,
+    zoom: float | None = None,
 ) -> dict[str, Any]:
-    """Viewport SPA / SAC / NNR polygons as GeoJSON (WGS84)."""
+    """Viewport SPA / SAC / NNR polygons as GeoJSON (WGS84), simplified for the zoom."""
     require_designations_loaded()
     cap = max(1, min(int(max_features), MAX_FEATURES))
+    view_zoom = zoom_for_view(south, west, north, east, zoom)
+    tolerance = simplify_tolerance_deg(view_zoom)
     meta = designations_source_meta()
     sql = f"""
         SELECT
@@ -256,7 +410,7 @@ def query_designations_bbox(
             site_type,
             site_ha,
             european_code,
-            ST_AsGeoJSON(geom)::json AS geometry
+            {_protected_geom_sql()}
         FROM {DESIGNATIONS_TABLE}
         WHERE geom && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
           AND ST_Intersects(geom, ST_MakeEnvelope(%s, %s, %s, %s, 4326))
@@ -269,7 +423,10 @@ def query_designations_bbox(
         raise LayerUnavailable(f"NatureScot PostGIS unavailable: {exc}") from exc
     try:
         with conn.cursor(cursor_factory=extras.RealDictCursor) as cur:
-            cur.execute(sql, (west, south, east, north, west, south, east, north, cap))
+            cur.execute(
+                sql,
+                (tolerance, west, south, east, north, west, south, east, north, cap),
+            )
             rows = cur.fetchall()
     except Exception as exc:
         raise LayerUnavailable(f"NatureScot designations query failed: {exc}") from exc
@@ -300,7 +457,7 @@ def query_designations_bbox(
                 },
             }
         )
-    return {
+    payload = {
         "type": "FeatureCollection",
         "features": features,
         "meta": {
@@ -311,3 +468,4 @@ def query_designations_bbox(
             **meta,
         },
     }
+    return cap_feature_collection(payload, payload_byte_budget(view_zoom))

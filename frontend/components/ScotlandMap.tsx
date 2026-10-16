@@ -271,6 +271,35 @@ const CADASTRAL_MIN_ZOOM = 14;
 const PUBLIC_LAND_MIN_ZOOM = 8;
 /** Protected sites: do not fetch the multi-megabyte extract below this zoom. */
 const DESIGNATIONS_MIN_ZOOM = 6;
+
+type ContextFeaturePayload = GeoJSON.FeatureCollection & {
+  meta?: { ok?: boolean; note?: string };
+};
+
+/** One fetch per context layer for the life of the page. Toggles only change visibility. */
+const contextFeatureCache: Record<string, ContextFeaturePayload> = {};
+const contextFeatureInflight: Record<string, Promise<ContextFeaturePayload>> = {};
+
+function loadContextFeature(layerId: string): Promise<ContextFeaturePayload> {
+  const cached = contextFeatureCache[layerId];
+  if (cached) return Promise.resolve(cached);
+  const pending = contextFeatureInflight[layerId];
+  if (pending) return pending;
+  const request = apiJson<ContextFeaturePayload>(`/layers/context/${layerId}`)
+    .then((data) => {
+      if (data?.type === "FeatureCollection" && data.meta?.ok !== false) {
+        contextFeatureCache[layerId] = data;
+      }
+      delete contextFeatureInflight[layerId];
+      return data;
+    })
+    .catch((err: unknown) => {
+      delete contextFeatureInflight[layerId];
+      throw err;
+    });
+  contextFeatureInflight[layerId] = request;
+  return request;
+}
 const HLA_MIN_ZOOM = 8;
 const HLA_FILL = "#7b5ea7";
 /** Data Zone outlines / density colours — readable from neighbourhood zoom. */
@@ -747,7 +776,6 @@ export default function ScotlandMap() {
   const [seabed, setSeabed] = useState<{ notes: string[]; failed: boolean } | null>(null);
   const [contextNote, setContextNote] = useState<string | null>(null);
   const contextLoaded = useRef<Set<string>>(new Set());
-  const contextFlight = useRef<Set<string>>(new Set());
   const [, setLayerBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -3709,7 +3737,8 @@ export default function ScotlandMap() {
       inFlight = true;
       const q =
         `south=${b.getSouth()}&west=${b.getWest()}` +
-        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
+        `&north=${b.getNorth()}&east=${b.getEast()}` +
+        `&max_features=80&z=${map.getZoom()}`;
       const paths = [
         `/layers/open/naturescot-designations?${q}`,
         `/layers/open/sssi?${q}`,
@@ -4413,37 +4442,27 @@ export default function ScotlandMap() {
         setContextNote("This layer isn't available on this server yet.");
         continue;
       }
-      if (
-        !on ||
-        layer.kind === "raster" ||
-        contextLoaded.current.has(layer.id) ||
-        contextFlight.current.has(layer.id)
-      ) {
+      if (!on || layer.kind === "raster" || contextLoaded.current.has(layer.id)) {
         continue;
       }
-      contextFlight.current.add(layer.id);
-      void apiJson<
-        GeoJSON.FeatureCollection & { meta?: { ok?: boolean; note?: string } }
-      >(`/layers/context/${layer.id}`)
+      const layerId = layer.id;
+      void loadContextFeature(layerId)
         .then((data) => {
-          contextFlight.current.delete(layer.id);
           if (cancelled || data?.type !== "FeatureCollection") return;
-          const source = map.getSource(`${layer.id}-src`) as GeoJSONSource | undefined;
+          const source = map.getSource(`${layerId}-src`) as GeoJSONSource | undefined;
           safeSetGeoJson(source, data);
           if (data.meta?.ok === false) {
             setContextNote(data.meta.note || "One layer did not load.");
             return;
           }
-          contextLoaded.current.add(layer.id);
+          contextLoaded.current.add(layerId);
         })
         .catch(() => {
-          contextFlight.current.delete(layer.id);
           if (!cancelled) setContextNote("One layer did not load.");
         });
     }
     return () => {
       cancelled = true;
-      contextFlight.current.clear();
     };
   }, [mapReady, contextOn, agrAvailable]);
 

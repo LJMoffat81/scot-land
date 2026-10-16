@@ -38,7 +38,11 @@ from pyproj import Transformer
 
 from agr.seabed import seabed_record
 from agr.settlement import zone_class_for
+from layers.naturescot import cap_feature_collection
 from spatial.parcels import TRANSPARENT_PNG, tile_bounds_3857
+
+# Oil and gas GeoJSON stays within this body size after simplification.
+OIL_FIELDS_BYTE_BUDGET = 500 * 1024
 
 # Wider than the land envelope so the North Sea and the Scottish zone draw.
 _CONTEXT = (54.0, -16.0, 64.5, 4.5)  # south, west, north, east
@@ -562,6 +566,8 @@ def fetch_context_geojson(layer_id: str) -> dict:
             "features": features,
             "meta": {"layer": layer_id, "ok": True, "count": len(features)},
         }
+        if layer_id == "oil-fields":
+            geo = cap_feature_collection(geo, OIL_FIELDS_BYTE_BUDGET)
     except Exception:
         return _empty(layer_id, False, "layer did not load")
     with _cache_lock:

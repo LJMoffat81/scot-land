@@ -2,8 +2,8 @@
 
 Matches backend/db/schema/027_sepa_flood_dz.sql. No flood polygons.
 
-Revision ID: 20261016_0024
-Revises: 20261016_0023
+Revision ID: 20261016_0025
+Revises: 20261016_0024
 Create Date: 2026-10-16
 """
 
@@ -13,8 +13,8 @@ from typing import Sequence, Union
 
 from alembic import op
 
-revision: str = "20261016_0024"
-down_revision: Union[str, None] = "20261016_0023"
+revision: str = "20261016_0025"
+down_revision: Union[str, None] = "20261016_0024"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

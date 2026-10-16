@@ -341,9 +341,17 @@ def test_postgis_zone_lookup(pg, client):
     assert body["dz2011"]["code"] == "S01008677"
     assert body["dz2011"]["on_boundary"] is False
 
-    # Miss -> 404 (boundaries loaded, nothing there)
+    # Miss -> 200 with a null zone (boundaries loaded, nothing there)
     r = client.get("/layers/context/data-zones/at", params={"lat": 57.5, "lon": -4.2})
-    assert r.status_code == 404
+    assert r.status_code == 200, r.text
+    miss = r.json()
+    assert miss["code"] is None and miss["zones"] == []
+    assert miss["dz2011"] is None and miss["dz2022"] is None
+    assert miss["source"] == "postgis:dz_boundaries"
+
+    sea = client.get("/layers/context/data-zones/at", params={"lat": 58.42, "lon": -6.05})
+    assert sea.status_code == 200, sea.text
+    assert sea.json()["code"] is None and sea.json()["zones"] == []
 
 
 def test_postgis_zone_lookup_on_boundary_and_db_constraint(pg, client):

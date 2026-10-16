@@ -68,12 +68,44 @@ def test_lng_alias_and_dz2022_only(client, boundary_dir):
     assert body["code"] == "S01016000" and body["vintage"] == 2022 and body["dz2011"] is None
 
 
-def test_404_when_point_misses_every_zone(client, boundary_dir):
+def test_miss_returns_empty_zone(client, boundary_dir):
     _write(boundary_dir, "dz2011_boundaries.geojson",
            [({"code": "S01008677"}, _square(200_000, 600_000, 1_000))])
     r = client.get("/layers/context/data-zones/at", params={"lat": LAT, "lon": LON})
-    assert r.status_code == 404
-    assert r.json()["detail"]["error"] == "no_data_zone_at_point"
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["code"] is None and body["name"] is None and body["vintage"] is None
+    assert body["zones"] == [] and body["dz2011"] is None and body["dz2022"] is None
+    assert body["vintages_loaded"] == [2011]
+    assert "unknown" not in r.text
+
+
+# Atlantic, inside the Scotland bounding box, outside every land zone.
+SEA_LAT, SEA_LON = 58.42, -6.05
+
+
+def test_sea_point_returns_200_empty_zone(client, boundary_dir):
+    _write(boundary_dir, "dz2022_boundaries.geojson",
+           [({"code": "S01016000", "name": "Synthetic inland"}, _square(325_000, 673_000, 2_000))])
+    r = client.get("/layers/context/data-zones/at", params={"lat": SEA_LAT, "lon": SEA_LON})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["lat"] == SEA_LAT and body["lon"] == SEA_LON
+    assert body["code"] is None and body["name"] is None and body["vintage"] is None
+    assert body["zones"] == [] and body["dz2011"] is None and body["dz2022"] is None
+    assert body["vintages_loaded"] == [2022]
+    assert "unknown" not in r.text
+
+
+def test_inland_point_returns_its_zone(client, boundary_dir):
+    _write(boundary_dir, "dz2011_boundaries.geojson",
+           [({"DataZone": "S01008677", "Name": "Synthetic Old Town"}, _square(325_000, 673_000, 2_000))])
+    r = client.get("/layers/context/data-zones/at", params={"lat": LAT, "lon": LON})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["code"] == "S01008677" and body["vintage"] == 2011
+    assert body["name"] == "Synthetic Old Town"
+    assert body["dz2011"]["code"] == "S01008677"
 
 
 def test_bad_or_wrong_vintage_codes_are_refused(client, boundary_dir):
@@ -82,8 +114,11 @@ def test_bad_or_wrong_vintage_codes_are_refused(client, boundary_dir):
     _write(boundary_dir, "dz2011_boundaries.geojson",
            [({"code": "unknown"}, sq), ({"code": "S01016000"}, sq), ({"code": "E01000001"}, sq)])
     r = client.get("/layers/context/data-zones/at", params={"lat": LAT, "lon": LON})
-    assert r.status_code == 404
-    assert "unknown" not in json.dumps(r.json()["detail"]["vintages_checked"])
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["zones"] == [] and body["code"] is None
+    assert body["vintages_loaded"] == [2011]
+    assert "unknown" not in json.dumps(body)
 
 
 def test_on_boundary_flag(client, boundary_dir):
@@ -104,6 +139,8 @@ def test_on_boundary_flag(client, boundary_dir):
     ({"lat": 51.5, "lon": -0.12}, 400),          # London
     ({"lat": LAT}, 422),                        # no lon
     ({"lat": "abc", "lon": LON}, 422),
+    ({"lat": 91, "lon": LON}, 422),             # invalid latitude
+    ({"lat": -91, "lon": LON}, 422),
 ])
 def test_input_validation(client, boundary_dir, params, status):
     assert client.get("/layers/context/data-zones/at", params=params).status_code == status

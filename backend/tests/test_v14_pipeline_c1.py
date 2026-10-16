@@ -362,8 +362,8 @@ def test_v16_missing_exclusion_list_errors_and_wrong_sha_aborts(tmp_path: Path, 
     assert "sha256" in captured.err
 
 
-def test_c1_disagreement_table_leaves_only_v9_v13_v14_open():
-    """C2 closes V9, V13 and V14. This still requires every other C1 row to stay fixed."""
+def test_disagreement_table_has_no_open_rows():
+    """No disagreement row is open or pending. V3 stays disclosed and V8 stays NOT_RUN."""
     rows = {row["id"]: row["status"] for row in code_text_disagreements()}
     assert set(rows) == {
         "G1",

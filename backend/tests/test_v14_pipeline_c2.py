@@ -5,6 +5,7 @@ Synthetic fixtures only. No 2024 price cell is read. No scored run.
 
 from __future__ import annotations
 
+import inspect
 import json
 import math
 from pathlib import Path
@@ -12,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from georgist import surface_v14 as v14
+from georgist import v14_hedonic as hedonic
 from georgist.surface_v14_checks import GATING_MARKS
 from georgist.v14_hedonic import (
     D7_SHA256,
@@ -42,6 +44,7 @@ from scripts.build_v14_hedonic_rows import (
     build_v14_hedonic_rows,
     main as hedonic_main,
     missing_pins,
+    screen_year_column,
     screen_years,
 )
 from test_v14_pipeline_b import _rows, _zone
@@ -112,7 +115,9 @@ def test_v9_manifest_and_computed_statuses_do_not_gate():
     assert set(SENSITIVITY_IDS) <= set(by_id)
     for name in SENSITIVITY_IDS:
         item = by_id[name]
-        assert item["status"] in {"fit", "NOT_RUN", "NOT_CONVERGED"}
+        assert item["status"] in {"fit", "NOT_RUN", "NOT_CONVERGED"} or (
+            name == "S-c3" and item["status"] == "ERROR"
+        )
         assert item["gates"] is False
         assert item["swapped_in"] is False
         if item["status"] != "fit":
@@ -201,8 +206,107 @@ def test_v14_sha_mismatch_aborts_and_2024_row_is_refused_before_the_price(tmp_pa
     with pytest.raises(HedonicRowError, match="2024") as raised:
         screen_years(poisoned)
     assert SENTINEL not in str(raised.value)
+    screen_source = inspect.getsource(screen_years)
+    assert "screen_year_column" in screen_source
+    assert "buffering=0" in screen_source
+    assert "csv.reader" not in screen_source
     assert hedonic_main(["--out", str(tmp_path / "rows.json")]) == 1
     assert not (tmp_path / "rows.json").exists()
+
+
+class _ByteTracker:
+    """Records every byte ``read`` returns, including a bulk read."""
+
+    def __init__(self, payload: bytes) -> None:
+        self.payload = payload
+        self.pos = 0
+        self.seen = bytearray()
+
+    def read(self, n: int = 1) -> bytes:
+        end = len(self.payload) if n is None or n < 0 else self.pos + n
+        chunk = self.payload[self.pos:end]
+        self.pos += len(chunk)
+        self.seen += chunk
+        return chunk
+
+
+def test_price_columns_are_not_loaded_for_year_2024_or_later() -> None:
+    """A year at or after 2024 stops the reader before that row's price cells."""
+    sentinel = SENTINEL.encode("ascii")
+
+    def prove(payload: bytes) -> None:
+        tracker = _ByteTracker(payload)
+        with pytest.raises(HedonicRowError, match="year >= 2024 refused") as raised:
+            screen_year_column(tracker, "year", "poison.csv")
+        assert sentinel not in tracker.seen
+        assert b"2024" in tracker.seen
+        assert SENTINEL not in str(raised.value)
+
+    prove(
+        b"zone,year,n_sales,price,median_price\n"
+        b"S01000001,2021,6,10,9\n"
+        b"S01000001,2024,6," + sentinel + b"," + sentinel + b"\n"
+    )
+    prove(
+        b"zone,year,price\r\n"
+        b"\"North, East\",2024,\"" + sentinel + b"\"\r\n"
+    )
+    prove(
+        b"zone,year,price\n"
+        b"S01000001,,10\n"
+        b"\"say \"\"hi\"\"\",2024," + sentinel + b"\n"
+    )
+    ahead = _ByteTracker(b"price,median_price,year\n" + sentinel + b"," + sentinel + b",2024\n")
+    with pytest.raises(HedonicRowError, match="price column precedes the year column"):
+        screen_year_column(ahead, "year", "poison.csv")
+    assert sentinel not in ahead.seen
+
+
+def test_s_c3_exception_is_error_distinct_from_not_converged(monkeypatch: pytest.MonkeyPatch) -> None:
+    one_group = [
+        {"price": 10.0, "a_m2": 20.0, "ur3": "urban"},
+        {"price": 11.0, "a_m2": 21.0, "ur3": "urban"},
+    ]
+    blocked = hedonic._fit_s_c3(one_group)
+    assert blocked["status"] == "NOT_CONVERGED"
+    assert blocked["status"] != "ERROR"
+    assert blocked["converged"] is False
+    assert "two or more groups" in blocked["reason"]
+
+    class _Unconverged:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        def fit(self, *args, **kwargs):
+            class _Result:
+                converged = False
+                fe_params = [0.0, 0.1]
+
+            return _Result()
+
+    two_groups = [
+        {"price": 10.0, "a_m2": 20.0, "ur3": "urban"},
+        {"price": 12.0, "a_m2": 22.0, "ur3": "rural"},
+    ]
+    monkeypatch.setattr(hedonic, "MixedLM", _Unconverged)
+    unconverged = hedonic._fit_s_c3(two_groups)
+    assert unconverged["status"] == "NOT_CONVERGED"
+    assert unconverged["status"] != "ERROR"
+    assert unconverged["reason"] == "MixedLM did not converge"
+
+    class _Boom:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        def fit(self, *args, **kwargs):
+            raise RuntimeError("solver blew up")
+
+    monkeypatch.setattr(hedonic, "MixedLM", _Boom)
+    failed = hedonic._fit_s_c3(two_groups)
+    assert failed["status"] == "ERROR"
+    assert failed["status"] != "NOT_CONVERGED"
+    assert failed["converged"] is False
+    assert failed["reason"] == "solver blew up"
 
 
 def test_v14_column_map_matches_section_3_6():

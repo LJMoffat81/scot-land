@@ -209,15 +209,22 @@ for (const viewport of [
       await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
 
       const card = page.getByTestId("place-card");
-      if ((await card.count()) === 0) {
+      // The lat/lng deep link opens the card. A canvas click before that paint
+      // starts a second identify, which on a narrow screen closes Layers
+      // after the test has opened them.
+      const fromDeepLink = await card
+        .waitFor({ state: "visible", timeout: 15_000 })
+        .then(() => true)
+        .catch(() => false);
+      if (!fromDeepLink) {
         await page.locator(".maplibregl-canvas").click({
           position: {
             x: Math.floor(viewport.width / 2),
             y: Math.floor(viewport.height / 2),
           },
         });
+        await expect(card).toBeVisible({ timeout: 30_000 });
       }
-      await expect(card).toBeVisible({ timeout: 30_000 });
 
       await expect(card.getByTestId("place-card-map-reference")).toHaveCount(0);
       await expect(card).not.toContainText(/map reference/i);

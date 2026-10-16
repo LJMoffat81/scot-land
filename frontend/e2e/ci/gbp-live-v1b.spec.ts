@@ -266,12 +266,9 @@ for (const viewport of [
       );
       await expect(card).not.toContainText("£0.00");
       // No single-point central £ without the range (MAP-CARDS / V1c).
-      await expect(card.getByTestId("place-card-figure")).not.toContainText(
-        /^£0\.120$/,
-      );
-      await expect(card.getByTestId("place-card-figure")).not.toContainText(
-        /^£0\.120 per m²$/,
-      );
+      // Whole-card substring: anchored /^£0.120$/ can never fail on multi-node text.
+      // Fixture low/high are £0.0600 / £0.180 — no false hit on "£0.120".
+      await expect(card).not.toContainText("£0.120");
       await expect(
         card.getByTestId("place-card-figure").getByTestId("place-tag-proxy"),
       ).toBeVisible();

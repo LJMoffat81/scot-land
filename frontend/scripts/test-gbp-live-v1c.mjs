@@ -119,6 +119,37 @@ assert.match(
   assert.match(e2e, /not\.toContainText\("£0\.00"\)/);
 }
 
+// V1/V1b e2e: real no-single-point guard (not whole-text-anchored /^£0.120$/).
+{
+  for (const rel of [
+    "e2e/ci/gbp-live-v1.spec.ts",
+    "e2e/ci/gbp-live-v1b.spec.ts",
+  ]) {
+    const src = readSrc(rel);
+    assert.match(src, /not\.toContainText\("£0\.120"\)/);
+    assert.doesNotMatch(src, /not\.toContainText\(\s*\n?\s*\^\\?£0\\\.120\$/);
+  }
+}
+
+// Negative control: central-only render contains £0.120 so the e2e guard can fail;
+// range-only (0.06–0.18) must not false-hit.
+{
+  const CENTRAL_GUARD = "£0.120";
+  const centralOnly = gbp.formatGbpPerM2(0.12).replace(/\u00a3/g, "£");
+  assert.ok(
+    centralOnly.includes(CENTRAL_GUARD),
+    "central-only £0.120 per m² must match the e2e no-single-point guard",
+  );
+  const rangeOnly = `${gbp.formatGbpPerM2Amount(0.06)} to ${gbp.formatGbpPerM2Amount(0.18)} ${gbp.GBP_LIVE_UNIT}`.replace(
+    /\u00a3/g,
+    "£",
+  );
+  assert.ok(
+    !rangeOnly.includes(CENTRAL_GUARD),
+    "range-only £0.0600 to £0.180 must not false-hit the central guard",
+  );
+}
+
 // Backend numerator / unavailable label (source scan)
 {
   const backend = readFileSync(

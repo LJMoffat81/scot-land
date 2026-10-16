@@ -153,9 +153,26 @@ assert.equal(gbp.formatGbpPerM2(0.12), "\u00a30.120 per m²");
   assert.match(e2e, /per m²/);
   assert.match(e2e, /£ per square metre of land, per year/);
   assert.match(e2e, /estimate unavailable/);
-  // No single-point central £ without the range.
-  assert.match(e2e, /No single-point central/);
-  assert.match(e2e, /£0\\\.120/);
+  // Real no-single-point guard (substring, not whole-text-anchored).
+  assert.match(e2e, /not\.toContainText\("£0\.120"\)/);
+}
+
+// Negative control: central-only render contains £0.120 so the e2e guard can fail.
+{
+  const CENTRAL_GUARD = "£0.120";
+  const centralOnly = gbp.formatGbpPerM2(0.12).replace(/\u00a3/g, "£");
+  assert.ok(
+    centralOnly.includes(CENTRAL_GUARD),
+    "central-only £0.120 per m² must match the e2e no-single-point guard",
+  );
+  const rangeOnly = `${gbp.formatGbpPerM2Amount(0.06)} to ${gbp.formatGbpPerM2Amount(0.18)} ${gbp.GBP_LIVE_UNIT}`.replace(
+    /\u00a3/g,
+    "£",
+  );
+  assert.ok(
+    !rangeOnly.includes(CENTRAL_GUARD),
+    "range-only £0.0600 to £0.180 must not false-hit the central guard",
+  );
 }
 
 // Rank band stays OFF; pre-£ copy preserved for flag-off path

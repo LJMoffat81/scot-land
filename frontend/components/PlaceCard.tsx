@@ -100,7 +100,12 @@ function surfaceLiveRange(
     display.central != null &&
     display.high != null
   ) {
-    return formatPlaceCardGbpRange(display.low, display.high);
+    const range = formatPlaceCardGbpRange(display.low, display.high);
+    // Fail-closed: invalid rates surface as unavailable, not a £ string.
+    if (range === GBP_LIVE_ESTIMATE_UNAVAILABLE) {
+      return GBP_LIVE_ESTIMATE_UNAVAILABLE;
+    }
+    return range;
   }
   return null;
 }
@@ -217,6 +222,15 @@ export function PlaceCard({
     !tooFew && unitEffective === "typical_home"
       ? surfaceLiveRange(surfaceDisplay, gbpLive)
       : null;
+  const liveRangeOk =
+    Boolean(liveAnswerRange) &&
+    liveAnswerRange !== GBP_LIVE_ESTIMATE_UNAVAILABLE;
+  const liveUnavailable =
+    gbpLive &&
+    !tooFew &&
+    unitEffective === "typical_home" &&
+    (surfaceDisplay?.state === "under_review" ||
+      liveAnswerRange === GBP_LIVE_ESTIMATE_UNAVAILABLE);
   const surfaceRow = valueRows.find((row) => row.id === "surface");
   const answerChipTag = (surfaceRow?.class ??
     surfaceRow?.tag ??
@@ -404,7 +418,7 @@ export function PlaceCard({
                 >
                   {PLACE_CARD_TOO_FEW_HOMES}
                 </p>
-              ) : liveAnswerRange ? (
+              ) : liveRangeOk ? (
                 <>
                   <p className="place-card-figure-range-line">
                     <span data-testid="place-card-figure-range">
@@ -419,12 +433,12 @@ export function PlaceCard({
                     {GBP_LIVE_UNIT_WORDING}
                   </p>
                 </>
-              ) : gbpLive && surfaceDisplay?.state === "under_review" ? (
+              ) : liveUnavailable ? (
                 <p
                   className="place-card-under-review"
                   data-testid="place-card-under-review"
                 >
-                  {surfaceDisplay.label?.trim() ||
+                  {surfaceDisplay?.label?.trim() ||
                     GBP_LIVE_ESTIMATE_UNAVAILABLE}
                 </p>
               ) : (
@@ -468,7 +482,9 @@ export function PlaceCard({
                 <FoldPartRow
                   key={row.id}
                   row={row}
-                  liveRange={row.id === "surface" ? liveAnswerRange : null}
+                  liveRange={
+                    row.id === "surface" && liveRangeOk ? liveAnswerRange : null
+                  }
                 />
               ))}
             </ul>

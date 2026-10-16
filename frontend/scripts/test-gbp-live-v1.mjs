@@ -153,6 +153,9 @@ assert.equal(gbp.formatGbpPerM2(0.12), "\u00a30.120 per m²");
   assert.match(e2e, /per m²/);
   assert.match(e2e, /£ per square metre of land, per year/);
   assert.match(e2e, /estimate unavailable/);
+  // No single-point central £ without the range.
+  assert.match(e2e, /No single-point central/);
+  assert.match(e2e, /£0\\\.120/);
 }
 
 // Rank band stays OFF; pre-£ copy preserved for flag-off path

@@ -48,12 +48,31 @@ assert.equal(gbp.formatGbpPerM2Amount(0.009), "<\u00a30.01");
 assert.ok(!gbp.formatGbpPerM2(0.006).includes("\u00a30.00"));
 assert.ok(!gbp.formatGbpPerM2(0).includes("0.00 per"));
 
+// Fail-closed: NaN / undefined / non-finite / negative → estimate unavailable
+assert.equal(gbp.formatGbpPerM2Amount(Number.NaN), "estimate unavailable");
+assert.equal(gbp.formatGbpPerM2Amount(undefined), "estimate unavailable");
+assert.equal(gbp.formatGbpPerM2Amount(null), "estimate unavailable");
+assert.equal(
+  gbp.formatGbpPerM2Amount(Number.POSITIVE_INFINITY),
+  "estimate unavailable",
+);
+assert.equal(gbp.formatGbpPerM2Amount(-0.5), "estimate unavailable");
+assert.equal(gbp.formatGbpPerM2(Number.NaN), "estimate unavailable");
+assert.equal(gbp.formatGbpPerM2(undefined), "estimate unavailable");
+assert.ok(!gbp.formatGbpPerM2Amount(Number.NaN).includes("£"));
+assert.ok(!gbp.formatGbpPerM2Amount(Number.NaN).includes("<"));
+assert.ok(!gbp.formatGbpPerM2Amount(null).includes("£"));
+
 const range = gbp.formatGbpCentralWithRangePerM2(0.004, 0.006, 0.008);
 assert.match(range.central, /<\u00a30\.01 per m²/);
 assert.match(range.range, /<\u00a30\.01/);
 assert.match(range.range, /per m²/);
 assert.doesNotMatch(range.central, /0\.00/);
 assert.doesNotMatch(range.range, /0\.00/);
+
+const badRange = gbp.formatGbpCentralWithRangePerM2(Number.NaN, 0.12, 0.18);
+assert.equal(badRange.central, "estimate unavailable");
+assert.equal(badRange.range, "estimate unavailable");
 
 // Place card (MAP-CARDS) wires unit label + estimate unavailable
 {

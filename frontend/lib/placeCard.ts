@@ -4,7 +4,11 @@
  */
 
 import { apiJson, isOutsideScotlandError } from "./api";
-import { formatGbpPerM2Amount, GBP_LIVE_UNIT } from "./gbpLive";
+import {
+  formatGbpPerM2Amount,
+  GBP_LIVE_ESTIMATE_UNAVAILABLE,
+  GBP_LIVE_UNIT,
+} from "./gbpLive";
 import { osgb36MapReference } from "./osgb36";
 import {
   preferDz2022,
@@ -781,9 +785,18 @@ function normalizeAgrRow(row: PlaceAgrRow): PlaceAgrRow {
 /**
  * GBP-LIVE-V1c answer range (MAP-CARDS §5 row 6): per-m² low–high with 3 sf.
  * Values below £0.01 render as "<£0.01". Never "£0.00". No single-point £, no total.
+ * Non-finite / invalid inputs fail closed to "estimate unavailable".
  */
 export function formatPlaceCardGbpRange(low: number, high: number): string {
-  return `${formatGbpPerM2Amount(low)} to ${formatGbpPerM2Amount(high)} ${GBP_LIVE_UNIT}`;
+  const lo = formatGbpPerM2Amount(low);
+  const hi = formatGbpPerM2Amount(high);
+  if (
+    lo === GBP_LIVE_ESTIMATE_UNAVAILABLE ||
+    hi === GBP_LIVE_ESTIMATE_UNAVAILABLE
+  ) {
+    return GBP_LIVE_ESTIMATE_UNAVAILABLE;
+  }
+  return `${lo} to ${hi} ${GBP_LIVE_UNIT}`;
 }
 
 /** Strip any accidental AGR £ payload before render; fill Designer defaults. */

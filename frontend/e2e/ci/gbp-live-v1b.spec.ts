@@ -265,6 +265,13 @@ for (const viewport of [
         "£ per square metre of land, per year",
       );
       await expect(card).not.toContainText("£0.00");
+      // No single-point central £ without the range (MAP-CARDS / V1c).
+      await expect(card.getByTestId("place-card-figure")).not.toContainText(
+        /^£0\.120$/,
+      );
+      await expect(card.getByTestId("place-card-figure")).not.toContainText(
+        /^£0\.120 per m²$/,
+      );
       await expect(
         card.getByTestId("place-card-figure").getByTestId("place-tag-proxy"),
       ).toBeVisible();

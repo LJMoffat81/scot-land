@@ -76,11 +76,20 @@ export function formatGbp(value: number): string {
 
 /**
  * Format a £/m² rate body with 3 significant figures.
- * Values below £0.01 → "<£0.01". Never returns "£0.00".
+ * Non-finite / negative → "estimate unavailable" (fail closed; never `<£0.01`).
+ * Finite values below £0.01 → "<£0.01". Never returns "£0.00".
  */
-export function formatGbpPerM2Amount(value: number): string {
-  const n = Number(value);
-  if (!Number.isFinite(n) || n < GBP_LIVE_MIN_DISPLAY_GBP) {
+export function formatGbpPerM2Amount(value: number | null | undefined): string {
+  // Missing values fail closed before Number() (Number(null)===0 would mislead).
+  if (value == null) {
+    return GBP_LIVE_ESTIMATE_UNAVAILABLE;
+  }
+  const n = typeof value === "number" ? value : Number(value);
+  // NaN / Infinity / negative: unavailable — not a tiny £ rate.
+  if (!Number.isFinite(n) || n < 0) {
+    return GBP_LIVE_ESTIMATE_UNAVAILABLE;
+  }
+  if (n < GBP_LIVE_MIN_DISPLAY_GBP) {
     return `<\u00a3${GBP_LIVE_MIN_DISPLAY_GBP.toFixed(2)}`;
   }
   let body = n.toPrecision(3);
@@ -98,8 +107,10 @@ export function formatGbpPerM2Amount(value: number): string {
 }
 
 /** Format £ per m² — every £ string includes the unit; 3 sf / <£0.01. */
-export function formatGbpPerM2(value: number): string {
-  return `${formatGbpPerM2Amount(value)} ${GBP_LIVE_UNIT}`;
+export function formatGbpPerM2(value: number | null | undefined): string {
+  const amount = formatGbpPerM2Amount(value);
+  if (amount === GBP_LIVE_ESTIMATE_UNAVAILABLE) return amount;
+  return `${amount} ${GBP_LIVE_UNIT}`;
 }
 
 /** Central figure with low–high range beside it (legacy whole-pound helper). */
@@ -117,16 +128,30 @@ export function formatGbpCentralWithRange(
 /**
  * GBP-LIVE-V1c: central + range as £ per m² (3 sf; <£0.01 floor).
  * Each returned string that carries £ also carries "per m²".
+ * Invalid inputs fail closed to "estimate unavailable" (no £).
  */
 export function formatGbpCentralWithRangePerM2(
   low: number,
   central: number,
   high: number,
 ): { central: string; range: string } {
+  const lo = formatGbpPerM2Amount(low);
+  const mid = formatGbpPerM2(central);
+  const hi = formatGbpPerM2Amount(high);
+  if (
+    lo === GBP_LIVE_ESTIMATE_UNAVAILABLE ||
+    mid === GBP_LIVE_ESTIMATE_UNAVAILABLE ||
+    hi === GBP_LIVE_ESTIMATE_UNAVAILABLE
+  ) {
+    return {
+      central: GBP_LIVE_ESTIMATE_UNAVAILABLE,
+      range: GBP_LIVE_ESTIMATE_UNAVAILABLE,
+    };
+  }
   return {
-    central: formatGbpPerM2(central),
+    central: mid,
     // Single unit suffix on the range so the string still contains "per m²".
-    range: `${formatGbpPerM2Amount(low)}\u2013${formatGbpPerM2Amount(high)} ${GBP_LIVE_UNIT}`,
+    range: `${lo}\u2013${hi} ${GBP_LIVE_UNIT}`,
   };
 }
 

@@ -34,3 +34,31 @@ export function basemapAriaLabel(target: MapBasemapId): string {
 export function basemapStyleUrl(id: MapBasemapId): string {
   return MAP_BASEMAP_STYLE_URL[id];
 }
+
+const OPENFREEMAP_FONTS = "https://tiles.openfreemap.org/fonts/";
+const FONT_FAMILY = /^[A-Za-z0-9 ._+-]{1,80}$/;
+const FONT_RANGE = /^\d{1,6}-\d{1,6}\.pbf$/;
+
+/**
+ * Glyph ranges are fetched with fetch(), so a missing CORS header on the
+ * tile host becomes a console error. Serve those files from this origin.
+ */
+export function proxiedBasemapFontUrl(url: string): string {
+  if (!url.startsWith(OPENFREEMAP_FONTS)) return url;
+  const rest = url.slice(OPENFREEMAP_FONTS.length).split(/[?#]/, 1)[0] ?? "";
+  const parts = rest.split("/");
+  if (parts.length !== 2) return url;
+  let family: string;
+  try {
+    family = decodeURIComponent(parts[0] ?? "");
+  } catch {
+    return url;
+  }
+  const file = parts[1] ?? "";
+  if (!FONT_FAMILY.test(family) || !FONT_RANGE.test(file)) return url;
+  return `/basemap/fonts/${encodeURIComponent(family)}/${file}`;
+}
+
+export function basemapTransformRequest(url: string): { url: string } {
+  return { url: proxiedBasemapFontUrl(url) };
+}

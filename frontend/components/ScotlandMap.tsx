@@ -67,6 +67,7 @@ import {
   basemapAriaLabel,
   basemapCaption,
   basemapStyleUrl,
+  basemapTransformRequest,
   basemapSwitchTarget,
   type MapBasemapId,
 } from "../lib/mapBasemap";
@@ -2113,6 +2114,7 @@ export default function ScotlandMap() {
       center: [-4.2, 57.5],
       zoom: 5.7,
       maxZoom: MAP_MAX_ZOOM,
+      transformRequest: basemapTransformRequest,
       // Map footer is one line; legal credits live behind the (i) control.
       attributionControl: {
         compact: true,
@@ -2131,6 +2133,16 @@ export default function ScotlandMap() {
       "bottom-right",
     );
     map.getCanvas().style.cursor = "pointer";
+    // Listening stops MapLibre from printing an unhandled glyph miss.
+    // Every other map error is still written out.
+    map.on("error", (event) => {
+      const err = event.error as Error & { url?: string };
+      const detail = `${err?.message ?? ""} ${err?.url ?? ""}`;
+      if (/\/basemap\/fonts\/|tiles\.openfreemap\.org\/fonts\//i.test(detail)) {
+        return;
+      }
+      console.error(err);
+    });
 
     // MapLibre compact mode starts with maplibregl-compact-show (expanded).
     // Collapse to the (i) control by default; user click still expands.

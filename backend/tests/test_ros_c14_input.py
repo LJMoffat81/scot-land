@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 import openpyxl
@@ -10,6 +11,10 @@ import pytest
 
 from georgist.ros_c14_input import (
     BLIND_COLUMNS,
+    CAUSE_ABSENT,
+    CAUSE_COLLISION,
+    CAUSE_ORDINARY,
+    COST_AVAILABILITY_RULE,
     MUIRHOUSE_04_CODES,
     MUIRHOUSE_04_NAME,
     PRICE_COLUMNS,
@@ -18,11 +23,15 @@ from georgist.ros_c14_input import (
     REAL_COLLISION_NAMES,
     REAL_DOUBLE_ROW_CODES,
     REAL_DOUBLE_ROW_NAMES,
+    REAL_EXCLUDED_ABSENT,
+    REAL_EXCLUDED_COLLISION,
     REAL_EXCLUDED_DZ2011,
     REAL_EXCLUDED_IN_SCORED_SET,
     REAL_SCORED_SET,
     InputBuildError,
     build_inputs,
+    diff_exclusion_sets,
+    load_pinned_exclusion_list,
     real_census_errors,
     requested_columns,
 )
@@ -91,6 +100,8 @@ def _build(tmp: Path, **kwargs):
         frozen_plan_path=kwargs.get("frozen"),
         scored_run=kwargs.get("scored_run", False),
         estimates=kwargs.get("estimates"),
+        cost_availability=kwargs.get("cost_availability"),
+        exclusion_list_path=kwargs.get("exclusion_list_path"),
         main_commit_sha="abc123",
         check_pins=kwargs.get("check_pins", False),
     )
@@ -463,7 +474,7 @@ def test_pins_present_and_mismatch_aborts(tmp_path: Path):
     assert not out.exists()
 
 
-def test_status_unchanged_when_estimate_changes(tmp_path: Path):
+def test_status_unchanged_when_estimate_changes(tmp_path: Path, caplog: pytest.LogCaptureFixture):
     c14 = tmp_path / "c14.csv"
     _c14(c14, [_row("S01013482", "Ok", 10), _row("S01013483", "Other", 12)])
     codes = ["S01013482", "S01013483"]
@@ -474,16 +485,59 @@ def test_status_unchanged_when_estimate_changes(tmp_path: Path):
     paths = _simple(tmp_path, c14, codes, pairs, ["S01007000", "S01007001"])
     ur_rows = [("S01007000", 1, 0), ("S01007001", 2, 1)]
     _ur(paths["ur"], ur_rows)
-    low = _build(tmp_path, **paths, scored_run=True, estimates={"S01007000": 0.15, "S01007001": 0.15})
-    high = _build(tmp_path, **paths, scored_run=True, estimates={"S01007000": 0.85, "S01007001": 0.85})
+    costs = {"S01007001": {"price": 10, "drc": 40, "estimate": 0.99}}
+    plain = _build(
+        tmp_path,
+        **paths,
+        scored_run=True,
+        estimates={"S01007000": 0.15, "S01007001": 0.15},
+    )
+    assert _statuses(plain)["S01007001"] == "scored"
+    with caplog.at_level(logging.INFO, logger="georgist.ros_c14_input"):
+        low = _build(
+            tmp_path,
+            **paths,
+            scored_run=True,
+            estimates={"S01007000": 0.15, "S01007001": 0.15},
+            cost_availability=costs,
+        )
+        high = _build(
+            tmp_path,
+            **paths,
+            scored_run=True,
+            estimates={"S01007000": 0.85, "S01007001": 0.85},
+            cost_availability=costs,
+        )
     assert _statuses(low) == _statuses(high)
     assert low["dz2022_counts"] == high["dz2022_counts"]
     assert low["dz2011_counts"] == high["dz2011_counts"]
     assert low["share_list"] != high["share_list"]
     by_low = {zone["dz2011"]: zone for zone in low["dz2011"]}
     assert by_low["S01007001"]["status"] == "unavailable"
+    assert by_low["S01007001"]["unavailable_from"] == COST_AVAILABILITY_RULE
     assert low["share_list"][1] == 0.0
     assert high["share_list"][1] == 0.0
+    assert COST_AVAILABILITY_RULE in caplog.text
+    assert "0.15" not in caplog.text
+    assert "0.85" not in caplog.text
+    assert "0.99" not in caplog.text
+    positive = _build(
+        tmp_path,
+        **paths,
+        scored_run=True,
+        estimates={"S01007000": 0.15, "S01007001": 0.15},
+        cost_availability={"S01007001": {"price": 40, "drc": 10, "estimate": 0.01}},
+    )
+    assert _statuses(positive)["S01007001"] == "scored"
+    changed = _build(
+        tmp_path,
+        **paths,
+        scored_run=True,
+        estimates={"S01007000": 0.85, "S01007001": 0.85},
+        cost_availability={"S01007001": {"price": 40, "drc": 10}},
+    )
+    assert _statuses(positive) == _statuses(changed)
+    assert positive["share_list"] != changed["share_list"]
 
 
 def test_printout_counts_by_status_and_ur_class(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
@@ -510,9 +564,14 @@ def test_printout_counts_by_status_and_ur_class(tmp_path: Path, capsys: pytest.C
         [
             ("S01007001", 1, 0),
             ("S01007002", 3, 0),
-            ("S01007003", 2, 1),
+            ("S01007003", 2, 0),
             ("S01007004", 5, 0),
         ],
+    )
+    costs = tmp_path / "costs.json"
+    costs.write_text(
+        json.dumps({"S01007003": {"price": 10, "drc": 40, "estimate": 0.5}}),
+        encoding="utf-8",
     )
     out = tmp_path / "out.json"
     rc = main(
@@ -527,6 +586,8 @@ def test_printout_counts_by_status_and_ur_class(tmp_path: Path, capsys: pytest.C
             str(paths["merge"]),
             "--ur",
             str(paths["ur"]),
+            "--cost-availability-json",
+            str(costs),
             "--out",
             str(out),
             "--synthetic-fixtures",
@@ -619,6 +680,8 @@ def _perfect_census() -> dict:
         "muirhouse_04_rows": 1,
         "absent_from_c14": REAL_ABSENT_FROM_C14,
         "excluded_dz2011": REAL_EXCLUDED_DZ2011,
+        "excluded_collision": REAL_EXCLUDED_COLLISION,
+        "excluded_absent_from_c14": REAL_EXCLUDED_ABSENT,
         "excluded_in_scored_set": REAL_EXCLUDED_IN_SCORED_SET,
         "scored_set": REAL_SCORED_SET,
     }
@@ -749,6 +812,9 @@ def test_real_census_numbers_and_skip():
     assert MUIRHOUSE_04_CODES == frozenset({"S01014990", "S01018619"})
     assert REAL_ABSENT_FROM_C14 == 8
     assert REAL_EXCLUDED_DZ2011 == 124
+    assert REAL_EXCLUDED_COLLISION == 113
+    assert REAL_EXCLUDED_ABSENT == 11
+    assert REAL_EXCLUDED_COLLISION + REAL_EXCLUDED_ABSENT == REAL_EXCLUDED_DZ2011
     assert REAL_EXCLUDED_IN_SCORED_SET == 109
     assert REAL_SCORED_SET == 6188
     perfect = _perfect_census()
@@ -759,6 +825,11 @@ def test_real_census_numbers_and_skip():
     errors = real_census_errors(short, lookup_count=7392)
     assert errors
     assert real_census_errors(short, lookup_count=12) == []
+    folded = dict(perfect)
+    folded["excluded_dz2011"] = REAL_EXCLUDED_DZ2011 + 4
+    folded_errors = real_census_errors(folded, lookup_count=7392)
+    assert any("ordinary suppression" in err for err in folded_errors)
+    assert real_census_errors(folded, lookup_count=3) == []
 
 
 def test_official_lookup_size_fails_census_loudly(tmp_path: Path):
@@ -791,3 +862,122 @@ def test_official_lookup_size_fails_census_loudly(tmp_path: Path):
     )
     assert rc != 0
     assert not out.exists()
+
+
+def test_lookup_without_name_column_errors_at_any_size(tmp_path: Path):
+    c14 = tmp_path / "c14.csv"
+    _c14(c14, [_row("S01013482", "Ok", 10), _row("S01013483", "Ok", 8)])
+    paths = _simple(
+        tmp_path,
+        c14,
+        ["S01013482", "S01013483"],
+        [("S01007000", "S01013482", 10)],
+        ["S01007000"],
+    )
+    lookup = tmp_path / "nameless.csv"
+    _write_csv(lookup, ["code"], [["S01013482"], ["S01013483"]])
+    paths["lookup"] = lookup
+    with pytest.raises(InputBuildError, match="name column"):
+        _build(tmp_path, **paths)
+    out = tmp_path / "out.json"
+    rc = main(
+        [
+            "--c14",
+            str(c14),
+            "--lookup",
+            str(lookup),
+            "--crosswalk",
+            str(paths["crosswalk"]),
+            "--merge-map",
+            str(paths["merge"]),
+            "--ur",
+            str(paths["ur"]),
+            "--out",
+            str(out),
+            "--synthetic-fixtures",
+        ]
+    )
+    assert rc != 0
+    assert not out.exists()
+
+
+def test_exclusion_causes_split_from_ordinary_suppression(tmp_path: Path):
+    shared = "Shared name"
+    collision_a = "S01013482"
+    collision_b = "S01013483"
+    absent = "S01013484"
+    low = "S01013485"
+    c14 = tmp_path / "c14.csv"
+    _c14(
+        c14,
+        [
+            _row(collision_a, shared, 20),
+            _row(collision_b, shared, 20),
+            _row(low, "Low", 4),
+        ],
+    )
+    paths = _simple(
+        tmp_path,
+        c14,
+        [collision_a, collision_b, absent, low],
+        [
+            ("S01007001", collision_a, 20),
+            ("S01007002", absent, 20),
+            ("S01007003", low, 20),
+        ],
+        ["S01007001", "S01007002", "S01007003"],
+        names={collision_a: shared, collision_b: shared, absent: "Missing", low: "Low"},
+    )
+    result = _build(tmp_path, **paths)
+    by_i = {zone["dz2011"]: zone for zone in result["dz2011"]}
+    assert by_i["S01007001"]["exclusion_cause"] == CAUSE_COLLISION
+    assert by_i["S01007002"]["exclusion_cause"] == CAUSE_ABSENT
+    assert by_i["S01007003"]["exclusion_cause"] == CAUSE_ORDINARY
+    assert by_i["S01007003"]["volume_below_5"] is True
+    assert result["excluded_collision"] == 1
+    assert result["excluded_absent_from_c14"] == 1
+    assert result["excluded_ordinary_suppression"] == 1
+    assert result["incomplete_suppressed_dz2011"] == 3
+    named = {
+        zone["dz2011"]
+        for zone in result["dz2011"]
+        if zone["exclusion_cause"] in {CAUSE_COLLISION, CAUSE_ABSENT}
+    }
+    assert "S01007003" not in named
+
+
+def test_exclusion_list_hash_is_checked_before_parse(tmp_path: Path):
+    path = tmp_path / "not-the-list.csv"
+    path.write_bytes(b"this is not a table and must not be parsed\n")
+    with pytest.raises(InputBuildError, match="sha256"):
+        load_pinned_exclusion_list(path)
+
+
+def test_exclusion_set_diff_names_every_mismatch():
+    pinned = {
+        "S01006564": {"cause": CAUSE_COLLISION, "in_scored_set": True},
+        "S01006571": {"cause": CAUSE_ABSENT, "in_scored_set": False},
+    }
+    observed = {
+        "S01006564": {"cause": CAUSE_COLLISION, "in_scored_set": True},
+        "S01006571": {"cause": CAUSE_ABSENT, "in_scored_set": False},
+    }
+    assert diff_exclusion_sets(observed, pinned, ordinary_codes=set()) == []
+    missing = dict(observed)
+    del missing["S01006571"]
+    assert any("missing codes" in err for err in diff_exclusion_sets(missing, pinned))
+    extra = dict(observed)
+    extra["S01009999"] = {"cause": CAUSE_COLLISION, "in_scored_set": True}
+    assert any("extra codes" in err for err in diff_exclusion_sets(extra, pinned))
+    cause = {
+        "S01006564": {"cause": CAUSE_ABSENT, "in_scored_set": True},
+        "S01006571": {"cause": CAUSE_ABSENT, "in_scored_set": False},
+    }
+    assert any("cause" in err for err in diff_exclusion_sets(cause, pinned))
+    scored = {
+        "S01006564": {"cause": CAUSE_COLLISION, "in_scored_set": True},
+        "S01006571": {"cause": CAUSE_ABSENT, "in_scored_set": True},
+    }
+    assert any("in_scored_set" in err for err in diff_exclusion_sets(scored, pinned))
+    overlap = diff_exclusion_sets(observed, pinned, ordinary_codes={"S01006564"})
+    assert any("ordinary suppression" in err for err in overlap)

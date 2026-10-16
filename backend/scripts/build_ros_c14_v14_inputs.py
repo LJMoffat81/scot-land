@@ -13,7 +13,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-from georgist.ros_c14_input import InputBuildError, build_inputs, write_outputs
+from georgist.ros_c14_input import (
+    InputBuildError,
+    build_inputs,
+    load_cost_availability,
+    write_outputs,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -52,6 +57,18 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--scored-run", action="store_true")
     parser.add_argument("--estimates-json", type=Path, default=None)
+    parser.add_argument(
+        "--cost-availability-json",
+        type=Path,
+        default=None,
+        help="Price and rebuild cost. unavailable comes only from residual_land_value.",
+    )
+    parser.add_argument(
+        "--exclusion-list",
+        type=Path,
+        default=None,
+        help="Pinned DZ2011 exclusion list. Checked only for a 7,392-code lookup.",
+    )
     parser.add_argument("--main-commit", default="")
     parser.add_argument(
         "--synthetic-fixtures",
@@ -64,6 +81,9 @@ def main(argv: list[str] | None = None) -> int:
         estimates = json.loads(args.estimates_json.read_text(encoding="utf-8"))
     commit = args.main_commit or _git_head()
     try:
+        costs = None
+        if args.cost_availability_json is not None:
+            costs = load_cost_availability(args.cost_availability_json)
         result = build_inputs(
             c14_path=args.c14,
             lookup_path=args.lookup,
@@ -73,6 +93,8 @@ def main(argv: list[str] | None = None) -> int:
             frozen_plan_path=args.frozen_plan,
             scored_run=args.scored_run,
             estimates=estimates,
+            cost_availability=costs,
+            exclusion_list_path=args.exclusion_list,
             main_commit_sha=commit,
             check_pins=not args.synthetic_fixtures,
         )

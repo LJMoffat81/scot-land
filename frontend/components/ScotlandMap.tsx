@@ -4725,13 +4725,25 @@ export default function ScotlandMap() {
           role="application"
           aria-label="Scotland map"
         />
-        {protectedSitesHint ? (
-          <p
-            className="protected-sites-zoom-hint"
-            data-testid="protected-sites-zoom-hint"
-          >
-            Zoom in to see protected sites
-          </p>
+        {protectedSitesHint || oilGasHint ? (
+          <div className="map-zoom-hint-stack">
+            {protectedSitesHint ? (
+              <p
+                className="protected-sites-zoom-hint"
+                data-testid="protected-sites-zoom-hint"
+              >
+                Zoom in to see protected sites
+              </p>
+            ) : null}
+            {oilGasHint ? (
+              <p
+                className="protected-sites-zoom-hint"
+                data-testid="oil-gas-zoom-hint"
+              >
+                Zoom in to see oil and gas
+              </p>
+            ) : null}
+          </div>
         ) : null}
         {protectedSitesDrawn && mapZoom < SIMPLIFIED_OUTLINES_BELOW_ZOOM ? (
           <p
@@ -4739,14 +4751,6 @@ export default function ScotlandMap() {
             data-testid="simplified-outlines-chip"
           >
             Simplified outlines at this zoom. Zoom in for detail.
-          </p>
-        ) : null}
-        {oilGasHint ? (
-          <p
-            className="protected-sites-zoom-hint"
-            data-testid="oil-gas-zoom-hint"
-          >
-            Zoom in to see oil and gas
           </p>
         ) : null}
         {grid3Tooltip ? (

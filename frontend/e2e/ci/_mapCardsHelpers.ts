@@ -2,7 +2,7 @@
  * Shared stubs and probes for MAP-CARDS-REDESIGN e2e under e2e/ci/.
  * Not a Playwright spec — imported by *.spec.ts only.
  */
-import { expect, type Page } from "@playwright/test";
+import { expect, type Page, type Route } from "@playwright/test";
 
 export const HEALTH_OK = {
   status: "ok",
@@ -13,6 +13,23 @@ export const HEALTH_OK = {
 };
 
 export const EMPTY_FC = { type: "FeatureCollection", features: [] };
+
+/**
+ * Glyphs protobuf with one font stack and no glyphs.
+ * MapLibre accepts it and draws nothing for that range.
+ */
+export const EMPTY_GLYPH_PBF = Buffer.from(
+  "ChoKEU9wZW4gU2FucyBSZWd1bGFyEgUwLTI1NQ==",
+  "base64",
+);
+
+export async function fulfillEmptyGlyph(route: Route) {
+  await route.fulfill({
+    status: 200,
+    contentType: "application/x-protobuf",
+    body: EMPTY_GLYPH_PBF,
+  });
+}
 
 export const LIVE_LAYER_IDS = [
   "1",
@@ -137,14 +154,6 @@ export function filterNoise(errors: string[]): string[] {
     }
     // MapLibre sprite/glyph CDN failures (no app stack).
     if (/sprite|glyph/i.test(text) && /failed|error|load|404|503/i.test(text)) {
-      return false;
-    }
-    // OpenFreeMap glyph ranges are fetched cross-origin. A missing CORS
-    // header on that host is this known console line, not an application fault.
-    if (
-      /tiles\.openfreemap\.org\/fonts\//i.test(text) &&
-      /CORS policy|blocked by CORS/i.test(text)
-    ) {
       return false;
     }
     return true;
@@ -293,14 +302,10 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       body: JSON.stringify({ layers: [] }),
     });
   });
-  // Glyph PBFs are fetched with fetch(). CI must not depend on the tile host
-  // sending Access-Control-Allow-Origin. An empty protobuf is zero glyphs.
+  // Same idea as the raster tile stub: answer glyph ranges here so CI never
+  // fetches tiles.openfreemap.org fonts. The live map still requests that host.
   await page.route("**/tiles.openfreemap.org/fonts/**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/x-protobuf",
-      body: Buffer.alloc(0),
-    });
+    await fulfillEmptyGlyph(route);
   });
   await page.route("**/health**", async (route) => {
     // Fulfill all health probes (including /backend/health). Continuing to the

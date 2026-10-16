@@ -136,4 +136,58 @@ test.describe("LAYERS-PERF-3", () => {
     await expect(chip).toBeHidden({ timeout: 20_000 });
     assertConsoleClean(gate);
   });
+
+  test("oil and gas hint stacks under the protected-sites hint", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const gate = attachConsoleGate(page);
+    const hiddenSites = JSON.stringify({
+      type: "FeatureCollection",
+      features: [],
+      meta: { hidden_below_zoom: true },
+    });
+    await stubMapCardsBackend(page);
+    await page.route("**/layers/context/oil-fields**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: HIDDEN_OIL,
+      });
+    });
+    await page.route("**/layers/open/naturescot-designations**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: hiddenSites,
+      });
+    });
+    await page.route("**/layers/open/sssi**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: hiddenSites,
+      });
+    });
+
+    await openMap(page);
+    await waitForMap(page);
+    await jump(page, 6);
+    await openLayers(page);
+    await ensureLayersGroupOpen(page, "nature");
+    await page.getByTestId("layer-toggle-designations").click();
+    await ensureLayersGroupOpen(page, "resources");
+    await page.getByTestId("layer-toggle-9").click();
+
+    const sites = page.getByTestId("protected-sites-zoom-hint");
+    const oil = page.getByTestId("oil-gas-zoom-hint");
+    await expect(sites).toBeVisible({ timeout: 20_000 });
+    await expect(oil).toBeVisible();
+    const sitesBox = await sites.boundingBox();
+    const oilBox = await oil.boundingBox();
+    expect(sitesBox).not.toBeNull();
+    expect(oilBox).not.toBeNull();
+    expect(oilBox!.y).toBeGreaterThanOrEqual(sitesBox!.y + sitesBox!.height);
+    assertConsoleClean(gate);
+  });
 });

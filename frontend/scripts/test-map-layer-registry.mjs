@@ -46,19 +46,36 @@ const liveIds = MAP_LAYER_REGISTRY.map((e) => e.id);
 assert.deepEqual(liveIds, [
   "1",
   "access_services",
+  "flood",
   "vdl",
   "grid3",
-  "hla",
+  "contaminated_land",
   "3",
   "4",
   "9",
   "8",
   "designations",
-  "flood",
   "crofting",
   "councils",
   "data_zones",
+  "deprivation",
+  "conservation",
+  "listed",
+  "stops",
+  "green_belt",
+  "school_catchments",
 ]);
+// LAYERS-ADD-1a: HLA / LDP are flagged OFF — roadmap only, not live switches.
+assert.equal(
+  MAP_LAYER_REGISTRY.find((e) => e.id === "hla"),
+  undefined,
+  "hla must not be a live Layers switch (LAYER_HLS_ENABLED default OFF)",
+);
+assert.equal(
+  MAP_LAYER_REGISTRY.find((e) => e.id === "ldp"),
+  undefined,
+  "ldp must not be a live Layers switch",
+);
 
 assert.equal(resolveMapLayerId("agr"), "1");
 assert.equal(resolveMapLayerId("1"), "1");
@@ -72,6 +89,11 @@ const removed = [
   "7",
   "10",
   "lca",
+  "hla",
+  "ldp",
+  "ldp_allocations",
+  "hls",
+  "sepa_frm_maps",
   "builtup_mask",
   "settlements",
   "localities",
@@ -123,6 +145,17 @@ assert.equal(
 assert.equal(
   MAP_LAYER_REGISTRY.find((e) => e.id === "councils")?.label,
   "Council areas",
+);
+assert.equal(
+  MAP_LAYER_REGISTRY.find((e) => e.id === "flood")?.label,
+  "Flood risk",
+);
+assert.equal(
+  MAP_LAYER_REGISTRY.find((e) => e.id === "flood")?.group,
+  "land",
+);
+assert.ok(
+  MAP_LAYER_REGISTRY.every((e) => e.defaultOn !== true || e.id === "councils"),
 );
 
 // Four accordion groups; every live id maps to one of them.

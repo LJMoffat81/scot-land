@@ -40,8 +40,11 @@ def test_sources_yaml_catalogues_ogl_and_spatial_hub():
     assert any(s["id"] == "highland_ldp_allocations" for s in seeds)
 
 
-def test_catalog_layer_live_with_gaps_and_endpoint():
+def test_catalog_layer_live_with_gaps_and_endpoint(monkeypatch):
+    """LAYERS-ADD-1a: LDP is omitted unless LAYER_LDP_ENABLED=true."""
+    monkeypatch.setenv("LAYER_LDP_ENABLED", "true")
     layer = catalog_layer()
+    assert layer is not None
     assert layer["id"] == "ldp_allocations"
     assert layer["status"] == "live"
     assert layer["endpoint"] == "/layers/open/ldp"
@@ -56,6 +59,14 @@ def test_catalog_layer_live_with_gaps_and_endpoint():
     ids = [row["id"] for row in catalog["layers"]]
     assert "ldp_allocations" in ids
     assert ids.index("ldp_allocations") > ids.index("vdl")
+
+
+def test_catalog_omits_ldp_when_flag_off(monkeypatch):
+    monkeypatch.delenv("LAYER_LDP_ENABLED", raising=False)
+    assert catalog_layer() is None
+    catalog = platform_catalog()
+    ids = [row["id"] for row in catalog["layers"]]
+    assert "ldp_allocations" not in ids
 
 
 def test_source_meta_points_at_spatialdata_record():
@@ -104,6 +115,8 @@ def test_geojson_ingest_helper_builds_rows():
 
 
 def test_ldp_503_when_not_loaded(client, monkeypatch):
+    monkeypatch.setenv("LAYER_LDP_ENABLED", "true")
+
     def _down(*_a, **_k):
         return {
             "type": "FeatureCollection",
@@ -122,6 +135,8 @@ def test_ldp_503_when_not_loaded(client, monkeypatch):
 
 
 def test_ldp_ok_empty_viewport_is_not_503(client, monkeypatch):
+    monkeypatch.setenv("LAYER_LDP_ENABLED", "true")
+
     def _empty(*_a, **_k):
         return {
             "type": "FeatureCollection",
@@ -145,6 +160,8 @@ def test_ldp_ok_empty_viewport_is_not_503(client, monkeypatch):
 
 
 def test_ldp_ok_returns_allocation_properties(client, monkeypatch):
+    monkeypatch.setenv("LAYER_LDP_ENABLED", "true")
+
     def _sites(*_a, **_k):
         return {
             "type": "FeatureCollection",

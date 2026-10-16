@@ -24,9 +24,27 @@ export const metadata: Metadata = {
 };
 
 const COMING_TO_THE_MAP: ReadonlyArray<{
+  id?: string;
   name: string;
+  blurb?: string;
   status: string;
+  statusShort?: string;
 }> = [
+  // LAYERS-ADD-1a — flagged OFF (PSGA). Exact visitor strings from design L11.
+  {
+    id: "ldp",
+    name: "Planned development land",
+    blurb: "Land councils have set aside for building",
+    status: "Waiting for permission to use the data",
+    statusShort: "Waiting for permission",
+  },
+  {
+    id: "hls",
+    name: "Land for new homes",
+    blurb: "Sites a council expects to be built for homes",
+    status: "Waiting for permission to use the data",
+    statusShort: "Waiting for permission",
+  },
   {
     name: "Landscape character areas",
     status: "Waiting for permission — licence check",
@@ -72,9 +90,29 @@ export default function RoadmapPage() {
         </p>
         <ul className="roadmap-layer-list">
           {COMING_TO_THE_MAP.map((row) => (
-            <li key={row.name} data-testid="roadmap-layer-row">
+            <li
+              key={row.id ?? row.name}
+              data-testid={
+                row.id ? `roadmap-waiting-${row.id}` : "roadmap-layer-row"
+              }
+            >
               <span className="roadmap-layer-name">{row.name}</span>
-              <span className="roadmap-layer-status">{row.status}</span>
+              {row.blurb ? (
+                <span className="roadmap-layer-blurb">{row.blurb}</span>
+              ) : null}
+              <span
+                className="roadmap-layer-status"
+                data-testid={
+                  row.id ? `roadmap-waiting-status-${row.id}` : undefined
+                }
+              >
+                <span className="roadmap-waiting-status-full">{row.status}</span>
+                {row.statusShort ? (
+                  <span className="roadmap-waiting-status-short">
+                    {row.statusShort}
+                  </span>
+                ) : null}
+              </span>
             </li>
           ))}
         </ul>

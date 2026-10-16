@@ -17,18 +17,24 @@ export const EMPTY_FC = { type: "FeatureCollection", features: [] };
 export const LIVE_LAYER_IDS = [
   "1",
   "access_services",
+  "flood",
   "vdl",
   "grid3",
-  "hla",
+  "contaminated_land",
   "3",
   "4",
   "9",
   "8",
   "designations",
-  "flood",
   "crofting",
   "councils",
   "data_zones",
+  "deprivation",
+  "conservation",
+  "listed",
+  "stops",
+  "green_belt",
+  "school_catchments",
 ] as const;
 
 export const BANNED_VISIBLE =

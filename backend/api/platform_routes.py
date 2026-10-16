@@ -35,6 +35,16 @@ from layers.flood import query_bbox as flood_bbox
 from layers.hydro import query_bbox as hydro_bbox
 from layers.hla import HLA_NOT_LOADED_YET
 from layers.hla import query_bbox as hla_bbox
+from layers.layer_flags import (
+    layer_hls_enabled,
+    layer_ldp_enabled,
+    layer_sepa_flood_extent_enabled,
+)
+from layers.layers_add_catalog import (
+    GATED_LAYER_IDS,
+    tile_manifest,
+    waiting_for_permission_rows,
+)
 from layers.public_land import query_bbox as public_land_bbox
 from layers.sepa_car import query_bbox as sepa_car_bbox
 from layers.naturescot import LayerUnavailable as NatureScotUnavailable
@@ -375,7 +385,10 @@ def layer_open_hla(
     Serves Spatial Hub HLA sites from PostGIS ``planning_sites`` after local
     OGL ingest. **503** when unloaded or PostGIS unavailable — never invents
     sites. An empty FeatureCollection with meta.ok=true means no sites in view.
+    LAYERS-ADD-1a: **404** unless LAYER_HLS_ENABLED=true (default off).
     """
+    if not layer_hls_enabled():
+        raise HTTPException(status_code=404, detail="Not Found")
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     payload = hla_bbox(south, west, north, east, max_features=max_features)
     meta = payload.get("meta") or {}
@@ -401,7 +414,10 @@ def layer_open_flood(
     PostGIS only — ingest the OGL download from www2.sepa.org.uk/flooddata.
     Never uses SEPA MapServer, viewer, or live web services. Returns **503**
     when unloaded — never invents extents.
+    LAYERS-ADD-1: **404** unless LAYER_SEPA_FLOOD_EXTENT_ENABLED=true (default off).
     """
+    if not layer_sepa_flood_extent_enabled():
+        raise HTTPException(status_code=404, detail="Not Found")
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     payload = flood_bbox(south, west, north, east, max_features=max_features)
     meta = payload.get("meta") or {}
@@ -489,7 +505,10 @@ def layer_open_ldp(
     missing authorities. An empty FeatureCollection with meta.ok=true means
     no allocations in view (national fragmentation stays visible).
     Feeds Annual Ground Rent breakdown nested row 1a (planning) — no money figures.
+    LAYERS-ADD-1a: **404** unless LAYER_LDP_ENABLED=true (default off).
     """
+    if not layer_ldp_enabled():
+        raise HTTPException(status_code=404, detail="Not Found")
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     payload = ldp_bbox(south, west, north, east, max_features=max_features)
     meta = payload.get("meta") or {}
@@ -773,6 +792,59 @@ def platform_gaps() -> dict:
         "gaps": [layer for layer in catalog["layers"] if layer["status"] in ("gap", "linked")],
         "live": [layer for layer in catalog["layers"] if layer["status"] == "live"],
         "policy": catalog["data_policy"],
+    }
+
+
+@router.get("/layers/add/catalog")
+def layers_add_catalog() -> dict:
+    """LAYERS-ADD-1 public catalog slice (licence-gated; no flagged ids)."""
+    catalog = platform_catalog()
+    return {
+        "version": 1,
+        "layers": catalog.get("layers_add") or [],
+        "waiting": catalog.get("layers_add_waiting") or [],
+        "tile_manifest": tile_manifest(),
+    }
+
+
+@router.get("/layers/add/waiting")
+def layers_add_waiting() -> dict:
+    """Roadmap rows: Waiting for permission (derived from catalog flags)."""
+    return {"rows": waiting_for_permission_rows()}
+
+
+@router.get("/layers/add/tiles-manifest")
+def layers_add_tiles_manifest() -> dict:
+    """Public tile sources with flags OFF — no gated layer ids (L5)."""
+    return tile_manifest()
+
+
+@router.get("/tiles/{layer_id}/{z}/{x}/{y}")
+def layers_add_tile_stub(layer_id: str, z: int, x: int, y: int) -> Response:
+    """MVT stub: gated / prohibited ids → 404; others → 204 until tiles built."""
+    if layer_id in GATED_LAYER_IDS or layer_id == "sepa_frm_maps":
+        raise HTTPException(status_code=404, detail="Not Found")
+    # Public layers without built tiles: empty success (no invented geometry).
+    return Response(status_code=204)
+
+
+@router.get("/layers/add/agg/{agg_name}")
+def layers_add_aggregate(agg_name: str) -> dict:
+    """DZ aggregates live in candidates_v15 — gated names 404 when flags OFF."""
+    gated_aggs = {"agg_ldp", "agg_hls"}
+    if agg_name in gated_aggs and not (
+        (agg_name == "agg_ldp" and layer_ldp_enabled())
+        or (agg_name == "agg_hls" and layer_hls_enabled())
+    ):
+        raise HTTPException(status_code=404, detail="Not Found")
+    if agg_name.startswith("agg_") is False:
+        raise HTTPException(status_code=404, detail="Not Found")
+    # Empty payload until ETL fills candidates_v15 (v1.4 rent endpoints untouched).
+    return {
+        "agg": agg_name,
+        "schema": "candidates_v15",
+        "rows": [],
+        "note": "v1.5 candidate input — not read by v1.4 rent or card endpoints",
     }
 
 

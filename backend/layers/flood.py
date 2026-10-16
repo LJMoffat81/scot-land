@@ -16,6 +16,8 @@ from typing import Any
 import psycopg2
 from psycopg2 import extras
 
+from layers.layer_flags import layer_sepa_flood_extent_enabled
+
 logger = logging.getLogger(__name__)
 
 TABLE = "sepa_flood"
@@ -83,10 +85,12 @@ def is_loaded() -> bool:
 
 
 def catalog_layer() -> dict[str, Any]:
+    # LAYERS-ADD-1 kickoff: SEPA flood extent hidden/off unless explicitly enabled.
+    enabled = layer_sepa_flood_extent_enabled()
     return {
         "id": "flood",
         "group": "spatial",
-        "status": "live",
+        "status": "live" if enabled else "gap",
         "label": "SEPA flood extent",
         "description": (
             "Medium-likelihood river and coastal flood extents from SEPA Flood Maps "
@@ -95,9 +99,10 @@ def catalog_layer() -> dict[str, Any]:
         ),
         "developer_note": (
             "SEPA Flood Maps v3.0 present-day OGL download ingested to PostGIS "
-            "(503 when unloaded). No MapServer or live web services."
+            "(503 when unloaded). No MapServer or live web services. "
+            "LAYERS-ADD-1: gated by LAYER_SEPA_FLOOD_EXTENT_ENABLED (default OFF)."
         ),
-        "endpoint": BBOX_ENDPOINT,
+        "endpoint": BBOX_ENDPOINT if enabled else None,
         "licence": LICENCE,
         "licence_url": LICENCE_URL,
         "minzoom": MINZOOM,
@@ -106,12 +111,14 @@ def catalog_layer() -> dict[str, Any]:
         "ledger_role": "constraint",
         "ledger_row": None,
         "ui_surface": "ledger",
+        "flag_name": "LAYER_SEPA_FLOOD_EXTENT_ENABLED",
         "gaps": [
             "Surface-water and climate-change scenarios are in the OGL product "
             "but not in the default public constraint paint (medium river + coastal only).",
             "Extents are indicative hazard maps — not a property-level flood quote.",
             "Must ingest the OGL download into PostGIS; live SEPA services are not used.",
             "Constraint: changes best use, adds no value — never a rent row (C-overlay).",
+            "Public paint off by default (LAYER_SEPA_FLOOD_EXTENT_ENABLED).",
         ],
     }
 

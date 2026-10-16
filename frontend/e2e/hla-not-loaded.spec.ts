@@ -1,52 +1,57 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * SHARE-FIX — Housing land audit tiles 503 → Coming soon / disabled,
- * not a raw "Service busy" / unload banner.
+ * LAYERS-ADD-1a — Housing land supply / HLA is licence-gated OFF.
+ * No live Layers row; visitor status is on /roadmap#map-layers.
  */
 
-async function openMap(page: Page) {
-  await page.goto("/");
-  await page.locator(".maplibregl-canvas").waitFor();
-  await page.getByRole("button", { name: "Layers", exact: true }).waitFor();
+async function stubQuietBackend(page: Page) {
+  await page.route("**/backend/**", async (route) => {
+    const url = route.request().url();
+    if (/\/layers\/catalog/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ version: 2, layers: [] }),
+      });
+      return;
+    }
+    if (/\/health/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: "ok" }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ type: "FeatureCollection", features: [] }),
+    });
+  });
 }
 
-test.describe("Housing land audit 503 Coming soon", () => {
+test.describe("Housing land audit gated (LAYERS-ADD-1a)", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test("map shows Coming soon / disabled — not Service busy", async ({
+  test("no HLA Layers toggle; roadmap shows Waiting for permission", async ({
     page,
   }) => {
     test.setTimeout(90_000);
+    await stubQuietBackend(page);
 
-    await page.route("**/layers/open/hla**", async (route) => {
-      await route.fulfill({
-        status: 503,
-        contentType: "application/json",
-        body: JSON.stringify({
-          detail:
-            "Housing land audit isn't loaded yet. We don't fill gaps with guesses.",
-        }),
-      });
-    });
-
-    await openMap(page);
+    await page.goto("/");
+    await page.locator(".maplibregl-canvas").waitFor();
     await page.getByRole("button", { name: "Layers", exact: true }).click();
     const panel = page.locator("aside.hud-tools");
-    const toggle = panel.getByTestId("layer-toggle-hla");
-    await expect(toggle).toBeVisible();
-    await toggle.click();
+    await expect(panel.getByTestId("layer-toggle-hla")).toHaveCount(0);
+    await expect(panel).not.toContainText("Housing land audit");
 
-    await expect(page.getByTestId("layer-coming-soon-hla")).toHaveText(
-      "Coming soon",
-      { timeout: 15_000 },
+    await page.goto("/roadmap#map-layers");
+    await expect(page.getByTestId("roadmap-waiting-hls")).toBeVisible();
+    await expect(page.getByTestId("roadmap-waiting-status-hls")).toContainText(
+      "Waiting for permission to use the data",
     );
-    await expect(toggle).toBeDisabled();
-    await expect(page.getByTestId("map-layer-hla")).toHaveAttribute(
-      "data-coming-soon",
-      "true",
-    );
-    await expect(page.getByTestId("layer-notice")).toHaveCount(0);
-    await expect(panel).not.toContainText(/Service busy/i);
   });
 });

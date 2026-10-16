@@ -521,16 +521,12 @@ export function PlaceCard({
             </div>
           </details>
 
-          {/* Map card: banner and map footer carry the research line.
-              Standalone cards still show it. */}
-          {floating ? null : (
-            <p
-              className="place-card-experimental-footer"
-              data-testid="place-card-footer"
-            >
-              {PLACE_CARD_EXPERIMENTAL_FOOTER}
-            </p>
-          )}
+          <p
+            className="place-card-experimental-footer"
+            data-testid="place-card-footer"
+          >
+            {PLACE_CARD_EXPERIMENTAL_FOOTER}
+          </p>
         </div>
       ) : null}
 

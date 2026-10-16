@@ -220,16 +220,14 @@ test.describe("UI-FIX-4 390", () => {
       "data-detent",
       "peek",
     );
+    await expect(page.getByTestId("place-card-place")).toBeVisible();
+    await expect(page.getByTestId("place-card-figure-status")).toBeVisible();
+    await expect(page.getByTestId("place-card-footer")).toBeVisible();
+    await expect(page.getByTestId("place-card-footer")).toHaveText(EXPERIMENTAL);
 
     const peek = await page.evaluate(() => {
-      const title = document.querySelector('[data-testid="place-card-place"]');
-      const first = document.querySelector(
-        '[data-testid="place-card-council"], [data-testid="place-card-typical-home"], [data-testid="place-card-sea-line"]',
-      );
-      const footer = document.querySelector(
-        '[data-testid="place-card-footer"], [data-testid="map-stamp-footer"]',
-      );
-      const box = (el: Element | null) => {
+      const pick = (sel: string) => {
+        const el = document.querySelector(sel);
         if (!el) return null;
         const r = el.getBoundingClientRect();
         const s = getComputedStyle(el);
@@ -243,25 +241,34 @@ test.describe("UI-FIX-4 390", () => {
         }
         return { x: r.x, y: r.y, width: r.width, height: r.height };
       };
-      return { title: box(title), first: box(first), footer: box(footer) };
+      return {
+        title: pick('[data-testid="place-card-place"]'),
+        rent: pick('[data-testid="place-card-figure-status"]'),
+        disclaimer: pick('[data-testid="place-card-footer"]'),
+        slot: pick('[data-testid="map-panel-slot"]'),
+      };
     });
     expect(peek.title).toBeTruthy();
-    expect(peek.first).toBeTruthy();
-    const peekSlot = await page.getByTestId("map-panel-slot").boundingBox();
-    expect(peekSlot).toBeTruthy();
-    expect(peek.title!.y).toBeGreaterThanOrEqual(peekSlot!.y - 1);
-    expect(peek.title!.y + peek.title!.height).toBeLessThanOrEqual(
-      peekSlot!.y + peekSlot!.height + 1,
-    );
-    expect(peek.first!.y + peek.first!.height).toBeLessThanOrEqual(
-      peekSlot!.y + peekSlot!.height + 1,
-    );
-    if (peek.footer && peek.title) {
-      expect(boxesOverlap(peek.title, peek.footer)).toBe(false);
-    }
-    if (peek.footer && peek.first) {
-      expect(boxesOverlap(peek.first, peek.footer)).toBe(false);
-    }
+    expect(peek.rent).toBeTruthy();
+    expect(peek.disclaimer).toBeTruthy();
+    expect(peek.slot).toBeTruthy();
+    const inside = (
+      item: { x: number; y: number; width: number; height: number },
+      slot: { x: number; y: number; width: number; height: number },
+    ) => {
+      expect(item.y).toBeGreaterThanOrEqual(slot.y - 1);
+      expect(item.x).toBeGreaterThanOrEqual(slot.x - 1);
+      expect(item.y + item.height).toBeLessThanOrEqual(slot.y + slot.height + 1);
+      expect(item.x + item.width).toBeLessThanOrEqual(slot.x + slot.width + 1);
+    };
+    inside(peek.title!, peek.slot!);
+    inside(peek.rent!, peek.slot!);
+    inside(peek.disclaimer!, peek.slot!);
+    expect(boxesOverlap(peek.title!, peek.rent!)).toBe(false);
+    expect(boxesOverlap(peek.title!, peek.disclaimer!)).toBe(false);
+    expect(boxesOverlap(peek.rent!, peek.disclaimer!)).toBe(false);
+    const peekScroll = await page.getByTestId("map-panel-scroll").evaluate((el) => el.scrollTop);
+    expect(peekScroll).toBe(0);
 
     const detailed = page.getByTestId("basemap-switcher");
     const strip = page.locator(".research-banner-map");
@@ -273,7 +280,7 @@ test.describe("UI-FIX-4 390", () => {
       }
     }
 
-    await expect(page.getByTestId("place-card")).not.toContainText(EXPERIMENTAL);
+    await expect(page.getByTestId("place-card-footer")).toContainText(EXPERIMENTAL);
     await expect(page.getByTestId("research-banner")).toContainText(
       "Research estimate",
     );
@@ -378,7 +385,22 @@ test.describe("UI-FIX-4 1280", () => {
     expect(pad.right).toBeGreaterThanOrEqual(16);
 
     await expect(column.getByRole("button", { name: /close/i })).toHaveCount(1);
-    await expect(page.getByTestId("place-card")).not.toContainText(EXPERIMENTAL);
+    const disclaimer = page.getByTestId("place-card-footer");
+    await expect(disclaimer).toBeVisible();
+    await expect(disclaimer).toContainText(EXPERIMENTAL);
+    const disclaimerBox = await disclaimer.boundingBox();
+    const visibleCard = await page.getByTestId("map-panel-slot").boundingBox();
+    expect(disclaimerBox).toBeTruthy();
+    expect(visibleCard).toBeTruthy();
+    expect(disclaimerBox!.y).toBeGreaterThanOrEqual(visibleCard!.y - 1);
+    expect(disclaimerBox!.y + disclaimerBox!.height).toBeLessThanOrEqual(
+      visibleCard!.y + visibleCard!.height + 1,
+    );
+    const cardScroll = await page
+      .getByTestId("map-panel-slot")
+      .getByTestId("map-panel-scroll")
+      .evaluate((el) => el.scrollTop);
+    expect(cardScroll).toBe(0);
     await expect(page.getByTestId("research-banner")).toContainText(
       "Research estimate",
     );

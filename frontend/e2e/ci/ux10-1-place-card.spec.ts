@@ -226,9 +226,9 @@ async function assertSkeletonCopy(page: Page) {
     0,
   );
 
-  await expect(page.getByTestId("place-card-footer")).toHaveCount(0);
-  await expect(page.getByTestId("place-card")).not.toContainText(EXPERIMENTAL_FOOTER);
-  await expect(page.getByTestId("research-banner")).toContainText("Research estimate");
+  await expect(page.getByTestId("place-card-footer")).toHaveText(
+    EXPERIMENTAL_FOOTER,
+  );
   await expect(card).not.toContainText("£");
   await expect(card).not.toContainText(/Land Value Tax|\bLVT\b/);
   const cardHtml = await card.innerHTML();
@@ -245,10 +245,11 @@ test.describe("UX10-1 / MAP-CARDS place card desktop 1280", () => {
     await openPlaceViaCoords(page);
     await assertSkeletonCopy(page);
 
-    await expect(page.getByTestId("place-card-footer")).toHaveCount(0);
-    const cardBox = await page.getByTestId("place-card").boundingBox();
-    expect(cardBox).toBeTruthy();
-    expect(cardBox!.y + cardBox!.height).toBeLessThanOrEqual(800);
+    const footer = page.getByTestId("place-card-footer");
+    await expect(footer).toBeVisible();
+    const box = await footer.boundingBox();
+    expect(box).toBeTruthy();
+    expect(box!.y + box!.height).toBeLessThanOrEqual(800);
 
     const close = page.getByRole("button", { name: "Close place card" });
     const closeBox = await close.boundingBox();

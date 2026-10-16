@@ -40,7 +40,10 @@ import {
   visitorFacingError,
 } from "../lib/api";
 import { CONTEXT_LAYERS } from "../lib/contextLayers";
-import { syncLayersAddPaint } from "../lib/layersAddMapPaint";
+import {
+  syncLayersAddPaint,
+  type FloodKind,
+} from "../lib/layersAddMapPaint";
 import { spatialHubPresenceFromManifest } from "../lib/layersAddRegistry";
 import {
   fetchLayerCatalog,
@@ -882,6 +885,9 @@ export default function ScotlandMap() {
     string,
     boolean
   > | null>({ vdl: true });
+  const [floodKind, setFloodKind] = useState<FloodKind>("river");
+  /** Hidden until sepa_flood_dz has rows (LAYERS-FIX-1 while empty). */
+  const [floodDzLoaded, setFloodDzLoaded] = useState(false);
   const markTileUnavailable = useCallback((id: string) => {
     setTileUnavailableIds((prev) => {
       if (prev.has(id)) return prev;
@@ -3073,6 +3079,7 @@ export default function ScotlandMap() {
         if (cancelled) return;
         const layers = payload.layers ?? [];
         setCatalogLayers(layers);
+        setFloodDzLoaded(payload.flood_dz_loaded === true);
         if (layers.length === 0) {
           setBuiltupMaskCatalogGap(false);
           return;
@@ -4654,7 +4661,7 @@ export default function ScotlandMap() {
     };
   }, []);
 
-  // Flood risk paints sepa_nfra_grid (layersAddMapPaint), not /layers/open/flood.
+  // Flood risk paints Data Zone shares from /layers/open/flood-dz.
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
@@ -4662,7 +4669,7 @@ export default function ScotlandMap() {
     let cancelled = false;
     const run = () => {
       if (cancelled) return;
-      void syncLayersAddPaint(map, ledgerEnabled, spatialHubPresent);
+      void syncLayersAddPaint(map, ledgerEnabled, spatialHubPresent, floodKind);
     };
     run();
     map.on("moveend", run);
@@ -4670,7 +4677,7 @@ export default function ScotlandMap() {
       cancelled = true;
       map.off("moveend", run);
     };
-  }, [mapReady, ledgerEnabled, spatialHubPresent]);
+  }, [mapReady, ledgerEnabled, spatialHubPresent, floodKind]);
 
   const placeOpen = panelKind === "place" && Boolean(placeStub || result);
   const layersOpen = isNarrowPanel
@@ -5100,6 +5107,9 @@ export default function ScotlandMap() {
             }}
             unavailableIds={unavailableLayerIds}
             spatialHubPresent={spatialHubPresent}
+            floodDzLoaded={floodDzLoaded}
+            floodKind={floodKind}
+            onFloodKindChange={setFloodKind}
             onEnabledChange={onMapLayersChange}
           />
         </MapPanelSlot>

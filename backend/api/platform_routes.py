@@ -32,6 +32,8 @@ from layers.builtup_mask import query_bbox as builtup_mask_bbox
 from layers.builtup_mask import query_mvt as builtup_mask_mvt
 from layers.data_zones import query_bbox as data_zones_bbox
 from layers.flood import query_bbox as flood_bbox
+from layers.flood_dz import NOT_LOADED as FLOOD_DZ_NOT_LOADED
+from layers.flood_dz import query_bbox as flood_dz_bbox
 from layers.hydro import query_bbox as hydro_bbox
 from layers.hla import HLA_NOT_LOADED_YET
 from layers.hla import query_bbox as hla_bbox
@@ -438,6 +440,51 @@ def layer_open_flood(
                 "OGL Flood Maps v3.0 only — gaps are not filled with guesses."
             ),
         )
+    return JSONResponse(payload)
+
+
+def _parse_flood_dz_bbox(bbox: str) -> tuple[float, float, float, float]:
+    """bbox is west,south,east,north."""
+    parts = [part.strip() for part in bbox.split(",")]
+    if len(parts) != 4:
+        raise HTTPException(
+            status_code=422,
+            detail="bbox must be west,south,east,north",
+        )
+    try:
+        west, south, east, north = (float(part) for part in parts)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="bbox must be west,south,east,north",
+        ) from exc
+    if south >= north or west >= east:
+        raise HTTPException(status_code=422, detail="bbox is empty")
+    return west, south, east, north
+
+
+@router.get("/layers/open/flood-dz")
+def layer_open_flood_dz(
+    bbox: str = Query(..., description="west,south,east,north"),
+    kind: str = Query(..., description="river, coastal, or surface"),
+) -> JSONResponse:
+    """Data Zone share of SEPA's medium-likelihood flood extent (today's climate).
+
+    Properties are the zone whitelist only. Geometry is the 2022 Data Zone.
+    **503** when ``sepa_flood_dz`` is empty. No flood polygons and no £.
+    """
+    kind_norm = kind.strip().lower()
+    if kind_norm not in {"river", "coastal", "surface"}:
+        raise HTTPException(
+            status_code=422,
+            detail="kind must be river, coastal, or surface",
+        )
+    west, south, east, north = _parse_flood_dz_bbox(bbox)
+    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    payload = flood_dz_bbox(west, south, east, north, kind=kind_norm)
+    meta = payload.get("meta") or {}
+    if meta.get("ok") is False:
+        raise HTTPException(status_code=503, detail=FLOOD_DZ_NOT_LOADED)
     return JSONResponse(payload)
 
 

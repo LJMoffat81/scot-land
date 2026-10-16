@@ -3064,6 +3064,26 @@ button.primary:disabled {
   gap: 0.45rem;
 }
 
+.flood-kind {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+.flood-kind-option {
+  border: 1px solid #9ecae1;
+  background: #f7fbff;
+  color: #08306b;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 0.85rem;
+}
+.flood-kind-option[aria-checked="true"] {
+  background: #2171b5;
+  color: #fff;
+  border-color: #2171b5;
+}
 .layers-panel-switch {
   display: flex;
   width: 100%;

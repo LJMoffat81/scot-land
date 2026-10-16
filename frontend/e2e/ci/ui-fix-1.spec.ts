@@ -216,11 +216,11 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
     const logo = page.locator(".hud-wordmark");
     await assertMinHit(logo, "Scot-LAND home");
 
-    // Copy Map reference removed by MAP-CARDS / SW-052 — assert only if present.
-    const mapRefCopy = page.getByRole("button", { name: /Copy Map reference/i });
-    if ((await mapRefCopy.count()) > 0 && (await mapRefCopy.first().isVisible())) {
-      await assertMinHit(mapRefCopy.first(), "Copy Map reference");
-    }
+    // U1 listed Copy Map reference, but MAP-CARDS / SW-052 removed that control —
+    // assert absence so a silent reintroduction without a 44×44 hit still fails CI.
+    await expect(
+      page.getByRole("button", { name: /Copy Map reference/i }),
+    ).toHaveCount(0);
 
     await layersBtn.click();
     await expect(page.getByTestId("layers-panel")).toBeVisible();
@@ -294,7 +294,10 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
     // is open. U2 still requires 0 px intersection with any visible legend UI.
     const banner = page.locator(".research-banner-map");
     await expect(banner).toBeAttached();
-    const bannerVisible = await banner.isVisible().catch(() => false);
+    const bannerHeight = await banner.evaluate(
+      (el) => el.getBoundingClientRect().height,
+    );
+    const bannerVisible = bannerHeight > 0.5;
 
     const legendCandidates = [
       page.getByRole("button", { name: "Show legend" }),
@@ -318,15 +321,15 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
         }
       }
     }
-    // With card open: either banner is collapsed (MAP-CARDS) or every visible
-    // legend was checked for non-overlap above. Fail if a visible legend sits
-    // on a still-visible banner (boxesOverlap would have thrown).
     if (bannerVisible) {
       expect(
         visibleLegend,
-        "banner visible with card open but no legend to check — still require banner clickable",
-      ).toBeGreaterThanOrEqual(0);
+        "banner visible with card open → at least one legend element must be measured",
+      ).toBeGreaterThanOrEqual(1);
       await expect(banner).toBeEnabled();
+    } else {
+      // Explicit collapse (MAP-CARDS say-it-once) — not a silent skip.
+      expect(bannerHeight, "research banner collapsed height").toBe(0);
     }
 
     assertConsoleClean(gate);
@@ -460,13 +463,20 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
       "title bottom in slot",
     ).toBeLessThanOrEqual(slotBox!.y + slotBox!.height + 0.5);
 
+    // Overlap checks: run whenever banner/pill is visible; otherwise assert the
+    // MAP-CARDS expectation that neither is on screen with a place card open.
+    let overlapChecks = 0;
     const banner = page.locator(".research-banner-map");
-    if (await banner.isVisible().catch(() => false)) {
+    const bannerHeight = await banner.evaluate(
+      (el) => el.getBoundingClientRect().height,
+    );
+    if (bannerHeight > 0.5) {
       await assertNoBoxOverlap(
         banner,
         title,
         "research notice vs card title",
       );
+      overlapChecks += 1;
     }
     const legendPill = page.getByRole("button", { name: "Show legend" });
     if (
@@ -478,6 +488,7 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
         title,
         "Show legend pill vs card title",
       );
+      overlapChecks += 1;
     }
     const legendStrip = page.getByTestId("legend-strip");
     if (
@@ -489,6 +500,19 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
         title,
         "legend strip vs card title",
       );
+      overlapChecks += 1;
+    }
+    if (overlapChecks === 0) {
+      // Expected after MAP-CARDS: banner height 0; Show legend / strip absent
+      // while the place panel is open (legend-strip only when panel closed).
+      expect(bannerHeight, "research notice collapsed").toBe(0);
+      await expect(legendPill).toHaveCount(0);
+      await expect(legendStrip).toHaveCount(0);
+    } else {
+      expect(
+        overlapChecks,
+        "at least one pill/banner vs title overlap check ran",
+      ).toBeGreaterThanOrEqual(1);
     }
 
     assertConsoleClean(gate);

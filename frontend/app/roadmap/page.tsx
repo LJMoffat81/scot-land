@@ -75,12 +75,22 @@ const COMING_TO_THE_MAP: ReadonlyArray<{
   },
 ];
 
+const OUR_VISION_HEADING = "Our vision";
+
+const OUR_VISION_TEXT =
+  "Our long-term aim is to give every piece of land in Scotland its own Annual Ground Rent value, per square metre. Today we show estimates for small areas, called Data Zones. Next we plan to work at the level of individual land parcels, and then on a fine 3-metre grid. We are building this step by step from accurate, publicly available data. Getting it right will take time, and we will keep refining it until it is accurate enough to be a trusted source of land value information for Scotland.";
+
 export default function RoadmapPage() {
   return (
     <main className="methodology-page" data-testid="roadmap-page">
       <SiteNav />
       <h1>Roadmap</h1>
       <ResearchBanner />
+
+      <section id="our-vision" data-testid="roadmap-vision">
+        <h2>{OUR_VISION_HEADING}</h2>
+        <p>{OUR_VISION_TEXT}</p>
+      </section>
 
       <section id="map-layers" data-testid="roadmap-map-layers">
         <h2>Coming to the map</h2>

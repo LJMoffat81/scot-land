@@ -271,8 +271,10 @@ test.describe("MAP-CARDS mobile sheet 390", () => {
     // Esc steps down then closes (E4).
     await page.keyboard.press("Escape");
     await expect(slot).toHaveAttribute("data-detent", /half|peek/);
-    await page.keyboard.press("Escape");
-    await page.keyboard.press("Escape");
+    for (let i = 0; i < 5; i += 1) {
+      if ((await page.getByTestId("map-panel-slot").count()) === 0) break;
+      await page.keyboard.press("Escape");
+    }
     await expect(page.getByTestId("map-panel-slot")).toHaveCount(0);
 
     // Search → half

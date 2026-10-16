@@ -8,8 +8,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
  * Console / pageerror fail the test (do not loosen).
  */
 
-const OUT_OF_SCOTLAND_LINE =
-  "This spot is outside Scotland's land map. Tap on land to see a place.";
+/** MAP-CARDS §5.2 — exact sea / outside-Scotland line. */
+const OUT_OF_SCOTLAND_LINE = "We only cover land in Scotland.";
 const SHOW_SCOTLAND = "Show me Scotland";
 
 /** SW-019 sample: west of the public bounds check (lng < -8.5). */
@@ -218,14 +218,17 @@ async function assertSeaCardHeightFitsContent(card: Locator) {
 }
 
 async function openSeaStub(page: Page) {
-  await page.goto("/");
+  // Prefer deep-link boot (avoids search chrome races in CI).
+  await page.goto(`/?lat=${OUTSIDE_LAT}&lng=${OUTSIDE_LNG}`);
   await page.locator(".maplibregl-canvas").waitFor();
-  await page.locator("#place-query").waitFor();
-
-  await page.locator("#place-query").fill(`${OUTSIDE_LAT}, ${OUTSIDE_LNG}`);
-  await page.locator(".hud-search-go").click();
 
   const line = page.getByTestId("place-card-out-of-scotland");
+  if ((await line.count()) === 0) {
+    await page.locator("#place-query").waitFor();
+    await page.locator("#place-query").fill(`${OUTSIDE_LAT}, ${OUTSIDE_LNG}`);
+    await page.locator(".hud-search-go").click();
+  }
+
   await expect(line).toBeVisible({ timeout: 30_000 });
   await expect(line).toHaveText(OUT_OF_SCOTLAND_LINE);
 

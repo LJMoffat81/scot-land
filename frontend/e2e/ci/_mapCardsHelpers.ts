@@ -341,13 +341,20 @@ export async function openPlaceViaCoords(
   await page.goto(`/?lat=${lat}&lng=${lng}`);
   await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
   const card = page.getByTestId("place-card");
-  if ((await card.count()) === 0) {
-    const canvas = page.locator(".maplibregl-canvas");
-    const box = await canvas.boundingBox();
-    const x = box ? Math.min(200, box.width / 2) : 200;
-    const y = box ? Math.min(300, box.height / 2) : 300;
-    await canvas.click({ position: { x, y } });
+  // Prefer deep-link boot; only click if the card never mounts.
+  try {
+    await expect(card).toBeVisible({ timeout: 20_000 });
+    return card;
+  } catch {
+    /* fall through to identify click clear of the 380px desktop panel */
   }
+  const canvas = page.locator(".maplibregl-canvas");
+  const box = await canvas.boundingBox();
+  const width = box?.width ?? 1280;
+  // Desktop: click in the uncovered map (right of the 380px panel + gap).
+  const x = width >= 900 ? Math.min(width - 80, 380 + 120) : width / 2;
+  const y = box ? Math.min(Math.max(box.height * 0.45, 220), box.height - 80) : 300;
+  await canvas.click({ position: { x, y } });
   await expect(card).toBeVisible({ timeout: 45_000 });
   return card;
 }

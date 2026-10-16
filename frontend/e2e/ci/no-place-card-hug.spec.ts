@@ -5,8 +5,9 @@ import { expect, test, type Page } from "@playwright/test";
  * Card stays closed; old pin is cleared. (Legacy "no-match card hug" retired.)
  */
 
+/** MAP-CARDS §5.2 — exact under-search no-match copy. */
 const NO_MATCH_LINE =
-  /No place matched|Try a postcode|place name|click the map/i;
+  /couldn't find that place|Try a town or a postcode/i;
 
 const HEALTH_OK = {
   status: "ok",

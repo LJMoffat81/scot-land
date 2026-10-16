@@ -123,7 +123,15 @@ async function stubMapBackend(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ layers: [] }),
+      body: JSON.stringify({
+        layers: [
+          {
+            id: "e2e-dev-note",
+            label: "E2E sample layer",
+            developer_note: "Ingest detail for SW-033 folded notes.",
+          },
+        ],
+      }),
     });
   });
   await page.route("**/api/gbp-live**", async (route) => {

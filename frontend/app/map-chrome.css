@@ -443,7 +443,7 @@
    * Extra 0.75rem clears the captioned 64px tile vs the zoom-in box.
    */
   right: 0.65rem;
-  bottom: calc(10px + 48px + 48px + 1.75rem);
+  bottom: calc(48px + 48px + 4.5rem);
   width: 64px;
   margin: 0;
   padding: 0;

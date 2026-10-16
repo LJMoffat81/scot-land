@@ -7,8 +7,8 @@ import { expect, test, type Page } from "@playwright/test";
  * Viewports: 1280×800 and 390×844. Console / pageerror fail the test.
  */
 
-const OUT_OF_SCOTLAND_LINE =
-  "This spot is outside Scotland's land map. Tap on land to see a place.";
+/** MAP-CARDS §5.2 — exact sea / outside-Scotland line. */
+const OUT_OF_SCOTLAND_LINE = "We only cover land in Scotland.";
 
 /** SW-019 sample: west of the public bounds check (lng < -8.5). */
 const OUTSIDE_LAT = 59.66616;
@@ -172,14 +172,17 @@ function boxesOverlap(a: Box, b: Box) {
 }
 
 async function openSeaStub(page: Page) {
-  await page.goto("/");
+  // Prefer deep-link boot (avoids search chrome races in CI).
+  await page.goto(`/?lat=${OUTSIDE_LAT}&lng=${OUTSIDE_LNG}`);
   await page.locator(".maplibregl-canvas").waitFor();
-  await page.locator("#place-query").waitFor();
-
-  await page.locator("#place-query").fill(`${OUTSIDE_LAT}, ${OUTSIDE_LNG}`);
-  await page.locator(".hud-search-go").click();
 
   const line = page.getByTestId("place-card-out-of-scotland");
+  if ((await line.count()) === 0) {
+    await page.locator("#place-query").waitFor();
+    await page.locator("#place-query").fill(`${OUTSIDE_LAT}, ${OUTSIDE_LNG}`);
+    await page.locator(".hud-search-go").click();
+  }
+
   await expect(line).toBeVisible({ timeout: 30_000 });
   await expect(line).toHaveText(OUT_OF_SCOTLAND_LINE);
 

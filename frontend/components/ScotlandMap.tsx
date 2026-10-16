@@ -769,7 +769,11 @@ export default function ScotlandMap() {
   panelKindRef.current = panelKind;
   const [mapStyle, setMapStyle] = useState<MapBasemapId>(DEFAULT_MAP_BASEMAP);
   const [mapZoom, setMapZoom] = useState(5.7);
-  const [isNarrowPanel, setIsNarrowPanel] = useState(false);
+  const [isNarrowPanel, setIsNarrowPanel] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.innerWidth < PANEL_MOBILE_BREAKPOINT,
+  );
   /**
    * Most recently activated legend-capable layer (drawer id) for strip chip.
    */
@@ -1689,7 +1693,13 @@ export default function ScotlandMap() {
       if (generation === lookupGen.current) setApiOk(true);
     } catch (err) {
       if (generation !== lookupGen.current) return;
-      setError(visitorFacingError(err));
+      const msg = visitorFacingError(err);
+      setError(msg);
+      // SHARE-FIX: surface Try again under search when no place card is open.
+      setSuggestNote(msg);
+      setSuggestions([]);
+      setActiveSuggest(-1);
+      setSuggesting(false);
       if (isServiceFailure(err)) {
         void pingApi().then((s) => {
           if (generation === lookupGen.current) setApiOk(s.ok);

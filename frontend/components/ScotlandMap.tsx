@@ -271,6 +271,8 @@ const CADASTRAL_MIN_ZOOM = 14;
 const PUBLIC_LAND_MIN_ZOOM = 8;
 /** Protected sites: do not fetch the multi-megabyte extract below this zoom. */
 const DESIGNATIONS_MIN_ZOOM = 6;
+/** Simplified protected-site outlines are labelled below this zoom. */
+const SIMPLIFIED_OUTLINES_BELOW_ZOOM = 9;
 
 type ProtectedPayload = GeoJSON.FeatureCollection & {
   meta?: { hidden_below_zoom?: boolean };
@@ -296,8 +298,15 @@ function protectedSitesToDraw(parts: ProtectedPayload[]): {
 }
 
 type ContextFeaturePayload = GeoJSON.FeatureCollection & {
-  meta?: { ok?: boolean; note?: string };
+  meta?: {
+    ok?: boolean;
+    note?: string;
+    hidden_below_zoom?: boolean;
+    hint?: string;
+  };
 };
+
+const OIL_GAS_ZOOM_HINT = "Zoom in to see oil and gas";
 
 /** One fetch per context layer for the life of the page. Toggles only change visibility. */
 const contextFeatureCache: Record<string, ContextFeaturePayload> = {};
@@ -310,7 +319,13 @@ function loadContextFeature(layerId: string): Promise<ContextFeaturePayload> {
   if (pending) return pending;
   const request = apiJson<ContextFeaturePayload>(`/layers/context/${layerId}`)
     .then((data) => {
-      if (data?.type === "FeatureCollection" && data.meta?.ok !== false) {
+      const sizeCapHidOil =
+        layerId === "oil-fields" && data?.meta?.hidden_below_zoom === true;
+      if (
+        data?.type === "FeatureCollection" &&
+        data.meta?.ok !== false &&
+        !sizeCapHidOil
+      ) {
         contextFeatureCache[layerId] = data;
       }
       delete contextFeatureInflight[layerId];
@@ -676,6 +691,8 @@ export default function ScotlandMap() {
   const showCrownLeases = Boolean(ledgerEnabled["4"]);
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
   const [protectedSitesHint, setProtectedSitesHint] = useState(false);
+  const [protectedSitesDrawn, setProtectedSitesDrawn] = useState(false);
+  const [oilGasHint, setOilGasHint] = useState(false);
   const layerPopupRef = useRef<maplibregl.Popup | null>(null);
   const dzHoverPopupRef = useRef<maplibregl.Popup | null>(null);
   const identifyAbortRef = useRef<AbortController | null>(null);
@@ -3744,6 +3761,7 @@ export default function ScotlandMap() {
     if (!on) {
       setVis("none");
       setProtectedSitesHint(false);
+      setProtectedSitesDrawn(false);
       safeSetGeoJson(
         map.getSource("designations-overlay") as GeoJSONSource | undefined,
         emptyCollection,
@@ -3762,6 +3780,7 @@ export default function ScotlandMap() {
       if (map.getZoom() < DESIGNATIONS_MIN_ZOOM) {
         setVis("none");
         setProtectedSitesHint(false);
+        setProtectedSitesDrawn(false);
         safeSetGeoJson(
           map.getSource("designations-overlay") as GeoJSONSource | undefined,
           emptyCollection,
@@ -3792,6 +3811,7 @@ export default function ScotlandMap() {
             { type: "FeatureCollection", features: drawn.features },
           );
           setProtectedSitesHint(drawn.hint);
+          setProtectedSitesDrawn(drawn.features.length > 0);
           setVis(drawn.features.length > 0 ? "visible" : "none");
         })
         .finally(() => {
@@ -3809,6 +3829,7 @@ export default function ScotlandMap() {
     return () => {
       cancelled = true;
       setProtectedSitesHint(false);
+      setProtectedSitesDrawn(false);
       if (timer) clearTimeout(timer);
       map.off("moveend", onMove);
     };
@@ -4476,6 +4497,9 @@ export default function ScotlandMap() {
         setContextNote("This layer isn't available on this server yet.");
         continue;
       }
+      if (layer.id === "oil-fields" && !on) {
+        setOilGasHint(false);
+      }
       if (!on || layer.kind === "raster" || contextLoaded.current.has(layer.id)) {
         continue;
       }
@@ -4485,10 +4509,15 @@ export default function ScotlandMap() {
           if (cancelled || data?.type !== "FeatureCollection") return;
           const source = map.getSource(`${layerId}-src`) as GeoJSONSource | undefined;
           safeSetGeoJson(source, data);
+          if (layerId === "oil-fields" && data.meta?.hidden_below_zoom === true) {
+            setOilGasHint(data.meta.hint === OIL_GAS_ZOOM_HINT);
+            return;
+          }
           if (data.meta?.ok === false) {
             setContextNote(data.meta.note || "One layer did not load.");
             return;
           }
+          if (layerId === "oil-fields") setOilGasHint(false);
           contextLoaded.current.add(layerId);
         })
         .catch(() => {
@@ -4702,6 +4731,22 @@ export default function ScotlandMap() {
             data-testid="protected-sites-zoom-hint"
           >
             Zoom in to see protected sites
+          </p>
+        ) : null}
+        {protectedSitesDrawn && mapZoom < SIMPLIFIED_OUTLINES_BELOW_ZOOM ? (
+          <p
+            className="simplified-outlines-chip"
+            data-testid="simplified-outlines-chip"
+          >
+            Simplified outlines at this zoom. Zoom in for detail.
+          </p>
+        ) : null}
+        {oilGasHint ? (
+          <p
+            className="protected-sites-zoom-hint"
+            data-testid="oil-gas-zoom-hint"
+          >
+            Zoom in to see oil and gas
           </p>
         ) : null}
         {grid3Tooltip ? (

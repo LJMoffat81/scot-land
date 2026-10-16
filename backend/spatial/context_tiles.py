@@ -43,6 +43,7 @@ from spatial.parcels import TRANSPARENT_PNG, tile_bounds_3857
 
 # Oil and gas GeoJSON stays within this body size after simplification.
 OIL_FIELDS_BYTE_BUDGET = 500 * 1024
+OIL_FIELDS_HIDDEN_HINT = "Zoom in to see oil and gas"
 
 # Wider than the land envelope so the North Sea and the Scottish zone draw.
 _CONTEXT = (54.0, -16.0, 64.5, 4.5)  # south, west, north, east
@@ -568,6 +569,13 @@ def fetch_context_geojson(layer_id: str) -> dict:
         }
         if layer_id == "oil-fields":
             geo = cap_feature_collection(geo, OIL_FIELDS_BYTE_BUDGET)
+            if (geo.get("meta") or {}).get("hidden_below_zoom"):
+                meta = dict(geo.get("meta") or {})
+                meta["hint"] = OIL_FIELDS_HIDDEN_HINT
+                meta["hidden_below_zoom"] = True
+                # A size cap hid the fields. Do not store that empty body:
+                # the next request must be allowed to try again.
+                return {**geo, "features": [], "meta": meta}
     except Exception:
         return _empty(layer_id, False, "layer did not load")
     with _cache_lock:

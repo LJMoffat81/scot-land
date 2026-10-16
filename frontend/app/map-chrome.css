@@ -434,8 +434,8 @@
 .basemap-switcher {
   position: absolute;
   z-index: 3;
-  /* Desktop: sit left of the MapLibre zoom group (≈29px + 10px margin). */
-  right: 3.15rem;
+  /* Desktop: sit left of the MapLibre zoom group (48×48 + group margin). */
+  right: calc(48px + 1.35rem);
   bottom: 2.55rem;
   width: 64px;
   margin: 0;

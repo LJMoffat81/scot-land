@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   assertConsoleClean,
   attachConsoleGate,
+  ensureMapZoomAtLeast,
   getStyleSourceIds,
   openLayers,
   openMap,
@@ -29,6 +30,9 @@ for (const viewport of [
       const gate = attachConsoleGate(page);
       await stubMapCardsBackend(page);
       await openMap(page);
+      await waitForMap(page);
+      // VDL minzoom 8 — otherwise inline legend is the zoom gate only.
+      await ensureMapZoomAtLeast(page, 8);
       await openLayers(page);
 
       const landToggle = page.getByTestId("layers-group-toggle-land");

@@ -831,8 +831,11 @@ export default function ScotlandMap() {
   } | null>(null);
   if (deepLinkCaptureRef.current === null && typeof window !== "undefined") {
     const p = new URLSearchParams(window.location.search);
-    const lat = Number(p.get("lat"));
-    const lng = Number(p.get("lng") ?? p.get("lon"));
+    // Number(null) === 0 — missing params must stay absent, not null-island.
+    const latRaw = p.get("lat");
+    const lngRaw = p.get("lng") ?? p.get("lon");
+    const lat = latRaw != null && latRaw.trim() !== "" ? Number(latRaw) : NaN;
+    const lng = lngRaw != null && lngRaw.trim() !== "" ? Number(lngRaw) : NaN;
     deepLinkCaptureRef.current = {
       lat: Number.isFinite(lat) ? lat : null,
       lng: Number.isFinite(lng) ? lng : null,
@@ -2707,16 +2710,16 @@ export default function ScotlandMap() {
     const bootParams = new URLSearchParams(window.location.search);
     const boot = readMapUrlState(bootParams);
     const bootWords = captured?.words || bootParams.get("words");
+    const parseBootCoord = (raw: string | null): number | null => {
+      if (raw == null || raw.trim() === "") return null;
+      const n = Number(raw);
+      return Number.isFinite(n) ? n : null;
+    };
     const bootLat =
-      captured?.lat ??
-      (Number.isFinite(Number(bootParams.get("lat")))
-        ? Number(bootParams.get("lat"))
-        : null);
+      captured?.lat ?? parseBootCoord(bootParams.get("lat"));
     const bootLng =
       captured?.lng ??
-      (Number.isFinite(Number(bootParams.get("lng") ?? bootParams.get("lon")))
-        ? Number(bootParams.get("lng") ?? bootParams.get("lon"))
-        : null);
+      parseBootCoord(bootParams.get("lng") ?? bootParams.get("lon"));
     if (captured?.vacant || bootParams.get("vacant") === "1") {
       setShowVdl(true);
     }

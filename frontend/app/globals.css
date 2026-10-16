@@ -3963,19 +3963,27 @@ button.linkish:disabled {
  * UX-01 — mobile tap targets ≥44×44 via padding / min box.
  * Glyph and type sizes stay put; box-sizing keeps the extra padding inside.
  */
-/* MAP-CARDS §3.6 — zoom ± are 48×48 at every width (not only mobile). */
+/* MAP-CARDS §3.6 — zoom ± are 48×48 at every width (beat MapLibre 29px defaults). */
+.map-stage .maplibregl-ctrl button.maplibregl-ctrl-zoom-in,
+.map-stage .maplibregl-ctrl button.maplibregl-ctrl-zoom-out,
 .map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-in,
 .map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-out {
-  width: 48px;
-  height: 48px;
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  min-height: 48px !important;
   box-sizing: border-box;
 }
 
 @media (max-width: 900px) {
+  .map-stage .maplibregl-ctrl button.maplibregl-ctrl-zoom-in,
+  .map-stage .maplibregl-ctrl button.maplibregl-ctrl-zoom-out,
   .map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-in,
   .map-stage .maplibregl-ctrl-group button.maplibregl-ctrl-zoom-out {
-    width: 48px;
-    height: 48px;
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
     box-sizing: border-box;
   }
 

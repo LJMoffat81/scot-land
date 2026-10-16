@@ -20,7 +20,12 @@ test.describe("about and how-it-works pages", () => {
     await expect(page.getByTestId("research-banner")).toContainText(
       "Research estimate.",
     );
-    await expect(root).toContainText("I am Laurie Moffat");
+    await expect(page.getByTestId("contact-form-soon")).toHaveText(
+      "Contact form coming soon",
+    );
+    await expect(page.getByTestId("contact-form")).toHaveCount(0);
+    await expect(root).not.toContainText("Laurie");
+    await expect(root).not.toContainText("Moffat");
     await expect(root).toContainText("Scottish Land Commission");
     await expect(root).toContainText(
       "We use open data only. Paid sources may be added later, each one clearly tagged.",

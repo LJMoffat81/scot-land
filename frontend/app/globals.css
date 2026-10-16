@@ -24,6 +24,18 @@
   --confidence-proxy: #c47a00;
   --confidence-shadow: #1f7a4a;
   --no-data-hatch: #bdbdbd;
+  --ctrl-h: 48px;
+  --ctrl-radius: 24px;
+  --ctrl-bg: #ffffff;
+  --ctrl-border: 1px solid #6b7684;
+  --ctrl-shadow: 0 2px 8px rgba(11, 30, 58, 0.16);
+  --ctrl-fg: var(--slrg-text);
+  --ctrl-accent: #1d4f91;
+  --ctrl-hover: #eef3f8;
+  --ctrl-active: #dde6f0;
+  --ctrl-divider: 1px solid var(--line);
+  --ctrl-gap: 8px;
+  --zoom-bottom: 10px;
 }
 
 * {
@@ -150,29 +162,8 @@ input {
   pointer-events: auto;
 }
 
-.hud-wordmark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.hud-brand .site-nav-brand {
   flex-shrink: 0;
-  line-height: 0;
-  /* LOGO-FIT-1: the mark sits alone, same as content pages. No badge. */
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  text-decoration: none;
-  /* 40px mark; transparent padding keeps the tap target ≥44px. */
-  padding: 2px;
-  min-width: 44px;
-  min-height: 44px;
-}
-
-.hud-wordmark img {
-  display: block;
-  width: 40px;
-  height: 40px;
-  object-fit: contain;
 }
 
 .hud-layers-btn {
@@ -223,7 +214,7 @@ input {
   font-size: 0.95rem;
 }
 
-.squares-shell .hud-wordmark img {
+.squares-shell .hud-brand .site-nav-brand img {
   width: 40px;
   height: 40px;
 }
@@ -2090,15 +2081,17 @@ input {
   color: var(--slrg-text);
 }
 
+@media (max-width: 480px) {
+  /* MAP-BRAND-1: mark only. The mark keeps a ≥44px tap target. */
+  .site-nav-brand .site-nav-wordmark,
+  .site-nav-brand .site-nav-tagline {
+    display: none;
+  }
+}
+
 @media (max-width: 600px) {
   .site-nav-page .site-nav-links,
   .site-nav-map .site-nav-links {
-    display: none;
-  }
-
-  /* SW-020 / LOGO-H2: mark only on mobile — hide wordmark and tagline. */
-  .site-nav-brand .site-nav-wordmark,
-  .site-nav-brand .site-nav-tagline {
     display: none;
   }
 
@@ -3871,7 +3864,7 @@ button.linkish:disabled {
     margin-inline-end: 8px;
   }
 
-  .hud-wordmark img {
+  .hud-brand .site-nav-brand img {
     width: 40px;
     height: 40px;
   }

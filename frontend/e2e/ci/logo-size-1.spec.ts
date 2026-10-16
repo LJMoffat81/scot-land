@@ -116,7 +116,7 @@ for (const viewport of [
 
       await page.goto("/");
       await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
-      const mapLink = page.locator("a.hud-wordmark");
+      const mapLink = page.getByTestId("site-nav-brand");
       const mapLogo = mapLink.locator("img");
       await expect(mapLink).toBeVisible();
       await expect(mapLogo).toBeVisible();

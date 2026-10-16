@@ -1,3 +1,4 @@
+import ContactForm from "@/components/ContactForm";
 import ContentPageFooter from "@/components/ContentPageFooter";
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
@@ -61,7 +62,7 @@ export default function MissionContent() {
 
       <section id="why">
         <h2>Why I am building this</h2>
-        <p>I am Laurie Moffat. I am building Scot-LAND because there is no tool like it.</p>
+        <p>Scot-LAND is being built because there is no tool like it.</p>
         <p>
           The spark was a run of official reports on how land is valued for tax.
           They do not endorse this site, but they name the gap that has held
@@ -118,26 +119,7 @@ export default function MissionContent() {
 
       <section id="contact">
         <h2>Contact</h2>
-        <p>
-          Email{" "}
-          <a href="mailto:laurie.moffat@scot-land.scot">
-            laurie.moffat@scot-land.scot
-          </a>
-          {" · "}
-          X{" "}
-          <a href="https://x.com/LJMoffat81" target="_blank" rel="noreferrer">
-            @LJMoffat81
-          </a>
-          {" · "}
-          GitHub{" "}
-          <a
-            href="https://github.com/LJMoffat81"
-            target="_blank"
-            rel="noreferrer"
-          >
-            LJMoffat81
-          </a>
-        </p>
+        <ContactForm />
       </section>
 
       <p className="meta">

@@ -29,7 +29,7 @@ const ROLES = [
   "Quality checks: tests the live site after every change.",
   "Engineering lead: writes specs and reviews code",
   "Coordination: plans work and checks it against our rules",
-  "Outreach: drafts messages, only sent with Laurie's approval",
+  "Outreach: drafts messages, only sent after approval",
 ] as const;
 
 const GAPS = [
@@ -57,6 +57,7 @@ export default function HowWeBuiltThisPage() {
       <ResearchBanner />
       <div data-testid="how-we-built-copy">
         <p>Scot-LAND is led by Laurie Moffat.</p>
+        <p>The map runs on the Scotland National Wealth Engine, which we are building step by step.</p>
         <p>The research and checking are done by a team of specialist AI assistants. Each has one job:</p>
         <ul data-testid="how-we-built-roles">
           {ROLES.map((line) => (
@@ -101,15 +102,8 @@ export default function HowWeBuiltThisPage() {
           </ul>
           <p>This is unpaid and voluntary.</p>
           <p>
-            If you spot a mistake or can help, please get in touch through our{" "}
-            <a
-              href="https://github.com/LJMoffat81/scot-land"
-              target="_blank"
-              rel="noreferrer"
-            >
-              GitHub project
-            </a>
-            .
+            If you spot a mistake or can help, please{" "}
+            <a href="/about#contact">get in touch</a>.
           </p>
         </section>
       </div>

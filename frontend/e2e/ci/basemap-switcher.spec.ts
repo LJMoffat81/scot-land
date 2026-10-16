@@ -6,8 +6,8 @@ registerOpenFreeMapFontStub();
 
 
 /**
- * MAP-CARDS basemap — Light ↔ Detailed (open tiles). Locate removed.
- * Console errors fail the test.
+ * MAP-CARDS basemap — Simple ↔ Detailed (open tiles). Locate removed.
+ * Desktop uses radios. Narrow uses the icon toggle. Console errors fail the test.
  */
 
 const consoleErrors: string[] = [];
@@ -224,37 +224,45 @@ async function assertNoBoxOverlap(a: Locator, b: Locator, label: string) {
   ).toBe(false);
 }
 
-async function expectLightState(page: Page, switcher: Locator) {
-  // Default basemap is light; switcher points toward Detailed.
-  await expect(switcher).toHaveAccessibleName(/Detailed/i);
-  await expect(switcher).toContainText("Detailed");
-}
-
-async function expectDetailedState(page: Page, switcher: Locator) {
-  await expect(switcher).toHaveAccessibleName(/Light/i);
-  await expect(switcher).toContainText("Light");
-}
-
 async function runBasemapChecks(page: Page) {
   await openMap(page);
+  const narrow = (page.viewportSize()?.width ?? 1280) <= 900;
 
   await expect(page.getByRole("button", { name: "Locate" })).toHaveCount(0);
-  await expect(page.getByTestId("basemap-switcher")).not.toContainText(
-    /Satellite/i,
-  );
-
   const switcher = page.getByTestId("basemap-switcher");
   await expect(switcher).toBeVisible();
-  await expect(switcher).toHaveAttribute("type", "button");
-  await expectLightState(page, switcher);
-
-  await switcher.click();
-  await expectDetailedState(page, switcher);
-  await switcher.click();
-  await expectLightState(page, switcher);
+  await expect(switcher).not.toContainText(/Satellite/i);
+  await expect(switcher).not.toContainText("Light");
 
   const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
   const zoomOut = page.locator(".maplibregl-ctrl-zoom-out");
+
+  if (narrow) {
+    await expect(page.locator(".basemap-switcher-wide")).toBeHidden();
+    const toggle = page.getByTestId("basemap-toggle-narrow");
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toHaveAccessibleName("Detailed map");
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  } else {
+    await expect(page.getByTestId("basemap-toggle-narrow")).toBeHidden();
+    const group = page.getByRole("radiogroup", { name: "Map style" });
+    await expect(group).toBeVisible();
+    const simple = page.getByTestId("basemap-option-light");
+    const detailed = page.getByTestId("basemap-option-detailed");
+    await expect(simple).toHaveAttribute("aria-checked", "true");
+    await expect(simple).toHaveText("Simple");
+    await expect(detailed).toHaveAttribute("aria-checked", "false");
+    await expect(detailed).toHaveText("Detailed");
+    await detailed.click();
+    await expect(detailed).toHaveAttribute("aria-checked", "true");
+    await simple.click();
+    await expect(simple).toHaveAttribute("aria-checked", "true");
+  }
+
   await assertNoBoxOverlap(switcher, zoomIn, "basemap vs zoom-in");
   await assertNoBoxOverlap(switcher, zoomOut, "basemap vs zoom-out");
 
@@ -266,7 +274,7 @@ async function runBasemapChecks(page: Page) {
 test.describe("1280 desktop", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test("basemap toggles Detailed/Light; clear of zoom and place card", async ({
+  test("basemap radios Simple/Detailed; clear of zoom and place card", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -277,7 +285,7 @@ test.describe("1280 desktop", () => {
 test.describe("390x844 mobile", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("basemap Detailed/Light; clear of place card; no Locate", async ({
+  test("basemap narrow toggle; clear of place card; no Locate", async ({
     page,
   }) => {
     test.setTimeout(120_000);

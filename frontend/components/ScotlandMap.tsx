@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import maplibregl, {
   Map,
   GeoJSONSource,
@@ -10,7 +16,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { MapStampFooter } from "./MapStampFooter";
 import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
 import ResearchBanner from "./ResearchBanner";
-import SiteNav from "./SiteNav";
+import SiteNav, { SiteBrand } from "./SiteNav";
 import { fetchGbpLiveSettings } from "@/lib/gbpLive";
 import {
   fetchPlaceCard,
@@ -65,12 +71,13 @@ import {
   buildMapAttributionPieces,
 } from "../lib/mapAttributionLine";
 import {
+  BASEMAP_LOAD_NOTICE,
+  BASEMAP_STYLE_TIMEOUT_MS,
   DEFAULT_MAP_BASEMAP,
   MAP_MAX_ZOOM,
-  basemapAriaLabel,
-  basemapCaption,
+  basemapLabel,
   basemapStyleUrl,
-  basemapSwitchTarget,
+  isBasemapFailureEvent,
   mapErrorLogLine,
   type MapBasemapId,
 } from "../lib/mapBasemap";
@@ -842,6 +849,7 @@ export default function ScotlandMap() {
   const desktopLayersOpenRef = useRef(desktopLayersOpen);
   desktopLayersOpenRef.current = desktopLayersOpen;
   const [mapStyle, setMapStyle] = useState<MapBasemapId>(DEFAULT_MAP_BASEMAP);
+  const [basemapNotice, setBasemapNotice] = useState(false);
   const [mapZoom, setMapZoom] = useState(5.7);
   const [isNarrowPanel, setIsNarrowPanel] = useState(
     () =>
@@ -2162,11 +2170,32 @@ export default function ScotlandMap() {
     map.getCanvas().style.cursor = "pointer";
     // Listen so MapLibre does not console.error the Error object itself.
     // Log every map error as a message string. AbortError is the only skip.
+    let basemapAlive = true;
+    let basemapStyleLoaded = false;
+    setBasemapNotice(false);
+    const basemapTimer = window.setTimeout(() => {
+      if (basemapAlive && !basemapStyleLoaded) setBasemapNotice(true);
+    }, BASEMAP_STYLE_TIMEOUT_MS);
+    const onBasemapStyle = () => {
+      basemapStyleLoaded = true;
+      window.clearTimeout(basemapTimer);
+      if (basemapAlive) setBasemapNotice(false);
+    };
+    map.on("style.load", onBasemapStyle);
     map.on("error", (event) => {
       const line = mapErrorLogLine(
         (event as { error?: unknown }).error,
       );
       if (line) console.error(line);
+      const sourceId = (event as { sourceId?: string }).sourceId;
+      if (
+        isBasemapFailureEvent(
+          { error: (event as { error?: unknown }).error, sourceId },
+          bootStyle,
+        )
+      ) {
+        if (basemapAlive) setBasemapNotice(true);
+      }
     });
 
     // MapLibre compact mode starts with maplibregl-compact-show (expanded).
@@ -2974,6 +3003,9 @@ export default function ScotlandMap() {
         map;
     }
     return () => {
+      basemapAlive = false;
+      window.clearTimeout(basemapTimer);
+      map.off("style.load", onBasemapStyle);
       resizeObserver.disconnect();
       markerRef.current?.remove();
       markerRef.current = null;
@@ -4760,7 +4792,44 @@ export default function ScotlandMap() {
     .filter(Boolean)
     .join(" ");
 
-  const basemapTarget = basemapSwitchTarget(mapStyle);
+  const selectBasemap = (next: MapBasemapId) => {
+    if (next === mapStyle) return;
+    const map = mapRef.current;
+    if (map) {
+      const c = map.getCenter();
+      cameraPreserveRef.current = {
+        lng: c.lng,
+        lat: c.lat,
+        zoom: map.getZoom(),
+      };
+    }
+    setMapStyle(next);
+  };
+
+  const onBasemapRadioKey = (
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+  ) => {
+    const order: MapBasemapId[] = ["light", "detailed"];
+    const idx = order.indexOf(mapStyle);
+    let nextIndex = idx;
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextIndex = Math.min(idx + 1, order.length - 1);
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      nextIndex = Math.max(idx - 1, 0);
+    } else {
+      return;
+    }
+    event.preventDefault();
+    const next = order[nextIndex]!;
+    selectBasemap(next);
+    const testId =
+      next === "light" ? "basemap-option-light" : "basemap-option-detailed";
+    window.setTimeout(() => {
+      document
+        .querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`)
+        ?.focus();
+    }, 0);
+  };
   const placeTitle =
     placeStub?.label ||
     placeStub?.dataZoneName ||
@@ -4819,46 +4888,81 @@ export default function ScotlandMap() {
         ) : null}
       </div>
 
-      <button
-        type="button"
-        className={
-          mapStyle === "detailed"
-            ? "basemap-switcher is-detailed"
-            : "basemap-switcher is-light"
-        }
-        data-testid="basemap-switcher"
-        aria-label={basemapAriaLabel(basemapTarget)}
-        onClick={() => {
-          const map = mapRef.current;
-          if (map) {
-            const c = map.getCenter();
-            cameraPreserveRef.current = {
-              lng: c.lng,
-              lat: c.lat,
-              zoom: map.getZoom(),
-            };
-          }
-          setMapStyle(basemapTarget);
-        }}
-      >
-        <span
+      <div className="basemap-switcher" data-testid="basemap-switcher">
+        <div
+          className="basemap-switcher-wide"
+          role="radiogroup"
+          aria-label="Map style"
+        >
+          {(["light", "detailed"] as const).map((id) => {
+            const selected = mapStyle === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                tabIndex={selected ? 0 : -1}
+                data-testid={
+                  id === "light"
+                    ? "basemap-option-light"
+                    : "basemap-option-detailed"
+                }
+                onClick={() => selectBasemap(id)}
+                onKeyDown={onBasemapRadioKey}
+              >
+                {basemapLabel(id)}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
           className={
-            basemapTarget === "detailed"
-              ? "basemap-switcher-preview preview-detailed"
-              : "basemap-switcher-preview preview-light"
+            mapStyle === "detailed"
+              ? "basemap-toggle-narrow is-detailed"
+              : "basemap-toggle-narrow is-light"
           }
-          aria-hidden="true"
-        />
-        <span className="basemap-switcher-caption">
-          {basemapCaption(basemapTarget)}
-        </span>
-      </button>
+          data-testid="basemap-toggle-narrow"
+          aria-pressed={mapStyle === "detailed"}
+          aria-label="Detailed map"
+          title="Detailed map"
+          onClick={() =>
+            selectBasemap(mapStyle === "detailed" ? "light" : "detailed")
+          }
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M12 3 2 8l10 5 10-5z"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            />
+            <path
+              d="m2 13 10 5 10-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+            />
+          </svg>
+        </button>
+      </div>
+      {basemapNotice ? (
+        <div
+          className="basemap-notice"
+          role="status"
+          data-testid="basemap-notice"
+        >
+          <p>{BASEMAP_LOAD_NOTICE}</p>
+          <button type="button" onClick={() => window.location.reload()}>
+            Reload
+          </button>
+        </div>
+      ) : null}
 
       <header className="hud-top" ref={headerRef}>
         <div className="hud-brand">
-          <a className="hud-wordmark" href="/" aria-label="Scot-LAND home">
-            <img src="/logo-mark-h3.png" alt="" width={40} height={40} />
-          </a>
+          <SiteBrand />
         </div>
         <button
           ref={layersBtnRef}

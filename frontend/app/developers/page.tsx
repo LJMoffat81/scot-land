@@ -11,8 +11,6 @@ import {
 } from "@/lib/downloadManifest";
 import { QUALITY_TAGS } from "@/lib/qualityTag";
 
-const GITHUB_REPO = "https://github.com/LJMoffat81/scot-land";
-
 function DevelopersPageInner() {
   const searchParams = useSearchParams();
   // Keep the hook check (tests + soft nav). Also read window.location because the
@@ -189,10 +187,6 @@ function DevelopersPageInner() {
           <a href="/developers/checks">Technical checks</a>
           {" · "}
           <a href="/developers/glossary">Glossary</a>
-          {" · "}
-          <a href={GITHUB_REPO} target="_blank" rel="noreferrer">
-            Source code
-          </a>
         </p>
       </section>
     </main>

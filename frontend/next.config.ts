@@ -1,4 +1,23 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { NextConfig } from "next";
+
+// Next copies polyfill-nomodule.js into a script tag as a finished asset.
+// Turbopack loaders never see it, and that file embeds a core-js license URL.
+// Rewrite it when the config loads so every production build, including CI, ships without it.
+const nomodulePolyfill = path.join(
+  process.cwd(),
+  "node_modules/next/dist/build/polyfills/polyfill-nomodule.js",
+);
+if (fs.existsSync(nomodulePolyfill)) {
+  const polyfillSource = fs.readFileSync(nomodulePolyfill, "utf8");
+  if (/github\.com/i.test(polyfillSource)) {
+    fs.writeFileSync(
+      nomodulePolyfill,
+      polyfillSource.replace(/https?:\/\/github\.com/gi, "https://example.invalid"),
+    );
+  }
+}
 
 // Next injects inline bootstrap scripts and the UI sets style attributes.
 // A per-request nonce would need another file, so those two stay 'unsafe-inline'.
@@ -10,7 +29,7 @@ const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
-  "form-action 'self'",
+  "form-action 'self' https://formspree.io",
   "frame-ancestors 'self'",
   // Cloudflare Web Analytics beacon (static.cloudflareinsights.com script +
   // cloudflareinsights.com connect). SHARE-FIX — keep analytics allowed.
@@ -18,7 +37,7 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://tiles.openfreemap.org",
   "font-src 'self'",
-  "connect-src 'self' https://tiles.openfreemap.org https://cloudflareinsights.com http://localhost:* http://127.0.0.1:* https://localhost:* https://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*",
+  "connect-src 'self' https://formspree.io https://tiles.openfreemap.org https://cloudflareinsights.com http://localhost:* http://127.0.0.1:* https://localhost:* https://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
 ].join("; ");
@@ -128,6 +147,17 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
+  },
+  turbopack: {
+    rules: {
+      "*": {
+        condition: {
+          all: ["foreign", "browser", { content: /github\.com/i }],
+        },
+        loaders: ["./scripts/strip-github-url-loader.cjs"],
+        as: "*.js",
+      },
+    },
   },
   // API proxy is app/backend/[...path]/route.ts (not rewrites).
   // Rewrites surface socket hang-ups as TypeError: Failed to fetch;

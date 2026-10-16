@@ -23,7 +23,7 @@ const ROLE_LINES = [
   "Quality checks: tests the live site after every change.",
   "Engineering lead: writes specs and reviews code",
   "Coordination: plans work and checks it against our rules",
-  "Outreach: drafts messages, only sent with Laurie's approval",
+  "Outreach: drafts messages, only sent after approval",
 ] as const;
 
 const GAP_LINES = [
@@ -150,10 +150,20 @@ async function assertPageCopy(page: Page) {
     "href",
     "/data",
   );
-  await expect(copy.getByRole("link", { name: "GitHub project" })).toHaveAttribute(
+  await expect(copy.getByRole("link", { name: "get in touch" })).toHaveAttribute(
     "href",
-    "https://github.com/LJMoffat81/scot-land",
+    "/about#contact",
   );
+  const hrefs = await copy.locator("a").evaluateAll((els) =>
+    els.map((el) => el.getAttribute("href") ?? ""),
+  );
+  expect(hrefs.some((href) => /github/i.test(href))).toBe(false);
+  const copyText = await copy.innerText();
+  expect(copyText.match(/led by Laurie Moffat/g)).toEqual([
+    "led by Laurie Moffat",
+  ]);
+  const withoutName = copyText.replace("led by Laurie Moffat", "");
+  expect(withoutName).not.toMatch(/Laurie|Moffat/);
 
   const text = await copy.innerText();
   expect(text).not.toContain("£");

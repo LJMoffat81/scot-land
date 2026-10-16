@@ -67,6 +67,7 @@ for (const rel of pages) {
     /Pre-registered test log/,
     `${rel} must not use fake Pre-registered test log`,
   );
+  assert.doesNotMatch(src, /github\.com/i, `${rel}: no GitHub link`);
   assert.doesNotMatch(
     src,
     /<a[\s\S]*?href=["'`]\/layers/,
@@ -91,7 +92,7 @@ for (const rel of pages) {
     }
     // Dynamic hrefs allowed when clearly derived from known sources.
     assert.ok(
-      /bundle\.href|row\.path|GITHUB_REPO|OPENAPI_URL|api_anchor|MINTLIFY/.test(
+      /bundle\.href|row\.path|OPENAPI_URL|api_anchor|MINTLIFY/.test(
         expr,
       ) ||
         expr.includes("bundle.api_anchor") ||

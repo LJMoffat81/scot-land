@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import ContentPageFooter from "@/components/ContentPageFooter";
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
-import { AIM_TO_COVER } from "@/lib/aimToCover";
+import { AIM_TO_COVER, ROADMAP_FINAL_ROW } from "@/lib/aimToCover";
 import { LAYERS_ADD_WAITING } from "@/lib/layersAddRegistry";
 import { MAP_LAYER_REGISTRY } from "@/lib/mapLayerRegistry";
 import { absoluteOgImageUrl, OG_IMAGES } from "@/lib/socialMeta";
@@ -70,8 +70,7 @@ const OUR_VISION_TODAY = "Today the map shows estimates for Data Zones only.";
 const SUGGEST_LAYER_COPY =
   "Know a dataset that would make this map better? Tell us what the layer is, where the data comes from (a link), and why it matters for land value. We check every suggestion against its licence and our method before adding it.";
 
-const SUGGEST_LAYER_HREF =
-  "https://github.com/LJMoffat81/scot-land/issues/new?template=suggest-layer.yml";
+const SUGGEST_LAYER_HREF = "/about#contact";
 
 export default function RoadmapPage() {
   return (
@@ -172,6 +171,23 @@ export default function RoadmapPage() {
             </span>
             <span className="roadmap-layer-status">
               <span className="roadmap-waiting-status-full">Not started</span>
+            </span>
+          </li>
+        </ul>
+      </section>
+
+      <section
+        id={ROADMAP_FINAL_ROW.id}
+        data-testid="roadmap-final"
+      >
+        <ul className="roadmap-layer-list">
+          <li data-testid="roadmap-final-row">
+            <span className="roadmap-layer-name">{ROADMAP_FINAL_ROW.name}</span>
+            <span
+              className="roadmap-layer-status"
+              data-testid="roadmap-final-status"
+            >
+              {ROADMAP_FINAL_ROW.status}
             </span>
           </li>
         </ul>

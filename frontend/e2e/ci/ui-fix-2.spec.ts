@@ -253,12 +253,20 @@ for (const viewport of [
           `centre wording absent after ${query}`,
         ).toHaveCount(0);
         await assertClear(
-          page.getByTestId("basemap-switcher"),
+          page.getByTestId(
+            viewport.width <= 900
+              ? "basemap-toggle-narrow"
+              : "basemap-option-detailed",
+          ),
           page.locator(".hud-search"),
           `Detailed vs search (${query})`,
         );
         await assertClear(
-          page.getByTestId("basemap-switcher"),
+          page.getByTestId(
+            viewport.width <= 900
+              ? "basemap-toggle-narrow"
+              : "basemap-option-detailed",
+          ),
           page.locator(".hud-top"),
           `Detailed vs top bar (${query})`,
         );

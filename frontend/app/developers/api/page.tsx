@@ -11,6 +11,7 @@ export default function ApiTeaserPage() {
       <SiteNav current="developers" />
       <h1>Developer API and bulk data: coming</h1>
       <ResearchBanner />
+      <p>The API and bulk data will come from the Scotland National Wealth Engine.</p>
       <p>We plan to offer a developer API and bulk downloads. They will cover:</p>
       <ul>
         <li>

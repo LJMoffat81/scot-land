@@ -70,9 +70,13 @@ $r = Invoke-SmokeGet "$ApiUrl/health"
 if ($r.Code -eq 200) {
     try {
         $health = $r.Body | ConvertFrom-Json
-        $commit = [string]$health.git_commit
-        if ($commit) { Add-Row "PASS" "/health" "HTTP 200 git_commit=$commit" }
-        else { Add-Row "FAIL" "/health" "HTTP 200 but git_commit missing/empty" }
+        $status = [string]$health.status
+        $version = [string]$health.version
+        # HEALTH-TRIM / SW-037: public /health is status + version only.
+        if ($status -eq "ok" -and $version) {
+            Add-Row "PASS" "/health" "HTTP 200 status=$status version=$version"
+        }
+        else { Add-Row "FAIL" "/health" "HTTP 200 but status/version missing (got status=$status version=$version)" }
     } catch {
         Add-Row "FAIL" "/health" "HTTP 200 but body is not JSON"
     }

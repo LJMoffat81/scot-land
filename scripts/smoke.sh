@@ -55,11 +55,19 @@ fi
 
 code="$(http_code "${API_URL}/health")"
 if [[ "$code" == "200" ]]; then
-  commit="$(python3 -c 'import json; print(json.load(open("/tmp/scot-land-smoke.body",encoding="utf-8")).get("git_commit") or "")' 2>/dev/null || true)"
-  if [[ -n "$commit" ]]; then
-    note_row PASS "/health" "HTTP 200 git_commit=${commit}"
+  # HEALTH-TRIM / SW-037: public /health is status + version only.
+  health_line="$(python3 - <<'PY' 2>/dev/null || true
+import json
+b = json.load(open("/tmp/scot-land-smoke.body", encoding="utf-8"))
+print(f"{b.get('status') or ''}|{b.get('version') or ''}")
+PY
+)"
+  status="${health_line%%|*}"
+  version="${health_line#*|}"
+  if [[ "$status" == "ok" && -n "$version" ]]; then
+    note_row PASS "/health" "HTTP 200 status=${status} version=${version}"
   else
-    note_row FAIL "/health" "HTTP 200 but git_commit missing/empty"
+    note_row FAIL "/health" "HTTP 200 but status/version missing (got status=${status} version=${version})"
   fi
 else
   note_row FAIL "/health" "HTTP ${code} (want 200)"

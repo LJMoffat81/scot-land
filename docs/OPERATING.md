@@ -37,7 +37,7 @@ Checks (pass/fail table printed to stdout):
 | Check | Pass when |
 |-------|-----------|
 | Site `/` | HTTP **200** |
-| `GET /health` | HTTP **200** and `git_commit` present |
+| `GET /health` | HTTP **200** with `status` and `version` only |
 | Each **live** catalog layer with a bbox `endpoint` | HTTP **200** with **>0** features, **or** HTTP **503** honest not-yet-loaded |
 
 Do not treat empty **200** FeatureCollections as success. Linked/gap catalog

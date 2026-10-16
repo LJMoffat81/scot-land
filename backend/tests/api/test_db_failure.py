@@ -19,13 +19,17 @@ def _closed_port() -> int:
 
 
 def test_health_ok_with_db_unavailable(client):
+    """HEALTH-TRIM: /health is status+version only; DB/router honesty stays elsewhere."""
+    from api.main import ROUTER_STATUS
+
     r = client.get("/health")
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "ok"
-    assert body["db"]["status"] == "unavailable"
-    assert body["db"]["reason"] == "not_configured"
-    assert body["routers"]["api.wealth_routes"]["loaded"] is True
+    assert set(body) == {"status", "version"}
+    assert db.db_status()["status"] == "unavailable"
+    assert db.db_status()["reason"] == "not_configured"
+    assert ROUTER_STATUS["api.wealth_routes"]["loaded"] is True
 
 
 def test_wealth_is_503_without_db(client):
@@ -50,10 +54,14 @@ def test_unreachable_db_is_503_and_password_scrubbed(client, monkeypatch):
     assert r.status_code == 503
     assert r.json()["detail"]["reason"] == "connection_failed"
     assert "s3cr3t-pw" not in r.text
-    h = client.get("/health").json()
-    assert h["db"]["status"] == "unavailable"
-    assert h["db"]["reason"] == "connection_failed"
-    assert "s3cr3t-pw" not in str(h)
+    status = db.db_status()
+    assert status["status"] == "unavailable"
+    assert status["reason"] == "connection_failed"
+    assert "s3cr3t-pw" not in str(status)
+    h = client.get("/health")
+    assert h.status_code == 200
+    assert set(h.json()) == {"status", "version"}
+    assert "s3cr3t-pw" not in h.text
 
 
 def test_aggregator_raises_instead_of_returning_zeros():

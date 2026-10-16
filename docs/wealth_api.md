@@ -7,7 +7,7 @@ Experimental research estimates. Not official valuations or tax bills.
 `backend/api/main.py` always mounts `api/wealth_routes.py`. The legacy AGR router
 (`api/agr_routes.py`, moved verbatim from the old `main.py`) and
 `api/platform_routes.py` are optional: if their imports fail they are skipped,
-the reason is logged, and `/health.routers` reports it. Today both are skipped,
+the reason is logged (operator `ROUTER_STATUS`; public `/health` is status + version only). Today both are skipped,
 because modules deleted in `4aa9219` (`agr.valuation`, `agr.zone_prices`,
 `agr.wide_range`, `agr.sales_comps`, `agr.seabed`, `agr.settlement`,
 `validation.*`, `layers.open_stats|registers|public_land|vdl`) are missing.
@@ -28,7 +28,7 @@ The app refuses to start if any (method, path) is registered twice.
 
 | Route | No DB | Notes |
 |---|---|---|
-| `GET /health` | 200, `db.status = "unavailable"`, `db.reason` | Never 500s. |
+| `GET /health` | 200, `{status, version}` only | Liveness. Never 500s. DB/router detail is not public (HEALTH-TRIM / SW-037). |
 | `GET /georgist/wealth?lat&lng&zone_id[&vintage]` | 503 `wealth_database_unavailable` | `zone_id` must match `^S01\d{6}$` and fall in the 2011 (S01006506–S01013481) or 2022 (S01013482–S01020873) range, else 422. `vintage` is the integer `2011` or `2022` (anything else, including `DZ2011`, is 422 `invalid_vintage`); it is inferred from the code when omitted, and a mismatch is 422 `vintage_mismatch`. Outside Scotland is 400. Validation runs before any DB access. |
 | `GET /layers/context/data-zones/at?lat&lon` (`lng` alias) | 503 `dz_boundaries_unavailable` + `reasons` | Point → real `(code, vintage)` for every loaded vintage: `code`/`name`/`vintage` (integer; 2011 first), `zones[]`, `dz2011`, `dz2022` (`on_boundary`), `source`, `vintages_loaded`. PostGIS `dz_boundaries` first, then `DATA_DIR/processed/dz20xx_boundaries.geojson`. 404 `no_data_zone_at_point` on a miss; 400 outside Scotland. Never returns `unknown`. Load with `python -m etl.ingest_dz_boundaries --fetch` (or `--fixture` in CI); provenance in `dz_boundaries_meta`. |
 | `GET /geocode/postcode?q=` | 503 `geocoder_unavailable` (4 s timeout) | Full UK postcode → its centroid `lat`/`lng` via postcodes.io (ONS Postcode Directory, OGL v3; OS and Royal Mail attributions). Point only: no value, rent or address. 422 not a postcode (free text is not geocoded) or outside Scotland; 404 unknown postcode or no location. The map then runs the data-zone lookup as for a click. Postcodes are not logged. |
@@ -291,7 +291,7 @@ Implementation, `backend/georgist/publication_rules.py`:
 
 * **App build.** `create_app` refuses an undeclared public route: the core Wealth router raises
   `PublicationRuleError`; an optional router (AGR, platform) with one is not mounted and
-  `/health` says why. `/internal/...` routes are exempt and mounted only with
+  the skip is logged on `ROUTER_STATUS`. `/internal/...` routes are exempt and mounted only with
   `ENABLE_INTERNAL_ENDPOINTS`, and always require `INTERNAL_API_TOKEN` when mounted.
 * **Load time.** Optional manifest columns `geometry_level`, `source_granularity`, `site_source`
   (see `processed_data_manifest.md`); public sub-zone files with value columns are rejected.

@@ -165,21 +165,11 @@ def create_app() -> FastAPI:
 
     @app.get("/health")
     def health() -> dict:
-        """Liveness plus honest dependency status. Never 500s; DB down is reported, not hidden."""
-        body: dict[str, Any] = {
-            "status": "ok",
-            "service": "scot-land",
-            "version": API_VERSION_FALLBACK,
-            "git_commit": os.getenv("GIT_COMMIT") or None,
-            "db": db_status(),
-            "routers": ROUTER_STATUS,
-        }
+        """Liveness. Public body is status + version only (HEALTH-TRIM / SW-037)."""
+        version = API_VERSION_FALLBACK
         if agr is not None:
-            try:
-                body.update(agr.agr_health_extras())
-            except Exception as exc:
-                body["agr_error"] = f"{type(exc).__name__}: {exc}"
-        return body
+            version = getattr(agr, "API_VERSION", API_VERSION_FALLBACK) or API_VERSION_FALLBACK
+        return {"status": "ok", "version": version}
 
     assert_no_duplicate_routes(app)
     check_router("app", [p for _, p in registered_routes(app)])  # belt and braces over every mounted route

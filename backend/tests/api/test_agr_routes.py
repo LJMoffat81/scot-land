@@ -136,18 +136,30 @@ def test_aggregate_gbp_routes_disabled_by_default(monkeypatch):
         assert detail["setting"] == "ENABLE_INTERNAL_AGR_AGGREGATE_GBP"
 
 
-def test_health_reports_wealth_engine_place_and_no_public_rents(monkeypatch):
-    r = TestClient(_app(monkeypatch)).get("/health")
+def test_health_is_status_and_version_only(monkeypatch):
+    """HEALTH-TRIM / SW-037: public /health must not leak AGR/router/operator notes."""
+    from api.main import ROUTER_STATUS
+
+    app = _app(monkeypatch)
+    assert ROUTER_STATUS["api.agr_routes"]["loaded"] is True
+    r = TestClient(app).get("/health")
     assert r.status_code == 200
     body = r.json()
-    assert body["routers"]["api.agr_routes"]["loaded"] is True
-    assert body.get("public_rents") is False
-    assert "wealth_engine" in (body.get("agr_place_pages") or "")
-    assert body.get("agr_aggregate_gbp_enabled") is False
-    assert body.get("label") == "experimental"
-    assert body.get("value_tier_tags") == ["market", "proxy", "shadow"]
-    assert "Wealth Engine" in (body.get("agr_internal_routes_note") or "")
-    assert body.get("publication_geometry") == "public_shapes_no_rents_wealth_engine_internal"
+    assert set(body) == {"status", "version"}
+    assert body["status"] == "ok"
+    text = r.text
+    for banned in (
+        "ENABLE_INTERNAL_ENDPOINTS",
+        "INTERNAL_API_TOKEN",
+        "modelled AGR",
+        "w3w-grid",
+        "£",
+        "public_rents",
+        "agr_place_pages",
+        "Wealth Engine",
+        "publication_geometry",
+    ):
+        assert banned not in text, banned
 
 
 def test_internal_yield_reads_surface_yaml_not_hardcoded():

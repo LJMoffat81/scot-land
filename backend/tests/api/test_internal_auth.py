@@ -67,9 +67,11 @@ def test_valid_api_key_header_allowed(monkeypatch, path):
 @pytest.mark.parametrize("path", PATHS)
 def test_unset_secret_locks_endpoints(monkeypatch, path):
     """Flag on but no INTERNAL_API_TOKEN → locked (403), never open."""
+    from api.main import ROUTER_STATUS
+
     c = _client(monkeypatch, token=None)
-    health = c.get("/health").json()["routers"]["api.internal_routes"]
-    assert health["loaded"] is True and health["auth"] == "locked"
+    internal = ROUTER_STATUS["api.internal_routes"]
+    assert internal["loaded"] is True and internal["auth"] == "locked"
     r = c.get(path, headers={"Authorization": "Bearer anything"})
     assert r.status_code == 403, path
     assert r.json()["detail"]["error"] == "internal_locked"

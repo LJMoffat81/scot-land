@@ -97,8 +97,12 @@ def test_full_path_totals_by_tier_and_placeholder_absent(pg, client, surface_row
     assert "MOCK" not in r.text and "750000" not in r.text
     for diag in ("raw_residual", "typical_sale_gbp", "drc_low_gbp", "rebuild_mix_basis", "price_skew_flag"):
         assert diag not in r.text
+    from georgist import db
+
+    assert db.db_status()["status"] == "ok"
     h = client.get("/health").json()
-    assert h["db"]["status"] == "ok"
+    assert set(h) == {"status", "version"}
+    assert h["status"] == "ok"
 
 
 def test_zone_without_surface_row_is_flagged(pg, client):

@@ -51,6 +51,11 @@ function isAbortError(err: unknown): boolean {
  * MapLibre console.errors the Error object only when nothing listens.
  * AbortError is the only skip. Every other error is logged.
  */
+/** True when MapLibre will accept source, layer, and camera calls. */
+export function mapStyleReady(map: { isStyleLoaded(): boolean | void }): boolean {
+  return map.isStyleLoaded() === true;
+}
+
 export function mapErrorLogLine(err: unknown): string | null {
   if (isAbortError(err)) return null;
   if (err instanceof Error) {

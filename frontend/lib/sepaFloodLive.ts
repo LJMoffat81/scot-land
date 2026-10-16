@@ -38,6 +38,8 @@ export function syncSepaFloodLiveLayers(
   map: Map,
   enabled: Record<string, boolean | undefined>,
 ): void {
+  // getSource/addSource throw "Style is not done loading" until the style is ready.
+  if (!map.isStyleLoaded()) return;
   for (const row of SEPA_FLOOD_LIVE) {
     if (!map.getSource(row.sourceId)) {
       map.addSource(row.sourceId, {

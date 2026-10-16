@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import ScotlandMap from "@/components/ScotlandMap";
 
 export default function HomePage() {
@@ -6,7 +7,9 @@ export default function HomePage() {
       <h1 className="sr-only">
         Scot-LAND map: search a Scottish postcode or place
       </h1>
-      <ScotlandMap />
+      <Suspense fallback={null}>
+        <ScotlandMap />
+      </Suspense>
     </main>
   );
 }

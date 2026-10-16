@@ -3,7 +3,6 @@
 import PlaceCard from "@/components/PlaceCard";
 import {
   PLACE_CARD_HOW_WE_WORK_LABEL,
-  PLACE_CARD_OUT_OF_SCOTLAND_LINE,
   defaultAgrRows,
   scotLandSquareReference,
   type PlaceCardPayload,
@@ -95,7 +94,7 @@ export default function PlaceCardStub({
             name: place.dataZoneName ?? null,
             vintage: place.dataZoneVintage ?? null,
           }
-        : { status: "miss", note: PLACE_CARD_OUT_OF_SCOTLAND_LINE },
+        : { status: "pending" },
       intermediate_zone: { status: "no_data", name: null, note: null },
       square_reference: scotLandSquareReference(place.lat, place.lng),
       agr_rows: defaultAgrRows(),

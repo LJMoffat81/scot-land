@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import maplibregl, {
   Map,
   GeoJSONSource,
@@ -73,6 +74,7 @@ import {
   basemapStyleUrl,
   basemapSwitchTarget,
   mapErrorLogLine,
+  mapStyleReady,
   type MapBasemapId,
 } from "../lib/mapBasemap";
 import {
@@ -806,6 +808,23 @@ export default function ScotlandMap() {
   // Public place card (stub). Modelled AGR £ / Wealth / tax stay off the public shell.
   const [placeStub, setPlaceStub] = useState<PlaceStub | null>(null);
   const [placeLoading, setPlaceLoading] = useState(false);
+  const searchParams = useSearchParams();
+  const latRaw = searchParams.get("lat");
+  const lngRaw = searchParams.get("lng") ?? searchParams.get("lon");
+  const bootLat = latRaw != null && latRaw.trim() !== "" ? Number(latRaw) : NaN;
+  const bootLng = lngRaw != null && lngRaw.trim() !== "" ? Number(lngRaw) : NaN;
+  const bootPlace =
+    Number.isFinite(bootLat) &&
+    Number.isFinite(bootLng) &&
+    isScotlandViewCenter(bootLng, bootLat)
+      ? { lat: bootLat, lng: bootLng }
+      : null;
+  const bootId = bootPlace ? `${bootPlace.lat},${bootPlace.lng}` : "";
+  const bootIdRef = useRef(bootId);
+  bootIdRef.current = bootId;
+  /** After the visitor closes the card, do not put the URL boot card back. */
+  const [bootSuppressedFor, setBootSuppressedFor] = useState<string | null>(null);
+  const bootHolding = Boolean(bootId) && placeStub == null && bootSuppressedFor !== bootId;
 
   const [contextOn, setContextOn] = useState<Record<string, boolean>>({});
 
@@ -1253,6 +1272,7 @@ export default function ScotlandMap() {
     setError(null);
     setAddressLine(null);
     setPlaceStub(null);
+    setBootSuppressedFor(bootIdRef.current);
     placeDetentMemory = null;
     setPlaceLoading(false);
     setGrid3Square(null);
@@ -1278,7 +1298,7 @@ export default function ScotlandMap() {
     // this fitBounds mid-flight (sea-stub national maxZoom e2e on desktop).
     window.setTimeout(() => {
       const live = mapRef.current;
-      if (!live) return;
+      if (!live || !mapStyleReady(live)) return;
       live.stop();
       live.fitBounds(
         [
@@ -1334,7 +1354,7 @@ export default function ScotlandMap() {
           : ++lookupGen.current;
       const map = mapRef.current;
       markerRef.current?.remove();
-      if (map) {
+      if (map && mapStyleReady(map)) {
         markerRef.current = placeSelectedMarker(map, lng, lat);
         if (opts.fly) {
           // Desktop Layers stays in the right column. Mobile closes the sheet.
@@ -1942,6 +1962,7 @@ export default function ScotlandMap() {
         setError(null);
         setResult(null);
         setPlaceStub(null);
+        setBootSuppressedFor(bootIdRef.current);
         setSearchNoMatch(true);
         setPanelKind("closed");
         markerRef.current?.remove();
@@ -2833,6 +2854,7 @@ export default function ScotlandMap() {
     });
 
     map.on("click", (event) => {
+      if (!mapStyleReady(map)) return;
       const lat = event.lngLat.lat;
       const lng = event.lngLat.lng;
 
@@ -2992,12 +3014,13 @@ export default function ScotlandMap() {
         delete (window as unknown as { __SCOT_LAND_MAP__?: Map })
           .__SCOT_LAND_MAP__;
       }
-      try {
+      // remove() throws "Style is not done loading." until the style is ready.
+      const removeMap = () => {
+        if (!mapStyleReady(map)) return;
         map.remove();
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err ?? "");
-        if (!message.includes("Style is not done loading")) throw err;
-      }
+      };
+      if (mapStyleReady(map)) removeMap();
+      else map.once("load", removeMap);
       setMapReady(false);
       // Allow deep-link boot on the next map instance (Strict Mode / style remount).
       urlBootDoneRef.current = false;
@@ -3005,6 +3028,20 @@ export default function ScotlandMap() {
     // Remount when basemap style changes (OpenFreeMap light ↔ detailed).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyle]);
+
+  // Open the URL place before the map style finishes, so the card is in the
+  // document when the canvas appears and a map click is not stolen by a
+  // sea placeholder.
+  useEffect(() => {
+    if (!bootId || bootSuppressedFor === bootId) return;
+    const [lat, lng] = bootId.split(",").map(Number);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    void inspectRef.current(lat, lng, {
+      fly: false,
+      fromAddressSearch: true,
+      fromDeepLink: true,
+    });
+  }, [bootId, bootSuppressedFor]);
 
   // Deep-link boot (?lat/lng/words) once mapReady — survives style remount.
   // Prefer the mount-time capture: layers URL sync may already have rewritten
@@ -4721,11 +4758,20 @@ export default function ScotlandMap() {
   }, []);
 
   // River and coastal medium-likelihood images from SEPA. Nothing is stored.
+  // Wait until the style is loaded; addSource throws before that.
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map) return;
-    syncSepaFloodLiveLayers(map, ledgerEnabled);
+    const run = () => {
+      if (mapRef.current !== map || !mapStyleReady(map)) return;
+      syncSepaFloodLiveLayers(map, ledgerEnabled);
+    };
+    run();
+    map.on("idle", run);
+    return () => {
+      map.off("idle", run);
+    };
   }, [mapReady, ledgerEnabled]);
 
   // Flood risk paints Data Zone shares from /layers/open/flood-dz.
@@ -4746,7 +4792,13 @@ export default function ScotlandMap() {
     };
   }, [mapReady, ledgerEnabled, spatialHubPresent, floodKind]);
 
-  const placeOpen = panelKind === "place" && Boolean(placeStub || result);
+  const shownPlace: PlaceStub | null =
+    placeStub ??
+    (bootHolding && bootPlace
+      ? { lat: bootPlace.lat, lng: bootPlace.lng, fromAddressSearch: true }
+      : null);
+  const shownPanelPlace = panelKind === "place" || bootHolding;
+  const placeOpen = shownPanelPlace && Boolean(shownPlace || result);
   const layersOpen = isNarrowPanel
     ? panelKind === "layers"
     : desktopLayersOpen;
@@ -4761,7 +4813,9 @@ export default function ScotlandMap() {
     "map-cards-shell",
     layersOpen ? "tools-open" : "",
     placeOpen ? "place-open" : "",
-    panelKind !== "closed" || desktopLayersOpen ? "panel-open" : "",
+    shownPanelPlace || panelKind !== "closed" || desktopLayersOpen
+      ? "panel-open"
+      : "",
     panelCollapsed ? "panel-collapsed" : "",
     suggestOpen ? "suggest-open" : "",
     isNarrowPanel ? "map-narrow" : "map-wide",
@@ -4771,9 +4825,9 @@ export default function ScotlandMap() {
 
   const basemapTarget = basemapSwitchTarget(mapStyle);
   const placeTitle =
-    placeStub?.label ||
-    placeStub?.dataZoneName ||
-    placeStub?.card?.place_label ||
+    shownPlace?.label ||
+    shownPlace?.dataZoneName ||
+    shownPlace?.card?.place_label ||
     null;
 
   return (
@@ -4839,7 +4893,7 @@ export default function ScotlandMap() {
         aria-label={basemapAriaLabel(basemapTarget)}
         onClick={() => {
           const map = mapRef.current;
-          if (map) {
+          if (map && mapStyleReady(map)) {
             const c = map.getCenter();
             cameraPreserveRef.current = {
               lng: c.lng,
@@ -5074,10 +5128,10 @@ export default function ScotlandMap() {
       </div>
       </div>{/* map-stage — panel stays outside so inert modal does not block close */}
 
-      {panelKind === "place" ? (
+      {shownPanelPlace ? (
         <MapPanelSlot
           kind="place"
-          detent={panelDetent}
+          detent={bootHolding ? "half" : panelDetent}
           onDetentChange={(d) => {
             setPanelDetent(d);
             setLiveMessage(`Panel ${d}`);
@@ -5094,10 +5148,12 @@ export default function ScotlandMap() {
           liveMessage={liveMessage}
           showSlotClose={false}
         >
-          {placeStub ? (
+          {shownPlace ? (
             <PlaceCardStub
-              place={placeStub}
-              loading={placeLoading}
+              place={shownPlace}
+              loading={
+                placeLoading || (!shownPlace.card && !shownPlace.dataZoneCode)
+              }
               error={error}
               onClose={() => {
                 // Card × clears selection (not desktop collapse-to-tab).

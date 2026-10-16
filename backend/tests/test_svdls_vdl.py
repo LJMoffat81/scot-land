@@ -1,4 +1,4 @@
-"""SVDLS vacant/derelict routes: site-level as published; 503 when unavailable."""
+"""SVDLS vacant/derelict routes: Data Zone totals; 503 when unavailable."""
 
 from __future__ import annotations
 
@@ -6,7 +6,18 @@ from layers.svdls_geometry import (
     GEOMETRY_PRECEDENCE,
     GEOMETRY_SOURCE_SPATIALHUB_SURVEY,
 )
-from layers.vdl import OUT_SR, SITE_TYPES, _site_props, _size_ha, query_bbox, query_point
+from layers.vdl import (
+    OPEN_VDL_FORBIDDEN_KEYS,
+    OPEN_VDL_META_KEYS,
+    OPEN_VDL_TOP_KEYS,
+    OPEN_VDL_ZONE_KEYS,
+    OUT_SR,
+    SITE_TYPES,
+    _site_props,
+    _size_ha,
+    query_bbox,
+    query_point,
+)
 
 
 GLASGOW_BBOX = {
@@ -135,7 +146,71 @@ def test_vdl_ok_empty_viewport_is_not_503(client, monkeypatch):
     assert body["meta"]["licence"] == "OGL-3.0"
 
 
-def test_vdl_ok_returns_site_level_properties(client, monkeypatch):
+# Locked copies of the public whitelist. Importing the module constants and
+# comparing them here means a quiet widening of either side fails the test.
+_EXPECTED_TOP_KEYS = frozenset({"type", "features", "meta"})
+_EXPECTED_META_KEYS = frozenset(
+    {
+        "ok",
+        "layer",
+        "count",
+        "capped",
+        "grain",
+        "licence",
+        "source",
+        "register_url",
+        "spatial_hub_url",
+        "publication_url",
+        "site_types",
+        "gaps",
+        "data_zones",
+    }
+)
+_EXPECTED_ZONE_KEYS = frozenset({"data_zone", "vintage", "site_count", "area_ha"})
+# Live /layers/open/vdl property names (size_ha, not site_size_ha).
+_PER_SITE_KEYS = frozenset({"site_code", "size_ha", "address", "owner_class"})
+_EXPECTED_FORBIDDEN_KEYS = frozenset(
+    {
+        "site_code",
+        "site_name",
+        "name",
+        "address",
+        "uprn",
+        "size_ha",
+        "site_size",
+        "owner_class",
+        "owner_1",
+        "site_type",
+        "local_authority",
+        "local_auth",
+        "period",
+        "geometry",
+        "coordinates",
+        "geometry_source",
+        "geometry_source_label",
+    }
+)
+
+
+def _keys(value: object) -> list[str]:
+    found: list[str] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            found.append(str(key))
+            found.extend(_keys(child))
+    elif isinstance(value, list):
+        for child in value:
+            found.extend(_keys(child))
+    return found
+
+
+def test_vdl_open_response_keys_are_data_zone_only(client, monkeypatch):
+    """Hostile upstream site rows must not survive /layers/open/vdl.
+
+    Fails on main before VDL-DZ-1: the route returned site_code, per-site
+    area and polygon coordinates.
+    """
+
     def _sites(*_a, **_k):
         return {
             "type": "FeatureCollection",
@@ -161,6 +236,8 @@ def test_vdl_ok_returns_site_level_properties(client, monkeypatch):
                         "local_authority": "Glasgow City",
                         "owner_class": "Local Authority",
                         "site_code": "GLA TEST1",
+                        "address": "1 High Street",
+                        "uprn": "123456789",
                         "geometry_source": GEOMETRY_SOURCE_SPATIALHUB_SURVEY,
                         "geometry_source_label": "Spatial Hub survey",
                         "layer": "vdl",
@@ -182,17 +259,150 @@ def test_vdl_ok_returns_site_level_properties(client, monkeypatch):
             },
         }
 
+    assert OPEN_VDL_TOP_KEYS == _EXPECTED_TOP_KEYS
+    assert OPEN_VDL_META_KEYS == _EXPECTED_META_KEYS
+    assert OPEN_VDL_ZONE_KEYS == _EXPECTED_ZONE_KEYS
+    assert OPEN_VDL_FORBIDDEN_KEYS == _EXPECTED_FORBIDDEN_KEYS
     monkeypatch.setattr("api.platform_routes.vdl_bbox", _sites)
     r = client.get("/layers/open/vdl", params=GLASGOW_BBOX)
     assert r.status_code == 200, r.text
-    feat = r.json()["features"][0]
-    props = feat["properties"]
-    assert props["site_code"] == "GLA TEST1"
-    assert props["site_type"] == "Vacant Land"
-    assert props["size_ha"] == 1.25
-    assert props["owner_class"] == "Local Authority"
-    assert props["geometry_source"] == GEOMETRY_SOURCE_SPATIALHUB_SURVEY
-    meta = r.json()["meta"]
-    assert "register_url" in meta
-    assert meta["geometry_precedence"] == list(GEOMETRY_PRECEDENCE)
-    assert meta["geometry_source_live"] == GEOMETRY_SOURCE_SPATIALHUB_SURVEY
+    body = r.json()
+    leaked = sorted(_PER_SITE_KEYS.intersection(_keys(body)))
+    assert leaked == [], f"per-site keys still public: {leaked}"
+    assert "geometry" not in _keys(body)
+    assert "coordinates" not in _keys(body)
+    assert set(body) == _EXPECTED_TOP_KEYS
+    assert body["type"] == "FeatureCollection"
+    assert body["features"] == []
+    meta = body["meta"]
+    assert set(meta) == _EXPECTED_META_KEYS
+    assert meta["grain"] == "data_zone"
+    assert meta["ok"] is True
+    assert meta["licence"] == "OGL-3.0"
+    assert meta["data_zones"] == []
+    leaked = _EXPECTED_FORBIDDEN_KEYS.intersection(_keys(body))
+    assert leaked == set()
+    text = r.text
+    assert "site_code" not in text
+    assert "GLA TEST1" not in text
+    assert "1 High Street" not in text
+    assert "123456789" not in text
+    assert "coordinates" not in text
+    for zone in meta["data_zones"]:
+        assert set(zone) == _EXPECTED_ZONE_KEYS
+
+
+def test_query_bbox_rolls_sites_up_to_data_zone(monkeypatch):
+    """Two sites in one zone become one total. Site identifiers stay internal."""
+    seen: list[dict] = []
+
+    class _Resp:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [-4.25, 55.86]},
+                        "properties": {
+                            "site_name": "SECRET ONE",
+                            "site_code": "GLA TEST1",
+                            "address": "1 High Street",
+                            "site_size": "1.25",
+                            "site_type": "Vacant Land",
+                            "uprn": "111",
+                        },
+                    },
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [-4.24, 55.87]},
+                        "properties": {
+                            "site_name": "SECRET TWO",
+                            "site_code": "GLA TEST2",
+                            "site_size": "2.75",
+                            "site_type": "Derelict",
+                        },
+                    },
+                ],
+            }
+
+    class _Client:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+        def get(self, _url, params=None):
+            seen.append(dict(params or {}))
+            return _Resp()
+
+    monkeypatch.setattr("layers.vdl._client", lambda: _Client())
+    monkeypatch.setattr(
+        "layers.vdl.zone_for_point",
+        lambda _lng, _lat: ("S01014567", 2022),
+    )
+    body = query_bbox(55.84, -4.30, 55.88, -4.22)
+    assert set(body) == _EXPECTED_TOP_KEYS
+    assert body["features"] == []
+    assert set(body["meta"]) == _EXPECTED_META_KEYS
+    assert body["meta"]["data_zones"] == [
+        {
+            "data_zone": "S01014567",
+            "vintage": 2022,
+            "site_count": 2,
+            "area_ha": 4.0,
+        }
+    ]
+    assert set(body["meta"]["data_zones"][0]) == _EXPECTED_ZONE_KEYS
+    text = str(body)
+    assert _PER_SITE_KEYS.isdisjoint(_keys(body))
+    assert "GLA TEST1" not in text
+    assert "SECRET" not in text
+    assert "site_code" not in text
+    assert "size_ha" not in text
+    assert "address" not in text
+    assert "owner_class" not in text
+    assert "coordinates" not in text
+    assert seen[0]["outSR"] == 4326
+
+
+def test_query_point_omits_site_fields(monkeypatch):
+    class _Resp:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {
+                "features": [
+                    {
+                        "attributes": {
+                            "site_name": "SECRET",
+                            "site_code": "GLA TEST1",
+                            "address": "1 High Street",
+                            "site_size": "1.5",
+                        }
+                    }
+                ]
+            }
+
+    class _Client:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+        def get(self, _url, params=None):
+            return _Resp()
+
+    monkeypatch.setattr("layers.vdl._client", lambda: _Client())
+    body = query_point(55.86, -4.26)
+    assert body["ok"] is True
+    assert body["intersects"] is True
+    assert body["sites"] == []
+    assert "GLA TEST1" not in str(body)
+    assert "site_code" not in str(body)

@@ -2,11 +2,14 @@
 
 Authoritative site list: Scottish Government SVDLS site register.
 Spatial overlay: Spatial Hub / Improvement Service republish of SVDLS
-polygons (OGL). Site-level as published — survey polygons, not a title plan.
+polygons (OGL). Upstream features are survey polygons, not a title plan.
+The public ``/layers/open/vdl`` body is Data Zone totals only (count and
+area): no site code, site name, per-site area, address or site geometry.
 
 Geometry precedence (room decision): Spatial Hub survey > RoS title outline >
-point. Each site is tagged with ``geometry_source``. The live FeatureServer
-path is Spatial Hub survey only; see ``layers.svdls_geometry``.
+point. Upstream sites are tagged with ``geometry_source`` before the roll-up.
+The live FeatureServer path is Spatial Hub survey only; see
+``layers.svdls_geometry``.
 """
 
 from __future__ import annotations
@@ -15,6 +18,11 @@ from typing import Any
 
 import httpx
 
+from georgist.dz_lookup import (
+    BoundariesUnavailable,
+    lookup as lookup_data_zone,
+    vintage_for_code,
+)
 from layers.svdls_geometry import (
     GEOMETRY_PRECEDENCE,
     GEOMETRY_SOURCE_LABELS,
@@ -43,7 +51,52 @@ SITE_TYPES = (
 )
 
 # Live open overlay geometry: Spatial Hub survey (highest public precedence).
+# Used only to tag upstream features before they are rolled up. The public
+# /layers/open/vdl body never includes site geometry or site identifiers.
 LIVE_GEOMETRY_SOURCE = GEOMETRY_SOURCE_SPATIALHUB_SURVEY
+
+# Exact public keys for GET /layers/open/vdl (Data Zone grain only).
+OPEN_VDL_TOP_KEYS = frozenset({"type", "features", "meta"})
+OPEN_VDL_META_KEYS = frozenset(
+    {
+        "ok",
+        "layer",
+        "count",
+        "capped",
+        "grain",
+        "licence",
+        "source",
+        "register_url",
+        "spatial_hub_url",
+        "publication_url",
+        "site_types",
+        "gaps",
+        "data_zones",
+    }
+)
+OPEN_VDL_ZONE_KEYS = frozenset({"data_zone", "vintage", "site_count", "area_ha"})
+# Rejected anywhere in the public body — finer than Data Zone.
+OPEN_VDL_FORBIDDEN_KEYS = frozenset(
+    {
+        "site_code",
+        "site_name",
+        "name",
+        "address",
+        "uprn",
+        "size_ha",
+        "site_size",
+        "owner_class",
+        "owner_1",
+        "site_type",
+        "local_authority",
+        "local_auth",
+        "period",
+        "geometry",
+        "coordinates",
+        "geometry_source",
+        "geometry_source_label",
+    }
+)
 
 
 ATTRIBUTION = (
@@ -64,6 +117,153 @@ PUBLICATION_URL = (
 
 def _client() -> httpx.Client:
     return httpx.Client(timeout=TIMEOUT)
+
+
+def zone_for_point(lng: float, lat: float) -> tuple[str, int] | None:
+    """Data Zone containing a point, or None when boundaries are unavailable.
+
+    Prefers the 2022 code when both vintages hit. Never invents a code.
+    """
+    try:
+        found = lookup_data_zone(lat, lng)
+    except BoundariesUnavailable:
+        return None
+    zones = [
+        zone
+        for zone in found.zones
+        if vintage_for_code(str(zone.get("code") or "")) == zone.get("vintage")
+    ]
+    if not zones:
+        return None
+    primary = next((zone for zone in zones if zone["vintage"] == 2022), zones[0])
+    return str(primary["code"]), int(primary["vintage"])
+
+
+def _ring_centroid(ring: Any) -> tuple[float, float] | None:
+    if not isinstance(ring, list) or not ring:
+        return None
+    points = [
+        point
+        for point in ring
+        if isinstance(point, (list, tuple)) and len(point) >= 2
+    ]
+    if not points:
+        return None
+    lng = sum(float(point[0]) for point in points) / len(points)
+    lat = sum(float(point[1]) for point in points) / len(points)
+    return lng, lat
+
+
+def _feature_centroid(geom: Any) -> tuple[float, float] | None:
+    """Internal only — the centroid is never copied onto the public response."""
+    if not isinstance(geom, dict):
+        return None
+    coords = geom.get("coordinates")
+    kind = geom.get("type")
+    if kind == "Point":
+        return _ring_centroid([coords])
+    if kind == "Polygon":
+        return _ring_centroid(coords[0] if isinstance(coords, list) and coords else None)
+    if kind == "MultiPolygon" and isinstance(coords, list) and coords:
+        first = coords[0]
+        ring = first[0] if isinstance(first, list) and first else None
+        return _ring_centroid(ring)
+    return None
+
+
+def _zone_row(raw: Any) -> dict[str, Any] | None:
+    if not isinstance(raw, dict):
+        return None
+    if OPEN_VDL_FORBIDDEN_KEYS.intersection(raw):
+        return None
+    code = raw.get("data_zone")
+    vintage = raw.get("vintage")
+    if isinstance(vintage, bool) or not isinstance(vintage, int):
+        return None
+    if vintage_for_code(str(code) if code is not None else "") != vintage:
+        return None
+    count = raw.get("site_count")
+    area = raw.get("area_ha")
+    if isinstance(count, bool) or not isinstance(count, int) or count < 0:
+        return None
+    if isinstance(area, bool) or not isinstance(area, (int, float)):
+        return None
+    return {
+        "data_zone": str(code),
+        "vintage": vintage,
+        "site_count": count,
+        "area_ha": round(float(area), 2),
+    }
+
+
+def _merge_zones(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    merged: dict[tuple[str, int], dict[str, Any]] = {}
+    for raw in rows:
+        row = _zone_row(raw)
+        if row is None:
+            continue
+        key = (row["data_zone"], row["vintage"])
+        prev = merged.get(key)
+        if prev is None:
+            merged[key] = row
+            continue
+        prev["site_count"] += row["site_count"]
+        prev["area_ha"] = round(prev["area_ha"] + row["area_ha"], 2)
+    return [merged[key] for key in sorted(merged)]
+
+
+def _string_list(raw: Any, fallback: tuple[str, ...] | list[str]) -> list[str]:
+    if isinstance(raw, list) and all(isinstance(item, str) for item in raw):
+        return list(raw)
+    return list(fallback)
+
+
+def public_vdl_response(payload: dict[str, Any]) -> dict[str, Any]:
+    """Data Zone totals only. Drops site identifiers, per-site area and geometry."""
+    meta_in = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
+    if meta_in.get("ok") is False:
+        return {
+            "type": "FeatureCollection",
+            "features": [],
+            "meta": {
+                "ok": False,
+                "error": str(meta_in.get("error") or "upstream source failed"),
+                "layer": "vdl",
+            },
+        }
+
+    incoming: list[Any] = []
+    zones_in = meta_in.get("data_zones")
+    if isinstance(zones_in, list):
+        incoming.extend(zones_in)
+    for feat in payload.get("features") or []:
+        if not isinstance(feat, dict) or feat.get("geometry"):
+            continue
+        props = feat.get("properties")
+        if isinstance(props, dict):
+            incoming.append(props)
+    zones = _merge_zones(incoming)
+    gaps = _string_list(meta_in.get("gaps"), [])
+    source = meta_in.get("source")
+    return {
+        "type": "FeatureCollection",
+        "features": [],
+        "meta": {
+            "ok": True,
+            "layer": "vdl",
+            "count": len(zones),
+            "capped": bool(meta_in.get("capped")),
+            "grain": "data_zone",
+            "licence": str(meta_in.get("licence") or "OGL-3.0"),
+            "source": source if isinstance(source, str) and source else ATTRIBUTION,
+            "register_url": str(meta_in.get("register_url") or REGISTER_URL),
+            "spatial_hub_url": str(meta_in.get("spatial_hub_url") or SPATIAL_HUB_URL),
+            "publication_url": str(meta_in.get("publication_url") or PUBLICATION_URL),
+            "site_types": _string_list(meta_in.get("site_types"), SITE_TYPES),
+            "gaps": gaps,
+            "data_zones": zones,
+        },
+    }
 
 
 def _size_ha(raw: Any) -> float | None:
@@ -151,28 +351,11 @@ def query_point(lat: float, lng: float) -> dict[str, Any]:
         return {"ok": False, "error": str(exc), "sites": [], "source": ATTRIBUTION}
 
     features = payload.get("features") or []
-    sites = []
-    for feat in features:
-        attrs = feat.get("attributes") or {}
-        props = _site_props(attrs)
-        sites.append(
-            {
-                "name": props["name"],
-                "site_type": props["site_type"],
-                "size_ha": props["size_ha"],
-                "local_authority": props["local_authority"],
-                "owner_class": props["owner_class"],
-                "site_code": props["site_code"],
-                "address": props["address"],
-                "period": props["period"],
-                "geometry_source": props["geometry_source"],
-                "geometry_source_label": props["geometry_source_label"],
-            }
-        )
     return {
         "ok": True,
-        "intersects": bool(sites),
-        "sites": sites,
+        "intersects": bool(features),
+        # Site rows stay off the public place payload (finer than Data Zone).
+        "sites": [],
         "source": ATTRIBUTION,
         "register_url": REGISTER_URL,
         "spatial_hub_url": SPATIAL_HUB_URL,
@@ -193,7 +376,7 @@ def query_bbox(
     east: float,
     max_features: int = MAX_FEATURES,
 ) -> dict[str, Any]:
-    """Viewport VDL polygons as GeoJSON (WGS84), site-level as published."""
+    """Viewport VDL as Data Zone totals (count and area). No site geometry."""
     cap = max(1, min(int(max_features), MAX_FEATURES))
     envelope = f"{west},{south},{east},{north}"
     params = {
@@ -227,39 +410,61 @@ def query_bbox(
         }
 
     features = payload.get("features") or []
-    cleaned = []
+    buckets: dict[tuple[str, int], dict[str, Any]] = {}
+    unzoned = False
     for feat in features[:cap]:
-        props = dict(feat.get("properties") or {})
-        cleaned.append(
-            {
-                "type": "Feature",
-                "geometry": feat.get("geometry"),
-                "properties": _site_props(props),
-            }
+        props = _site_props(dict(feat.get("properties") or {}))
+        centroid = _feature_centroid(feat.get("geometry"))
+        zone = zone_for_point(*centroid) if centroid is not None else None
+        if zone is None:
+            unzoned = True
+            continue
+        code, vintage = zone
+        slot = buckets.setdefault(
+            (code, vintage),
+            {"site_count": 0, "area_ha": 0.0},
         )
-    return {
-        "type": "FeatureCollection",
-        "features": cleaned,
-        "meta": {
-            "ok": True,
-            "layer": "vdl",
-            "count": len(cleaned),
-            "capped": len(features) >= cap,
-            "source": ATTRIBUTION,
-            "register_url": REGISTER_URL,
-            "spatial_hub_url": SPATIAL_HUB_URL,
-            "publication_url": PUBLICATION_URL,
-            "licence": "OGL-3.0",
-            "site_types": list(SITE_TYPES),
-            "geometry_precedence": list(GEOMETRY_PRECEDENCE),
-            "geometry_source_live": LIVE_GEOMETRY_SOURCE,
-            "gaps": [
-                "Owner class is a survey field, not legal title",
-                "Survey polygons are indicative — confirm extent on ScotLIS",
-                "Sites removed or re-coded since the Spatial Hub vintage may differ "
-                "from the latest SG site register",
-                "RoS title-outline geometry stays internal until OS/RoS end-user "
-                "terms are cleared for public publication",
-            ],
-        },
-    }
+        slot["site_count"] += 1
+        if props["size_ha"] is not None:
+            slot["area_ha"] += float(props["size_ha"])
+    data_zones = [
+        {
+            "data_zone": code,
+            "vintage": vintage,
+            "site_count": slot["site_count"],
+            "area_ha": round(slot["area_ha"], 2),
+        }
+        for (code, vintage), slot in sorted(buckets.items())
+    ]
+    gaps = [
+        "Owner class is a survey field, not legal title",
+        "Survey polygons are indicative — confirm extent on ScotLIS",
+        "Sites removed or re-coded since the Spatial Hub vintage may differ "
+        "from the latest SG site register",
+        "RoS title-outline geometry stays internal until OS/RoS end-user "
+        "terms are cleared for public publication",
+        "Published here as Data Zone totals only (count and area)",
+    ]
+    if unzoned:
+        gaps.append(
+            "Sites that could not be placed in a Data Zone are omitted"
+        )
+    return public_vdl_response(
+        {
+            "type": "FeatureCollection",
+            "features": [],
+            "meta": {
+                "ok": True,
+                "layer": "vdl",
+                "capped": len(features) >= cap,
+                "source": ATTRIBUTION,
+                "register_url": REGISTER_URL,
+                "spatial_hub_url": SPATIAL_HUB_URL,
+                "publication_url": PUBLICATION_URL,
+                "licence": "OGL-3.0",
+                "site_types": list(SITE_TYPES),
+                "gaps": gaps,
+                "data_zones": data_zones,
+            },
+        }
+    )

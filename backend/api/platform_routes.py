@@ -56,7 +56,7 @@ from layers.naturescot import query_sssi_bbox as sssi_bbox
 from layers.scotwind import LayerUnavailable as ScotwindUnavailable
 from layers.scotwind import query_bbox as scotwind_bbox
 from layers.repd_onshore_wind import query_bbox as repd_onshore_wind_bbox
-from layers.vdl import query_bbox as vdl_bbox
+from layers.vdl import public_vdl_response, query_bbox as vdl_bbox
 from layers.community_ownership import LayerUnavailable as CommunityOwnershipUnavailable
 from layers.community_ownership import query_bbox as community_ownership_bbox
 from layers.woodland import LayerUnavailable as WoodlandUnavailable
@@ -83,14 +83,17 @@ def layer_open_vdl(
     east: float = Query(..., description="BBox east longitude"),
     max_features: int = Query(default=80, ge=1, le=80),
 ) -> JSONResponse:
-    """Vacant and derelict land polygons in the viewport (OGL survey overlay).
+    """Vacant and derelict land in the viewport, as Data Zone totals (OGL).
 
-    Returns site-level SVDLS features as published. **503** when the upstream
-    open FeatureServer is unavailable — never invents sites. An empty
-    FeatureCollection with meta.ok=true means no sites in view.
+    Returns count and total area per Data Zone. No site code, site name,
+    per-site area, address or site geometry. **503** when the upstream open
+    FeatureServer is unavailable — never invents sites. An empty
+    data_zones list with meta.ok=true means no zoned sites in view.
     """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
-    payload = vdl_bbox(south, west, north, east, max_features=max_features)
+    payload = public_vdl_response(
+        vdl_bbox(south, west, north, east, max_features=max_features)
+    )
     meta = payload.get("meta") or {}
     if meta.get("ok") is False:
         raise HTTPException(

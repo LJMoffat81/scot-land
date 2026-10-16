@@ -379,12 +379,6 @@ function layerPopupHtml(parts: {
   areaSqm?: number | null;
   ownerType?: string | null;
   siteName?: string | null;
-  vdlName?: string | null;
-  vdlSiteType?: string | null;
-  vdlSizeHa?: number | null;
-  vdlSiteCode?: string | null;
-  vdlOwnerClass?: string | null;
-  vdlGeometrySource?: string | null;
   lcaClassLabel?: string | null;
   lcaCode?: number | string | null;
   source?: string | null;
@@ -402,36 +396,6 @@ function layerPopupHtml(parts: {
   }
   if (parts.siteName) {
     rows.push(`Site: ${escapeHtml(parts.siteName)}`);
-  }
-  if (
-    parts.vdlName ||
-    parts.vdlSiteType ||
-    parts.vdlSiteCode ||
-    parts.vdlSizeHa != null
-  ) {
-    const title = parts.vdlName
-      ? escapeHtml(parts.vdlName)
-      : "Vacant / derelict site";
-    rows.push(`<strong>SVDLS</strong><br/>${title}`);
-    if (parts.vdlSiteType) {
-      rows.push(`Type: ${escapeHtml(parts.vdlSiteType)}`);
-    }
-    if (parts.vdlSiteCode) {
-      rows.push(`Site code: ${escapeHtml(parts.vdlSiteCode)}`);
-    }
-    if (parts.vdlSizeHa != null && Number.isFinite(parts.vdlSizeHa)) {
-      rows.push(`Size: ${parts.vdlSizeHa.toLocaleString("en-GB")} ha`);
-    }
-    if (parts.vdlOwnerClass) {
-      rows.push(
-        `Owner class (survey): ${escapeHtml(parts.vdlOwnerClass)}`,
-      );
-    }
-    if (parts.vdlGeometrySource) {
-      rows.push(
-        `Geometry: ${escapeHtml(parts.vdlGeometrySource)}`,
-      );
-    }
   }
   if (parts.lcaClassLabel || parts.lcaCode != null) {
     rows.push(
@@ -2785,24 +2749,8 @@ export default function ScotlandMap() {
               })
             : [];
         const vdlProps = vdlHits[0]?.properties as
-          | {
-              name?: string;
-              site_type?: string;
-              size_ha?: number | string;
-              site_code?: string;
-              owner_class?: string;
-              geometry_source?: string;
-              geometry_source_label?: string;
-              source?: string;
-            }
+          | { source?: string }
           | undefined;
-        const vdlSizeRaw = vdlProps?.size_ha;
-        const vdlSizeHa =
-          typeof vdlSizeRaw === "number"
-            ? vdlSizeRaw
-            : typeof vdlSizeRaw === "string" && vdlSizeRaw !== ""
-              ? Number(vdlSizeRaw)
-              : null;
         const lcaHits =
           map.getLayer("lca-fill") &&
           map.getLayoutProperty("lca-fill", "visibility") === "visible"
@@ -2822,16 +2770,6 @@ export default function ScotlandMap() {
           areaSqm: null,
           ownerType: publicProps?.owner_type || publicProps?.organisation || null,
           siteName: publicProps?.site_name || null,
-          vdlName: vdlProps?.name || null,
-          vdlSiteType: vdlProps?.site_type || null,
-          vdlSizeHa:
-            vdlSizeHa != null && Number.isFinite(vdlSizeHa) ? vdlSizeHa : null,
-          vdlSiteCode: vdlProps?.site_code || null,
-          vdlOwnerClass: vdlProps?.owner_class || null,
-          vdlGeometrySource:
-            vdlProps?.geometry_source_label ||
-            vdlProps?.geometry_source ||
-            null,
           lcaClassLabel: lcaProps?.class_label || null,
           lcaCode: lcaProps?.lccode ?? null,
           source:

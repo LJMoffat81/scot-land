@@ -806,7 +806,7 @@ export default function ScotlandMap() {
   const [panelCollapsed, setPanelCollapsed] = useState(false);
   /** Place card set aside while Layers is open (restore on Layers close). */
   const placeAsideRef = useRef(false);
-  /** Latest panel kind for async identify — must not steal Layers. */
+  /** Latest panel kind for async identify (desktop: must not steal Layers). */
   const panelKindRef = useRef<PanelSlotKind>(panelKind);
   panelKindRef.current = panelKind;
   const [mapStyle, setMapStyle] = useState<MapBasemapId>(DEFAULT_MAP_BASEMAP);
@@ -816,6 +816,9 @@ export default function ScotlandMap() {
       typeof window !== "undefined" &&
       window.innerWidth < PANEL_MOBILE_BREAKPOINT,
   );
+  /** SW-056: narrow = collapse Layers when a place is picked. */
+  const isNarrowPanelRef = useRef(isNarrowPanel);
+  isNarrowPanelRef.current = isNarrowPanel;
   /**
    * Most recently activated legend-capable layer (drawer id) for strip chip.
    */
@@ -1266,7 +1269,9 @@ export default function ScotlandMap() {
       if (map) {
         markerRef.current = placeSelectedMarker(map, lng, lat);
         if (opts.fly) {
-          const layersHoldingFly = panelKindRef.current === "layers";
+          // Desktop: keep Layers; mobile SW-056 collapses Layers for the card.
+          const layersHoldingFly =
+            panelKindRef.current === "layers" && !isNarrowPanelRef.current;
           map.flyTo({
             center: [lng, lat],
             zoom: Math.max(map.getZoom(), 15),
@@ -1284,12 +1289,14 @@ export default function ScotlandMap() {
       setResult(null);
       setSearchNoMatch(false);
       setRestPromptVisible(false);
-      // Layers XOR place: keep Layers open; stash the place for restore on close.
-      // Late map-identify must not unmount the layers drawer mid-interaction.
-      const layersHolding = panelKindRef.current === "layers";
-      if (layersHolding) {
+      // Desktop: keep Layers open; stash the place for restore on close.
+      // Mobile SW-056: collapse Layers so the place card gets the room.
+      const layersOpenNow = panelKindRef.current === "layers";
+      const keepLayersOpen = layersOpenNow && !isNarrowPanelRef.current;
+      if (keepLayersOpen) {
         placeAsideRef.current = true;
       } else {
+        placeAsideRef.current = false;
         setPanelKind("place");
         setPanelCollapsed(false);
         setPanelDetent(opts.fromAddressSearch ? "half" : "peek");
@@ -1297,13 +1304,13 @@ export default function ScotlandMap() {
       if (!panelHistoryRef.current) {
         pushMapUrl({
           center: { lng, lat },
-          panel: layersHolding ? "layers" : "place",
+          panel: keepLayersOpen ? "layers" : "place",
         });
         panelHistoryRef.current = true;
       } else {
         replaceMapUrl({
           center: { lng, lat },
-          panel: layersHolding ? "layers" : "place",
+          panel: keepLayersOpen ? "layers" : "place",
         });
       }
       setAddressLine(opts.label ?? null);

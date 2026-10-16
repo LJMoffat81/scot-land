@@ -866,7 +866,14 @@ input {
   font: inherit;
   font-size: 0.72rem;
   font-weight: 650;
+  /* UI-FIX-1 U1: ≥44×44 if Copy Map reference is restored; glyph padding only. */
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0.12rem 0.45rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid #c5d0dc;
   border-radius: 4px;
   background: #fff;
@@ -1192,6 +1199,13 @@ input {
   line-height: 1;
   padding: 0.35rem 0.45rem;
   cursor: pointer;
+  /* UI-FIX-1 U1: ≥44×44 hit area; glyph size unchanged. */
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hud-search-go {
@@ -1949,8 +1963,12 @@ input {
   background: #fff;
   box-shadow: var(--hud-shadow);
   border-radius: 999px;
-  width: 2.5rem;
-  height: 2.5rem;
+  /* UI-FIX-1 U1: ≥44×44 tap target (was 2.5rem / 40px). */
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2164,7 +2182,14 @@ input {
 }
 
 .download-card-action {
-  display: inline-block;
+  /* UI-FIX-1 U1: ≥44×44 tap target on /developers Download / JSON links. */
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.35rem 0.15rem;
   font-size: 0.88rem;
   font-weight: 650;
   color: var(--slrg-navy);
@@ -3748,8 +3773,10 @@ button.linkish:disabled {
 
   .hud-layers-btn {
     box-sizing: border-box;
+    /* UI-FIX-1 U1: keep ≥44×44 (prefer 48 so height cannot collapse to ~33). */
     min-width: 48px;
     min-height: 48px;
+    height: auto;
     padding: 0.48rem 0.65rem;
     font-size: 0.78rem;
     display: inline-flex;

@@ -80,6 +80,65 @@ function stripDevelopersGlossaryBlock(raw) {
   assert.match(stripped, /keep-me-visible/);
 }
 
+/**
+ * UI-FIX-1 U5 — `/api/ledger.json` may appear only on the exact /developers and
+ * /downloads page HTML (not /developers/api, /developers/checks, …).
+ * Built Next paths look like `.next/server/app/developers.html` or
+ * `.../developers/index.html`.
+ */
+function isLedgerApiPathExemptPage(rel) {
+  return /(?:^|\/)(?:developers|downloads)(?:\/index)?\.html$/i.test(rel);
+}
+
+function proseWithLedgerApiPathStripped(prose) {
+  return prose.split("/api/ledger.json").join(" ");
+}
+
+// U5 self-test: exemption is page-exact; /developers/api still fails on ledger.
+{
+  const ledgerRe = /\bledger\b/i;
+  assert.equal(
+    isLedgerApiPathExemptPage(".next/server/app/developers.html"),
+    true,
+  );
+  assert.equal(
+    isLedgerApiPathExemptPage(".next/server/app/downloads.html"),
+    true,
+  );
+  assert.equal(
+    isLedgerApiPathExemptPage(".next/server/app/developers/index.html"),
+    true,
+  );
+  assert.equal(
+    isLedgerApiPathExemptPage(".next/server/app/downloads/index.html"),
+    true,
+  );
+  assert.equal(
+    isLedgerApiPathExemptPage(".next/server/app/developers/api.html"),
+    false,
+    "/developers/api must NOT get the /api/ledger.json exemption",
+  );
+  assert.equal(
+    isLedgerApiPathExemptPage(".next/server/app/developers/checks.html"),
+    false,
+  );
+  assert.equal(
+    isLedgerApiPathExemptPage(".next/server/app/developers/glossary.html"),
+    false,
+  );
+  const apiPageProse = "See the endpoint /api/ledger.json for the catalog.";
+  assert.match(
+    apiPageProse,
+    ledgerRe,
+    "fixture: /developers/api prose containing /api/ledger.json must still hit ledger ban",
+  );
+  assert.doesNotMatch(
+    proseWithLedgerApiPathStripped(apiPageProse),
+    ledgerRe,
+    "fixture: stripping the exact path removes the only ledger token",
+  );
+}
+
 // Source checks for approved public strings.
 const mission = readFileSync(
   join(frontendRoot, "components/MissionContent.tsx"),
@@ -299,8 +358,18 @@ if (existsSync(nextHtml)) {
     // Shadow ban stays global (including /developers); only the glossary block is exempt.
     const proseForShadow = toProse(stripDevelopersGlossaryBlock(html));
     const proseForTimes = toProse(withoutAriaButtons);
+    // UI-FIX-1 U5: exact path `/api/ledger.json` is allowed on /developers and
+    // /downloads page HTML only (not /developers/api etc.) — strip that literal.
+    const proseForLedger = isLedgerApiPathExemptPage(rel)
+      ? proseWithLedgerApiPathStripped(prose)
+      : prose;
     for (const { name, re } of forbidden) {
-      const scan = name === "shadow" ? proseForShadow : prose;
+      const scan =
+        name === "shadow"
+          ? proseForShadow
+          : name === "ledger"
+            ? proseForLedger
+            : prose;
       if (re.test(scan)) {
         violations.push(`${rel}: ${name}`);
       }

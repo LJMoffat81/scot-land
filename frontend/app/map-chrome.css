@@ -474,24 +474,14 @@
   right: 0.65rem;
   bottom: var(--zoom-bottom, 10px);
   margin: 0;
-  /* (i) sits beside the zoom stack so the basemap can clear zoom by 8px. */
-  display: flex;
-  flex-direction: row-reverse;
-  align-items: flex-end;
-  gap: var(--ctrl-gap, 8px);
-}
-
-.map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl {
-  margin: 0;
-  float: none;
 }
 
 .basemap-switcher {
   position: absolute;
   z-index: 3;
   right: 0.65rem;
-  /* Zoom border box is 48+48 plus the 1px group border on top and bottom. */
-  bottom: calc(var(--zoom-bottom, 10px) + 98px + var(--ctrl-gap, 8px));
+  /* Clear the zoom stack and the compact (i) that sits under it, then 8px. */
+  bottom: calc(var(--zoom-bottom, 10px) + 142px + var(--ctrl-gap, 8px));
   margin: 0;
   padding: 0;
   border: 0;
@@ -658,7 +648,7 @@
 
   .basemap-switcher {
     right: 0.55rem;
-    bottom: calc(var(--zoom-bottom, 10px) + 98px + var(--ctrl-gap, 8px));
+    bottom: calc(var(--zoom-bottom, 10px) + 138px + var(--ctrl-gap, 8px));
   }
 
   /*
@@ -755,7 +745,7 @@
   }
 
   .map-cards-shell.tools-open .map-stage .maplibregl-ctrl-bottom-right {
-    right: 0;
+    right: 0.65rem;
   }
 
   /* UI-TWEAKS-1 T1: shell clips; .layer-panel is the only scroller. */
@@ -1009,7 +999,7 @@
   }
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .basemap-switcher {
     bottom: calc(
-      196px + env(safe-area-inset-bottom, 0px) + 0.5rem + 98px + var(--ctrl-gap, 8px)
+      196px + env(safe-area-inset-bottom, 0px) + 0.5rem + 138px + var(--ctrl-gap, 8px)
     );
   }
 

@@ -29,12 +29,17 @@ from georgist.v14_score_report import (
     PriceColumnReadLog,
     ReportAbort,
     assert_2024_allowed,
+    assert_frozen_set,
     assert_merge_map,
+    assert_score_years,
     build_report,
+    frozen_set_members,
     git_commit,
     input_years,
     mark_score_2024,
+    missing_lock_message,
     prepare_holdout_2023,
+    read_year_files,
     require_commit_sha,
     secondary_estimator_fields,
     sha256_file,
@@ -155,13 +160,36 @@ def _inputs_sha256(args: argparse.Namespace) -> str:
 
 def _input_paths(args: argparse.Namespace) -> dict[str, Path]:
     paths: dict[str, Path] = {}
-    if args.merge_map is not None:
-        paths["merge_map"] = args.merge_map
     if args.check_inputs is not None:
         paths["check_inputs"] = args.check_inputs
     if args.secondary_estimator_json is not None:
         paths["fitted_hedonic"] = args.secondary_estimator_json
+    for name, value in (
+        ("builder_output", getattr(args, "builder_output", None)),
+        ("primary_estimates", getattr(args, "primary_estimates", None)),
+        ("fitted_per_zone", getattr(args, "fitted_per_zone", None)),
+    ):
+        if value is not None:
+            paths[name] = value
     return paths
+
+
+def _frozen_paths(args: argparse.Namespace) -> dict[str, Path] | None:
+    mapping = {
+        "merge_map": args.merge_map,
+        "hedonic_coefs_2021_22": getattr(args, "hedonic_coefs", None),
+        "code_sha8_block": getattr(args, "sha8_block", None),
+        "check3_plot_passes": getattr(args, "check3_plot_passes", None),
+        "check4_rent_route": getattr(args, "check4_rent_route", None),
+        "ur6": getattr(args, "ur6", None),
+        "dz2022_keys": getattr(args, "dz2022_keys", None),
+    }
+    present = [path for path in mapping.values() if path is not None]
+    if not present:
+        return None
+    if len(present) != len(mapping):
+        raise HoldoutLockError("SCORE_2024: REFUSED: frozen_set: expected complete, got partial")
+    return {name: path for name, path in mapping.items() if path is not None}
 
 
 def _extended_main(args: argparse.Namespace) -> int:
@@ -172,7 +200,11 @@ def _extended_main(args: argparse.Namespace) -> int:
     try:
         if (args.holdout_2023 or args.score_2024) and args.lock_path is None:
             raise HoldoutLockError("--lock-path is required")
-        if args.merge_map:
+        frozen_paths = _frozen_paths(args)
+        if args.merge_map and frozen_paths is None:
+            refuse_2024_price_file(args.merge_map.name)
+            assert_merge_map(args.merge_map)
+        elif args.merge_map and args.holdout_2023:
             refuse_2024_price_file(args.merge_map.name)
             assert_merge_map(args.merge_map)
         if args.secondary_estimator_json:
@@ -197,12 +229,24 @@ def _extended_main(args: argparse.Namespace) -> int:
         if args.score_2024:
             if args.check_inputs is None:
                 raise ReportAbort("2024 scoring needs check inputs")
-            years = input_years(args.check_inputs)
-            assert_2024_allowed(
-                lock_path=args.lock_path,
-                inputs_sha256=inputs_sha,
-                years=years,
-            )
+            if args.lock_path is None or not args.lock_path.is_file():
+                raise HoldoutLockError(missing_lock_message(args.lock_path or Path("holdout_2023.lock")))
+            locked = json.loads(args.lock_path.read_text(encoding="utf-8"))
+            if locked.get("frozen_set"):
+                if locked.get("score_2024") is True:
+                    raise HoldoutLockError("second 2024 run refused")
+                if frozen_paths is None:
+                    raise HoldoutLockError("SCORE_2024: REFUSED: frozen_set: expected complete, got absent")
+                assert_frozen_set(locked["frozen_set"], frozen_set_members(frozen_paths))
+                year_paths = list(args.year_file or [])
+                assert_score_years(read_year_files(year_paths))
+            else:
+                years = input_years(args.check_inputs)
+                assert_2024_allowed(
+                    lock_path=args.lock_path,
+                    inputs_sha256=inputs_sha,
+                    years=years,
+                )
             score_2024_scores = _score_holdout(args.check_inputs)
         report = build_report(
             input_paths=input_paths,
@@ -242,6 +286,7 @@ def _extended_main(args: argparse.Namespace) -> int:
                 commit=commit,
                 report_sha256=sha256_file(args.out),
                 lock_path=args.lock_path,
+                frozen_set=None if frozen_paths is None else frozen_set_members(frozen_paths),
             )
         if args.score_2024:
             mark_score_2024(args.lock_path)
@@ -281,6 +326,16 @@ def main(argv: list[str] | None = None) -> int:
         help="Lock file for --holdout-2023 and --score-2024. Required by both.",
     )
     p.add_argument("--merge-map", type=Path, help="Pinned CA2019 x UR3 merge map. Abort on sha256 mismatch.")
+    p.add_argument("--hedonic-coefs", type=Path, help="2021-22 hedonic coefficients in the frozen set.")
+    p.add_argument("--sha8-block", type=Path, help="Code sha8 block in the frozen set.")
+    p.add_argument("--check3-plot-passes", type=Path)
+    p.add_argument("--check4-rent-route", type=Path)
+    p.add_argument("--ur6", type=Path)
+    p.add_argument("--dz2022-keys", type=Path)
+    p.add_argument("--builder-output", type=Path, help="Year file. Recorded, not locked.")
+    p.add_argument("--primary-estimates", type=Path, help="Year file. Recorded, not locked.")
+    p.add_argument("--fitted-per-zone", type=Path, help="Year file. Recorded, not locked.")
+    p.add_argument("--year-file", action="append", type=Path, default=None, help="Year file checked by input_years.")
     args = p.parse_args(argv)
     if _extended(args):
         return _extended_main(args)

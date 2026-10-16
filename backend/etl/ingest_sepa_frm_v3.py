@@ -1,13 +1,17 @@
 """Data Zone shares from SEPA Flood Maps v3.0 medium-likelihood extents.
 
 Reads files already downloaded under data/external/sepa_frm_v3/ (gitignored).
-Uses only present-day medium-likelihood extent layers (`_M`). Rejects
-`_M_CC`, high-likelihood, depth, and velocity files. Checks each file's
-licence statement and aborts unless it says Open Government Licence 3.0.
+Uses only present-day medium-likelihood extent layers whose names contain
+``extent_m`` (not ``extent_m_cc``). Rejects other names, including GeoPackage
+files, which this loader does not read. Checks the licence statement in each
+dataset folder and aborts unless it matches an Open Government Licence or OGL
+statement with an optional "version" before 3.0.
 
-Reprojects to EPSG:27700, intersects the 2022 Data Zones, and stores one
-row per zone: data_zone, pct_area_river, pct_area_coastal, pct_area_surface
-(nearest 1%, 0 to 100), source_version. No flood polygons are stored.
+Reprojects to EPSG:27700 using the CRS named in the file, intersects the 2022
+Data Zones, and stores one row per zone: data_zone, pct_area_river,
+pct_area_coastal, pct_area_surface (nearest 1%, 0 to 100), source_version.
+The denominator is the full Data Zone area, land and water. No flood polygons
+are stored.
 
   python -m etl.ingest_sepa_frm_v3 --replace
 """
@@ -25,9 +29,9 @@ from pathlib import Path
 from typing import Any
 
 import psycopg2
-
-from pyproj import Transformer
-from shapely.geometry import shape
+from pyproj import CRS, Transformer
+from shapely import make_valid
+from shapely.geometry import GeometryCollection, MultiPolygon, Polygon, shape
 from shapely.geometry.base import BaseGeometry
 from shapely.ops import transform, unary_union
 from shapely.strtree import STRtree
@@ -39,15 +43,18 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DIR = REPO_ROOT / "data" / "external" / "sepa_frm_v3"
 TABLE = "sepa_flood_dz"
 SOURCE_VERSION = "v3.0"
-LICENCE_PHRASE = b"Open Government Licence 3.0"
+TARGET_EPSG = 27700
+DZ2022_VINTAGE = 2022
+DZ2022_COUNT = 7392
+# Pinned sha256 of SG_DataZoneBdry_2022.zip (data/config/sources.yaml).
+DZ2022_SHA256 = "421c648480c7d51e32934de9f1b9f6cbbf86c6d8d382aab30a7bb4d2049ef0ec"
+LICENCE_RE = re.compile(
+    rb"(?i)(?:open\s+government\s+licen[cs]e|\bogl\b)\s*(?:(?:version|v)\s*)?3(?:\.0)?"
+)
+EXTENT_M_RE = re.compile(r"extent_m(?!_cc)(?![a-z0-9])")
 KINDS = ("river", "coastal", "surface")
 ZONE_FILES = {"dz.geojson", "data_zones.geojson"}
-GDB_MEDIUM_LAYERS = {
-    "river": "FRM_FH_RIVER_EXTENT_M",
-    "coastal": "FRM_FH_COASTAL_EXTENT_M",
-    "surface": "FRM_FH_SURFACE_WATER_EXTENT_M",
-}
-_TO_BNG = Transformer.from_crs("EPSG:4326", "EPSG:27700", always_xy=True)
+TARGET_CRS = CRS.from_epsg(TARGET_EPSG)
 
 
 class RejectedFloodSource(Exception):
@@ -55,7 +62,7 @@ class RejectedFloodSource(Exception):
 
 
 class LicenceError(Exception):
-    """Licence statement is missing or is not Open Government Licence 3.0."""
+    """Licence statement is missing or is not an Open Government Licence 3.0 form."""
 
 
 def round_percent(covered: float, total: float) -> int:
@@ -85,6 +92,11 @@ def is_rejected_name(name: str) -> bool:
     return False
 
 
+def has_extent_m(name: str) -> bool:
+    """True when ``extent_m`` is present and not followed by ``_cc``."""
+    return EXTENT_M_RE.search(name.lower()) is not None
+
+
 def kind_from_name(name: str) -> str:
     low = name.lower()
     if "coast" in low:
@@ -94,6 +106,18 @@ def kind_from_name(name: str) -> str:
     if "river" in low:
         return "river"
     raise RejectedFloodSource(name)
+
+
+def select_medium_layers(names: list[str]) -> list[tuple[str, str]]:
+    """Allowlist extent_m layer names. Refuse a set with none."""
+    chosen: list[tuple[str, str]] = []
+    for layer_name in names:
+        if is_rejected_name(layer_name) or not has_extent_m(layer_name):
+            continue
+        chosen.append((kind_from_name(layer_name), layer_name))
+    if not chosen:
+        raise RejectedFloodSource("no medium-likelihood extent_m layer")
+    return chosen
 
 
 def _is_zone_file(path: Path) -> bool:
@@ -128,54 +152,106 @@ def iter_inputs(root: Path) -> list[Path]:
 
 def screen_input(path: Path) -> str:
     """Return 'zip', 'gdb', or a kind. Raise when the file is not a medium extent."""
+    if path.suffix.lower() == ".gpkg":
+        raise RejectedFloodSource(path.name)
     if is_rejected_name(path.name):
         raise RejectedFloodSource(path.name)
     if path.suffix.lower() == ".zip":
         return "zip"
     if path.is_dir() and path.suffix.lower() == ".gdb":
         return "gdb"
-    low = path.name.lower()
-    if "extent_m" not in low and path.suffix.lower() not in {".geojson", ".json", ".gpkg"}:
+    if not has_extent_m(path.name):
         raise RejectedFloodSource(path.name)
     return kind_from_name(path.name)
 
 
 def assert_licence(root: Path, data_path: Path) -> None:
-    """Abort unless a statement shipped beside the file says Open Government Licence 3.0."""
-    folders = []
-    for folder in (data_path.parent, root):
-        if folder.is_dir() and folder not in folders:
-            folders.append(folder)
-    for folder in folders:
+    """Abort unless this dataset folder's own statement matches OGL 3.0.
+
+    A statement that only sits in ``root`` does not cover a file in a subfolder.
+    """
+    folder = data_path.parent
+    if folder.is_dir():
         for candidate in sorted(folder.iterdir()):
             if not _is_licence_sidecar(candidate):
                 continue
-            blob = candidate.read_bytes()
-            if LICENCE_PHRASE in blob:
+            if candidate.resolve() == data_path.resolve():
+                continue
+            if LICENCE_RE.search(candidate.read_bytes()):
                 return
     raise LicenceError(
-        f"{data_path.name}: licence statement must say Open Government Licence 3.0"
+        f"{data_path.name}: licence statement in {folder} "
+        f"(download root {root.name} does not count for a subfolder) must match "
+        "Open Government Licence / OGL 3.0"
     )
 
 
-def _as_bng(geom: BaseGeometry) -> BaseGeometry:
-    minx, miny, maxx, maxy = geom.bounds
-    if max(abs(minx), abs(maxx), abs(miny), abs(maxy)) <= 180:
-        return transform(_TO_BNG.transform, geom)
+def crs_from_geojson(payload: dict[str, Any]) -> CRS:
+    """Read the CRS the file itself names. Do not infer one from coordinate size."""
+    raw = payload.get("crs")
+    if not isinstance(raw, dict):
+        raise SystemExit(f"GeoJSON has no CRS; name EPSG:{TARGET_EPSG} or another CRS")
+    props = raw.get("properties") or {}
+    name = props.get("name")
+    code = props.get("code")
+    if name:
+        return CRS.from_user_input(str(name))
+    if code:
+        return CRS.from_user_input(f"EPSG:{code}")
+    raise SystemExit("GeoJSON CRS has no name")
+
+
+def reproject_to_bng(geom: BaseGeometry, source: CRS) -> BaseGeometry:
+    """Reproject to EPSG:27700 and assert that is the CRS of the result."""
+    target = CRS.from_epsg(TARGET_EPSG)
+    if target.to_epsg() != TARGET_EPSG:
+        raise SystemExit(f"reprojection target EPSG:{target.to_epsg()} is not EPSG:27700")
+    if source.to_epsg() != TARGET_EPSG:
+        transformer = Transformer.from_crs(source, target, always_xy=True)
+        geom = transform(transformer.transform, geom)
+    out = target.to_epsg()
+    if out != TARGET_EPSG:
+        raise SystemExit(f"geometry CRS EPSG:{out} is not EPSG:27700")
     return geom
 
 
+def _polygon_parts(geom: BaseGeometry) -> list[BaseGeometry]:
+    if geom.is_empty:
+        return []
+    if isinstance(geom, Polygon):
+        return [] if geom.area <= 0 else [geom]
+    if isinstance(geom, MultiPolygon):
+        return [part for part in geom.geoms if isinstance(part, Polygon) and part.area > 0]
+    if isinstance(geom, GeometryCollection):
+        parts: list[BaseGeometry] = []
+        for part in geom.geoms:
+            parts.extend(_polygon_parts(part))
+        return parts
+    return []
+
+
+def prepare_polygon(geom: BaseGeometry) -> BaseGeometry | None:
+    """make_valid, then keep only polygonal parts."""
+    parts = _polygon_parts(make_valid(geom))
+    if not parts:
+        return None
+    if len(parts) == 1:
+        return parts[0]
+    return MultiPolygon(parts)
+
+
 def _geoms_from_collection(payload: dict[str, Any]) -> list[BaseGeometry]:
+    source = crs_from_geojson(payload)
     features = payload.get("features") or []
     geoms: list[BaseGeometry] = []
     for feature in features:
         raw = feature.get("geometry")
         if not raw:
             continue
-        geom = _as_bng(shape(raw))
-        if geom.is_empty:
+        prepared = prepare_polygon(reproject_to_bng(shape(raw), source))
+        if prepared is None or prepared.is_empty:
             continue
-        geoms.append(geom)
+        geoms.append(prepared)
     return geoms
 
 
@@ -195,12 +271,20 @@ def _zone_code(props: dict[str, Any]) -> str:
 
 
 def zones_from_geojson(path: Path) -> list[tuple[str, BaseGeometry]]:
+    payload = read_geojson(path)
+    source = crs_from_geojson(payload)
     zones: list[tuple[str, BaseGeometry]] = []
-    for feature in read_geojson(path).get("features") or []:
+    for feature in payload.get("features") or []:
         raw = feature.get("geometry")
         if not raw:
             continue
-        zones.append((_zone_code(dict(feature.get("properties") or {})), _as_bng(shape(raw))))
+        prepared = prepare_polygon(reproject_to_bng(shape(raw), source))
+        zones.append(
+            (
+                _zone_code(dict(feature.get("properties") or {})),
+                prepared if prepared is not None else Polygon(),
+            )
+        )
     return zones
 
 
@@ -215,27 +299,37 @@ def coverage_by_zone(
     zones: list[tuple[str, BaseGeometry]],
     floods: list[BaseGeometry],
 ) -> dict[str, int]:
-    """Share of each zone covered by the flood polygons, nearest 1%."""
+    """Share of each zone covered by the flood polygons, nearest 1%.
+
+    The denominator is the full Data Zone area, land and water.
+    """
     if not zones:
         return {}
-    codes = [code for code, _geom in zones]
-    geoms = [geom for _code, geom in zones]
+    prepared_zones: list[tuple[str, BaseGeometry]] = []
+    for code, geom in zones:
+        prepared = prepare_polygon(geom)
+        prepared_zones.append((code, prepared if prepared is not None else Polygon()))
+    codes = [code for code, _geom in prepared_zones]
+    geoms = [geom for _code, geom in prepared_zones]
     parts: dict[str, list[BaseGeometry]] = {code: [] for code in codes}
     if floods:
         tree = STRtree(geoms)
         for flood in floods:
-            if flood.is_empty:
+            flood_geom = prepare_polygon(flood)
+            if flood_geom is None or flood_geom.is_empty:
                 continue
-            for idx in tree.query(flood):
-                zone_geom = geoms[int(idx)]
-                inter = zone_geom.intersection(flood)
-                if inter.is_empty or inter.area <= 0:
-                    continue
-                parts[codes[int(idx)]].append(inter)
+            for idx in tree.query(flood_geom):
+                # make_valid both sides, then keep only polygons after intersection.
+                inter_parts = _polygon_parts(
+                    make_valid(geoms[int(idx)].intersection(flood_geom))
+                )
+                if inter_parts:
+                    parts[codes[int(idx)]].extend(inter_parts)
     out: dict[str, int] = {}
-    for code, geom in zones:
+    for code, geom in prepared_zones:
         pieces = parts[code]
         covered = 0.0 if not pieces else unary_union(pieces).area
+        # Denominator is the full Data Zone area (land and water).
         out[code] = round_percent(covered, geom.area)
     return out
 
@@ -264,7 +358,7 @@ def rows_from_zones(
     return rows
 
 
-def _gdb_medium_layers(gdb: Path) -> list[tuple[str, str]]:
+def _gdb_layer_names(gdb: Path) -> list[str]:
     try:
         proc = subprocess.run(
             ["ogrinfo", "-q", str(gdb)],
@@ -279,24 +373,47 @@ def _gdb_medium_layers(gdb: Path) -> list[tuple[str, str]]:
         if ":" not in line:
             continue
         names.append(line.split(":", 1)[1].strip().split(" ")[0])
-    chosen: list[tuple[str, str]] = []
-    for layer_name in names:
-        if is_rejected_name(layer_name):
+    return names
+
+
+def _crs_from_ogr_payload(payload: dict[str, Any]) -> CRS:
+    layers = payload.get("layers") or [payload]
+    for layer in layers:
+        if not isinstance(layer, dict):
             continue
-        if not layer_name.endswith("_EXTENT_M") and "EXTENT_M" not in layer_name:
-            continue
-        if layer_name.endswith("_M_CC") or "_M_CC" in layer_name:
-            continue
-        chosen.append((kind_from_name(layer_name), layer_name))
-    if not chosen:
-        for kind, layer_name in GDB_MEDIUM_LAYERS.items():
-            chosen.append((kind, layer_name))
-    return chosen
+        for field in layer.get("geometryFields") or []:
+            cs = field.get("coordinateSystem") or {}
+            wkt = cs.get("wkt")
+            if wkt:
+                return CRS.from_wkt(wkt)
+        wkt = layer.get("srs") or layer.get("wkt")
+        if isinstance(wkt, str) and wkt.strip():
+            return CRS.from_wkt(wkt)
+    raise SystemExit("FileGDB layer has no CRS")
+
+
+def _read_gdb_layer_crs(gdb: Path, layer_name: str) -> CRS:
+    try:
+        proc = subprocess.run(
+            ["ogrinfo", "-json", "-so", str(gdb), layer_name],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise SystemExit(f"ogrinfo could not read the CRS for {layer_name}: {exc}") from exc
+    try:
+        payload = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"{layer_name}: ogrinfo did not return a CRS") from exc
+    return _crs_from_ogr_payload(payload)
 
 
 def _geoms_from_gdb(gdb: Path) -> dict[str, list[BaseGeometry]]:
     floods: dict[str, list[BaseGeometry]] = {kind: [] for kind in KINDS}
-    for kind, layer_name in _gdb_medium_layers(gdb):
+    for kind, layer_name in select_medium_layers(_gdb_layer_names(gdb)):
+        # Read the file CRS before converting. ogr2ogr then writes EPSG:27700.
+        _read_gdb_layer_crs(gdb, layer_name)
         dest = gdb.parent / f".{gdb.stem}_{layer_name}.geojson"
         try:
             subprocess.run(
@@ -304,11 +421,13 @@ def _geoms_from_gdb(gdb: Path) -> dict[str, list[BaseGeometry]]:
                     "ogr2ogr",
                     "-f",
                     "GeoJSON",
+                    "-t_srs",
+                    f"EPSG:{TARGET_EPSG}",
+                    "-lco",
+                    "RFC7946=NO",
                     str(dest),
                     str(gdb),
                     layer_name,
-                    "-t_srs",
-                    "EPSG:27700",
                 ],
                 check=True,
                 capture_output=True,
@@ -316,8 +435,14 @@ def _geoms_from_gdb(gdb: Path) -> dict[str, list[BaseGeometry]]:
             )
         except (OSError, subprocess.CalledProcessError) as exc:
             raise SystemExit(f"ogr2ogr failed for {layer_name}: {exc}") from exc
-        floods[kind].extend(_geoms_from_collection(read_geojson(dest)))
+        payload = read_geojson(dest)
         dest.unlink(missing_ok=True)
+        written = crs_from_geojson(payload)
+        if written.to_epsg() != TARGET_EPSG:
+            raise SystemExit(
+                f"{layer_name}: reprojected CRS EPSG:{written.to_epsg()} is not EPSG:27700"
+            )
+        floods[kind].extend(_geoms_from_collection(payload))
     return floods
 
 
@@ -331,10 +456,10 @@ def aggregate_directory(root: Path) -> list[dict[str, Any]]:
     saw_zip = False
     for path in inputs:
         screened = screen_input(path)
-        assert_licence(root, path)
         if screened == "zip":
             saw_zip = True
             continue
+        assert_licence(root, path)
         if screened == "gdb":
             for kind, geoms in _geoms_from_gdb(path).items():
                 floods[kind].extend(geoms)
@@ -374,19 +499,40 @@ def ensure_table(conn) -> None:
 
 
 def load_zones_postgis(conn) -> list[tuple[str, BaseGeometry]]:
-    zones: list[tuple[str, BaseGeometry]] = []
+    """2022 Data Zones, after the pinned sha, SRID 27700, and the 7,392 count."""
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT code, ST_AsGeoJSON(geom)
-            FROM dz_boundaries
-            WHERE vintage = 2022
-            """
+            SELECT sha256
+            FROM dz_boundaries_meta
+            WHERE vintage = %s AND load_scope = 'production'
+            """,
+            (DZ2022_VINTAGE,),
         )
-        for code, geojson in cur.fetchall():
-            zones.append((str(code).strip(), shape(json.loads(geojson))))
-    if not zones:
-        raise SystemExit("2022 Data Zones are not loaded in dz_boundaries")
+        found = cur.fetchone()
+        digest = str(found[0]).lower() if found and found[0] else ""
+        if digest != DZ2022_SHA256:
+            raise SystemExit(
+                "DZ2022 source sha256 does not match the pinned SG_DataZoneBdry_2022 file"
+            )
+        cur.execute(
+            """
+            SELECT code, ST_AsGeoJSON(geom), ST_SRID(geom)
+            FROM dz_boundaries
+            WHERE vintage = %s
+            """,
+            (DZ2022_VINTAGE,),
+        )
+        zones: list[tuple[str, BaseGeometry]] = []
+        for code, geojson, srid in cur.fetchall():
+            if int(srid) != TARGET_EPSG:
+                raise SystemExit(f"dz_boundaries SRID {srid} is not EPSG:27700")
+            prepared = prepare_polygon(shape(json.loads(geojson)))
+            zones.append((str(code).strip(), prepared if prepared is not None else Polygon()))
+    if len(zones) != DZ2022_COUNT:
+        raise SystemExit(
+            f"expected {DZ2022_COUNT} Data Zones for 2022 before writing, got {len(zones)}"
+        )
     return zones
 
 
@@ -396,10 +542,10 @@ def floods_from_directory(root: Path) -> dict[str, list[BaseGeometry]]:
     saw_zip = False
     for path in iter_inputs(root):
         screened = screen_input(path)
-        assert_licence(root, path)
         if screened == "zip":
             saw_zip = True
             continue
+        assert_licence(root, path)
         if screened == "gdb":
             for kind, geoms in _geoms_from_gdb(path).items():
                 floods[kind].extend(geoms)

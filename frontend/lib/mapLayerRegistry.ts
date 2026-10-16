@@ -163,7 +163,7 @@ export const FLOOD_EXTENT_LEGEND =
   "Share of this area in SEPA's medium-likelihood flood extent (today's climate)";
 
 export const FLOOD_EXTENT_CREDIT =
-  "© SEPA 2025. Licensed under the Open Government Licence 3.0.";
+  "©SEPA 2025; this SEPA product is licensed under the Open Government Licence version 3.0.";
 
 const FLOOD_RISK_CLASSES: MapLayerLegendClass[] = [
   { label: "0", color: "#f7fbff" },

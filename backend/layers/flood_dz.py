@@ -30,7 +30,10 @@ LICENCE = "OGL-3.0"
 LICENCE_URL = (
     "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/"
 )
-ATTRIBUTION = "© SEPA 2025. Licensed under the Open Government Licence 3.0."
+ATTRIBUTION = (
+    "©SEPA 2025; this SEPA product is licensed under the "
+    "Open Government Licence version 3.0."
+)
 BBOX_ENDPOINT = "/layers/open/flood-dz"
 NOT_LOADED = "SEPA flood Data Zone table is not loaded yet."
 

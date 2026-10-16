@@ -24,7 +24,8 @@ SG_ATTRIBUTION = (
     "© Crown copyright and database right 2026."
 )
 SEPA_NFRA_ATTRIBUTION = (
-    "© SEPA 2025. Licensed under the Open Government Licence 3.0."
+    "©SEPA 2025; this SEPA product is licensed under the "
+    "Open Government Licence version 3.0."
 )
 HES_ATTRIBUTION = (
     "Contains Historic Environment Scotland and OS data © Historic Environment "

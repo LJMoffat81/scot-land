@@ -17,7 +17,8 @@ import {
 
 const LEGEND =
   "Share of this area in SEPA's medium-likelihood flood extent (today's climate)";
-const CREDIT = "© SEPA 2025. Licensed under the Open Government Licence 3.0.";
+const CREDIT =
+  "©SEPA 2025; this SEPA product is licensed under the Open Government Licence version 3.0.";
 
 function floodBody(url: string): string {
   const parsed = new URL(url);

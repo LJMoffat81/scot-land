@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Mapping, Sequence
 
 import openpyxl
+from openpyxl.cell.cell import MergedCell
+from openpyxl.cell.read_only import EmptyCell
 
 from georgist import surface_rent as sr
 
@@ -153,6 +155,30 @@ def _header_index(cells: Sequence[str]) -> dict[str, int] | None:
     return {name: index for index, name in enumerate(normalised) if name}
 
 
+def _cell_text(cell: object) -> str:
+    """Text of a real cell. Empty and merged fillers contribute nothing."""
+    if cell is None or isinstance(cell, (EmptyCell, MergedCell)):
+        return ""
+    raw = getattr(cell, "value", None)
+    return "" if raw is None else str(raw)
+
+
+# Pair identity uses these blind columns. The zone code is excluded so a
+# cartesian copy is one row. Price columns are not inputs.
+_KEY_COLUMNS = tuple(name for name in BLIND_COLUMNS if name != "data zone code")
+
+
+def _blind_hash(projected: Mapping[str, str]) -> str:
+    """Hash of the blind columns except the zone code. Nothing else is included."""
+    digest = hashlib.sha256()
+    for name in _KEY_COLUMNS:
+        digest.update(name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(str(projected.get(name, "")).encode("utf-8"))
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
 def _project(fields: Sequence[str], index_by_name: Mapping[str, int], names: Sequence[str]) -> dict[str, str]:
     """Copy only the requested columns. Other cells are not stored."""
     projected: dict[str, str] = {}
@@ -166,24 +192,36 @@ def _project(fields: Sequence[str], index_by_name: Mapping[str, int], names: Seq
     return projected
 
 
-def _read_csv_rows(path: Path, names: Sequence[str]) -> list[dict[str, str]]:
-    with path.open(encoding="utf-8-sig", newline="") as handle:
-        rows = list(csv.reader(handle))
-    header_at = None
-    index_by_name: dict[str, int] | None = None
-    for offset, cells in enumerate(rows):
-        found = _header_index(cells)
-        if found is not None and all(name in found for name in names):
-            header_at = offset
-            index_by_name = found
-            break
-    if header_at is None or index_by_name is None:
-        raise InputBuildError("C14 header row not found")
-    projected: list[dict[str, str]] = []
-    for cells in rows[header_at + 1 :]:
-        if not any(str(cell).strip() for cell in cells):
+def _project_xlsx_row(row: Sequence[object], index_by_name: Mapping[str, int], names: Sequence[str]) -> dict[str, str]:
+    """Read blind columns only. Other cells in the row are not touched."""
+    projected: dict[str, str] = {}
+    for name in names:
+        index = index_by_name[name]
+        if index >= len(row):
+            projected[name] = ""
             continue
-        projected.append(_project(cells, index_by_name, names))
+        projected[name] = _cell_text(row[index]).strip()
+    return projected
+
+
+def _read_csv_rows(path: Path, names: Sequence[str]) -> list[dict[str, str]]:
+    index_by_name: dict[str, int] | None = None
+    projected: list[dict[str, str]] = []
+    with path.open(encoding="utf-8-sig", newline="") as handle:
+        reader = csv.reader(handle)
+        for cells in reader:
+            found = _header_index(cells)
+            if found is not None and all(name in found for name in names):
+                index_by_name = found
+                break
+        if index_by_name is None:
+            raise InputBuildError("C14 header row not found")
+        for cells in reader:
+            item = _project(cells, index_by_name, names)
+            if not any(item[name].strip() for name in names):
+                continue
+            item["row_identity"] = _blind_hash(item)
+            projected.append(item)
     return projected
 
 
@@ -194,31 +232,19 @@ def _read_xlsx_rows(path: Path, names: Sequence[str]) -> list[dict[str, str]]:
             raise InputBuildError("workbook has no C14 sheet")
         sheet = workbook["C14"]
         index_by_name: dict[str, int] | None = None
-        wanted: set[int] | None = None
         projected: list[dict[str, str]] = []
         for row in sheet.iter_rows():
-            if wanted is None or index_by_name is None:
-                texts = ["" if cell.value is None else str(cell.value) for cell in row]
+            if index_by_name is None:
+                texts = [_cell_text(cell) for cell in row]
                 found = _header_index(texts)
                 if found is not None and all(name in found for name in names):
                     index_by_name = found
-                    wanted = {found[name] for name in names}
                 continue
-            fields = [""] * (max(wanted) + 1)
-            saw_value = False
-            for cell in row:
-                index = cell.column - 1
-                if index not in wanted:
-                    continue
-                raw = cell.value
-                text = "" if raw is None else str(raw)
-                if text.strip():
-                    saw_value = True
-                if index < len(fields):
-                    fields[index] = text
-            if not saw_value:
+            item = _project_xlsx_row(row, index_by_name, names)
+            if not any(item[name].strip() for name in names):
                 continue
-            projected.append(_project(fields, index_by_name, names))
+            item["row_identity"] = _blind_hash(item)
+            projected.append(item)
         if index_by_name is None:
             raise InputBuildError("C14 header row not found")
         return projected
@@ -491,6 +517,7 @@ def _prepare_rows(raw_rows: Sequence[Mapping[str, str]]) -> tuple[list[dict], di
                 "volume": volume,
                 "suppressed": suppressed,
                 "volume_text": str(raw.get("volume", "")).strip(),
+                "row_identity": raw.get("row_identity"),
             }
         )
     if scotland_volume is None:
@@ -543,7 +570,8 @@ def _dz2022_status(
             "c14_rows": len(by_code.get(code, [])),
         }
 
-    # One sum per lookup pair. The key omits the code, so a cartesian join is not doubled.
+    # One sum per lookup pair. The key is a hash of the blind columns except
+    # the zone code, so a cartesian copy is not doubled and price cells are unused.
     seen: set[tuple] = set()
     pair_volume: dict[str, int] = {name: 0 for name in pairs}
     raw_sum = 0
@@ -554,7 +582,10 @@ def _dz2022_status(
         if code not in collision_codes:
             continue
         pair_name = name_for_code[code]
-        key = (row["year"], pair_name, row["volume_text"])
+        identity = row.get("row_identity")
+        if not isinstance(identity, str) or len(identity) != 64:
+            raise InputBuildError("C14 row has no content key")
+        key = (pair_name, identity)
         if key in seen:
             continue
         seen.add(key)

@@ -52,6 +52,7 @@ from layers.layers_add2_catalog import agg_is_public, tile_is_public
 from layers.public_land import query_bbox as public_land_bbox
 from layers.sepa_car import query_bbox as sepa_car_bbox
 from layers.naturescot import LayerUnavailable as NatureScotUnavailable
+from layers.naturescot import dumps_feature_collection
 from layers.naturescot import query_designations_bbox as naturescot_designations_bbox
 from layers.naturescot import query_sssi_bbox as sssi_bbox
 from layers.scotwind import LayerUnavailable as ScotwindUnavailable
@@ -538,14 +539,21 @@ def layer_open_sssi(
     north: float = Query(..., description="BBox north latitude"),
     east: float = Query(..., description="BBox east longitude"),
     max_features: int = Query(default=80, ge=1, le=80),
+    z: float | None = Query(default=None, ge=0, le=22),
 ) -> JSONResponse:
-    """NatureScot SSSI polygons (OGL-3.0). Constraint overlay — no money figures, no rent row."""
+    """NatureScot SSSI polygons (OGL-3.0). Constraint overlay — no money figures, no rent row.
+
+    Geometry is simplified for zoom `z` (or the bbox span) and capped at 500 KB
+    for z6–z9 and 1 MB at any finer zoom.
+    """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     try:
-        payload = sssi_bbox(south, west, north, east, max_features=max_features)
+        payload = sssi_bbox(
+            south, west, north, east, max_features=max_features, zoom=z
+        )
     except NatureScotUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return JSONResponse(payload)
+    return Response(content=dumps_feature_collection(payload), media_type="application/json")
 
 
 @router.get("/layers/open/naturescot-designations")
@@ -555,16 +563,21 @@ def layer_open_naturescot_designations(
     north: float = Query(..., description="BBox north latitude"),
     east: float = Query(..., description="BBox east longitude"),
     max_features: int = Query(default=80, ge=1, le=80),
+    z: float | None = Query(default=None, ge=0, le=22),
 ) -> JSONResponse:
-    """NatureScot SPA/SAC/NNR polygons (OGL-3.0). Constraint overlay — no money figures, no rent row."""
+    """NatureScot SPA/SAC/NNR polygons (OGL-3.0). Constraint overlay — no money figures, no rent row.
+
+    Geometry is simplified for zoom `z` (or the bbox span) and capped at 500 KB
+    for z6–z9 and 1 MB at any finer zoom.
+    """
     _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
     try:
         payload = naturescot_designations_bbox(
-            south, west, north, east, max_features=max_features
+            south, west, north, east, max_features=max_features, zoom=z
         )
     except NatureScotUnavailable as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    return JSONResponse(payload)
+    return Response(content=dumps_feature_collection(payload), media_type="application/json")
 
 
 @router.get(

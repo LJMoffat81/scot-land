@@ -17,6 +17,7 @@ skips it; /health.routers reports why).
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import ipaddress
 import json
 import math
@@ -60,6 +61,7 @@ from layers.councils_layer import build_councils_agr_geojson
 from layers.grid_layer import build_w3w_agr_grid
 from layers.platform import platform_catalog
 from spatial.address import NominatimUnavailable, search_door, search_place
+from layers.naturescot import dumps_feature_collection
 from spatial.context_tiles import (
     fetch_context_geojson,
     fetch_context_tile,
@@ -799,8 +801,11 @@ async def layer_context_tiles(layer_id: str, z: int, x: int, y: int) -> Response
 
 
 @router.get("/layers/context/{layer_id}")
-def layer_context_features(layer_id: str) -> JSONResponse:
-    """Allowlisted oil, lease, or renewable features. Empty when unknown."""
+def layer_context_features(layer_id: str) -> Response:
+    """Allowlisted oil, lease, or renewable features. Empty when unknown.
+
+    Oil and gas is simplified to 500 KB and cached for a day with an ETag.
+    """
     try:
         geo = fetch_context_geojson(layer_id)
     except Exception:
@@ -809,6 +814,16 @@ def layer_context_features(layer_id: str) -> JSONResponse:
             "features": [],
             "meta": {"layer": layer_id, "ok": False, "count": 0},
         }
+    if layer_id == "oil-fields":
+        body = dumps_feature_collection(geo)
+        return Response(
+            content=body,
+            media_type="application/json",
+            headers={
+                "Cache-Control": "public, max-age=86400",
+                "ETag": f'"{hashlib.sha256(body).hexdigest()}"',
+            },
+        )
     return JSONResponse(
         geo,
         headers={"Cache-Control": "public, max-age=3600"},

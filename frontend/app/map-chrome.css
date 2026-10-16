@@ -256,6 +256,13 @@
     overflow: visible;
   }
 
+  /* UI-TWEAKS-1: when Layers sheet is open, keep search-miss card above it. */
+  .app-shell.place-open.tools-open .hud-place.place-card.place-card-search-miss,
+  .app-shell.place-open.tools-open .place-card-stub.place-card-search-miss {
+    bottom: calc(var(--layers-sheet-height, 55dvh) + 0.5rem);
+    max-height: min(28dvh, 12rem);
+  }
+
   .app-shell.place-open .hud-scotland:not(.legend-open) {
     bottom: calc(
       7.4rem + min(52dvh, calc(100dvh - var(--hud-height, 8rem) - 8rem)) +
@@ -617,10 +624,9 @@
     right: calc(min(332px, calc(100vw - 2rem)) + 1.1rem + 0.5rem);
   }
 
-  /* Keep the right drawer within the map stage so it cannot paint over chrome. */
+  /* UI-TWEAKS-1 T1: shell clips; .layer-panel is the only scroller. */
   .app-shell.tools-open .hud-tools {
-    max-height: calc(100% - 8.5rem);
-    overflow-x: hidden;
-    overflow-y: auto;
+    max-height: none;
+    overflow: hidden;
   }
 }

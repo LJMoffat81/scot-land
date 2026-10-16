@@ -139,6 +139,14 @@ export function filterNoise(errors: string[]): string[] {
     if (/sprite|glyph/i.test(text) && /failed|error|load|404|503/i.test(text)) {
       return false;
     }
+    // OpenFreeMap glyph ranges are fetched cross-origin. A missing CORS
+    // header on that host is this known console line, not an application fault.
+    if (
+      /tiles\.openfreemap\.org\/fonts\//i.test(text) &&
+      /CORS policy|blocked by CORS/i.test(text)
+    ) {
+      return false;
+    }
     return true;
   });
 }
@@ -283,6 +291,15 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ layers: [] }),
+    });
+  });
+  // Glyph PBFs are fetched with fetch(). CI must not depend on the tile host
+  // sending Access-Control-Allow-Origin. An empty protobuf is zero glyphs.
+  await page.route("**/tiles.openfreemap.org/fonts/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/x-protobuf",
+      body: Buffer.alloc(0),
     });
   });
   await page.route("**/health**", async (route) => {

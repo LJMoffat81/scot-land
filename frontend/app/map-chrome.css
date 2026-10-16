@@ -159,7 +159,8 @@
     display: none;
   }
 
-  /* UI-FIX-1 U1: attribution (i) ≥44×44; visual glyph stays MapLibre-sized. */
+  /* UI-FIX-1 U1: attribution (i) ≥44×44; visual glyph stays MapLibre-sized.
+     UI-FIX-2: the 24px glyph must not tile inside the 44px hit target (2×2). */
   .map-stage .maplibregl-ctrl-attrib-button {
     box-sizing: border-box;
     min-width: 44px !important;
@@ -170,6 +171,9 @@
     align-items: center;
     justify-content: center;
     padding: 0 !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 24px 24px !important;
   }
 
   .map-footer {
@@ -775,6 +779,14 @@
     bottom: var(--layers-panel-bottom, 1.75rem);
   }
 
+  /* Place card hugs its content — a stretched column left an empty block
+     under the footer (SW-061 companion). Layers still fills the column. */
+  .map-panel-slot--place {
+    bottom: auto;
+    height: auto;
+    max-height: calc(100dvh - var(--hud-height, 6.5rem) - 2.4rem);
+  }
+
   .map-panel-handle {
     display: none;
   }
@@ -835,13 +847,18 @@
   }
 
   .map-panel-slot--half {
-    height: 55dvh;
-    max-height: 55dvh;
+    /* 8px under 55dvh so the lifted (i) stays above the sheet at 390×844.
+       MAP-CARDS allows ±48px on this detent. */
+    height: calc(55dvh - 8px);
+    max-height: calc(55dvh - 8px);
   }
 
   .map-panel-slot--full {
-    height: calc(100dvh - 64px);
-    max-height: calc(100dvh - 64px);
+    /* Clear the wrapped mobile HUD (logo row + search). 64px left the
+       Layers title under the search bar (SW-062). */
+    top: calc(var(--hud-height, 9.5rem) + 0.5rem);
+    height: auto;
+    max-height: none;
   }
 
   .map-cards-shell.panel-open.map-narrow[data-detent="full"] .basemap-switcher,
@@ -872,10 +889,16 @@
   }
 
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .maplibregl-ctrl-bottom-right {
-    bottom: calc(55dvh + 0.5rem) !important;
+    /* Drop the stack until it clears the basemap tile pinned under the HUD.
+       bottom: 55dvh+0.5rem left zoom through that tile. */
+    bottom: auto !important;
+    top: calc(var(--hud-height, 9.5rem) + 65px + 0.15rem);
   }
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .basemap-switcher {
-    bottom: calc(55dvh + 48px + 48px + 4.5rem);
+    /* Half sheet used to add the closed-map 4.5rem clearance on top of the
+       lifted zoom stack, which put Detailed through the search/top bar. */
+    bottom: auto;
+    top: calc(var(--hud-height, 9.5rem) + 2px);
   }
 }
 
@@ -926,6 +949,13 @@
 
 .legend-strip-chevron {
   opacity: 0.55;
+}
+
+/* One attribution glyph. MapLibre's 24px icon repeats if the hit target grows. */
+.map-stage .maplibregl-ctrl-attrib-button {
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 24px 24px;
 }
 
 .map-attribution-line {
@@ -998,7 +1028,8 @@
   position: absolute;
   z-index: 5;
   left: 50%;
-  top: calc(var(--hud-height, 6.5rem) + 1rem);
+  /* Sit below the research banner. hud + 1rem left the "…a layer." tip under it. */
+  top: calc(var(--hud-height, 6.5rem) + 5.25rem);
   transform: translateX(-50%);
   margin: 0;
   padding: 0.55rem 0.9rem;
@@ -1051,10 +1082,11 @@
 
 @media (max-width: 899px) {
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .identify-at-centre {
-    bottom: calc(180px + env(safe-area-inset-bottom, 0px) + 0.75rem);
+    bottom: calc(180px + env(safe-area-inset-bottom, 0px) + 0.35rem + 44px + 8px);
   }
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .identify-at-centre {
-    bottom: calc(55dvh + env(safe-area-inset-bottom, 0px) + 0.75rem);
+    /* Attribution line is ~44px (All sources hit target) above the sheet. */
+    bottom: calc(55dvh + env(safe-area-inset-bottom, 0px) + 0.35rem + 44px + 8px);
   }
 }
 

@@ -551,6 +551,8 @@ function mapPanelPadding(opts?: {
   panelOpen?: boolean;
   detent?: PanelDetent;
   collapsed?: boolean;
+  /** Mobile Layers uses a 62dvh sheet, not the full-height place sheet. */
+  layersSheet?: boolean;
 }): maplibregl.PaddingOptions {
   const narrow =
     typeof window !== "undefined" &&
@@ -567,7 +569,9 @@ function mapPanelPadding(opts?: {
         : 800;
     const sheet =
       opts.detent === "full"
-        ? Math.max(vh - 64, 120)
+        ? opts.layersSheet
+          ? vh * 0.62
+          : Math.max(vh - 64, 120)
         : opts.detent === "half"
           ? vh * 0.55
           : 180;
@@ -626,6 +630,24 @@ function readZoneBounds(data: {
   );
 }
 
+function fitScotlandNational(map: Map) {
+  const narrow =
+    typeof window !== "undefined" && window.innerWidth <= 900;
+  map.fitBounds(
+    [
+      [-8.05, 54.48],
+      [-0.55, 60.88],
+    ],
+    {
+      padding: narrow
+        ? { top: 132, bottom: 72, left: 12, right: 16 }
+        : { top: 96, bottom: 36, left: 24, right: 28 },
+      duration: 0,
+      maxZoom: 7.4,
+    },
+  );
+}
+
 function frameMatchedZone(
   map: Map,
   lng: number,
@@ -642,6 +664,7 @@ function frameMatchedZone(
       {
         padding: ZONE_FIT_PADDING,
         maxZoom: ZONE_FIT_MAX_ZOOM,
+        duration: 0,
         essential: true,
       },
     );
@@ -650,6 +673,7 @@ function frameMatchedZone(
   map.flyTo({
     center: [lng, lat],
     zoom: Math.max(map.getZoom(), ZONE_PIN_MIN_ZOOM),
+    duration: 0,
     essential: true,
     padding: pinPadding,
   });
@@ -707,6 +731,18 @@ export default function ScotlandMap() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
   const lookupGen = useRef(0);
+  /** Zone fit requested by search or dz= reload. The panel padding ease can
+   * cancel a fit that already started, so the padding effect applies this
+   * again after that ease. */
+  const pendingZoneFrameRef = useRef<{
+    gen: number;
+    lng: number;
+    lat: number;
+    bounds: ZoneBounds | null;
+    pinPadding?: maplibregl.PaddingOptions;
+  } | null>(null);
+  /** Show Scotland: panel-close padding must not cancel the national fit. */
+  const pendingNationalFitRef = useRef(false);
   const [mapReady, setMapReady] = useState(false);
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -1320,6 +1356,7 @@ export default function ScotlandMap() {
     // Invalidate in-flight identify / search so a late place_card_v1 cannot
     // resurrect the sheet after Esc / × (mobile detent e2e).
     lookupGen.current += 1;
+    pendingZoneFrameRef.current = null;
     identifyAbortRef.current?.abort();
     identifyAbortRef.current = null;
     setResult(null);
@@ -1346,26 +1383,14 @@ export default function ScotlandMap() {
     clearPlace();
     const map = mapRef.current;
     if (!map) return;
-    const narrow = window.innerWidth <= 900;
+    pendingNationalFitRef.current = true;
     // Defer past panel-close padding easeTo(duration:0) so it cannot cancel
     // this fitBounds mid-flight (sea-stub national maxZoom e2e on desktop).
     window.setTimeout(() => {
       const live = mapRef.current;
-      if (!live) return;
+      if (!live || !pendingNationalFitRef.current) return;
       live.stop();
-      live.fitBounds(
-        [
-          [-8.05, 54.48],
-          [-0.55, 60.88],
-        ],
-        {
-          padding: narrow
-            ? { top: 132, bottom: 72, left: 12, right: 16 }
-            : { top: 96, bottom: 36, left: 24, right: 28 },
-          animate: true,
-          maxZoom: 7.4,
-        },
-      );
+      fitScotlandNational(live);
     }, 0);
   }, [clearPlace]);
 
@@ -1540,12 +1565,21 @@ export default function ScotlandMap() {
           }
         }
         if (opts.frameZone && gen === lookupGen.current) {
-          // The panel padding ease runs after this paint and would cancel a
-          // fit that started in the same turn.
+          // The panel padding ease can land after this turn and cancel a fit.
+          // Keep the request so that ease applies the same frame afterwards.
+          pendingZoneFrameRef.current = {
+            gen,
+            lng,
+            lat,
+            bounds: zoneBounds,
+            pinPadding,
+          };
           window.setTimeout(() => {
             if (gen !== lookupGen.current) return;
             const liveMap = mapRef.current;
-            if (liveMap) frameMatchedZone(liveMap, lng, lat, zoneBounds, pinPadding);
+            if (!liveMap) return;
+            liveMap.stop();
+            frameMatchedZone(liveMap, lng, lat, zoneBounds, pinPadding);
           }, 0);
         }
         // Designer place card (place_card_v1) — ownership / sources; no £.
@@ -1840,9 +1874,28 @@ export default function ScotlandMap() {
           (isNarrowPanel && panelKind === "layers"),
         detent: panelDetent,
         collapsed: panelCollapsed,
+        layersSheet: isNarrowPanel && panelKind === "layers",
       }),
       duration: 0,
     });
+    if (pendingNationalFitRef.current) {
+      pendingNationalFitRef.current = false;
+      map.stop();
+      fitScotlandNational(map);
+      return;
+    }
+    const pending = pendingZoneFrameRef.current;
+    if (pending && pending.gen === lookupGen.current) {
+      pendingZoneFrameRef.current = null;
+      map.stop();
+      frameMatchedZone(
+        map,
+        pending.lng,
+        pending.lat,
+        pending.bounds,
+        pending.pinPadding,
+      );
+    }
   }, [mapReady, panelKind, panelDetent, panelCollapsed, isNarrowPanel]);
 
   const openPostcode = async (postcode: string, generation: number) => {

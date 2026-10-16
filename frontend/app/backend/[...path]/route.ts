@@ -87,6 +87,8 @@ async function proxy(request: Request, context: Ctx): Promise<Response> {
       Accept: request.headers.get("Accept") || "application/json",
       "X-Forwarded-For": visitorAddress(request),
     };
+    const ifNoneMatch = request.headers.get("If-None-Match");
+    if (ifNoneMatch) headers["If-None-Match"] = ifNoneMatch;
     const proxySecret = process.env.SCOT_PROXY_SECRET;
     if (proxySecret) headers["X-Scotland-Proxy"] = proxySecret;
 
@@ -108,12 +110,21 @@ async function proxy(request: Request, context: Ctx): Promise<Response> {
     const ct = upstream.headers.get("Content-Type");
     if (ct) responseHeaders.set("Content-Type", ct);
     const cache = upstream.headers.get("Cache-Control");
+    const etag = upstream.headers.get("ETag");
+    if (etag) responseHeaders.set("ETag", etag);
     // HOME-TUNNEL: GET API responses cache for 5 minutes unless upstream forbids it.
+    // A longer upstream max-age is kept (oil and gas is a day) together with its ETag.
     const method = request.method.toUpperCase();
     const upstreamForbids =
       !!cache && /\b(no-store|private)\b/i.test(cache);
+    const maxAgeMatch = cache?.match(/max-age=(\d+)/i);
+    const upstreamMaxAge = maxAgeMatch ? Number(maxAgeMatch[1]) : null;
     if ((method === "GET" || method === "HEAD") && !upstreamForbids) {
-      responseHeaders.set("Cache-Control", "public, max-age=300");
+      if (cache && upstreamMaxAge !== null && upstreamMaxAge > 300) {
+        responseHeaders.set("Cache-Control", cache);
+      } else {
+        responseHeaders.set("Cache-Control", "public, max-age=300");
+      }
     } else if (cache) {
       responseHeaders.set("Cache-Control", cache);
     }

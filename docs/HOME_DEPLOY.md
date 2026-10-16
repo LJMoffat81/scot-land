@@ -189,7 +189,8 @@ stay open. Identity rules stay in the Cloudflare account — not in git.
 - Static assets (`/_next/static`, mark image, swagger-ui) and map tiles: long
   `Cache-Control` lifetimes.
 - GET `/backend/*` responses: `public, max-age=300` (5 minutes) unless the
-  upstream already sent `no-store` / `private`.
+  upstream already sent `no-store` / `private`, or a longer `max-age` (kept,
+  with `ETag`). The tunnel template does not rewrite these headers.
 
 ## Daily PostGIS backup (14 copies)
 

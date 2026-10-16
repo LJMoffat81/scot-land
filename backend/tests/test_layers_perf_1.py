@@ -22,7 +22,10 @@ BUDGET_Z6 = 500 * 1024
 BUDGET_ANY = 1024 * 1024
 
 _SIMPLIFY_SQL = re.compile(
-    r"ST_AsGeoJSON\(\s*ST_SimplifyPreserveTopology\(.+?\),\s*5\s*\)",
+    r"ST_Transform\(\s*"
+    r"ST_SimplifyPreserveTopology\(\s*"
+    r"ST_MakeValid\(\s*ST_Transform\(\s*geom\s*,\s*27700\s*\)\s*\)\s*,"
+    r".+?4326\s*\)\s*,\s*5\s*\)",
     re.S,
 )
 

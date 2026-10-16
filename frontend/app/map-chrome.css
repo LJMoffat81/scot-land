@@ -1073,6 +1073,23 @@
   vertical-align: middle;
 }
 
+.protected-sites-zoom-hint {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: calc(var(--hud-height, 6.5rem) + 5.25rem);
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.55rem 0.9rem;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(11, 30, 58, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(11, 30, 58, 0.12);
+  font-size: 0.92rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
 .map-rest-prompt {
   position: absolute;
   z-index: 5;

@@ -177,10 +177,12 @@ def zoom_for_view(
     return max(0.0, min(22.0, math.log2(360.0 / span)))
 
 
-def simplify_tolerance_deg(zoom: float) -> float:
-    """About two screen pixels in degrees at this Web Mercator zoom."""
-    pixel = 360.0 / (256.0 * (2.0 ** zoom))
-    return max(pixel * 2.0, 1e-5)
+def simplify_tolerance_m(zoom: float) -> float:
+    """About two screen pixels in metres at 57°N for this Web Mercator zoom."""
+    metres_per_pixel = (156543.03392804097 * math.cos(math.radians(57.0))) / (
+        2.0 ** zoom
+    )
+    return max(metres_per_pixel * 2.0, 1.0)
 
 
 def payload_byte_budget(zoom: float) -> int:
@@ -228,8 +230,6 @@ def _geometry_under(geom: dict[str, Any] | None, tolerance: float) -> dict[str, 
             return None
         simple = parsed.simplify(tolerance, preserve_topology=True)
         if simple.is_empty:
-            simple = parsed.envelope
-        if simple.is_empty:
             return None
         mapped = mapping(simple)
         if "coordinates" in mapped:
@@ -249,11 +249,14 @@ def _with_features(payload: dict[str, Any], features: list[dict[str, Any]]) -> d
 
 
 def cap_feature_collection(payload: dict[str, Any], budget: int) -> dict[str, Any]:
-    """Simplify until the compact JSON body is within `budget`. Keep a feature."""
+    """Simplify until the compact JSON fits `budget`. Never emit a bounding box.
+
+    When every simplification is still over the budget, return no features and
+    set ``meta.hidden_below_zoom``. The map asks the visitor to zoom in.
+    """
     original = [row for row in (payload.get("features") or []) if isinstance(row, dict)]
     if not original:
         return payload
-    last = payload
     for tolerance in (0.0, 0.001, 0.005, 0.02, 0.08, 0.25, 1.0):
         features: list[dict[str, Any]] = []
         for feature in original:
@@ -264,33 +267,26 @@ def cap_feature_collection(payload: dict[str, Any], budget: int) -> dict[str, An
         if not features:
             continue
         candidate = _with_features(payload, features)
-        last = candidate
         if len(dumps_feature_collection(candidate)) <= budget:
             return candidate
-    envelopes: list[dict[str, Any]] = []
-    for feature in original:
-        try:
-            parsed = shape(feature["geometry"])
-            if parsed.is_empty:
-                continue
-            geom = mapping(parsed.envelope)
-            if "coordinates" in geom:
-                geom["coordinates"] = _round_coords(geom["coordinates"])
-        except Exception:
-            continue
-        envelopes.append({**feature, "geometry": geom})
-    if not envelopes:
-        return last
-    kept = list(envelopes)
-    while len(kept) > 1 and len(dumps_feature_collection(_with_features(payload, kept))) > budget:
-        kept.pop()
-    return _with_features(payload, kept)
+    hidden = _with_features(payload, [])
+    meta = dict(hidden.get("meta") or {})
+    meta["hidden_below_zoom"] = True
+    meta["count"] = 0
+    return {**hidden, "meta": meta}
 
 
 def _protected_geom_sql() -> str:
+    """Simplify in British National Grid metres, then return WGS84 GeoJSON."""
     return f"""
             ST_AsGeoJSON(
-                ST_SimplifyPreserveTopology(ST_MakeValid(geom), %s),
+                ST_Transform(
+                    ST_SimplifyPreserveTopology(
+                        ST_MakeValid(ST_Transform(geom, 27700)),
+                        %s
+                    ),
+                    4326
+                ),
                 {COORD_DECIMALS}
             )::json AS geometry"""
 
@@ -316,7 +312,7 @@ def query_sssi_bbox(
     require_sssi_loaded()
     cap = max(1, min(int(max_features), MAX_FEATURES))
     view_zoom = zoom_for_view(south, west, north, east, zoom)
-    tolerance = simplify_tolerance_deg(view_zoom)
+    tolerance = simplify_tolerance_m(view_zoom)
     meta = sssi_source_meta()
     sql = f"""
         SELECT
@@ -398,7 +394,7 @@ def query_designations_bbox(
     require_designations_loaded()
     cap = max(1, min(int(max_features), MAX_FEATURES))
     view_zoom = zoom_for_view(south, west, north, east, zoom)
-    tolerance = simplify_tolerance_deg(view_zoom)
+    tolerance = simplify_tolerance_m(view_zoom)
     meta = designations_source_meta()
     sql = f"""
         SELECT

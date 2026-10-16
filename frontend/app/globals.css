@@ -1161,6 +1161,9 @@ input {
   margin: 0.22rem 0.22rem 0.22rem 0;
   border-radius: 999px;
   cursor: pointer;
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .search-suggest {

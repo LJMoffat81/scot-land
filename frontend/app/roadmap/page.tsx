@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import ContentPageFooter from "@/components/ContentPageFooter";
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
+import { AIM_TO_COVER } from "@/lib/aimToCover";
 import { LAYERS_ADD_WAITING } from "@/lib/layersAddRegistry";
 import { MAP_LAYER_REGISTRY } from "@/lib/mapLayerRegistry";
 import { absoluteOgImageUrl, OG_IMAGES } from "@/lib/socialMeta";
@@ -59,160 +60,6 @@ const COMING_TO_THE_MAP: ReadonlyArray<{
   },
 ];
 
-type AimStatus = "Live" | "In progress" | "Not started" | "Later";
-
-type AimRow = {
-  name: string;
-  plain: string;
-  status: AimStatus;
-};
-
-type AimGroup = {
-  id: string;
-  heading: string;
-  rows: readonly AimRow[];
-};
-
-/**
- * RENTS-1 Part 2, one row each.
- * Live only when the public site shows that rent. Amounts are withheld, and the
- * working map layers (wind, seabed leases, oil fields, council fill) are context
- * with no rent figure — so none are Live.
- * In progress: the place card already covers homes, or a live Layers switch
- * paints that subject today.
- * Later: parked after the current homes work, or a breakdown the card does not show.
- */
-const AIM_TO_COVER: readonly AimGroup[] = [
-  {
-    id: "land",
-    heading: "Land (Annual Ground Rent)",
-    rows: [
-      {
-        name: "Site rent: homes",
-        plain:
-          "Yearly rental value of the land under homes, without the buildings.",
-        status: "In progress",
-      },
-      {
-        name: "Site rent: business",
-        plain:
-          "Yearly rental value of the land under shops, offices and works.",
-        status: "Later",
-      },
-      {
-        name: "Rural and farmland values",
-        plain:
-          "Homes rarely sell in the countryside, so house-sale methods don't work there. We will use published farmland price and rent surveys, plus land capability (soil) maps.",
-        status: "Later",
-      },
-      {
-        name: "Planning uplift",
-        plain:
-          "Extra value land gains from planning permission. It sits inside the land rent and is not added again.",
-        status: "Not started",
-      },
-      {
-        name: "Infrastructure commons uplift",
-        plain:
-          "Land value created by public spending on roads, rail and services. It sits inside the land rent and is not added again.",
-        status: "Later",
-      },
-      {
-        name: "Licences and franchises",
-        plain:
-          "Value of exclusive rights granted by government, such as ferry routes, broadcasting and taxi plates.",
-        status: "Later",
-      },
-      {
-        name: "Monopoly and other artificial privileges",
-        plain:
-          "Excess return from barriers to entry or a legal privilege.",
-        status: "Later",
-      },
-    ],
-  },
-  {
-    id: "resources",
-    heading: "Natural resource rents",
-    rows: [
-      {
-        name: "Minerals and aggregates",
-        plain:
-          "Royalty for each tonne of stone, sand, gravel or coal taken from the ground.",
-        status: "Not started",
-      },
-      {
-        name: "Oil and gas",
-        plain:
-          "Rent from oil and gas fields beyond what extraction costs plus a normal return.",
-        status: "In progress",
-      },
-      {
-        name: "Water abstraction",
-        plain:
-          "Value of taking water from rivers, lochs and the ground under licence.",
-        status: "Not started",
-      },
-      {
-        name: "Fishing quota",
-        plain: "Value of the right to catch a share of fish stocks.",
-        status: "Not started",
-      },
-      {
-        name: "Fish-farm seabed leases",
-        plain:
-          "Rent for fish farm sites on the seabed, beyond the lease paid to Crown Estate Scotland.",
-        status: "Not started",
-      },
-      {
-        name: "Onshore wind and hydro sites",
-        plain:
-          "Extra rent a wind or hydro site earns over ordinary land rent on the same ground.",
-        status: "In progress",
-      },
-      {
-        name: "Offshore wind and seabed",
-        plain:
-          "Rent for seabed and foreshore used for wind farms, cables and moorings.",
-        status: "In progress",
-      },
-      {
-        name: "Timber",
-        plain:
-          "Value of the standing trees' site, beyond planting and management costs.",
-        status: "Not started",
-      },
-      {
-        name: "Radio spectrum",
-        plain: "Value of the right to use radio frequencies.",
-        status: "Later",
-      },
-      {
-        name: "Orbits and airspace",
-        plain: "Value of orbital slots and airspace rights.",
-        status: "Later",
-      },
-    ],
-  },
-  {
-    id: "nature",
-    heading: "Services of nature",
-    rows: [
-      {
-        name: "Carbon in peat and soils",
-        plain:
-          "Value of carbon kept in the ground by peat and soils, where there is no market price.",
-        status: "Not started",
-      },
-      {
-        name: "Flood regulation, pollination, clean water, recreation",
-        plain: "Other free services of nature.",
-        status: "Not started",
-      },
-    ],
-  },
-];
-
 const OUR_VISION_HEADING = "Our vision";
 
 const OUR_VISION_TEXT =
@@ -248,7 +95,7 @@ export default function RoadmapPage() {
             <h3>{group.heading}</h3>
             <ul className="roadmap-layer-list">
               {group.rows.map((row) => (
-                <li key={row.name} data-testid="roadmap-aim-row">
+                <li key={row.id} id={row.id} data-testid="roadmap-aim-row">
                   <span className="roadmap-layer-name">{row.name}</span>
                   <span className="roadmap-layer-blurb">{row.plain}</span>
                   <span

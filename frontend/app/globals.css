@@ -3036,6 +3036,55 @@ button.primary:disabled {
   cursor: pointer;
 }
 
+.layers-nav-header {
+  margin: 0.85rem 0 0.15rem;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: var(--slrg-text);
+}
+
+.layers-panel-accordion .layers-nav-header {
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+.layers-nav-subtitle,
+.layers-nav-note {
+  margin: 0 0 0.35rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--slrg-muted);
+}
+
+.layers-aim-placeholder {
+  color: var(--slrg-muted);
+}
+
+.layers-aim-name,
+.layers-aim-tag {
+  display: block;
+}
+
+.layers-aim-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.layers-aim-tag {
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+}
+
+.layers-aim-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 0.82rem;
+  color: var(--rugby-navy);
+}
+
 .layers-panel-group {
   margin-top: 0.35rem;
 }

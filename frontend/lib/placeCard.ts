@@ -598,7 +598,7 @@ export const PLACE_CARD_FIXTURE: PlaceCardPayload = {
       licence: "OGL-3.0",
       licence_url:
         "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-      detail: { sites: [] },
+      detail: { data_zones: [] },
     },
     {
       id: "public_crown",

@@ -3,6 +3,7 @@ import ContentPageFooter from "@/components/ContentPageFooter";
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
 import { LAYERS_ADD_WAITING } from "@/lib/layersAddRegistry";
+import { MAP_LAYER_REGISTRY } from "@/lib/mapLayerRegistry";
 import { absoluteOgImageUrl, OG_IMAGES } from "@/lib/socialMeta";
 
 export const metadata: Metadata = {
@@ -38,6 +39,11 @@ const COMING_TO_THE_MAP: ReadonlyArray<{
     blurb: row.blurb,
     status: row.status,
     statusShort: row.statusShort,
+  })),
+  ...MAP_LAYER_REGISTRY.filter((entry) => entry.coming).map((entry) => ({
+    id: entry.id,
+    name: entry.label,
+    status: "Not started",
   })),
   {
     name: "Landscape character areas",

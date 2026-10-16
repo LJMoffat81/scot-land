@@ -201,14 +201,14 @@ test.describe("MAP-CARDS default view gbp-live on (1280)", () => {
       "aria-checked",
       "true",
     );
-    // Deep link overrides — flood + place, no AGR auto-add
+    // Deep link overrides — access to services + place, no AGR auto-add
     await stubMapCardsBackend(page, { gbpLive: true });
-    await page.goto("/?layers=flood&place=S01014567&lat=55.86&lng=-4.25");
+    await page.goto("/?layers=access_services&place=S01014567&lat=55.86&lng=-4.25");
     await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
     await openLayers(page);
     await ensureLayersGroupOpen(page, "nature");
     await ensureLayersGroupOpen(page, "land");
-    await expect(page.getByTestId("layer-toggle-flood")).toHaveAttribute(
+    await expect(page.getByTestId("layer-toggle-access_services")).toHaveAttribute(
       "aria-checked",
       "true",
     );

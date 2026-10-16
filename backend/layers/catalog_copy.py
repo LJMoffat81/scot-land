@@ -37,7 +37,8 @@ PLAIN_DESCRIPTIONS: dict[str, str] = {
         "Helps name a place on the card — not ownership."
     ),
     "vdl": (
-        "Sites on the Scottish Vacant and Derelict Land Survey. "
+        "Data Zone totals from the Scottish Vacant and Derelict Land Survey: "
+        "how many sites and how much area in each zone. "
         "Survey fields, not a legal title."
     ),
     "hla": (

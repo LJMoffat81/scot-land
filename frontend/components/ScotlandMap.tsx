@@ -270,6 +270,8 @@ const PUBLIC_LAND_FILL: ExpressionSpecification = [
 const CADASTRAL_MIN_ZOOM = 14;
 const PUBLIC_LAND_MIN_ZOOM = 8;
 const VDL_MIN_ZOOM = 8;
+/** Protected sites: do not fetch the multi-megabyte extract below this zoom. */
+const DESIGNATIONS_MIN_ZOOM = 6;
 const HLA_MIN_ZOOM = 8;
 const HLA_FILL = "#7b5ea7";
 /** Data Zone outlines / density colours — readable from neighbourhood zoom. */
@@ -943,6 +945,7 @@ export default function ScotlandMap() {
       setContextOn((cur) => ({
         ...cur,
         flood: ids.includes("flood"),
+        "oil-fields": ids.includes("9"),
       }));
     };
 
@@ -2448,6 +2451,27 @@ export default function ScotlandMap() {
         paint: { "line-color": "#5a2200", "line-width": 1.1, "line-opacity": 0.9 },
       });
 
+      map.addSource("designations-overlay", {
+        type: "geojson",
+        data: emptyCollection,
+        attribution:
+          "Contains NatureScot data licensed under the Open Government Licence v3.0.",
+      });
+      map.addLayer({
+        id: "designations-fill",
+        type: "fill",
+        source: "designations-overlay",
+        layout: { visibility: "none" },
+        paint: { "fill-color": "#15803d", "fill-opacity": 0.35 },
+      });
+      map.addLayer({
+        id: "designations-line",
+        type: "line",
+        source: "designations-overlay",
+        layout: { visibility: "none" },
+        paint: { "line-color": "#14532d", "line-width": 1.1, "line-opacity": 0.9 },
+      });
+
       map.addSource("hla-overlay", {
         type: "geojson",
         data: emptyCollection,
@@ -3676,6 +3700,90 @@ export default function ScotlandMap() {
       map.off("moveend", onMove);
     };
   }, [mapReady, showVdl]);
+
+  // Oil and gas switch paints the existing oil-fields context layer.
+  useEffect(() => {
+    const on = Boolean(ledgerEnabled["9"]);
+    setContextOn((cur) => {
+      if (Boolean(cur["oil-fields"]) === on) return cur;
+      return { ...cur, "oil-fields": on };
+    });
+  }, [ledgerEnabled]);
+
+  // Protected nature sites — bbox fetch only at the layer's minimum zoom.
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const on = Boolean(ledgerEnabled.designations);
+
+    const setVis = (vis: "visible" | "none") => {
+      if (!map.getLayer("designations-fill")) return;
+      map.setLayoutProperty("designations-fill", "visibility", vis);
+      map.setLayoutProperty("designations-line", "visibility", vis);
+    };
+
+    if (!on) {
+      setVis("none");
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
+
+    const loadDesignations = () => {
+      if (cancelled || !mapRef.current || inFlight) return;
+      const b = map.getBounds();
+      if (!b) return;
+      if (map.getZoom() < DESIGNATIONS_MIN_ZOOM) {
+        setVis("none");
+        return;
+      }
+      inFlight = true;
+      const q =
+        `south=${b.getSouth()}&west=${b.getWest()}` +
+        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=80`;
+      const paths = [
+        `/layers/open/naturescot-designations?${q}`,
+        `/layers/open/sssi?${q}`,
+      ];
+      void Promise.all(
+        paths.map((path) =>
+          apiJson<GeoJSON.FeatureCollection>(path).catch(
+            () => ({ type: "FeatureCollection", features: [] }) as GeoJSON.FeatureCollection,
+          ),
+        ),
+      )
+        .then((parts) => {
+          if (cancelled) return;
+          const features = parts.flatMap((part) =>
+            part?.type === "FeatureCollection" ? part.features ?? [] : [],
+          );
+          safeSetGeoJson(
+            map.getSource("designations-overlay") as GeoJSONSource | undefined,
+            { type: "FeatureCollection", features },
+          );
+          setVis(features.length > 0 ? "visible" : "none");
+        })
+        .finally(() => {
+          inFlight = false;
+        });
+    };
+
+    const onMove = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(loadDesignations, 400);
+    };
+
+    loadDesignations();
+    map.on("moveend", onMove);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off("moveend", onMove);
+    };
+  }, [mapReady, ledgerEnabled]);
 
   // Housing land audit / housing land supply (OGL Spatial Hub amalgamation)
   useEffect(() => {

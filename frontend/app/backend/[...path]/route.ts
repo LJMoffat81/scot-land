@@ -104,7 +104,6 @@ async function proxy(request: Request, context: Ctx): Promise<Response> {
     }
 
     const upstream = await fetch(target, init);
-    const buf = await upstream.arrayBuffer();
     const responseHeaders = new Headers();
     const ct = upstream.headers.get("Content-Type");
     if (ct) responseHeaders.set("Content-Type", ct);
@@ -119,6 +118,21 @@ async function proxy(request: Request, context: Ctx): Promise<Response> {
       responseHeaders.set("Cache-Control", cache);
     }
 
+    // 204/205/304 must pass through with a null body. A body makes the
+    // Response constructor throw, and the catch below would turn that into 503.
+    if (
+      upstream.status === 204 ||
+      upstream.status === 205 ||
+      upstream.status === 304
+    ) {
+      await upstream.body?.cancel();
+      return new Response(null, {
+        status: upstream.status,
+        headers: responseHeaders,
+      });
+    }
+
+    const buf = await upstream.arrayBuffer();
     return new Response(buf, { status: upstream.status, headers: responseHeaders });
   } catch {
     const quiet = layersAddQuietWhenApiDown(new URL(request.url).pathname);

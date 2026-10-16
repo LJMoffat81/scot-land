@@ -6,6 +6,7 @@ import {
   attachConsoleGate,
   ensureLayersGroupOpen,
   ensureMapZoomAtLeast,
+  HIDDEN_LAYER_IDS,
   LIVE_LAYER_IDS,
   openLayers,
   openMap,
@@ -70,6 +71,7 @@ for (const viewport of [
         "settlements",
         "localities",
         "boundaries",
+        ...HIDDEN_LAYER_IDS,
       ]) {
         await expect(page.getByTestId(`layer-toggle-${id}`)).toHaveCount(0);
       }

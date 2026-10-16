@@ -39,27 +39,27 @@ for (const viewport of [
       if ((await landToggle.getAttribute("aria-expanded")) !== "true") {
         await landToggle.click();
       }
-      await expect(page.getByTestId("layer-inline-legend-vdl")).toHaveCount(0);
-      await page.getByTestId("layer-toggle-vdl").click();
-      await expect(page.getByTestId("layer-inline-legend-vdl")).toBeVisible();
-      await expect(page.getByTestId("layer-inline-legend-vdl")).toContainText(
-        /Vacant|Derelict/i,
+      await expect(page.getByTestId("layer-inline-legend-access_services")).toHaveCount(0);
+      await page.getByTestId("layer-toggle-access_services").click();
+      await expect(page.getByTestId("layer-inline-legend-access_services")).toBeVisible();
+      await expect(page.getByTestId("layer-inline-legend-access_services")).toContainText(
+        /Lower|Higher/i,
       );
-      await page.getByTestId("layer-toggle-vdl").click();
-      await expect(page.getByTestId("layer-inline-legend-vdl")).toHaveCount(0);
+      await page.getByTestId("layer-toggle-access_services").click();
+      await expect(page.getByTestId("layer-inline-legend-access_services")).toHaveCount(0);
 
       // Close panel → legend strip for an active non-default layer
-      await page.getByTestId("layer-toggle-vdl").click();
-      await expect(page.getByTestId("layer-toggle-vdl")).toHaveAttribute(
+      await page.getByTestId("layer-toggle-access_services").click();
+      await expect(page.getByTestId("layer-toggle-access_services")).toHaveAttribute(
         "aria-checked",
         "true",
       );
-      await expect(page.getByTestId("layer-inline-legend-vdl")).toBeVisible();
+      await expect(page.getByTestId("layer-inline-legend-access_services")).toBeVisible();
       await page.getByTestId("map-panel-slot-close").click();
       await expect(page.getByTestId("map-panel-slot")).toHaveCount(0);
       await expect(page.getByTestId("legend-strip")).toBeVisible();
       await expect(page.getByTestId("legend-strip")).toContainText(
-        /Vacant|derelict/i,
+        /access to services/i,
       );
       assertConsoleClean(gate);
     });

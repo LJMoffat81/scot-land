@@ -41,9 +41,12 @@ for (const viewport of [
 
       const body = await visibleMapText(page);
       expect(countMatches(body, /coming soon/i)).toBe(0);
-      expect(countMatches(body, /not an official valuation/i)).toBe(1);
-      await expect(page.getByTestId("place-card-footer")).toContainText(
+      expect(countMatches(body, /not an official valuation/i)).toBe(0);
+      await expect(page.getByTestId("place-card")).not.toContainText(
         "not an official valuation",
+      );
+      await expect(page.getByTestId("research-banner")).toContainText(
+        "not a bill or an official valuation",
       );
 
       // (d) under homes only ≤1 — open fold then count

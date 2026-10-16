@@ -31,6 +31,10 @@ export type MapPanelSlotProps = {
   layersModal?: boolean;
   /** Map stage element to mark inert when layers modal. */
   mapInert?: boolean;
+  /** Override when a second slot is open (place stays `map-panel-slot`). */
+  slotTestId?: string;
+  /** Place card supplies its own close; the sheet × is the empty desktop strip. */
+  showSlotClose?: boolean;
   children: ReactNode;
   className?: string;
 };
@@ -67,6 +71,8 @@ export default function MapPanelSlot({
   placeName,
   liveMessage,
   layersModal = false,
+  slotTestId = "map-panel-slot",
+  showSlotClose = true,
   children,
   className,
 }: MapPanelSlotProps) {
@@ -173,7 +179,7 @@ export default function MapPanelSlot({
       </div>
       <div
         className={slotClass}
-        data-testid="map-panel-slot"
+        data-testid={slotTestId}
         data-panel={kind}
         data-detent={detent}
         {...(isLayersDialog
@@ -195,22 +201,29 @@ export default function MapPanelSlot({
           >
             <span className="map-panel-handle-bar" aria-hidden="true" />
           </button>
-          <button
-            type="button"
-            className="map-panel-slot-close"
-            aria-label="Close panel"
-            data-testid="map-panel-slot-close"
-            onClick={onRequestDismiss}
-          >
-            ×
-          </button>
+          {showSlotClose ? (
+            <button
+              type="button"
+              className="map-panel-slot-close"
+              aria-label="Close panel"
+              data-testid="map-panel-slot-close"
+              onClick={onRequestDismiss}
+            >
+              ×
+            </button>
+          ) : null}
         </div>
         <div
           className="map-panel-slot-scroll"
           ref={scrollRef}
           data-testid="map-panel-scroll"
         >
-          <div id={headingId} tabIndex={-1} className="map-panel-slot-focus">
+          <div
+            id={headingId}
+            tabIndex={kind === "place" ? 0 : -1}
+            className="map-panel-slot-focus"
+            aria-label={kind === "place" ? "Place panel" : undefined}
+          >
             {children}
           </div>
         </div>

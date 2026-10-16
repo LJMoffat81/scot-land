@@ -646,15 +646,14 @@
     );
   }
 
-  /* Basemap + MapLibre zoom/attrib: shift left while Layers drawer is open. */
-  .app-shell.tools-open .basemap-switcher {
-    right: calc(
-      3.15rem + min(332px, calc(100vw - 2rem)) + 1.1rem + 0.5rem
-    );
+  /* UI-FIX-4: Layers in the right column must not slide Detailed, zoom,
+     or attribution out of their corner. */
+  .map-cards-shell.tools-open .basemap-switcher {
+    right: 0.65rem;
   }
 
-  .app-shell.tools-open .map-stage .maplibregl-ctrl-bottom-right {
-    right: calc(min(332px, calc(100vw - 2rem)) + 1.1rem + 0.5rem);
+  .map-cards-shell.tools-open .map-stage .maplibregl-ctrl-bottom-right {
+    right: 10px;
   }
 
   /* UI-TWEAKS-1 T1: shell clips; .layer-panel is the only scroller. */
@@ -779,10 +778,19 @@
   }
 
   /* UI-TWEAKS-1 T1: Layers slot top aligns with Layers button; fills to bottom inset.
-   * --layers-panel-top/bottom set in ScotlandMap when panelKind === "layers". */
-  .map-panel-slot--layers {
+   * --layers-panel-top/bottom set in ScotlandMap when Layers is open.
+   * UI-FIX-4: desktop Layers sits in the right column. The place card stays left. */
+  .map-panel-slot--layers,
+  .map-panel-slot--right {
+    left: auto;
+    right: 0.75rem;
     top: var(--layers-panel-top, calc(var(--hud-height, 6.5rem) + 0.45rem));
     bottom: var(--layers-panel-bottom, 1.75rem);
+  }
+
+  /* Drop the empty header strip above a desktop place card (SW-069). */
+  .map-panel-slot--place .map-panel-slot-chrome {
+    display: none;
   }
 
   /* Place card hugs its content — a stretched column left an empty block
@@ -865,6 +873,13 @@
     top: calc(var(--hud-height, 9.5rem) + 0.5rem);
     height: auto;
     max-height: none;
+  }
+
+  /* Layers full sheet leaves a map band so a tap can close Layers (SW-065). */
+  .map-panel-slot--layers.map-panel-slot--full {
+    top: auto;
+    height: 62dvh;
+    max-height: 62dvh;
   }
 
   .map-cards-shell.panel-open.map-narrow[data-detent="full"] .basemap-switcher,
@@ -1263,16 +1278,65 @@
   padding-bottom: 0 !important;
 }
 
-.map-panel-slot--place .map-panel-slot-focus:focus,
-.map-panel-slot--place .map-panel-slot-focus:focus-visible {
+.map-panel-slot--place .map-panel-slot-focus:focus {
   outline: none;
   box-shadow: none;
+}
+
+.map-panel-slot--place .map-panel-slot-focus:focus-visible {
+  outline: 2px solid #0b1e3a;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 2px rgba(11, 30, 58, 0.35);
 }
 
 .map-panel-slot .layers-panel {
   box-shadow: none;
   border: 0;
   max-height: none;
+  box-sizing: border-box;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+@media (min-width: 900px) {
+  .map-panel-slot .layers-panel {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .map-panel-slot--place .hud-place.place-card,
+  .map-panel-slot--place .place-card-stub.place-card,
+  .map-panel-slot--place .place-card {
+    padding-top: 0.35rem !important;
+  }
+
+  .map-panel-slot--place .place-card-title {
+    margin-top: 0;
+  }
+}
+
+/* One close on the Layers slot — the sheet ×. Hide the drawer ×. */
+.map-panel-slot .layers-panel-close {
+  display: none;
+}
+
+.app-shell.tools-open .hud-search-dock.open,
+.app-shell.panel-open .hud-search-dock.open {
+  z-index: 30;
+}
+
+@media (max-width: 900px) {
+  .research-banner-map {
+    right: 6rem;
+    width: auto;
+    max-width: calc(100vw - 7.2rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-shell.place-open.tools-open .research-banner-map {
+    left: max(0px, calc(min(380px, calc(100vw - 2rem)) + 1.5rem));
+  }
 }
 
 /* MAP-CARDS §3.4 — full-width 48px switch rows (beat any legacy compact rule). */

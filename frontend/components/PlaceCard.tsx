@@ -276,6 +276,7 @@ export function PlaceCard({
           className="hud-close"
           onClick={onClose}
           aria-label="Close place card"
+          data-testid="place-card-close"
         >
           ×
         </button>
@@ -520,13 +521,16 @@ export function PlaceCard({
             </div>
           </details>
 
-          {/* 9 Footer — once */}
-          <p
-            className="place-card-experimental-footer"
-            data-testid="place-card-footer"
-          >
-            {PLACE_CARD_EXPERIMENTAL_FOOTER}
-          </p>
+          {/* Map card: banner and map footer carry the research line.
+              Standalone cards still show it. */}
+          {floating ? null : (
+            <p
+              className="place-card-experimental-footer"
+              data-testid="place-card-footer"
+            >
+              {PLACE_CARD_EXPERIMENTAL_FOOTER}
+            </p>
+          )}
         </div>
       ) : null}
 

@@ -77,7 +77,12 @@ for (const viewport of [
 
       await openLayers(page);
       await expect(page.getByTestId("layers-panel")).toBeVisible();
-      await expect(page.getByTestId("place-card")).toHaveCount(0);
+      if (viewport.width >= 900) {
+        await expect(page.getByTestId("place-card")).toBeVisible();
+        await expect(page.getByTestId("layers-column")).toBeVisible();
+      } else {
+        await expect(page.getByTestId("place-card")).toHaveCount(0);
+      }
       await assertNoOverlapsAmong(
         await collectChrome(page, [
           { label: "panel slot", testId: "map-panel-slot" },
@@ -99,7 +104,11 @@ for (const viewport of [
 
       await openLayers(page);
       await expect(page.getByTestId("layers-panel")).toBeVisible();
-      await expect(page.getByTestId("place-card")).toHaveCount(0);
+      if (viewport.width >= 900) {
+        await expect(page.getByTestId("place-card")).toBeVisible();
+      } else {
+        await expect(page.getByTestId("place-card")).toHaveCount(0);
+      }
 
       // Mobile full sheet covers the Layers toggle; close via panel chrome.
       // Desktop still toggles via the HUD button.
@@ -218,7 +227,7 @@ for (const viewport of [
         await expect(layersSlot).toHaveAttribute("data-detent", "full");
         await expect(layersSlot).toHaveAttribute("role", "dialog");
         await expect(layersSlot).toHaveAttribute("aria-modal", "true");
-        await expect(page.locator(".map-stage")).toHaveAttribute("inert", /.*/);
+        await expect(page.locator(".map-stage")).not.toHaveAttribute("inert");
       }
       await page.keyboard.press("Escape");
       for (let i = 0; i < 4; i += 1) {

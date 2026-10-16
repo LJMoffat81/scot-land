@@ -5,7 +5,10 @@ Fails (exit 1) if anything tracked by git (the index, so staged files count) is:
   1. listed in a data/processed/*/manifest.csv with publish_level=internal;
   2. inside a raw/ or internal/ folder, a Spatial Hub download, a GeoPackage under data/
      (site layers such as svdls_sites.gpkg / hls_sites.gpkg are internal), an INSPIRE-derived
-     file, or parcel geometry / a tile archive (size);
+     file, or parcel geometry / a tile archive (size). *.gpkg, *.pmtiles, *.mbtiles, *.shp
+     and *.fgb are blocked anywhere in the repo unless the exact path is listed, with a
+     one-line reason, in scripts/publishable_allowlist.txt (Data Zone level or coarser).
+     Filename patterns house_plot, plot_r, parcel, uprn and title_no are blocked too;
   3. a CSV/TSV whose header carries address, postcode, UPRN or similar columns,
      or a forbidden public AGR £ property name;
   4. a tracked .json / .geojson under data/processed or frontend/public whose object
@@ -44,8 +47,22 @@ SPATIAL_HUB = re.compile(r"spatial[_-]?hub", re.IGNORECASE)
 # Parcel-level geometry and tile archives stay out of the repo (size; RoS INSPIRE is OGL v3).
 # This is a geometry rule, not a licence list: whether a DATA TABLE may be published is decided
 # only by its manifest publish_level (check 1), never by hard-coded file names.
-GEOMETRY_PRODUCT = re.compile(r"parcel[^/]*\.(geojson|gpkg|fgb|shp|pmtiles|mbtiles|parquet)$"
-                              r"|\.(pmtiles|mbtiles)$|site[_-]?outline", re.IGNORECASE)
+# Binary geometry is blocked anywhere, not only under data/. An exact path already committed
+# may be exempted via scripts/publishable_allowlist.txt when it is Data Zone level or coarser.
+BINARY_GEOMETRY_SUFFIXES = {".gpkg", ".pmtiles", ".mbtiles", ".shp", ".fgb"}
+ALLOWLIST_FILE = "scripts/publishable_allowlist.txt"
+# Filename block list (case-insensitive), in the file name itself: house_plot, plot_r,
+# parcel, uprn, title_no. The allowlist does not exempt these.
+PARCEL_FILENAME = re.compile(
+    r"(?:house_plot|plot_r|parcel|uprn|title_no)[^/]*\.(?:geojson|gpkg|fgb|shp|pmtiles|mbtiles|parquet)$",
+    re.IGNORECASE,
+)
+GEOMETRY_PRODUCT = re.compile(
+    r"(?:house_plot|plot_r|parcel|uprn|title_no)[^/]*\.(?:geojson|gpkg|fgb|shp|pmtiles|mbtiles|parquet)$"
+    r"|\.(?:gpkg|pmtiles|mbtiles|shp|fgb)$"
+    r"|site[_-]?outline",
+    re.IGNORECASE,
+)
 # Code that may name these things (scripts, routes) is not data.
 CODE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".md", ".sql", ".yml", ".yaml", ".json", ".txt", ".sh"}
 TABULAR = {".csv": ",", ".tsv": "\t"}
@@ -289,9 +306,50 @@ def _preview_route_gated(fileset: set[str], route: str) -> bool:
     return PREVIEW_GATE_CALL.search(strip_ts_comments(text)) is not None
 
 
+def binary_allowlist(fileset: set[str]) -> tuple[set[str], list[str]]:
+    """Exact paths in the allowlist file, plus problems for malformed lines.
+
+    Each entry is ``path<TAB>reason``. The reason is required. Only the binary
+    geometry suffixes may be listed. Paths are matched exactly (no globs).
+    """
+    problems: list[str] = []
+    allowed: set[str] = set()
+    if ALLOWLIST_FILE not in fileset:
+        return allowed, problems
+    for lineno, line in enumerate(index_text(ALLOWLIST_FILE).splitlines(), 1):
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if "\t" not in line:
+            problems.append(
+                f"{ALLOWLIST_FILE}:{lineno}: allowlisted path needs a one-line reason "
+                "(path<TAB>reason)"
+            )
+            continue
+        rel, reason = line.split("\t", 1)
+        rel = rel.strip()
+        reason = reason.strip()
+        if not rel or not reason:
+            problems.append(
+                f"{ALLOWLIST_FILE}:{lineno}: allowlisted path needs a one-line reason"
+            )
+            continue
+        suffix = PurePosixPath(rel).suffix.lower()
+        if suffix not in BINARY_GEOMETRY_SUFFIXES:
+            problems.append(
+                f"{ALLOWLIST_FILE}:{lineno}: {rel} is not a binary geometry file "
+                "(gpkg, pmtiles, mbtiles, shp, fgb)"
+            )
+            continue
+        allowed.add(rel)
+    return allowed, problems
+
+
 def check(files: list[str]) -> list[str]:
     problems: list[str] = []
     fileset = set(files)
+    allowed_binaries, allow_problems = binary_allowlist(fileset)
+    problems.extend(allow_problems)
 
     # 1. internal files listed in manifests must not be tracked
     for manifest in sorted(f for f in files if re.fullmatch(r"data/processed/[^/]+/manifest\.csv", f)):
@@ -314,11 +372,19 @@ def check(files: list[str]) -> list[str]:
             problems.append(f"{f}: tracked file inside a raw/ folder")
         if "internal" in (p.lower() for p in parts[:-1]):
             problems.append(f"{f}: tracked file inside an internal/ folder")
-        if f.startswith("data/") and PurePosixPath(f).suffix.lower() == ".gpkg":
+        suffix = PurePosixPath(f).suffix.lower()
+        allowlisted = f in allowed_binaries
+        parcel_named = suffix not in CODE_SUFFIXES and PARCEL_FILENAME.search(f) is not None
+        if not allowlisted and f.startswith("data/") and suffix == ".gpkg":
             problems.append(f"{f}: GeoPackage under data/ (site layers are internal)")
         if f.startswith("data/") and "inspire" in f.lower():
             problems.append(f"{f}: INSPIRE-derived file (internal until the RoS terms are cleared)")
-        if GEOMETRY_PRODUCT.search(f) and PurePosixPath(f).suffix.lower() not in CODE_SUFFIXES:
+        # Allowlist exempts extension / site-outline hits only. Parcel-name patterns stay blocked.
+        if (
+            suffix not in CODE_SUFFIXES
+            and GEOMETRY_PRODUCT.search(f)
+            and (parcel_named or not allowlisted)
+        ):
             problems.append(f"{f}: parcel geometry / tile archive (kept out of the repo for size)")
         if SPATIAL_HUB.search(f):
             problems.append(f"{f}: looks like a Spatial Hub download")

@@ -328,3 +328,53 @@ def test_guard_forbids_banned_public_route_wording(tmp_path):
         ),
     }) is None else None
     assert not any("forbidden public-route wording" in p for p in clean), clean
+
+
+@pytest.mark.parametrize("relpath", [
+    "v13_house_plot_r30.gpkg",
+    "frontend/public/v13_house_plot_r30.gpkg",
+    "docs/v13_house_plot_r30.gpkg",
+])
+def test_house_plot_gpkg_blocked_anywhere(tmp_path, relpath):
+    """v13_house_plot_r30.gpkg is blocked at the repo root, under frontend/public/, and under docs/."""
+    problems = _problems(tmp_path) if _repo(tmp_path, {relpath: "x"}) is None else None
+    assert any(relpath in p for p in problems), problems
+
+
+def test_new_pmtiles_blocked_unless_allowlisted(tmp_path):
+    """A .pmtiles path not on the allowlist is blocked; the same path passes once listed with a reason."""
+    rel = "frontend/public/dz_context.pmtiles"
+    problems = _problems(tmp_path) if _repo(tmp_path, {rel: "x"}) is None else None
+    assert any(rel in p for p in problems), problems
+
+    _repo(tmp_path / "listed", {
+        rel: "x",
+        "scripts/publishable_allowlist.txt": (
+            "# exact repo-relative paths; Data Zone level or coarser\n"
+            f"{rel}\tData Zone aggregate context tiles already reviewed for publication\n"
+        ),
+    })
+    assert _problems(tmp_path / "listed") == []
+
+
+@pytest.mark.parametrize("relpath", [
+    "docs/house_plot.geojson",
+    "notes/plot_r_bands.parquet",
+    "export/parcel_outlines.geojson",
+    "share/uprn_points.fgb",
+    "archive/title_no.shp",
+])
+def test_parcel_name_patterns_blocked_in_filenames(tmp_path, relpath):
+    """house_plot, plot_r, parcel, uprn and title_no stay on the filename block list."""
+    problems = _problems(tmp_path) if _repo(tmp_path, {relpath: "x"}) is None else None
+    assert any(relpath in p for p in problems), problems
+
+
+def test_guard_passes_on_this_tree_with_allowlist():
+    """With the allowlist in place, the guard still passes on this checkout."""
+    root = GUARD.parents[1]
+    assert (root / "scripts" / "publishable_allowlist.txt").is_file()
+    if not (root / ".git").exists():
+        pytest.skip("not a git checkout")
+    result = subprocess.run(["python3", str(GUARD)], cwd=root, capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr

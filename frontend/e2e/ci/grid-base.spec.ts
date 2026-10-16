@@ -131,6 +131,10 @@ async function setZoom(page: Page, zoom: number, center: [number, number]) {
       map.fire("zoomstart", { originalEvent: oe });
       map.stop();
       map.jumpTo({ zoom: z, center: c });
+      // Ensure GRID-BASE moveend/zoomend rebuild listeners run even if jumpTo
+      // coalesces with a concurrent MAP-CARDS padding easeTo.
+      map.fire("zoomend");
+      map.fire("moveend");
     },
     { z: zoom, c: center },
   );
@@ -371,15 +375,21 @@ test.describe("GRID-BASE-1", () => {
 
   test("G19 — selected zone outline above grid layers", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto("/?layers=grid3");
+    // Same camera boot as G3 — Layers open/close resizes the map; centre the
+    // view before the accordion dance so rebuild has a z17+ Edinburgh viewport.
+    await page.goto("/?layers=grid3&lat=55.9533&lng=-3.1883");
     await waitMap(page);
     await page.getByTestId("hud-layers-btn").click();
     await ensureLayersGroupOpen(page, "land");
     const toggle = page.getByTestId("layer-toggle-grid3");
+    await expect(toggle).toBeVisible();
     if ((await toggle.getAttribute("aria-checked")) !== "true") {
       await toggle.click();
     }
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
     await page.keyboard.press("Escape");
+    // Wait for MAP-CARDS panel unmount + resize before jumping the camera.
+    await expect(page.getByTestId("layers-panel")).toHaveCount(0);
     await setZoom(page, 18.2, [-3.1883, 55.9533]);
     await waitGridLines(page, 1);
     const order = await page.evaluate(() => {

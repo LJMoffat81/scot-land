@@ -2062,6 +2062,10 @@ export default function ScotlandMap() {
       }
       if (userMoved) return;
       if (container.clientWidth < 40 || container.clientHeight < 40) return;
+      // MAP-CARDS panel open/close resizes the map. After the first national
+      // frame, do not fitBounds again — that yank races GRID-BASE jumpTo and
+      // clears z17+ grid rebuilds (G19 waitGridLines).
+      if (container.dataset.framed === "1") return;
       const narrow = window.innerWidth <= 900;
       map.fitBounds(
         [

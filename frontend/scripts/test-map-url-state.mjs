@@ -17,7 +17,6 @@ await register(pathToFileURL(join(here, "ts-specifier-hook.mjs")).href, {
 const {
   formatMapCenterParam,
   isScotlandViewCenter,
-  parseDataZoneCode,
   readMapUrlState,
   writeMapUrlSearch,
 } = await import(pathToFileURL(join(frontendRoot, "lib/mapUrlState.ts")).href);
@@ -97,26 +96,3 @@ assert.ok(metres < 5, `round-trip ${metres} m`);
 
 const twoDpMetres = Math.hypot(0.00173 * 62_400, 0.00331 * 111_320);
 assert.ok(twoDpMetres > 5);
-
-assert.equal(readMapUrlState("").dz, null);
-assert.equal(readMapUrlState("?dz=nope").dz, null);
-assert.equal(readMapUrlState("?dz=s01008677").dz, "S01008677");
-assert.equal(parseDataZoneCode(" S01008677 "), "S01008677");
-
-const withZone = writeMapUrlSearch({
-  href: "http://local/?panel=place&dz=S01008677&c=-3.18830,55.95330",
-  center: { lng: -4.5, lat: 58.25 },
-  z: 6,
-});
-const withZoneParams = new URLSearchParams(withZone.slice(1));
-assert.equal(withZoneParams.get("dz"), "S01008677");
-assert.equal(withZoneParams.get("panel"), "place");
-assert.match(withZoneParams.get("c") ?? "", /^-4\.50000,58\.25000$/);
-
-const clearedZone = writeMapUrlSearch({
-  href: `http://local/${withZone}`,
-  dz: null,
-  panel: null,
-});
-assert.equal(readMapUrlState(clearedZone).dz, null);
-assert.equal(new URLSearchParams(clearedZone.slice(1)).has("dz"), false);

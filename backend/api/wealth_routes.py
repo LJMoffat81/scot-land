@@ -177,54 +177,6 @@ def data_zone_at(
     return {"lat": lat, "lon": lon, **found.to_dict()}
 
 
-@router.get("/layers/context/data-zones/by-code")
-def data_zone_by_code(
-    code: str = Query(..., description="Data Zone code, for example S01012345"),
-) -> dict:
-    """Representative point for one Data Zone, so a reload can restore that zone.
-
-    The map centre is not a zone. 422 for a code that is not S01 + six digits,
-    404 when boundaries are loaded and the code is absent, 503 when no boundary
-    source is available. Never returns a stand-in zone.
-    """
-    normalised = (code or "").strip().upper()
-    if dz_lookup.vintage_for_code(normalised) is None:
-        raise HTTPException(
-            status_code=422,
-            detail={
-                "error": "invalid_zone_id",
-                "zone_id": code,
-                "message": "code must be a Scottish data zone code like S01012345.",
-            },
-        )
-    try:
-        found = dz_lookup.representative_point(normalised)
-    except dz_lookup.BoundariesUnavailable as exc:
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "error": "dz_boundaries_unavailable",
-                "reasons": exc.reasons,
-                "message": "No data zone boundary source is available; no zone returned.",
-            },
-        ) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=422,
-            detail={"error": "invalid_zone_id", "zone_id": code, "message": str(exc)},
-        ) from exc
-    if found is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "error": "data_zone_not_found",
-                "code": normalised,
-                "message": "No loaded boundary has this Data Zone code.",
-            },
-        )
-    return found
-
-
 @router.get("/georgist/wealth")
 def get_georgist_wealth(
     lat: float = Query(..., ge=-90, le=90),

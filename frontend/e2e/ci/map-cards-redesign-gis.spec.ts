@@ -238,6 +238,13 @@ for (const viewport of [
         return;
       }
       const slotBox = await slot.boundingBox();
+      // Wait for flyTo/padding to settle; marker may be off-canvas mid-flight.
+      await expect
+        .poll(async () => {
+          const box = await marker.boundingBox();
+          return box ? Math.round(box.x + box.width / 2) : -1;
+        }, { timeout: 15_000 })
+        .toBeGreaterThan(0);
       const markerBox = await marker.boundingBox();
       expect(slotBox && markerBox).toBeTruthy();
       if (viewport.width >= 1280 && slotBox && markerBox) {

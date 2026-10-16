@@ -9,8 +9,9 @@
  * Replaces SW-010 two-row header — nav must still never be covered by search.
  */
 @media (min-width: 901px) {
+  /* UX-00 / MAP-CARDS §3.6 — search matches Layers at 48px. */
   .hud-top {
-    --hud-control-h: calc(0.7rem * 2 + 0.85rem * 1.2);
+    --hud-control-h: 48px;
     flex-wrap: nowrap;
     align-items: center;
     gap: 0.65rem;
@@ -66,7 +67,7 @@
   .squares-shell .hud-search {
     box-sizing: border-box;
     height: var(--hud-control-h);
-    min-height: var(--hud-control-h);
+    min-height: 48px;
     border: 0;
     border-radius: 999px;
     box-shadow: var(--hud-shadow);
@@ -439,9 +440,10 @@
   /*
    * MAP-CARDS §3.6 — sit above the zoom ± stack (2×48 + MapLibre margin),
    * same right column, so the 64px tile does not overlap zoom.
+   * Extra 0.75rem clears the captioned 64px tile vs the zoom-in box.
    */
   right: 0.65rem;
-  bottom: calc(10px + 48px + 48px + 1rem);
+  bottom: calc(10px + 48px + 48px + 1.75rem);
   width: 64px;
   margin: 0;
   padding: 0;
@@ -952,6 +954,19 @@
   font-weight: 600;
 }
 
+/* UX-01 — "All sources" is a real control; pad to ≥44×44 without growing the line. */
+.map-attribution-line a[data-testid="map-all-sources"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.35rem 0.45rem;
+  margin: -0.35rem 0;
+  vertical-align: middle;
+}
+
 .map-rest-prompt {
   position: absolute;
   z-index: 5;
@@ -966,6 +981,8 @@
   box-shadow: 0 1px 4px rgba(11, 30, 58, 0.12);
   font-size: 0.92rem;
   font-weight: 600;
+  /* Rest prompt is informational — never steal taps from banner / search. */
+  pointer-events: none;
 }
 
 .search-empty-hint,
@@ -1149,14 +1166,32 @@
   overflow: visible !important;
 }
 
+/*
+ * Keep the trust footer in the desktop viewport (ux10-1): stick to the
+ * bottom of the panel scroll area so it is never painted below 800px.
+ */
+.map-panel-slot .place-card .place-card-experimental-footer,
 .map-panel-slot .place-card .place-card-experimental-footer-sticky,
+.map-panel-slot .hud-place .place-card-experimental-footer,
 .map-panel-slot .hud-place .place-card-experimental-footer-sticky {
   display: block !important;
-  position: static !important;
+  position: sticky !important;
+  bottom: 0 !important;
+  background: #fff;
+  z-index: 1;
+  padding-top: 0.35rem;
+  padding-bottom: 0.15rem;
 }
 
 .map-panel-slot .layers-panel {
   box-shadow: none;
   border: 0;
   max-height: none;
+}
+
+/* MAP-CARDS §3.4 — full-width 48px switch rows (beat any legacy compact rule). */
+.map-panel-slot .layers-panel-switch,
+.map-cards-shell .layers-panel-switch {
+  min-height: 48px !important;
+  box-sizing: border-box;
 }

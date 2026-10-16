@@ -2,34 +2,30 @@
 
 Plain-English queue for maintainers (Laurie and agents). Update on main after merges — not in feature PRs (avoids serial conflict churn). Dedicated QUEUE-only follow-up is OK when nothing else is ready to piggyback.
 
-**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: 2 open non-draft ([#156](https://github.com/LJMoffat81/scot-land/pull/156), [#161](https://github.com/LJMoffat81/scot-land/pull/161)); draft [#163](https://github.com/LJMoffat81/scot-land/pull/163) does not count. This QUEUE sync opens as the 3rd non-draft.
+**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: drafts [#163](https://github.com/LJMoffat81/scot-land/pull/163) and [#169](https://github.com/LJMoffat81/scot-land/pull/169) do not count. This QUEUE sync opens as the 1st non-draft. Hold #169 draft / do-not-merge for the release cap.
 
 ## In progress
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| LOGO-H2 | Zone-grid loch mark, favicons, tagline | [#161](https://github.com/LJMoffat81/scot-land/pull/161) | Open (not draft); CI green; ready |
-| DZ-HIERARCHY | Intermediate Zone / council on the place card (ideas 37 / 40); mobile More-about fold | [#156](https://github.com/LJMoffat81/scot-land/pull/156) | Open (not draft); rebasing onto main |
-| MAP-CARDS-REDESIGN | Place card, Layers, legend redesign (+ ADDENDUM-1) | [#163](https://github.com/LJMoffat81/scot-land/pull/163) | Draft; e2e/CI in flight |
+| MAP-CARDS-REDESIGN | Place card, Layers, legend redesign (+ ADDENDUM-1) | [#163](https://github.com/LJMoffat81/scot-land/pull/163) | Draft; tip `bab579d…`; CI green |
+| GRID-BASE-1 | Open 3 m BNG grid base layer (no values) | [#169](https://github.com/LJMoffat81/scot-land/pull/169) | Draft; tip `339d20d…`; CI green; Scot-LAND PASS; hold draft / do-not-merge for release cap |
 
 ## Next up (in order)
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| UI-TWEAKS-1 | Layers panel height/position and related map chrome tweaks on MAP-CARDS layout | — | Frozen ready; after #163 merges; no PR yet |
-| UI-FIX-1 | Tap targets ≥44×44 and related map chrome fixes on MAP-CARDS layout | — | Frozen ready; after #163; with/after UI-TWEAKS-1; no PR yet |
-| GRID-BASE-1 | Open 3 m BNG grid base layer (no values) | — | Frozen ready; after MAP-CARDS (#163); no PR yet |
-| HEALTH-TRIM | Trim `/health` response body (status + version only) | — | Frozen ready; after #161 LOGO-H2; no PR yet |
-| LAYERS-ADD-1 | Open context layers + licence-gated catalog | — | Frozen ready; after GRID-BASE-1; no PR yet |
-| LAYERS-ADD-2 | Open-data sweep layers (after LAYERS-ADD-1) | — | Frozen ready; after LAYERS-ADD-1; no PR yet |
-| GBP-LIVE-V1c | £ per m² follow-ups before any flag enable (flag still default OFF) | — | Frozen ready; after GRID-BASE-1; flag OFF; no PR yet |
+| UI-FIX-1 | Tap targets ≥44×44 and related map chrome fixes on MAP-CARDS layout | — | Frozen ready; waits on #163 merge; no PR yet |
+| LAYERS-ADD-1 | Open context layers + licence-gated catalog | — | Can target main / opening now (not blocked on #169); no PR yet |
+| LAYERS-ADD-2 | Open-data sweep layers (after LAYERS-ADD-1) | — | Frozen ready; still after LAYERS-ADD-1; no PR yet |
+| GBP-LIVE-V1c | £ per m² follow-ups before any flag enable (flag still default OFF) | — | Can target main / opening now (not blocked on #169); flag OFF; no PR yet |
 
 ### Frozen backlog
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
 | SW-044_slim | Slim the map view (licences out of left panel, chip key once, etc.) | [#157](https://github.com/LJMoffat81/scot-land/pull/157) | Closed / superseded by MAP-CARDS-REDESIGN (#163) |
-| Suggestion 44 | Deploy SHA / git commit surface; park with SW-037 if it needs `main.py` | — | Parked with SW-037 / HEALTH-TRIM (next `main.py` change) |
+| Suggestion 44 | Deploy SHA / git commit surface; park with SW-037 if it needs `main.py` | — | Parked (HEALTH-TRIM / SW-037 already on main via #166; SHA surface still open) |
 | UX-00 … UX-05 | Mobile hit areas, legend aria, Esc focus, landmarks, place-card hug, desktop search | [#130](https://github.com/LJMoffat81/scot-land/pull/130) … [#136](https://github.com/LJMoffat81/scot-land/pull/136) | UX train done — all merged (incl. UX-00 #130 and UX10-1 #134) |
 | SW-031 / SW-032 | Scrub banned wording and public money figures from public surfaces | [#133](https://github.com/LJMoffat81/scot-land/pull/133) | Merged |
 | SW-039 + idea 45 | “Why no outline?” becomes a proper tap target; answer opens inline | [#136](https://github.com/LJMoffat81/scot-land/pull/136) | Done (with UX-01 mobile hit areas) |
@@ -40,6 +36,12 @@ Newest first.
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
+| UI-TWEAKS-1 | Layers panel height/position and related map chrome tweaks | [#168](https://github.com/LJMoffat81/scot-land/pull/168) | Merged on main (`ffaa9f32`) |
+| LOGO-FIX-1 | Absolute OG/Twitter URLs + drop Noun credit | [#167](https://github.com/LJMoffat81/scot-land/pull/167) | Merged (`cc2406f`) |
+| HEALTH-TRIM | Public `/health` is status + version only (SW-037) | [#166](https://github.com/LJMoffat81/scot-land/pull/166) | Merged on main (`78a0af2`); verified |
+| LOGO-H2 | Zone-grid loch mark, favicons, tagline | [#161](https://github.com/LJMoffat81/scot-land/pull/161) | Merged (`fbe8d0a`) |
+| DZ-HIERARCHY | Intermediate Zone / council on the place card; mobile More-about fold | [#156](https://github.com/LJMoffat81/scot-land/pull/156) | Merged (`80d1870`) |
+| QUEUE sync | Refresh after #152–#155, #160–#164; next MAP-CARDS train | [#165](https://github.com/LJMoffat81/scot-land/pull/165) | Merged (`3129826`) |
 | GBP-LIVE-V1b | Per-m² unit for £ behind the flag (flag still default OFF) | [#155](https://github.com/LJMoffat81/scot-land/pull/155) | Merged (`0bb4cae`) |
 | V14-FIDELITY | Straight-line remaining, O-G1, check-4 fail | [#164](https://github.com/LJMoffat81/scot-land/pull/164) | Merged (`fe026b7`) |
 | O-MM | Hedonic cell merge map (v1.4) | [#162](https://github.com/LJMoffat81/scot-land/pull/162) | Merged (`cb3370c`) |

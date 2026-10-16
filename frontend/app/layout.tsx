@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import {
   absoluteOgImageUrl,
   getMetadataBase,
+  H3_ASSET_QUERY,
   OG_IMAGES,
 } from "@/lib/socialMeta";
 
@@ -29,12 +30,12 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
-      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: `/favicon.ico${H3_ASSET_QUERY}`, sizes: "any" },
+      { url: `/favicon.svg${H3_ASSET_QUERY}`, type: "image/svg+xml" },
+      { url: `/favicon-16.png${H3_ASSET_QUERY}`, sizes: "16x16", type: "image/png" },
+      { url: `/favicon-32.png${H3_ASSET_QUERY}`, sizes: "32x32", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    apple: [{ url: `/apple-touch-icon.png${H3_ASSET_QUERY}`, sizes: "180x180" }],
   },
   manifest: "/site.webmanifest",
   openGraph: {

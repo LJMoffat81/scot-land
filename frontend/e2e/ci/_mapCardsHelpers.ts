@@ -165,6 +165,8 @@ export type StubOpts = {
    * Default keeps vacant land (existing map tests). Other IS rows stay absent.
    */
   spatialHubLayerIds?: readonly string[];
+  /** sepa_flood_dz has rows — the flood switch may show. */
+  floodDzLoaded?: boolean;
 };
 
 /**
@@ -220,7 +222,11 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ version: 2, layers: [] }),
+        body: JSON.stringify({
+          version: 2,
+          layers: [],
+          flood_dz_loaded: opts.floodDzLoaded === true,
+        }),
       });
       return;
     }

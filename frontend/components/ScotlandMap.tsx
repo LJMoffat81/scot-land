@@ -3010,6 +3010,7 @@ export default function ScotlandMap() {
         if (cancelled) return;
         const layers = payload.layers ?? [];
         setCatalogLayers(layers);
+        setFloodDzLoaded(payload.flood_dz_loaded === true);
         if (layers.length === 0) {
           setBuiltupMaskCatalogGap(false);
           return;
@@ -4572,22 +4573,6 @@ export default function ScotlandMap() {
       })
       .catch(() => {
         // Leave the default. A failed manifest must not hide vacant land.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    void apiJson<{ meta?: { loaded?: boolean } }>(
-      "/layers/open/flood-dz?bbox=-4.30,55.84,-4.22,55.88&kind=river",
-    )
-      .then((data) => {
-        if (!cancelled) setFloodDzLoaded(data?.meta?.loaded === true);
-      })
-      .catch(() => {
-        if (!cancelled) setFloodDzLoaded(false);
       });
     return () => {
       cancelled = true;

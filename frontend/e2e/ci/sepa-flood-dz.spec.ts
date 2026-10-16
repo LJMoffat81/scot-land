@@ -86,7 +86,7 @@ for (const width of [1280, 390] as const) {
     test("loaded fixture draws at a lowland view", async ({ page }) => {
       test.setTimeout(120_000);
       const gate = attachConsoleGate(page);
-      await stubMapCardsBackend(page);
+      await stubMapCardsBackend(page, { floodDzLoaded: true });
       await stubFloodLoaded(page);
       await openMap(page, "/?lat=55.86&lng=-4.25");
       await expect

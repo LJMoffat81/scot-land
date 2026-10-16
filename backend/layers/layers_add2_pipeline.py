@@ -377,17 +377,43 @@ def suppress_site_totals(count: int, hectares: float) -> tuple[str, float | None
     return str(count), float(hectares)
 
 
+# These measures always hide a 1- or 2-site class. Callers cannot turn that off.
+CANNOT_SKIP_SMALL_COUNT = frozenset({"vdl", "contaminated"})
+
+
+def _guard_small_counts(
+    rows: Sequence[Mapping[str, Any]],
+    *,
+    measure: str | None,
+    use_class: bool,
+) -> None:
+    """V&DL, contaminated land, and each use class cannot publish a 1- or 2-site area."""
+    if measure not in CANNOT_SKIP_SMALL_COUNT and measure is not None and not use_class:
+        return
+    for row in rows:
+        if row.get("coverage") != "covered":
+            continue
+        label = row.get("site_count_label")
+        leaked = label in {"1", "2", 1, 2} or (
+            label == "<3" and row.get("hectares") is not None
+        )
+        if leaked:
+            raise ValueError("V&DL and contaminated land cannot skip the <3 rule")
+
+
 def rollup_council_measure(
     *,
     zones_by_council: Mapping[str, Sequence[str]],
     covered_councils: set[str],
     sites: Sequence[Mapping[str, Any]],
     use_class: bool = False,
+    measure: str | None = None,
 ) -> list[dict[str, Any]]:
     """DZ totals for council-direct V&DL, contaminated land, or LDP.
 
     Uncovered councils stay null. Covered councils with no sites are zero.
-    Site names and geometry are not copied.
+    Site names and geometry are not copied. use_class applies the "<3" rule
+    to each class. V&DL and contaminated land cannot skip that rule.
     """
     council_of: dict[str, str] = {}
     for council, zones in zones_by_council.items():
@@ -423,29 +449,19 @@ def rollup_council_measure(
                 rows.append(row)
                 continue
             hectares = sum(float(site.get("hectares") or 0) for site in bucket)
-            if use_class:
-                rows.append(
-                    {
-                        "zone_id": zone_id,
-                        "dz_vintage": DZ2022_VINTAGE,
-                        "coverage": "covered",
-                        "source_council": council,
-                        "use_class": klass or "unspecified",
-                        "hectares": hectares,
-                    }
-                )
-                continue
             label, shown = suppress_site_totals(len(bucket), hectares)
-            rows.append(
-                {
-                    "zone_id": zone_id,
-                    "dz_vintage": DZ2022_VINTAGE,
-                    "coverage": "covered",
-                    "source_council": council,
-                    "site_count_label": label,
-                    "hectares": shown,
-                }
-            )
+            row = {
+                "zone_id": zone_id,
+                "dz_vintage": DZ2022_VINTAGE,
+                "coverage": "covered",
+                "source_council": council,
+                "site_count_label": label,
+                "hectares": shown,
+            }
+            if use_class:
+                row["use_class"] = klass or "unspecified"
+            rows.append(row)
+    _guard_small_counts(rows, measure=measure, use_class=use_class)
     return rows
 
 

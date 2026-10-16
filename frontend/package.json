@@ -32,6 +32,7 @@
     "test:site-rewrite-pr2": "node --experimental-strip-types scripts/test-site-rewrite-pr2.mjs",
     "build:downloads": "node --experimental-strip-types scripts/build-download-bundles.mjs",
     "check:download-bundles-fresh": "node scripts/check-download-bundles-fresh.mjs",
+    "test:vdl-dz-3": "node scripts/test-vdl-dz-3.mjs",
     "test:site-rewrite-pr3": "node --experimental-strip-types scripts/test-site-rewrite-pr3.mjs",
     "test:designer-live-check": "node --experimental-strip-types scripts/test-designer-live-check.mjs",
     "test:site-watch-pr-b": "node scripts/test-site-watch-pr-b.mjs",

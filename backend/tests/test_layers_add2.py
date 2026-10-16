@@ -438,6 +438,27 @@ def test_d4_small_counts_hide_area_for_vdl_and_contaminated():
     assert contam[0]["site_count_label"] == "<3"
 
 
+def test_use_class_two_sites_hides_area():
+    """A class with 2 sites is "<3" and a null area. V&DL and contaminated cannot skip it."""
+    zone = dz2022_zone_ids()[0]
+    sites = [
+        {"zone_id": zone, "hectares": 1.25, "use_class": "derelict"},
+        {"zone_id": zone, "hectares": 2.0, "use_class": "derelict"},
+    ]
+    for measure in ("vdl", "contaminated"):
+        rows = rollup_council_measure(
+            zones_by_council={"S12000049": [zone]},
+            covered_councils={"S12000049"},
+            sites=sites,
+            use_class=True,
+            measure=measure,
+        )
+        assert len(rows) == 1
+        assert rows[0]["use_class"] == "derelict"
+        assert rows[0]["site_count_label"] == "<3"
+        assert rows[0]["hectares"] is None
+
+
 def test_d5_no_site_polygons_or_site_fields():
     app = FastAPI()
     app.include_router(router)

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
 
+from layers.open_stats import vdl_json
 from layers.svdls_geometry import (
     GEOMETRY_PRECEDENCE,
     GEOMETRY_SOURCE_SPATIALHUB_SURVEY,
@@ -16,6 +18,7 @@ from layers.vdl import (
     OPEN_VDL_ZONE_KEYS,
     OUT_SR,
     SITE_TYPES,
+    _STALE_VDL_PHRASES,
     _site_props,
     _size_ha,
     query_bbox,
@@ -473,13 +476,51 @@ def test_public_vdl_downloads_hide_small_site_areas():
             rows = list(csv.DictReader(handle))
         assert rows
         ha_cols = [key for key in rows[0] if key.startswith("ha")]
+        count_cols = [
+            key for key in rows[0] if key.startswith("n_") and key != "n_sites"
+        ]
         assert ha_cols
+        assert count_cols
         for row in rows:
             count = row["n_sites"]
             assert count not in {"1", "2"}
             if count == "<3":
                 for col in ha_cols:
                     assert row[col] == ""
+            for col in count_cols:
+                assert row[col] not in {"1", "2"}
+                if row[col] == "<3":
+                    hectares = "ha_" + col[2:]
+                    if hectares in row:
+                        assert row[hectares] == ""
+            if count == "0":
+                for col in ha_cols:
+                    assert col
+                    assert row[col] != "0.000000"
+                    assert row[col].replace(".5", "", 1).lstrip("-").isdigit()
+
+
+def test_sources_and_vdl_api_drop_retired_phrases(monkeypatch):
+    """Retired survey phrases stay out of sources.yaml and /api/vdl.json."""
+    root = Path(__file__).resolve().parents[2]
+    sources = (root / "data" / "config" / "sources.yaml").read_text(encoding="utf-8")
+    api_source = (root / "backend" / "layers" / "open_stats.py").read_text(encoding="utf-8")
+
+    def _stats(*_args, **_kwargs):
+        return [{"owner_1": "Local Authority", "n": 4, "sqm": 20000}]
+
+    monkeypatch.setattr("layers.open_stats._stats", _stats)
+    body = vdl_json()
+    api_text = json.dumps(body)
+    assert body["note"] == (
+        "Totals from the Scottish Vacant and Derelict Land Survey, by council."
+    )
+    assert "owner class" not in body["note"].lower()
+    assert "owner-class" not in body["note"].lower()
+    for phrase in _STALE_VDL_PHRASES:
+        assert phrase not in sources
+        assert phrase not in api_source
+        assert phrase not in api_text
 
 
 def test_query_point_omits_site_fields(monkeypatch):

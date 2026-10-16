@@ -26,6 +26,10 @@ import {
 } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import {
+  assertPublishedVdlDownloadRows,
+  publishVdlDownloadRow,
+} from "./vdl-download-publish.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const frontendRoot = join(here, "..");
@@ -58,41 +62,6 @@ const VDL_LICENCE_ATTRIBUTION =
   "Data Zone boundaries © Scottish Government, contains OS data © Crown copyright " +
   "and database right 2026. " +
   VDL_ZONE_TOTALS;
-
-/** Nearest 0.5 ha, half up. Matches layers.vdl.round_area_ha. */
-function roundHalfHa(raw) {
-  const n = Number(raw);
-  if (!Number.isFinite(n)) return "";
-  const negative = n < 0;
-  const absMilli = Math.round(Math.abs(n) * 1000);
-  const doubled = absMilli / 500;
-  const nearest = Math.floor(doubled + 0.5);
-  const out = ((negative ? -1 : 1) * nearest) / 2;
-  return String(out);
-}
-
-/**
- * Zones with 1 or 2 sites publish n_sites "<3" and no area.
- * A zero count has no site size to hide and stays 0.
- */
-function publishVdlDownloadRow(row, headers) {
-  const count = Number(row.n_sites);
-  const next = { ...row };
-  if (!Number.isFinite(count) || count <= 0) return next;
-  if (count < 3) {
-    next.n_sites = "<3";
-    for (const key of headers) {
-      if (key === "code" || key === "vintage" || key === "crosswalk_method") continue;
-      if (key.startsWith("ha") || key.startsWith("n_")) next[key] = "";
-    }
-    next.n_sites = "<3";
-    return next;
-  }
-  for (const key of headers) {
-    if (key.startsWith("ha")) next[key] = roundHalfHa(row[key]);
-  }
-  return next;
-}
 
 const INSPIRE_LICENCE_ATTRIBUTION =
   `${inspireRosOsAttribution(INSPIRE_HARVEST_YEAR)} ${OGL} — Registers of Scotland INSPIRE Index Polygons`;
@@ -329,17 +298,7 @@ const bundles = [];
         estimate_label: ESTIMATE_NA,
         licence_attribution: VDL_LICENCE_ATTRIBUTION,
       }));
-      for (const row of outRows) {
-        assert.notEqual(row.n_sites, "1");
-        assert.notEqual(row.n_sites, "2");
-        assert.notEqual(Number(row.n_sites), 1);
-        assert.notEqual(Number(row.n_sites), 2);
-        if (row.n_sites === "<3") {
-          for (const key of headers) {
-            if (key.startsWith("ha")) assert.equal(row[key], "");
-          }
-        }
-      }
+      assertPublishedVdlDownloadRows(outRows, headers);
       const dest = join(outDir, pack.outName);
       writeCsv(dest, outHeaders, outRows);
       assertCreditColumns(dest);

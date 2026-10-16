@@ -662,6 +662,15 @@ function fitScotlandNational(map: Map) {
   container.dataset.viewSource = "scotland";
 }
 
+function zoneFrameHolds(map: Map, lng: number, lat: number): boolean {
+  const container = map.getContainer();
+  if (container.clientWidth < 40 || container.clientHeight < 40) return false;
+  if (!styleIsReady(map)) return false;
+  if (map.getZoom() < 11) return false;
+  const box = map.getBounds();
+  return Boolean(box?.contains([lng, lat]));
+}
+
 function frameMatchedZone(
   map: Map,
   lng: number,
@@ -754,7 +763,8 @@ export default function ScotlandMap() {
     lat: number;
     bounds: ZoneBounds | null;
     pinPadding?: maplibregl.PaddingOptions;
-    attempts: number;
+    started: number;
+    timer: number;
   } | null>(null);
   /** Show Scotland: panel-close padding must not cancel the national fit. */
   const pendingNationalFitRef = useRef(false);
@@ -1376,6 +1386,9 @@ export default function ScotlandMap() {
     // Invalidate in-flight identify / search so a late place_card_v1 cannot
     // resurrect the sheet after Esc / × (mobile detent e2e).
     lookupGen.current += 1;
+    if (pendingZoneFrameRef.current?.timer) {
+      window.clearTimeout(pendingZoneFrameRef.current.timer);
+    }
     pendingZoneFrameRef.current = null;
     identifyAbortRef.current?.abort();
     identifyAbortRef.current = null;
@@ -1605,7 +1618,8 @@ export default function ScotlandMap() {
             lat,
             bounds: zoneBounds,
             pinPadding,
-            attempts: 0,
+            started: Date.now(),
+            timer: 0,
           };
           window.setTimeout(() => {
             const liveMap = mapRef.current;
@@ -1910,31 +1924,42 @@ export default function ScotlandMap() {
     const pending = pendingZoneFrameRef.current;
     if (!pending || pending.gen !== lookupGen.current) return;
     const container = map.getContainer();
-    container.dataset.framed = "1";
-    container.dataset.viewSource = "place";
-    if (!styleIsReady(map)) {
-      map.once("idle", () => commitPendingCamera(map));
+    if (
+      container.clientWidth >= 40 &&
+      container.clientHeight >= 40 &&
+      styleIsReady(map)
+    ) {
+      try {
+        map.stop();
+        frameMatchedZone(
+          map,
+          pending.lng,
+          pending.lat,
+          pending.bounds,
+          pending.pinPadding,
+        );
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err ?? "");
+        if (!message.includes("Style is not done loading")) throw err;
+      }
+    }
+    if (zoneFrameHolds(map, pending.lng, pending.lat)) {
+      container.dataset.framed = "1";
+      container.dataset.viewSource = "place";
+      if (pending.timer) window.clearTimeout(pending.timer);
+      pending.timer = 0;
       return;
     }
-    map.stop();
-    frameMatchedZone(
-      map,
-      pending.lng,
-      pending.lat,
-      pending.bounds,
-      pending.pinPadding,
-    );
-    const box = map.getBounds();
-    const framed =
-      map.getZoom() >= 11 &&
-      Boolean(box?.contains([pending.lng, pending.lat]));
-    if (framed) {
-      pendingZoneFrameRef.current = null;
-      return;
-    }
-    pending.attempts += 1;
-    if (pending.attempts > 8) return;
-    map.once("idle", () => commitPendingCamera(map));
+    // A resize can refit Scotland after this call, or the map can still be
+    // 0×0. Keep trying until the zone centre is inside a zoom ≥ 11 view.
+    if (pending.timer || Date.now() - pending.started > 12_000) return;
+    pending.timer = window.setTimeout(() => {
+      pending.timer = 0;
+      const live = mapRef.current;
+      if (live && pendingZoneFrameRef.current === pending) {
+        commitPendingCamera(live);
+      }
+    }, 100);
   }
 
   // MapLibre padding follows the panel slot.
@@ -2417,6 +2442,15 @@ export default function ScotlandMap() {
     map.on("moveend", syncCameraDataset);
     map.on("zoomend", syncCameraDataset);
     const frameScotland = () => {
+      const pendingZone = pendingZoneFrameRef.current;
+      if (
+        pendingZone &&
+        pendingZone.gen === lookupGen.current &&
+        !userMoved
+      ) {
+        commitPendingCamera(map);
+        return;
+      }
       if (cameraPreserveRef.current) {
         const cam = cameraPreserveRef.current;
         cameraPreserveRef.current = null;

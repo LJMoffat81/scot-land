@@ -20,6 +20,7 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+from typing import Mapping
 
 SOURCES = (
     "builder_output",
@@ -113,14 +114,33 @@ def _rows(payload) -> list[dict]:
     raise CheckInputError("input JSON must be a zone list or a zone map")
 
 
+def _screen_year(value) -> int:
+    """Blank, non-integer and 2024 years fail closed before later fields are used."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        raise CheckInputError("year field is blank")
+    if isinstance(value, bool) or isinstance(value, float) or not isinstance(value, (int, str)):
+        raise CheckInputError("year is not an integer")
+    if isinstance(value, str):
+        stripped = value.strip()
+        digits = stripped[1:] if stripped[0:1] == "-" else stripped
+        if not digits.isdigit():
+            raise CheckInputError("year is not an integer")
+        year = int(stripped)
+    else:
+        year = int(value)
+    if year >= 2024:
+        raise CheckInputError("year >= 2024 refused")
+    return year
+
+
 def load_source(path: Path, source: str) -> dict[str, dict]:
     """One source, restricted to the fields that source is allowed to carry."""
     payload = json.loads(path.read_text(encoding="utf-8"))
     allowed = SOURCE_FIELDS[source]
     zones: dict[str, dict] = {}
     for row in _rows(payload):
-        if "year" in row and int(row["year"]) >= 2024:
-            raise CheckInputError("year >= 2024 refused")
+        if "year" in row:
+            _screen_year(row["year"])
         if "zone" not in row:
             raise CheckInputError(f"{source} row has no zone")
         unknown = sorted(key for key in row if key not in allowed and key != "zone" and key != "year")
@@ -131,7 +151,10 @@ def load_source(path: Path, source: str) -> dict[str, dict]:
     return zones
 
 
-def build_v14_check_inputs(tables: dict[str, dict[str, dict]]) -> dict[str, list[dict]]:
+def build_v14_check_inputs(
+    tables: dict[str, dict[str, dict]],
+    pins: Mapping[str, str] | None = None,
+) -> dict:
     """Join pinned sources into ``primary_zones`` and ``secondary_zones``."""
     if set(tables) != set(SOURCES):
         raise CheckInputError("tables do not match the source list")
@@ -165,7 +188,10 @@ def build_v14_check_inputs(tables: dict[str, dict[str, dict]]) -> dict[str, list
                 secondary.append(zone)
     if missing:
         raise CheckInputError("missing fields: " + "; ".join(missing))
-    return {"primary_zones": primary, "secondary_zones": secondary}
+    built: dict = {"primary_zones": primary, "secondary_zones": secondary}
+    if pins:
+        built["pins"] = {name: pins[name] for name in SOURCES if name in pins}
+    return built
 
 
 def _parse_pins(items: list[str]) -> dict[str, str]:
@@ -190,7 +216,7 @@ def main(argv: list[str] | None = None) -> int:
         pins = _parse_pins(list(args.pin))
         assert_pinned(paths, pins)
         tables = {name: load_source(paths[name], name) for name in SOURCES}
-        payload = build_v14_check_inputs(tables)
+        payload = build_v14_check_inputs(tables, pins)
     except (CheckInputError, OSError, json.JSONDecodeError) as exc:
         sys.stderr.write(str(exc) + "\n")
         return 1

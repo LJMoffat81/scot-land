@@ -11,6 +11,7 @@ import math
 from typing import Mapping, Sequence
 
 import numpy as np
+from statsmodels.base.model import LikelihoodModel
 from statsmodels.regression.mixed_linear_model import MixedLM
 
 BOOTSTRAP_SEED = 20261015
@@ -465,6 +466,35 @@ def _fit_s_c2(rows: Sequence[Mapping]) -> dict:
     return _fit_named("S-c2", prepared)
 
 
+def _fit_mixedlm(endog, exog, groups, exog_re):
+    """Fit once with lbfgs. gtol=1e-8 maps to L-BFGS-B pgtol=1e-8.
+
+    factr and every other optimiser option stay at their defaults.
+    No retry and no solver swap. MixedLM.fit drops pgtol before the
+    lbfgs solver (its allow-list still names gtol, which lbfgs ignores),
+    so the parent fit receives pgtol after that filter.
+    """
+    model = MixedLM(endog, exog, groups, exog_re=exog_re)
+    original = LikelihoodModel.fit
+
+    def _with_pgtol(self, *args, **kwargs):
+        kwargs.pop("gtol", None)
+        kwargs["pgtol"] = S_C3_GTOL
+        return original(self, *args, **kwargs)
+
+    LikelihoodModel.fit = _with_pgtol
+    try:
+        # pgtol is applied on the parent fit. Passing it here is dropped by
+        # MixedLM.fit's allow-list, which still names the ignored gtol.
+        return model.fit(
+            reml=S_C3_REML,
+            method=S_C3_METHOD,
+            maxiter=S_C3_MAXITER,
+        )
+    finally:
+        LikelihoodModel.fit = original
+
+
 def _fit_s_c3(rows: Sequence[Mapping]) -> dict:
     """Partial pooling of the land slope. No second solver and no retune."""
     try:
@@ -475,16 +505,11 @@ def _fit_s_c3(rows: Sequence[Mapping]) -> dict:
         if len(set(groups)) < 2 or any(not group for group in groups):
             return _sensitivity_row(
                 "S-c3",
-                status="NOT_CONVERGED",
+                status="NOT_RUN",
                 reason="MixedLM needs two or more groups",
                 converged=False,
             )
-        result = MixedLM(y, exog, groups, exog_re=area.reshape(-1, 1)).fit(
-            reml=S_C3_REML,
-            method=S_C3_METHOD,
-            maxiter=S_C3_MAXITER,
-            gtol=S_C3_GTOL,
-        )
+        result = _fit_mixedlm(y, exog, groups, area.reshape(-1, 1))
     except Exception as exc:
         return _sensitivity_row("S-c3", status="ERROR", reason=str(exc), converged=False)
     converged = bool(getattr(result, "converged", False))
@@ -638,7 +663,7 @@ def sensitivity_table(
     return table
 
 
-def fit_headline(rows: Sequence[Mapping]) -> dict:
+def fit_headline(rows: Sequence[Mapping], d7_sha256: str | None = None) -> dict:
     """Log-form WLS, then both bootstraps. Levels coefficients are not returned as shares."""
     kept = _eligible(rows)
     coef, names, beta = _fit_rows(kept)
@@ -674,7 +699,7 @@ def fit_headline(rows: Sequence[Mapping]) -> dict:
         "seed": BOOTSTRAP_SEED,
         "reps": BOOTSTRAP_REPS,
         "gates_use": "iz_point_beta",
-        "sensitivities": sensitivity_table(kept, beta),
+        "sensitivities": sensitivity_table(kept, beta, d7_sha256=d7_sha256),
     }
 
 

@@ -6,7 +6,8 @@ Synthetic or precomputed share lists only in CI; no public £.
 
 Additive arguments (absent → output matches fe026b76):
 ``--check-inputs``, ``--secondary-estimator-json``, ``--holdout-2023``,
-``--score-2024``, ``--allow-rerun-for-fidelity-bug``, ``--record-sha8s``.
+``--score-2024``, ``--allow-rerun-for-fidelity-bug``, ``--record-sha8s``,
+``--lock-path``.
 """
 
 from __future__ import annotations
@@ -31,8 +32,11 @@ from georgist.v14_score_report import (
     assert_merge_map,
     build_report,
     git_commit,
+    input_years,
+    mark_score_2024,
     prepare_holdout_2023,
     require_commit_sha,
+    secondary_estimator_fields,
     sha256_file,
     write_holdout_lock,
     write_report,
@@ -149,18 +153,36 @@ def _inputs_sha256(args: argparse.Namespace) -> str:
     return digest.hexdigest()
 
 
+def _input_paths(args: argparse.Namespace) -> dict[str, Path]:
+    paths: dict[str, Path] = {}
+    if args.merge_map is not None:
+        paths["merge_map"] = args.merge_map
+    if args.check_inputs is not None:
+        paths["check_inputs"] = args.check_inputs
+    if args.secondary_estimator_json is not None:
+        paths["fitted_hedonic"] = args.secondary_estimator_json
+    return paths
+
+
 def _extended_main(args: argparse.Namespace) -> int:
     score_dir = args.out.parent
     inputs_sha = _inputs_sha256(args)
     reads = PriceColumnReadLog()
     commit = require_commit_sha(git_commit())
     try:
+        if (args.holdout_2023 or args.score_2024) and args.lock_path is None:
+            raise HoldoutLockError("--lock-path is required")
         if args.merge_map:
             refuse_2024_price_file(args.merge_map.name)
             assert_merge_map(args.merge_map)
         if args.secondary_estimator_json:
             refuse_2024_price_file(args.secondary_estimator_json.name)
+        input_paths = _input_paths(args)
+        secondary = None
+        if args.secondary_estimator_json is not None:
+            secondary = secondary_estimator_fields(args.secondary_estimator_json)
         holdout_scores = None
+        score_2024_scores = None
         if args.holdout_2023:
             if args.check_inputs is None:
                 raise ReportAbort("holdout needs check inputs")
@@ -169,11 +191,27 @@ def _extended_main(args: argparse.Namespace) -> int:
                 inputs_sha256=inputs_sha,
                 commit=commit,
                 allow_incident=args.allow_rerun_for_fidelity_bug,
+                lock_path=args.lock_path,
             )
             holdout_scores = _score_holdout(args.check_inputs)
         if args.score_2024:
-            assert_2024_allowed(score_dir)
-        report = build_report(price_columns_read=reads.snapshot(), commit=commit)
+            if args.check_inputs is None:
+                raise ReportAbort("2024 scoring needs check inputs")
+            years = input_years(args.check_inputs)
+            assert_2024_allowed(
+                lock_path=args.lock_path,
+                inputs_sha256=inputs_sha,
+                years=years,
+            )
+            score_2024_scores = _score_holdout(args.check_inputs)
+        report = build_report(
+            input_paths=input_paths,
+            price_columns_read=reads.snapshot(),
+            commit=commit,
+            secondary_estimator=secondary,
+        )
+        if not args.record_sha8s:
+            report.pop("sha8", None)
         if args.holdout_2023:
             report["holdout_scores"] = holdout_scores
             report["holdout_estimated"] = True
@@ -184,8 +222,18 @@ def _extended_main(args: argparse.Namespace) -> int:
                 "publication": holdout_scores["publication"]["outcome"],
                 "hbu_in_checks": holdout_scores["checks_include_hbu"],
             }
-        elif args.check_inputs:
+        elif args.check_inputs and not args.score_2024:
             report["checks"] = _check_summary(args.check_inputs)
+        if args.score_2024:
+            report["score_2024"] = score_2024_scores
+            report["checks"] = {
+                "status": "scored",
+                "full": True,
+                "primary_gating_pass": score_2024_scores["primary"]["gating_pass"],
+                "secondary_gating_pass": score_2024_scores["secondary"]["gating_pass"],
+                "publication": score_2024_scores["publication"]["outcome"],
+                "hbu_in_checks": score_2024_scores["checks_include_hbu"],
+            }
         write_report(args.out, report)
         if args.holdout_2023:
             write_holdout_lock(
@@ -193,7 +241,10 @@ def _extended_main(args: argparse.Namespace) -> int:
                 inputs_sha256=inputs_sha,
                 commit=commit,
                 report_sha256=sha256_file(args.out),
+                lock_path=args.lock_path,
             )
+        if args.score_2024:
+            mark_score_2024(args.lock_path)
     except Exception as exc:
         sys.stderr.write(str(exc) + "\n")
         return 1
@@ -224,6 +275,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--score-2024", action="store_true", help="2024 entry point. Requires the holdout lock.")
     p.add_argument("--allow-rerun-for-fidelity-bug", default=None, help="Incident id for a logged fidelity rerun.")
     p.add_argument("--record-sha8s", action="store_true", help="Write the sha8 run report.")
+    p.add_argument(
+        "--lock-path",
+        type=Path,
+        help="Lock file for --holdout-2023 and --score-2024. Required by both.",
+    )
     p.add_argument("--merge-map", type=Path, help="Pinned CA2019 x UR3 merge map. Abort on sha256 mismatch.")
     args = p.parse_args(argv)
     if _extended(args):

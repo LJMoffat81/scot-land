@@ -65,7 +65,12 @@ SCHEMA_TOKEN = {
 }
 BEDROOM_BANDS = ("share_1", "share_3", "share_4plus")
 # Production DZ2022 flag count from D4. Tests pass the fixture's own K.
-PIN_TABLE: dict[str, int] = {"low_parcel_count": 1038}
+# house_sales is the full RoS digest. An 8-character prefix is not this pin.
+HOUSE_SALES_SHA256 = "702c9ada0b26dad9904e97f00ea7aa3357e1bf449e724e83292b5265f0549cf2"
+PIN_TABLE: dict[str, object] = {
+    "low_parcel_count": 1038,
+    "house_sales": HOUSE_SALES_SHA256,
+}
 
 
 class B2Error(ValueError):
@@ -183,6 +188,10 @@ def screen_house_sales_year(row: Sequence[str], header: Sequence[str], row_numbe
     if not text.isdigit():
         raise B2Error(
             f"B2_HOUSE_SALES: ERROR: year row {row_number}: expected integer, got {text}"
+        )
+    if int(text) >= 2024:
+        raise B2Error(
+            f"B2_HOUSE_SALES: ERROR: year row {row_number}: expected <2024, got {text}"
         )
     return int(text)
 

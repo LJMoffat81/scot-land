@@ -395,6 +395,24 @@ def test_year_screen_long_short(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     _assert_year(tmp_path, monkeypatch, ["S01", "SYNTHETIC zone", "2011 Data Zones"], "short")
 
 
+def test_year_screen_long_2024(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """SYNTHETIC. DateCode 2024 is refused before Value is read."""
+    header, _rows = _house()
+    path = _path(
+        tmp_path,
+        "house_sales",
+        header,
+        [["S01", "SYNTHETIC zone", "2011 Data Zones", "2024", "Mean", "GBP", "SENTINEL_VALUE", "6"]],
+    )
+    calls = {"n": 0}
+    monkeypatch.setattr("georgist.v14_b2.read_value_cell", lambda value: calls.__setitem__("n", calls["n"] + 1) or value)
+    with pytest.raises(B2Error) as raised:
+        adapt_house_sales(path)
+    assert str(raised.value) == "B2_HOUSE_SALES: ERROR: year row 1: expected <2024, got 2024"
+    assert calls["n"] == 0
+    assert "SENTINEL_VALUE" not in str(raised.value)
+
+
 def test_year_screen_long_nonint(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """SYNTHETIC. A non-integer DateCode does not read Value."""
     _assert_year(

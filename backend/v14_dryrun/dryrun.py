@@ -102,6 +102,7 @@ def run(root: Path) -> dict:
         D7_PINS["filter2_output"] = sha256_file(out2)
         D7_PINS["row_count"] = len(data_rows)
         B2_PINS["low_parcel_count"] = 1
+        B2_PINS["house_sales"] = sha256_file(sales)
         code = b2_main(
             [
                 "--out",

@@ -216,6 +216,7 @@ def accept_filter2_output(
     *,
     hedonic_rows: Sequence[Mapping] | None = None,
     manifest: dict[str, object] | None = None,
+    run_fit: bool = True,
 ) -> D7ChainResult:
     """Hash, then row count and years, then the fit hook."""
     recorded = dict(d7_provenance_manifest() if manifest is None else manifest)
@@ -234,13 +235,17 @@ def accept_filter2_output(
     if message:
         return _result(message, recorded)
     delivered = actual
-    fitted = fit_headline(list(hedonic_rows or []), d7_sha256=delivered)
+    fitted = None
+    s_x2 = "NOT_RUN"
+    if run_fit:
+        fitted = fit_headline(list(hedonic_rows or []), d7_sha256=delivered)
+        s_x2 = "fit"
     return D7ChainResult(
         status="passed",
         message="",
         manifest=recorded,
         d7_sha256=delivered,
-        s_x2="fit",
+        s_x2=s_x2,
         fitted=fitted if isinstance(fitted, dict) else None,
     )
 
@@ -253,6 +258,7 @@ def run_d7_chain(
     filter2_script: Path,
     filter2_output: Path,
     hedonic_rows: Sequence[Mapping] | None = None,
+    run_fit: bool = True,
 ) -> D7ChainResult:
     """Source, filter1 script, filter1 output, filter2 script, filter2 output.
 
@@ -306,4 +312,9 @@ def run_d7_chain(
             manifest,
         )
     execute_filter2(filter2_script, filter1_output, filter2_output)
-    return accept_filter2_output(filter2_output, hedonic_rows=hedonic_rows, manifest=manifest)
+    return accept_filter2_output(
+        filter2_output,
+        hedonic_rows=hedonic_rows,
+        manifest=manifest,
+        run_fit=run_fit,
+    )

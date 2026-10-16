@@ -32,7 +32,9 @@ from georgist.v14_b2 import (
 from georgist.v14_d7_chain import (
     D7ChainResult,
     run_d7_chain,
+    sha256_file,
 )
+from georgist.v14_hedonic import fit_headline
 
 
 def _fit_rows(sales: list[dict], floors: list[dict]) -> list[dict]:
@@ -58,27 +60,39 @@ def _fit_rows(sales: list[dict], floors: list[dict]) -> list[dict]:
     return built
 
 
+def assert_house_sales_pin(path: Path) -> None:
+    """Full sha256 only. The 702c9ada prefix is not enough."""
+    expected = str(PIN_TABLE["house_sales"])
+    if not path.is_file():
+        raise B2Error(f"B2_HOUSE_SALES: ERROR: sha256: expected {expected}, got absent")
+    actual = sha256_file(path)
+    if actual != expected:
+        raise B2Error(f"B2_HOUSE_SALES: ERROR: sha256: expected {expected}, got {actual}")
+
+
 def build(args: argparse.Namespace) -> dict:
+    assert_house_sales_pin(args.house_sales)
     sales = adapt_house_sales(args.house_sales)
     plots = adapt_plot_split(args.plot_split, expected_count=PIN_TABLE["low_parcel_count"])
     crosswalk = adapt_crosswalk(args.crosswalk)
     access = adapt_access(args.access)
     bedrooms = adapt_bedrooms(args.bedrooms, args.crosswalk)
-    floors = adapt_sold_tfa(args.sold_tfa)
-    fit_rows = _fit_rows(sales, floors)
     chain: D7ChainResult = run_d7_chain(
         source=args.sold_tfa,
         filter1_script=args.filter1_script,
         filter1_output=args.filter1_output,
         filter2_script=args.filter2_script,
         filter2_output=args.filter2_output,
-        hedonic_rows=fit_rows,
+        run_fit=False,
     )
     if not chain.passed or chain.d7_sha256 is None:
         raise B2Error(chain.message)
+    floors = adapt_sold_tfa(args.filter2_output)
+    fit_rows = _fit_rows(sales, floors)
+    fitted = fit_headline(fit_rows, d7_sha256=chain.d7_sha256)
     s_x2 = "NOT_RUN"
-    if isinstance(chain.fitted, dict):
-        s_x2 = next(item["status"] for item in chain.fitted["sensitivities"] if item["id"] == "S-x2")
+    if isinstance(fitted, dict):
+        s_x2 = next(item["status"] for item in fitted["sensitivities"] if item["id"] == "S-x2")
     return {
         "label": "SYNTHETIC",
         "fidelity_adaptation": FIDELITY_ADAPTATION,

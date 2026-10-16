@@ -486,7 +486,7 @@ def _fit_s_c3(rows: Sequence[Mapping]) -> dict:
             gtol=S_C3_GTOL,
         )
     except Exception as exc:
-        return _sensitivity_row("S-c3", status="NOT_CONVERGED", reason=str(exc), converged=False)
+        return _sensitivity_row("S-c3", status="ERROR", reason=str(exc), converged=False)
     converged = bool(getattr(result, "converged", False))
     if not converged:
         return _sensitivity_row(
@@ -631,7 +631,7 @@ def sensitivity_table(
     for item in table:
         if item["gates"] or item["swapped_in"]:
             raise HedonicError("a sensitivity would gate or replace the headline")
-        if item["status"] in {"NOT_RUN", "NOT_CONVERGED"} and not item["reason"]:
+        if item["status"] in {"NOT_RUN", "NOT_CONVERGED", "ERROR"} and not item["reason"]:
             raise HedonicError(f"{item['id']} has no reason")
         if item["id"] != "levels" and item["beta_by_cell"] == dict(headline):
             continue

@@ -133,19 +133,160 @@ def assert_pinned(paths: dict[str, Path | None]) -> None:
             raise HedonicRowError(f"{name} sha256 {digest} != {expected}")
 
 
-def screen_years(path: Path, year_column: str = "year") -> None:
-    """Refuse year >= 2024 before any price column is indexed."""
-    with path.open(newline="", encoding="utf-8") as handle:
-        reader = csv.reader(handle)
-        header = next(reader, None)
-        if not header or year_column not in header:
-            raise HedonicRowError(f"{path.name} has no {year_column} column")
-        year_index = header.index(year_column)
-        for record in reader:
-            if not record or year_index >= len(record) or not str(record[year_index]).strip():
+class _CsvCursor:
+    """One-character CSV cursor with a single-character unread."""
+
+    def __init__(self, handle) -> None:
+        self._handle = handle
+        self._held: str | None = None
+
+    def read(self) -> str:
+        if self._held is not None:
+            char = self._held
+            self._held = None
+            return char
+        return _one_char(self._handle)
+
+    def unread(self, char: str) -> None:
+        if char == "":
+            return
+        if self._held is not None:
+            raise HedonicRowError("csv cursor overflow")
+        self._held = char
+
+
+def _one_char(handle) -> str:
+    """One Unicode character. A binary handle is read a byte at a time."""
+    raw = handle.read(1)
+    if raw is None or raw == "" or raw == b"":
+        return ""
+    if isinstance(raw, str):
+        return raw
+    lead = raw[0]
+    if lead < 0x80:
+        return chr(lead)
+    width = 2 if lead < 0xE0 else 3 if lead < 0xF0 else 4
+    buf = bytearray(raw)
+    while len(buf) < width:
+        more = handle.read(1)
+        if not more or isinstance(more, str):
+            raise HedonicRowError("truncated utf-8")
+        buf += more
+    return bytes(buf).decode("utf-8")
+
+
+def _finish_newline(cursor: _CsvCursor, char: str) -> None:
+    if char != "\r":
+        return
+    nxt = cursor.read()
+    if nxt != "\n":
+        cursor.unread(nxt)
+
+
+def _read_field(cursor: _CsvCursor, *, keep: bool) -> tuple[str, bool, bool]:
+    """Return ``(text, at_end, eof_before)``.
+
+    ``keep`` False discards the field text while the delimiters are still honoured.
+    Quote rules match the CSV reader: a doubled quote is one quote, and
+    characters after a closing quote stay in the field until the delimiter.
+    """
+    char = cursor.read()
+    if char == "":
+        return "", True, True
+    if char in "\r\n":
+        _finish_newline(cursor, char)
+        return "", True, False
+    if char == ",":
+        return "", False, False
+
+    pieces: list[str] = []
+    quoted = char == '"'
+
+    def take(value: str) -> None:
+        if keep:
+            pieces.append(value)
+
+    if not quoted:
+        take(char)
+    while True:
+        char = cursor.read()
+        if char == "" and quoted:
+            return "".join(pieces), True, False
+        if quoted:
+            if char != '"':
+                take(char)
                 continue
-            if int(record[year_index]) >= 2024:
-                raise HedonicRowError("year >= 2024 refused")
+            char = cursor.read()
+            if char == '"':
+                take('"')
+                continue
+            quoted = False
+            if char == "":
+                return "".join(pieces), True, False
+        if char == ",":
+            return "".join(pieces), False, False
+        if char in "\r\n":
+            _finish_newline(cursor, char)
+            return "".join(pieces), True, False
+        if char == "":
+            return "".join(pieces), True, False
+        take(char)
+
+
+def _skip_record(cursor: _CsvCursor) -> None:
+    while True:
+        _text, at_end, eof_before = _read_field(cursor, keep=False)
+        if at_end or eof_before:
+            return
+
+
+def screen_year_column(handle, year_column: str, source_name: str) -> None:
+    """Read the year field before any later field on that row.
+
+    A year at or after 2024 raises before the remainder of the record is
+    read, so a price cell after the year column never enters memory.
+    """
+    cursor = _CsvCursor(handle)
+    header: list[str] = []
+    while True:
+        text, at_end, eof_before = _read_field(cursor, keep=True)
+        if eof_before and not header:
+            raise HedonicRowError(f"{source_name} has no {year_column} column")
+        header.append(text.strip())
+        if at_end:
+            break
+    if year_column not in header:
+        raise HedonicRowError(f"{source_name} has no {year_column} column")
+    year_index = header.index(year_column)
+    for name in PRICE_COLUMNS:
+        if name in header and header.index(name) < year_index:
+            raise HedonicRowError("price column precedes the year column")
+    while True:
+        year_text: str | None = None
+        at_end = False
+        for position in range(year_index + 1):
+            text, at_end, eof_before = _read_field(cursor, keep=position == year_index)
+            if eof_before:
+                if position == 0:
+                    return
+                year_text = None
+                break
+            if position == year_index:
+                year_text = text
+            if at_end:
+                if position < year_index:
+                    year_text = None
+                break
+        if year_text is not None and year_text.strip() and int(year_text.strip()) >= 2024:
+            raise HedonicRowError("year >= 2024 refused")
+        if not at_end:
+            _skip_record(cursor)
+
+
+def screen_years(path: Path, year_column: str = "year") -> None:
+    """Refuse year >= 2024 before any later price cell is read."""
+    with path.open("rb", buffering=0) as handle:
+        screen_year_column(handle, year_column, path.name)
 
 
 def _csv_maps(path: Path, key: str, fields: tuple[str, ...]) -> dict[str, dict]:

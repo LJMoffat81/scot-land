@@ -30,8 +30,10 @@ def _write(tmp_path, name, features):
 def boundary_dir(tmp_path, monkeypatch):
     monkeypatch.setattr(dz_lookup, "PROCESSED_DIR", tmp_path)
     dz_lookup._file_cache.clear()
+    dz_lookup._bng_to_wgs84 = None
     yield tmp_path
     dz_lookup._file_cache.clear()
+    dz_lookup._bng_to_wgs84 = None
 
 
 def test_503_when_no_db_and_no_file(client, boundary_dir):
@@ -107,6 +109,57 @@ def test_on_boundary_flag(client, boundary_dir):
 ])
 def test_input_validation(client, boundary_dir, params, status):
     assert client.get("/layers/context/data-zones/at", params=params).status_code == status
+
+
+def test_by_code_point_is_inside_that_zone(client, boundary_dir):
+    _write(boundary_dir, "dz2011_boundaries.geojson",
+           [({"DataZone": "S01008677", "Name": "Synthetic Old Town"}, _square(325_000, 673_000, 2_000))])
+    r = client.get("/layers/context/data-zones/by-code", params={"code": "s01008677"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["code"] == "S01008677"
+    assert body["name"] == "Synthetic Old Town"
+    assert body["vintage"] == 2011
+    at = client.get("/layers/context/data-zones/at", params={"lat": body["lat"], "lng": body["lng"]})
+    assert at.status_code == 200, at.text
+    assert at.json()["code"] == "S01008677"
+    assert "unknown" not in r.text
+
+
+def test_point_file_reuses_bng_transformer(boundary_dir, monkeypatch):
+    _write(boundary_dir, "dz2011_boundaries.geojson",
+           [({"DataZone": "S01008677", "Name": "Synthetic Old Town"}, _square(325_000, 673_000, 2_000))])
+    created: list[tuple[object, object]] = []
+    real_from_crs = dz_lookup.Transformer.from_crs
+
+    def spy(crs_from, crs_to, always_xy=False):
+        created.append((crs_from, crs_to))
+        return real_from_crs(crs_from, crs_to, always_xy=always_xy)
+
+    monkeypatch.setattr(dz_lookup.Transformer, "from_crs", spy)
+    dz_lookup._bng_to_wgs84 = None
+    first = dz_lookup._point_file("S01008677", 2011)
+    second = dz_lookup._point_file("S01008677", 2011)
+    assert first == second
+    assert first["code"] == "S01008677"
+    assert created == [(27700, 4326)]
+
+
+def test_by_code_404_when_boundaries_have_a_different_zone(client, boundary_dir):
+    _write(boundary_dir, "dz2011_boundaries.geojson",
+           [({"code": "S01008678", "name": "Other"}, _square(325_000, 673_000, 2_000))])
+    r = client.get("/layers/context/data-zones/by-code", params={"code": "S01008677"})
+    assert r.status_code == 404
+    assert r.json()["detail"]["error"] == "data_zone_not_found"
+    assert "unknown" not in r.text
+
+
+def test_by_code_422_and_503(client, boundary_dir):
+    bad = client.get("/layers/context/data-zones/by-code", params={"code": "EH1 1YZ"})
+    assert bad.status_code == 422
+    missing = client.get("/layers/context/data-zones/by-code", params={"code": "S01008677"})
+    assert missing.status_code == 503
+    assert missing.json()["detail"]["error"] == "dz_boundaries_unavailable"
 
 
 def test_single_route_owner():

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import re
 import threading
 from dataclasses import dataclass, field
@@ -24,6 +25,7 @@ from typing import Any, Iterable
 
 from georgist import db
 from paths import PROCESSED_DIR
+from pyproj import Transformer
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +115,14 @@ _PG_HITS = """
     WHERE ST_Intersects(geom, ST_Transform(ST_SetSRID(ST_MakePoint(%s, %s), 4326), 27700))
     ORDER BY vintage, code
 """
+_PG_POINT = """
+    SELECT code, name, vintage,
+           ST_Y(ST_Transform(ST_PointOnSurface(geom), 4326)) AS lat,
+           ST_X(ST_Transform(ST_PointOnSurface(geom), 4326)) AS lng
+    FROM dz_boundaries
+    WHERE code = %s AND vintage = %s
+    LIMIT 1
+"""
 
 
 def lookup_postgis(lat: float, lon: float) -> Lookup:
@@ -136,8 +146,23 @@ def lookup_postgis(lat: float, lon: float) -> Lookup:
 
 # --------------------------------------------------------------------------- local file
 
-_file_cache: dict[str, tuple[float, Any, list[tuple[str, str | None]]]] = {}
+_file_cache: dict[str, tuple[float, Any, list[tuple[str, str | None]], list[Any]]] = {}
 _file_lock = threading.Lock()
+_bng_to_wgs84: Transformer | None = None
+
+
+def _wgs84_from_bng(x: float, y: float) -> tuple[float, float]:
+    """Reuse one BNG→WGS84 transformer across zone lookups."""
+    global _bng_to_wgs84
+    transformer = _bng_to_wgs84
+    if transformer is None:
+        with _file_lock:
+            transformer = _bng_to_wgs84
+            if transformer is None:
+                transformer = Transformer.from_crs(27700, 4326, always_xy=True)
+                _bng_to_wgs84 = transformer
+    lng, lat = transformer.transform(x, y)
+    return lng, lat
 
 
 def _field(props: dict, candidates: Iterable[str]) -> Any:
@@ -190,9 +215,14 @@ def _file_index(vintage: int):
         if cached is None or cached[0] != mtime:
             rows = read_boundary_file(path, vintage)
             tree = STRtree([g for _, _, g in rows])
-            cached = (mtime, tree, [(c, n) for c, n, _ in rows])
+            cached = (
+                mtime,
+                tree,
+                [(c, n) for c, n, _ in rows],
+                [g for _, _, g in rows],
+            )
             _file_cache[key] = cached
-    return cached[1], cached[2]
+    return cached[1], cached[2], cached[3]
 
 
 def lookup_file(lat: float, lon: float) -> Lookup:
@@ -206,7 +236,7 @@ def lookup_file(lat: float, lon: float) -> Lookup:
         index = _file_index(vintage)
         if index is None:
             continue
-        tree, meta = index
+        tree, meta = index[0], index[1]
         loaded.append(vintage)
         names.append(BOUNDARY_FILES[vintage])
         hits = sorted(int(i) for i in tree.query(pt, predicate="intersects"))
@@ -221,6 +251,75 @@ def lookup_file(lat: float, lon: float) -> Lookup:
 
 
 # --------------------------------------------------------------------------- orchestration
+
+
+def _point_payload(code: str, vintage: int, name: str | None, lat: float, lng: float) -> dict[str, Any] | None:
+    if vintage_for_code(code) != vintage:
+        return None
+    if not (isinstance(lat, (int, float)) and isinstance(lng, (int, float))):
+        return None
+    lat_f, lng_f = float(lat), float(lng)
+    if not math.isfinite(lat_f) or not math.isfinite(lng_f):
+        return None
+    return {
+        "code": code,
+        "name": name or None,
+        "vintage": vintage,
+        "lat": lat_f,
+        "lng": lng_f,
+    }
+
+
+def _point_postgis(code: str, vintage: int) -> dict[str, Any] | None:
+    with db.cursor() as cur:
+        cur.execute(_PG_POINT, (code, vintage))
+        row = cur.fetchone()
+    if not row:
+        return None
+    return _point_payload(row["code"], int(row["vintage"]), row["name"], row["lat"], row["lng"])
+
+
+def _point_file(code: str, vintage: int) -> dict[str, Any] | None:
+    index = _file_index(vintage)
+    if index is None:
+        raise BoundariesUnavailable(
+            [f"no boundary file in {PROCESSED_DIR} ({BOUNDARY_FILES[vintage]})"]
+        )
+    _tree, meta, geoms = index
+    for i, (zone_code, name) in enumerate(meta):
+        if zone_code != code:
+            continue
+        pt = geoms[i].representative_point()
+        lng, lat = _wgs84_from_bng(pt.x, pt.y)
+        return _point_payload(code, vintage, name, lat, lng)
+    return None
+
+
+def representative_point(code: str) -> dict[str, Any] | None:
+    """A point inside the Data Zone polygon, for restoring that zone by code.
+
+    PostGIS first (ST_PointOnSurface), then a local boundary file.
+    ``None`` when the source is loaded and the code is absent.
+    ``BoundariesUnavailable`` when no boundary source is available.
+    """
+    vintage = vintage_for_code(code)
+    if vintage is None:
+        raise ValueError(f"not a data zone code: {code!r}")
+    reasons: list[str] = []
+    if db.database_configured():
+        try:
+            found = _point_postgis(code, vintage)
+            if found is not None:
+                return found
+            reasons.append("db: code not in dz_boundaries")
+        except db.DatabaseUnavailable as exc:
+            reasons.append(f"db: {exc.reason}")
+    else:
+        reasons.append("db: not_configured")
+    try:
+        return _point_file(code, vintage)
+    except BoundariesUnavailable as exc:
+        raise BoundariesUnavailable(reasons + exc.reasons) from None
 
 
 def lookup(lat: float, lon: float) -> Lookup:

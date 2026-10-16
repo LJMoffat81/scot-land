@@ -276,9 +276,12 @@ for (const viewport of [
         await page.locator(".maplibregl-canvas").waitFor();
         await page.locator("#place-query").waitFor();
 
-        const layersBtn = await openLayers(page);
-        const drawer = page.getByTestId("map-panel-slot");
+        // Measure Layers button before open — at mobile full detent the
+        // button is intentionally hidden under the sheet.
+        const layersBtn = page.getByTestId("hud-layers-btn");
         const btnBox = await boxOf(layersBtn, "Layers button");
+        await openLayers(page);
+        const drawer = page.getByTestId("map-panel-slot");
         const drawerBox = await boxOf(drawer, "Layers drawer");
 
         if (viewport.width >= 900) {
@@ -309,9 +312,9 @@ for (const viewport of [
             "panel reaches bottom inset / attribution",
           ).toBeGreaterThanOrEqual(viewport.height - bottomAllowance - 2);
         } else {
-          // Mobile sheet: bottom-anchored; fills the sheet height; not under the button.
-          expect(drawerBox.y, "sheet below Layers button").toBeGreaterThan(
-            btnBox.y,
+          // Mobile full sheet: bottom-anchored; fills most of the viewport.
+          expect(drawerBox.y, "sheet below Layers button rest y").toBeGreaterThan(
+            btnBox.y - 8,
           );
           const footer = page.getByTestId("map-stamp-footer");
           const footerBox = await boxOf(footer, "map footer");
@@ -321,7 +324,7 @@ for (const viewport of [
           ).toBeGreaterThanOrEqual(viewport.height - footerBox.height - 4);
           expect(
             drawerBox.height,
-            "sheet ~55dvh+",
+            "sheet ~full detent",
           ).toBeGreaterThan(viewport.height * 0.45);
         }
 
@@ -352,7 +355,8 @@ for (const viewport of [
         }
 
         // MAP-CARDS XOR: place card is aside while Layers occupies the slot.
-        await page.getByTestId("hud-layers-btn").click();
+        // Prefer slot × — Layers button is hidden at mobile full detent.
+        await page.getByTestId("map-panel-slot-close").click();
         await expect(page.getByTestId("layers-panel")).toBeHidden();
         const card = await openPlaceCard(page);
         await expect(card).toBeVisible();

@@ -2,22 +2,22 @@
 
 Plain-English queue for maintainers (Laurie and agents). Update on main after merges — not in feature PRs (avoids serial conflict churn). Dedicated QUEUE-only follow-up is OK when nothing else is ready to piggyback.
 
-**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now [#177](https://github.com/LJMoffat81/scot-land/pull/177) is the 1st non-draft. Draft [#178](https://github.com/LJMoffat81/scot-land/pull/178) does not count. This QUEUE sync opens as the 2nd non-draft.
+**Cap:** ≤5 open non-draft PRs; one PR per item ID. No feature PRs are open. UI-FIX-4, VDL-DZ-2, and LAYERS-ADD-2 are in progress from main `b633b4ba` and do not count until a non-draft PR exists. This QUEUE sync opens as the 1st non-draft.
 
 ## In progress
 
+Started from main `b633b4ba`. Pull requests are not open yet (still opening).
+
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| VDL-DZ-1 | Data Zone totals only on `/layers/open/vdl` (no site-level fields) | [#177](https://github.com/LJMoffat81/scot-land/pull/177) | Open; tip `4c72672c979ce392598500d978e07af5f9dcf9b0` |
-| UI-FIX-3 | One close control and no empty place-card tail | [#178](https://github.com/LJMoffat81/scot-land/pull/178) | Draft; tip `aafd8ea13315329383b2f26c12f27265251f9f49` |
+| UI-FIX-4 | Layers panel and mobile sheet polish | — | In progress from main `b633b4ba`; PR not opened yet |
+| VDL-DZ-2 | Small-count suppression and zone-only vacant and derelict text | — | In progress from main `b633b4ba`; PR not opened yet |
+| LAYERS-ADD-2 | Open-data sweep layers | — | In progress from main `b633b4ba`; PR not opened yet |
 
 ## Next up (in order)
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| LAYERS-FIX-1 | Empty layer switches after LAYERS-ADD-1: hide stubs with no data; live protected sites and oil fields | — | Not started; after #177 merges; no PR yet |
-| UI-FIX-4 | Layers panel and mobile sheet polish | — | Not started; after LAYERS-FIX-1, and only after #178 merges (same files); no PR yet |
-| LAYERS-ADD-2 | Open-data sweep layers | — | Not started; only after LAYERS-FIX-1’s switch test is merged; no PR yet |
 | WORDING-BATCH-2 | Wording follow-ups after WORDING-BATCH-1 | — | Not frozen; not started; no PR yet |
 
 ### Frozen backlog
@@ -36,6 +36,9 @@ Newest first.
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
+| LAYERS-FIX-1 | Empty layer switches; live protected sites and oil fields | [#180](https://github.com/LJMoffat81/scot-land/pull/180) | Merged (`b633b4ba`; tip `30a52013`) |
+| UI-FIX-3 | One close control and no empty place-card tail | [#178](https://github.com/LJMoffat81/scot-land/pull/178) | Merged (`2445c63`) |
+| VDL-DZ-1 | Data Zone totals only on `/layers/open/vdl` (no site-level fields) | [#177](https://github.com/LJMoffat81/scot-land/pull/177) | Merged (`86f8e5c`) |
 | LAYERS-ADD-1 | Open context layers + licence gates | [#172](https://github.com/LJMoffat81/scot-land/pull/172) | Merged on main (`1bdfdf6`) |
 | UI-FIX-2 | Mobile place-card layout | [#176](https://github.com/LJMoffat81/scot-land/pull/176) | Merged (`f81dbee`) |
 | UI-FIX-1 | Tap targets, SW-056, roadmap OG (+ ADDENDUM-1/2) | [#173](https://github.com/LJMoffat81/scot-land/pull/173) | Merged (`ef0d15e`) |

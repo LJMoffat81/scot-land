@@ -3,6 +3,9 @@
  *
  * Helmert datum shift + Airy 1830 transverse Mercator — matches pyproj
  * EPSG:4326→EPSG:27700 (without OSTN15 grid) to well within ±50 m onshore.
+ *
+ * GRID-BASE-1 grid keys / OS letter refs use `bng.ts` (proj4 helmert-v1).
+ * This module stays dependency-free for place-card map-reference strings.
  */
 
 const A_WGS84 = 6_378_137.0;
@@ -121,7 +124,7 @@ export function wgs84ToOsgb36(
 
 /**
  * Map reference string: `easting,northing` (metres, rounded), EPSG:27700.
- * Never a what3words brand string.
+ * Never a brand address string.
  */
 export function osgb36MapReference(lat: number, lng: number): string {
   const { easting, northing } = wgs84ToOsgb36(lat, lng);

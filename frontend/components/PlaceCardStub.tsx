@@ -29,6 +29,8 @@ export type PlaceStub = {
   noMatch?: boolean;
   /** True after postcode / address / place-name search (not map click). */
   fromAddressSearch?: boolean;
+  /** GRID-BASE-1 row-6 grid square line (or null/empty when none). */
+  gridSquareLine?: string | null;
 };
 
 type PlaceCardStubProps = {
@@ -38,6 +40,8 @@ type PlaceCardStubProps = {
   onClose: () => void;
   /** SW-028: sea stub — close + national Scotland map view. */
   onShowScotland?: () => void;
+  /** GRID-BASE-1 row-6 override (falls back to place.gridSquareLine). */
+  gridSquareLine?: string | null;
 };
 
 /** Map HUD place card — UX-10 skeleton; thin wrapper over PlaceCard. */
@@ -47,7 +51,9 @@ export default function PlaceCardStub({
   error = null,
   onClose,
   onShowScotland,
+  gridSquareLine = null,
 }: PlaceCardStubProps) {
+  const row6 = gridSquareLine ?? place.gridSquareLine ?? null;
   if (place.noMatch) {
     return (
       <PlaceCard
@@ -67,6 +73,7 @@ export default function PlaceCardStub({
         className="place-card-stub"
         noMatch
         fromAddressSearch={Boolean(place.fromAddressSearch)}
+        gridSquareLine={row6}
       />
     );
   }
@@ -123,6 +130,7 @@ export default function PlaceCardStub({
       className="place-card-stub"
       fromAddressSearch={Boolean(place.fromAddressSearch)}
       dwellings={place.dwellings ?? merged.dwellings ?? null}
+      gridSquareLine={row6}
     />
   );
 }

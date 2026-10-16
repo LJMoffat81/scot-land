@@ -56,6 +56,11 @@ export type PlaceCardProps = {
   dwellings?: number | null;
   /** Explicit no-match card state (search found nothing) — parent shows under search. */
   noMatch?: boolean;
+  /**
+   * GRID-BASE-1 row-6 — e.g. "Grid square NT 25890 73452 (a map grid, not a property)".
+   * Empty / omitted keeps the Addendum A4 slot hidden.
+   */
+  gridSquareLine?: string | null;
 };
 
 /** Visitor-safe CSS tone — never emit the raw API class string `shadow` in HTML. */
@@ -161,6 +166,7 @@ export function PlaceCard({
   className,
   dwellings = null,
   noMatch = false,
+  gridSquareLine = null,
 }: PlaceCardProps) {
   const card = data ? sanitizePlaceCard(data) : null;
   const seaMiss = Boolean(
@@ -429,12 +435,21 @@ export function PlaceCard({
                 </>
               )}
             </div>
-            {/* Addendum A4 — optional child slot, hidden in v1 */}
-            <div
-              data-testid="place-card-row6-slot"
-              hidden
-              aria-hidden="true"
-            />
+            {/* Addendum A4 / GRID-BASE-1 row-6 */}
+            {gridSquareLine ? (
+              <p
+                className="place-card-row6"
+                data-testid="place-card-row6-slot"
+              >
+                {gridSquareLine}
+              </p>
+            ) : (
+              <div
+                data-testid="place-card-row6-slot"
+                hidden
+                aria-hidden="true"
+              />
+            )}
           </header>
 
           {/* 7 Why */}

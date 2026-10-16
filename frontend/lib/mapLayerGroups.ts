@@ -33,6 +33,8 @@ export type MapDrawerLayer = {
   nonCommercial?: boolean;
   defaultOn?: boolean;
   paintPending?: boolean;
+  /** Accessible description under the switch (e.g. grid3 subline). */
+  subline?: string;
 };
 
 function toDrawerLayer(entry: MapLayerRegistryEntry): MapDrawerLayer {
@@ -48,6 +50,7 @@ function toDrawerLayer(entry: MapLayerRegistryEntry): MapDrawerLayer {
     nonCommercial: entry.nonCommercial,
     defaultOn: entry.defaultOn,
     paintPending: entry.paintPending,
+    subline: entry.subline,
   };
 }
 

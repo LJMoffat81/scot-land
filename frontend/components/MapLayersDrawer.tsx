@@ -242,6 +242,9 @@ function DrawerLayerRow({
         data-testid={`layer-toggle-${layer.id}`}
         aria-checked={on}
         aria-label={layer.label}
+        aria-describedby={
+          layer.subline ? `layer-desc-${layer.id}` : undefined
+        }
         onClick={onToggle}
       >
         <span className="layers-panel-switch-label">{layer.label}</span>
@@ -252,6 +255,15 @@ function DrawerLayerRow({
           aria-hidden="true"
         />
       </button>
+      {layer.subline ? (
+        <p
+          id={`layer-desc-${layer.id}`}
+          className="layer-meta"
+          data-testid={`layer-desc-${layer.id}`}
+        >
+          {layer.subline}
+        </p>
+      ) : null}
 
       {legend ? (
         <div
@@ -275,6 +287,7 @@ function DrawerLayerRow({
             <p
               className="layer-meta"
               data-testid={`layer-zoom-gate-${layer.id}`}
+              aria-live="polite"
             >
               {legend.zoomHint}
             </p>

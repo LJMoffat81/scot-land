@@ -2,13 +2,13 @@
 
 Plain-English queue for maintainers (Laurie and agents). Update on main after merges — not in feature PRs (avoids serial conflict churn). Dedicated QUEUE-only follow-up is OK when nothing else is ready to piggyback.
 
-**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: drafts [#177](https://github.com/LJMoffat81/scot-land/pull/177) and [#178](https://github.com/LJMoffat81/scot-land/pull/178) do not count. This QUEUE sync opens as the 1st non-draft.
+**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now [#177](https://github.com/LJMoffat81/scot-land/pull/177) is the 1st non-draft. Draft [#178](https://github.com/LJMoffat81/scot-land/pull/178) does not count. This QUEUE sync opens as the 2nd non-draft.
 
 ## In progress
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| VDL-DZ-1 | Data Zone totals only on `/layers/open/vdl` (no site-level fields) | [#177](https://github.com/LJMoffat81/scot-land/pull/177) | Draft; tip `4c72672c979ce392598500d978e07af5f9dcf9b0` |
+| VDL-DZ-1 | Data Zone totals only on `/layers/open/vdl` (no site-level fields) | [#177](https://github.com/LJMoffat81/scot-land/pull/177) | Open; tip `4c72672c979ce392598500d978e07af5f9dcf9b0` |
 | UI-FIX-3 | One close control and no empty place-card tail | [#178](https://github.com/LJMoffat81/scot-land/pull/178) | Draft; tip `aafd8ea13315329383b2f26c12f27265251f9f49` |
 
 ## Next up (in order)

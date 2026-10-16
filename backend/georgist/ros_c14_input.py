@@ -2,7 +2,8 @@
 
 Reads year, data zone, data zone code and volume only. Price columns are never
 requested. Zone status is fixed from sales counts, suppression and lookup flags
-before any share list is attached.
+before any share list is attached. ``unavailable`` is set only by the
+pre-registered cost-availability rule.
 """
 
 from __future__ import annotations
@@ -10,11 +11,16 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import logging
 from collections import defaultdict
 from pathlib import Path
 from typing import Mapping, Sequence
 
 import openpyxl
+
+from georgist import surface_rent as sr
+
+logger = logging.getLogger(__name__)
 
 SCOTLAND_CODE = "S92000003"
 SCORING_YEAR = 2024
@@ -30,8 +36,23 @@ MUIRHOUSE_04_NAME = "Muirhouse - 04"
 MUIRHOUSE_04_CODES = frozenset({"S01014990", "S01018619"})
 REAL_ABSENT_FROM_C14 = 8
 REAL_EXCLUDED_DZ2011 = 124
+REAL_EXCLUDED_COLLISION = 113
+REAL_EXCLUDED_ABSENT = 11
 REAL_EXCLUDED_IN_SCORED_SET = 109
 REAL_SCORED_SET = 6188
+CAUSE_COLLISION = "ros_name_collision"
+CAUSE_ABSENT = "absent_from_c14"
+CAUSE_ORDINARY = "ordinary_suppression"
+NAMED_EXCLUSION_CAUSES = frozenset({CAUSE_COLLISION, CAUSE_ABSENT})
+# Statistician's excluded-set list. Hashed before it is parsed.
+EXCLUSION_LIST_SHA256 = (
+    "13a870fe7ef7118e759d1aa8f46724b4c75c0afb6f7033ad9888bc168a2a78ba"
+)
+DEFAULT_EXCLUSION_LIST = Path(
+    "/cursor/stores/bc-6e71cd70-dc10-4637-afcb-780b94d8b31e/"
+    "ros-c14-input-2/collision_excluded_dz2011.csv"
+)
+COST_AVAILABILITY_RULE = "pre-registered cost-availability rule residual_land_value"
 
 # Header text from C14. "Data zone" is the name column.
 BLIND_COLUMNS = (
@@ -236,12 +257,14 @@ def _load_lookup(path: Path) -> list[dict[str, str]]:
         )
         if code_key is None:
             raise InputBuildError("lookup file has no zone code column")
+        if name_key is None:
+            raise InputBuildError("lookup file has no name column")
         rows: list[dict[str, str]] = []
         for row in reader:
             code = str(row.get(code_key) or "").strip().upper()
             if not code:
                 continue
-            name = str(row.get(name_key) or "").strip() if name_key else ""
+            name = str(row.get(name_key) or "").strip()
             rows.append({"code": code, "name": name})
     codes = [row["code"] for row in rows]
     if len(set(codes)) != len(codes):
@@ -315,7 +338,6 @@ def _load_ur(path: Path) -> dict[str, dict]:
         fields = {_norm_header(name): name for name in (reader.fieldnames or [])}
         col = fields.get("dz2011") or fields.get("code") or fields.get("data zone code")
         ur_col = fields.get("ur6") or fields.get("ur6_class") or fields.get("class")
-        flag_col = fields.get("unavailable")
         if col is None or ur_col is None:
             raise InputBuildError("urban-rural lookup needs dz2011 and ur6")
         out: dict[str, dict] = {}
@@ -327,11 +349,7 @@ def _load_ur(path: Path) -> dict[str, dict]:
                 ur6 = int(float(str(row.get(ur_col) or "").strip()))
             except ValueError as exc:
                 raise InputBuildError("urban-rural class is not an integer") from exc
-            flag = False
-            if flag_col is not None:
-                raw_flag = str(row.get(flag_col) or "").strip().lower()
-                flag = raw_flag in {"1", "true", "yes"}
-            out[code] = {"ur6": ur6, "unavailable": flag}
+            out[code] = {"ur6": ur6}
     return out
 
 
@@ -557,6 +575,104 @@ def _dz2022_status(
     return zones, national
 
 
+def _addresses_trip(count: int, total: int) -> bool:
+    """True when this address group alone is above 1% or at least 5 addresses."""
+    if count <= 0 or total <= 0:
+        return False
+    return (count / total) > INCOMPLETE_SHARE or count >= INCOMPLETE_ADDRESSES
+
+
+def _exclusion_cause(collision_n: int, absent_n: int, total_n: int, incomplete: bool) -> str:
+    """Collision, then absent codes, then ordinary suppression (fewer than 5 sales)."""
+    if _addresses_trip(collision_n, total_n):
+        return CAUSE_COLLISION
+    if _addresses_trip(absent_n, total_n):
+        return CAUSE_ABSENT
+    if incomplete:
+        return CAUSE_ORDINARY
+    return ""
+
+
+def load_pinned_exclusion_list(path: Path) -> dict[str, dict]:
+    """Hash the exclusion list before reading any row. Mismatch raises."""
+    if not path.is_file():
+        raise InputBuildError(f"exclusion list missing: {path}")
+    digest = file_sha256(path)
+    if digest != EXCLUSION_LIST_SHA256:
+        raise InputBuildError(f"exclusion list sha256 {digest} != {EXCLUSION_LIST_SHA256}")
+    pinned: dict[str, dict] = {}
+    with path.open(encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        fields = {_norm_header(name): name for name in (reader.fieldnames or [])}
+        code_col = fields.get("dz2011_code") or fields.get("dz2011")
+        cause_col = fields.get("cause")
+        scored_col = fields.get("in_scored_set")
+        if not code_col or not cause_col or not scored_col:
+            raise InputBuildError("exclusion list is missing dz2011_code, cause or in_scored_set")
+        for row in reader:
+            code = str(row.get(code_col) or "").strip().upper()
+            if not code:
+                continue
+            cause = str(row.get(cause_col) or "").strip()
+            scored_text = str(row.get(scored_col) or "").strip().lower()
+            if scored_text not in {"true", "false"}:
+                raise InputBuildError(f"{code} in_scored_set is not true or false")
+            pinned[code] = {"cause": cause, "in_scored_set": scored_text == "true"}
+    return pinned
+
+
+def diff_exclusion_sets(
+    observed: Mapping[str, Mapping],
+    pinned: Mapping[str, Mapping],
+    *,
+    ordinary_codes: set[str] | None = None,
+) -> list[str]:
+    """Compare codes, cause and scored-set membership. Ordinary suppression must not overlap."""
+    errors: list[str] = []
+    ordinary = ordinary_codes or set()
+    overlap = (set(observed) | set(pinned)) & ordinary
+    if overlap:
+        errors.append(
+            "ordinary suppression overlaps excluded set: " + ",".join(sorted(overlap))
+        )
+    missing = sorted(set(pinned) - set(observed))
+    extra = sorted(set(observed) - set(pinned))
+    if missing:
+        errors.append("exclusion list missing codes: " + ",".join(missing))
+    if extra:
+        errors.append("exclusion list extra codes: " + ",".join(extra))
+    for code in sorted(set(observed) & set(pinned)):
+        if observed[code]["cause"] != pinned[code]["cause"]:
+            errors.append(
+                f"{code} cause {observed[code]['cause']} != {pinned[code]['cause']}"
+            )
+        if bool(observed[code]["in_scored_set"]) != bool(pinned[code]["in_scored_set"]):
+            errors.append(f"{code} in_scored_set mismatch")
+    return errors
+
+
+def exclusion_list_errors(zones: Sequence[Mapping], path: Path) -> list[str]:
+    """Diff collision and absent exclusions. Ordinary suppression stays out of the set."""
+    try:
+        pinned = load_pinned_exclusion_list(path)
+    except InputBuildError as exc:
+        return [str(exc)]
+    observed = {
+        str(zone["dz2011"]): {
+            "cause": zone["exclusion_cause"],
+            "in_scored_set": bool(zone["in_scored_set"]),
+        }
+        for zone in zones
+        if zone.get("exclusion_cause") in NAMED_EXCLUSION_CAUSES
+    }
+    ordinary = {
+        str(zone["dz2011"])
+        for zone in zones
+        if zone.get("exclusion_cause") == CAUSE_ORDINARY
+    }
+    return diff_exclusion_sets(observed, pinned, ordinary_codes=ordinary)
+
+
 def real_census_errors(observed: Mapping, *, lookup_count: int) -> list[str]:
     """Compare a full DZ2022 run with the fixed census. Smaller lookups skip."""
     if lookup_count != EXPECTED_LOOKUP_CODES:
@@ -568,6 +684,8 @@ def real_census_errors(observed: Mapping, *, lookup_count: int) -> list[str]:
         "double_row_names": REAL_DOUBLE_ROW_NAMES,
         "absent_from_c14": REAL_ABSENT_FROM_C14,
         "excluded_dz2011": REAL_EXCLUDED_DZ2011,
+        "excluded_collision": REAL_EXCLUDED_COLLISION,
+        "excluded_absent_from_c14": REAL_EXCLUDED_ABSENT,
         "excluded_in_scored_set": REAL_EXCLUDED_IN_SCORED_SET,
         "scored_set": REAL_SCORED_SET,
     }
@@ -583,6 +701,17 @@ def real_census_errors(observed: Mapping, *, lookup_count: int) -> list[str]:
         errors.append("Muirhouse - 04 name does not match the lookup")
     if observed.get("muirhouse_04_rows") != 1:
         errors.append("Muirhouse - 04 does not have one row attached to both codes")
+    collision = observed.get("excluded_collision")
+    absent = observed.get("excluded_absent_from_c14")
+    if (
+        isinstance(collision, int)
+        and isinstance(absent, int)
+        and collision + absent != observed.get("excluded_dz2011")
+    ):
+        errors.append(
+            "excluded_dz2011 is not ros_name_collision plus absent_from_c14 "
+            "(ordinary suppression is separate)"
+        )
     return errors
 
 
@@ -608,7 +737,12 @@ def _observed_census(
     }
     muirhouse_codes = pairs.get(MUIRHOUSE_04_NAME, set())
     muirhouse_rows = {rows_by_code.get(code, 0) for code in MUIRHOUSE_04_CODES}
-    incomplete = [zone for zone in dz2011 if zone["incomplete_suppressed"]]
+    collision_excluded = [
+        zone for zone in dz2011 if zone.get("exclusion_cause") == CAUSE_COLLISION
+    ]
+    absent_excluded = [zone for zone in dz2011 if zone.get("exclusion_cause") == CAUSE_ABSENT]
+    named = collision_excluded + absent_excluded
+    ordinary = [zone for zone in dz2011 if zone.get("exclusion_cause") == CAUSE_ORDINARY]
     return {
         "collision_names": national_counts["collision_names"],
         "collision_codes": national_counts["collision_codes"],
@@ -620,8 +754,11 @@ def _observed_census(
         "absent_from_c14": sum(
             1 for zone in zones_2022.values() if zone["status"] == "absent_from_c14"
         ),
-        "excluded_dz2011": len(incomplete),
-        "excluded_in_scored_set": sum(1 for zone in incomplete if zone["in_scored_set"]),
+        "excluded_dz2011": len(named),
+        "excluded_collision": len(collision_excluded),
+        "excluded_absent_from_c14": len(absent_excluded),
+        "excluded_ordinary_suppression": len(ordinary),
+        "excluded_in_scored_set": sum(1 for zone in named if zone["in_scored_set"]),
         "scored_set": len(scored_set),
     }
 
@@ -665,14 +802,12 @@ def _dz2011_rows(
         share = (affected_n / total_n) if total_n else 0.0
         incomplete = total_n > 0 and (share > INCOMPLETE_SHARE or affected_n >= INCOMPLETE_ADDRESSES)
         pure_absent = absent_n > 0 and low_n == 0 and collision_n == 0 and affected_n == absent_n
+        exclusion_cause = _exclusion_cause(collision_n, absent_n, total_n, incomplete)
         ur_row = ur.get(code) or {}
-        unavailable_flag = bool(ur_row.get("unavailable"))
         if incomplete:
             status = "incomplete_suppressed"
         elif pure_absent:
             status = "absent_from_c14"
-        elif unavailable_flag:
-            status = "unavailable"
         elif code in scored_set:
             status = "scored"
         else:
@@ -694,6 +829,7 @@ def _dz2011_rows(
                 "absent_from_c14": absent_flag,
                 "volume_below_5": low_n > 0 and absent_n == 0 and collision_n == 0,
                 "incomplete_suppressed": status == "incomplete_suppressed",
+                "exclusion_cause": exclusion_cause,
                 "unavailable": status == "unavailable",
                 "case": cases.get(code, "not_applicable"),
                 "count_s": count_s,
@@ -778,6 +914,43 @@ def _share_list(zones: Sequence[Mapping], estimates: Mapping[str, float] | None)
     return shares
 
 
+def load_cost_availability(path: Path) -> dict[str, dict[str, float]]:
+    """Price and rebuild cost for the pre-registered rule. Estimate keys are ignored."""
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise InputBuildError("cost-availability file must be a JSON object")
+    out: dict[str, dict[str, float]] = {}
+    for code, row in raw.items():
+        if not isinstance(row, dict) or "price" not in row or "drc" not in row:
+            raise InputBuildError(f"{code} cost-availability row needs price and drc")
+        out[str(code).strip().upper()] = {
+            "price": float(row["price"]),
+            "drc": float(row["drc"]),
+        }
+    return out
+
+
+def _apply_cost_availability(zones: list[dict], costs: Mapping[str, Mapping] | None) -> None:
+    """Flip scored zones only when residual_land_value labels them unavailable."""
+    if not costs:
+        return
+    for zone in zones:
+        if zone["status"] != "scored":
+            continue
+        code = str(zone["dz2011"])
+        row = costs.get(code)
+        if row is None:
+            continue
+        residual = sr.residual_land_value(float(row["price"]), float(row["drc"]))
+        if sr.estimate_label_for_residual(residual) != sr.ESTIMATE_LABEL_UNAVAILABLE:
+            continue
+        zone["status"] = "unavailable"
+        zone["unavailable"] = True
+        zone["unavailable_from"] = COST_AVAILABILITY_RULE
+        zone["passed_to_scorer"] = bool(zone["in_scored_set"])
+        logger.info("%s unavailable_from=%s", code, COST_AVAILABILITY_RULE)
+
+
 def build_inputs(
     *,
     c14_path: Path,
@@ -788,6 +961,8 @@ def build_inputs(
     frozen_plan_path: Path | None = None,
     scored_run: bool = False,
     estimates: Mapping[str, float] | None = None,
+    cost_availability: Mapping[str, Mapping] | None = None,
+    exclusion_list_path: Path | None = None,
     main_commit_sha: str = "",
     check_pins: bool = False,
 ) -> dict:
@@ -823,6 +998,7 @@ def build_inputs(
         scored_set=scored_set,
         ur=ur,
     )
+    _apply_cost_availability(dz2011, cost_availability)
     # Estimates are applied only after every status field is set.
     share_list = _share_list(dz2011, estimates) if scored_run else None
     dz2022_counts = {
@@ -851,6 +1027,9 @@ def build_inputs(
         scored_set=scored_set,
     )
     census_errors = real_census_errors(observed, lookup_count=len(lookup_rows))
+    if len(lookup_rows) == EXPECTED_LOOKUP_CODES:
+        list_path = exclusion_list_path or DEFAULT_EXCLUSION_LIST
+        census_errors.extend(exclusion_list_errors(dz2011, list_path))
     if census_errors:
         raise InputBuildError("real-data collision census failed: " + "; ".join(census_errors))
     absent_codes = [
@@ -881,7 +1060,12 @@ def build_inputs(
         },
         "vintage_counts": vintage,
         "lookup_codes_absent_from_c14": len(absent_codes),
-        "incomplete_suppressed_dz2011": observed["excluded_dz2011"],
+        "incomplete_suppressed_dz2011": sum(
+            1 for zone in dz2011 if zone["incomplete_suppressed"]
+        ),
+        "excluded_collision": observed["excluded_collision"],
+        "excluded_absent_from_c14": observed["excluded_absent_from_c14"],
+        "excluded_ordinary_suppression": observed["excluded_ordinary_suppression"],
         "national": {
             "scotland_row_volume": national["scotland_row_volume"],
             "raw_dz_sum": national["raw_dz_sum"],

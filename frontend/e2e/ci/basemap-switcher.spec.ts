@@ -77,6 +77,14 @@ test.beforeEach(async ({ page }) => {
       }),
     });
   });
+  await page.route("**/backend/boundaries/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(EMPTY_FC),
+    });
+  });
+
   await page.route("**/backend/health**", async (route) => {
     await route.fulfill({
       status: 200,

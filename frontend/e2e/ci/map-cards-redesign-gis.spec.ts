@@ -145,10 +145,17 @@ for (const viewport of [
           });
           return;
         }
+        const wantsGeo =
+          /\/layers\//i.test(url) ||
+          /\/boundaries\//i.test(url) ||
+          /\/w3w-grid/i.test(url) ||
+          /\/parcels/i.test(url);
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify({}),
+          body: JSON.stringify(
+            wantsGeo ? { type: "FeatureCollection", features: [] } : {},
+          ),
         });
       });
 

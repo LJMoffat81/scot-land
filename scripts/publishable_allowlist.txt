@@ -1,0 +1,6 @@
+# Binary geometry already committed (.gpkg .pmtiles .mbtiles .shp .fgb).
+# One exact repo-relative path per line, then a tab, then one reason.
+# Data Zone level or coarser only. No globs. Parcel-name patterns
+# (house_plot, plot_r, parcel, uprn, title_no) cannot be listed.
+#
+# path<TAB>reason

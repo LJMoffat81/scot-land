@@ -480,7 +480,8 @@ flood:
   gaps:
     - Surface-water and climate-change scenarios not in the default constraint paint
     - Extents are indicative — not a property-level flood quote
-    - Full geodatabase stays in data/external (gitignored); ingest OGL download only — no MapServer
+    - Full geodatabase stays in data/external (gitignored)
+    - Public river and coastal medium-likelihood images come from the OGL Flood_Maps service and are not stored
     - Constraint overlays are £0 and never a rent row (C-overlay)
 
 crofting:
@@ -1273,6 +1274,6 @@ map_layers:
       note: Ledger row 5 aquaculture — attributes/status only; no £ rent/fee on features; never adds to Surface Rent
   # Context layers that can later take a weight. They do not change a parcel
   # rent. The allowlist and the licences live in backend/spatial/context_tiles.py.
-  # SEPA flood MapServer is not allowlisted — OGL download → PostGIS only.
+  # Flood images are requested by the browser and are not a context-tile entry.
   # Hutton LCA is a separate open layer (not a context tile proxy).
   # Left off: OS Open Zoomstack; small-area population/jobs; wires/mains/broadband.

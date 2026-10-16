@@ -29,7 +29,6 @@ Supply **completed residential (then all-tenure) sales** for Scotland so the AGR
 - Scraping Zoopla, Rightmove, ESPC, or similar  
 - Purchasing scraped datasets of unknown provenance  
 - **Who Owns Scotland** (paid)  
-- SEPA Flood Maps via viewer / MapServer / other web services — use the OGL download at https://www2.sepa.org.uk/flooddata only  
 - Crofting Register **boundaries** or the personal **List of Individuals** — OGL lists (parishes / holdings / grazings) only  
 - Crown Estate Scotland **onshore** lease themes — offshore lease themes only  
 - Community ownership geometries other than **points** from the 2024 gov.scot publication  
@@ -259,7 +258,8 @@ Registry: `data/config/sources.yaml` → `hla`.
 | Product | SEPA Flood Maps v3.0 — medium-likelihood river + coastal (present day) |
 | Licence | OGL v3.0 |
 | Attribution | © SEPA 2025; see SEPA flood map attribution statements |
-| Download | https://www2.sepa.org.uk/flooddata/ (**only** ingest source — never MapServer/viewer) |
+| Download | https://www2.sepa.org.uk/flooddata/ |
+| Map images | River and coastal medium likelihood from https://map.sepa.org.uk/server/rest/services/Open/Flood_Maps/MapServer (images only; nothing stored) |
 | Release notes / vintage | https://www.sepa.org.uk/media/htpldzvk/flood-map-version-3_0-release-notes.pdf — **2025-02-25** (not a 2025-01-01 placeholder) |
 | Licence URL | https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/ |
 | BBox API | `GET /layers/open/flood` (PostGIS when ingested; **503** when unloaded) |

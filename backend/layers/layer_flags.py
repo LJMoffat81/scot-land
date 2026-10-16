@@ -17,6 +17,9 @@ FLAG_SEPA_FRM = "LAYER_SEPA_FRM_MAPS_ENABLED"
 # Optional: keep existing SEPA flood-extent overlay off unless explicitly on.
 FLAG_SEPA_FLOOD_EXTENT = "LAYER_SEPA_FLOOD_EXTENT_ENABLED"
 
+# Data Zone shares from the medium-likelihood zip. Off unless explicitly on.
+FLAG_SEPA_FLOOD_DZ = "LAYER_SEPA_FLOOD_DZ_ENABLED"
+
 GATED_FLAG_NAMES: Final[frozenset[str]] = frozenset(
     {
         FLAG_LDP,
@@ -49,6 +52,11 @@ def layer_sepa_frm_enabled() -> bool:
 def layer_sepa_flood_extent_enabled() -> bool:
     """Existing SEPA Flood Maps extent paint — default OFF (kickoff: SEPA flood off)."""
     return flag_enabled(FLAG_SEPA_FLOOD_EXTENT)
+
+
+def layer_sepa_flood_dz_enabled() -> bool:
+    """Data Zone flood-share loader and route — default OFF."""
+    return flag_enabled(FLAG_SEPA_FLOOD_DZ)
 
 
 def derive_public(

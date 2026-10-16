@@ -5,7 +5,7 @@ SEPA Flood Maps **v3.0**. Constraint / context only — never a rent.
 
 | Field | Value |
 |-------|--------|
-| Download (only) | https://www2.sepa.org.uk/flooddata/ |
+| Download | https://www2.sepa.org.uk/flooddata/ |
 | Product | River + Coastal Flood Maps v3.0 ESRI FileGDB zips |
 | Atom zips (linked from flooddata) | `SEPA_River_Flood_Maps_v3_0.zip`, `SEPA_Coastal_Flood_Maps_v3_0.zip` |
 | Licence | OGL v3.0 — © SEPA 2025 |
@@ -13,8 +13,6 @@ SEPA Flood Maps **v3.0**. Constraint / context only — never a rent.
 | Vintage | **2025-02-25** (release-notes date — not a 2025-01-01 placeholder) |
 | PostGIS | `sepa_flood` |
 | API | `GET /layers/open/flood` → **503** when unloaded |
-
-Do **not** ingest via MapServer, viewer, or other live web services.
 
 ## Steps (home PC / docker compose)
 

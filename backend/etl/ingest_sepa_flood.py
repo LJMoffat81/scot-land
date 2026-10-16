@@ -1,7 +1,7 @@
 """Ingest SEPA Flood Maps polygons into PostGIS (sepa_flood).
 
-Source is the OGL download at www2.sepa.org.uk/flooddata only — never
-MapServer / viewer / live query services.
+Source files are the OGL download at www2.sepa.org.uk/flooddata.
+This loader reads those files into PostGIS.
 
 Repeatable path (FileGDB → GeoJSON → PostGIS), keeping polygons from mixed
 geometries and simplifying ~2 m in British National Grid:
@@ -471,8 +471,7 @@ def main() -> None:
             f"Input not found: {input_path}\n"
             f"Download SEPA Flood Maps (OGL) from {FLOODDATA_URL} into "
             "data/external/sepa/ (gitignored), unzip the River + Coastal v3.0 "
-            "FileGDBs, then re-run with --from-gdb. Do not use MapServer / viewer / "
-            "web services."
+            "FileGDBs, then re-run with --from-gdb."
         )
     resolved = input_path.resolve()
     if "data/processed" in str(resolved).replace("\\", "/"):

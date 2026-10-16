@@ -24,7 +24,7 @@ from layers.dz_context import catalog_layers as dz_context_catalog_layers
 from layers.flood import catalog_layer as flood_catalog_layer
 from layers.hla import SPATIAL_HUB_URL as SPATIAL_HUB_HLA
 from layers.hla import query_point as hla_at_point
-from layers.layer_flags import FLAG_HLS, layer_hls_enabled
+from layers.layer_flags import FLAG_HLS, layer_hls_enabled, layer_sepa_flood_dz_enabled
 from layers.ldp import catalog_layer as ldp_catalog_layer
 from layers.flood_dz import is_loaded as flood_dz_loaded
 from layers.layers_add_catalog import (
@@ -730,7 +730,7 @@ def platform_catalog() -> dict[str, Any]:
             if mid in PUBLIC_CATALOG_METRIC_IDS
         ],
         "layers": layers,
-        "flood_dz_loaded": flood_dz_loaded(),
+        "flood_dz_loaded": layer_sepa_flood_dz_enabled() and flood_dz_loaded(),
         # LAYERS-ADD-1 public surfaces only (no flagged / prohibited ids).
         "layers_add": public_layers_add_entries(),
         "layers_add_waiting": waiting_for_permission_rows(),

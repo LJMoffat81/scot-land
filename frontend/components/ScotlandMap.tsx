@@ -44,6 +44,7 @@ import {
   syncLayersAddPaint,
   type FloodKind,
 } from "../lib/layersAddMapPaint";
+import { syncSepaFloodLiveLayers } from "../lib/sepaFloodLive";
 import { spatialHubPresenceFromManifest } from "../lib/layersAddRegistry";
 import {
   fetchLayerCatalog,
@@ -4660,6 +4661,14 @@ export default function ScotlandMap() {
       cancelled = true;
     };
   }, []);
+
+  // River and coastal medium-likelihood images from SEPA. Nothing is stored.
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    syncSepaFloodLiveLayers(map, ledgerEnabled);
+  }, [mapReady, ledgerEnabled]);
 
   // Flood risk paints Data Zone shares from /layers/open/flood-dz.
   useEffect(() => {

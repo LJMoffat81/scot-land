@@ -40,6 +40,7 @@ from layers.hla import query_bbox as hla_bbox
 from layers.layer_flags import (
     layer_hls_enabled,
     layer_ldp_enabled,
+    layer_sepa_flood_dz_enabled,
     layer_sepa_flood_extent_enabled,
 )
 from layers.layers_add_catalog import (
@@ -421,8 +422,7 @@ def layer_open_flood(
 ) -> JSONResponse:
     """SEPA medium-likelihood river/coastal flood extents in the viewport (OGL).
 
-    PostGIS only — ingest the OGL download from www2.sepa.org.uk/flooddata.
-    Never uses SEPA MapServer, viewer, or live web services. Returns **503**
+    Rows come from the OGL download ingested into PostGIS. Returns **503**
     when unloaded — never invents extents.
     LAYERS-ADD-1: **404** unless LAYER_SEPA_FLOOD_EXTENT_ENABLED=true (default off).
     """
@@ -473,6 +473,8 @@ def layer_open_flood_dz(
     Properties are the zone whitelist only. Geometry is the 2022 Data Zone.
     **503** when ``sepa_flood_dz`` is empty. No flood polygons and no £.
     """
+    if not layer_sepa_flood_dz_enabled():
+        raise HTTPException(status_code=503, detail=FLOOD_DZ_NOT_LOADED)
     kind_norm = kind.strip().lower()
     if kind_norm not in {"river", "coastal", "surface"}:
         raise HTTPException(

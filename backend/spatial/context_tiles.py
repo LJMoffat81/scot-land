@@ -5,8 +5,7 @@ does not change a parcel rent. The proxy is not open: only the ids below
 are fetched, and only from the hosts named here.
 
 Left out on purpose:
-- SEPA Flood Maps MapServer / viewer / other web services — OGL download from
-  https://www2.sepa.org.uk/flooddata only (PostGIS ingest; no live tile proxy).
+- Flood extent images are drawn by the map in the browser. This module does not fetch them.
 - James Hutton LCA is a first-class open layer (``/layers/open/lca``) under the
   James Hutton Open Data Licence (not OGL); not proxied as a context tile here.
 - Ordnance Survey Open Zoomstack roads, rail, and airports. The data is
@@ -246,8 +245,7 @@ RASTER: dict[str, RasterSpec] = {
         5,
         9,
     ),
-    # SEPA flood: no MapServer / viewer proxy. Ingest OGL download → PostGIS
-    # (see open-layer PRs); context tile id "flood" stays unknown until then.
+    # Flood images are not a context-tile id.
 }
 
 FEATURES: dict[str, FeatureSpec] = {

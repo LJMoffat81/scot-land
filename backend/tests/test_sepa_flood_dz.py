@@ -21,6 +21,7 @@ from etl.ingest_sepa_frm_v3 import (
     crs_from_geojson,
     load_replace,
     load_zones_postgis,
+    main,
     reproject_to_bng,
     select_medium_layers,
 )
@@ -169,6 +170,7 @@ def _client() -> TestClient:
 
 
 def test_flood_dz_whitelist_and_zone_geometry(monkeypatch):
+    monkeypatch.setenv("LAYER_SEPA_FLOOD_DZ_ENABLED", "true")
     monkeypatch.setattr("layers.flood_dz.is_loaded", lambda: True)
 
     def _rows(west, south, east, north):
@@ -205,10 +207,26 @@ def test_flood_dz_whitelist_and_zone_geometry(monkeypatch):
 
 
 def test_flood_dz_empty_table_is_503(monkeypatch):
+    monkeypatch.setenv("LAYER_SEPA_FLOOD_DZ_ENABLED", "true")
     monkeypatch.setattr("layers.flood_dz.is_loaded", lambda: False)
     response = _client().get(f"/layers/open/flood-dz?bbox={GLASGOW}&kind=surface")
     assert response.status_code == 503
     assert response.json()["detail"] == "SEPA flood Data Zone table is not loaded yet."
+
+
+def test_flood_dz_stays_off_without_flag(monkeypatch):
+    monkeypatch.delenv("LAYER_SEPA_FLOOD_DZ_ENABLED", raising=False)
+    monkeypatch.setattr("layers.flood_dz.is_loaded", lambda: True)
+    response = _client().get(f"/layers/open/flood-dz?bbox={GLASGOW}&kind=river")
+    assert response.status_code == 503
+    assert response.json()["detail"] == "SEPA flood Data Zone table is not loaded yet."
+
+
+def test_loader_main_refuses_when_flag_off(monkeypatch):
+    monkeypatch.delenv("LAYER_SEPA_FLOOD_DZ_ENABLED", raising=False)
+    monkeypatch.setattr("sys.argv", ["ingest_sepa_frm_v3", "--replace"])
+    with pytest.raises(SystemExit, match="LAYER_SEPA_FLOOD_DZ_ENABLED"):
+        main()
 
 
 def test_flood_dz_route_is_zone_level():

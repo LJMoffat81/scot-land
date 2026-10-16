@@ -30,6 +30,8 @@ from typing import Any
 
 import psycopg2
 from pyproj import CRS, Transformer
+
+from layers.layer_flags import layer_sepa_flood_dz_enabled
 from shapely import make_valid
 from shapely.geometry import GeometryCollection, MultiPolygon, Polygon, shape
 from shapely.geometry.base import BaseGeometry
@@ -612,6 +614,10 @@ def main() -> None:
         help="Download folder (default data/external/sepa_frm_v3)",
     )
     args = parser.parse_args()
+    if not layer_sepa_flood_dz_enabled():
+        raise SystemExit(
+            "Refusing to load: set LAYER_SEPA_FLOOD_DZ_ENABLED=true"
+        )
     if not args.replace:
         raise SystemExit("Refusing to load without --replace")
     count = load_replace(args.dir)

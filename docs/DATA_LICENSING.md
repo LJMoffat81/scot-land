@@ -26,7 +26,7 @@ Prefer **Open Government Licence v3.0** for open map / PostGIS layers. Every cat
 |-------|------|
 | Land Capability for Agriculture | **Do build** — James Hutton Open Data Licence is accepted. Catalog must record licence + attribution / share-alike terms (**not** labelled as OGL) |
 | Who Owns Scotland | **Out** — paid |
-| SEPA flood | Ingest the **OGL download** from https://www2.sepa.org.uk/flooddata only — never the viewer, web services, or MapServer |
+| SEPA flood | River and coastal medium-likelihood images from the OGL Flood Maps service at https://map.sepa.org.uk/server/rest/services/Open/Flood_Maps/MapServer. Images only; nothing stored. The polygon download at https://www2.sepa.org.uk/flooddata/ is a separate ingest |
 | Crofting | OGL **lists only** (parishes / holdings / grazings); **no boundaries**; never ingest the personal List of Individuals |
 | Crown Estate leases | **Offshore only** |
 | Community ownership | **Points** from the 2024 gov.scot publication only |

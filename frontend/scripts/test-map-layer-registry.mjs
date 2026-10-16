@@ -47,6 +47,8 @@ assert.deepEqual(liveIds, [
   "1",
   "access_services",
   "flood",
+  "flood_river",
+  "flood_coastal",
   "vdl",
   "grid3",
   "contaminated_land",

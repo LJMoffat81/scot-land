@@ -1,10 +1,9 @@
 """SEPA Flood Maps overlay (OGL-3.0).
 
 Present-day medium-likelihood river and coastal flood extents (200-year).
-Geometry comes only from the OGL download at www2.sepa.org.uk/flooddata,
-ingested into PostGIS. Never queries SEPA MapServer, viewer, or other web
-services. Returns an honest unloaded payload (API → 503) when the table is
-empty. Never invents extents.
+Geometry for this endpoint comes from the OGL download at
+www2.sepa.org.uk/flooddata, ingested into PostGIS. Returns an honest
+unloaded payload (API → 503) when the table is empty. Never invents extents.
 """
 
 from __future__ import annotations
@@ -99,7 +98,7 @@ def catalog_layer() -> dict[str, Any]:
         ),
         "developer_note": (
             "SEPA Flood Maps v3.0 present-day OGL download ingested to PostGIS "
-            "(503 when unloaded). No MapServer or live web services. "
+            "(503 when unloaded). "
             "LAYERS-ADD-1: gated by LAYER_SEPA_FLOOD_EXTENT_ENABLED (default OFF)."
         ),
         "endpoint": BBOX_ENDPOINT if enabled else None,
@@ -116,7 +115,7 @@ def catalog_layer() -> dict[str, Any]:
             "Surface-water and climate-change scenarios are in the OGL product "
             "but not in the default public constraint paint (medium river + coastal only).",
             "Extents are indicative hazard maps — not a property-level flood quote.",
-            "Must ingest the OGL download into PostGIS; live SEPA services are not used.",
+            "Must ingest the OGL download into PostGIS before this extent endpoint has rows.",
             "Constraint: changes best use, adds no value — never a rent row (C-overlay).",
             "Public paint off by default (LAYER_SEPA_FLOOD_EXTENT_ENABLED).",
         ],
@@ -241,8 +240,7 @@ def query_bbox(
             "ok": False,
             "error": (
                 f"{TABLE} is missing or empty. Download SEPA Flood Maps (OGL) "
-                f"from {DOWNLOAD_URL} and run `python -m etl.ingest_sepa_flood`. "
-                "MapServer / viewer / live web services are not used."
+                f"from {DOWNLOAD_URL} and run `python -m etl.ingest_sepa_flood`."
             ),
             "backend": "postgis",
             "loaded": False,

@@ -177,12 +177,18 @@ def test_sensitivities_are_labelled_and_do_not_gate():
         "v13_0.276pct_compounding",
         "rate_0.7pct_straight_line",
         "exhibit2_six_band",
-        "rate_1.33pct_no_cap",
-        "rate_0.86pct_no_cap",
+        "rate_1.33pct",
+        "rate_0.86pct",
+        "no 55% cap; 68-yr age cap applied",
         "band_end_0pct",
         "band_end_1.0pct",
     ):
         assert label in text
+    assert text.count("no 55% cap; 68-yr age cap applied") == 2
+    assert "rate_1.33pct_no_cap" not in text
+    assert "rate_0.86pct_no_cap" not in text
+    assert "rate=0.0133" in text
+    assert "rate=0.0086" in text
     assert text.count("label=exhibit2_six_band") == 6
     assert all("gates=false" in line for line in lines)
     assert v14_depreciation()["rate_building"]["central"] == 0.0035

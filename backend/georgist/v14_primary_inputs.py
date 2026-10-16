@@ -19,13 +19,16 @@ logger = logging.getLogger(__name__)
 
 REQUIRED_METHOD = "straight_line_v14"
 # Information only. These rates never replace the central 0.35%/yr path.
+# The 1.33% and 0.86% lines keep the same rate, age cap and depreciation cap.
+# The label states that the 55% cap is off and the 68-year age cap still applies.
+NO_55_CAP_NOTE = "no 55% cap; 68-yr age cap applied"
 SENSITIVITY_STRAIGHT_RATES = (
-    ("rate_0.5pct_straight_line", 0.005, 68.0, 0.55),
-    ("rate_0.7pct_straight_line", 0.007, 68.0, 0.55),
-    ("rate_1.33pct_no_cap", 0.0133, 68.0, 1.0),
-    ("rate_0.86pct_no_cap", 0.0086, 68.0, 1.0),
-    ("band_end_0pct", 0.0, 68.0, 0.55),
-    ("band_end_1.0pct", 0.010, 68.0, 0.55),
+    ("rate_0.5pct_straight_line", 0.005, 68.0, 0.55, None),
+    ("rate_0.7pct_straight_line", 0.007, 68.0, 0.55, None),
+    ("rate_1.33pct", 0.0133, 68.0, 1.0, NO_55_CAP_NOTE),
+    ("rate_0.86pct", 0.0086, 68.0, 1.0, NO_55_CAP_NOTE),
+    ("band_end_0pct", 0.0, 68.0, 0.55, None),
+    ("band_end_1.0pct", 0.010, 68.0, 0.55, None),
 )
 # Exhibit 2 six unmerged bands. Rates are only those stated in the frozen plan.
 # Bands without one stated rate stay unmerged. They are not a gate.
@@ -139,15 +142,23 @@ def zone_drc_v14(**kwargs) -> sr.RebuildResult:
     return central
 
 
-def _remaining_line(label: str, rate: float, age_cap: float, max_dep: float, base: Mapping) -> str:
+def _remaining_line(
+    label: str,
+    rate: float,
+    age_cap: float,
+    max_dep: float,
+    base: Mapping,
+    note: str | None = None,
+) -> str:
     dep = dict(base)
     dep["method"] = REQUIRED_METHOD
     dep["rate_building"] = rate
     dep["max_depreciation"] = max_dep
     dep["age_cap_years"] = age_cap
     remaining = remaining_factor_at_age(age_cap, dep)
+    note_part = f" note={note}" if note else ""
     return (
-        f"label={label} rate={rate} remaining_at_cap={remaining:.6f} "
+        f"label={label}{note_part} rate={rate} remaining_at_cap={remaining:.6f} "
         "gates=false"
     )
 
@@ -156,7 +167,10 @@ def sensitivity_lines(cfg: Mapping | None = None) -> list[str]:
     """Information-only depreciation lines. None of these gate."""
     loaded = cfg if cfg is not None else sr.load_config()
     base = v14_depreciation(loaded)
-    lines = [_remaining_line(label, rate, cap, max_dep, base) for label, rate, cap, max_dep in SENSITIVITY_STRAIGHT_RATES]
+    lines = [
+        _remaining_line(label, rate, cap, max_dep, base, note)
+        for label, rate, cap, max_dep, note in SENSITIVITY_STRAIGHT_RATES
+    ]
     v13 = dict(loaded["depreciation"])
     v13_rate = float(v13["rate_building"]["central"])
     v13["method"] = "compounding_v13"
@@ -183,6 +197,41 @@ def land_share(price: float, drc: float) -> float:
     return float(residual.land_value) / float(price)
 
 
+def _zone_key(code: str) -> str:
+    return str(code).strip().upper()
+
+
+def _unique_scored(scored_zones: Sequence[str]) -> list[str]:
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for code in scored_zones:
+        key = _zone_key(code)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        ordered.append(key)
+    return ordered
+
+
+def dropped_scored_counts(
+    scored_zones: Sequence[str],
+    price_by_dz2011: Mapping[str, float],
+    drc_by_dz2011: Mapping[str, float],
+) -> dict[str, int]:
+    """Count scored zones omitted for a missing price, a missing cost, or both.
+
+    A zone missing both inputs is counted in ``no_price`` and in ``no_cost``.
+    """
+    no_price = 0
+    no_cost = 0
+    for key in _unique_scored(scored_zones):
+        if key not in price_by_dz2011:
+            no_price += 1
+        if key not in drc_by_dz2011:
+            no_cost += 1
+    return {"no_price": no_price, "no_cost": no_cost}
+
+
 def cost_availability_for_scored(
     scored_zones: Sequence[str],
     price_by_dz2011: Mapping[str, float],
@@ -191,10 +240,11 @@ def cost_availability_for_scored(
     """``{dz2011: {price, drc}}`` for scored zones that have both inputs.
 
     A zone with no crosswalked price or no DRC is omitted. Nothing is imputed.
+    Those omitted zones stay in the check 1d denominator via
+    ``check_1d_shares_for_scored``.
     """
     out: dict[str, dict[str, float]] = {}
-    for code in scored_zones:
-        key = str(code).strip().upper()
+    for key in _unique_scored(scored_zones):
         if key not in price_by_dz2011 or key not in drc_by_dz2011:
             continue
         out[key] = {
@@ -202,6 +252,26 @@ def cost_availability_for_scored(
             "drc": float(drc_by_dz2011[key]),
         }
     return out
+
+
+def check_1d_shares_for_scored(
+    scored_zones: Sequence[str],
+    price_by_dz2011: Mapping[str, float],
+    drc_by_dz2011: Mapping[str, float],
+    share_by_dz2011: Mapping[str, float],
+) -> list[float]:
+    """Land shares for check 1d. Dropped zones stay in the denominator.
+
+    A scored zone with no price or no depreciated cost is not removed. It
+    enters the denominator as 0, which also puts it in the numerator.
+    """
+    shares: list[float] = []
+    for key in _unique_scored(scored_zones):
+        if key not in price_by_dz2011 or key not in drc_by_dz2011:
+            shares.append(0.0)
+            continue
+        shares.append(float(share_by_dz2011[key]))
+    return shares
 
 
 def primary_estimates(costs: Mapping[str, Mapping[str, float]]) -> dict[str, float]:

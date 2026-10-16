@@ -1231,6 +1231,8 @@ export default function ScotlandMap() {
         fromAddressSearch?: boolean;
         /** When the caller already owns lookupGen, reuse it (do not bump again). */
         generation?: number;
+        /** Deep-link re-boot after a map remount must not pop a collapsed card open. */
+        keepCollapsed?: boolean;
       } = {},
     ) => {
       if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -1254,7 +1256,7 @@ export default function ScotlandMap() {
             padding: mapPanelPadding({
               panelOpen: !layersHoldingFly,
               detent: opts.fromAddressSearch ? "half" : "peek",
-              collapsed: false,
+              collapsed: Boolean(opts.keepCollapsed),
             }),
           });
         }
@@ -1272,7 +1274,7 @@ export default function ScotlandMap() {
       } else {
         placeAsideRef.current = false;
         setPanelKind("place");
-        setPanelCollapsed(false);
+        if (!opts.keepCollapsed) setPanelCollapsed(false);
         setPanelDetent(opts.fromAddressSearch ? "half" : "peek");
       }
       if (!panelHistoryRef.current) {
@@ -1453,19 +1455,33 @@ export default function ScotlandMap() {
     layersBtnRef.current?.focus();
   }, [placeStub]);
 
+  const panelCollapsedRef = useRef(panelCollapsed);
+  panelCollapsedRef.current = panelCollapsed;
+  const panelDetentRef = useRef(panelDetent);
+  panelDetentRef.current = panelDetent;
+  const shortcutsOpenRef = useRef(shortcutsOpen);
+  shortcutsOpenRef.current = shortcutsOpen;
+  const placeStubRef = useRef(placeStub);
+  placeStubRef.current = placeStub;
+  const resultRef = useRef(result);
+  resultRef.current = result;
+  const errorRef = useRef(error);
+  errorRef.current = error;
+
   const dismissPanel = useCallback(() => {
-    if (panelKind === "layers") {
+    const kind = panelKindRef.current;
+    if (kind === "layers") {
       closeLayersPanel();
       return;
     }
-    if (panelKind === "place") {
-      if (!isNarrowPanel && !panelCollapsed) {
+    if (kind === "place") {
+      if (!isNarrowPanelRef.current && !panelCollapsedRef.current) {
         setPanelCollapsed(true);
         setLiveMessage("Place card collapsed");
         return;
       }
-      if (isNarrowPanel) {
-        const step = nextDetentDown(panelDetent);
+      if (isNarrowPanelRef.current) {
+        const step = nextDetentDown(panelDetentRef.current);
         if (step !== "close") {
           setPanelDetent(step);
           setLiveMessage(`Panel ${step}`);
@@ -1479,15 +1495,19 @@ export default function ScotlandMap() {
       panelHistoryRef.current = false;
       setLiveMessage("Panel closed");
     }
-  }, [
-    panelKind,
-    closeLayersPanel,
-    isNarrowPanel,
-    panelCollapsed,
-    panelDetent,
-    clearPlace,
-  ]);
+  }, [closeLayersPanel, clearPlace]);
 
+  const dismissPanelRef = useRef(dismissPanel);
+  dismissPanelRef.current = dismissPanel;
+  const clearPlaceRef = useRef(clearPlace);
+  clearPlaceRef.current = clearPlace;
+  const openLayersPanelRef = useRef(openLayersPanel);
+  openLayersPanelRef.current = openLayersPanel;
+  const closeLayersPanelRef = useRef(closeLayersPanel);
+  closeLayersPanelRef.current = closeLayersPanel;
+
+  // Refs are written during render, so Escape sees the open place card
+  // before the key listener effect can re-subscribe.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const typing =
@@ -1505,8 +1525,8 @@ export default function ScotlandMap() {
       }
       if (event.key === "l" && !typing) {
         event.preventDefault();
-        if (panelKind === "layers") closeLayersPanel();
-        else openLayersPanel();
+        if (panelKindRef.current === "layers") closeLayersPanelRef.current();
+        else openLayersPanelRef.current();
         return;
       }
       if (event.key === "Enter" && !typing) {
@@ -1520,29 +1540,21 @@ export default function ScotlandMap() {
         return;
       }
       if (event.key !== "Escape") return;
-      if (shortcutsOpen) {
+      if (shortcutsOpenRef.current) {
         setShortcutsOpen(false);
         return;
       }
-      if (panelKind !== "closed") {
-        dismissPanel();
+      if (panelKindRef.current !== "closed") {
+        dismissPanelRef.current();
         return;
       }
-      if (placeStub || result || error) clearPlace();
+      if (placeStubRef.current || resultRef.current || errorRef.current) {
+        clearPlaceRef.current();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [
-    panelKind,
-    placeStub,
-    result,
-    error,
-    clearPlace,
-    dismissPanel,
-    openLayersPanel,
-    closeLayersPanel,
-    shortcutsOpen,
-  ]);
+  }, []);
 
   useEffect(() => {
     if (showGrid3) return;
@@ -2891,12 +2903,14 @@ export default function ScotlandMap() {
       void inspectRef.current(bootLat, bootLng, {
         fly: true,
         fromAddressSearch: true,
+        keepCollapsed: panelCollapsedRef.current,
       });
     } else if (captured?.place && boot.center) {
       // place= + c= after rewrite — still identify at the captured centre.
       void inspectRef.current(boot.center.lat, boot.center.lng, {
         fly: true,
         fromAddressSearch: true,
+        keepCollapsed: panelCollapsedRef.current,
       });
     } else {
       const map = mapRef.current;

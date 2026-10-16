@@ -2,23 +2,23 @@
 
 Plain-English queue for maintainers (Laurie and agents). Update on main after merges — not in feature PRs (avoids serial conflict churn). Dedicated QUEUE-only follow-up is OK when nothing else is ready to piggyback.
 
-**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now: drafts [#163](https://github.com/LJMoffat81/scot-land/pull/163) and [#169](https://github.com/LJMoffat81/scot-land/pull/169) do not count. This QUEUE sync opens as the 1st non-draft. Hold #169 draft / do-not-merge for the release cap.
+**Cap:** ≤5 open non-draft PRs; one PR per item ID. Right now [#177](https://github.com/LJMoffat81/scot-land/pull/177) is the 1st non-draft. Draft [#178](https://github.com/LJMoffat81/scot-land/pull/178) does not count. This QUEUE sync opens as the 2nd non-draft.
 
 ## In progress
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| MAP-CARDS-REDESIGN | Place card, Layers, legend redesign (+ ADDENDUM-1) | [#163](https://github.com/LJMoffat81/scot-land/pull/163) | Draft; tip `bab579d…`; CI green |
-| GRID-BASE-1 | Open 3 m BNG grid base layer (no values) | [#169](https://github.com/LJMoffat81/scot-land/pull/169) | Draft; tip `339d20d…`; CI green; Scot-LAND PASS; hold draft / do-not-merge for release cap |
+| VDL-DZ-1 | Data Zone totals only on `/layers/open/vdl` (no site-level fields) | [#177](https://github.com/LJMoffat81/scot-land/pull/177) | Open; tip `4c72672c979ce392598500d978e07af5f9dcf9b0` |
+| UI-FIX-3 | One close control and no empty place-card tail | [#178](https://github.com/LJMoffat81/scot-land/pull/178) | Draft; tip `aafd8ea13315329383b2f26c12f27265251f9f49` |
 
 ## Next up (in order)
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
-| UI-FIX-1 | Tap targets ≥44×44 and related map chrome fixes on MAP-CARDS layout | — | Frozen ready; waits on #163 merge; no PR yet |
-| LAYERS-ADD-1 | Open context layers + licence-gated catalog | — | Can target main / opening now (not blocked on #169); no PR yet |
-| LAYERS-ADD-2 | Open-data sweep layers (after LAYERS-ADD-1) | — | Frozen ready; still after LAYERS-ADD-1; no PR yet |
-| GBP-LIVE-V1c | £ per m² follow-ups before any flag enable (flag still default OFF) | — | Can target main / opening now (not blocked on #169); flag OFF; no PR yet |
+| LAYERS-FIX-1 | Empty layer switches after LAYERS-ADD-1: hide stubs with no data; live protected sites and oil fields | — | Not started; after #177 merges; no PR yet |
+| UI-FIX-4 | Layers panel and mobile sheet polish | — | Not started; after LAYERS-FIX-1, and only after #178 merges (same files); no PR yet |
+| LAYERS-ADD-2 | Open-data sweep layers | — | Not started; only after LAYERS-FIX-1’s switch test is merged; no PR yet |
+| WORDING-BATCH-2 | Wording follow-ups after WORDING-BATCH-1 | — | Not frozen; not started; no PR yet |
 
 ### Frozen backlog
 
@@ -36,6 +36,15 @@ Newest first.
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
+| LAYERS-ADD-1 | Open context layers + licence gates | [#172](https://github.com/LJMoffat81/scot-land/pull/172) | Merged on main (`1bdfdf6`) |
+| UI-FIX-2 | Mobile place-card layout | [#176](https://github.com/LJMoffat81/scot-land/pull/176) | Merged (`f81dbee`) |
+| UI-FIX-1 | Tap targets, SW-056, roadmap OG (+ ADDENDUM-1/2) | [#173](https://github.com/LJMoffat81/scot-land/pull/173) | Merged (`ef0d15e`) |
+| HOTFIX-VIEW-1 | Fresh visitors frame Scotland | [#175](https://github.com/LJMoffat81/scot-land/pull/175) | Merged (`f02be56`) |
+| GBP-LIVE-V1d | Zero and negative zero unavailable; range central; order check | [#174](https://github.com/LJMoffat81/scot-land/pull/174) | Merged (`0b99774`) |
+| GRID-BASE-1 | Open 3 m BNG grid base layer (no values) | [#169](https://github.com/LJMoffat81/scot-land/pull/169) | Merged (`cd11f98`) |
+| GBP-LIVE-V1c | Residential numerator, unit label, 3 significant figures (flag still default OFF) | [#171](https://github.com/LJMoffat81/scot-land/pull/171) | Merged (`02f2b14`) |
+| MAP-CARDS-REDESIGN | Place card, Layers, legend redesign (+ ADDENDUM-1) | [#163](https://github.com/LJMoffat81/scot-land/pull/163) | Merged (`56d961c`) |
+| QUEUE sync | Sync after #156/#161/#166–#168; tip #163/#169 | [#170](https://github.com/LJMoffat81/scot-land/pull/170) | Merged (`f294b78`) |
 | UI-TWEAKS-1 | Layers panel height/position and related map chrome tweaks | [#168](https://github.com/LJMoffat81/scot-land/pull/168) | Merged on main (`ffaa9f32`) |
 | LOGO-FIX-1 | Absolute OG/Twitter URLs + drop Noun credit | [#167](https://github.com/LJMoffat81/scot-land/pull/167) | Merged (`cc2406f`) |
 | HEALTH-TRIM | Public `/health` is status + version only (SW-037) | [#166](https://github.com/LJMoffat81/scot-land/pull/166) | Merged on main (`78a0af2`); verified |

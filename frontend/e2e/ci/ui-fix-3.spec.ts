@@ -134,7 +134,12 @@ async function openCard(page: Page, query: string) {
   await input.fill(query);
   await page.locator(".hud-search-go").click();
   await expect(page.getByTestId("place-card")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("place-card-close")).toBeVisible();
   await expect(page.getByTestId("place-card-footer")).toBeVisible();
+  await expect(page.getByTestId("place-card-placeholders")).toHaveCount(0);
+  await expect(page.getByTestId("place-card-place")).toBeVisible({
+    timeout: 30_000,
+  });
 }
 
 type EmptyAudit = {
@@ -149,8 +154,8 @@ async function auditOpenCard(page: Page): Promise<EmptyAudit> {
     const scroll = slot.querySelector('[data-testid="map-panel-scroll"]');
     if (scroll) scroll.scrollTop = scroll.scrollHeight;
 
-    const footer = slot.querySelector('[data-testid="place-card-footer"]');
     const card = slot.querySelector('[data-testid="place-card"]');
+    const footer = slot.querySelector('[data-testid="place-card-footer"]');
     if (!footer || !card) {
       return {
         closeCount: 0,
@@ -247,20 +252,41 @@ for (const viewport of [
         await stubMap(page);
         await openCard(page, query);
         const audit = await auditOpenCard(page);
-        expect.soft(audit.closeCount, `visible close controls for ${query}`).toBe(1);
-        expect.soft(
+        const slot = page.getByTestId("map-panel-slot");
+        const namedClose = slot.getByRole("button", { name: /close/i });
+        await expect(namedClose, `accessible close for ${query}`).toHaveCount(1);
+        await expect(page.getByTestId("place-card-close")).toHaveCount(1);
+        await expect(namedClose).toHaveAttribute("data-testid", "place-card-close");
+        const crossCount = await slot.locator("button").evaluateAll((buttons) => {
+          return buttons.filter((el) => {
+            const r = el.getBoundingClientRect();
+            const cs = getComputedStyle(el);
+            const visible =
+              r.width > 0 &&
+              r.height > 0 &&
+              cs.visibility !== "hidden" &&
+              cs.display !== "none" &&
+              Number(cs.opacity) !== 0;
+            if (!visible) return false;
+            const text = (el.textContent || "").replace(/\s+/g, " ").trim();
+            return text === "×" || text === "✕";
+          }).length;
+        });
+        expect(crossCount, `× close controls for ${query}`).toBe(1);
+        expect(audit.closeCount, `visible close controls for ${query}`).toBe(1);
+        expect(
           audit.emptyAfter,
           `empty descendants after disclaimer for ${query}`,
         ).toEqual([]);
-        expect.soft(
+        expect(
           audit.yellowRule.visible,
           `${audit.yellowRule.selector} yellow rule visible`,
         ).toBe(false);
-        expect.soft(
+        expect(
           audit.yellowRule.height,
           `${audit.yellowRule.selector} yellow rule height`,
         ).toBe(0);
-        expect.soft(
+        expect(
           audit.tail,
           `empty block below disclaimer (.hud-place / ${YELLOW_RULE}) h=${audit.tail}`,
         ).toBeLessThanOrEqual(8);

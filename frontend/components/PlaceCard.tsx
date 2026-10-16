@@ -276,6 +276,7 @@ export function PlaceCard({
           className="hud-close"
           onClick={onClose}
           aria-label="Close place card"
+          data-testid="place-card-close"
         >
           ×
         </button>
@@ -520,7 +521,6 @@ export function PlaceCard({
             </div>
           </details>
 
-          {/* 9 Footer — once */}
           <p
             className="place-card-experimental-footer"
             data-testid="place-card-footer"

@@ -646,15 +646,14 @@
     );
   }
 
-  /* Basemap + MapLibre zoom/attrib: shift left while Layers drawer is open. */
-  .app-shell.tools-open .basemap-switcher {
-    right: calc(
-      3.15rem + min(332px, calc(100vw - 2rem)) + 1.1rem + 0.5rem
-    );
+  /* UI-FIX-4: Layers in the right column must not slide Detailed, zoom,
+     or attribution out of their corner. */
+  .map-cards-shell.tools-open .basemap-switcher {
+    right: 0.65rem;
   }
 
-  .app-shell.tools-open .map-stage .maplibregl-ctrl-bottom-right {
-    right: calc(min(332px, calc(100vw - 2rem)) + 1.1rem + 0.5rem);
+  .map-cards-shell.tools-open .map-stage .maplibregl-ctrl-bottom-right {
+    right: 0;
   }
 
   /* UI-TWEAKS-1 T1: shell clips; .layer-panel is the only scroller. */
@@ -779,10 +778,19 @@
   }
 
   /* UI-TWEAKS-1 T1: Layers slot top aligns with Layers button; fills to bottom inset.
-   * --layers-panel-top/bottom set in ScotlandMap when panelKind === "layers". */
-  .map-panel-slot--layers {
+   * --layers-panel-top/bottom set in ScotlandMap when Layers is open.
+   * UI-FIX-4: desktop Layers sits in the right column. The place card stays left. */
+  .map-panel-slot--layers,
+  .map-panel-slot--right {
+    left: auto;
+    right: 0.75rem;
     top: var(--layers-panel-top, calc(var(--hud-height, 6.5rem) + 0.45rem));
     bottom: var(--layers-panel-bottom, 1.75rem);
+  }
+
+  /* Drop the empty header strip above a desktop place card (SW-069). */
+  .map-panel-slot--place .map-panel-slot-chrome {
+    display: none;
   }
 
   /* Place card hugs its content — a stretched column left an empty block
@@ -848,8 +856,10 @@
   }
 
   .map-panel-slot--peek {
-    height: calc(180px + env(safe-area-inset-bottom, 0px));
-    max-height: calc(180px + env(safe-area-inset-bottom, 0px));
+    /* Tall enough for name, rent line, and the full disclaimer (SW-066).
+       MAP-CARDS still allows 180±16. */
+    height: calc(196px + env(safe-area-inset-bottom, 0px));
+    max-height: calc(196px + env(safe-area-inset-bottom, 0px));
   }
 
   .map-panel-slot--half {
@@ -865,6 +875,13 @@
     top: calc(var(--hud-height, 9.5rem) + 0.5rem);
     height: auto;
     max-height: none;
+  }
+
+  /* Layers full sheet leaves a map band so a tap can close Layers (SW-065). */
+  .map-panel-slot--layers.map-panel-slot--full {
+    top: auto;
+    height: 62dvh;
+    max-height: 62dvh;
   }
 
   .map-cards-shell.panel-open.map-narrow[data-detent="full"] .basemap-switcher,
@@ -886,11 +903,11 @@
   /* §3.2 — at peek/half, lift basemap + zoom above the sheet (not under it).
    * Basemap stacks above zoom+/- (48×48) + compact (i); same clearance as rest. */
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .maplibregl-ctrl-bottom-right {
-    bottom: calc(180px + env(safe-area-inset-bottom, 0px) + 0.5rem) !important;
+    bottom: calc(196px + env(safe-area-inset-bottom, 0px) + 0.5rem) !important;
   }
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .basemap-switcher {
     bottom: calc(
-      180px + env(safe-area-inset-bottom, 0px) + 48px + 48px + 4.5rem
+      196px + env(safe-area-inset-bottom, 0px) + 48px + 48px + 4.5rem
     );
   }
 
@@ -931,7 +948,7 @@
 
 @media (max-width: 899px) {
   .legend-strip {
-    bottom: calc(180px + env(safe-area-inset-bottom, 0px) + 0.5rem);
+    bottom: calc(196px + env(safe-area-inset-bottom, 0px) + 0.5rem);
   }
 
   .app-shell.panel-open .legend-strip {
@@ -990,13 +1007,26 @@
     left: calc(380px + 1.5rem);
     max-width: calc(100% - 380px - 6rem);
   }
+
+  /* Layers sits in the right column, so the line stays left of that column. */
+  .app-shell.tools-open:not(.place-open) .map-attribution-line {
+    left: 0.5rem;
+    right: calc(380px + 1.5rem);
+    max-width: calc(100% - 380px - 2.5rem);
+  }
+
+  .app-shell.tools-open.place-open .map-attribution-line {
+    left: calc(380px + 1.5rem);
+    right: calc(380px + 1.5rem);
+    max-width: calc(100% - 760px - 3rem);
+  }
 }
 
 /* Lift above the mobile sheet so "All sources" does not sit under it. */
 @media (max-width: 899px) {
   .app-shell.panel-open:has(.map-panel-slot--peek) .map-attribution-line,
   .app-shell.place-open:has(.map-panel-slot--peek) .map-attribution-line {
-    bottom: calc(180px + env(safe-area-inset-bottom, 0px) + 0.35rem);
+    bottom: calc(196px + env(safe-area-inset-bottom, 0px) + 0.35rem);
   }
 
   .app-shell.panel-open:has(.map-panel-slot--half) .map-attribution-line {
@@ -1088,7 +1118,7 @@
 
 @media (max-width: 899px) {
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .identify-at-centre {
-    bottom: calc(180px + env(safe-area-inset-bottom, 0px) + 0.35rem + 44px + 8px);
+    bottom: calc(196px + env(safe-area-inset-bottom, 0px) + 0.35rem + 44px + 8px);
   }
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .identify-at-centre {
     /* Attribution line is ~44px (All sources hit target) above the sheet. */
@@ -1263,16 +1293,170 @@
   padding-bottom: 0 !important;
 }
 
-.map-panel-slot--place .map-panel-slot-focus:focus,
-.map-panel-slot--place .map-panel-slot-focus:focus-visible {
+.map-panel-slot--place .map-panel-slot-focus:focus {
   outline: none;
   box-shadow: none;
+}
+
+.map-panel-slot--place .map-panel-slot-focus:focus-visible {
+  outline: 2px solid #0b1e3a;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 0 2px rgba(11, 30, 58, 0.35);
 }
 
 .map-panel-slot .layers-panel {
   box-shadow: none;
   border: 0;
   max-height: none;
+  box-sizing: border-box;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+@media (min-width: 900px) {
+  .map-panel-slot .layers-panel {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .map-panel-slot--place .hud-place.place-card,
+  .map-panel-slot--place .place-card-stub.place-card,
+  .map-panel-slot--place .place-card {
+    padding-top: 0.35rem !important;
+  }
+
+  .map-panel-slot--place .place-card-title {
+    margin-top: 0;
+  }
+}
+
+/* SW-066: peek keeps the name, the rent line, and the full disclaimer
+   in view. Other rows stay in the card for half and full. */
+@media (max-width: 899px) {
+  .map-panel-slot--peek .hud-place.place-card {
+    padding: 0.15rem 0.7rem 0.2rem !important;
+  }
+
+  .map-panel-slot--peek .hud-close {
+    top: 0.1rem;
+    right: 0.35rem;
+  }
+
+  .map-panel-slot--peek .place-card-title,
+  .map-panel-slot--peek .place-card-section {
+    margin: 0;
+    padding-right: 48px;
+    line-height: 1.2;
+  }
+
+  .map-panel-slot--peek .place-card-title {
+    font-size: 1rem;
+  }
+
+  .map-panel-slot--peek .place-card-section {
+    font-size: 0.75rem;
+  }
+
+  .map-panel-slot--peek .place-card-status-pill {
+    margin: 0.1rem 0 0;
+    padding: 0.05rem 0.4rem;
+    font-size: 0.78rem;
+    line-height: 1.2;
+  }
+
+  .map-panel-slot--peek .place-card-council,
+  .map-panel-slot--peek .place-card-typical,
+  .map-panel-slot--peek .place-card-agr-subtitle,
+  .map-panel-slot--peek .place-card-pre-pound,
+  .map-panel-slot--peek .place-card-fact,
+  .map-panel-slot--peek .place-card-parts,
+  .map-panel-slot--peek .place-card-row6 {
+    display: none !important;
+  }
+
+  .map-panel-slot--peek .place-card-experimental-footer {
+    position: static !important;
+    margin: 0.15rem 0 0 !important;
+    padding: 0 !important;
+    font-size: 0.68rem;
+    line-height: 1.25;
+  }
+
+  .map-panel-slot--peek .map-panel-slot-scroll,
+  .map-panel-slot--peek .place-card-body {
+    overflow: hidden !important;
+  }
+}
+
+/* Desktop: the disclaimer stays in the visible card. The fold scrolls. */
+@media (min-width: 900px) {
+  .map-panel-slot--place .map-panel-slot-scroll {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .map-panel-slot--place .map-panel-slot-focus {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .map-panel-slot.map-panel-slot--place .place-card {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden !important;
+    height: auto !important;
+    max-height: 100% !important;
+  }
+
+  .map-panel-slot.map-panel-slot--place .place-card .place-card-body {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    display: flex !important;
+    flex-direction: column;
+    overflow: hidden !important;
+  }
+
+  .map-panel-slot--place .place-card-parts {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+  }
+
+  .map-panel-slot.map-panel-slot--place .place-card .place-card-experimental-footer {
+    flex: 0 0 auto;
+    position: static !important;
+  }
+}
+
+/* One close on the Layers slot — the sheet ×. Hide the drawer ×. */
+.map-panel-slot .layers-panel-close {
+  display: none;
+}
+
+.app-shell.tools-open .hud-search-dock.open,
+.app-shell.panel-open .hud-search-dock.open {
+  z-index: 30;
+}
+
+@media (max-width: 900px) {
+  .research-banner-map {
+    right: 6rem;
+    width: auto;
+    max-width: calc(100vw - 7.2rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-shell.place-open.tools-open .research-banner-map {
+    left: max(0px, calc(min(380px, calc(100vw - 2rem)) + 1.5rem));
+  }
 }
 
 /* MAP-CARDS §3.4 — full-width 48px switch rows (beat any legacy compact rule). */

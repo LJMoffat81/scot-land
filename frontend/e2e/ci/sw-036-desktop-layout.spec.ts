@@ -176,7 +176,11 @@ test.describe("MAP-CARDS desktop one-panel layout 1280", () => {
     const layersBtn = page.getByTestId("hud-layers-btn");
     await layersBtn.click();
     await expect(page.getByTestId("layers-panel")).toBeVisible();
-    await expect(page.getByTestId("place-card")).toHaveCount(0);
+    await expect(page.getByTestId("place-card")).toBeVisible();
+    const layersCol = page.getByTestId("layers-column");
+    await expect(layersCol).toBeVisible();
+    const layersBox = await boxOf(layersCol, "layers column");
+    expect(layersBox.x, "layers column is on the right").toBeGreaterThan(640);
 
     const slot = page.getByTestId("map-panel-slot");
     const zoom = page.locator(".maplibregl-ctrl-zoom-in");

@@ -469,6 +469,12 @@ const PANEL_DESKTOP_WIDTH = 380;
 const PANEL_DESKTOP_GAP = 12;
 const PANEL_MOBILE_BREAKPOINT = 900;
 
+/**
+ * Survives a map remount caused by the place URL write.
+ * A map tap stays peek; address search stays half. A full reload clears it.
+ */
+let placeDetentMemory: "peek" | "half" | null = null;
+
 /** MapLibre padding so flyTo centres in the uncovered map (GIS 12). */
 function mapPanelPadding(opts?: {
   panelOpen?: boolean;
@@ -753,11 +759,15 @@ export default function ScotlandMap() {
   const [panelKind, setPanelKind] = useState<PanelSlotKind>("closed");
   const [panelDetent, setPanelDetent] = useState<PanelDetent>("peek");
   const [panelCollapsed, setPanelCollapsed] = useState(false);
+  /** Desktop: Layers column on the right. Independent of the place slot. */
+  const [desktopLayersOpen, setDesktopLayersOpen] = useState(false);
   /** Place card set aside while Layers is open (restore on Layers close). */
   const placeAsideRef = useRef(false);
   /** Latest panel kind for async identify (desktop: must not steal Layers). */
   const panelKindRef = useRef<PanelSlotKind>(panelKind);
   panelKindRef.current = panelKind;
+  const desktopLayersOpenRef = useRef(desktopLayersOpen);
+  desktopLayersOpenRef.current = desktopLayersOpen;
   const [mapStyle, setMapStyle] = useState<MapBasemapId>(DEFAULT_MAP_BASEMAP);
   const [mapZoom, setMapZoom] = useState(5.7);
   const [isNarrowPanel, setIsNarrowPanel] = useState(
@@ -942,12 +952,21 @@ export default function ScotlandMap() {
         );
       }
       if (bootAtLoad.panel === "layers") {
-        setPanelKind("layers");
-        setPanelDetent("full");
+        if (window.innerWidth < PANEL_MOBILE_BREAKPOINT) {
+          setPanelKind("layers");
+          setPanelDetent("full");
+        } else {
+          setDesktopLayersOpen(true);
+        }
         panelHistoryRef.current = true;
       } else if (bootAtLoad.panel === "place") {
-        setPanelKind("place");
-        panelHistoryRef.current = true;
+        // Content comes from the deep-link identify. An empty slot is a blank card.
+        const canRestore = Boolean(bootAtLoad.place || bootAtLoad.center);
+        if (!canRestore) {
+          replaceMapUrl({ panel: null });
+        } else {
+          panelHistoryRef.current = true;
+        }
       }
       if (bootAtLoad.center && mapRef.current) {
         mapRef.current.jumpTo({
@@ -993,7 +1012,7 @@ export default function ScotlandMap() {
   // logo intercepts the slot ×). Stretch to attribution / stamp-footer.
   // MapPanelSlot is outside .map-stage; set CSS vars on .app-shell.
   useEffect(() => {
-    if (panelKind !== "layers") return;
+    if (panelKind !== "layers" && !desktopLayersOpen) return;
     const stage =
       layersBtnRef.current?.closest(".map-stage") ??
       headerRef.current?.parentElement;
@@ -1049,7 +1068,7 @@ export default function ScotlandMap() {
       observer.disconnect();
       window.removeEventListener("resize", applyPanelGeometry);
     };
-  }, [panelKind]);
+  }, [panelKind, desktopLayersOpen]);
 
   const applyResult = useCallback((payload: SquareResponse) => {
     setResult(payload);
@@ -1059,6 +1078,7 @@ export default function ScotlandMap() {
     }
     setPanelKind("place");
     setPanelCollapsed(false);
+    placeDetentMemory = "half";
     setPanelDetent("half");
     setRestPromptVisible(false);
 
@@ -1151,6 +1171,7 @@ export default function ScotlandMap() {
     setError(null);
     setAddressLine(null);
     setPlaceStub(null);
+    placeDetentMemory = null;
     setPlaceLoading(false);
     setGrid3Square(null);
     setSearchNoMatch(false);
@@ -1229,9 +1250,9 @@ export default function ScotlandMap() {
       if (map) {
         markerRef.current = placeSelectedMarker(map, lng, lat);
         if (opts.fly) {
-          // Desktop: keep Layers; mobile SW-056 collapses Layers for the card.
+          // Desktop Layers stays in the right column. Mobile closes the sheet.
           const layersHoldingFly =
-            panelKindRef.current === "layers" && !isNarrowPanelRef.current;
+            desktopLayersOpenRef.current && !isNarrowPanelRef.current;
           map.flyTo({
             center: [lng, lat],
             zoom: Math.max(map.getZoom(), 15),
@@ -1249,18 +1270,19 @@ export default function ScotlandMap() {
       setResult(null);
       setSearchNoMatch(false);
       setRestPromptVisible(false);
-      // Desktop: keep Layers open; stash the place for restore on close.
-      // Mobile SW-056: collapse Layers so the place card gets the room.
-      const layersOpenNow = panelKindRef.current === "layers";
-      const keepLayersOpen = layersOpenNow && !isNarrowPanelRef.current;
-      if (keepLayersOpen) {
-        placeAsideRef.current = true;
-      } else {
-        placeAsideRef.current = false;
-        setPanelKind("place");
-        if (!opts.keepCollapsed) setPanelCollapsed(false);
-        setPanelDetent(opts.fromAddressSearch ? "half" : "peek");
-      }
+      // Desktop: Layers stays open in the right column and the card stays left.
+      // Mobile: map tap / search closes Layers and opens the card (SW-056 / SW-065).
+      const narrow = isNarrowPanelRef.current;
+      const layersOpenNow = narrow
+        ? panelKindRef.current === "layers"
+        : desktopLayersOpenRef.current;
+      const keepLayersOpen = layersOpenNow && !narrow;
+      placeAsideRef.current = false;
+      setPanelKind("place");
+      if (!opts.keepCollapsed) setPanelCollapsed(false);
+      const detent = opts.fromAddressSearch ? "half" : "peek";
+      placeDetentMemory = detent;
+      setPanelDetent(detent);
       if (!panelHistoryRef.current) {
         pushMapUrl({
           center: { lng, lat },
@@ -1399,23 +1421,50 @@ export default function ScotlandMap() {
   inspectRef.current = selectPlace;
 
   const openLayersPanel = useCallback(() => {
-    if (panelKind === "place" || placeStub) {
-      placeAsideRef.current = true;
+    const narrow = isNarrowPanelRef.current;
+    if (narrow) {
+      if (panelKind === "place" || placeStub) {
+        placeAsideRef.current = true;
+      }
+      setPanelKind("layers");
+      setPanelCollapsed(false);
+      setPanelDetent("full");
+    } else {
+      // Right column. The place card, when open, stays in the left column.
+      setDesktopLayersOpen(true);
     }
-    setPanelKind("layers");
-    setPanelCollapsed(false);
-    setPanelDetent("full");
     setRestPromptVisible(false);
     setLiveMessage("Map layers open");
-    if (!panelHistoryRef.current) {
-      pushMapUrl({ panel: "layers" });
-      panelHistoryRef.current = true;
-    } else {
-      replaceMapUrl({ panel: "layers" });
+    const placeShowing =
+      !narrow && (panelKind === "place" || Boolean(placeStub));
+    if (!placeShowing) {
+      if (!panelHistoryRef.current) {
+        pushMapUrl({ panel: "layers" });
+        panelHistoryRef.current = true;
+      } else {
+        replaceMapUrl({ panel: "layers" });
+      }
     }
   }, [panelKind, placeStub]);
 
   const closeLayersPanel = useCallback(() => {
+    if (!isNarrowPanelRef.current && desktopLayersOpenRef.current) {
+      setDesktopLayersOpen(false);
+      if (panelKindRef.current === "place" && placeStub) {
+        setLiveMessage("Map layers closed");
+        replaceMapUrl({ panel: "place" });
+      } else {
+        setLiveMessage("Layers closed");
+        if (panelHistoryRef.current) {
+          pushMapUrl({ panel: null });
+        } else {
+          replaceMapUrl({ panel: null });
+        }
+        panelHistoryRef.current = false;
+      }
+      layersBtnRef.current?.focus();
+      return;
+    }
     if (placeAsideRef.current && placeStub) {
       setPanelKind("place");
       // Layers opens at full — restore the place card at its search/tap detent,
@@ -1509,7 +1558,10 @@ export default function ScotlandMap() {
       }
       if (event.key === "l" && !typing) {
         event.preventDefault();
-        if (panelKindRef.current === "layers") closeLayersPanelRef.current();
+        const layersOn = isNarrowPanelRef.current
+          ? panelKindRef.current === "layers"
+          : desktopLayersOpenRef.current;
+        if (layersOn) closeLayersPanelRef.current();
         else openLayersPanelRef.current();
         return;
       }
@@ -1526,6 +1578,10 @@ export default function ScotlandMap() {
       if (event.key !== "Escape") return;
       if (shortcutsOpenRef.current) {
         setShortcutsOpen(false);
+        return;
+      }
+      if (!isNarrowPanelRef.current && desktopLayersOpenRef.current) {
+        closeLayersPanelRef.current();
         return;
       }
       if (panelKindRef.current !== "closed") {
@@ -1557,12 +1613,21 @@ export default function ScotlandMap() {
   useEffect(() => {
     const onPop = () => {
       const state = readMapUrlState(window.location.search);
+      const narrow = window.innerWidth < PANEL_MOBILE_BREAKPOINT;
       if (state.panel === "layers") {
-        setPanelKind("layers");
-        setPanelDetent("full");
+        if (narrow) {
+          setDesktopLayersOpen(false);
+          setPanelKind("layers");
+          setPanelDetent("full");
+        } else {
+          setDesktopLayersOpen(true);
+          if (panelKindRef.current === "layers") setPanelKind("closed");
+        }
       } else if (state.panel === "place" && placeStub) {
+        setDesktopLayersOpen(false);
         setPanelKind("place");
       } else {
+        setDesktopLayersOpen(false);
         setPanelKind("closed");
         setPanelCollapsed(false);
         panelHistoryRef.current = false;
@@ -1589,13 +1654,15 @@ export default function ScotlandMap() {
     if (!map) return;
     map.easeTo({
       padding: mapPanelPadding({
-        panelOpen: panelKind !== "closed",
+        panelOpen:
+          (panelKind === "place" && !panelCollapsed) ||
+          (isNarrowPanel && panelKind === "layers"),
         detent: panelDetent,
         collapsed: panelCollapsed,
       }),
       duration: 0,
     });
-  }, [mapReady, panelKind, panelDetent, panelCollapsed]);
+  }, [mapReady, panelKind, panelDetent, panelCollapsed, isNarrowPanel]);
 
   const openPostcode = async (postcode: string, generation: number) => {
     const response = await placeLookupFetch(
@@ -2882,6 +2949,29 @@ export default function ScotlandMap() {
         fromAddressSearch: true,
         keepCollapsed: panelCollapsedRef.current,
       });
+    } else if (boot.panel === "place" && boot.center) {
+      // panel=place with a centre and no lat/lng pair — reopen that place.
+      // A map-tap or search URL write remounts the map. If this card is
+      // already open on that point, do not identify again (that forced
+      // peek taps to half and put the loading rows back under the card).
+      const remembered = placeDetentMemory;
+      const stub = placeStubRef.current;
+      const alreadyOpen =
+        remembered != null &&
+        panelKindRef.current === "place" &&
+        stub != null &&
+        Math.abs(stub.lat - boot.center.lat) < 0.00002 &&
+        Math.abs(stub.lng - boot.center.lng) < 0.00002;
+      if (!alreadyOpen) {
+        void inspectRef.current(boot.center.lat, boot.center.lng, {
+          fly: remembered == null,
+          fromAddressSearch: remembered !== "peek",
+          keepCollapsed: panelCollapsedRef.current,
+          label: boot.place,
+        });
+      }
+    } else if (boot.panel === "place") {
+      replaceMapUrl({ panel: null });
     } else {
       const map = mapRef.current;
       if (map && boot.center) {
@@ -4501,7 +4591,9 @@ export default function ScotlandMap() {
   }, [mapReady, ledgerEnabled, spatialHubPresent]);
 
   const placeOpen = panelKind === "place" && Boolean(placeStub || result);
-  const layersOpen = panelKind === "layers";
+  const layersOpen = isNarrowPanel
+    ? panelKind === "layers"
+    : desktopLayersOpen;
   /** Tile-unavailable ids for the drawer (builtup is not a switch). */
   const unavailableLayerIds = new Set<string>(tileUnavailableIds);
 
@@ -4513,7 +4605,7 @@ export default function ScotlandMap() {
     "map-cards-shell",
     layersOpen ? "tools-open" : "",
     placeOpen ? "place-open" : "",
-    panelKind !== "closed" ? "panel-open" : "",
+    panelKind !== "closed" || desktopLayersOpen ? "panel-open" : "",
     panelCollapsed ? "panel-collapsed" : "",
     suggestOpen ? "suggest-open" : "",
     isNarrowPanel ? "map-narrow" : "map-wide",
@@ -4543,10 +4635,7 @@ export default function ScotlandMap() {
 
   return (
     <div className={shellClass}>
-      <div
-        className="map-stage"
-        inert={layersOpen && isNarrowPanel && panelDetent === "full" ? true : undefined}
-      >
+      <div className="map-stage">
       <div className="map-wrap" key={mapStyle}>
         <div
           id="map"
@@ -4788,7 +4877,7 @@ export default function ScotlandMap() {
         </div>
       )}
 
-      {panelKind === "closed" && stripLayer ? (
+      {panelKind === "closed" && !layersOpen && stripLayer ? (
         <button
           type="button"
           className="legend-strip"
@@ -4823,26 +4912,69 @@ export default function ScotlandMap() {
       </div>
       </div>{/* map-stage — panel stays outside so inert modal does not block close */}
 
-      <MapPanelSlot
-        kind={panelKind}
-        detent={panelDetent}
-        onDetentChange={(d) => {
-          setPanelDetent(d);
-          setLiveMessage(`Panel ${d}`);
-        }}
-        collapsed={panelCollapsed}
-        onCollapsedChange={setPanelCollapsed}
-        onClose={() => {
-          clearPlace();
-          setPanelKind("closed");
-          replaceMapUrl({ panel: null, place: null });
-        }}
-        onRequestDismiss={dismissPanel}
-        placeName={placeTitle}
-        liveMessage={liveMessage}
-        layersModal={layersOpen && isNarrowPanel && panelDetent === "full"}
-      >
-        {layersOpen ? (
+      {panelKind === "place" ? (
+        <MapPanelSlot
+          kind="place"
+          detent={panelDetent}
+          onDetentChange={(d) => {
+            setPanelDetent(d);
+            setLiveMessage(`Panel ${d}`);
+          }}
+          collapsed={panelCollapsed}
+          onCollapsedChange={setPanelCollapsed}
+          onClose={() => {
+            clearPlace();
+            setPanelKind("closed");
+            replaceMapUrl({ panel: null, place: null });
+          }}
+          onRequestDismiss={dismissPanel}
+          placeName={placeTitle}
+          liveMessage={liveMessage}
+          showSlotClose={false}
+        >
+          {placeStub ? (
+            <PlaceCardStub
+              place={placeStub}
+              loading={placeLoading}
+              error={error}
+              onClose={() => {
+                // Card × clears selection (not desktop collapse-to-tab).
+                clearPlace();
+                setPanelKind("closed");
+                setPanelCollapsed(false);
+                replaceMapUrl({ panel: null, place: null });
+                panelHistoryRef.current = false;
+                setLiveMessage("Panel closed");
+              }}
+              onShowScotland={showScotlandNationalView}
+              gridSquareLine={
+                grid3Square ? grid3Row6Text(grid3Square.ref) : null
+              }
+            />
+          ) : null}
+        </MapPanelSlot>
+      ) : null}
+      {layersOpen ? (
+        <MapPanelSlot
+          kind="layers"
+          detent={isNarrowPanel ? panelDetent : "full"}
+          onDetentChange={(d) => {
+            setPanelDetent(d);
+            setLiveMessage(`Panel ${d}`);
+          }}
+          collapsed={false}
+          onCollapsedChange={setPanelCollapsed}
+          onClose={closeLayersPanel}
+          onRequestDismiss={closeLayersPanel}
+          liveMessage={liveMessage}
+          layersModal={isNarrowPanel && panelDetent === "full"}
+          slotTestId={
+            panelKind === "place" && !isNarrowPanel
+              ? "layers-column"
+              : "map-panel-slot"
+          }
+          className={!isNarrowPanel ? "map-panel-slot--right" : undefined}
+        >
           <MapLayersDrawer
             className="layers-panel-in-shell"
             mapZoom={mapZoom}
@@ -4860,27 +4992,8 @@ export default function ScotlandMap() {
             spatialHubPresent={spatialHubPresent}
             onEnabledChange={onMapLayersChange}
           />
-        ) : placeStub ? (
-          <PlaceCardStub
-            place={placeStub}
-            loading={placeLoading}
-            error={error}
-            onClose={() => {
-              // Card × clears selection (not desktop collapse-to-tab).
-              clearPlace();
-              setPanelKind("closed");
-              setPanelCollapsed(false);
-              replaceMapUrl({ panel: null, place: null });
-              panelHistoryRef.current = false;
-              setLiveMessage("Panel closed");
-            }}
-            onShowScotland={showScotlandNationalView}
-            gridSquareLine={
-              grid3Square ? grid3Row6Text(grid3Square.ref) : null
-            }
-          />
-        ) : null}
-      </MapPanelSlot>
+        </MapPanelSlot>
+      ) : null}
 
       {shortcutsOpen ? (
         <div

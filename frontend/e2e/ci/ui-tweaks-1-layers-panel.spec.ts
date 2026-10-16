@@ -154,11 +154,9 @@ async function openLayers(page: Page) {
   const layersBtn = page.getByTestId("hud-layers-btn");
   await layersBtn.click();
   await expect(page.getByTestId("layers-panel")).toBeVisible();
-  await expect(page.getByTestId("map-panel-slot")).toBeVisible();
-  await expect(page.getByTestId("map-panel-slot")).toHaveAttribute(
-    "data-panel",
-    "layers",
-  );
+  const layersSlot = page.locator('[data-panel="layers"]');
+  await expect(layersSlot).toBeVisible();
+  await expect(layersSlot).toHaveAttribute("data-panel", "layers");
   return layersBtn;
 }
 
@@ -371,7 +369,12 @@ for (const viewport of [
         const card = await openPlaceCard(page);
         await expect(card).toBeVisible();
         await openLayers(page);
-        await expect(page.getByTestId("place-card")).toHaveCount(0);
+        if (viewport.width >= 900) {
+          await expect(page.getByTestId("place-card")).toBeVisible();
+          await expect(page.getByTestId("layers-column")).toBeVisible();
+        } else {
+          await expect(page.getByTestId("place-card")).toHaveCount(0);
+        }
         await expect(page.getByTestId("layers-panel")).toBeVisible();
         // Close Layers → place card restored.
         await page.getByTestId("map-panel-slot-close").click();

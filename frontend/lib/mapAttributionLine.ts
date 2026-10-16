@@ -4,6 +4,7 @@
 
 import { dzAttributionText } from "./dzAttribution";
 import { inspireRosOsAttribution } from "./inspireAttribution";
+import { layersAdd2Credit } from "./layersAdd2Credits";
 import { getMapLayer } from "./mapLayerRegistry";
 
 /** Always present basemap credit. */
@@ -56,6 +57,12 @@ export function buildMapAttributionPieces(
   }
   if (ros) {
     pieces.push({ id: "ros", text: inspireRosOsAttribution() });
+  }
+
+  for (const id of on) {
+    const credit = layersAdd2Credit(id);
+    if (!credit) continue;
+    pieces.push({ id, text: credit });
   }
 
   return pieces;

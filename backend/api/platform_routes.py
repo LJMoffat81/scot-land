@@ -48,6 +48,7 @@ from layers.layers_add_catalog import (
     tile_manifest,
     waiting_for_permission_rows,
 )
+from layers.layers_add2_catalog import agg_is_public, tile_is_public
 from layers.public_land import query_bbox as public_land_bbox
 from layers.sepa_car import query_bbox as sepa_car_bbox
 from layers.naturescot import LayerUnavailable as NatureScotUnavailable
@@ -841,6 +842,8 @@ def layers_add_viewport(
     """
     if layer_id in GATED_LAYER_IDS or layer_id == "sepa_frm_maps":
         raise HTTPException(status_code=404, detail="Not Found")
+    if not tile_is_public(layer_id):
+        raise HTTPException(status_code=404, detail="Not Found")
     if layer_id in IS_LAYER_IDS and not is_layer_extract_present(layer_id):
         raise HTTPException(status_code=404, detail="Not Found")
     if layer_id not in VIEWPORT_PAINT_LAYER_IDS:
@@ -853,6 +856,8 @@ def layers_add_viewport(
 def layers_add_tile_stub(layer_id: str, z: int, x: int, y: int) -> Response:
     """MVT stub: gated / prohibited ids → 404; others → 204 until tiles built."""
     if layer_id in GATED_LAYER_IDS or layer_id == "sepa_frm_maps":
+        raise HTTPException(status_code=404, detail="Not Found")
+    if not tile_is_public(layer_id):
         raise HTTPException(status_code=404, detail="Not Found")
     # Public layers without built tiles: empty success (no invented geometry).
     return Response(status_code=204)
@@ -867,7 +872,7 @@ def layers_add_aggregate(agg_name: str) -> dict:
         or (agg_name == "agg_hls" and layer_hls_enabled())
     ):
         raise HTTPException(status_code=404, detail="Not Found")
-    if agg_name.startswith("agg_") is False:
+    if agg_name.startswith("agg_") is False or not agg_is_public(agg_name):
         raise HTTPException(status_code=404, detail="Not Found")
     # Empty payload until ETL fills candidates_v15 (v1.4 rent endpoints untouched).
     return {

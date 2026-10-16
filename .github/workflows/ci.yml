@@ -97,6 +97,7 @@ jobs:
       - run: npm run test:forbidden-agr-properties
       - run: npm run test:quality-tags
       - run: npm run test:layer-licence-credits
+      - run: npm run test:layers-add2
       - run: npm run test:place-card-hotfix
       - run: npm run test:map-reference-osgb
       - run: npm run test:bng

@@ -5,6 +5,7 @@
  */
 
 import { LAYER_ATTRIBUTION } from "@/lib/layerCatalog";
+import { LAYERS_ADD2_CREDITS } from "@/lib/layersAdd2Credits";
 import {
   isNonCommercialLicence,
   type MapCreditEntry,
@@ -23,6 +24,16 @@ export function allLayerLicenceCredits(): MapCreditEntry[] {
       nonCommercial: isNonCommercialLicence(meta.licence),
     } satisfies MapCreditEntry;
   });
+  for (const [layerId, meta] of Object.entries(LAYERS_ADD2_CREDITS)) {
+    entries.push({
+      layerId,
+      label: meta.label,
+      licence: "OGL-3.0",
+      licenceUrl: meta.licenceUrl,
+      attribution: meta.attribution,
+      nonCommercial: isNonCommercialLicence(meta.attribution),
+    });
+  }
   return entries.sort((a, b) =>
     a.label.localeCompare(b.label, "en", { sensitivity: "base" }),
   );

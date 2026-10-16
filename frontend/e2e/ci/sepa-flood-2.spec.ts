@@ -33,6 +33,31 @@ async function stubSepaImages(page: Page, seen: string[]) {
   });
 }
 
+/**
+ * A later resize frames Scotland again when zoom is 8 or less, which sits
+ * under the flood image minimum. Park above that so the images are requested.
+ */
+async function parkFloodZoom(page: Page) {
+  await page.evaluate(() => {
+    const map = (
+      window as unknown as {
+        __map?: {
+          resize(): void;
+          getZoom(): number;
+          getCenter(): { lng: number; lat: number };
+          jumpTo(opts: { center: [number, number]; zoom: number }): void;
+        };
+      }
+    ).__map;
+    if (!map) throw new Error("window.__map missing");
+    map.resize();
+    if (map.getZoom() <= 8) {
+      const center = map.getCenter();
+      map.jumpTo({ center: [center.lng, center.lat], zoom: 9 });
+    }
+  });
+}
+
 for (const width of [1280, 390] as const) {
   test.describe(`SEPA-FLOOD-2 @ ${width}`, () => {
     test.use({ viewport: { width, height: width === 390 ? 844 : 900 } });
@@ -68,7 +93,7 @@ for (const width of [1280, 390] as const) {
 
       await river.click();
       await coastal.click();
-      await ensureMapZoomAtLeast(page, 8);
+      await parkFloodZoom(page);
       await expect(page.getByTestId("layer-source-caption-flood_river")).toHaveText(
         CREDIT,
       );
@@ -79,14 +104,16 @@ for (const width of [1280, 390] as const) {
       const layerParam = (url: string) =>
         new URL(url).searchParams.get("layers") ?? "";
       await expect
-        .poll(() => seen.filter((url) => layerParam(url) === "show:1").length, {
-          timeout: 20_000,
-        })
+        .poll(async () => {
+          await parkFloodZoom(page);
+          return seen.filter((url) => layerParam(url) === "show:1").length;
+        }, { timeout: 20_000 })
         .toBeGreaterThan(0);
       await expect
-        .poll(() => seen.filter((url) => layerParam(url) === "show:7").length, {
-          timeout: 20_000,
-        })
+        .poll(async () => {
+          await parkFloodZoom(page);
+          return seen.filter((url) => layerParam(url) === "show:7").length;
+        }, { timeout: 20_000 })
         .toBeGreaterThan(0);
       for (const url of seen) {
         const parsed = new URL(url);

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import openpyxl
 import pytest
+from openpyxl.cell.read_only import ReadOnlyCell
 
 from georgist.ros_c14_input import (
     BLIND_COLUMNS,
@@ -32,6 +33,7 @@ from georgist.ros_c14_input import (
     build_inputs,
     diff_exclusion_sets,
     load_pinned_exclusion_list,
+    read_c14,
     real_census_errors,
     requested_columns,
 )
@@ -1028,8 +1030,8 @@ def test_xlsx_empty_and_merged_cells_keep_data_rows(tmp_path: Path):
         assert label not in encoded
 
 
-def test_equal_volume_rows_in_a_pair_are_both_counted(tmp_path: Path):
-    """City Centre - 04, City Centre West - 05 and Muirhouse - 02 each have two rows of equal volume."""
+def test_equal_volume_rows_share_one_blind_key(tmp_path: Path):
+    """Equal volumes that differ only in price columns are one pair row."""
     pairs = (
         ("City Centre - 04", "S01015382", "S01020441", 6, "STAT-CC04-A", "STAT-CC04-B"),
         ("City Centre West - 05", "S01013565", "S01017420", 17, "STAT-CCW05-A", "STAT-CCW05-B"),
@@ -1046,6 +1048,16 @@ def test_equal_volume_rows_in_a_pair_are_both_counted(tmp_path: Path):
             body.append([2024, name, code, marker_b, "lq-same", "uq-same", volume, "tv-same"])
     c14 = tmp_path / "c14.csv"
     _c14(c14, body)
+    loaded = read_c14(c14, scored_run=False)
+    for name, left, _right, _volume, marker_a, marker_b in pairs:
+        same_code = [row for row in loaded if row["data zone code"] == left]
+        assert len(same_code) == 2
+        assert same_code[0]["row_identity"] == same_code[1]["row_identity"]
+        assert len(same_code[0]["row_identity"]) == 64
+        assert marker_a not in same_code[0]["row_identity"]
+        assert marker_b not in same_code[0]["row_identity"]
+        assert name not in same_code[0]["row_identity"]
+        assert left not in same_code[0]["row_identity"]
     paths = _simple(
         tmp_path,
         c14,
@@ -1055,10 +1067,11 @@ def test_equal_volume_rows_in_a_pair_are_both_counted(tmp_path: Path):
         names=names,
     )
     result = _build(tmp_path, **paths)
-    assert result["national"]["pair_volume"]["City Centre - 04"] == 12
-    assert result["national"]["pair_volume"]["City Centre West - 05"] == 34
-    assert result["national"]["pair_volume"]["Muirhouse - 02"] == 12
-    assert result["national"]["pair_dedup_sum"] == 58
+    assert result["price_columns_read"] is False
+    assert result["national"]["pair_volume"]["City Centre - 04"] == 6
+    assert result["national"]["pair_volume"]["City Centre West - 05"] == 17
+    assert result["national"]["pair_volume"]["Muirhouse - 02"] == 6
+    assert result["national"]["pair_dedup_sum"] == 29
     assert result["national"]["raw_dz_sum"] == 116
     encoded = json.dumps(result)
     for _name, left, right, _volume, marker_a, marker_b in pairs:
@@ -1069,3 +1082,68 @@ def test_equal_volume_rows_in_a_pair_are_both_counted(tmp_path: Path):
         assert by_code[left]["c14_rows"] == 2
         assert by_code[right]["c14_rows"] == 2
         assert by_code[left]["count"] == 0
+
+
+def test_price_columns_are_not_read_or_hashed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """A column outside BLIND_COLUMNS is neither read nor placed in row_identity."""
+    sentinels = ("PRICE-MEDIAN-9f3a", "PRICE-LQ-9f3a", "PRICE-UQ-9f3a", "PRICE-TV-9f3a", "PRICE-NOTE-9f3a")
+
+    def _book(path: Path, median: str) -> None:
+        book = openpyxl.Workbook()
+        sheet = book.active
+        sheet.title = "C14"
+        sheet["A1"] = "preamble"
+        sheet.merge_cells("A1:C1")
+        header = [*HEADER, "Notes"]
+        for column, value in enumerate(header, start=1):
+            sheet.cell(3, column, value)
+        sheet.cell(4, 1, 2024)
+        sheet.cell(4, 2, "Scotland")
+        sheet.cell(4, 3, "S92000003")
+        sheet.cell(4, 4, median)
+        sheet.cell(4, 7, 40)
+        sheet.cell(5, 1, 2024)
+        sheet.cell(5, 2, "Ok")
+        sheet.cell(5, 3, "S01013482")
+        sheet.cell(5, 4, median)
+        sheet.cell(5, 5, sentinels[1])
+        sheet.cell(5, 6, sentinels[2])
+        sheet.cell(5, 8, sentinels[3])
+        sheet.cell(5, 9, sentinels[4])
+        sheet.cell(5, 7, 8)
+        book.save(path)
+        book.close()
+
+    first = tmp_path / "a.xlsx"
+    second = tmp_path / "b.xlsx"
+    _book(first, sentinels[0])
+    _book(second, "PRICE-OTHER-9f3a")
+    reads: list[tuple[int, int, object]] = []
+    original_get = ReadOnlyCell.value.fget
+    original_set = ReadOnlyCell.value.fset
+
+    def _spy(self):
+        value = original_get(self)
+        reads.append((self.row, self.column, value))
+        return value
+
+    monkeypatch.setattr(ReadOnlyCell, "value", property(_spy, original_set))
+    loaded = read_c14(first, scored_run=False)
+    other = read_c14(second, scored_run=False)
+    zone_rows = [row for row in loaded if row.get("data zone code") == "S01013482"]
+    assert len(zone_rows) == 1
+    identity = zone_rows[0]["row_identity"]
+    assert identity == [row["row_identity"] for row in other if row.get("data zone code") == "S01013482"][0]
+    assert isinstance(identity, str) and len(identity) == 64
+    for sentinel in (*sentinels, "PRICE-OTHER-9f3a"):
+        assert sentinel not in identity
+        assert sentinel not in json.dumps(zone_rows[0])
+    header_row = next(row for row, _column, value in reads if value == "Median")
+    price_columns = {
+        column
+        for row, column, value in reads
+        if row == header_row and str(value).strip().lower() not in BLIND_COLUMNS
+    }
+    assert price_columns
+    data_reads = [item for item in reads if item[0] > header_row and item[1] in price_columns]
+    assert data_reads == []

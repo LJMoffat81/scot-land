@@ -47,11 +47,11 @@ const COMING_TO_THE_MAP: ReadonlyArray<{
   })),
   {
     name: "Landscape character areas",
-    status: "Waiting for permission — licence check",
+    status: "Waiting for permission to use the data",
   },
   {
     name: "Fish and shellfish farms",
-    status: "Being checked — source unreliable",
+    status: "Being checked: the data has gaps",
   },
   {
     name: "Public land owned by the Crown",
@@ -285,6 +285,28 @@ export default function RoadmapPage() {
               </span>
             </li>
           ))}
+        </ul>
+      </section>
+
+      <section id="further-ahead" data-testid="roadmap-further-ahead">
+        <h2>Further ahead</h2>
+        <ul className="roadmap-layer-list">
+          <li data-testid="roadmap-layer-row">
+            <span className="roadmap-layer-name">
+              Land values for each piece of land, per square metre
+            </span>
+            <span className="roadmap-layer-status">
+              <span className="roadmap-waiting-status-full">Not started</span>
+            </span>
+          </li>
+          <li data-testid="roadmap-layer-row">
+            <span className="roadmap-layer-name">
+              Bulk data downloads and full API (may be paid)
+            </span>
+            <span className="roadmap-layer-status">
+              <span className="roadmap-waiting-status-full">Not started</span>
+            </span>
+          </li>
         </ul>
       </section>
 

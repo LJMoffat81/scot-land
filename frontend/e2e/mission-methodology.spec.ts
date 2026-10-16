@@ -22,7 +22,14 @@ test.describe("about and how-it-works pages", () => {
     );
     await expect(root).toContainText("I am Laurie Moffat");
     await expect(root).toContainText("Scottish Land Commission");
-    await expect(root).toContainText("Open data only at launch");
+    await expect(root).toContainText(
+      "We use open data only. Paid sources may be added later, each one clearly tagged.",
+    );
+    await expect(root).toContainText("how we built this");
+    await expect(page.getByRole("link", { name: "how we built this" })).toHaveAttribute(
+      "href",
+      "/how-we-built-this",
+    );
     await expect(root).not.toContainText(/£\s*[\d,]+/);
     await expect(page).toHaveTitle(/About \| Scot-LAND/);
   });
@@ -59,7 +66,9 @@ test.describe("about and how-it-works pages", () => {
     await expect(root).toContainText("Constraint: changes best use, adds no value");
     await expect(root).toContainText("different labels are never added");
     await expect(root).not.toContainText(/\bchips?\b/i);
-    await expect(root).toContainText("2011 Data Zones");
+    await expect(root).toContainText(
+      "We show each small area on its own. We don't add areas up into council or Scotland figures.",
+    );
     await expect(root).toContainText("Market = taken from real prices");
     await expect(root).not.toContainText("£0");
     await expect(root).not.toContainText(/£\s*[\d,]+/);

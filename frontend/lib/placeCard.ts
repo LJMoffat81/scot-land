@@ -38,17 +38,7 @@ export const PLACE_CARD_AGR_SUBTITLE =
 export const PLACE_CARD_PRE_POUND =
   "We're not showing amounts yet while we check our method.";
 
-/**
- * Home / legend coming-soon line (WORDING-BATCH-1). Not shown on the place card
- * (MAP-CARDS §6 — say it once via the answer status pill).
- */
-export const LAND_VALUES_COMING_SOON_HOME =
-  "Land values coming soon — our method is still being tested.";
-
-/** @deprecated MAP-CARDS §6 — do not show on the place card. */
-export const PLACE_CARD_LAND_VALUES_COMING_SOON = LAND_VALUES_COMING_SOON_HOME;
-
-/** Rank band UI — OFF until £ unblocked (UX-10). */
+/** Rank band UI — OFF until the rent display flag is on (UX-10). */
 export const PLACE_CARD_RANK_BAND_ENABLED = false;
 
 export const PLACE_CARD_TYPICAL_HOME =

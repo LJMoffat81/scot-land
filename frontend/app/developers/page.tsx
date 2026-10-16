@@ -112,8 +112,10 @@ function DevelopersPageInner() {
       <h1>Downloads &amp; API</h1>
       <ResearchBanner />
       <p>
-        Use Scot-LAND&apos;s open data in your own work. Everything here is free
-        under the licence shown. Please say where it came from.
+        Use Scot-LAND&apos;s open data in your own work. The map and the files
+        on this page are free to use under the licence shown. Please say where
+        they came from. Larger data packs and a full API may be paid services
+        later.
       </p>
       <p className="downloads-note" data-testid="quality-tag-inline">
         Input quality tags:{" "}

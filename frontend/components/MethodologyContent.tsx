@@ -25,6 +25,11 @@ export default function MethodologyContent() {
         Buildings are left out, because whoever built them made that value. The land&apos;s value is
         created by the community around it and by nature, not by the owner.
       </p>
+      <p>
+        We show figures for Data Zones for now. Our aim is to value each piece
+        of land by the square metre, year by year, built up step by step from
+        accurate public data.
+      </p>
 
       <section id="calculation">
         <h2>How an area is valued</h2>
@@ -35,8 +40,8 @@ export default function MethodologyContent() {
             of the land. We turn that into a yearly rent.
           </li>
           <li>
-            <strong>In the countryside</strong>, we use one farmland rent per
-            hectare for the whole of Scotland.
+            <strong>In the countryside</strong>, we use one farmland rent for
+            each square metre of land, the same across Scotland.
           </li>
           <li>
             <strong>Natural resource rents and the services of nature</strong>{" "}
@@ -61,8 +66,8 @@ export default function MethodologyContent() {
           across different price years. Nothing is counted twice.
         </p>
         <p className="downloads-note">
-          Today our land figures still use the 2011 Data Zones. We are moving
-          them to the 2022 set before adding up to councils and Scotland.
+          We show each small area on its own. We don&apos;t add areas up into
+          council or Scotland figures.
         </p>
       </section>
 
@@ -76,10 +81,9 @@ export default function MethodologyContent() {
           councils could be anywhere from about half to 1.3 times our central
           estimate. Where house prices are low compared with rebuild costs, the
           range is wider: about half to double. This covers home Data Zones, not
-          farmland, and never a single-property figure. Figures will be checked
-          by an independent
-          valuation step before anything is published. That check is part of
-          the Scot-LAND model.
+          farmland, and never a single-property figure. Figures go through a
+          separate checking step before anything is published. That step is
+          part of the Scot-LAND model, not an outside review.
         </p>
       </section>
 

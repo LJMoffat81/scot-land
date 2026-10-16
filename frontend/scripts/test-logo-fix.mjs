@@ -87,7 +87,10 @@ assert.equal(
 );
 
 const mission = readSrc("components/MissionContent.tsx");
-assert.match(mission, /Scot-LAND logo: original design\./);
+assert.match(
+  mission,
+  /Scot-LAND logo: mountains over a loch, drawn as small map areas\. Original\s+design\./,
+);
 assert.doesNotMatch(mission, /Noun Project|Coquet|thenounproject/i);
 
 // --- Build output scan (when .next exists) ---

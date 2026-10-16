@@ -300,7 +300,9 @@ test.describe("LOGO-H2 desktop chrome", () => {
     expect(body).not.toMatch(/Noun Project/i);
     expect(body).not.toMatch(/Coquet/i);
     await expect(
-      page.getByText("Scot-LAND logo: original design."),
+      page.getByText(
+        "Scot-LAND logo: mountains over a loch, drawn as small map areas. Original design.",
+      ),
     ).toBeVisible();
   });
 

@@ -192,7 +192,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     minzoom: 5,
     maxzoom: 20,
     sourceCaption: "Scot-LAND model · 2023",
-    legendUnit: "£/year",
+    legendUnit: "£ per m² of land, per year",
     classes: AGR_CLASSES,
     chip: "proxy",
     defaultOn: false,

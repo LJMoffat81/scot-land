@@ -1,0 +1,8 @@
+# SYNTHETIC
+code,all_ages_share_lt005,all_ages_share_005_010,all_ages_share_gt010,n_detached_all_ages_matched
+ZA1,0.5,0.25,0.25,4
+ZA2,0.25,0.25,0.5,4
+ZA3,,,,
+ZB1,0.5,0.5,0,2
+ZB2,0,0.5,0.5,2
+ZA4,,,,

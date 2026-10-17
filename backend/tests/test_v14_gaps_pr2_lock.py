@@ -256,7 +256,7 @@ def test_r4_year_file_not_in_input_years(
     assert not out.exists()
     out_missing = tmp_path / "missing-out" / "report.json"
     assert score_main(_args(paths, out_missing, holdout=False, score=True, year_files=[])) == 1
-    assert _line(capsys.readouterr().err, "SCORE_2024:") == "SCORE_2024: REFUSED: input_years: expected [2024], got []"
+    assert _line(capsys.readouterr().err, "SCORE_2024:") == "SCORE_2024: REFUSED: input_years: expected [2024], got [2023]"
     assert calls["n"] == 0
     assert not out_missing.exists()
 

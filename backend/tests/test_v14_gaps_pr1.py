@@ -264,11 +264,11 @@ def test_report_records_optimizer_inputs_and_secondary(tmp_path: Path) -> None:
         "backend/scripts/build_ros_c14_v14_inputs.py",
         "backend/scripts/build_v14_drc_components.py",
         "backend/scripts/build_v14_primary_2023.py",
+        "backend/scripts/fit_v14_hedonic.py",
+        "backend/scripts/build_v14_check_sources.py",
     ):
         assert rel in report["sha8"]
         assert report["sha8"][rel] == sha256_file(BACKEND / rel.removeprefix("backend/"))[:8]
-    assert "backend/scripts/fit_v14_hedonic.py" not in report["sha8"]
-    assert "backend/scripts/build_v14_check_sources.py" not in report["sha8"]
     assert "\u00a3" not in json.dumps(report)
 
 

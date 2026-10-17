@@ -69,6 +69,8 @@ REQUIRED_ZONE_FIELDS = (
 ALLOWED_ZONE_FIELDS = frozenset(REQUIRED_ZONE_FIELDS) | frozenset(
     field for fields in SOURCE_FIELDS.values() for field in fields
 )
+# 3c extends this tuple. The message joins the values with "|".
+YEAR_MODES = (2023,)
 
 
 class CheckInputError(ValueError):
@@ -204,19 +206,40 @@ def _parse_pins(items: list[str]) -> dict[str, str]:
     return pins
 
 
+def require_year(value: str | None) -> int:
+    """Required ``--year``. Anything outside ``YEAR_MODES`` refuses before readers run."""
+    allowed = "|".join(str(year) for year in YEAR_MODES)
+    got = "absent" if value is None else str(value)
+    if got not in {str(year) for year in YEAR_MODES}:
+        raise CheckInputError(f"B6: ERROR: year: expected one of {allowed}, got {got}")
+    return int(got)
+
+
+def read_s2_s3(paths: dict[str, Path]) -> dict[str, dict[str, dict]]:
+    """S2 and S3, plus the other pinned sources. Spy target for a refused year."""
+    return {name: load_source(paths[name], name) for name in SOURCES}
+
+
+def join_sources(tables: dict[str, dict[str, dict]], pins: Mapping[str, str]) -> dict:
+    """Join spy. A refused year never calls this."""
+    return build_v14_check_inputs(tables, pins)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--year", default=None, help="Required. Allowed values are YEAR_MODES.")
     parser.add_argument("--pin", action="append", default=[], help="name=sha256, one per source.")
     for name in SOURCES:
         parser.add_argument(f"--{name.replace('_', '-')}", type=Path, default=None, dest=name)
     args = parser.parse_args(argv)
     paths = {name: getattr(args, name) for name in SOURCES}
     try:
+        require_year(args.year)
         pins = _parse_pins(list(args.pin))
         assert_pinned(paths, pins)
-        tables = {name: load_source(paths[name], name) for name in SOURCES}
-        payload = build_v14_check_inputs(tables, pins)
+        tables = read_s2_s3(paths)
+        payload = join_sources(tables, pins)
     except (CheckInputError, OSError, json.JSONDecodeError) as exc:
         sys.stderr.write(str(exc) + "\n")
         return 1

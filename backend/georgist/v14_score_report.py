@@ -10,6 +10,7 @@ import ast
 import hashlib
 import json
 import math
+import os
 import subprocess
 from pathlib import Path
 from typing import Mapping, Sequence
@@ -59,12 +60,8 @@ RECORDED_FILES = (
     "backend/scripts/build_v14_check_sources.py",
 )
 # PR 3 writers are recorded once they exist. They are not hashed while absent.
-PR3_RECORDED_WHEN_PRESENT = frozenset(
-    {
-        "backend/scripts/fit_v14_hedonic.py",
-        "backend/scripts/build_v14_check_sources.py",
-    }
-)
+# PR 3b records the fit CLI and the check-source writer on every run.
+PR3_RECORDED_WHEN_PRESENT = frozenset()
 S_C3_OPTIMIZER = {
     "method": S_C3_METHOD,
     "pgtol": S_C3_GTOL,
@@ -891,10 +888,16 @@ def assert_2024_allowed(
 
 
 def mark_score_2024(lock_path: Path) -> None:
-    """Record that the 2024 entry point has already scored."""
+    """Record that the 2024 entry point has been entered. The write is atomic."""
     payload = json.loads(lock_path.read_text(encoding="utf-8"))
     payload["score_2024"] = True
-    lock_path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+    temporary = lock_path.with_name(f".{lock_path.name}.tmp")
+    try:
+        temporary.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+        os.replace(temporary, lock_path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
 
 
 def input_years(path: Path) -> list[int]:

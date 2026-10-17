@@ -239,9 +239,205 @@ def screen_house_sales_year(row: Sequence[str], header: Sequence[str], row_numbe
     return int(text)
 
 
+class _HouseCursor:
+    """One-character CSV cursor. A refused DateCode is not followed by a later field."""
+
+    def __init__(self, handle) -> None:
+        self._handle = handle
+        self._held: str | None = None
+
+    def read(self) -> str:
+        if self._held is not None:
+            char = self._held
+            self._held = None
+            return char
+        raw = self._handle.read(1)
+        if raw is None or raw == b"" or raw == "":
+            return ""
+        if isinstance(raw, str):
+            return raw
+        lead = raw[0]
+        if lead < 0x80:
+            return chr(lead)
+        width = 2 if lead < 0xE0 else 3 if lead < 0xF0 else 4
+        buf = bytearray(raw)
+        while len(buf) < width:
+            more = self._handle.read(1)
+            if not more or isinstance(more, str):
+                raise B2Error("B2_HOUSE_SALES: ERROR: year row 0: expected integer, got short")
+            buf += more
+        return bytes(buf).decode("utf-8")
+
+    def unread(self, char: str) -> None:
+        if char == "":
+            return
+        if self._held is not None:
+            raise B2Error("B2_HOUSE_SALES: ERROR: year row 0: expected integer, got short")
+        self._held = char
+
+
+def _finish_house_newline(cursor: _HouseCursor, char: str) -> None:
+    if char != "\r":
+        return
+    nxt = cursor.read()
+    if nxt != "\n":
+        cursor.unread(nxt)
+
+
+def _house_field(cursor: _HouseCursor) -> tuple[str, str]:
+    """Return ``(text, kind)`` with kind in comma, eol, eof."""
+    char = cursor.read()
+    if char == "":
+        return "", "eof"
+    if char in "\r\n":
+        _finish_house_newline(cursor, char)
+        return "", "eol"
+    if char == ",":
+        return "", "comma"
+    pieces = [char]
+    while True:
+        char = cursor.read()
+        if char == ",":
+            return "".join(pieces), "comma"
+        if char in "\r\n":
+            _finish_house_newline(cursor, char)
+            return "".join(pieces), "eol"
+        if char == "":
+            return "".join(pieces), "eof"
+        pieces.append(char)
+
+
+def _datecode_field(cursor: _HouseCursor) -> tuple[str, str]:
+    """Read DateCode. A year >= 2024 stops on its last digit."""
+    pieces: list[str] = []
+    while True:
+        char = cursor.read()
+        if char == ",":
+            return "".join(pieces), "comma"
+        if char in "\r\n":
+            _finish_house_newline(cursor, char)
+            return "".join(pieces), "eol"
+        if char == "":
+            return "".join(pieces), "eof"
+        pieces.append(char)
+        text = "".join(pieces).strip()
+        if len(text) >= 4 and text.isdigit() and int(text) >= 2024:
+            return text, "refused"
+
+
+def _skip_house_preamble(cursor: _HouseCursor) -> str:
+    """Skip blank lines and # comments. Return the first character of the next record."""
+    while True:
+        char = cursor.read()
+        if char == "":
+            return ""
+        if char in "\r\n":
+            _finish_house_newline(cursor, char)
+            continue
+        if char == "#":
+            while True:
+                skipped = cursor.read()
+                if skipped in "\r\n" or skipped == "":
+                    if skipped in "\r\n":
+                        _finish_house_newline(cursor, skipped)
+                    break
+            continue
+        return char
+
+
+def _record_from(cursor: _HouseCursor, first: str) -> tuple[list[str], str] | None:
+    if first == "":
+        return None
+    cursor.unread(first)
+    fields: list[str] = []
+    while True:
+        text, kind = _house_field(cursor)
+        fields.append(text)
+        if kind != "comma":
+            return fields, kind
+
+
+def _screen_streamed_year(text: str, row_number: int) -> None:
+    stripped = text.strip()
+    if stripped == "":
+        raise B2Error(f"B2_HOUSE_SALES: ERROR: year row {row_number}: expected integer, got blank")
+    if not stripped.isdigit():
+        raise B2Error(
+            f"B2_HOUSE_SALES: ERROR: year row {row_number}: expected integer, got {stripped}"
+        )
+    if int(stripped) >= 2024:
+        raise B2Error(
+            f"B2_HOUSE_SALES: ERROR: year row {row_number}: expected <2024, got {stripped}"
+        )
+
+
+def _house_sales_rows(path: Path) -> tuple[list[str], list[list[str]]]:
+    """House sales, record by record. DateCode is screened before later fields."""
+    if not path.is_file():
+        raise _error("house_sales", "file", path, "absent")
+    _assert_injected_pin("house_sales", path)
+    with path.open("rb", buffering=0) as handle:
+        cursor = _HouseCursor(handle)
+        first = _skip_house_preamble(cursor)
+        header_record = _record_from(cursor, first)
+        if header_record is None:
+            raise _error("house_sales", "header", ",".join(SCHEMA_HEADERS["house_sales"]), "absent")
+        header = [field.strip() for field in header_record[0]]
+        refusal = header_refusal(
+            "B2_HOUSE_SALES",
+            "house_sales",
+            header,
+            legacy=tuple(SCHEMA_HEADERS["house_sales"]),
+        )
+        if refusal is not None:
+            raise B2Error(refusal)
+        if "DateCode" not in header:
+            raise _error("house_sales", "header", "DateCode", "absent")
+        year_index = header.index("DateCode")
+        rows: list[list[str]] = []
+        row_number = 0
+        while True:
+            started = _skip_house_preamble(cursor)
+            if started == "":
+                break
+            row_number += 1
+            fields: list[str] = []
+            cursor.unread(started)
+            ended = False
+            for position in range(year_index):
+                text, kind = _house_field(cursor)
+                fields.append(text)
+                if kind != "comma":
+                    raise B2Error(
+                        f"B2_HOUSE_SALES: ERROR: year row {row_number}: expected integer, got short"
+                    )
+            text, kind = _datecode_field(cursor)
+            if kind == "refused":
+                raise B2Error(
+                    f"B2_HOUSE_SALES: ERROR: year row {row_number}: expected <2024, got {text.strip()}"
+                )
+            _screen_streamed_year(text, row_number)
+            fields.append(text)
+            if kind == "comma":
+                while True:
+                    cell, cell_kind = _house_field(cursor)
+                    fields.append(cell)
+                    if cell_kind != "comma":
+                        ended = True
+                        break
+            else:
+                ended = True
+            if not ended:
+                raise B2Error(
+                    f"B2_HOUSE_SALES: ERROR: year row {row_number}: expected integer, got short"
+                )
+            rows.append(fields)
+        return header, rows
+
+
 def scan_measurement_labels(path: Path) -> list[str]:
     """Distinct Measurement labels. The Value column is left unread."""
-    header, rows = _csv_rows(path, "house_sales")
+    header, rows = _house_sales_rows(path)
     _check_header("house_sales", header)
     index = header.index("Measurement")
     labels: list[str] = []
@@ -263,7 +459,7 @@ def _label_list() -> str:
 
 def adapt_house_sales(path: Path) -> list[dict]:
     """Long SDMX rows to zone, year, n_sales, price, median_price."""
-    header, rows = _csv_rows(path, "house_sales")
+    header, rows = _house_sales_rows(path)
     _check_header("house_sales", header)
     grouped: dict[tuple[str, int], dict] = {}
     order: list[tuple[str, int]] = []

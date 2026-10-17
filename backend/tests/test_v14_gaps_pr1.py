@@ -394,7 +394,10 @@ def test_lock_path_is_shared_and_2024_refuses_closed(
             *frozen_flags,
         ]
     ) == 1
-    _refuse(capsys, "second 2023 holdout run refused", calls)
+    assert capsys.readouterr().err == (
+        f"HOLDOUT_2023: REFUSED: lock: expected absent, got {lock}\n"
+    )
+    assert calls["n"] == 0
     assert score_main(
         ["--out", str(out_b), "--score-2024", "--check-inputs", str(payload)]
     ) == 1
@@ -414,7 +417,10 @@ def test_lock_path_is_shared_and_2024_refuses_closed(
             str(missing_lock),
         ]
     ) == 1
-    _refuse(capsys, "2024 run refused unless the holdout lock exists", calls)
+    assert capsys.readouterr().err == (
+        f"SCORE_2024: REFUSED: lock: expected {missing_lock}, got absent\n"
+    )
+    assert calls["n"] == 0
     other = tmp_path / "other.json"
     other.write_text(json.dumps(_year_only(2024)), encoding="utf-8")
     sha_lock = tmp_path / "sha.lock"

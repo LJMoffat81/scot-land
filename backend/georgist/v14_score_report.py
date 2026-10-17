@@ -249,10 +249,7 @@ def frozen_set_refusal(key: str, expected: str, actual: str) -> str:
 
 
 def missing_lock_message(path: Path) -> str:
-    return (
-        f"SCORE_2024: REFUSED: lock: expected {path}, got absent\n"
-        "2024 run refused unless the holdout lock exists"
-    )
+    return f"SCORE_2024: REFUSED: lock: expected {path}, got absent"
 
 
 def read_price_cell(value: str) -> str:
@@ -824,8 +821,7 @@ def prepare_holdout_2023(
     lock.parent.mkdir(parents=True, exist_ok=True)
     if lock.is_file() and not allow_incident:
         raise HoldoutLockError(
-            f"HOLDOUT_2023: REFUSED: lock: expected absent, got {lock}\n"
-            "second 2023 holdout run refused"
+            f"HOLDOUT_2023: REFUSED: lock: expected absent, got {lock}"
         )
     if lock.is_file() and allow_incident:
         with (score_dir / "fidelity_bug.log").open("a", encoding="utf-8") as handle:

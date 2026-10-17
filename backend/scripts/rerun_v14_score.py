@@ -294,6 +294,7 @@ def _extended_main(args: argparse.Namespace) -> int:
                         f"SCORE_2024: REFUSED: input_years: expected [2024], got {rendered}\n"
                         "2024 run refused: input year is not 2024"
                     )
+            mark_score_2024(args.lock_path)
             score_2024_scores = _score_holdout(args.check_inputs)
         report = build_report(
             input_paths=input_paths,
@@ -335,8 +336,6 @@ def _extended_main(args: argparse.Namespace) -> int:
                 lock_path=args.lock_path,
                 frozen_set=frozen_set_members(frozen_paths),
             )
-        if args.score_2024:
-            mark_score_2024(args.lock_path)
     except Exception as exc:
         sys.stderr.write(str(exc) + "\n")
         return 1

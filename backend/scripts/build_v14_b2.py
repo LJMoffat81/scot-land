@@ -122,7 +122,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--filter1-output", type=Path, required=True)
     parser.add_argument("--filter2-script", type=Path, required=True)
     parser.add_argument("--filter2-output", type=Path, required=True)
+    parser.add_argument("--no-price", action="store_true", help="Do not open house sales or fit.")
     args = parser.parse_args(argv)
+    if args.no_price:
+        payload = {"label": "SYNTHETIC", "no_price": True}
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        sys.stdout.write(f"wrote {args.out}\n")
+        return 0
     try:
         payload = build(args)
     except (B2Error, OSError, ValueError, KeyError) as exc:

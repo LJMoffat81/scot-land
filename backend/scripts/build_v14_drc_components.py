@@ -38,8 +38,11 @@ PIN_TABLE = {
     "n25i": "6fdf2951223dd01e5790069d61428ce25d92aed5f260197ee546223113df4e49",
 }
 PIN_ORDER = ("epc", "nrs2017", "plot_bands", "ur6", "n25i")
+N25I_EXPECTED_ROWS = 6976
+N25I_PRODUCTION_SHA = str(PIN_TABLE["n25i"])
 FULL_SHA = re.compile(r"^[0-9a-f]{64}$")
 COUNCIL_CODE = re.compile(r"^S12\d{6}$")
+DZ_CODE = re.compile(r"^S01\d{6}$")
 N25I_SHEET = "2025"
 N25I_CODE = "Data Zone code"
 N25I_COUNCIL = "Council area code"
@@ -223,6 +226,78 @@ def _n25i_header_fields(path: Path) -> list[str]:
         workbook.close()
 
 
+def _row_is_empty(sheet, row_number: int) -> bool:
+    """True only when every stored cell is None. Whitespace is not empty."""
+    width = _stored_width(sheet, row_number)
+    if width == 0:
+        return True
+    for column in range(1, width + 1):
+        if sheet.cell(row=row_number, column=column).value is not None:
+            return False
+    return True
+
+
+def _assert_row_count(count: int, expected_rows: int | None) -> None:
+    if expected_rows is None or count == expected_rows:
+        return
+    raise ComponentsError(
+        f"B1_COMPONENTS: ERROR: n25i rows: expected {expected_rows}, got {count}"
+    )
+
+
+def n25i_expected_rows(path: Path) -> int | None:
+    """Production row count only when the file sha is the n25i pin."""
+    if sha256_file(path) == N25I_PRODUCTION_SHA:
+        return N25I_EXPECTED_ROWS
+    return None
+
+
+def harvester_council_map(path: Path) -> dict[str, str]:
+    """Council codes from the NRS loader, without rewriting the validated map."""
+    frame = hv.load_nrs_dwellings(path, year=2025, vintage="DZ2011")
+    found: dict[str, str] = {}
+    columns = frame.columns
+    if "code" not in columns or "council_code" not in columns:
+        return found
+    for code, council in zip(frame["code"], frame["council_code"]):
+        if code is None:
+            continue
+        key = str(code)
+        if key.lower() == "nan" or key in found:
+            continue
+        if council is None:
+            found[key] = ""
+        else:
+            found[key] = str(council)
+    return found
+
+
+def assert_harvester_councils(validated: dict[str, str], harvested: dict[str, str]) -> None:
+    """Refuse the first sorted S01 zone whose council pair is not identical.
+
+    The NRS loader keeps ``^S01\\d{6}$`` codes. Other synthetic codes stay on the
+    validated map and are not a harvester pair.
+    """
+    validated = {dz: council for dz, council in validated.items() if DZ_CODE.fullmatch(dz)}
+    harvested = {dz: council for dz, council in harvested.items() if DZ_CODE.fullmatch(dz)}
+    for dz in sorted(set(validated) | set(harvested)):
+        if dz not in validated:
+            raise ComponentsError(
+                "B1_COMPONENTS: ERROR: n25i council mismatch at "
+                f"{dz}: validated absent, harvester {harvested[dz]!r}"
+            )
+        if dz not in harvested:
+            raise ComponentsError(
+                "B1_COMPONENTS: ERROR: n25i council mismatch at "
+                f"{dz}: validated {validated[dz]!r}, harvester absent"
+            )
+        if validated[dz] != harvested[dz]:
+            raise ComponentsError(
+                "B1_COMPONENTS: ERROR: n25i council mismatch at "
+                f"{dz}: validated {validated[dz]!r}, harvester {harvested[dz]!r}"
+            )
+
+
 def parse_n25i_rows(path: Path) -> list[tuple[str, str]]:
     """Data rows of the n25i sheet. Header acceptance happens in ``load_n25i``."""
     expected = REAL_HEADERS["n25i"]
@@ -230,14 +305,24 @@ def parse_n25i_rows(path: Path) -> list[tuple[str, str]]:
     _workbook, sheet = _n25i_sheet(path)
     try:
         header_row = _n25i_header_index(path) + 1
+        last = sheet.max_row
+        while last > header_row and _row_is_empty(sheet, last):
+            last -= 1
+        for row_number in range(header_row + 1, last + 1):
+            if _row_is_empty(sheet, row_number):
+                later = row_number + 1
+                while later <= last and _row_is_empty(sheet, later):
+                    later += 1
+                raise ComponentsError(
+                    f"B1_COMPONENTS: ERROR: n25i sheet {N25I_SHEET} row {row_number}: "
+                    f"empty row before data row {later}"
+                )
         pairs: list[tuple[str, str]] = []
         seen: set[str] = set()
         data_number = 0
-        for row_number in range(header_row + 1, sheet.max_row + 1):
-            stored = _stored_width(sheet, row_number)
-            if stored == 0:
-                continue
+        for row_number in range(header_row + 1, last + 1):
             data_number += 1
+            stored = _stored_width(sheet, row_number)
             if stored < width:
                 raise ComponentsError(
                     f"B1_COMPONENTS: ERROR: row {data_number}: expected {width} fields, got {stored}"
@@ -248,7 +333,7 @@ def parse_n25i_rows(path: Path) -> list[tuple[str, str]]:
             council = item[N25I_COUNCIL].strip()
             if code == "":
                 raise ComponentsError(
-                    f"B1_COMPONENTS: ERROR: {N25I_CODE} row {data_number}: expected value, got blank"
+                    f"B1_COMPONENTS: ERROR: {N25I_CODE} row {row_number}: expected value, got blank"
                 )
             if council == "":
                 raise ComponentsError(
@@ -269,19 +354,14 @@ def parse_n25i_rows(path: Path) -> list[tuple[str, str]]:
         _workbook.close()
 
 
-def load_n25i(path: Path) -> dict[str, str]:
-    """Council code by data-zone code. The NRS loader is called unchanged."""
+def load_n25i(path: Path, *, expected_rows: int | None = None) -> dict[str, str]:
+    """Council code by data-zone code, checked against the NRS loader."""
     _refuse_header("n25i", _n25i_header_fields(path))
     pairs = parse_n25i_rows(path)
-    frame = hv.load_nrs_dwellings(path, year=2025, vintage="DZ2011")
-    councils = {code: council for code, council in pairs}
-    if "code" in frame.columns and "council_code" in frame.columns:
-        for code, council in zip(frame["code"], frame["council_code"]):
-            text = "" if council is None else str(council).strip()
-            if text.lower() == "nan" or text == "":
-                continue
-            councils[str(code)] = text
-    return councils
+    validated = {code: council for code, council in pairs}
+    _assert_row_count(len(validated), expected_rows)
+    assert_harvester_councils(validated, harvester_council_map(path))
+    return validated
 
 
 def _zone_meta(classes: dict[str, int], councils: dict[str, str], n25i_path: Path) -> dict[str, tuple[str, int]]:
@@ -313,7 +393,7 @@ def build_components(
     nrs = load_nrs2017(paths["nrs2017"])
     plots = load_plot_bands(paths["plot_bands"])
     classes = load_ur6(paths["ur6"])
-    councils = load_n25i(paths["n25i"])
+    councils = load_n25i(paths["n25i"], expected_rows=n25i_expected_rows(paths["n25i"]))
     zones = _zone_meta(classes, councils, paths["n25i"])
     estate_cfg = sr.load_config()["estate"]
     estate = borrow_plot_bands(plots, zones, estate_cfg)

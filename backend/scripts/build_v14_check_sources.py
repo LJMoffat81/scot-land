@@ -294,7 +294,12 @@ def build_check3(paths: dict[str, Path], *, pins: dict[str, str] | None = None) 
     return {"label": "SYNTHETIC", "zones": zones}
 
 
-def build_check4(path: Path, *, pins: dict[str, str] | None = None) -> dict:
+def build_check4(
+    path: Path,
+    *,
+    pins: dict[str, str] | None = None,
+    excluded_breakdown: bool = False,
+) -> dict:
     table = PIN_TABLE if pins is None else pins
     _assert_pin_format("rent_table", table)
     _assert_file_sha("rent_table", path, table)
@@ -332,7 +337,15 @@ def build_check4(path: Path, *, pins: dict[str, str] | None = None) -> dict:
                 "capitalised_land": capitalised,
             }
         )
-    sys.stdout.write(f"B5_CHECK4: excluded={sum(counts.values())}\n")
+    excluded = sum(counts.values())
+    sys.stdout.write(f"B5_CHECK4: excluded={excluded}\n")
+    if excluded_breakdown:
+        pending = counts["model_fill_pending"]
+        not_applicable = counts["not_applicable"]
+        sys.stdout.write(
+            "CHECK4_EXCLUDED: "
+            f"total={excluded} model_fill_pending={pending} not_applicable={not_applicable}\n"
+        )
     return {"label": "SYNTHETIC", "zones": zones}
 
 
@@ -403,8 +416,14 @@ def save_check3(paths: dict[str, Path], dest: Path, *, pins: dict[str, str] | No
     return payload
 
 
-def save_check4(path: Path, dest: Path, *, pins: dict[str, str] | None = None) -> dict:
-    payload = build_check4(path, pins=pins)
+def save_check4(
+    path: Path,
+    dest: Path,
+    *,
+    pins: dict[str, str] | None = None,
+    excluded_breakdown: bool = False,
+) -> dict:
+    payload = build_check4(path, pins=pins, excluded_breakdown=excluded_breakdown)
     write_output(dest, payload)
     return payload
 
@@ -439,20 +458,33 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dz2022-out", type=Path)
     parser.add_argument("--ur6", type=Path)
     parser.add_argument("--ur6-out", type=Path)
+    parser.add_argument("--year", default=None, help="2023 keeps check 3 NOT_RUN non-gating.")
+    parser.add_argument("--no-price", action="store_true", help="No price file is read.")
     args = parser.parse_args(argv)
+    breakdown = args.no_price or args.year is not None
+    not_run = None
     try:
         if args.check3_out is not None:
-            save_check3(
-                {"plot_bands": args.plot_bands, "gis_house_plot": args.gis_house_plot},
-                args.check3_out,
-            )
+            try:
+                save_check3(
+                    {"plot_bands": args.plot_bands, "gis_house_plot": args.gis_house_plot},
+                    args.check3_out,
+                )
+            except CheckSourceError as exc:
+                text = str(exc)
+                if args.year == "2023" and text.startswith("B5_CHECK3: NOT_RUN"):
+                    not_run = text
+                else:
+                    raise
         if args.check4_out is not None:
-            save_check4(args.rent_table, args.check4_out)
+            save_check4(args.rent_table, args.check4_out, excluded_breakdown=breakdown)
         if args.dz2022_out is not None:
             _payload, suppressed = save_dz2022(args.crosswalk, args.primary_estimates, args.dz2022_out)
             sys.stdout.write(f"B5_DZ2022_KEYS: suppressed={suppressed}\n")
         if args.ur6_out is not None:
             save_ur6(args.ur6, args.ur6_out)
+        if not_run is not None:
+            sys.stdout.write(not_run + "\n")
     except CheckSourceError as exc:
         sys.stderr.write(str(exc) + "\n")
         return 1

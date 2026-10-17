@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 from pathlib import Path
 
 import openpyxl
@@ -37,6 +38,15 @@ from scripts.fit_v14_hedonic import main as fit_main
 from scripts.rerun_v14_score import main as score_main
 
 FILTERS = Path(__file__).resolve().parents[1] / "georgist" / "d7_filters"
+
+
+def _stamp_year(source: Path, dest: Path) -> None:
+    """SYNTHETIC 2024 year file. Copies the synthetic 2023 rows and sets the year."""
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    payload["label"] = "SYNTHETIC"
+    for zone in payload.get("zones") or []:
+        zone["year"] = 2024
+    dest.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def _write(path: Path, header: list[str], rows: list[list[str]], *, comment: bool = True) -> None:
@@ -395,6 +405,72 @@ def run(root: Path) -> dict:
             )
             if score_code != 0:
                 raise RuntimeError("H dry run failed")
+            s2_builder = root / "s2_builder.json"
+            s2_primary = root / "s2_primary.json"
+            s2_fitted = root / "s2_fitted.json"
+            _stamp_year(builder, s2_builder)
+            _stamp_year(primary, s2_primary)
+            _stamp_year(per_zone, s2_fitted)
+            checks_2024 = root / "s4_checks.json"
+            s4_paths = {
+                "builder_output": s2_builder,
+                "primary_estimates": s2_primary,
+                "fitted_hedonic": s2_fitted,
+                "check3_plot_passes": check3,
+                "check4_rent_route": check4,
+                "dz2022_keys": dz_keys,
+                "ur6": ur6_out,
+            }
+            s4_argv = [
+                "--out",
+                str(checks_2024),
+                "--year",
+                "2024",
+                "--lock",
+                str(lock),
+                "--hedonic-coefs",
+                str(coefs),
+            ]
+            for name, path in s4_paths.items():
+                s4_argv.extend(
+                    [f"--{name.replace('_', '-')}", str(path), "--pin", f"{name}={pin_sha(path)}"]
+                )
+            if b6_main(s4_argv) != 0:
+                raise RuntimeError("S4 dry run failed")
+            report_2024 = root / "s5" / "report.json"
+            s5_code = score_main(
+                [
+                    "--out",
+                    str(report_2024),
+                    "--score-2024",
+                    "--check-inputs",
+                    str(checks_2024),
+                    "--lock-path",
+                    str(lock),
+                    "--merge-map",
+                    str(merge),
+                    "--hedonic-coefs",
+                    str(coefs),
+                    "--sha8-block",
+                    str(sha8_block),
+                    "--check3-plot-passes",
+                    str(check3),
+                    "--check4-rent-route",
+                    str(check4),
+                    "--ur6",
+                    str(ur6_out),
+                    "--dz2022-keys",
+                    str(dz_keys),
+                    "--builder-output",
+                    str(s2_builder),
+                    "--primary-estimates",
+                    str(s2_primary),
+                    "--fitted-per-zone",
+                    str(s2_fitted),
+                ]
+            )
+            if s5_code != 0:
+                raise RuntimeError("S5 dry run failed")
         finally:
             MERGE_PINS["merge_map"] = saved_merge
         open_rows = [row["id"] for row in code_text_disagreements() if row["status"] in {"open", "pending"}]
@@ -411,6 +487,13 @@ def run(root: Path) -> dict:
             "checks": b6_out,
             "report": report,
             "lock": lock,
+            "checks_2024": checks_2024,
+            "score_2024": report_2024,
+            "year_files": {
+                "builder_output": s2_builder,
+                "primary_estimates": s2_primary,
+                "fitted_per_zone": s2_fitted,
+            },
             "status": "passed",
         }
     finally:

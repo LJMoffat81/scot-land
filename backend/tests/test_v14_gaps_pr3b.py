@@ -1131,7 +1131,7 @@ def test_recorded_files_include_pr3b_scripts() -> None:
         assert rel not in PR3_RECORDED_WHEN_PRESENT
 
 
-@pytest.mark.parametrize(("flag", "shown"), [(None, "absent"), ("2024", "2024"), ("2022", "2022"), ("x", "x")])
+@pytest.mark.parametrize(("flag", "shown"), [(None, "absent"), ("2022", "2022"), ("x", "x")])
 def test_b6_year_flag(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -1156,7 +1156,7 @@ def test_b6_year_flag(
     assert b6_main(argv) == 1
     assert calls == {"read": 0, "join": 0}
     assert not out.exists()
-    assert capsys.readouterr().err == f"B6: ERROR: year: expected one of 2023, got {shown}\n"
+    assert capsys.readouterr().err == f"B6: ERROR: year: expected one of 2023|2024, got {shown}\n"
 
 
 def test_score_2024_crash_still_refuses_second_run(

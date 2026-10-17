@@ -55,6 +55,7 @@ def _paths() -> dict[str, Path]:
         "nrs2017": FIXTURES / "nrs2017.csv",
         "plot_bands": FIXTURES / "plot_bands.csv",
         "ur6": FIXTURES / "ur6.csv",
+        "n25i": FIXTURES / "n25i.xlsx",
     }
 
 
@@ -201,7 +202,7 @@ def _frozen_flags(files: dict[str, Path], *, drop: str | None = None) -> list[st
 def test_drc_components_baseline() -> None:
     """SYNTHETIC. Blank zones borrow council x UR6, else the UR6 national share."""
     for path in FIXTURES.iterdir():
-        if path.is_file():
+        if path.is_file() and path.suffix == ".csv":
             assert "SYNTHETIC" in path.read_text(encoding="utf-8")
     records = _records()
     assert [row["dz2011"] for row in records] == ["ZA1", "ZA2", "ZA3", "ZA4", "ZB1", "ZB2"]
@@ -344,7 +345,7 @@ def test_nrs_pin_not_fixture_subset() -> None:
     )
     assert needle not in Path(__file__).read_text(encoding="utf-8")
     for path in FIXTURES.rglob("*"):
-        if path.is_file():
+        if path.is_file() and path.suffix == ".csv":
             assert needle not in path.read_text(encoding="utf-8")
 
 

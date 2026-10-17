@@ -1,8 +1,8 @@
 # SYNTHETIC
-code,all_ages_share_lt005,all_ages_share_005_010,all_ages_share_gt010,n_detached_all_ages_matched
-ZA1,0.5,0.25,0.25,4
-ZA2,0.25,0.25,0.5,4
-ZA3,,,,
-ZB1,0.5,0.5,0,2
-ZB2,0,0.5,0.5,2
-ZA4,,,,
+code,vintage,n_detached_post1980_matched,post1980_share_lt005,post1980_share_005_010,post1980_share_gt010,post1980_median_parcel_ha,post1980_n_excl_multi_address,post1980_n_excl_capped,post1980_n_excl_unmatched,n_detached_pre1980_matched,pre1980_share_lt005,pre1980_share_005_010,pre1980_share_gt010,pre1980_median_parcel_ha,pre1980_n_excl_multi_address,pre1980_n_excl_capped,pre1980_n_excl_unmatched,n_detached_all_ages_matched,all_ages_share_lt005,all_ages_share_005_010,all_ages_share_gt010,all_ages_median_parcel_ha,all_ages_n_excl_multi_address,all_ages_n_excl_capped,all_ages_n_excl_unmatched
+ZA1,,,,,,,,,,,,,,,,,,4,0.5,0.25,0.25,,,,
+ZA2,,,,,,,,,,,,,,,,,,4,0.25,0.25,0.5,,,,
+ZA3,,,,,,,,,,,,,,,,,,,,,,,,,
+ZB1,,,,,,,,,,,,,,,,,,2,0.5,0.5,0,,,,
+ZB2,,,,,,,,,,,,,,,,,,2,0,0.5,0.5,,,,
+ZA4,,,,,,,,,,,,,,,,,,,,,,,,,

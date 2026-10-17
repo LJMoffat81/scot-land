@@ -6,11 +6,13 @@ rebuild under O-D1. A field with no frozen citation is refused.
 
 from __future__ import annotations
 
-import csv
+import hashlib
 import json
 from decimal import Decimal, ROUND_HALF_EVEN
 from pathlib import Path
 from typing import Iterable, Mapping, Sequence
+
+from georgist.v14_real_headers import REAL_SHA256, header_refusal, read_header_fields
 
 # Frozen citations. COLUMN_MAP grows only by fields that appear here.
 FIELD_CITATIONS = {
@@ -70,7 +72,13 @@ HOUSE_SALES_SHA256 = "702c9ada0b26dad9904e97f00ea7aa3357e1bf449e724e83292b5265f0
 PIN_TABLE: dict[str, object] = {
     "low_parcel_count": 1038,
     "house_sales": HOUSE_SALES_SHA256,
+    "plot_split": REAL_SHA256["plot_split"],
+    "crosswalk": REAL_SHA256["crosswalk"],
+    "sold_tfa": REAL_SHA256["sold_tfa"],
+    "access": REAL_SHA256["access"],
+    "bedrooms": REAL_SHA256["bedrooms"],
 }
+_PRODUCTION_PINS = {key: PIN_TABLE[key] for key in PIN_TABLE}
 
 
 class B2Error(ValueError):
@@ -122,14 +130,49 @@ def _read_text(path: Path, schema: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _csv_rows(path: Path, schema: str) -> tuple[list[str], list[list[str]]]:
-    text = _read_text(path, schema)
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def _assert_injected_pin(schema: str, path: Path) -> None:
+    """Check a fixture pin only after a test has replaced the production pin."""
+    if schema not in PIN_TABLE:
+        return
+    if schema in _PRODUCTION_PINS and PIN_TABLE[schema] == _PRODUCTION_PINS[schema]:
+        return
+    expected = str(PIN_TABLE[schema])
+    actual = _sha256_file(path)
+    if actual != expected:
+        raise B2Error(
+            f"B2_{_token(schema)}: REFUSED: {schema} sha256: expected {expected}, got {actual}"
+        )
+
+
+def parse_data_rows(path: Path) -> list[list[str]]:
+    """Data rows only. The header guard does not call this."""
+    text = path.read_text(encoding="utf-8")
     lines = [line for line in text.splitlines() if line.strip() and not line.startswith("#")]
-    if not lines:
+    return [line.split(",") for line in lines[1:]]
+
+
+def _csv_rows(path: Path, schema: str) -> tuple[list[str], list[list[str]]]:
+    if not path.is_file():
+        raise _error(schema, "file", path, "absent")
+    _assert_injected_pin(schema, path)
+    header = read_header_fields(path)
+    if not header:
         raise _error(schema, "header", ",".join(SCHEMA_HEADERS[schema]), "absent")
-    header = lines[0].split(",")
-    rows = [line.split(",") for line in lines[1:]]
-    return header, rows
+    refusal = header_refusal(
+        f"B2_{_token(schema)}",
+        schema,
+        header,
+        legacy=tuple(SCHEMA_HEADERS[schema]),
+    )
+    if refusal is not None:
+        raise B2Error(refusal)
+    return list(header), parse_data_rows(path)
 
 
 def _check_header(schema: str, header: Sequence[str]) -> None:

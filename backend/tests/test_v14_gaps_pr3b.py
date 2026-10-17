@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from georgist.surface_v13 import capitalised_rent_land
+from georgist.v14_real_headers import REAL_HEADERS
 from georgist.surface_v14_checks import _pass_at_ints, _plot
 from georgist.v14_d7_chain import D7_FILTER2_OUTPUT_SHA256, D7_SOURCE_SHA256
 from georgist.v14_score_report import PIN_TABLE as MERGE_PINS
@@ -161,6 +162,51 @@ def _rent_row(zone: str, central: str = "4", low: str = "1") -> list[str]:
     item["central"] = central
     item["low"] = low
     return [item[name] for name in RENT_HEADER]
+
+
+def _ur6_table(pairs: list[tuple[str, str]]) -> tuple[list[str], list[list[str]]]:
+    header = list(REAL_HEADERS["ur6"])
+    rows = []
+    for code, ur6_class in pairs:
+        item = {name: "" for name in header}
+        item["code"] = code
+        item["ur6_class"] = ur6_class
+        item["ur6_name"] = "SYNTHETIC"
+        item["source"] = "SYNTHETIC"
+        item["licence"] = "OGL-3.0"
+        rows.append([item[name] for name in header])
+    return header, rows
+
+
+def _cross_table(triples: list[tuple[str, str, str]]) -> tuple[list[str], list[list[str]]]:
+    header = list(REAL_HEADERS["crosswalk"])
+    rows = []
+    for dz2011, dz2022, count in triples:
+        item = {name: "" for name in header}
+        item["dz2011_code"] = dz2011
+        item["dz2022_code"] = dz2022
+        item["uprn_count"] = count
+        rows.append([item[name] for name in header])
+    return header, rows
+
+
+def _rent_success_rows(observed: list[list[str]]) -> list[list[str]]:
+    rows = []
+    for cells in observed:
+        item = dict(zip(RENT_HEADER, cells))
+        item["status"] = "observed_pooled"
+        rows.append([item[name] for name in RENT_HEADER])
+    for index in range(129):
+        item = {name: "1" for name in RENT_HEADER}
+        item["zone_id"] = f"P{index}"
+        item["status"] = "model_fill_pending"
+        rows.append([item[name] for name in RENT_HEADER])
+    for index in range(3):
+        item = {name: "1" for name in RENT_HEADER}
+        item["zone_id"] = f"N{index}"
+        item["status"] = "not_applicable"
+        rows.append([item[name] for name in RENT_HEADER])
+    return rows
 
 
 def _count_key(value: object, key: str) -> int:
@@ -614,7 +660,7 @@ def test_check4_shared_prefix(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 def test_check4_two_routes(tmp_path: Path) -> None:
     """SYNTHETIC. Residual and capitalised routes match the v1.3 check-4 method."""
     path = tmp_path / "rent.csv"
-    _csv(path, RENT_HEADER, [_rent_row("Z1", "4", "1")])
+    _csv(path, RENT_HEADER, _rent_success_rows([_rent_row("Z1", "4", "1")]))
     pins = copy_pin_table()
     pins["rent_table"] = sha256_file(path)
     payload = build_check4(path, pins=pins)
@@ -630,11 +676,8 @@ def test_dz2022_keys_crosswalk(tmp_path: Path) -> None:
     """SYNTHETIC. O-D1 weights rebuild share low, central and high."""
     walk = tmp_path / "walk.csv"
     primary = tmp_path / "primary.json"
-    _csv(
-        walk,
-        ["dz2011_code", "dz2022_code", "uprn_count"],
-        [["P1", "A", "1"], ["P2", "A", "3"], ["P1", "B", "2"]],
-    )
+    header, rows = _cross_table([("P1", "A", "1"), ("P2", "A", "3"), ("P1", "B", "2")])
+    _csv(walk, header, rows)
     primary.write_text(
         json.dumps(
             {
@@ -667,11 +710,8 @@ def test_dz2022_keys_no_primary_suppressed(
     """SYNTHETIC. A DZ2022 zone with no primary estimate is omitted, not filled."""
     walk = tmp_path / "walk.csv"
     primary = tmp_path / "primary.json"
-    _csv(
-        walk,
-        ["dz2011_code", "dz2022_code", "uprn_count"],
-        [["P1", "A", "1"], ["P2", "A", "3"], ["P9", "C", "4"]],
-    )
+    header, rows = _cross_table([("P1", "A", "1"), ("P2", "A", "3"), ("P9", "C", "4")])
+    _csv(walk, header, rows)
     primary.write_text(
         json.dumps(
             {
@@ -703,13 +743,15 @@ def test_dz2022_keys_no_primary_suppressed(
 def test_ur6_vintage(tmp_path: Path, bad: str, shown: str) -> None:
     """SYNTHETIC. UR6 outside 1-6 refuses and leaves no output."""
     good = tmp_path / "good.csv"
-    _csv(good, ["code", "ur6"], [["Z1", "1"], ["Z2", "6"]])
+    header, rows = _ur6_table([("Z1", "1"), ("Z2", "6")])
+    _csv(good, header, rows)
     pins = copy_pin_table()
     pins["ur6"] = sha256_file(good)
     payload = build_ur6(good, pins=pins)
     assert [row["ur6"] for row in payload["zones"]] == [1, 6]
     bad_path = tmp_path / "bad.csv"
-    _csv(bad_path, ["code", "ur6"], [["Z1", bad]])
+    header, rows = _ur6_table([("Z1", bad)])
+    _csv(bad_path, header, rows)
     pins["ur6"] = sha256_file(bad_path)
     out = tmp_path / "ur6.json"
     with pytest.raises(CheckSourceError) as raised:
@@ -754,7 +796,8 @@ def test_check_sources_pin_wrong(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         step, name = "B5_CROSSWALK", "crosswalk"
     else:
         path = tmp_path / "ur6.csv"
-        _csv(path, ["code", "ur6"], [["Z1", "1"]])
+        header, rows = _ur6_table([("Z1", "1")])
+        _csv(path, header, rows)
         with pytest.raises(CheckSourceError) as raised:
             save_ur6(path, out)
         step, name = "B5_UR6", "ur6"
@@ -806,7 +849,8 @@ def test_check_sources_shared_prefix(tmp_path: Path, monkeypatch: pytest.MonkeyP
         step = "B5_CROSSWALK"
     else:
         path = tmp_path / "ur6.csv"
-        _csv(path, ["code", "ur6"], [["Z1", "1"]])
+        header, rows = _ur6_table([("Z1", "1")])
+        _csv(path, header, rows)
         with pytest.raises(CheckSourceError) as raised:
             save_ur6(path, out, pins=pins)
         step = "B5_UR6"
@@ -833,11 +877,13 @@ def test_check_sources_missing_blank_short(tmp_path: Path, source: str) -> None:
         step, column, width = "B5_CHECK4", "zone_id", len(RENT_HEADER)
         header, sample = RENT_HEADER, _rent_row("Z1")
     elif source == "crosswalk":
-        step, column, width = "B5_CROSSWALK", "dz2011_code", 3
-        header, sample = ["dz2011_code", "dz2022_code", "uprn_count"], ["P1", "A", "1"]
+        header, sample_rows = _cross_table([("P1", "A", "1")])
+        step, column, width = "B5_CROSSWALK", "dz2011_code", len(header)
+        sample = sample_rows[0]
     elif source == "ur6":
-        step, column, width = "B5_UR6", "code", 2
-        header, sample = ["code", "ur6"], ["Z1", "1"]
+        header, sample_rows = _ur6_table([("Z1", "1")])
+        step, column, width = "B5_UR6", "code", len(header)
+        sample = sample_rows[0]
     else:
         step, column, width = "B5_PRIMARY", "zone", 4
         header, sample = [], []
@@ -931,7 +977,8 @@ def _run_source_case(source: str, path: Path, out: Path, digest: str | None) -> 
         return
     walk = path.parent / "walk.csv"
     if not walk.exists():
-        _csv(walk, ["dz2011_code", "dz2022_code", "uprn_count"], [["P1", "A", "1"]])
+        header, rows = _cross_table([("P1", "A", "1")])
+        _csv(walk, header, rows)
     pins["crosswalk"] = sha256_file(walk)
     save_dz2022(walk, path, out, pins=pins)
 

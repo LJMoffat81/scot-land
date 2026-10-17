@@ -203,7 +203,9 @@ def score_estimators(
     ``surface_v14_checks`` is imported here because that module imports
     ``surface_v14`` at module scope (circular dependency). Missing inputs are
     reported as ``pending`` and are never omitted. A pending gating check fails
-    closed. The list of those checks is ``surface_v14_checks.GATING_MARKS``.
+    closed. The list of those checks is the 2024 entry in
+    ``GATING_MARKS_BY_YEAR``. The holdout and 2024 entry points call
+    ``gating_marks`` with a hard-coded year.
     """
     from georgist import surface_v14_checks as checks
 
@@ -213,7 +215,7 @@ def score_estimators(
     band = list(lsc.get("national_range") or [0.10, 0.40])
     zero_max = float(lsc.get("zero_mass_max_share", 0.10))
     c4cfg = (v14_config(c).get("check4") or (c.get("v13") or {}).get("check4") or {})
-    gating_names = tuple(checks.GATING_MARKS)
+    gating_names = checks.GATING_MARKS_BY_YEAR[2024]
     information_names = (
         "1c",
         "1e",
@@ -239,15 +241,15 @@ def score_estimators(
             return _pending(name, error=str(exc))
 
     def _fail_closed(gating: dict, decided: bool) -> bool:
-        """Pending gating checks come from ``GATING_MARKS``, not a second list."""
-        if any(gating.get(name, {}).get("status") == "pending" for name in checks.GATING_MARKS):
+        """Pending gating checks come from the 2024 mark tuple, not a second list."""
+        if any(gating.get(name, {}).get("status") == "pending" for name in gating_names):
             return False
         return decided
 
     def _stamp_pending_error(gating: dict, error: str | None) -> None:
         if not error:
             return
-        for name in checks.GATING_MARKS:
+        for name in gating_names:
             item = gating.get(name)
             if item and item.get("status") == "pending" and not item.get("error"):
                 item["error"] = error

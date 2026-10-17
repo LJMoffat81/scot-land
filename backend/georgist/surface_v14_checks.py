@@ -13,15 +13,123 @@ from georgist import surface_holdout as ho
 from georgist import surface_v13 as v13
 from georgist import surface_v14 as v14
 
-GATING_MARKS = {
-    "1": "unweighted zone median in 10% to 40%",
-    "1a": "class 1 has the highest median land per home",
-    "1b": "top national price decile share is above the bottom decile share",
-    "1d": "at most 10% of zones at 0% or 100%",
-    "3": "detached-only plot comparison at least 80%",
-    "4": "two-route gap within 25% national and 40% per UR6",
-    "6": "one ordered range per zone",
+GATING_MARKS_BY_YEAR = {
+    2023: ("1", "1a", "1b", "1d", "4", "6"),
+    2024: ("1", "1a", "1b", "1d", "3", "4", "6"),
 }
+AM1_NONGATING_2023 = ("3",)
+AM1_REASON = "C_council: national source not pinned (AM-1)"
+AM1_PASSED_LABEL = "passed on gating checks excluding check 3 (AM-1)"
+AM1_FAILED_LABEL = "failed on gating checks excluding check 3 (AM-1)"
+_B5_CHECK3_PREFIX = "B5_CHECK3: "
+_CHECK3_CLOSED = frozenset({"NOT_RUN", "pending", "FAIL", "fail"})
+
+
+def gating_marks(year: object) -> tuple[str, ...]:
+    """Gating marks for one entry-point year. Any other year is refused."""
+    if type(year) is int and year in GATING_MARKS_BY_YEAR:
+        return GATING_MARKS_BY_YEAR[year]
+    raise ValueError(f"AM-1: no gating set for year {year!r}")
+
+
+def check3_diagnostic_from_upstream(message: str) -> dict:
+    """Split a B5 check-3 sentence into the 2023 diagnostic status and detail."""
+    if not message.startswith(_B5_CHECK3_PREFIX):
+        raise ValueError(f"AM-1: check 3 upstream must start with {_B5_CHECK3_PREFIX!r}")
+    rest = message[len(_B5_CHECK3_PREFIX) :]
+    status, separator, detail = rest.partition(": ")
+    return {
+        "status": status,
+        "reason": AM1_REASON,
+        "detail": detail if separator else None,
+    }
+
+
+def _check3_parts(
+    check3_status: str | None,
+    check3_detail: str | None,
+    check3_upstream: str | None,
+) -> tuple[str, str | None]:
+    if check3_upstream is not None:
+        parsed = check3_diagnostic_from_upstream(check3_upstream)
+        return str(parsed["status"]), parsed["detail"]
+    if check3_status is None:
+        return "NOT_RUN", None
+    return check3_status, check3_detail
+
+
+def _item_passes(item: Mapping) -> bool:
+    if item.get("status") in _CHECK3_CLOSED:
+        return False
+    return bool(item.get("pass"))
+
+
+def _marks_pass(gating: Mapping, marks: tuple[str, ...]) -> bool:
+    return all(_item_passes(gating.get(name) or {}) for name in marks)
+
+
+def _copy_estimator(score: Mapping) -> dict:
+    return {
+        **score,
+        "gating": {name: dict(item) for name, item in score["gating"].items()},
+    }
+
+
+def _stamp_check3(block: dict, status: str) -> None:
+    item = dict(block["gating"].get("3") or {"check": "3"})
+    item["status"] = status
+    if status in {"NOT_RUN", "pending"}:
+        item["pass"] = None
+    elif status == "FAIL":
+        item["pass"] = False
+    block["gating"]["3"] = item
+
+
+def apply_year_gate(
+    primary_score: Mapping,
+    secondary_score: Mapping,
+    year: int,
+    *,
+    check3_status: str | None = None,
+    check3_detail: str | None = None,
+    check3_upstream: str | None = None,
+) -> dict:
+    """Publish from ``gating_marks(year)`` only. 2023 check 3 is a diagnostic."""
+    marks = gating_marks(year)
+    primary = _copy_estimator(primary_score)
+    secondary = _copy_estimator(secondary_score)
+    override = check3_status is not None or check3_upstream is not None or year == 2023
+    status, detail = _check3_parts(check3_status, check3_detail, check3_upstream)
+    if override:
+        _stamp_check3(primary, status)
+        _stamp_check3(secondary, status)
+    diagnostics = None
+    if year == 2023:
+        diagnostics = {"3": {"status": status, "reason": AM1_REASON, "detail": detail}}
+        primary["gating"].pop("3", None)
+        secondary["gating"].pop("3", None)
+    primary["gating_pass"] = _marks_pass(primary["gating"], marks)
+    secondary["gating_pass"] = _marks_pass(secondary["gating"], marks)
+    publication = v14.apply_no_switch_publication(
+        primary_gating_pass=bool(primary["gating_pass"]),
+        secondary_gating_pass=bool(secondary["gating_pass"]),
+    )
+    if year == 2023:
+        publication["am1_label"] = (
+            AM1_PASSED_LABEL if primary["gating_pass"] and secondary["gating_pass"] else AM1_FAILED_LABEL
+        )
+    passed = bool(primary["gating_pass"]) and bool(secondary["gating_pass"])
+    out = {
+        "primary": primary,
+        "secondary": secondary,
+        "publication": publication,
+        "publish": passed,
+    }
+    if diagnostics is not None:
+        out["diagnostics (non-gating)"] = diagnostics
+    return out
+
+
 INFORMATION_ONLY = (
     "1c",
     "1e",
@@ -434,21 +542,41 @@ def score_estimator(zones: Sequence[Mapping]) -> dict:
     }
 
 
-def score_both(primary: Sequence[Mapping], secondary: Sequence[Mapping]) -> dict:
-    """Both estimators, the agreement test, the HBU line, and the no-switch rule."""
+def score_both(
+    primary: Sequence[Mapping],
+    secondary: Sequence[Mapping],
+    *,
+    year: int = 2024,
+    check3_status: str | None = None,
+    check3_detail: str | None = None,
+    check3_upstream: str | None = None,
+) -> dict:
+    """Both estimators, the agreement test, the HBU line, and the no-switch rule.
+
+    ``year`` is the entry-point constant (2023 or 2024). It is not read from
+    the zone rows.
+    """
     primary_score = score_estimator(primary)
     secondary_score = score_estimator(secondary)
-    publication = v14.apply_no_switch_publication(
-        primary_gating_pass=bool(primary_score["gating_pass"]),
-        secondary_gating_pass=bool(secondary_score["gating_pass"]),
+    gated = apply_year_gate(
+        primary_score,
+        secondary_score,
+        year,
+        check3_status=check3_status,
+        check3_detail=check3_detail,
+        check3_upstream=check3_upstream,
     )
-    return {
-        "primary": primary_score,
-        "secondary": secondary_score,
+    scored = {
+        "primary": gated["primary"],
+        "secondary": gated["secondary"],
         "agreement": agreement(primary, secondary),
         "hbu": hbu_line(primary) + hbu_line(secondary),
         "hbu_status": HBU_NOT_RUN,
         "hbu_gates": False,
-        "publication": publication,
+        "publication": gated["publication"],
         "checks_include_hbu": False,
+        "publish": gated["publish"],
     }
+    if "diagnostics (non-gating)" in gated:
+        scored["diagnostics (non-gating)"] = gated["diagnostics (non-gating)"]
+    return scored

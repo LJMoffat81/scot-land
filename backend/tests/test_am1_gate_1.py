@@ -10,7 +10,6 @@ import hashlib
 import json
 import os
 import re
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -39,7 +38,8 @@ SIGNOFF_TEXT = (
     "Methods Auditor/Statistician (ff0d3261): SIGNED 17 Oct 2026 at "
     "22df5e66740c847eac673d6328cf7ddfd8d56493f4f700745b8ed7691725e04e\n"
 )
-PRE_AM1 = "e048c6cc58c212f41e2d9ca92652e7c39c42442c"
+PRE_AM1_FIXTURE = BACKEND / "tests" / "fixtures" / "v14" / "surface_v14_checks_pre_am1.bytes"
+PRE_AM1_SHA256 = "725a7325a1f47776c196d97e3c82ed4938a7df9c4ce46d7ca87218b9f0563fef"
 _BARE = "GATING" + "_MARKS"
 BARE_MARKS = re.compile(rf"(?<![A-Za-z0-9_]){_BARE}(?![A-Za-z0-9_])")
 UPSTREAM = "B5_CHECK3: NOT_RUN: plot_bands header: expected pass_20, got absent"
@@ -185,10 +185,8 @@ def test_t12_pre_am1_module_bytes_refuse_the_2024_run(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     assert "backend/georgist/surface_v14_checks.py" in RECORDED_FILES
-    pre = subprocess.check_output(
-        ["git", "show", f"{PRE_AM1}:backend/georgist/surface_v14_checks.py"],
-        cwd=REPO_ROOT,
-    )
+    pre = PRE_AM1_FIXTURE.read_bytes()
+    assert hashlib.sha256(pre).hexdigest() == PRE_AM1_SHA256
     current = (BACKEND / "georgist" / "surface_v14_checks.py").read_bytes()
     assert pre != current
     paths = _layout(tmp_path)

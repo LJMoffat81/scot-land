@@ -21,6 +21,7 @@ from pathlib import Path
 from georgist import surface_rent as sr
 from georgist import surface_v14 as v14
 from georgist.surface_paths import REPO_ROOT
+from georgist.check3_record import validate_check3_record
 from georgist.surface_v14_checks import score_both
 from georgist.v14_hedonic import PriceYearError, refuse_2024_price_file
 from georgist.v14_score_report import (
@@ -211,6 +212,13 @@ def _absent_frozen(missing: list[str], step: str) -> str:
     )
 
 
+def raise_missing_frozen(args: argparse.Namespace, step: str) -> None:
+    """Refuse a holdout whose frozen-set paths are absent. Score-2024 uses ``_frozen_paths``."""
+    missing = _missing_frozen(args)
+    if missing:
+        raise HoldoutLockError(_absent_frozen(missing, step))
+
+
 def _frozen_paths(args: argparse.Namespace) -> dict[str, Path] | None:
     mapping = _frozen_mapping(args)
     present = [path for path in mapping.values() if path is not None]
@@ -225,18 +233,31 @@ def _frozen_paths(args: argparse.Namespace) -> dict[str, Path] | None:
     return {name: path for name, path in mapping.items() if path is not None}
 
 
+def _validate_frozen_check3(args: argparse.Namespace) -> None:
+    """Validate a present check-3 path. An absent path keeps the frozen-set refusal."""
+    if not (args.holdout_2023 or args.score_2024):
+        return
+    path = getattr(args, "check3_plot_passes", None)
+    if path is None or not path.is_file():
+        return
+    if args.holdout_2023:
+        step, year = "HOLDOUT_2023", 2023
+    else:
+        step, year = "SCORE_2024", 2024
+    validate_check3_record(path, year=year, step=step)
+
+
 def _extended_main(args: argparse.Namespace) -> int:
     score_dir = args.out.parent
     inputs_sha = _inputs_sha256(args)
     reads = PriceColumnReadLog()
     commit = require_commit_sha(git_commit())
     try:
+        _validate_frozen_check3(args)
         if (args.holdout_2023 or args.score_2024) and args.lock_path is None:
             raise HoldoutLockError("--lock-path is required")
         if args.holdout_2023:
-            missing = _missing_frozen(args)
-            if missing:
-                raise HoldoutLockError(_absent_frozen(missing, "HOLDOUT_2023"))
+            raise_missing_frozen(args, "HOLDOUT_2023")
         frozen_paths = _frozen_paths(args)
         if args.merge_map and frozen_paths is None:
             refuse_2024_price_file(args.merge_map.name)

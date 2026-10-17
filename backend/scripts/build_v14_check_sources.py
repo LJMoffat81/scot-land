@@ -24,6 +24,7 @@ import sys
 from pathlib import Path
 
 from georgist import surface_v13 as v13
+from georgist.check3_record import not_run_record
 from georgist.v14_real_headers import header_refusal, read_header_fields
 
 PIN_TABLE = {
@@ -463,17 +464,21 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     breakdown = args.no_price or args.year is not None
     not_run = None
+    run_check3 = args.check3_out is not None or (args.year == "2023" and args.plot_bands is not None)
     try:
-        if args.check3_out is not None:
+        if run_check3:
+            paths = {"plot_bands": args.plot_bands, "gis_house_plot": args.gis_house_plot}
             try:
-                save_check3(
-                    {"plot_bands": args.plot_bands, "gis_house_plot": args.gis_house_plot},
-                    args.check3_out,
-                )
+                if args.check3_out is not None:
+                    save_check3(paths, args.check3_out)
+                else:
+                    build_check3(paths)
             except CheckSourceError as exc:
                 text = str(exc)
                 if args.year == "2023" and text.startswith("B5_CHECK3: NOT_RUN"):
                     not_run = text
+                    if args.check3_out is not None:
+                        write_output(args.check3_out, not_run_record())
                 else:
                     raise
         if args.check4_out is not None:

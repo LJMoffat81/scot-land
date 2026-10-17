@@ -22,6 +22,8 @@ import sys
 from pathlib import Path
 from typing import Mapping
 
+from georgist.check3_record import Check3RecordError, validate_check3_record
+
 from georgist.v14_hedonic import apply_frozen_coefficients, fit_headline
 
 SOURCES = (
@@ -97,6 +99,10 @@ class CheckInputError(ValueError):
     """A check-input source is unpinned, mismatched, or missing a frozen field."""
 
 
+class Check3NotRun(dict):
+    """Check-3 source with no per-zone fields. The 2023 record is not a passes file."""
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     digest.update(path.read_bytes())
@@ -114,6 +120,10 @@ def missing_pins(paths: dict[str, Path | None], pins: dict[str, str]) -> list[st
 
 
 def assert_pinned(paths: dict[str, Path | None], pins: dict[str, str]) -> None:
+    for name in SOURCES:
+        path = paths.get(name)
+        if path is not None and not path.is_file():
+            raise CheckInputError(f"B6: ERROR: file: expected {path}, got absent")
     missing = missing_pins(paths, pins)
     if missing:
         listed = ", ".join(missing)
@@ -234,6 +244,10 @@ def load_source(path: Path, source: str, mode: int | None = None) -> dict[str, d
     """One source, restricted to the fields that source is allowed to carry."""
     if mode is not None and not path.is_file():
         raise CheckInputError(f"B6: ERROR: file: expected {path}, got absent")
+    if source == "check3_plot_passes" and path.is_file():
+        kind = validate_check3_record(path, year=mode, step="B6")
+        if kind == "not_run":
+            return Check3NotRun()
     payload = json.loads(path.read_text(encoding="utf-8"))
     allowed = SOURCE_FIELDS[source]
     zones: dict[str, dict] = {}
@@ -270,15 +284,23 @@ def build_v14_check_inputs(
     if set(tables) != set(SOURCES):
         raise CheckInputError("tables do not match the source list")
     base = set(tables["builder_output"])
+    check3_not_run = isinstance(tables["check3_plot_passes"], Check3NotRun)
     for name in SOURCES:
+        if check3_not_run and name == "check3_plot_passes":
+            continue
         if set(tables[name]) != base:
             raise CheckInputError(f"{name} zones do not match the builder output")
     primary: list[dict] = []
     secondary: list[dict] = []
     missing: list[str] = []
+    required_fields = REQUIRED_ZONE_FIELDS
+    if check3_not_run:
+        required_fields = tuple(field for field in REQUIRED_ZONE_FIELDS if field != "pass_at")
     for code in sorted(base):
         shared: dict = {"zone": code}
         for name in ("builder_output", "check3_plot_passes", "check4_rent_route", "dz2022_keys", "ur6"):
+            if check3_not_run and name == "check3_plot_passes":
+                continue
             shared.update(tables[name][code])
         for label, estimate in (
             ("primary", tables["primary_estimates"][code]),
@@ -289,7 +311,7 @@ def build_v14_check_inputs(
             unknown = sorted(key for key in zone if key not in ALLOWED_ZONE_FIELDS)
             if unknown:
                 raise CheckInputError(f"field not in the frozen text: {', '.join(unknown)}")
-            absent = [field for field in REQUIRED_ZONE_FIELDS if field not in zone]
+            absent = [field for field in required_fields if field not in zone]
             if absent:
                 missing.append(f"{label} {code}: {', '.join(absent)}")
                 continue
@@ -327,8 +349,12 @@ def require_year(value: str | None) -> int:
 
 
 def read_s2_s3(paths: dict[str, Path], mode: int | None = None) -> dict[str, dict[str, dict]]:
-    """S2 and S3, plus the other pinned sources. Spy target for a refused year."""
-    return {name: load_source(paths[name], name, mode=mode) for name in SOURCES}
+    """S2 and S3, plus the other pinned sources. Spy target for a refused year.
+
+    Check 3 is read first so a refused record does not open the other sources.
+    """
+    ordered = ("check3_plot_passes", *(name for name in SOURCES if name != "check3_plot_passes"))
+    return {name: load_source(paths[name], name, mode=mode) for name in ordered}
 
 
 def join_sources(
@@ -440,7 +466,7 @@ def main(argv: list[str] | None = None) -> int:
             fit = assert_frozen_coefficients(args.hedonic_coefs, args.lock)
             apply_2024_coefficients(fit, tables)
         payload = join_sources(tables, pins, mode=mode)
-    except (CheckInputError, OSError, json.JSONDecodeError) as exc:
+    except (CheckInputError, Check3RecordError, OSError, json.JSONDecodeError) as exc:
         sys.stderr.write(str(exc) + "\n")
         return 1
     args.out.parent.mkdir(parents=True, exist_ok=True)

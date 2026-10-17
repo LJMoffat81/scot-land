@@ -136,6 +136,38 @@ def test_t5_each_2023_gate_still_fails_the_publish(name: str) -> None:
     assert "3" not in scored["primary"]["gating"]
 
 
+@pytest.mark.parametrize(
+    ("primary_ok", "secondary_ok", "outcome"),
+    [
+        (True, True, "publish_range_both"),
+        (True, False, "publish_primary_only"),
+        (False, True, "primary_fail_secondary_pass_publish_neither_until_v15"),
+        (False, False, "both_fail_publish_neither"),
+    ],
+)
+def test_2023_label_matches_publication_not_pre_gate_pass(
+    primary_ok: bool, secondary_ok: bool, outcome: str
+) -> None:
+    zones = _passing_zones()
+    primary = score_estimator(zones)
+    secondary = score_estimator(zones)
+    if not primary_ok:
+        _fail(primary, "4")
+    if not secondary_ok:
+        _fail(secondary, "1")
+    primary["gating_pass"] = not primary_ok
+    secondary["gating_pass"] = not secondary_ok
+    scored = apply_year_gate(primary, secondary, 2023, check3_status="NOT_RUN")
+    publication = scored["publication"]
+    assert publication["outcome"] == outcome
+    assert (publication["am1_label"] == AM1_PASSED_LABEL) is bool(publication["publish_primary"])
+    assert scored["publish"] is bool(publication["publish_primary"] or publication["publish_secondary"])
+    assert scored["primary"]["gating_pass"] is primary_ok
+    assert scored["secondary"]["gating_pass"] is secondary_ok
+    assert scored["primary"]["gating_pass"] is not primary["gating_pass"]
+    assert scored["secondary"]["gating_pass"] is not secondary["gating_pass"]
+
+
 def test_t6_2023_check3_fail_does_not_decide_publish() -> None:
     zones = _passing_zones()
     scored = score_both(zones, zones, year=2023, check3_status="FAIL")

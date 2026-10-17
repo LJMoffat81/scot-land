@@ -116,14 +116,13 @@ def apply_year_gate(
     )
     if year == 2023:
         publication["am1_label"] = (
-            AM1_PASSED_LABEL if primary["gating_pass"] and secondary["gating_pass"] else AM1_FAILED_LABEL
+            AM1_PASSED_LABEL if publication["publish_primary"] else AM1_FAILED_LABEL
         )
-    passed = bool(primary["gating_pass"]) and bool(secondary["gating_pass"])
     out = {
         "primary": primary,
         "secondary": secondary,
         "publication": publication,
-        "publish": passed,
+        "publish": bool(publication["publish_primary"] or publication["publish_secondary"]),
     }
     if diagnostics is not None:
         out["diagnostics (non-gating)"] = diagnostics

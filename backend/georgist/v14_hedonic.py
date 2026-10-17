@@ -14,6 +14,13 @@ import numpy as np
 from statsmodels.base.model import LikelihoodModel
 from statsmodels.regression.mixed_linear_model import MixedLM
 
+from georgist.v14_d7_chain import (
+    D7_FILTER2_OUTPUT_SHA256,
+    d7_provenance_manifest,
+    provenance_accepts,
+    register_fit_headline,
+)
+
 BOOTSTRAP_SEED = 20261015
 BOOTSTRAP_REPS = 1999
 CI_WIDTH_NOT_INFORMATIVE = 0.5
@@ -39,7 +46,9 @@ SENSITIVITY_IDS = (
 INTERNAL_ONLY = frozenset({"S-x4"})
 S_G1_REASON = "no frozen DZ2022 price input"
 MEDIAN_2024_REASON = "not_crosswalkable"
-D7_SHA256 = "d99b8daa6e03843923799d249714fa850bd360c6e9cd01a922d43b6000ba2d6e"
+# Filter2 output of the pinned D7 chain (source d99b8daa, then both filters).
+# S-x2 accepts this digest only through provenance_accepts, not as a bare prefix.
+D7_SHA256 = D7_FILTER2_OUTPUT_SHA256
 S_C3_REML = True
 S_C3_METHOD = "lbfgs"
 S_C3_MAXITER = 1000
@@ -49,7 +58,7 @@ DECLARED_STATUS = {
     "S-c2": ("fit", "national UR3 with IZ2011 fixed effects"),
     "S-c3": ("fit", "REML MixedLM on the fit-window rows"),
     "S-x1": ("fit", "drops F"),
-    "S-x2": ("fit", "fit when the D7 sha matches, otherwise NOT_RUN"),
+    "S-x2": ("fit", "fit when the D7 provenance chain accepts the filter2 sha, otherwise NOT_RUN"),
     "S-x3": ("fit", "flat share above 0.5 and at or below 0.5, reported separately"),
     "S-x4": ("fit", "internal only, never published"),
     "S-x5": ("fit", "RoS median on the fit window"),
@@ -392,18 +401,19 @@ def sensitivity_manifest() -> list[dict]:
     manifest = []
     for name in SENSITIVITY_IDS:
         status, reason = DECLARED_STATUS[name]
-        manifest.append(
-            {
-                "id": name,
-                "status": status,
-                "reason": reason,
-                "gates": False,
-                "information_only": True,
-                "swapped_in": False,
-                "internal_only": name in INTERNAL_ONLY,
-                "publish": name not in INTERNAL_ONLY,
-            }
-        )
+        item = {
+            "id": name,
+            "status": status,
+            "reason": reason,
+            "gates": False,
+            "information_only": True,
+            "swapped_in": False,
+            "internal_only": name in INTERNAL_ONLY,
+            "publish": name not in INTERNAL_ONLY,
+        }
+        if name == "S-x2":
+            item["d7_provenance"] = d7_provenance_manifest()
+        manifest.append(item)
     return manifest
 
 
@@ -525,7 +535,7 @@ def _fit_s_c3(rows: Sequence[Mapping]) -> dict:
 
 
 def _fit_s_x2(rows: Sequence[Mapping], d7_sha256: str | None) -> dict:
-    if d7_sha256 != D7_SHA256:
+    if not provenance_accepts(d7_sha256):
         return _sensitivity_row("S-x2", status="NOT_RUN", reason="D7 sha does not match")
     if any("ratio_mean" not in row for row in rows):
         return _sensitivity_row("S-x2", status="NOT_RUN", reason="D7 ratio_mean is not on the rows")
@@ -747,3 +757,6 @@ def apply_frozen_coefficients(fit: Mapping, rows: Sequence[Mapping]) -> dict:
     if before != after or dict(fit["beta_by_cell"]) != beta:
         raise HedonicError("applying frozen coefficients refit the model")
     return {"refit": False, "coefficients_unchanged": True, "zones": applied}
+
+
+register_fit_headline(fit_headline)

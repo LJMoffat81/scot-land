@@ -86,6 +86,25 @@ INPUT_SHA256_PREFIXES = {
     "epc_rollup": "13a5f647",
 }
 MERGE_MAP_SHA256 = "581b0aa1647c5af7ce5b9617e35fcfa73982bc8712a42eb63242243ee6a95947"
+# Test-only hook. The driver replaces merge_map for a synthetic frozen set.
+PIN_TABLE = {"merge_map": MERGE_MAP_SHA256}
+FROZEN_SET_KEYS = (
+    "merge_map",
+    "hedonic_coefs_2021_22",
+    "code_sha8_block",
+    "b6_pins",
+)
+B6_PIN_KEYS = (
+    "check3_plot_passes",
+    "check4_rent_route",
+    "ur6",
+    "dz2022_keys",
+)
+YEAR_FILE_KEYS = (
+    "builder_output",
+    "primary_estimates",
+    "fitted_per_zone",
+)
 HOLDOUT_LABEL = "seen, not out-of-sample"
 DISCLOSURES = {
     "vintage": "decided from codes",
@@ -196,11 +215,121 @@ def assert_expected_sha8(expected: Mapping[str, str] | None = None, root: Path |
     return found
 
 
-def assert_merge_map(path: Path, expected: str = MERGE_MAP_SHA256) -> str:
+def assert_merge_map(path: Path, expected: str | None = None) -> str:
+    want = PIN_TABLE["merge_map"] if expected is None else expected
     got = sha256_file(path)
-    if got != expected:
-        raise MergeMapError(f"merge map sha256 {got} != {expected}")
+    if got != want:
+        raise MergeMapError(f"merge map sha256 {got} != {want}")
     return got
+
+
+def b6_pins_sha256(paths: Mapping[str, Path]) -> str:
+    """One digest over the four year-invariant B6 sources, in pin order."""
+    digest = hashlib.sha256()
+    for name in B6_PIN_KEYS:
+        digest.update(name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(Path(paths[name]).read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def frozen_set_members(paths: Mapping[str, Path]) -> dict[str, str]:
+    """Year-invariant frozen set. Year files are not members."""
+    return {
+        "merge_map": sha256_file(Path(paths["merge_map"])),
+        "hedonic_coefs_2021_22": sha256_file(Path(paths["hedonic_coefs_2021_22"])),
+        "code_sha8_block": sha256_file(Path(paths["code_sha8_block"])),
+        "b6_pins": b6_pins_sha256(paths),
+    }
+
+
+def frozen_set_lock_hash(members: Mapping[str, str]) -> str:
+    payload = json.dumps({key: members[key] for key in FROZEN_SET_KEYS}, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def frozen_set_refusal(key: str, expected: str, actual: str) -> str:
+    return f"SCORE_2024: REFUSED: frozen_set {key} sha256: expected {expected}, got {actual}"
+
+
+def missing_lock_message(path: Path) -> str:
+    return (
+        f"SCORE_2024: REFUSED: lock: expected {path}, got absent\n"
+        "2024 run refused unless the holdout lock exists"
+    )
+
+
+def read_price_cell(value: str) -> str:
+    """Price-cell hook for the 2024 year screen. A non-2024 year never calls it."""
+    return value
+
+
+def _csv_field(line: str, index: int) -> str:
+    """One CSV field. Reading stops at the end of that field."""
+    field_index = 0
+    buf: list[str] = []
+    for char in line:
+        if char == ",":
+            if field_index == index:
+                return "".join(buf)
+            field_index += 1
+            buf = []
+            continue
+        if field_index == index:
+            buf.append(char)
+        elif field_index > index:
+            return "".join(buf)
+    return "".join(buf) if field_index == index else ""
+
+
+def read_year_files(paths: Sequence[Path]) -> list[int]:
+    """Years from synthetic year files. Price cells are read only when every year is 2024."""
+    parsed: list[tuple[list[str], int | None, list[int]]] = []
+    years: list[int] = []
+    for path in paths:
+        text = Path(path).read_text(encoding="utf-8")
+        lines = [line for line in text.splitlines() if line.strip() and not line.startswith("#")]
+        if not lines:
+            continue
+        header = lines[0].split(",")
+        if "year" not in header:
+            raise HoldoutLockError("SCORE_2024: REFUSED: input_years: expected [2024], got []")
+        year_index = header.index("year")
+        price_index = header.index("price") if "price" in header else None
+        file_years: list[int] = []
+        for line in lines[1:]:
+            raw = _csv_field(line, year_index).strip()
+            if not raw.isdigit():
+                got = raw or "blank"
+                raise HoldoutLockError(f"SCORE_2024: REFUSED: input_year: expected 2024, got {got}")
+            year = int(raw)
+            file_years.append(year)
+            years.append(year)
+        parsed.append((lines[1:], price_index, file_years))
+    if years and all(year == 2024 for year in years):
+        for lines, price_index, _file_years in parsed:
+            if price_index is None:
+                continue
+            for line in lines:
+                read_price_cell(_csv_field(line, price_index))
+    return years
+
+
+def assert_score_years(years: Sequence[int]) -> None:
+    """Score-2024 accepts input_years of exactly [2024]."""
+    unique = sorted(set(int(year) for year in years))
+    if unique == [2023]:
+        raise HoldoutLockError("SCORE_2024: REFUSED: input_year: expected 2024, got 2023")
+    if unique != [2024]:
+        rendered = "[" + ", ".join(str(year) for year in unique) + "]"
+        raise HoldoutLockError(f"SCORE_2024: REFUSED: input_years: expected [2024], got {rendered}")
+
+
+def assert_frozen_set(locked: Mapping[str, str], current: Mapping[str, str]) -> None:
+    for key in FROZEN_SET_KEYS:
+        if current[key] != locked[key]:
+            raise HoldoutLockError(frozen_set_refusal(key, locked[key], current[key]))
 
 
 def _line_number(rel: str, needle: str) -> int:
@@ -699,7 +828,10 @@ def prepare_holdout_2023(
     lock = holdout_lock_path(score_dir, lock_path)
     lock.parent.mkdir(parents=True, exist_ok=True)
     if lock.is_file() and not allow_incident:
-        raise HoldoutLockError("second 2023 holdout run refused")
+        raise HoldoutLockError(
+            f"HOLDOUT_2023: REFUSED: lock: expected absent, got {lock}\n"
+            "second 2023 holdout run refused"
+        )
     if lock.is_file() and allow_incident:
         with (score_dir / "fidelity_bug.log").open("a", encoding="utf-8") as handle:
             handle.write(f"allow-rerun-for-fidelity-bug {allow_incident}\n")
@@ -719,6 +851,7 @@ def write_holdout_lock(
     commit: str,
     report_sha256: str | None = None,
     lock_path: Path | None = None,
+    frozen_set: Mapping[str, str] | None = None,
 ) -> Path:
     path = holdout_lock_path(score_dir, lock_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -727,6 +860,10 @@ def write_holdout_lock(
         "commit": require_commit_sha(commit),
         "label": HOLDOUT_LABEL,
     }
+    if frozen_set is not None:
+        members = {key: frozen_set[key] for key in FROZEN_SET_KEYS}
+        payload["frozen_set"] = members
+        payload["frozen_set_sha256"] = frozen_set_lock_hash(members)
     if report_sha256:
         payload["report_sha256"] = report_sha256
     path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
@@ -742,10 +879,10 @@ def assert_2024_allowed(
 ) -> None:
     """The 2024 entry point is score-once and refuses a bad lock or year."""
     if score_dir is None and lock_path is None:
-        raise HoldoutLockError("2024 run refused unless the holdout lock exists")
+        raise HoldoutLockError(missing_lock_message(Path("holdout_2023.lock")))
     path = holdout_lock_path(score_dir or Path("."), lock_path)
     if not path.is_file():
-        raise HoldoutLockError("2024 run refused unless the holdout lock exists")
+        raise HoldoutLockError(missing_lock_message(path))
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("score_2024") is True:
         raise HoldoutLockError("second 2024 run refused")
@@ -902,6 +1039,10 @@ def build_report(
     report = {
         "depreciation": {"method": method},
         "sha8": sha8,
+        "input_paths": {
+            name: {"sha256": item.get("sha256"), "present": bool(item.get("present"))}
+            for name, item in recorded.items()
+        },
         "commit": commit or _git_commit(),
         "input_sha256": recorded,
         "seed": BOOTSTRAP_SEED,

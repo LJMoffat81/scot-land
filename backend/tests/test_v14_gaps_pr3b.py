@@ -21,6 +21,7 @@ from georgist.v14_score_report import (
     RECORDED_FILES,
     frozen_set_lock_hash,
     frozen_set_members,
+    mark_score_2024,
     sha256_file,
 )
 from scripts.build_v14_check_inputs import load_source
@@ -40,7 +41,7 @@ from scripts.build_v14_check_sources import (
 )
 from scripts.build_v14_check_sources import main as source_main
 from scripts.build_v14_drc_components import PIN_TABLE as COMPONENT_PINS
-from scripts.fit_v14_hedonic import FitError, fit_b2, project_records, set_s_c3_maxiter
+from scripts.fit_v14_hedonic import FitError, fit_b2, project_records, _test_set_s_c3_maxiter
 from scripts.fit_v14_hedonic import main as fit_main
 from scripts.rerun_v14_score import main as score_main
 from v14_dryrun.dryrun import run as dry_run
@@ -366,28 +367,36 @@ def test_fit_cli_nonconverging(tmp_path: Path, mode: str) -> None:
     """SYNTHETIC. A failed MixedLM marks the zone unavailable and does not escape."""
     if mode == "nonconverge":
         rows = []
-        for zone, ur3, area in (("Z1", "urban", 40.0), ("Z2", "urban", 55.0), ("Z3", "rural", 70.0), ("Z4", "rural", 90.0)):
+        for zone, ur3, area in (
+            ("Z1", "urban", 40.0),
+            ("Z2", "urban", 55.0),
+            ("Z3", "rural", 70.0),
+            ("Z4", "rural", 90.0),
+        ):
+            # Price rises with area, so a converged fit would have β > 0.
+            price = math.exp(1.5 + 0.4 * math.log(area))
             for year in (2021, 2022):
-                item = _row(zone, year, "c", 10.0, ur3)
+                item = _row(zone, year, "c", price, ur3)
                 item["a_m2"] = area
                 rows.append(item)
-        set_s_c3_maxiter(1)
+        _test_set_s_c3_maxiter(1)
     else:
         rows = []
         for zone in ("Z1", "Z2"):
             for year in (2021, 2022):
                 rows.append(_row(zone, year, "c", math.exp(1.2 + 0.2 * math.log(40.0)), "urban"))
-        set_s_c3_maxiter(None)
+        _test_set_s_c3_maxiter(None)
     path = tmp_path / "b2.json"
     _write_b2(path, rows)
     try:
         built = _fit(path, tmp_path)
     finally:
-        set_s_c3_maxiter(None)
+        _test_set_s_c3_maxiter(None)
     status = built["fit"]["s_c3_status"]
     if mode == "nonconverge":
         assert status == "NOT_CONVERGED"
         assert built["fit"]["s_c3_reason"]
+        assert built["fit"]["beta_by_cell"]["c"] > 0
     else:
         assert status == "NOT_RUN"
         assert built["fit"]["s_c3_reason"] == "MixedLM needs two or more groups"
@@ -1154,3 +1163,20 @@ def test_score_2024_crash_still_refuses_second_run(
     assert score_main(command) == 1
     assert "second 2024 run refused" in capsys.readouterr().err
     assert calls["n"] == 1
+
+
+def test_mark_score_2024_removes_tmp_when_replace_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SYNTHETIC. A failed atomic replace does not leave the temporary lock."""
+    lock = tmp_path / "holdout.lock"
+    lock.write_text('{"score_2024": false}\n', encoding="utf-8")
+
+    def boom(*_args, **_kwargs):
+        raise OSError("replace failed")
+
+    monkeypatch.setattr("georgist.v14_score_report.os.replace", boom)
+    with pytest.raises(OSError, match="replace failed"):
+        mark_score_2024(lock)
+    assert not (tmp_path / ".holdout.lock.tmp").exists()
+    assert json.loads(lock.read_text(encoding="utf-8"))["score_2024"] is False

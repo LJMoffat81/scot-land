@@ -3,7 +3,8 @@
 
 A year at or after 2024 is refused before any price field is read. A year at
 or after 2023 is left out of the fit by its year field. S-x2 records the D7
-filter2 pin and does not gate. v14_hedonic.py is not modified.
+filter2 pin and does not gate. A refused pin is passed as d7_accept=False
+and does not call the S-x2 fit.
 
 Usage (from ``backend/``)::
 
@@ -22,7 +23,6 @@ from georgist.v14_d7_chain import D7_FILTER2_OUTPUT_SHA256
 from georgist.v14_hedonic import (
     FIDELITY_LIMITATION,
     _fit_s_x2,
-    _sensitivity_row,
     fit_headline,
     land_share_for_zone,
 )
@@ -39,7 +39,7 @@ class FitError(ValueError):
     """The hedonic fit CLI refused a year, file, or cell."""
 
 
-def set_s_c3_maxiter(value: int | None) -> None:
+def _test_set_s_c3_maxiter(value: int | None) -> None:
     """Test-only hook. Forces MixedLM maxiter for the next fit, then restores."""
     global S_C3_MAXITER_OVERRIDE
     S_C3_MAXITER_OVERRIDE = value
@@ -181,18 +181,16 @@ def _run_headline(rows: list[dict], d7: str, *, accept: bool) -> dict:
     saved = hedonic.S_C3_MAXITER
     if S_C3_MAXITER_OVERRIDE is not None:
         hedonic.S_C3_MAXITER = S_C3_MAXITER_OVERRIDE
-    original = hedonic._fit_s_x2
     try:
         if accept:
             fit_s_x2(rows, d7)
-            return fit_headline(rows, d7_sha256=d7)
-        def _held(held_rows, held_sha):
-            return _sensitivity_row("S-x2", status="NOT_RUN", reason="D7 sha does not match")
-
-        hedonic._fit_s_x2 = _held
-        return fit_headline(rows, d7_sha256=d7 if d7 != "absent" else None)
+            return fit_headline(rows, d7_sha256=d7, d7_accept=True)
+        return fit_headline(
+            rows,
+            d7_sha256=d7 if d7 != "absent" else None,
+            d7_accept=False,
+        )
     finally:
-        hedonic._fit_s_x2 = original
         hedonic.S_C3_MAXITER = saved
 
 

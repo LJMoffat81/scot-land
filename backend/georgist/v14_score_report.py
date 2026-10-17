@@ -892,8 +892,12 @@ def mark_score_2024(lock_path: Path) -> None:
     payload = json.loads(lock_path.read_text(encoding="utf-8"))
     payload["score_2024"] = True
     temporary = lock_path.with_name(f".{lock_path.name}.tmp")
-    temporary.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
-    os.replace(temporary, lock_path)
+    try:
+        temporary.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+        os.replace(temporary, lock_path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
 
 
 def input_years(path: Path) -> list[int]:

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -18,6 +19,9 @@ from georgist import surface_v14 as v14
 logger = logging.getLogger(__name__)
 
 REQUIRED_METHOD = "straight_line_v14"
+# Relative tolerance for DRC = rebuild_new_gbp * remaining_factor.
+# Exact float equality refuses real zones that differ by ~1e-16.
+DRC_REL_TOL = 1e-12
 # Information only. These rates never replace the central 0.35%/yr path.
 # The 1.33% and 0.86% lines keep the same rate, age cap and depreciation cap.
 # The label states that the 55% cap is off and the 68-year age cap still applies.
@@ -137,8 +141,19 @@ def zone_drc_v14(**kwargs) -> sr.RebuildResult:
     central = rebuilds["central"]
     if central.rebuild_new_gbp:
         expected = central.rebuild_new_gbp * central.remaining_factor
-        if central.drc_gbp != expected:
-            raise DepreciationMethodError("DRC is not rebuild cost times remaining factor")
+        message = (
+            "DRC is not rebuild cost times remaining factor: "
+            f"drc={central.drc_gbp!r} expected={expected!r} rel_tol=1e-12"
+        )
+        if not (math.isfinite(central.drc_gbp) and math.isfinite(expected)):
+            raise DepreciationMethodError(message)
+        if not math.isclose(
+            central.drc_gbp,
+            expected,
+            rel_tol=DRC_REL_TOL,
+            abs_tol=0.0,
+        ):
+            raise DepreciationMethodError(message)
     return central
 
 

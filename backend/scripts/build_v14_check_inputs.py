@@ -86,6 +86,7 @@ SOURCE_REQUIRED = {
         "unavailable",
         "model_failure",
         "count_in_1d",
+        "cell",
     ),
 }
 # Bound for the fit spy. The 2024 path does not call it.
@@ -193,12 +194,28 @@ def _screen_mode_year(row: dict, row_number: int, mode: int) -> int:
     return year
 
 
+def _cell_text(value: object) -> str:
+    if value is None or (isinstance(value, str) and value.strip() == ""):
+        return "absent"
+    if isinstance(value, str):
+        return value.strip()
+    return str(value)
+
+
+def _refuse_cell(row_number: int, got: str) -> CheckInputError:
+    return CheckInputError(
+        f"B6: REFUSED: cell row {row_number}: expected one of beta_by_cell, got {got}"
+    )
+
+
 def _screen_mode_row(row: dict, source: str, row_number: int, mode: int) -> None:
     if mode != 2024 or source not in S2_S3:
         if "year" in row:
             _screen_mode_year(row, row_number, mode)
         return
     _screen_mode_year(row, row_number, mode)
+    if source == "fitted_hedonic" and _cell_text(row.get("cell")) == "absent":
+        raise _refuse_cell(row_number, "absent")
     required = SOURCE_REQUIRED[source]
     present = sum(1 for key in required if key in row)
     if present < len(required):
@@ -228,13 +245,19 @@ def load_source(path: Path, source: str, mode: int | None = None) -> dict[str, d
             _screen_mode_row(row, source, row_number, mode)
         if "zone" not in row:
             raise CheckInputError(f"{source} row has no zone")
-        unknown = sorted(key for key in row if key not in allowed and key != "zone" and key != "year")
+        carried = {"zone", "year"}
+        if mode == 2024 and source == "fitted_hedonic":
+            carried.add("cell")
+        unknown = sorted(key for key in row if key not in allowed and key not in carried)
         if unknown:
             raise CheckInputError(f"{source} field not in the frozen text: {', '.join(unknown)}")
         if "price" in row and "price" in allowed:
             read_price_cell(row["price"])
         code = str(row["zone"])
         zones[code] = {key: row[key] for key in row if key in allowed}
+        if mode == 2024 and source == "fitted_hedonic":
+            zones[code]["cell"] = _cell_text(row.get("cell"))
+            zones[code]["_source_row"] = row_number
     return zones
 
 
@@ -323,9 +346,14 @@ def _locked_coefficient_sha(lock_path: Path) -> str:
     payload = json.loads(lock_path.read_text(encoding="utf-8"))
     frozen = payload.get("frozen_set") if isinstance(payload, dict) else None
     expected = None if not isinstance(frozen, dict) else frozen.get("hedonic_coefs_2021_22")
-    if not isinstance(expected, str) or len(expected) != 64:
+    if not isinstance(expected, str) or expected.strip() == "":
         raise CheckInputError(
-            "B6: REFUSED: frozen_set hedonic_coefs_2021_22 sha256: expected absent, got absent"
+            "B6: REFUSED: frozen_set hedonic_coefs_2021_22 sha256: expected full sha256, got absent"
+        )
+    if len(expected) != 64:
+        raise CheckInputError(
+            "B6: REFUSED: frozen_set hedonic_coefs_2021_22 sha256: "
+            f"expected full sha256, got {expected}"
         )
     return expected
 
@@ -351,23 +379,29 @@ def assert_frozen_coefficients(coef_path: Path, lock_path: Path) -> dict:
 
 
 def apply_2024_coefficients(fit: Mapping, tables: dict[str, dict[str, dict]]) -> dict:
-    """Apply the frozen 2021-22 coefficients once. Does not refit."""
+    """Apply each zone's own frozen 2021-22 cell coefficient. Does not refit."""
     beta = fit["beta_by_cell"]
     if not isinstance(beta, dict) or not beta:
         raise CheckInputError("B6: ERROR: hedonic_coefs: expected frozen fit, got absent")
-    cell = sorted(str(key) for key in beta)[0]
-    rows = [
-        {"zone": zone, "cell": cell, "year": 2024}
-        for zone in sorted(tables["primary_estimates"])
-    ]
+    primary = tables["primary_estimates"]
+    fitted = tables["fitted_hedonic"]
+    rows = []
+    for zone in sorted(primary):
+        if zone not in fitted:
+            raise CheckInputError(f"B6: REFUSED: fitted_hedonic: expected {zone}, got absent")
+        record = fitted[zone]
+        cell = _cell_text(record.get("cell"))
+        if cell not in beta:
+            raise _refuse_cell(int(record.get("_source_row") or 0), cell)
+        rows.append({"zone": zone, "cell": cell, "year": 2024})
     applied = apply_frozen_coefficients(fit, rows)
     if applied.get("refit") is not False or applied.get("coefficients_unchanged") is not True:
         raise CheckInputError("B6: REFUSED: refit: expected false, got true")
-    fitted = tables["fitted_hedonic"]
     for zone in applied["zones"]:
-        code = str(zone["zone"])
-        if code in fitted:
-            fitted[code]["share"] = zone["share"]
+        fitted[str(zone["zone"])]["share"] = zone["share"]
+    for record in fitted.values():
+        record.pop("cell", None)
+        record.pop("_source_row", None)
     return applied
 
 

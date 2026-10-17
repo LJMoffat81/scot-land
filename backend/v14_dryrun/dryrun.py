@@ -40,12 +40,14 @@ from scripts.rerun_v14_score import main as score_main
 FILTERS = Path(__file__).resolve().parents[1] / "georgist" / "d7_filters"
 
 
-def _stamp_year(source: Path, dest: Path) -> None:
+def _stamp_year(source: Path, dest: Path, *, cell: str | None = None) -> None:
     """SYNTHETIC 2024 year file. Copies the synthetic 2023 rows and sets the year."""
     payload = json.loads(source.read_text(encoding="utf-8"))
     payload["label"] = "SYNTHETIC"
     for zone in payload.get("zones") or []:
         zone["year"] = 2024
+        if cell is not None:
+            zone["cell"] = cell
     dest.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
@@ -410,7 +412,7 @@ def run(root: Path) -> dict:
             s2_fitted = root / "s2_fitted.json"
             _stamp_year(builder, s2_builder)
             _stamp_year(primary, s2_primary)
-            _stamp_year(per_zone, s2_fitted)
+            _stamp_year(per_zone, s2_fitted, cell="c")
             checks_2024 = root / "s4_checks.json"
             s4_paths = {
                 "builder_output": s2_builder,

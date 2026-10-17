@@ -16,6 +16,7 @@ from georgist.v14_b2 import B2Error, adapt_house_sales, scan_measurement_labels
 from georgist.v14_d7_chain import PIN_TABLE, run_d7_chain, sha256_file
 from georgist.v14_score_report import PIN_TABLE as MERGE_PINS
 from georgist.v14_score_report import input_years
+from scripts.build_v14_check_inputs import apply_frozen_coefficients
 from scripts.build_v14_check_inputs import sha256_file as file_sha
 from scripts.build_v14_check_inputs import main as b6_main
 from scripts.rerun_v14_score import main as score_main
@@ -72,13 +73,14 @@ def _zone_sources(tmp_path: Path, *, builder_zones: list[dict], primary_zones: l
         json.dumps({"label": "SYNTHETIC", "zones": fitted_zones}) + "\n",
         encoding="utf-8",
     )
+    codes = [str(row["zone"]) for row in builder_zones]
     files["check3_plot_passes"].write_text(
         json.dumps(
             {
                 "label": "SYNTHETIC",
                 "zones": [
                     {
-                        "zone": "Z1",
+                        "zone": code,
                         "pass_at": {"20": True, "30": True, "40": True},
                         "pass_at_all_homes": {"20": True, "30": True, "40": True},
                         "pass_at_dz22": {"20": True, "30": True, "40": True},
@@ -86,6 +88,7 @@ def _zone_sources(tmp_path: Path, *, builder_zones: list[dict], primary_zones: l
                         "detached_plot_m2": 40,
                         "house_plot_m2": 20,
                     }
+                    for code in codes
                 ],
             }
         )
@@ -94,7 +97,10 @@ def _zone_sources(tmp_path: Path, *, builder_zones: list[dict], primary_zones: l
     )
     files["check4_rent_route"].write_text(
         json.dumps(
-            {"label": "SYNTHETIC", "zones": [{"zone": "Z1", "residual_land": 4, "capitalised_land": 4}]}
+            {
+                "label": "SYNTHETIC",
+                "zones": [{"zone": code, "residual_land": 4, "capitalised_land": 4} for code in codes],
+            }
         )
         + "\n",
         encoding="utf-8",
@@ -104,7 +110,8 @@ def _zone_sources(tmp_path: Path, *, builder_zones: list[dict], primary_zones: l
             {
                 "label": "SYNTHETIC",
                 "zones": [
-                    {"zone": "Z1", "dz2022": "Z1", "share_low": 0.1, "share_central": 0.2, "share_high": 0.3}
+                    {"zone": code, "dz2022": code, "share_low": 0.1, "share_central": 0.2, "share_high": 0.3}
+                    for code in codes
                 ],
             }
         )
@@ -112,15 +119,15 @@ def _zone_sources(tmp_path: Path, *, builder_zones: list[dict], primary_zones: l
         encoding="utf-8",
     )
     files["ur6"].write_text(
-        json.dumps({"label": "SYNTHETIC", "zones": [{"zone": "Z1", "ur6": 1}]}) + "\n",
+        json.dumps({"label": "SYNTHETIC", "zones": [{"zone": code, "ur6": 1} for code in codes]}) + "\n",
         encoding="utf-8",
     )
     return files
 
 
-def _builder(year: object = 2024, **extra) -> dict:
+def _builder(year: object = 2024, zone: str = "Z1", **extra) -> dict:
     row = {
-        "zone": "Z1",
+        "zone": zone,
         "year": year,
         "price": 10,
         "count_in_1d": True,
@@ -132,9 +139,9 @@ def _builder(year: object = 2024, **extra) -> dict:
     return row
 
 
-def _primary(year: object = 2024) -> dict:
+def _primary(year: object = 2024, zone: str = "Z1") -> dict:
     return {
-        "zone": "Z1",
+        "zone": zone,
         "year": year,
         "share": 0.2,
         "land_per_home": 2,
@@ -143,25 +150,27 @@ def _primary(year: object = 2024) -> dict:
     }
 
 
-def _fitted(year: object = 2024) -> dict:
+def _fitted(year: object = 2024, zone: str = "Z1", cell: str = "c") -> dict:
     return {
-        "zone": "Z1",
+        "zone": zone,
         "year": year,
         "share": 0.2,
         "land_per_home": 2,
         "unavailable": False,
         "model_failure": False,
         "count_in_1d": True,
+        "cell": cell,
     }
 
 
-def _fit_file(path: Path, coefficient: float = 0.2) -> Path:
+def _fit_file(path: Path, coefficient: float = 0.2, beta_by_cell: dict | None = None) -> Path:
+    beta = {"c": coefficient} if beta_by_cell is None else beta_by_cell
     path.write_text(
         json.dumps(
             {
                 "label": "SYNTHETIC",
                 "coefficients": [coefficient],
-                "beta_by_cell": {"c": coefficient},
+                "beta_by_cell": beta,
             }
         )
         + "\n",
@@ -302,6 +311,136 @@ def test_b6_2024_refuses_non_frozen_coefficients(
     assert capsys.readouterr().err == (
         "B6: REFUSED: frozen_set hedonic_coefs_2021_22 sha256: "
         f"expected {locked}, got {actual}\n"
+    )
+
+
+def test_b6_2024_zones_keep_their_own_cells(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """SYNTHETIC. Two zones in different cells receive those cells' own betas."""
+    files = _zone_sources(
+        tmp_path,
+        builder_zones=[_builder(zone="Z1"), _builder(zone="Z2")],
+        primary_zones=[_primary(zone="Z1"), _primary(zone="Z2")],
+        fitted_zones=[_fitted(zone="Z1", cell="alpha"), _fitted(zone="Z2", cell="beta")],
+    )
+    coefs = _fit_file(tmp_path / "coefs.json", beta_by_cell={"alpha": 0.25, "beta": 0.5})
+    lock = tmp_path / "holdout.lock"
+    _lock_for(lock, coefs)
+    out = tmp_path / "checks.json"
+    seen: dict[str, list] = {}
+
+    def apply_spy(fit, rows):
+        seen["rows"] = rows
+        return apply_frozen_coefficients(fit, rows)
+
+    monkeypatch.setattr("scripts.build_v14_check_inputs.apply_frozen_coefficients", apply_spy)
+    assert b6_main(_argv(out, files, "2024", coefs, lock)) == 0
+    assert seen["rows"] == [
+        {"zone": "Z1", "cell": "alpha", "year": 2024},
+        {"zone": "Z2", "cell": "beta", "year": 2024},
+    ]
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    shares = {row["zone"]: row["share"] for row in payload["secondary_zones"]}
+    assert shares["Z1"] == 0.25
+    assert shares["Z2"] == 0.5
+
+
+def test_b6_2024_refuses_unknown_cell(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """SYNTHETIC. A cell outside beta_by_cell refuses before apply and writes nothing."""
+    files, coefs, lock, out = _baseline_2024(tmp_path)
+    files["fitted_hedonic"].write_text(
+        json.dumps({"label": "SYNTHETIC", "zones": [_fitted(cell="nope")]}) + "\n",
+        encoding="utf-8",
+    )
+    calls = {"apply": 0}
+    monkeypatch.setattr(
+        "scripts.build_v14_check_inputs.apply_frozen_coefficients",
+        lambda *_args, **_kwargs: calls.__setitem__("apply", calls["apply"] + 1),
+    )
+    assert b6_main(_argv(out, files, "2024", coefs, lock)) == 1
+    assert calls["apply"] == 0
+    assert not out.exists()
+    assert capsys.readouterr().err == (
+        "B6: REFUSED: cell row 1: expected one of beta_by_cell, got nope\n"
+    )
+
+
+def test_b6_2024_refuses_missing_cell(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """SYNTHETIC. A fitted row with no cell refuses before apply and writes nothing."""
+    files, coefs, lock, out = _baseline_2024(tmp_path)
+    row = _fitted()
+    del row["cell"]
+    files["fitted_hedonic"].write_text(
+        json.dumps({"label": "SYNTHETIC", "zones": [row]}) + "\n",
+        encoding="utf-8",
+    )
+    calls = {"apply": 0}
+    monkeypatch.setattr(
+        "scripts.build_v14_check_inputs.apply_frozen_coefficients",
+        lambda *_args, **_kwargs: calls.__setitem__("apply", calls["apply"] + 1),
+    )
+    assert b6_main(_argv(out, files, "2024", coefs, lock)) == 1
+    assert calls["apply"] == 0
+    assert not out.exists()
+    assert capsys.readouterr().err == (
+        "B6: REFUSED: cell row 1: expected one of beta_by_cell, got absent\n"
+    )
+
+
+def test_b6_2024_refuses_primary_zone_missing_from_fitted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """SYNTHETIC. A primary zone with no fitted row refuses before apply and writes nothing."""
+    files = _zone_sources(
+        tmp_path,
+        builder_zones=[_builder(zone="Z1"), _builder(zone="Z2")],
+        primary_zones=[_primary(zone="Z1"), _primary(zone="Z2")],
+        fitted_zones=[_fitted(zone="Z1", cell="c")],
+    )
+    coefs = _fit_file(tmp_path / "coefs.json")
+    lock = tmp_path / "holdout.lock"
+    _lock_for(lock, coefs)
+    out = tmp_path / "checks.json"
+    calls = {"apply": 0}
+    monkeypatch.setattr(
+        "scripts.build_v14_check_inputs.apply_frozen_coefficients",
+        lambda *_args, **_kwargs: calls.__setitem__("apply", calls["apply"] + 1),
+    )
+    assert b6_main(_argv(out, files, "2024", coefs, lock)) == 1
+    assert calls["apply"] == 0
+    assert not out.exists()
+    assert capsys.readouterr().err == "B6: REFUSED: fitted_hedonic: expected Z2, got absent\n"
+
+
+def test_b6_2024_refuses_lock_sha_that_is_not_full(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """SYNTHETIC. A lock sha that is not a full sha256 refuses before apply and writes nothing."""
+    files, coefs, lock, out = _baseline_2024(tmp_path)
+    calls = {"apply": 0}
+    monkeypatch.setattr(
+        "scripts.build_v14_check_inputs.apply_frozen_coefficients",
+        lambda *_args, **_kwargs: calls.__setitem__("apply", calls["apply"] + 1),
+    )
+    lock.write_text(json.dumps({"frozen_set": {}}) + "\n", encoding="utf-8")
+    assert b6_main(_argv(out, files, "2024", coefs, lock)) == 1
+    assert calls["apply"] == 0
+    assert not out.exists()
+    assert capsys.readouterr().err == (
+        "B6: REFUSED: frozen_set hedonic_coefs_2021_22 sha256: expected full sha256, got absent\n"
+    )
+    lock.write_text(
+        json.dumps({"frozen_set": {"hedonic_coefs_2021_22": "abc"}}) + "\n",
+        encoding="utf-8",
+    )
+    assert b6_main(_argv(out, files, "2024", coefs, lock)) == 1
+    assert calls["apply"] == 0
+    assert not out.exists()
+    assert capsys.readouterr().err == (
+        "B6: REFUSED: frozen_set hedonic_coefs_2021_22 sha256: expected full sha256, got abc\n"
     )
 
 

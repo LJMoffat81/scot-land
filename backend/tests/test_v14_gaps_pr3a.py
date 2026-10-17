@@ -740,3 +740,180 @@ def test_recorded_files_include_pr3a_scripts() -> None:
     ):
         assert rel in RECORDED_FILES
         assert rel not in PR3_RECORDED_WHEN_PRESENT
+
+
+def test_holdout_lists_every_missing_frozen_member(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """SYNTHETIC. A holdout names every absent frozen-set member."""
+    files = _frozen_files(tmp_path)
+    checks = tmp_path / "checks.json"
+    checks.write_text(
+        json.dumps({"primary_zones": _zones(2023), "secondary_zones": _zones(2023)}),
+        encoding="utf-8",
+    )
+    lock = tmp_path / "holdout.lock"
+    report = tmp_path / "report.json"
+    calls = {"n": 0}
+    monkeypatch.setattr(
+        "scripts.rerun_v14_score._score_holdout",
+        lambda *_args, **_kwargs: calls.__setitem__("n", calls["n"] + 1),
+    )
+    flags: list[str] = []
+    for name, flag in (
+        ("merge_map", "--merge-map"),
+        ("hedonic_coefs_2021_22", "--hedonic-coefs"),
+        ("code_sha8_block", "--sha8-block"),
+        ("check3_plot_passes", "--check3-plot-passes"),
+        ("check4_rent_route", "--check4-rent-route"),
+        ("ur6", "--ur6"),
+        ("dz2022_keys", "--dz2022-keys"),
+    ):
+        if name in {"merge_map", "ur6"}:
+            continue
+        flags.extend([flag, str(files[name])])
+    assert score_main(
+        [
+            "--out",
+            str(report),
+            "--holdout-2023",
+            "--check-inputs",
+            str(checks),
+            "--lock-path",
+            str(lock),
+            *flags,
+        ]
+    ) == 1
+    assert capsys.readouterr().err == (
+        "HOLDOUT_2023: REFUSED: frozen_set merge_map: expected path, got absent\n"
+        "HOLDOUT_2023: REFUSED: frozen_set ur6: expected path, got absent\n"
+    )
+    assert calls["n"] == 0
+    assert not lock.exists()
+    assert not report.exists()
+
+
+def test_score_2024_lists_every_missing_frozen_member(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """SYNTHETIC. A partial 2024 frozen set names every absent member."""
+    files = _frozen_files(tmp_path)
+    checks = tmp_path / "checks.json"
+    checks.write_text(
+        json.dumps({"primary_zones": _zones(2023), "secondary_zones": _zones(2023)}),
+        encoding="utf-8",
+    )
+    lock = tmp_path / "holdout.lock"
+    report = tmp_path / "report.json"
+    calls = {"n": 0}
+    monkeypatch.setattr(
+        "scripts.rerun_v14_score._score_holdout",
+        lambda *_args, **_kwargs: calls.__setitem__("n", calls["n"] + 1),
+    )
+    assert score_main(
+        [
+            "--out",
+            str(report),
+            "--score-2024",
+            "--check-inputs",
+            str(checks),
+            "--lock-path",
+            str(lock),
+            "--merge-map",
+            str(files["merge_map"]),
+        ]
+    ) == 1
+    assert capsys.readouterr().err == (
+        "SCORE_2024: REFUSED: frozen_set: expected complete, got partial\n"
+        "SCORE_2024: REFUSED: frozen_set hedonic_coefs_2021_22: expected path, got absent\n"
+        "SCORE_2024: REFUSED: frozen_set code_sha8_block: expected path, got absent\n"
+        "SCORE_2024: REFUSED: frozen_set check3_plot_passes: expected path, got absent\n"
+        "SCORE_2024: REFUSED: frozen_set check4_rent_route: expected path, got absent\n"
+        "SCORE_2024: REFUSED: frozen_set ur6: expected path, got absent\n"
+        "SCORE_2024: REFUSED: frozen_set dz2022_keys: expected path, got absent\n"
+    )
+    assert calls["n"] == 0
+    assert not report.exists()
+
+
+def test_score_2024_different_check_inputs_scores_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """SYNTHETIC. A 2023 holdout then one 2024 score on different check inputs."""
+    files = _frozen_files(tmp_path)
+    monkeypatch.setitem(MERGE_PINS, "merge_map", sha256_file(files["merge_map"]))
+    holdout_checks = tmp_path / "holdout_checks.json"
+    holdout_checks.write_text(
+        json.dumps({"primary_zones": _zones(2023), "secondary_zones": _zones(2023)}),
+        encoding="utf-8",
+    )
+    score_rows = [{"zone": f"Z{index}", "year": 2024} for index in range(8)]
+    score_checks = tmp_path / "score_checks.json"
+    score_checks.write_text(
+        json.dumps(
+            {"primary_zones": score_rows, "secondary_zones": [dict(row) for row in score_rows]}
+        ),
+        encoding="utf-8",
+    )
+    year_file = tmp_path / "year.csv"
+    year_file.write_text("# SYNTHETIC\nyear\n2024\n", encoding="utf-8")
+    lock = tmp_path / "holdout.lock"
+    assert score_main(
+        [
+            "--out",
+            str(tmp_path / "holdout" / "report.json"),
+            "--holdout-2023",
+            "--check-inputs",
+            str(holdout_checks),
+            "--lock-path",
+            str(lock),
+            *_frozen_flags(files),
+        ]
+    ) == 0
+    calls = {"n": 0}
+
+    def spy(*_args, **_kwargs):
+        calls["n"] += 1
+        return {
+            "primary": {"gating_pass": False},
+            "secondary": {"gating_pass": False},
+            "publication": {"outcome": "both_fail_publish_neither"},
+            "checks_include_hbu": False,
+        }
+
+    monkeypatch.setattr("scripts.rerun_v14_score._score_holdout", spy)
+    score_report = tmp_path / "score" / "report.json"
+    command = [
+        "--out",
+        str(score_report),
+        "--score-2024",
+        "--check-inputs",
+        str(score_checks),
+        "--lock-path",
+        str(lock),
+        "--year-file",
+        str(year_file),
+        *_frozen_flags(files),
+    ]
+    rc = score_main(command)
+    err = capsys.readouterr().err
+    assert rc == 0, err
+    assert calls["n"] == 1
+    assert score_report.is_file()
+    assert json.loads(lock.read_text(encoding="utf-8"))["score_2024"] is True
+    assert score_main(
+        [
+            "--out",
+            str(tmp_path / "again" / "report.json"),
+            "--score-2024",
+            "--check-inputs",
+            str(score_checks),
+            "--lock-path",
+            str(lock),
+            "--year-file",
+            str(year_file),
+            *_frozen_flags(files),
+        ]
+    ) == 1
+    assert "second 2024 run refused" in capsys.readouterr().err
+    assert calls["n"] == 1

@@ -417,6 +417,22 @@ def test_lock_path_is_shared_and_2024_refuses_closed(
     _refuse(capsys, "2024 run refused unless the holdout lock exists", calls)
     other = tmp_path / "other.json"
     other.write_text(json.dumps(_year_only(2024)), encoding="utf-8")
+    sha_lock = tmp_path / "sha.lock"
+    sha_lock.write_text(lock.read_text(encoding="utf-8"), encoding="utf-8")
+    year_ok = tmp_path / "year-ok.csv"
+    year_ok.write_text("# SYNTHETIC\nyear\n2024\n", encoding="utf-8")
+    scored = {"n": 0}
+
+    def allow_score(*_args, **_kwargs):
+        scored["n"] += 1
+        return {
+            "primary": {"gating_pass": False},
+            "secondary": {"gating_pass": False},
+            "publication": {"outcome": "both_fail_publish_neither"},
+            "checks_include_hbu": False,
+        }
+
+    monkeypatch.setattr("scripts.rerun_v14_score.score_both", allow_score)
     assert score_main(
         [
             "--out",
@@ -425,11 +441,33 @@ def test_lock_path_is_shared_and_2024_refuses_closed(
             "--check-inputs",
             str(other),
             "--lock-path",
-            str(lock),
+            str(sha_lock),
+            "--year-file",
+            str(year_ok),
+            *frozen_flags,
+        ]
+    ) == 0
+    mismatch_err = capsys.readouterr().err
+    assert "inputs sha differs" not in mismatch_err
+    assert scored["n"] == 1
+    assert json.loads(lock.read_text(encoding="utf-8")).get("score_2024") is not True
+    assert score_main(
+        [
+            "--out",
+            str(tmp_path / "mismatch-again" / "report.json"),
+            "--score-2024",
+            "--check-inputs",
+            str(other),
+            "--lock-path",
+            str(sha_lock),
+            "--year-file",
+            str(year_ok),
             *frozen_flags,
         ]
     ) == 1
-    _refuse(capsys, "2024 run refused: inputs sha differs", calls)
+    assert "second 2024 run refused" in capsys.readouterr().err
+    assert scored["n"] == 1
+    monkeypatch.setattr("scripts.rerun_v14_score.score_both", spy)
     early = tmp_path / "early.json"
     early.write_text(json.dumps(_year_only(2023)), encoding="utf-8")
     year_lock = tmp_path / "year.lock"
@@ -458,6 +496,7 @@ def test_lock_path_is_shared_and_2024_refuses_closed(
         ]
     ) == 1
     err = capsys.readouterr().err
+    assert "SCORE_2024: REFUSED: input_years: expected [2024], got [2023]" in err
     assert "2024 run refused: input year is not 2024" in err
     assert "inputs sha differs" not in err
     assert calls["n"] == 0

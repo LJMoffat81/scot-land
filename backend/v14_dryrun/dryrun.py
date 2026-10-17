@@ -1,7 +1,8 @@
 """Synthetic dry run for the v1.4 steps this PR covers.
 
-B2 runs as the real CLI. The pin table is patched for the synthetic files
-only. PR 3 steps are not stubbed here.
+B2, the DRC component writer, B1, and the 2023 primary writer run as the
+real commands. Pin tables for synthetic files are copies, then restored
+where a module global is patched.
 """
 
 from __future__ import annotations
@@ -15,6 +16,10 @@ from georgist.v14_d7_chain import PIN_TABLE as D7_PINS
 from georgist.v14_d7_chain import execute_filter1, execute_filter2, sha256_file
 from georgist.v14_score_report import code_text_disagreements
 from scripts.build_v14_b2 import main as b2_main
+from scripts.build_v14_drc import main as b1_main
+from scripts.build_v14_drc_components import build_components, copy_pin_table, sha256_file as pin_sha
+from scripts.build_v14_drc_components import write_components
+from scripts.build_v14_primary_2023 import main as primary_main
 
 FILTERS = Path(__file__).resolve().parents[1] / "georgist" / "d7_filters"
 
@@ -32,7 +37,7 @@ def _write(path: Path, header: list[str], rows: list[list[str]], *, comment: boo
 def _sales_rows() -> list[list[str]]:
     rows = []
     for index, zone in enumerate(("Z1", "Z2", "Z3", "Z4")):
-        for year in (2021, 2022):
+        for year in (2021, 2022, 2023):
             price = str(10 + index)
             common = [zone, "SYNTHETIC zone", "2011 Data Zones", str(year)]
             tail = ["GBP", price, "6", "c", str(40 + index), "1.0", "IZ1", "CA1", "urban", "0.2"]
@@ -131,10 +136,79 @@ def run(root: Path) -> dict:
         )
         if code != 0:
             raise RuntimeError("B2 dry run failed")
+        epc = root / "epc.csv"
+        nrs = root / "nrs.csv"
+        plots = root / "plots.csv"
+        ur6 = root / "ur6.csv"
+        components = root / "components.json"
+        drc = root / "drc.json"
+        primary = root / "primary_estimates_2023.json"
+        builder = root / "builder_output_2023.json"
+        zones = ("Z1", "Z2", "Z3", "Z4")
+        _write(
+            epc,
+            ["code", "age_pre1919_share"],
+            [[zone, "1"] for zone in zones],
+        )
+        _write(
+            nrs,
+            ["code", "type_detached", "type_semi_detached", "type_terraced", "type_flat", "type_unknown"],
+            [[zone, "10", "0", "0", "0", "0"] for zone in zones],
+        )
+        _write(
+            plots,
+            [
+                "code",
+                "all_ages_share_lt005",
+                "all_ages_share_005_010",
+                "all_ages_share_gt010",
+                "n_detached_all_ages_matched",
+            ],
+            [[zone, "0.5", "0.25", "0.25", "4"] for zone in zones],
+        )
+        _write(
+            ur6,
+            ["code", "council_code", "ur6_class"],
+            [[zone, "A", "1"] for zone in zones],
+        )
+        pins = copy_pin_table()
+        pins["epc"] = pin_sha(epc)
+        pins["nrs2017"] = pin_sha(nrs)
+        pins["plot_bands"] = pin_sha(plots)
+        pins["ur6"] = pin_sha(ur6)
+        records = build_components(
+            {"epc": epc, "nrs2017": nrs, "plot_bands": plots, "ur6": ur6},
+            pins=pins,
+        )
+        write_components(components, records)
+        b1_code = b1_main(["--drc-json", str(drc), "--components", str(components)])
+        if b1_code != 0:
+            raise RuntimeError("B1 dry run failed")
+        primary_code = primary_main(
+            [
+                "--b2-out",
+                str(dest),
+                "--drc",
+                str(drc),
+                "--primary-out",
+                str(primary),
+                "--builder-out",
+                str(builder),
+            ]
+        )
+        if primary_code != 0:
+            raise RuntimeError("2023 primary dry run failed")
         open_rows = [row["id"] for row in code_text_disagreements() if row["status"] in {"open", "pending"}]
         if open_rows:
             raise RuntimeError("open disagreement rows: " + ", ".join(open_rows))
-        return {"out": dest, "status": "passed"}
+        return {
+            "out": dest,
+            "components": components,
+            "drc": drc,
+            "primary": primary,
+            "builder": builder,
+            "status": "passed",
+        }
     finally:
         D7_PINS.clear()
         D7_PINS.update(saved_d7)

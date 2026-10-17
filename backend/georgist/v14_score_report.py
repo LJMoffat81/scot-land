@@ -61,9 +61,7 @@ RECORDED_FILES = (
 # PR 3 writers are recorded once they exist. They are not hashed while absent.
 PR3_RECORDED_WHEN_PRESENT = frozenset(
     {
-        "backend/scripts/build_v14_drc_components.py",
         "backend/scripts/fit_v14_hedonic.py",
-        "backend/scripts/build_v14_primary_2023.py",
         "backend/scripts/build_v14_check_sources.py",
     }
 )

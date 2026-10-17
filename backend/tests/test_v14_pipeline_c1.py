@@ -40,6 +40,7 @@ from georgist.v14_score_report import (
 )
 from scripts.build_v14_drc import assert_straight_line_v14, drc_for_zone, remaining_factors
 from scripts.build_v14_primary_inputs import assert_exclusion_list, main as build_main
+from georgist.v14_score_report import PIN_TABLE, sha256_file
 from scripts.rerun_v14_score import main as score_main
 from test_v14_pipeline_a import COST_INPUTS
 from test_v14_pipeline_b import _zone
@@ -243,7 +244,33 @@ def _passing_zones() -> list[dict]:
     ]
 
 
-def test_v10_error_leaves_no_lock_and_success_writes_it_after_the_report(tmp_path: Path):
+def _frozen_flags(tmp_path: Path) -> list[str]:
+    root = tmp_path / "frozen-set"
+    root.mkdir()
+    files = {
+        "--merge-map": root / "merge.csv",
+        "--hedonic-coefs": root / "coefs.json",
+        "--sha8-block": root / "sha8.json",
+        "--check3-plot-passes": root / "check3.json",
+        "--check4-rent-route": root / "check4.json",
+        "--ur6": root / "ur6.json",
+        "--dz2022-keys": root / "dz.json",
+    }
+    files["--merge-map"].write_text("dz2011,cell\nS01,c\n", encoding="utf-8")
+    for path in files.values():
+        if not path.exists():
+            path.write_text("{}\n", encoding="utf-8")
+    flags: list[str] = []
+    for flag, path in files.items():
+        flags.extend([flag, str(path)])
+    return flags
+
+
+def test_v10_error_leaves_no_lock_and_success_writes_it_after_the_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    frozen_flags = _frozen_flags(tmp_path)
+    monkeypatch.setitem(PIN_TABLE, "merge_map", sha256_file(Path(frozen_flags[1])))
     broken = tmp_path / "broken"
     broken.mkdir()
     bad = tmp_path / "bad.json"
@@ -257,6 +284,7 @@ def test_v10_error_leaves_no_lock_and_success_writes_it_after_the_report(tmp_pat
             str(bad),
             "--lock-path",
             str(broken / "holdout_2023.lock"),
+            *frozen_flags,
         ]
     ) == 1
     assert not (broken / "holdout_2023.lock").exists()
@@ -281,6 +309,7 @@ def test_v10_error_leaves_no_lock_and_success_writes_it_after_the_report(tmp_pat
             "--lock-path",
             str(lock_path),
             "--record-sha8s",
+            *frozen_flags,
         ]
     ) == 0
     lock = json.loads((good_dir / "holdout_2023.lock").read_text(encoding="utf-8"))

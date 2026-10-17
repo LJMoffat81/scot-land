@@ -18,10 +18,12 @@ from georgist import v14_hedonic as hedonic
 from georgist.surface_v14_checks import score_estimator
 from georgist.v14_hedonic import D7_SHA256, S_C3_GTOL
 from georgist.v14_score_report import (
+    PIN_TABLE,
     S_C3_GTOL_MAPPING,
     S_C3_OPTIMIZER,
     build_report,
     disagreement_markdown,
+    frozen_set_members,
     sha256_file,
 )
 from scripts.build_v14_check_inputs import CheckInputError, load_source
@@ -260,10 +262,13 @@ def test_report_records_optimizer_inputs_and_secondary(tmp_path: Path) -> None:
         "backend/scripts/build_v14_check_inputs.py",
         "backend/scripts/build_v14_primary_inputs.py",
         "backend/scripts/build_ros_c14_v14_inputs.py",
+        "backend/scripts/build_v14_drc_components.py",
+        "backend/scripts/build_v14_primary_2023.py",
     ):
         assert rel in report["sha8"]
         assert report["sha8"][rel] == sha256_file(BACKEND / rel.removeprefix("backend/"))[:8]
-    assert "backend/scripts/build_v14_drc_components.py" not in report["sha8"]
+    assert "backend/scripts/fit_v14_hedonic.py" not in report["sha8"]
+    assert "backend/scripts/build_v14_check_sources.py" not in report["sha8"]
     assert "\u00a3" not in json.dumps(report)
 
 
@@ -284,10 +289,48 @@ def _zones(year: int) -> list[dict]:
 
 
 class _ShaArgs:
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, merge_map: Path | None = None) -> None:
         self.check_inputs = path
         self.secondary_estimator_json = None
-        self.merge_map = None
+        self.merge_map = merge_map
+
+
+def _frozen_flags(tmp_path: Path) -> tuple[list[str], dict[str, Path]]:
+    root = tmp_path / "frozen-set"
+    root.mkdir()
+    files = {
+        "merge_map": root / "merge.csv",
+        "hedonic_coefs_2021_22": root / "coefs.json",
+        "code_sha8_block": root / "sha8.json",
+        "check3_plot_passes": root / "check3.json",
+        "check4_rent_route": root / "check4.json",
+        "ur6": root / "ur6.json",
+        "dz2022_keys": root / "dz.json",
+    }
+    files["merge_map"].write_text("dz2011,cell\nS01,c\n", encoding="utf-8")
+    files["hedonic_coefs_2021_22"].write_text('{"beta": 0.2}\n', encoding="utf-8")
+    files["code_sha8_block"].write_text("{}\n", encoding="utf-8")
+    files["check3_plot_passes"].write_text("{}\n", encoding="utf-8")
+    files["check4_rent_route"].write_text("{}\n", encoding="utf-8")
+    files["ur6"].write_text("{}\n", encoding="utf-8")
+    files["dz2022_keys"].write_text("{}\n", encoding="utf-8")
+    flags = [
+        "--merge-map",
+        str(files["merge_map"]),
+        "--hedonic-coefs",
+        str(files["hedonic_coefs_2021_22"]),
+        "--sha8-block",
+        str(files["code_sha8_block"]),
+        "--check3-plot-passes",
+        str(files["check3_plot_passes"]),
+        "--check4-rent-route",
+        str(files["check4_rent_route"]),
+        "--ur6",
+        str(files["ur6"]),
+        "--dz2022-keys",
+        str(files["dz2022_keys"]),
+    ]
+    return flags, files
 
 
 def _year_only(year: int) -> dict:
@@ -312,6 +355,8 @@ def test_lock_path_is_shared_and_2024_refuses_closed(
         json.dumps({"primary_zones": _zones(2024), "secondary_zones": _zones(2024)}),
         encoding="utf-8",
     )
+    frozen_flags, frozen_files = _frozen_flags(tmp_path)
+    monkeypatch.setitem(PIN_TABLE, "merge_map", sha256_file(frozen_files["merge_map"]))
     lock = tmp_path / "shared" / "holdout_2023.lock"
     out_a = tmp_path / "a" / "report.json"
     out_b = tmp_path / "b" / "report.json"
@@ -325,6 +370,7 @@ def test_lock_path_is_shared_and_2024_refuses_closed(
             "--lock-path",
             str(lock),
             "--record-sha8s",
+            *frozen_flags,
         ]
     ) == 0
     assert lock.is_file()
@@ -345,6 +391,7 @@ def test_lock_path_is_shared_and_2024_refuses_closed(
             str(payload),
             "--lock-path",
             str(lock),
+            *frozen_flags,
         ]
     ) == 1
     _refuse(capsys, "second 2023 holdout run refused", calls)
@@ -379,6 +426,7 @@ def test_lock_path_is_shared_and_2024_refuses_closed(
             str(other),
             "--lock-path",
             str(lock),
+            *frozen_flags,
         ]
     ) == 1
     _refuse(capsys, "2024 run refused: inputs sha differs", calls)
@@ -388,9 +436,10 @@ def test_lock_path_is_shared_and_2024_refuses_closed(
     year_lock.write_text(
         json.dumps(
             {
-                "inputs_sha256": _inputs_sha256(_ShaArgs(early)),
+                "inputs_sha256": _inputs_sha256(_ShaArgs(early, frozen_files["merge_map"])),
                 "commit": "abc123abc123",
                 "label": "seen, not out-of-sample",
+                "frozen_set": frozen_set_members(frozen_files),
             }
         )
         + "\n",
@@ -405,6 +454,7 @@ def test_lock_path_is_shared_and_2024_refuses_closed(
             str(early),
             "--lock-path",
             str(year_lock),
+            *frozen_flags,
         ]
     ) == 1
     err = capsys.readouterr().err
@@ -421,6 +471,7 @@ def test_lock_path_is_shared_and_2024_refuses_closed(
             str(payload),
             "--lock-path",
             str(lock),
+            *frozen_flags,
         ]
     ) == 0
     second = json.loads(out_b.read_text(encoding="utf-8"))

@@ -174,8 +174,19 @@ def _input_paths(args: argparse.Namespace) -> dict[str, Path]:
     return paths
 
 
-def _frozen_paths(args: argparse.Namespace) -> dict[str, Path] | None:
-    mapping = {
+FROZEN_MEMBER_ORDER = (
+    "merge_map",
+    "hedonic_coefs_2021_22",
+    "code_sha8_block",
+    "check3_plot_passes",
+    "check4_rent_route",
+    "ur6",
+    "dz2022_keys",
+)
+
+
+def _frozen_mapping(args: argparse.Namespace) -> dict[str, Path | None]:
+    return {
         "merge_map": args.merge_map,
         "hedonic_coefs_2021_22": getattr(args, "hedonic_coefs", None),
         "code_sha8_block": getattr(args, "sha8_block", None),
@@ -184,6 +195,15 @@ def _frozen_paths(args: argparse.Namespace) -> dict[str, Path] | None:
         "ur6": getattr(args, "ur6", None),
         "dz2022_keys": getattr(args, "dz2022_keys", None),
     }
+
+
+def _missing_frozen(args: argparse.Namespace) -> list[str]:
+    mapping = _frozen_mapping(args)
+    return [name for name in FROZEN_MEMBER_ORDER if mapping[name] is None]
+
+
+def _frozen_paths(args: argparse.Namespace) -> dict[str, Path] | None:
+    mapping = _frozen_mapping(args)
     present = [path for path in mapping.values() if path is not None]
     if not present:
         return None
@@ -200,6 +220,13 @@ def _extended_main(args: argparse.Namespace) -> int:
     try:
         if (args.holdout_2023 or args.score_2024) and args.lock_path is None:
             raise HoldoutLockError("--lock-path is required")
+        if args.holdout_2023:
+            missing = _missing_frozen(args)
+            if missing:
+                name = missing[0]
+                raise HoldoutLockError(
+                    f"HOLDOUT_2023: REFUSED: frozen_set {name}: expected path, got absent"
+                )
         frozen_paths = _frozen_paths(args)
         if args.merge_map and frozen_paths is None:
             refuse_2024_price_file(args.merge_map.name)
@@ -232,21 +259,29 @@ def _extended_main(args: argparse.Namespace) -> int:
             if args.lock_path is None or not args.lock_path.is_file():
                 raise HoldoutLockError(missing_lock_message(args.lock_path or Path("holdout_2023.lock")))
             locked = json.loads(args.lock_path.read_text(encoding="utf-8"))
-            if locked.get("frozen_set"):
-                if locked.get("score_2024") is True:
-                    raise HoldoutLockError("second 2024 run refused")
-                if frozen_paths is None:
-                    raise HoldoutLockError("SCORE_2024: REFUSED: frozen_set: expected complete, got absent")
-                assert_frozen_set(locked["frozen_set"], frozen_set_members(frozen_paths))
-                year_paths = list(args.year_file or [])
-                assert_score_years(read_year_files(year_paths))
-            else:
-                years = input_years(args.check_inputs)
-                assert_2024_allowed(
-                    lock_path=args.lock_path,
-                    inputs_sha256=inputs_sha,
-                    years=years,
+            if not locked.get("frozen_set"):
+                raise HoldoutLockError(
+                    "SCORE_2024: REFUSED: lock frozen_set: expected present, got absent"
                 )
+            if locked.get("score_2024") is True:
+                raise HoldoutLockError("second 2024 run refused")
+            if frozen_paths is None:
+                raise HoldoutLockError("SCORE_2024: REFUSED: frozen_set: expected complete, got absent")
+            assert_frozen_set(locked["frozen_set"], frozen_set_members(frozen_paths))
+            assert_2024_allowed(
+                lock_path=args.lock_path,
+                inputs_sha256=inputs_sha,
+                years=None,
+            )
+            if args.year_file is not None:
+                assert_score_years(read_year_files(list(args.year_file)))
+            else:
+                check_years = input_years(args.check_inputs)
+                if not check_years or any(int(year) != 2024 for year in check_years):
+                    raise HoldoutLockError(
+                        "SCORE_2024: REFUSED: input_years: expected [2024], got []\n"
+                        "2024 run refused: input year is not 2024"
+                    )
             score_2024_scores = _score_holdout(args.check_inputs)
         report = build_report(
             input_paths=input_paths,
@@ -286,7 +321,7 @@ def _extended_main(args: argparse.Namespace) -> int:
                 commit=commit,
                 report_sha256=sha256_file(args.out),
                 lock_path=args.lock_path,
-                frozen_set=None if frozen_paths is None else frozen_set_members(frozen_paths),
+                frozen_set=frozen_set_members(frozen_paths),
             )
         if args.score_2024:
             mark_score_2024(args.lock_path)

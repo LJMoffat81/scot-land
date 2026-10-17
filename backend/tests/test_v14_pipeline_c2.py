@@ -14,7 +14,7 @@ import pytest
 
 from georgist import surface_v14 as v14
 from georgist import v14_hedonic as hedonic
-from georgist.surface_v14_checks import GATING_MARKS
+from georgist.surface_v14_checks import gating_marks
 from georgist.v14_hedonic import (
     D7_SHA256,
     MEDIAN_2024_REASON,
@@ -62,7 +62,8 @@ def test_requirements_pin_statsmodels_exactly():
 def test_pending_check_records_the_error_and_fail_closed_uses_the_master_list():
     source = (BACKEND / "georgist" / "surface_v14.py").read_text(encoding="utf-8")
     assert '("1a", "1b", "3", "4", "6")' not in source
-    assert "GATING_MARKS" in source
+    assert "GATING_MARKS_BY_YEAR[2024]" in source
+    assert "GATING" + "_MARKS =" not in source
     zone = _zone("A")
     del zone["dz2022"]
     scored = v14.score_estimators(
@@ -76,7 +77,7 @@ def test_pending_check_records_the_error_and_fail_closed_uses_the_master_list():
         assert pending["status"] == "pending"
         assert "dz2022" in pending["error"]
         assert block["gating_pass"] is False
-        for name in GATING_MARKS:
+        for name in gating_marks(2024):
             if block["gating"][name]["status"] == "pending":
                 assert block["gating"][name]["error"]
     assert scored["publication"]["publish_primary"] is False

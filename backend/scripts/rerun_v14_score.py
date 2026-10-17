@@ -121,13 +121,16 @@ def _jsonable(value):
     return value
 
 
-def _score_holdout(path: Path) -> dict:
-    """Estimate-and-score both estimators. Raises before any lock is written."""
+def _score_holdout(path: Path, *, year: int) -> dict:
+    """Estimate-and-score both estimators. Raises before any lock is written.
+
+    ``year`` is the literal from ``--holdout-2023`` or ``--score-2024``.
+    """
     refuse_2024_price_file(path.name)
     payload = json.loads(path.read_text(encoding="utf-8"))
     if "primary_zones" not in payload or "secondary_zones" not in payload:
         raise ReportAbort("holdout needs primary_zones and secondary_zones")
-    scored = score_both(payload["primary_zones"], payload["secondary_zones"])
+    scored = score_both(payload["primary_zones"], payload["secondary_zones"], year=year)
     return _jsonable(scored)
 
 
@@ -136,7 +139,7 @@ def _check_summary(path: Path) -> dict:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if "primary_zones" not in payload or "secondary_zones" not in payload:
         return {"status": "pending_inputs"}
-    scored = score_both(payload["primary_zones"], payload["secondary_zones"])
+    scored = score_both(payload["primary_zones"], payload["secondary_zones"], year=2024)
     return {
         "status": "scored",
         "primary_gating_pass": scored["primary"]["gating_pass"],
@@ -259,7 +262,7 @@ def _extended_main(args: argparse.Namespace) -> int:
                 allow_incident=args.allow_rerun_for_fidelity_bug,
                 lock_path=args.lock_path,
             )
-            holdout_scores = _score_holdout(args.check_inputs)
+            holdout_scores = _score_holdout(args.check_inputs, year=2023)
         if args.score_2024:
             if args.check_inputs is None:
                 raise ReportAbort("2024 scoring needs check inputs")
@@ -295,7 +298,7 @@ def _extended_main(args: argparse.Namespace) -> int:
                         "2024 run refused: input year is not 2024"
                     )
             mark_score_2024(args.lock_path)
-            score_2024_scores = _score_holdout(args.check_inputs)
+            score_2024_scores = _score_holdout(args.check_inputs, year=2024)
         report = build_report(
             input_paths=input_paths,
             price_columns_read=reads.snapshot(),
@@ -344,7 +347,7 @@ def _extended_main(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description=__doc__)
+    p = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     p.add_argument("--out", type=Path, default=REPO_ROOT / "out" / "v14_score" / "report.json")
     p.add_argument(
         "--primary-shares-json",

@@ -38,7 +38,7 @@ from georgist.v14_primary_inputs import DepreciationMethodError, remaining_facto
 
 EXPECTED_SHA8 = {
     "backend/georgist/surface_rent.py": "dc07f4fe",
-    "backend/georgist/surface_v14.py": "2eb4f6c2",
+    "backend/georgist/surface_v14.py": "4f7a407a",
     "data/config/surface.yaml": "0ad64260",
     "backend/georgist/ros_c14_input.py": "ca8718fa",
 }

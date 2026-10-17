@@ -1,8 +1,8 @@
 # SYNTHETIC
-code,age_pre1919_share
-ZA1,1
-ZA2,1
-ZA3,1
-ZB1,1
-ZB2,1
-ZA4,1
+code,vintage,cert_count,dwellings_total_2025,dwellings_flag,coverage_share,suppressed,pt_house_share,pt_flat_share,pt_bungalow_share,pt_maisonette_share,pt_park_home_share,pt_unknown_share,bf_detached_share,bf_semi_detached_share,bf_mid_terrace_share,bf_end_terrace_share,bf_enclosed_mid_terrace_share,bf_enclosed_end_terrace_share,bf_unknown_share,age_pre1919_share,age_1919_1929_share,age_1930_1949_share,age_1950_1964_share,age_1965_1975_share,age_1976_1983_share,age_1984_1991_share,age_1992_1998_share,age_1999_2002_share,age_2003_2007_share,age_2008_on_share,age_unknown_share,tfa_n,tfa_median_m2,tfa_q1_m2,tfa_q3_m2,tfa_iqr_m2,share_lodged_last_10y,recent10_cert_count,recent10_pt_house_share,recent10_pt_flat_share,recent10_pt_bungalow_share,recent10_pt_maisonette_share,recent10_pt_park_home_share,recent10_pt_unknown_share,recent10_bf_detached_share,recent10_bf_semi_detached_share,recent10_bf_mid_terrace_share,recent10_bf_end_terrace_share,recent10_bf_enclosed_mid_terrace_share,recent10_bf_enclosed_end_terrace_share,recent10_bf_unknown_share,recent10_age_pre1919_share,recent10_age_1919_1929_share,recent10_age_1930_1949_share,recent10_age_1950_1964_share,recent10_age_1965_1975_share,recent10_age_1976_1983_share,recent10_age_1984_1991_share,recent10_age_1992_1998_share,recent10_age_1999_2002_share,recent10_age_2003_2007_share,recent10_age_2008_on_share,recent10_age_unknown_share,recent10_tfa_n,recent10_tfa_median_m2,recent10_tfa_q1_m2,recent10_tfa_q3_m2,recent10_tfa_iqr_m2,recent10_coverage_share,recent10_suppressed,tfa_mean_m2,tfa_sum_m2,tfa_n_house,tfa_mean_house_m2,tfa_n_flat,tfa_mean_flat_m2,recent10_tfa_mean_m2,recent10_tfa_sum_m2,recent10_tfa_n_house,recent10_tfa_mean_house_m2,recent10_tfa_n_flat,recent10_tfa_mean_flat_m2,dwellings_source
+ZA1,,,,,0,,,,,,,,,,,,,,,1,0,0,0,0,0,0,0,0,0,0,0,,,,,,,,,,,,,,,,,,,,,0,0,0,0,0,0,0,0,0,0,0,0,,,,,,0,,,,,,,,,,,,,,
+ZA2,,,,,0,,,,,,,,,,,,,,,1,0,0,0,0,0,0,0,0,0,0,0,,,,,,,,,,,,,,,,,,,,,0,0,0,0,0,0,0,0,0,0,0,0,,,,,,0,,,,,,,,,,,,,,
+ZA3,,,,,0,,,,,,,,,,,,,,,1,0,0,0,0,0,0,0,0,0,0,0,,,,,,,,,,,,,,,,,,,,,0,0,0,0,0,0,0,0,0,0,0,0,,,,,,0,,,,,,,,,,,,,,
+ZB1,,,,,0,,,,,,,,,,,,,,,1,0,0,0,0,0,0,0,0,0,0,0,,,,,,,,,,,,,,,,,,,,,0,0,0,0,0,0,0,0,0,0,0,0,,,,,,0,,,,,,,,,,,,,,
+ZB2,,,,,0,,,,,,,,,,,,,,,1,0,0,0,0,0,0,0,0,0,0,0,,,,,,,,,,,,,,,,,,,,,0,0,0,0,0,0,0,0,0,0,0,0,,,,,,0,,,,,,,,,,,,,,
+ZA4,,,,,0,,,,,,,,,,,,,,,1,0,0,0,0,0,0,0,0,0,0,0,,,,,,,,,,,,,,,,,,,,,0,0,0,0,0,0,0,0,0,0,0,0,,,,,,0,,,,,,,,,,,,,,

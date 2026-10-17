@@ -24,7 +24,7 @@ import sys
 from pathlib import Path
 
 from georgist import surface_v13 as v13
-from georgist.rent_table_pooled import RENT_TABLE_COLUMNS
+from georgist.v14_real_headers import header_refusal, read_header_fields
 
 PIN_TABLE = {
     "plot_bands": "9bb56d3be6181740ae07fb06607c45374ce448d6c73a00cdea3c7c81b4886e48",
@@ -51,8 +51,21 @@ PLOT_FIELDS = (
     "measured_detached_pass",
 )
 GIS_FIELDS = ("code", "house_plot_m2")
-UR6_FIELDS = ("code", "ur6")
+UR6_FIELDS = ("code", "ur6_class")
 CROSSWALK_FIELDS = ("dz2011_code", "dz2022_code", "uprn_count")
+RENT_ALWAYS = (
+    "zone_id",
+    "status",
+    "dwellings",
+    "la_code",
+    "ur6_class",
+    "sales_n",
+    "pooling_config_sha256",
+)
+OBSERVED_STATUS = "observed_pooled"
+EXCLUDED_STATUSES = ("model_fill_pending", "not_applicable")
+EXPECTED_EXCLUDED = {"model_fill_pending": 129, "not_applicable": 3}
+CHECK4_STATUSES = "observed_pooled|model_fill_pending|not_applicable"
 PRIMARY_FIELDS = ("zone", "share_low", "share_central", "share_high")
 STEP_FOR_PIN = {
     "plot_bands": "B5_CHECK3",
@@ -122,7 +135,7 @@ def _csv_table(path: Path, step: str, fields: tuple[str, ...]) -> list[dict[str,
     width = len(header)
     missing = [name for name in fields if name not in header]
     if missing:
-        raise CheckSourceError(f"{step}: ERROR: header: expected {fields[0]}, got absent")
+        raise CheckSourceError(f"{step}: ERROR: header: expected {missing[0]}, got absent")
     rows = []
     for row_number, cells in enumerate(parsed[1:], start=1):
         if len(cells) < width:
@@ -161,6 +174,15 @@ def _radii(row: dict[str, str], prefix: str) -> dict[int, bool]:
     return {radius: _truthy(row[f"{prefix}{radius}"]) for radius in (20, 30, 40)}
 
 
+def _guard_header(path: Path, step: str, name: str) -> None:
+    header = read_header_fields(path)
+    if header is None:
+        raise CheckSourceError(f"{step}: ERROR: header: expected header, got absent")
+    refusal = header_refusal(step, name, header)
+    if refusal is not None:
+        raise CheckSourceError(refusal)
+
+
 def load_plot_bands(path: Path) -> list[dict[str, str]]:
     return _csv_table(path, "B5_PLOT_BANDS", PLOT_FIELDS)
 
@@ -170,14 +192,17 @@ def load_gis_house_plot(path: Path) -> list[dict[str, str]]:
 
 
 def load_rent_table(path: Path) -> list[dict[str, str]]:
-    return _csv_table(path, "B5_CHECK4", tuple(RENT_TABLE_COLUMNS))
+    _guard_header(path, "B5_CHECK4", "rent_table")
+    return _csv_table(path, "B5_CHECK4", RENT_ALWAYS)
 
 
 def load_crosswalk(path: Path) -> list[dict[str, str]]:
+    _guard_header(path, "B5_CROSSWALK", "crosswalk")
     return _csv_table(path, "B5_CROSSWALK", CROSSWALK_FIELDS)
 
 
 def load_ur6_rows(path: Path) -> list[dict[str, str]]:
+    _guard_header(path, "B5_UR6", "ur6")
     return _csv_table(path, "B5_UR6", UR6_FIELDS)
 
 
@@ -245,6 +270,11 @@ def build_check3(paths: dict[str, Path], *, pins: dict[str, str] | None = None) 
     _assert_pin_format("gis_house_plot", table)
     _assert_file_sha("plot_bands", paths["plot_bands"], table)
     _assert_file_sha("gis_house_plot", paths["gis_house_plot"], table)
+    header = read_header_fields(paths["plot_bands"])
+    if header is None or "pass_20" not in header:
+        raise CheckSourceError(
+            "B5_CHECK3: NOT_RUN: plot_bands header: expected pass_20, got absent"
+        )
     plots = load_plot_bands(paths["plot_bands"])
     houses = {row["code"]: row for row in load_gis_house_plot(paths["gis_house_plot"])}
     zones = []
@@ -268,8 +298,32 @@ def build_check4(path: Path, *, pins: dict[str, str] | None = None) -> dict:
     table = PIN_TABLE if pins is None else pins
     _assert_pin_format("rent_table", table)
     _assert_file_sha("rent_table", path, table)
+    counts = {status: 0 for status in EXCLUDED_STATUSES}
+    observed: list[dict[str, str]] = []
+    for row_number, row in enumerate(load_rent_table(path), start=1):
+        status = row["status"].strip()
+        if status == OBSERVED_STATUS:
+            for column in ("central", "low"):
+                if row.get(column, "").strip() == "":
+                    raise CheckSourceError(
+                        f"B5_CHECK4: ERROR: {column} row {row_number}: expected value, got blank"
+                    )
+            observed.append(row)
+            continue
+        if status in counts:
+            counts[status] += 1
+            continue
+        raise CheckSourceError(
+            f"B5_CHECK4: REFUSED: status row {row_number}: expected {CHECK4_STATUSES}, got {status}"
+        )
+    if counts != EXPECTED_EXCLUDED:
+        raise CheckSourceError(
+            "B5_CHECK4: REFUSED: excluded: "
+            "expected model_fill_pending=129,not_applicable=3, "
+            f"got model_fill_pending={counts['model_fill_pending']},not_applicable={counts['not_applicable']}"
+        )
     zones = []
-    for row in load_rent_table(path):
+    for row in observed:
         residual, capitalised = two_route_lands(row)
         zones.append(
             {
@@ -278,6 +332,7 @@ def build_check4(path: Path, *, pins: dict[str, str] | None = None) -> dict:
                 "capitalised_land": capitalised,
             }
         )
+    sys.stdout.write(f"B5_CHECK4: excluded={sum(counts.values())}\n")
     return {"label": "SYNTHETIC", "zones": zones}
 
 
@@ -327,14 +382,18 @@ def build_ur6(path: Path, *, pins: dict[str, str] | None = None) -> dict:
     _assert_pin_format("ur6", table)
     _assert_file_sha("ur6", path, table)
     zones = []
+    seen: set[str] = set()
     for row_number, row in enumerate(load_ur6_rows(path), start=1):
-        text = row["ur6"].strip()
-        if not text.isdigit():
+        code = row["code"]
+        if code in seen:
+            raise CheckSourceError(
+                f"B5_UR6: REFUSED: ur6 code: expected unique, got duplicate {code}"
+            )
+        seen.add(code)
+        text = row["ur6_class"].strip()
+        if not text.isdigit() or not 1 <= int(text) <= 6:
             raise CheckSourceError(f"B5_UR6: ERROR: ur6 row {row_number}: expected 1-6, got {text}")
-        value = int(text)
-        if value < 1 or value > 6:
-            raise CheckSourceError(f"B5_UR6: ERROR: ur6 row {row_number}: expected 1-6, got {value}")
-        zones.append({"zone": row["code"], "ur6": value})
+        zones.append({"zone": code, "ur6": int(text)})
     return {"label": "SYNTHETIC", "zones": zones}
 
 

@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from georgist.v14_real_headers import REAL_HEADERS
 from georgist.v14_b2 import (
     BEDROOM_BANDS,
     FIELD_CITATIONS,
@@ -137,7 +138,9 @@ def test_adapter_wrong_header(tmp_path: Path, schema: str, monkeypatch: pytest.M
     monkeypatch.setattr("georgist.v14_b2.emit_output", spy)
     with pytest.raises(B2Error) as raised:
         write_adapter(schema, path, dest, crosswalk=_cross(tmp_path), expected_count=1)
-    assert str(raised.value) == f"B2_{schema.upper()}: ERROR: header: expected {_files(tmp_path)[schema][0][0]}, got {renamed}"
+    expected = ",".join(REAL_HEADERS[schema])
+    actual = ",".join(header)
+    assert str(raised.value) == f"B2_{schema.upper()}: REFUSED: header: expected {expected}, got {actual}"
     assert calls["n"] == 0
     assert not dest.exists()
 

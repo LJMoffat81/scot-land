@@ -11,7 +11,10 @@ import csv
 import io
 from pathlib import Path
 
+import openpyxl
+
 from georgist.rent_table_pooled import RENT_TABLE_COLUMNS
+from georgist.v14_real_headers import REAL_HEADERS
 from georgist.v14_b2 import PIN_TABLE as B2_PINS
 from georgist.v14_d7_chain import PIN_TABLE as D7_PINS
 from georgist.v14_d7_chain import execute_filter1, execute_filter2, sha256_file
@@ -56,6 +59,84 @@ def _sales_rows() -> list[list[str]]:
             rows.append([*common, "Mean", *tail])
             rows.append([*common, "Median", *tail])
     return rows
+
+
+def _filled(name: str, values: dict[str, str]) -> list[str]:
+    return [values.get(column, "") for column in REAL_HEADERS[name]]
+
+
+def _epc_row(zone: str) -> list[str]:
+    values = {column: "" for column in REAL_HEADERS["epc"]}
+    values["code"] = zone
+    for column in REAL_HEADERS["epc"]:
+        if "age_" in column and column.endswith("_share"):
+            values[column] = "1" if column == "age_pre1919_share" else "0"
+    return _filled("epc", values)
+
+
+def _nrs_row(zone: str) -> list[str]:
+    values = {column: "" for column in REAL_HEADERS["nrs2017"]}
+    values["code"] = zone
+    for column in REAL_HEADERS["nrs2017"]:
+        if column.startswith("type_"):
+            values[column] = "10" if column == "type_detached" else "0"
+    return _filled("nrs2017", values)
+
+
+def _plot_band_row(zone: str) -> list[str]:
+    values = {column: "" for column in REAL_HEADERS["plot_bands"]}
+    values["code"] = zone
+    values["all_ages_share_lt005"] = "0.5"
+    values["all_ages_share_005_010"] = "0.25"
+    values["all_ages_share_gt010"] = "0.25"
+    values["n_detached_all_ages_matched"] = "4"
+    return _filled("plot_bands", values)
+
+
+def _ur6_row(zone: str, ur6_class: str) -> list[str]:
+    values = {column: "" for column in REAL_HEADERS["ur6"]}
+    values["code"] = zone
+    values["ur6_class"] = ur6_class
+    values["ur6_name"] = "SYNTHETIC"
+    values["ur8_code"] = ur6_class
+    values["source"] = "SYNTHETIC"
+    values["licence"] = "OGL-3.0"
+    return _filled("ur6", values)
+
+
+def _cross_row(dz2011: str, dz2022: str, count: str) -> list[str]:
+    values = {column: "" for column in REAL_HEADERS["crosswalk"]}
+    values["dz2011_code"] = dz2011
+    values["dz2022_code"] = dz2022
+    values["uprn_count"] = count
+    return _filled("crosswalk", values)
+
+
+def _write_n25i(path: Path, zones: list[str]) -> None:
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "2025"
+    sheet.append(["SYNTHETIC"])
+    sheet.append([None])
+    sheet.append([None])
+    sheet.append([None])
+    header = list(REAL_HEADERS["n25i"])
+    sheet.append(header)
+    for zone in zones:
+        row = []
+        for column in header:
+            if column == "Data Zone code":
+                row.append(zone)
+            elif column == "Council area code":
+                row.append("S12000001")
+            elif column in {"Data zone name", "Council area name"}:
+                row.append("SYNTHETIC")
+            elif column == "Total number of dwellings":
+                row.append("10")
+            else:
+                row.append("0")
+        sheet.append(row)
+    workbook.save(path)
 
 
 def _sold_rows() -> list[list[str]]:
@@ -157,39 +238,20 @@ def run(root: Path) -> dict:
         primary = root / "primary_estimates_2023.json"
         builder = root / "builder_output_2023.json"
         zones = ("Z1", "Z2", "Z3", "Z4")
-        _write(
-            epc,
-            ["code", "age_pre1919_share"],
-            [[zone, "1"] for zone in zones],
-        )
-        _write(
-            nrs,
-            ["code", "type_detached", "type_semi_detached", "type_terraced", "type_flat", "type_unknown"],
-            [[zone, "10", "0", "0", "0", "0"] for zone in zones],
-        )
-        _write(
-            plots,
-            [
-                "code",
-                "all_ages_share_lt005",
-                "all_ages_share_005_010",
-                "all_ages_share_gt010",
-                "n_detached_all_ages_matched",
-            ],
-            [[zone, "0.5", "0.25", "0.25", "4"] for zone in zones],
-        )
-        _write(
-            ur6,
-            ["code", "council_code", "ur6_class"],
-            [[zone, "A", "1"] for zone in zones],
-        )
+        _write(epc, list(REAL_HEADERS["epc"]), [_epc_row(zone) for zone in zones])
+        _write(nrs, list(REAL_HEADERS["nrs2017"]), [_nrs_row(zone) for zone in zones])
+        _write(plots, list(REAL_HEADERS["plot_bands"]), [_plot_band_row(zone) for zone in zones])
+        _write(ur6, list(REAL_HEADERS["ur6"]), [_ur6_row(zone, "1") for zone in zones])
+        n25i = root / "n25i.xlsx"
+        _write_n25i(n25i, list(zones))
         pins = copy_pin_table()
         pins["epc"] = pin_sha(epc)
         pins["nrs2017"] = pin_sha(nrs)
         pins["plot_bands"] = pin_sha(plots)
         pins["ur6"] = pin_sha(ur6)
+        pins["n25i"] = pin_sha(n25i)
         records = build_components(
-            {"epc": epc, "nrs2017": nrs, "plot_bands": plots, "ur6": ur6},
+            {"epc": epc, "nrs2017": nrs, "plot_bands": plots, "ur6": ur6, "n25i": n25i},
             pins=pins,
         )
         write_components(components, records)
@@ -251,12 +313,23 @@ def run(root: Path) -> dict:
             item["zone_id"] = zone
             item["central"] = "4"
             item["low"] = "1"
+            item["status"] = "observed_pooled"
+            rent_rows.append([item[name] for name in rent_header])
+        for index in range(129):
+            item = {name: "1" for name in rent_header}
+            item["zone_id"] = f"P{index}"
+            item["status"] = "model_fill_pending"
+            rent_rows.append([item[name] for name in rent_header])
+        for index in range(3):
+            item = {name: "1" for name in rent_header}
+            item["zone_id"] = f"N{index}"
+            item["status"] = "not_applicable"
             rent_rows.append([item[name] for name in rent_header])
         _write(rent_src, rent_header, rent_rows)
         _write(
             walk_src,
-            ["dz2011_code", "dz2022_code", "uprn_count"],
-            [[zone, zone, "1"] for zone in zones],
+            list(REAL_HEADERS["crosswalk"]),
+            [_cross_row(zone, zone, "1") for zone in zones],
         )
         source_pins = copy_source_pins()
         source_pins["plot_bands"] = pin_sha(plot_src)
@@ -264,7 +337,7 @@ def run(root: Path) -> dict:
         source_pins["rent_table"] = pin_sha(rent_src)
         source_pins["crosswalk"] = pin_sha(walk_src)
         ur6_in = root / "ur6_classes.csv"
-        _write(ur6_in, ["code", "ur6"], [[zone, "1"] for zone in zones])
+        _write(ur6_in, list(REAL_HEADERS["ur6"]), [_ur6_row(zone, "1") for zone in zones])
         source_pins["ur6"] = pin_sha(ur6_in)
         save_check3({"plot_bands": plot_src, "gis_house_plot": gis_src}, check3, pins=source_pins)
         save_check4(rent_src, check4, pins=source_pins)

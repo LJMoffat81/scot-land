@@ -623,7 +623,6 @@ def sensitivity_table(
     headline: Mapping[str, float],
     *,
     d7_sha256: str | None = None,
-    d7_accept: bool = True,
 ) -> list[dict]:
     """Named sensitivities. None of them replaces the headline log coefficients."""
     listed = list(rows)
@@ -648,11 +647,7 @@ def sensitivity_table(
         "S-c2": _fit_s_c2(listed),
         "S-c3": _fit_s_c3(listed),
         "S-x1": _fit_named("S-x1", listed, include_floor=False),
-        "S-x2": (
-            _fit_s_x2(listed, d7_sha256)
-            if d7_accept
-            else _sensitivity_row("S-x2", status="NOT_RUN", reason="D7 sha does not match")
-        ),
+        "S-x2": _fit_s_x2(listed, d7_sha256),
         "S-x3": _fit_s_x3(listed),
         "S-x4": _fit_s_x4(listed),
         "S-x5": _median_fit("S-x5", listed),
@@ -678,12 +673,7 @@ def sensitivity_table(
     return table
 
 
-def fit_headline(
-    rows: Sequence[Mapping],
-    d7_sha256: str | None = None,
-    *,
-    d7_accept: bool = True,
-) -> dict:
+def fit_headline(rows: Sequence[Mapping], d7_sha256: str | None = None) -> dict:
     """Log-form WLS, then both bootstraps. Levels coefficients are not returned as shares."""
     kept = _eligible(rows)
     coef, names, beta = _fit_rows(kept)
@@ -719,9 +709,7 @@ def fit_headline(
         "seed": BOOTSTRAP_SEED,
         "reps": BOOTSTRAP_REPS,
         "gates_use": "iz_point_beta",
-        "sensitivities": sensitivity_table(
-            kept, beta, d7_sha256=d7_sha256, d7_accept=d7_accept
-        ),
+        "sensitivities": sensitivity_table(kept, beta, d7_sha256=d7_sha256),
     }
 
 

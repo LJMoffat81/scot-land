@@ -88,6 +88,82 @@ export function basemapStyleUrl(id: MapBasemapId): string {
 }
 
 /**
+ * OpenFreeMap draws building footprints from zoom 12.
+ * Keep them off until just before the 3 m grid (zoom 17).
+ */
+export const BASEMAP_BUILDING_MIN_ZOOM = 16;
+
+export type BasemapQuietDecision = "none" | "visible" | "leave";
+
+/** Fields the quiet rule reads from a style layer. */
+export type BasemapQuietLayer = {
+  id: string;
+  "source-layer"?: string;
+};
+
+/**
+ * Hide OpenFreeMap residential land-use at every zoom so grey towns
+ * are not read as Scot-LAND data. Hide building layers below
+ * BASEMAP_BUILDING_MIN_ZOOM and show them again from that zoom.
+ * "leave" means the layer is not one of those.
+ */
+export function basemapQuietVisibility(
+  layer: BasemapQuietLayer,
+  zoom: number,
+): BasemapQuietDecision {
+  const id = layer.id;
+  const sourceLayer = layer["source-layer"] ?? "";
+  if (
+    id === "landuse_residential" ||
+    (sourceLayer === "landuse" && id.includes("residential"))
+  ) {
+    return "none";
+  }
+  const building =
+    sourceLayer === "building" || id === "building" || id.startsWith("building");
+  if (!building) return "leave";
+  if (Number.isFinite(zoom) && zoom >= BASEMAP_BUILDING_MIN_ZOOM) {
+    return "visible";
+  }
+  return "none";
+}
+
+export type BasemapQuietMap = {
+  getStyle(): { layers?: readonly BasemapQuietLayer[] } | null | undefined;
+  getZoom(): number;
+  getLayer(id: string): unknown;
+  getLayoutProperty(id: string, name: "visibility"): unknown;
+  setLayoutProperty(
+    id: string,
+    name: "visibility",
+    value: "none" | "visible",
+  ): void;
+};
+
+/** Apply the quiet rule to the loaded style. Safe to call again on zoom. */
+export function applyBasemapQuiet(map: BasemapQuietMap): void {
+  let layers: readonly BasemapQuietLayer[] | undefined;
+  try {
+    layers = map.getStyle()?.layers;
+  } catch {
+    return;
+  }
+  if (!layers) return;
+  const zoom = map.getZoom();
+  for (const layer of layers) {
+    const decision = basemapQuietVisibility(layer, zoom);
+    if (decision === "leave") continue;
+    try {
+      if (!map.getLayer(layer.id)) continue;
+      if (map.getLayoutProperty(layer.id, "visibility") === decision) continue;
+      map.setLayoutProperty(layer.id, "visibility", decision);
+    } catch {
+      // A zoom event can land while the style is swapping.
+    }
+  }
+}
+
+/**
  * MapLibre's own abort is `new Error("AbortError")`.
  * A cancelled fetch is a DOMException named AbortError.
  */

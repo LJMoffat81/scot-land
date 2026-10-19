@@ -75,6 +75,7 @@ import {
   BASEMAP_STYLE_TIMEOUT_MS,
   DEFAULT_MAP_BASEMAP,
   MAP_MAX_ZOOM,
+  applyBasemapQuiet,
   basemapLabel,
   basemapStyleUrl,
   basemapSwitchTarget,
@@ -2207,9 +2208,17 @@ export default function ScotlandMap() {
     const onBasemapStyle = () => {
       basemapStyleLoaded = true;
       window.clearTimeout(basemapTimer);
-      if (basemapAlive) setBasemapNotice(false);
+      if (!basemapAlive) return;
+      setBasemapNotice(false);
+      // Grey town fill and low-zoom buildings are the basemap, not Scot-LAND.
+      applyBasemapQuiet(map);
+    };
+    const onBasemapQuietZoom = () => {
+      if (!basemapAlive) return;
+      applyBasemapQuiet(map);
     };
     map.on("style.load", onBasemapStyle);
+    map.on("zoom", onBasemapQuietZoom);
     map.on("error", (event) => {
       const line = mapErrorLogLine(
         (event as { error?: unknown }).error,
@@ -3043,6 +3052,7 @@ export default function ScotlandMap() {
       basemapAlive = false;
       window.clearTimeout(basemapTimer);
       map.off("style.load", onBasemapStyle);
+      map.off("zoom", onBasemapQuietZoom);
       resizeObserver.disconnect();
       markerRef.current?.remove();
       markerRef.current = null;

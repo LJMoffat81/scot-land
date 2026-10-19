@@ -276,6 +276,89 @@ async function runBasemapChecks(page: Page) {
   await expect(page.getByRole("button", { name: "Locate" })).toHaveCount(0);
 }
 
+const QUIET_STYLE = JSON.stringify({
+  version: 8,
+  sources: {
+    e2e: {
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
+    },
+  },
+  layers: [
+    {
+      id: "background",
+      type: "background",
+      paint: { "background-color": "#f4f1ea" },
+    },
+    {
+      id: "landuse_school",
+      type: "fill",
+      source: "e2e",
+      paint: { "fill-color": "#d7ead3" },
+    },
+    {
+      id: "landuse_residential",
+      type: "fill",
+      source: "e2e",
+      paint: { "fill-color": "#eaeae6" },
+    },
+    {
+      id: "building",
+      type: "fill",
+      source: "e2e",
+      paint: { "fill-color": "#d9d0c9" },
+    },
+    {
+      id: "building-3d",
+      type: "fill",
+      source: "e2e",
+      paint: { "fill-color": "#c9c0b8" },
+    },
+    {
+      id: "road_primary",
+      type: "line",
+      source: "e2e",
+      paint: { "line-color": "#335577", "line-width": 1 },
+    },
+  ],
+});
+
+async function stubQuietBasemap(page: Page) {
+  const fulfill = async (route: {
+    fulfill: (opts: {
+      status: number;
+      contentType: string;
+      body: string;
+    }) => Promise<void>;
+  }) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: QUIET_STYLE,
+    });
+  };
+  await page.route("**/tiles.openfreemap.org/styles/positron**", fulfill);
+  await page.route("**/tiles.openfreemap.org/styles/liberty**", fulfill);
+}
+
+async function layoutVisibility(page: Page, layerId: string): Promise<string> {
+  return page.evaluate((id) => {
+    const map = (
+      window as unknown as {
+        __map?: {
+          getLayer(layer: string): unknown;
+          getLayoutProperty(layer: string, name: string): unknown;
+          getZoom(): number;
+          jumpTo(opts: { zoom: number; center: [number, number] }): void;
+        } | null;
+      }
+    ).__map;
+    if (!map?.getLayer(id)) return "missing";
+    const vis = map.getLayoutProperty(id, "visibility");
+    return typeof vis === "string" ? vis : "default";
+  }, layerId);
+}
+
 test.describe("1280 desktop", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
@@ -284,6 +367,74 @@ test.describe("1280 desktop", () => {
   }) => {
     test.setTimeout(120_000);
     await runBasemapChecks(page);
+  });
+
+  test("loaded style hides residential land-use and low-zoom buildings", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await stubQuietBasemap(page);
+    await openMap(page);
+
+    await expect
+      .poll(() => layoutVisibility(page, "landuse_residential"), {
+        timeout: 20_000,
+      })
+      .toBe("none");
+    await expect.poll(() => layoutVisibility(page, "building")).toBe("none");
+    await expect.poll(() => layoutVisibility(page, "building-3d")).toBe("none");
+    await expect
+      .poll(() => layoutVisibility(page, "landuse_school"))
+      .toBe("default");
+    await expect.poll(() => layoutVisibility(page, "road_primary")).toBe("default");
+
+    await expect
+      .poll(async () => {
+        const framed = await page.locator("#map").getAttribute("data-framed");
+        const zoom = Number(await page.locator("#map").getAttribute("data-zoom"));
+        return framed === "1" && zoom > 0 && zoom <= 8;
+      })
+      .toBe(true);
+
+    await page.evaluate(() => {
+      const map = (
+        window as unknown as {
+          __map?: { jumpTo(opts: { zoom: number; center: [number, number] }): void };
+        }
+      ).__map;
+      if (!map) throw new Error("window.__map missing");
+      map.jumpTo({ zoom: 16, center: [-4.25, 55.86] });
+    });
+    await expect.poll(() => layoutVisibility(page, "building")).toBe("visible");
+    await expect.poll(() => layoutVisibility(page, "building-3d")).toBe("visible");
+    await expect
+      .poll(() => layoutVisibility(page, "landuse_residential"))
+      .toBe("none");
+
+    await page.getByTestId("basemap-option-detailed").click();
+    await expect
+      .poll(() => layoutVisibility(page, "landuse_residential"), {
+        timeout: 20_000,
+      })
+      .toBe("none");
+    await expect.poll(() => layoutVisibility(page, "building")).toBe("visible");
+    await expect
+      .poll(() => layoutVisibility(page, "landuse_school"))
+      .toBe("default");
+
+    await page.evaluate(() => {
+      const map = (
+        window as unknown as {
+          __map?: { jumpTo(opts: { zoom: number; center: [number, number] }): void };
+        }
+      ).__map;
+      if (!map) throw new Error("window.__map missing");
+      map.jumpTo({ zoom: 10, center: [-4.25, 55.86] });
+    });
+    await expect.poll(() => layoutVisibility(page, "building")).toBe("none");
+    await expect
+      .poll(() => layoutVisibility(page, "landuse_residential"))
+      .toBe("none");
   });
 });
 

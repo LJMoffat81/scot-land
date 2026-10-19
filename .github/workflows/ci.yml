@@ -124,6 +124,7 @@ jobs:
       - run: npm run test:proxy-null-body
       - run: npm run check:developers-links
       - run: npm run test:basemap-err-1
+      - run: npm run test:basemap-quiet
       - run: npm run test:privacy-1
       - run: npx tsc --noEmit
       - run: npm run build

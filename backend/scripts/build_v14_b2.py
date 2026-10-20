@@ -34,7 +34,7 @@ from georgist.v14_d7_chain import (
     run_d7_chain,
     sha256_file,
 )
-from georgist.v14_hedonic import fit_headline
+from georgist.v14_hedonic import FIT_YEARS, fit_headline
 
 
 def _fit_rows(sales: list[dict], floors: list[dict]) -> list[dict]:
@@ -42,6 +42,8 @@ def _fit_rows(sales: list[dict], floors: list[dict]) -> list[dict]:
     floor_by = {(str(row["zone"]), int(row["year"])): row["sold_tfa_mean"] for row in floors}
     built = []
     for sale in sales:
+        if int(sale["year"]) not in FIT_YEARS:
+            continue
         key = (str(sale["zone"]), int(sale["year"]))
         if key not in floor_by:
             continue
@@ -60,6 +62,16 @@ def _fit_rows(sales: list[dict], floors: list[dict]) -> list[dict]:
     return built
 
 
+def assert_fit_years(rows: list[dict]) -> None:
+    """Refuse any fit row whose year is outside FIT_YEARS. Reads only year."""
+    for row in rows:
+        year = row["year"]
+        if year not in FIT_YEARS:
+            raise B2Error(
+                f"B2_FIT_ROWS: REFUSED: year: expected 2021-2022, got {year}"
+            )
+
+
 def assert_house_sales_pin(path: Path) -> None:
     """Full sha256 only. The 702c9ada prefix is not enough."""
     expected = str(PIN_TABLE["house_sales"])
@@ -70,9 +82,42 @@ def assert_house_sales_pin(path: Path) -> None:
         raise B2Error(f"B2_HOUSE_SALES: ERROR: sha256: expected {expected}, got {actual}")
 
 
+def _am2_payload(am2: dict, sales: list[dict]) -> dict:
+    """Disclosure block: codes and counts only."""
+    excluded_by_year: dict[int, dict[str, int]] = {}
+    for item in am2["excluded"]:
+        year = int(item["year"])
+        if year not in excluded_by_year:
+            excluded_by_year[year] = {"suppressed_price": 0, "no_sales": 0}
+        reason = item["reason"]
+        if reason in excluded_by_year[year]:
+            excluded_by_year[year][reason] = excluded_by_year[year][reason] + 1
+    complete_fit: dict[str, bool] = {}
+    for row in sales:
+        if int(row["year"]) in FIT_YEARS:
+            complete_fit[str(row["zone"])] = True
+    excluded_fit: dict[str, bool] = {}
+    for item in am2["excluded"]:
+        if int(item["year"]) in FIT_YEARS:
+            excluded_fit[str(item["zone"])] = True
+    fit_window_no_complete_row = []
+    for zone in sorted(excluded_fit):
+        if zone not in complete_fit:
+            fit_window_no_complete_row.append(zone)
+    return {
+        "label": "excluding price-suppressed zone-years (AM-2)",
+        "excluded": am2["excluded"],
+        "excluded_by_year": excluded_by_year,
+        "zones_present": am2["zones_present"],
+        "skipped_geography": am2["skipped_geography"],
+        "fit_window_no_complete_row": fit_window_no_complete_row,
+    }
+
+
 def build(args: argparse.Namespace) -> dict:
     assert_house_sales_pin(args.house_sales)
-    sales = adapt_house_sales(args.house_sales)
+    am2: dict = {}
+    sales = adapt_house_sales(args.house_sales, am2=am2)
     plots = adapt_plot_split(args.plot_split, expected_count=PIN_TABLE["low_parcel_count"])
     crosswalk = adapt_crosswalk(args.crosswalk)
     access = adapt_access(args.access)
@@ -89,6 +134,7 @@ def build(args: argparse.Namespace) -> dict:
         raise B2Error(chain.message)
     floors = adapt_sold_tfa(args.filter2_output)
     fit_rows = _fit_rows(sales, floors)
+    assert_fit_years(fit_rows)
     fitted = fit_headline(fit_rows, d7_sha256=chain.d7_sha256)
     s_x2 = "NOT_RUN"
     if isinstance(fitted, dict):
@@ -106,6 +152,7 @@ def build(args: argparse.Namespace) -> dict:
         "sold_tfa": floors,
         "fit_rows": fit_rows,
         "fit": {"s_x2": s_x2},
+        "am2": _am2_payload(am2, sales),
     }
 
 

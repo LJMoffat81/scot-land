@@ -50,8 +50,11 @@ def _house() -> tuple[list[str], list[list[str]]]:
         "Sales",
     ]
     rows = [
+        ["S01", "SYNTHETIC zone", "2011 Data Zones", "2021", "Count", "Number of sales", "6", "Number of sales"],
         ["S01", "SYNTHETIC zone", "2011 Data Zones", "2021", "Mean", "GBP", "10", "6"],
         ["S01", "SYNTHETIC zone", "2011 Data Zones", "2021", "Median", "GBP", "9", "6"],
+        ["S01", "SYNTHETIC zone", "2011 Data Zones", "2021", "Lower Quartile", "GBP", "8", "6"],
+        ["S01", "SYNTHETIC zone", "2011 Data Zones", "2021", "Upper Quartile", "GBP", "12", "6"],
     ]
     return header, rows
 

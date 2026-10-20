@@ -145,10 +145,14 @@ def test_s2_synthetic_end_to_end_withheld(
         "GeographyCode,GeographyName,GeographyType,DateCode,Measurement,Units,"
         "Value,Sales,cell,a_m2,ratio_mean,iz,ca,ur3,flat_share"
     )
-    # Mean carries the sentinel; Median is numeric so only Mean triggers float().
+    # Mean carries the sentinel; other measures are numeric so only Mean triggers float().
+    # A2a complete set: Count + Mean + Median + LQ + UQ (fixture data only; assertions unchanged).
     rows = [
+        "Z1,SYNTHETIC zone,2011 Data Zones,2021,Count,Number of sales,6,Number of sales,c,40,1.0,IZ1,CA1,urban,0.2",
         f"Z1,SYNTHETIC zone,2011 Data Zones,2021,Mean,GBP,{SENTINEL},6,c,40,1.0,IZ1,CA1,urban,0.2",
         "Z1,SYNTHETIC zone,2011 Data Zones,2021,Median,GBP,9,6,c,40,1.0,IZ1,CA1,urban,0.2",
+        "Z1,SYNTHETIC zone,2011 Data Zones,2021,Lower Quartile,GBP,8,6,c,40,1.0,IZ1,CA1,urban,0.2",
+        "Z1,SYNTHETIC zone,2011 Data Zones,2021,Upper Quartile,GBP,12,6,c,40,1.0,IZ1,CA1,urban,0.2",
     ]
     sales.write_text("# SYNTHETIC\n" + header + "\n" + "\n".join(rows) + "\n", encoding="utf-8")
     out = tmp_path / "out.json"

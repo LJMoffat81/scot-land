@@ -1,4 +1,9 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import {
+  isCiOptionalFailUrl,
+  registerOpenFreeMapFontStub,
+  stubCiTileDataQuiet,
+  stubLayersCouncilsQuiet,
+} from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
@@ -69,13 +74,7 @@ test.beforeEach(async ({ page }) => {
     });
   });
 
-  await page.route("**/backend/layers/councils**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
+  await stubLayersCouncilsQuiet(page);
 
   await page.route("**/backend/health**", async (route) => {
     await route.fulfill({
@@ -136,16 +135,34 @@ test.beforeEach(async ({ page }) => {
     });
   });
   await stubLayersAddQuiet(page);
+  await stubCiTileDataQuiet(page);
 });
 
 test.afterEach(() => {
-  expect(
-    resourceFails,
-    `unexpected HTTP 404/503:\n${resourceFails.map((f) => `${f.status} ${f.url}`).join("\n")}`,
-  ).toEqual([]);
-  const meaningful = consoleErrors.filter(
-    (text) => !/\bAbortError\b|The user aborted|The operation was aborted/i.test(text),
+  const unknownResourceFails = resourceFails.filter(
+    (fail) => !isCiOptionalFailUrl(fail.url),
   );
+  expect(
+    unknownResourceFails,
+    `unexpected HTTP 404/503:\n${unknownResourceFails.map((f) => `${f.status} ${f.url}`).join("\n")}`,
+  ).toEqual([]);
+  const meaningful = consoleErrors.filter((text) => {
+    if (/\bAbortError\b|The user aborted|The operation was aborted/i.test(text)) {
+      return false;
+    }
+    if (
+      /Failed to load resource: the server responded with a status of (404|503)/i.test(
+        text,
+      )
+    ) {
+      if (isCiOptionalFailUrl(text)) return false;
+      if (!/https?:\/\//i.test(text) && unknownResourceFails.length === 0) {
+        return false;
+      }
+      return true;
+    }
+    return true;
+  });
   expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
 });
 

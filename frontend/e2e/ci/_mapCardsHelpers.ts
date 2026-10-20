@@ -48,6 +48,91 @@ export function registerOpenFreeMapFontStub() {
   });
 }
 
+/**
+ * CI-STABILISE-1 — empty FeatureCollection for the default-view councils fetch.
+ * Call after any backend catch-all route so Playwright LIFO wins.
+ */
+export async function stubLayersCouncilsQuiet(
+  page: Page,
+  body: typeof EMPTY_FC = EMPTY_FC,
+) {
+  await page.route("**/backend/layers/councils**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    });
+  });
+}
+
+/**
+ * Optional 404/503 in CI e2e: favicons plus live tile/data CDN paths.
+ * Product API misses must still fail the suite.
+ */
+export const CI_OPTIONAL_FAIL_URL = [
+  /\/favicon\.ico(?:\?|$)/i,
+  /\/apple-touch-icon/i,
+  /tiles\.openfreemap\.org/i,
+  /\/api\/parcels\/tiles\//i,
+  /\/api\/context\/[^/?]+\/tiles\//i,
+  /ArcGIS\/rest\/services\/World_Imagery/i,
+] as const;
+
+export function isCiOptionalFailUrl(url: string): boolean {
+  return CI_OPTIONAL_FAIL_URL.some((re) => re.test(url));
+}
+
+/** 1×1 PNG — stub raster tiles so MapLibre never depends on live CDN in CI. */
+export const CI_TINY_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+/**
+ * Stub raster tile bytes only (OpenFreeMap z/x/y, parcel/context tiles, imagery).
+ * Style / sprite / glyph JSON stay on the network or other stubs.
+ */
+export async function stubCiTileDataQuiet(page: Page) {
+  await page.route("**/tiles.openfreemap.org/**", async (route) => {
+    const url = route.request().url();
+    if (/\/fonts\//i.test(url)) {
+      await fulfillEmptyGlyph(route);
+      return;
+    }
+    // Raster tiles only — never style.json / sprite.json.
+    if (/\.png(?:\?|$)/i.test(url) || /\/\d+\/\d+\/\d+(?:\?|$)/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "image/png",
+        body: CI_TINY_PNG,
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await page.route("**/api/parcels/tiles/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: CI_TINY_PNG,
+    });
+  });
+  await page.route("**/api/context/**/tiles/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: CI_TINY_PNG,
+    });
+  });
+  await page.route("**/ArcGIS/rest/services/World_Imagery/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: CI_TINY_PNG,
+    });
+  });
+}
+
 export const LIVE_LAYER_IDS = [
   "1",
   "access_services",

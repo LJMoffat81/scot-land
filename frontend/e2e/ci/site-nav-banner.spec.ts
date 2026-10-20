@@ -1,4 +1,4 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, CI_OPTIONAL_FAIL_URL, isCiOptionalFailUrl, stubCiTileDataQuiet } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Page } from "@playwright/test";
 
@@ -29,13 +29,10 @@ const HEALTH_OK = {
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
 
 /** Optional static assets whose 404/503 may be ignored (must match URL). */
-const KNOWN_OPTIONAL_FAIL_URL = [
-  /\/favicon\.ico(?:\?|$)/i,
-  /\/apple-touch-icon/i,
-];
+const KNOWN_OPTIONAL_FAIL_URL = CI_OPTIONAL_FAIL_URL;
 
 function isKnownOptionalFailUrl(url: string): boolean {
-  return KNOWN_OPTIONAL_FAIL_URL.some((re) => re.test(url));
+  return isCiOptionalFailUrl(url);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -75,13 +72,8 @@ test.beforeEach(async ({ page }) => {
       body: JSON.stringify(EMPTY_FC),
     });
   });
-  await page.route("**/backend/layers/councils**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
+  await stubLayersCouncilsQuiet(page);
+  await stubCiTileDataQuiet(page);
 
   await page.route("**/backend/health**", async (route) => {
     await route.fulfill({

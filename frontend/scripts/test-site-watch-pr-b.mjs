@@ -176,7 +176,7 @@ assert.match(catalogCopy, /PLAIN_DESCRIPTIONS/);
 assert.match(catalogCopy, /developer_note/);
 assert.doesNotMatch(catalogCopy, /PLAIN_DESCRIPTIONS[\s\S]{0,200}PostGIS/);
 const apiPage = read(join(frontendRoot, "app/developers/api/page.tsx"));
-assert.match(apiPage, /Developer API and bulk data: coming/);
+assert.match(apiPage, /Developer API and bulk data: later/);
 assert.doesNotMatch(apiPage, /catalog-developer-notes/);
 assert.doesNotMatch(apiPage, /developer_note/);
 assert.doesNotMatch(apiPage, /\/api\//);

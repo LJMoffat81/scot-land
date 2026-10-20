@@ -115,11 +115,20 @@ function polygonInBbox(url: string): string {
 }
 
 async function stubOverviewShapes(page: Page) {
+  // FRONTEND-BATCH-1: map loads /layers/councils first; keep density + geometry.
+  const councilsBody = featureCollection([SCOTLAND_POLYGON]);
+  await page.route("**/layers/councils**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: councilsBody,
+    });
+  });
   await page.route("**/boundaries/councils**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: featureCollection([SCOTLAND_POLYGON]),
+      body: councilsBody,
     });
   });
   await page.route("**/layers/context/oil-fields**", async (route) => {

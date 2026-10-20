@@ -173,6 +173,12 @@ function layersAddQuietWhenApiDown(pathname: string): Response | null {
       { status: 200 },
     );
   }
+  // FRONTEND-BATCH-1: default-view probes /layers/councils first. When the API
+  // is down, return a non-FeatureCollection so the map falls back to
+  // /boundaries/councils without a visitor-visible 503.
+  if (pathname.endsWith("/layers/councils")) {
+    return Response.json({}, { status: 200 });
+  }
   return null;
 }
 

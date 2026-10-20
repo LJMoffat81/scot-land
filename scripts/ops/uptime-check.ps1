@@ -2,7 +2,7 @@
 # Hits https://scot-land.scot/backend/health every run; logs failures (and
 # optionally successes) under .deploy/uptime.log. No paid uptime vendor.
 #
-# Schedule every 5 minutes — see docs/HOME_DEPLOY.md:
+# Schedule every 5 minutes - see docs/HOME_DEPLOY.md:
 #   .\scripts\ops\register-uptime-task.ps1
 # Or Windows Task Scheduler / cron calling this script.
 

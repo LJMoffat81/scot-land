@@ -36,5 +36,5 @@ Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
     -Settings $settings -Description "Scot-LAND free uptime probe (https://scot-land.scot/backend/health every 5 min)" `
     -Force | Out-Null
 
-Write-Host "Registered $TaskName → $ScriptPath every 5 minutes"
+Write-Host "Registered $TaskName -> $ScriptPath every 5 minutes"
 Write-Host "Logs: $(Join-Path $RepoRoot '.deploy\uptime.log')"

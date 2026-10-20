@@ -1,5 +1,5 @@
 # Daily dated pg_dump of the home PostGIS database. Keeps the newest 14 copies.
-# No secrets in this script — password comes from the environment / .env on the PC.
+# No secrets in this script - password comes from the environment / .env on the PC.
 #
 #   .\scripts\ops\pg-dump-daily.ps1
 #   .\scripts\ops\pg-dump-daily.ps1 -Keep 14 -OutDir C:\Backups\scot-land-pg
@@ -42,7 +42,7 @@ if (-not $env:PGPASSWORD -and (Test-Path (Join-Path $RepoRoot ".env"))) {
     }
 }
 
-Write-Host "pg_dump → $outFile"
+Write-Host "pg_dump -> $outFile"
 & $PgDump --host $HostName --port $Port --username $User --dbname $Database `
     --format=custom --file $outFile
 if ($LASTEXITCODE -ne 0) {

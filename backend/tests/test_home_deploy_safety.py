@@ -150,7 +150,9 @@ def test_deploy_commands_never_stop_or_recreate_cloudflared():
         if "$CanaryPath" in stripped or "$CanaryProject" in stripped:
             continue
         if "up -d" in stripped:
-            if stripped.endswith("up -d db") or " up -d db" in stripped:
+            if " up -d --no-recreate db" in stripped or stripped.endswith(
+                "up -d --no-recreate db"
+            ):
                 assert "cloudflared" not in stripped.lower()
                 continue
             assert "--no-deps api frontend" in stripped, stripped
@@ -158,6 +160,39 @@ def test_deploy_commands_never_stop_or_recreate_cloudflared():
         if " build" in stripped:
             assert "api frontend" in stripped, stripped
             assert "cloudflared" not in stripped.lower()
+
+
+def test_deploy_home_ensures_db_detached_no_recreate():
+    """Live db ensure must be detached (-d) and non-attach (--no-recreate); never bare `up db`."""
+    text = DEPLOY_PS1.read_text(encoding="utf-8")
+    marker = 'Write-DeployLog "Ensuring live db is up'
+    idx = text.find(marker)
+    assert idx >= 0
+    window = text[idx : idx + 400]
+    assert "up -d --no-recreate db" in window
+    # Forbidden: attached `up db` (hangs PowerShell waiting on container logs).
+    assert "up db\n" not in window.replace("\r\n", "\n")
+    assert "up db\r" not in window
+    for line in window.splitlines():
+        if "Invoke-Compose" in line and " db" in line:
+            assert " -d " in f" {line} " or line.rstrip().endswith(" -d") or "up -d" in line
+            assert "--no-recreate" in line
+            assert not line.strip().endswith("up db")
+
+
+def test_ops_ps1_scripts_are_ascii_only():
+    """Windows PowerShell 5.1 misparses UTF-8 without BOM when arrows/dashes appear."""
+    ops = REPO_ROOT / "scripts" / "ops"
+    ps1_files = sorted(ops.glob("*.ps1"))
+    assert ps1_files, "expected ops/*.ps1"
+    for path in ps1_files:
+        raw = path.read_bytes()
+        if raw.startswith(b"\xef\xbb\xbf"):
+            raw = raw[3:]
+        try:
+            raw.decode("ascii")
+        except UnicodeDecodeError as exc:
+            raise AssertionError(f"{path.name} is not ASCII-only: {exc}") from exc
 
 
 def test_rebuild_home_delegates_to_deploy_home():

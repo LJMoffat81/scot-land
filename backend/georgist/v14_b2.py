@@ -30,7 +30,8 @@ FIELD_CITATIONS = {
 COLUMN_MAP = tuple(FIELD_CITATIONS)
 FIDELITY_ADAPTATION = "bedrooms_o_d1"
 LOW_PARCEL_TOKEN = "low_parcel_coverage_lt0.5"
-# e1ab6d0a §3.6 L166 RoS Price-Mean. Volume is the Sales column. Median is S-x5.
+# Volume is the Value of the Count row. The Sales column is a unit label
+# ("Number of sales"/"Price - Mean"), not a count (joint ruling, break 4).
 HOUSE_SALES_MEASUREMENT_LABELS = (
     "Count",
     "Mean",
@@ -40,6 +41,21 @@ HOUSE_SALES_MEASUREMENT_LABELS = (
 )
 HOUSE_SALES_PRICE_LABEL = "Mean"
 HOUSE_SALES_MEDIAN_LABEL = "Median"
+HOUSE_SALES_COUNT_LABEL = "Count"
+HOUSE_SALES_GEOGRAPHY = "2011 Data Zones"
+# AM-2 §1.1: the seven non-DZ2011 GeographyType values in the RoS digest.
+HOUSE_SALES_AGGREGATE_TYPES = (
+    "2011 Intermediate Zones",
+    "Electoral Wards",
+    "Scottish Parliamentary Constituencies",
+    "Council Areas",
+    "Health Board Areas",
+    "Scottish Island Regions",
+    "Country",
+)
+# Copied from ros_c14_input.py L29-30 (citation only; no import edge).
+_DZ2011_MIN = "S01006506"
+_DZ2011_MAX = "S01013481"
 HOUSE_SALES_HEADERS = (
     "GeographyCode",
     "GeographyName",
@@ -89,6 +105,31 @@ class B2Error(ValueError):
 def read_value_cell(value: str) -> str:
     """Value-column hook. The label scan and the year screen do not call it."""
     return value
+
+
+def read_count_cell(value: str) -> str:
+    """Count Value hook. Separate from read_value_cell so price spies stay at 0."""
+    return value
+
+
+def _count_int(text: str, row_number: int) -> int:
+    """ASCII digits only. The cell text is never printed (r3)."""
+    cleaned = text.strip()
+    index = 0
+    while index < len(cleaned):
+        ch = cleaned[index]
+        if ch < "0" or ch > "9":
+            raise B2Error(
+                f"B2_HOUSE_SALES: ERROR: count row {row_number}: "
+                "expected integer >=0, got non-integer"
+            )
+        index += 1
+    if cleaned == "":
+        raise B2Error(
+            f"B2_HOUSE_SALES: ERROR: count row {row_number}: "
+            "expected integer >=0, got non-integer"
+        )
+    return int(cleaned)
 
 
 def _jsonable(value):
@@ -550,45 +591,136 @@ def _label_list() -> str:
     return ", ".join(HOUSE_SALES_MEASUREMENT_LABELS)
 
 
-def adapt_house_sales(path: Path) -> list[dict]:
-    """Long SDMX rows to zone, year, n_sales, price, median_price."""
+def adapt_house_sales(path: Path, *, am2: dict | None = None) -> list[dict]:
+    """Long SDMX rows to complete zone-years only. AM-2 fills ``am2`` when given.
+
+    All classification stays in this body (no helper, no comprehension) so
+    tests/test_v14_gaps_pr3c.py ``_banned_file_reads`` keeps biting.
+    """
     header, rows = _house_sales_rows(path)
     _check_header("house_sales", header)
+    geo_i = header.index("GeographyType")
+    code_i = header.index("GeographyCode")
+    meas_i = header.index("Measurement")
+    value_i = header.index("Value")
     grouped: dict[tuple[str, int], dict] = {}
     order: list[tuple[str, int]] = []
+    labels_by_key: dict[tuple[str, int], dict[str, int]] = {}
+    count_by_key: dict[tuple[str, int], int] = {}
+    skipped_geography: dict[str, int] = {}
+    zones_present: dict[str, bool] = {}
     for row_number, row in enumerate(rows, start=1):
         year = screen_house_sales_year(row, header, row_number)
         _require_width("house_sales", header, row, row_number)
-        label = _require_value("house_sales", "Measurement", _field(row, header.index("Measurement")), row_number)
+        geo = _require_value("house_sales", "GeographyType", _field(row, geo_i), row_number)
+        if geo in HOUSE_SALES_AGGREGATE_TYPES:
+            if geo not in skipped_geography:
+                skipped_geography[geo] = 0
+            skipped_geography[geo] = skipped_geography[geo] + 1
+            continue
+        if geo != HOUSE_SALES_GEOGRAPHY:
+            raise B2Error(
+                f"B2_HOUSE_SALES: ERROR: geography row {row_number}: "
+                "expected 2011 Data Zones, got other type"
+            )
+        zone = _require_value("house_sales", "GeographyCode", _field(row, code_i), row_number)
+        if len(zone) == 9:
+            if zone < _DZ2011_MIN or zone > _DZ2011_MAX:
+                raise B2Error(
+                    f"B2_HOUSE_SALES: ERROR: vintage row {row_number}: "
+                    f"expected S01006506-S01013481, got {zone}"
+                )
+        zones_present[zone] = True
+        label = _require_value("house_sales", "Measurement", _field(row, meas_i), row_number)
         if label not in HOUSE_SALES_MEASUREMENT_LABELS:
             raise B2Error(
                 f"B2_HOUSE_SALES: ERROR: measurement: expected one of {_label_list()}, got {label}"
             )
-        zone = _require_value("house_sales", "GeographyCode", _field(row, header.index("GeographyCode")), row_number)
         key = (zone, year)
         if key not in grouped:
             grouped[key] = {"zone": zone, "year": year}
             order.append(key)
+            labels_by_key[key] = {}
             for name in header:
                 if name in HOUSE_SALES_HEADERS or name == "note":
                     continue
                 cell = _field(row, header.index(name))
                 if cell is not None and cell.strip() != "":
                     grouped[key][name] = cell.strip()
+        seen = labels_by_key[key]
+        if label in seen:
+            raise B2Error(
+                f"B2_HOUSE_SALES: ERROR: measurement row {row_number}: "
+                f"expected one {label} per zone-year, got duplicate"
+            )
+        seen[label] = row_number
         item = grouped[key]
-        if label == HOUSE_SALES_PRICE_LABEL:
-            item["price"] = read_value_cell(_require_value("house_sales", "Value", _field(row, header.index("Value")), row_number))
-            item["n_sales"] = _require_value("house_sales", "Sales", _field(row, header.index("Sales")), row_number)
+        if label == HOUSE_SALES_COUNT_LABEL:
+            count_text = _require_value(
+                "house_sales", "Value", _field(row, value_i), row_number
+            )
+            count_by_key[key] = _count_int(read_count_cell(count_text), row_number)
+            item["n_sales"] = str(count_by_key[key])
+        elif label == HOUSE_SALES_PRICE_LABEL:
+            item["price"] = read_value_cell(
+                _require_value("house_sales", "Value", _field(row, value_i), row_number)
+            )
         elif label == HOUSE_SALES_MEDIAN_LABEL:
             item["median_price"] = read_value_cell(
-                _require_value("house_sales", "Value", _field(row, header.index("Value")), row_number)
+                _require_value("house_sales", "Value", _field(row, value_i), row_number)
             )
+        else:
+            _require_value("house_sales", "Value", _field(row, value_i), row_number)
     projected = []
+    excluded = []
     for key in order:
         item = grouped[key]
-        if "price" not in item or "n_sales" not in item or "median_price" not in item:
-            raise _error("house_sales", "measurement", _label_list(), "incomplete")
-        projected.append(item)
+        seen = labels_by_key[key]
+        label_count = len(seen)
+        if label_count == 5 and HOUSE_SALES_COUNT_LABEL in seen:
+            complete = True
+            for required in HOUSE_SALES_MEASUREMENT_LABELS:
+                if required not in seen:
+                    complete = False
+                    break
+            if complete:
+                projected.append(item)
+                continue
+        if label_count == 1 and HOUSE_SALES_COUNT_LABEL in seen:
+            count_value = count_by_key[key]
+            if count_value == 0:
+                excluded.append(
+                    {
+                        "zone": key[0],
+                        "year": key[1],
+                        "reason": "no_sales",
+                        "count": count_value,
+                    }
+                )
+                continue
+            if count_value <= 4:
+                excluded.append(
+                    {
+                        "zone": key[0],
+                        "year": key[1],
+                        "reason": "suppressed_price",
+                        "count": count_value,
+                    }
+                )
+                continue
+            raise B2Error(
+                f"B2_HOUSE_SALES: ERROR: am2 {key[0]} {key[1]}: "
+                "expected Count 0-4 with no price measures, got Count >=5"
+            )
+        raise _error("house_sales", "measurement", _label_list(), "incomplete")
+    if am2 is not None:
+        present = []
+        for code in zones_present:
+            present.append(code)
+        present.sort()
+        am2["excluded"] = excluded
+        am2["zones_present"] = present
+        am2["skipped_geography"] = skipped_geography
     return projected
 
 

@@ -67,9 +67,35 @@ def _sales_rows() -> list[list[str]]:
         for year in (2021, 2022, 2023):
             price = str(10 + index)
             common = [zone, "SYNTHETIC zone", "2011 Data Zones", str(year)]
-            tail = ["GBP", price, "6", "c", str(40 + index), "1.0", "IZ1", "CA1", "urban", "0.2"]
-            rows.append([*common, "Mean", *tail])
-            rows.append([*common, "Median", *tail])
+            count_tail = [
+                "Number of sales",
+                "6",
+                "Number of sales",
+                "c",
+                str(40 + index),
+                "1.0",
+                "IZ1",
+                "CA1",
+                "urban",
+                "0.2",
+            ]
+            price_tail = [
+                "GBP",
+                price,
+                "6",
+                "c",
+                str(40 + index),
+                "1.0",
+                "IZ1",
+                "CA1",
+                "urban",
+                "0.2",
+            ]
+            rows.append([*common, "Count", *count_tail])
+            rows.append([*common, "Mean", *price_tail])
+            rows.append([*common, "Median", *price_tail])
+            rows.append([*common, "Lower Quartile", *price_tail])
+            rows.append([*common, "Upper Quartile", *price_tail])
     return rows
 
 

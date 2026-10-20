@@ -125,6 +125,15 @@ def test_q2_quoted_datecode(tmp_path: Path) -> None:
         'S01,zone,2011 Data Zones,"2023",Median,GBP,1,6',
     )
     assert scan_measurement_labels(path) == ["Mean", "Median"]
+    # A2a complete set (fixture data only; year assertion unchanged).
+    path = _house_path(
+        tmp_path,
+        'S01,zone,2011 Data Zones,"2023",Count,Number of sales,6,Number of sales',
+        'S01,zone,2011 Data Zones,"2023",Mean,GBP,1,6',
+        'S01,zone,2011 Data Zones,"2023",Median,GBP,1,6',
+        'S01,zone,2011 Data Zones,"2023",Lower Quartile,GBP,1,6',
+        'S01,zone,2011 Data Zones,"2023",Upper Quartile,GBP,1,6',
+    )
     rows = adapt_house_sales(path)
     assert rows[0]["year"] == 2023
 

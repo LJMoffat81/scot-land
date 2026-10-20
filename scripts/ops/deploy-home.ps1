@@ -1,4 +1,4 @@
-# Scot-LAND — safe home auto-deploy (Cloudflare Tunnel origin).
+# Scot-LAND - safe home auto-deploy (Cloudflare Tunnel origin).
 #
 # Build new images first while the live stack keeps serving. Start a canary on
 # :8001/:3001, require /backend/health, then swap live. On failure: roll back to
@@ -8,7 +8,7 @@
 # Usage (from repo root, on the home PC):
 #   .\scripts\ops\deploy-home.ps1
 #   .\scripts\ops\deploy-home.ps1 -Pull
-#   .\scripts\ops\rebuild-home.ps1   # thin wrapper → this script
+#   .\scripts\ops\rebuild-home.ps1   # thin wrapper -> this script
 #
 # State (gitignored): .deploy/last-good-sha, .deploy/deploy.log
 # Image tags: scot-land-home-{api,frontend}:local and :last-good
@@ -127,7 +127,7 @@ function Test-DockerImageExists {
 }
 
 function Save-LastGoodImages {
-    # Snapshot :local → :last-good before a build overwrites :local.
+    # Snapshot :local -> :last-good before a build overwrites :local.
     $pairs = @(
         @{ Src = $ApiImageLocal; Dst = $ApiImageLastGood },
         @{ Src = $FrontendImageLocal; Dst = $FrontendImageLastGood }
@@ -141,7 +141,7 @@ function Save-LastGoodImages {
         if ($LASTEXITCODE -ne 0) {
             throw "docker tag $($p.Src) $($p.Dst) failed with exit $LASTEXITCODE"
         }
-        Write-DeployLog "Tagged $($p.Src) → $($p.Dst)"
+        Write-DeployLog "Tagged $($p.Src) -> $($p.Dst)"
     }
 }
 
@@ -161,7 +161,7 @@ function Restore-LastGoodImages {
             Write-DeployLog "docker tag $($p.Src) $($p.Dst) failed with exit $LASTEXITCODE" "ERROR"
             return $false
         }
-        Write-DeployLog "Retagged $($p.Src) → $($p.Dst)"
+        Write-DeployLog "Retagged $($p.Src) -> $($p.Dst)"
     }
     return $true
 }
@@ -192,7 +192,7 @@ function Invoke-GitLastGood {
 function Invoke-Rollback {
     param(
         [string]$Reason,
-        # When $false, live was never swapped — drop canary, reset main, retag images.
+        # When $false, live was never swapped - drop canary, reset main, retag images.
         [bool]$RestackLive = $true
     )
     $lastGood = Read-LastGoodSha
@@ -223,14 +223,14 @@ function Invoke-Rollback {
     }
 
     try {
-        # Images already retagged to :local — recreate app services only (never cloudflared/db).
+        # Images already retagged to :local - recreate app services only (never cloudflared/db).
         Invoke-Compose -f $ComposePath up -d --no-build --no-deps api frontend
         $ok = Wait-HttpOk -Url "$LiveFrontendUrl$HealthPath" -TimeoutSec $HealthTimeoutSec -Label "live $HealthPath after rollback"
         Assert-CloudflaredUntouched
         if ($ok) {
-            Write-DeployLog "Rollback restored live stack at $lastGood (retag :last-good → :local)"
+            Write-DeployLog "Rollback restored live stack at $lastGood (retag :last-good -> :local)"
         } else {
-            Write-DeployLog "Rollback completed git+retag+compose but health still failing — tunnel left running" "ERROR"
+            Write-DeployLog "Rollback completed git+retag+compose but health still failing - tunnel left running" "ERROR"
         }
         return $ok
     } catch {
@@ -282,7 +282,7 @@ if ((Read-LastGoodSha) -and -not $Pull) {
 
 try {
     Write-DeployLog "Ensuring live db is up (old api/frontend keep serving)"
-    Invoke-Compose -f $ComposePath up -d db
+    Invoke-Compose -f $ComposePath up -d --no-recreate db
 
     Write-DeployLog "Building new api/frontend images (live containers keep running; cloudflared untouched)"
     Invoke-Compose -f $ComposePath build api frontend
@@ -302,7 +302,7 @@ try {
         exit 1
     }
 
-    Write-DeployLog "Canary healthy — swapping live api/frontend only (no cloudflared, no bare full-stack up)"
+    Write-DeployLog "Canary healthy - swapping live api/frontend only (no cloudflared, no bare full-stack up)"
     Invoke-Compose -f $ComposePath up -d --no-build --no-deps api frontend
 
     $liveOk = Wait-HttpOk -Url "$LiveFrontendUrl$HealthPath" -TimeoutSec $HealthTimeoutSec -Label "live $HealthPath"

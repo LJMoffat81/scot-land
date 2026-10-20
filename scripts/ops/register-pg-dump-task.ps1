@@ -10,7 +10,7 @@
 #   - Run whether user is logged on or not (store the Windows password in the task).
 #   - Ensure PostgreSQL client tools (pg_dump) are on PATH for that account.
 #   - PGPASSWORD / POSTGRES_PASSWORD must be available to the task (User env or
-#     a machine-local .env next to the repo — never commit secrets).
+#     a machine-local .env next to the repo - never commit secrets).
 
 [CmdletBinding()]
 param(
@@ -43,5 +43,5 @@ Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger `
     -Description "Scot-LAND daily dated pg_dump (keeps 14 copies; HOME-TUNNEL)" `
     -Force | Out-Null
 
-Write-Host "Registered $TaskName → $ScriptPath daily at $At"
+Write-Host "Registered $TaskName -> $ScriptPath daily at $At"
 Write-Host "Dumps default to <repo>\.deploy\pg-dumps\ (gitignored). Keep=14."

@@ -1,4 +1,4 @@
-# Scot-LAND — one-time deploy helper
+# Scot-LAND - one-time deploy helper
 # Requires: Node.js, Railway account, Vercel account
 
 $ErrorActionPreference = "Stop"
@@ -8,7 +8,7 @@ Write-Host "=== Scot-LAND deploy ===" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Host "Step 1: Railway (API)" -ForegroundColor Yellow
-Write-Host "  1. Go to https://railway.app → New Project → Deploy from GitHub"
+Write-Host "  1. Go to https://railway.app -> New Project -> Deploy from GitHub"
 Write-Host "  2. Select scot-land (uses railway.toml)"
 Write-Host "  3. Set variables: ALLOWED_ORIGINS, ALLOW_VERCEL_PREVIEWS=true"
 Write-Host "  4. Copy the public URL"
@@ -26,13 +26,13 @@ if ($railwayUrl) {
         $health = Invoke-RestMethod -Uri "$railwayUrl/health" -TimeoutSec 15
         Write-Host "  OK: version $($health.version), signoff $($health.economist_signoff_status)" -ForegroundColor Green
     } catch {
-        Write-Host "  API not reachable yet — deploy Railway first." -ForegroundColor Red
+        Write-Host "  API not reachable yet - deploy Railway first." -ForegroundColor Red
     }
 }
 
 Write-Host ""
 Write-Host "Step 2: Vercel (frontend)" -ForegroundColor Yellow
-Write-Host "  1. Go to https://vercel.com → Import scot-land"
+Write-Host "  1. Go to https://vercel.com -> Import scot-land"
 Write-Host "  2. Root Directory: frontend"
 Write-Host "  3. Env: NEXT_PUBLIC_API_URL = your Railway URL"
 Write-Host ""

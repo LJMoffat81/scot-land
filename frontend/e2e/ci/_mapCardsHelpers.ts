@@ -354,6 +354,9 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       body: JSON.stringify(HEALTH_OK),
     });
   });
+  // FRONTEND-BATCH-1: register last so it wins over catch-all 404 stubs that
+  // callers may have attached earlier in the same beforeEach.
+  await stubLayersCouncilsQuiet(page);
 }
 
 export async function openMap(page: Page, path = "/") {

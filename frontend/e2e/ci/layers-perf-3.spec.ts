@@ -6,7 +6,6 @@ import {
   openLayers,
   openMap,
   registerOpenFreeMapFontStub,
-  stubLayersCouncilsQuiet,
   stubMapCardsBackend,
   waitForMap,
 } from "./_mapCardsHelpers";
@@ -108,7 +107,6 @@ test.describe("LAYERS-PERF-3", () => {
       features: [OUTLINE],
     });
     await stubMapCardsBackend(page);
-    await stubLayersCouncilsQuiet(page);
     await page.route("**/layers/open/naturescot-designations**", async (route) => {
       await route.fulfill({
         status: 200,
@@ -127,7 +125,8 @@ test.describe("LAYERS-PERF-3", () => {
     await openMap(page);
     await waitForMap(page);
     await jump(page, 6);
-    // FRONTEND-BATCH-1: wait for zoom settle after the extra /layers/councils fetch.
+    // FRONTEND-BATCH-1 diagnosis: people/km² adds /layers/councils; wait for
+    // zoom ≥6 before the chip assert (test timing, not a product bug).
     await expect
       .poll(async () =>
         page.evaluate(() => {
@@ -142,9 +141,9 @@ test.describe("LAYERS-PERF-3", () => {
     await page.getByTestId("layer-toggle-designations").click();
 
     const chip = page.getByTestId("simplified-outlines-chip");
-    await expect(chip).toBeVisible({ timeout: 30_000 });
     await expect(chip).toHaveText(
       "Simplified outlines at this zoom. Zoom in for detail.",
+      { timeout: 20_000 },
     );
 
     await jump(page, 10);

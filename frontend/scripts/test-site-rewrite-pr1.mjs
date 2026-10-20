@@ -107,6 +107,11 @@ assert.ok(
 );
 const apiPage = readSrc("app/developers/api/page.tsx");
 assert.match(apiPage, /Developer API and bulk data: later/);
+assert.match(
+  apiPage,
+  /Bulk data and the API may be paid services\s+later\./,
+);
+assert.doesNotMatch(apiPage, /Bulk data and the API will be paid/);
 assert.match(apiPage, /Register interest/);
 assert.match(apiPage, /href="\/about#contact"/);
 assert.doesNotMatch(apiPage, /\/swagger-ui\/swagger-ui-bundle\.js/);

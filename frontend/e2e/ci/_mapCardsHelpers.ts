@@ -204,23 +204,6 @@ export type StubOpts = {
 };
 
 /**
- * FRONTEND-BATCH-1 — quiet /layers/councils so map chrome does not 404/503.
- * Register after catch-all stubs (Playwright LIFO: last wins).
- */
-export async function stubLayersCouncilsQuiet(
-  page: Page,
-  body: typeof EMPTY_FC = EMPTY_FC,
-) {
-  await page.route("**/layers/councils**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(body),
-    });
-  });
-}
-
-/**
  * Quiet backend + gbp-live + catalog so CI has no live FastAPI.
  * Routes registered last win for overlapping patterns in Playwright LIFO.
  */
@@ -354,9 +337,6 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       body: JSON.stringify(HEALTH_OK),
     });
   });
-  // FRONTEND-BATCH-1: register last so it wins over catch-all 404 stubs that
-  // callers may have attached earlier in the same beforeEach.
-  await stubLayersCouncilsQuiet(page);
 }
 
 export async function openMap(page: Page, path = "/") {

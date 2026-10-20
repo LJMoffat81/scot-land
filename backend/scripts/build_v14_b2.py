@@ -132,8 +132,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     try:
         payload = build(args)
-    except (B2Error, OSError, ValueError, KeyError) as exc:
+    except B2Error as exc:  # our own messages: never contain a Value cell
         sys.stderr.write(str(exc) + "\n")
+        return 1
+    except Exception as exc:  # anything else: type name only
+        sys.stderr.write(
+            f"B2: ERROR: build: expected B2Error, got {type(exc).__name__} (message withheld)\n"
+        )
         return 1
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(_jsonable(payload), indent=2, sort_keys=True) + "\n", encoding="utf-8")

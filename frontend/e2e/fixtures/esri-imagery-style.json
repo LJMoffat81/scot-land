@@ -1,0 +1,35 @@
+{
+  "version": 8,
+  "name": "ArcGIS Imagery (CSP-ESRI-1 fixture)",
+  "sprite": "https://cdn.arcgis.com/sharing/rest/content/items/csp-esri-1-fixture/resources/styles/root",
+  "glyphs": "https://basemaps-api.arcgis.com/arcgis/rest/services/World_Basemap_v2/VectorTileServer/resources/fonts/{fontstack}/{range}.pbf",
+  "sources": {
+    "esri": {
+      "type": "raster",
+      "tiles": [
+        "https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+      ],
+      "tileSize": 256,
+      "attribution": "Source: Esri, Vantor, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community"
+    },
+    "esri-labels": {
+      "type": "vector",
+      "url": "https://basemaps-api.arcgis.com/arcgis/rest/services/World_Basemap_v2/VectorTileServer",
+      "attribution": "Sources: Esri, TomTom, Garmin, FAO, NOAA, USGS, © OpenStreetMap contributors, and the GIS User Community"
+    }
+  },
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": { "background-color": "#0b1a2a" }
+    },
+    {
+      "id": "esri-imagery",
+      "type": "raster",
+      "source": "esri",
+      "minzoom": 0,
+      "maxzoom": 22
+    }
+  ]
+}

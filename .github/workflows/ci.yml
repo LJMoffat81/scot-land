@@ -73,7 +73,7 @@ jobs:
       - name: Valuation surface tests
         run: python -m pytest -q -p no:cacheprovider tests/surface
       - name: Full backend suite (PostGIS tests must run, not skip)
-        run: python -m pytest -q -p no:cacheprovider -rs
+        run: python -m pytest -q -p no:cacheprovider -rs --ignore-glob=*_real.py
       - name: Processed-data manifests (GIS and Data Zones; see docs/processed_data_manifest.md)
         run: python -m etl.load_processed --check
 

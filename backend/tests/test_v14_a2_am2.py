@@ -592,6 +592,82 @@ def test_t21_entry_points_adapt_and_main(
     _run_main_refuse(tmp_path, monkeypatch, capsys, [_row(ZONE, 2023, "Count", "5")], msg)
 
 
+def test_t21_t2_no_sales_via_main(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """T21/Auditor: T2 through build_v14_b2.main as well as adapt."""
+    rows = [_row(ZONE, 2023, "Count", "0")]
+    rows.extend(_complete(ZONE, 2021))
+    rows.extend(_complete(ZONE, 2022))
+    sales = _write(tmp_path / "h.csv", rows)
+    args = _stub_build(monkeypatch, sales)
+    _fit_spy(monkeypatch)
+    payload = build(args)
+    assert any(
+        item["zone"] == ZONE and item["reason"] == "no_sales"
+        for item in payload["am2"]["excluded"]
+    )
+
+
+def test_t21_t4_partial_via_main(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """T21/Auditor: T4 partial measures through main."""
+    rows = [
+        _row(ZONE, 2023, "Count", "6"),
+        _row(ZONE, 2023, "Mean", "10"),
+        _row(ZONE, 2023, "Median", "9"),
+    ]
+    _run_main_refuse(tmp_path, monkeypatch, capsys, rows, INCOMPLETE)
+
+
+@pytest.mark.parametrize("bad", ["4.0", "-1"])
+def test_t21_t5_non_integer_via_main(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    bad: str,
+) -> None:
+    """T21/Auditor: T5 through main."""
+    msg = "B2_HOUSE_SALES: ERROR: count row 1: expected integer >=0, got non-integer"
+    _run_main_refuse(tmp_path, monkeypatch, capsys, [_row(ZONE, 2023, "Count", bad)], msg)
+
+
+def test_t21_t6_duplicate_via_main(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """T21/Auditor: T6 through main."""
+    msg = (
+        "B2_HOUSE_SALES: ERROR: measurement row 2: expected one Count "
+        "per zone-year, got duplicate"
+    )
+    _run_main_refuse(
+        tmp_path,
+        monkeypatch,
+        capsys,
+        [_row(ZONE, 2023, "Count", "3"), _row(ZONE, 2023, "Count", "2")],
+        msg,
+    )
+
+
+def test_t21_t10_iz_filter_via_main(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """T21/Auditor: T10 IZ filter through main."""
+    rows = []
+    rows.append(_row("IZ01", 2023, "Count", "3", geo="2011 Intermediate Zones"))
+    rows.extend(_complete("IZ02", 2023, geo="2011 Intermediate Zones"))
+    rows.extend(_complete(ZONE, 2021))
+    rows.extend(_complete(ZONE, 2022))
+    sales = _write(tmp_path / "h.csv", rows)
+    args = _stub_build(monkeypatch, sales)
+    _fit_spy(monkeypatch)
+    payload = build(args)
+    assert payload["am2"]["skipped_geography"]["2011 Intermediate Zones"] == 6
+    assert "IZ01" not in payload["am2"]["zones_present"]
+    assert "IZ02" not in payload["am2"]["zones_present"]
+
+
 # --- T25 SENTINEL (TE gap: red-first) ---
 
 

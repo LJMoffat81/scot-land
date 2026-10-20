@@ -350,7 +350,7 @@ test.describe("WORDING-BATCH-1 developers", () => {
 
         await page.goto("/developers/api");
         await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-          "Developer API and bulk data: coming",
+          "Developer API and bulk data: later",
         );
         await expect(page.getByTestId("catalog-developer-notes")).toHaveCount(0);
         await expect(page.getByTestId("api-register-interest")).toHaveCount(0);

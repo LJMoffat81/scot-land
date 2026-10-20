@@ -18,19 +18,18 @@ export const metadata: Metadata = {
 };
 
 const ROLES = [
-  "Georgist economics: keeps the work true to land value principles.",
-  "Valuation: models land values from sales and building costs.",
-  "Econometrics: tests how well the land value model fits the evidence.",
-  "Methods and statistics: checks that each method is sound and written down before it is used.",
-  "GIS: handles maps, boundaries and how data is joined to areas.",
-  "Data scouting: finds public data and checks its licence.",
-  "Building costs: estimates what it would cost to rebuild homes, so land can be separated from buildings.",
-  "Design: the look of the site and maps.",
-  "Wording: keeps every page clear and plain.",
-  "Quality checks: tests the live site after every change.",
-  "Engineering lead: writes specs and reviews code",
-  "Coordination: plans work and checks it against our rules",
-  "Outreach: drafts messages, only sent after approval",
+  "Engineering Lead: runs the building work, writes specs and reviews code.",
+  "Wording & UX Reviewer: keeps every page clear and easy to use.",
+  "Georgist Economist: keeps the work true to land value principles.",
+  "Land Value Econometrician: models land values from sales and building costs, and tests how well the model fits.",
+  "GIS & Open Data: finds public data, checks its licence and joins it to areas.",
+  "Test Engineer: writes the automated tests that guard every change.",
+  "Live Site Checker: tests the live site after every change.",
+  "Outside Comms: drafts outside messages, which are only sent once a person approves them.",
+  "Methods Auditor: checks each method is sound and written down before it is used.",
+  "Property Tax & Land Law: checks the work against tax and land law.",
+  "Visual Designer: looks after the look of the site and maps.",
+  "Project Lead: plans the work and holds it to our rules.",
 ] as const;
 
 const GAPS = [
@@ -57,9 +56,11 @@ export default function HowWeBuiltThisPage() {
       <h1>How we built this</h1>
       <ResearchBanner />
       <div data-testid="how-we-built-copy">
-        <p>Scot-LAND is led by Laurie Moffat.</p>
-        <p>The map runs on the Scotland National Wealth Engine, which we are building step by step.</p>
-        <p>The research and checking are done by a team of specialist AI assistants. Each has one job:</p>
+        <div data-testid="how-we-built-intro">
+          <p>Scot-LAND is led by Laurie Moffat, an independent volunteer.</p>
+          <p>The map runs on the Scotland National Wealth Engine, which we are building step by step.</p>
+          <p>The research and checking are done by a team of specialist AI assistants. Each has one job:</p>
+        </div>
         <ul data-testid="how-we-built-roles">
           {ROLES.map((line) => (
             <li key={line}>{line}</li>

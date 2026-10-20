@@ -10,9 +10,10 @@ registerOpenFreeMapFontStub();
  * Widths 1280 and 390. No skips. Console errors fail.
  */
 
-const TEASER_H1 = "Developer API and bulk data: coming";
+const TEASER_H1 = "Developer API and bulk data: later";
+// Months are case-sensitive so modal "may" in the paid-services line is not a date.
 const DATE_RE =
-  /\b(?:19|20)\d{2}\b|\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\b/i;
+  /\b(?:19|20)\d{2}\b|\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\b/;
 
 const HEALTH_OK = {
   status: "ok",
@@ -94,7 +95,9 @@ for (const viewport of [
       await expect(teaser).toContainText(
         "Sources and method notes for every figure",
       );
-      await expect(teaser).toContainText("The map stays free to use.");
+      await expect(teaser).toContainText(
+        "The map stays free to use. Bulk data and the API may be paid services later.",
+      );
       await expect(page.getByTestId("api-register-interest")).toHaveCount(0);
       await expect(page.getByRole("link", { name: "Register interest" })).toHaveCount(0);
       await expect(page.locator('a[href="/about#contact"]')).toHaveCount(0);

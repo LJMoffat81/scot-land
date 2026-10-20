@@ -27,10 +27,14 @@ for (const viewport of [
 
       await page.goto("/how-we-built-this");
       const copy = page.getByTestId("how-we-built-copy");
-      await expect(copy).toContainText("led by Laurie Moffat");
+      await expect(copy).toContainText(
+        "led by Laurie Moffat, an independent volunteer",
+      );
       await expect(copy).toContainText(BUILT_LINE);
       const builtText = await copy.innerText();
-      const ledAt = builtText.indexOf("led by Laurie Moffat");
+      const ledAt = builtText.indexOf(
+        "led by Laurie Moffat, an independent volunteer",
+      );
       const engineAt = builtText.indexOf(BUILT_LINE);
       expect(ledAt).toBeGreaterThanOrEqual(0);
       expect(engineAt).toBeGreaterThan(ledAt);
@@ -39,7 +43,7 @@ for (const viewport of [
       const teaser = page.getByTestId("api-teaser");
       await expect(teaser).toContainText(API_LINE);
       const teaserText = await teaser.innerText();
-      const headingAt = teaserText.indexOf("Developer API and bulk data: coming");
+      const headingAt = teaserText.indexOf("Developer API and bulk data: later");
       const lineAt = teaserText.indexOf(API_LINE);
       expect(lineAt).toBeGreaterThan(headingAt);
       expect(teaserText).not.toContain("Register interest");

@@ -10,7 +10,7 @@ export default function ApiTeaserPage() {
   return (
     <main className="downloads-page developers-page" data-testid="api-teaser">
       <SiteNav current="developers" />
-      <h1>Developer API and bulk data: coming</h1>
+      <h1>Developer API and bulk data: later</h1>
       <ResearchBanner />
       <p>The API and bulk data will come from the Scotland National Wealth Engine.</p>
       <p>We plan to offer a developer API and bulk downloads. They will cover:</p>
@@ -21,7 +21,10 @@ export default function ApiTeaserPage() {
         <li>Map layers we use, where licences allow</li>
         <li>Sources and method notes for every figure</li>
       </ul>
-      <p>The map stays free to use.</p>
+      <p>
+        The map stays free to use. Bulk data and the API may be paid services
+        later.
+      </p>
       {contactFormEnabled() ? (
         <p>
           <a href="/about#contact" data-testid="api-register-interest">

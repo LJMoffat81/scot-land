@@ -368,7 +368,7 @@ test.describe("POST-SHARE-1 SW-033 swagger badge", () => {
 
     await page.goto("/developers/api");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-      "Developer API and bulk data: coming",
+      "Developer API and bulk data: later",
     );
     await expect(page.locator(".swagger-ui")).toHaveCount(0);
     await expect(page.locator("body")).not.toContainText("wealth-api-boot");

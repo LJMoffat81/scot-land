@@ -10,7 +10,7 @@ import {
 export { CONTACT_FORM_FLAG_ENV, contactFormEnabled };
 
 export const CONTACT_FORM_ID_ENV = "NEXT_PUBLIC_CONTACT_FORM_ID";
-export const CONTACT_SOON = "Contact form coming soon";
+export const CONTACT_SOON = "Contact form not open yet. Please check back.";
 export const CONTACT_USE_LINE = "We use your message only to reply to you.";
 export const CONTACT_SENT = "Message sent.";
 export const CONTACT_ERROR = "The message could not be sent. Try again.";

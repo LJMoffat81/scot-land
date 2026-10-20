@@ -6,6 +6,7 @@ rebuild under O-D1. A field with no frozen citation is refused.
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import json
 from decimal import Decimal, ROUND_HALF_EVEN
@@ -150,11 +151,32 @@ def _assert_injected_pin(schema: str, path: Path) -> None:
         )
 
 
-def parse_data_rows(path: Path) -> list[list[str]]:
-    """Data rows only. The header guard does not call this."""
+def parse_data_rows(path: Path, schema: str | None = None) -> list[list[str]]:
+    """Data rows only. The header guard does not call this.
+
+    One record per line via ``csv.reader`` (strict). Multi-line quoted fields
+    are not supported in these schema files.
+    """
     text = path.read_text(encoding="utf-8")
     lines = [line for line in text.splitlines() if line.strip() and not line.startswith("#")]
-    return [line.split(",") for line in lines[1:]]
+    if schema is None:
+        prefix = "B2_CSV"
+    else:
+        prefix = f"B2_{SCHEMA_TOKEN[schema]}"
+    rows: list[list[str]] = []
+    for row_number, line in enumerate(lines[1:], start=1):
+        try:
+            parsed = next(csv.reader([line], strict=True))
+        except csv.Error:
+            if line.count('"') % 2 == 1:
+                raise B2Error(
+                    f"{prefix}: ERROR: row {row_number}: expected closing quote, got end of file"
+                ) from None
+            raise B2Error(
+                f"{prefix}: ERROR: row {row_number}: expected quote only at field start, got stray quote"
+            ) from None
+        rows.append(parsed)
+    return rows
 
 
 def _csv_rows(path: Path, schema: str) -> tuple[list[str], list[list[str]]]:
@@ -172,7 +194,7 @@ def _csv_rows(path: Path, schema: str) -> tuple[list[str], list[list[str]]]:
     )
     if refusal is not None:
         raise B2Error(refusal)
-    return list(header), parse_data_rows(path)
+    return list(header), parse_data_rows(path, schema)
 
 
 def _check_header(schema: str, header: Sequence[str]) -> None:
@@ -245,6 +267,8 @@ class _HouseCursor:
     def __init__(self, handle) -> None:
         self._handle = handle
         self._held: str | None = None
+        # 1-based data-record number; header stays 0 (R-UNTERM / R-STRAY).
+        self.row_number = 0
 
     def read(self) -> str:
         if self._held is not None:
@@ -284,8 +308,30 @@ def _finish_house_newline(cursor: _HouseCursor, char: str) -> None:
         cursor.unread(nxt)
 
 
+def _quote_refusal(cursor: _HouseCursor, kind: str) -> B2Error:
+    n = cursor.row_number
+    if kind == "unterm":
+        return B2Error(f"B2_HOUSE_SALES: ERROR: row {n}: expected closing quote, got end of file")
+    return B2Error(
+        f"B2_HOUSE_SALES: ERROR: row {n}: expected quote only at field start, got stray quote"
+    )
+
+
+def _close_quoted_field(cursor: _HouseCursor) -> str:
+    """After a closing quote, only comma / CR / LF / EOF are allowed."""
+    nxt = cursor.read()
+    if nxt == ",":
+        return "comma"
+    if nxt in "\r\n":
+        _finish_house_newline(cursor, nxt)
+        return "eol"
+    if nxt == "":
+        return "eof"
+    raise _quote_refusal(cursor, "stray")
+
+
 def _house_field(cursor: _HouseCursor) -> tuple[str, str]:
-    """Return ``(text, kind)`` with kind in comma, eol, eof."""
+    """Return ``(text, kind)`` with kind in comma, eol, eof. RFC 4180 quotes."""
     char = cursor.read()
     if char == "":
         return "", "eof"
@@ -294,6 +340,20 @@ def _house_field(cursor: _HouseCursor) -> tuple[str, str]:
         return "", "eol"
     if char == ",":
         return "", "comma"
+    if char == '"':
+        pieces: list[str] = []
+        while True:
+            char = cursor.read()
+            if char == "":
+                raise _quote_refusal(cursor, "unterm")
+            if char == '"':
+                doubled = cursor.read()
+                if doubled == '"':
+                    pieces.append('"')
+                    continue
+                cursor.unread(doubled)
+                return "".join(pieces), _close_quoted_field(cursor)
+            pieces.append(char)
     pieces = [char]
     while True:
         char = cursor.read()
@@ -304,12 +364,42 @@ def _house_field(cursor: _HouseCursor) -> tuple[str, str]:
             return "".join(pieces), "eol"
         if char == "":
             return "".join(pieces), "eof"
+        if char == '"':
+            raise _quote_refusal(cursor, "stray")
         pieces.append(char)
 
 
 def _datecode_field(cursor: _HouseCursor) -> tuple[str, str]:
-    """Read DateCode. A year >= 2024 stops on its last digit."""
-    pieces: list[str] = []
+    """Read DateCode. A year >= 2024 stops on its last digit (or closing quote)."""
+    char = cursor.read()
+    if char == "":
+        return "", "eof"
+    if char in "\r\n":
+        _finish_house_newline(cursor, char)
+        return "", "eol"
+    if char == ",":
+        return "", "comma"
+    if char == '"':
+        pieces: list[str] = []
+        while True:
+            char = cursor.read()
+            if char == "":
+                raise _quote_refusal(cursor, "unterm")
+            if char == '"':
+                doubled = cursor.read()
+                if doubled == '"':
+                    pieces.append('"')
+                    continue
+                text = "".join(pieces)
+                stripped = text.strip()
+                if len(stripped) >= 4 and stripped.isdigit() and int(stripped) >= 2024:
+                    # Stop on the closing quote; do not consume the terminator.
+                    cursor.unread(doubled)
+                    return text, "refused"
+                cursor.unread(doubled)
+                return text, _close_quoted_field(cursor)
+            pieces.append(char)
+    pieces = [char]
     while True:
         char = cursor.read()
         if char == ",":
@@ -319,6 +409,8 @@ def _datecode_field(cursor: _HouseCursor) -> tuple[str, str]:
             return "".join(pieces), "eol"
         if char == "":
             return "".join(pieces), "eof"
+        if char == '"':
+            raise _quote_refusal(cursor, "stray")
         pieces.append(char)
         text = "".join(pieces).strip()
         if len(text) >= 4 and text.isdigit() and int(text) >= 2024:
@@ -401,6 +493,7 @@ def _house_sales_rows(path: Path) -> tuple[list[str], list[list[str]]]:
             if started == "":
                 break
             row_number += 1
+            cursor.row_number = row_number
             fields: list[str] = []
             cursor.unread(started)
             ended = False

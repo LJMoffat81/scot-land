@@ -11,19 +11,18 @@ registerOpenFreeMapFontStub();
  */
 
 const ROLE_LINES = [
-  "Georgist economics: keeps the work true to land value principles.",
-  "Valuation: models land values from sales and building costs.",
-  "Econometrics: tests how well the land value model fits the evidence.",
-  "Methods and statistics: checks that each method is sound and written down before it is used.",
-  "GIS: handles maps, boundaries and how data is joined to areas.",
-  "Data scouting: finds public data and checks its licence.",
-  "Building costs: estimates what it would cost to rebuild homes, so land can be separated from buildings.",
-  "Design: the look of the site and maps.",
-  "Wording: keeps every page clear and plain.",
-  "Quality checks: tests the live site after every change.",
-  "Engineering lead: writes specs and reviews code",
-  "Coordination: plans work and checks it against our rules",
-  "Outreach: drafts messages, only sent after approval",
+  "Engineering Lead: runs the building work, writes specs and reviews code.",
+  "Wording & UX Reviewer: keeps every page clear and easy to use.",
+  "Georgist Economist: keeps the work true to land value principles.",
+  "Land Value Econometrician: models land values from sales and building costs, and tests how well the model fits.",
+  "GIS & Open Data: finds public data, checks its licence and joins it to areas.",
+  "Test Engineer: writes the automated tests that guard every change.",
+  "Live Site Checker: tests the live site after every change.",
+  "Outside Comms: drafts outside messages, which are only sent once a person approves them.",
+  "Methods Auditor: checks each method is sound and written down before it is used.",
+  "Property Tax & Land Law: checks the work against tax and land law.",
+  "Visual Designer: looks after the look of the site and maps.",
+  "Project Lead: plans the work and holds it to our rules.",
 ] as const;
 
 const GAP_LINES = [
@@ -112,12 +111,14 @@ async function assertPageCopy(page: Page) {
     page.getByRole("heading", { name: "How we built this", exact: true }),
   ).toBeVisible();
   const copy = page.getByTestId("how-we-built-copy");
-  await expect(copy).toContainText("Scot-LAND is led by Laurie Moffat.");
-  expect(ROLE_LINES).toHaveLength(13);
+  await expect(copy).toContainText(
+    "Scot-LAND is led by Laurie Moffat, an independent volunteer.",
+  );
+  expect(ROLE_LINES).toHaveLength(12);
   const roles = copy.getByTestId("how-we-built-roles").getByRole("listitem");
-  await expect(roles).toHaveCount(13);
-  for (const line of ROLE_LINES) {
-    await expect(roles.filter({ hasText: line })).toHaveCount(1);
+  await expect(roles).toHaveCount(12);
+  for (let i = 0; i < ROLE_LINES.length; i += 1) {
+    await expect(roles.nth(i)).toHaveText(ROLE_LINES[i]);
   }
   await expect(copy).toContainText(
     "These are AI assistants, not people, and they hold no professional qualifications.",
@@ -157,10 +158,13 @@ async function assertPageCopy(page: Page) {
   );
   expect(hrefs.some((href) => /github/i.test(href))).toBe(false);
   const copyText = await copy.innerText();
-  expect(copyText.match(/led by Laurie Moffat/g)).toEqual([
-    "led by Laurie Moffat",
+  expect(copyText.match(/Laurie Moffat, an independent volunteer/g)).toEqual([
+    "Laurie Moffat, an independent volunteer",
   ]);
-  const withoutName = copyText.replace("led by Laurie Moffat", "");
+  const withoutName = copyText.replace(
+    "Laurie Moffat, an independent volunteer",
+    "",
+  );
   expect(withoutName).not.toMatch(/Laurie|Moffat/);
 
   const text = await copy.innerText();
@@ -170,13 +174,15 @@ async function assertPageCopy(page: Page) {
     expect(text).not.toMatch(pattern);
   }
 
-  const involvedText = await page.locator("#get-involved").innerText();
-  const gapsText = await page.locator("#what-we-dont-have-yet").innerText();
-  const outside = text.replace(involvedText, "").replace(gapsText, "");
-  expect(outside).not.toMatch(/\bqualified\b/i);
-  expect(outside).not.toMatch(/\bchartered\b/i);
-  expect(outside).not.toMatch(/\bcertified\b/i);
-  expect(outside).not.toMatch(/expert team/i);
+  // FRONTEND-BATCH-1 binding: qualified|chartered only on intro + roles test ids.
+  const introText = await copy.getByTestId("how-we-built-intro").innerText();
+  const rolesText = await copy.getByTestId("how-we-built-roles").innerText();
+  expect(introText).not.toMatch(/\b(qualified|chartered)\b/i);
+  expect(rolesText).not.toMatch(/\b(qualified|chartered)\b/i);
+  expect(introText).not.toMatch(/\bcertified\b/i);
+  expect(rolesText).not.toMatch(/\bcertified\b/i);
+  expect(introText).not.toMatch(/expert team/i);
+  expect(rolesText).not.toMatch(/expert team/i);
 
   const body = await page.locator("body").innerText();
   expect(body).not.toContain("£");
@@ -187,7 +193,7 @@ for (const width of [1280, 390] as const) {
   test.describe(`HOW-WE-BUILT-1 at ${width}px`, () => {
     test.use({ viewport: { width, height: width === 390 ? 844 : 800 } });
 
-    test("page renders the heading, thirteen roles, and the qualifications sentence", async ({
+    test("page renders the heading, twelve roles, and the qualifications sentence", async ({
       page,
     }) => {
       await page.goto("/how-we-built-this");

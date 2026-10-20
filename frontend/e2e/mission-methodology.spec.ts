@@ -21,7 +21,7 @@ test.describe("about and how-it-works pages", () => {
       "Research estimate.",
     );
     await expect(page.getByTestId("contact-form-soon")).toHaveText(
-      "Contact form coming soon",
+      "Contact form not open yet. Please check back.",
     );
     await expect(page.getByTestId("contact-form")).toHaveCount(0);
     await expect(root).not.toContainText("Laurie");

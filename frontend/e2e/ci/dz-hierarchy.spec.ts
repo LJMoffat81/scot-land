@@ -166,6 +166,15 @@ async function stubMapChrome(page: Page, fixture = eh1PlaceFixture()) {
       body: JSON.stringify(EMPTY_FC),
     });
   });
+
+  await page.route("**/backend/layers/councils**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(EMPTY_FC),
+    });
+  });
+
   await page.route("**/backend/layers/**", async (route) => {
     const url = route.request().url();
     if (/data-zones\/at/i.test(url)) {

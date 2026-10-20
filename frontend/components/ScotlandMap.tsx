@@ -56,11 +56,15 @@ import {
   type CatalogLayer,
 } from "../lib/layerCatalog";
 import type { LedgerToggleState } from "../lib/ledger";
+import MapRangeLegend from "./MapRangeLegend";
 import {
+  DEFAULT_VIEW_METRIC_ID,
   POP_DENSITY_COLOURS_MIN_ZOOM,
+  metricById,
+  paintMetricForChoropleth,
+  rangeLegendTitle,
   type MetricDef,
   type MetricId,
-  paintMetricForChoropleth,
 } from "../lib/mapColourRamps";
 import {
   isLegendLayerOff,
@@ -70,6 +74,12 @@ import {
   OPENFREEMAP_ATTRIBUTION,
   buildMapAttributionPieces,
 } from "../lib/mapAttributionLine";
+import {
+  NO_DATA_HATCH_IMAGE,
+  createNoDataHatchImageData,
+  paintForMetricWithNoData,
+  rangeLegendFromStops,
+} from "../lib/mapLicenceCredits";
 import {
   BASEMAP_LOAD_NOTICE,
   BASEMAP_STYLE_TIMEOUT_MS,
@@ -82,11 +92,6 @@ import {
   mapErrorLogLine,
   type MapBasemapId,
 } from "../lib/mapBasemap";
-import {
-  NO_DATA_HATCH_IMAGE,
-  createNoDataHatchImageData,
-  paintForMetricWithNoData,
-} from "../lib/mapLicenceCredits";
 import {
   getMapLayer,
   defaultOnLayerIds,
@@ -657,6 +662,8 @@ export default function ScotlandMap() {
   const choropleth: MetricId | "off" = "off";
   /** Council boundary lines — registry defaultOn. */
   const [showCouncils, setShowCouncils] = useState(true);
+  /** FRONTEND-BATCH-1: /layers/councils loaded with at least one numeric pop density. */
+  const [contextDataLoaded, setContextDataLoaded] = useState(false);
   /** GRID-BASE-1 — open 3 m BNG grid (default off; boot from ?layers=grid3). */
   const [showGrid3, setShowGrid3] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -3249,14 +3256,16 @@ export default function ScotlandMap() {
     const lineVis = showCouncils ? "visible" : "none";
     map.setLayoutProperty("council-line", "visibility", lineVis);
 
-    // Fill only when AGR/value layer is on and at overview zooms (z5–7).
-    const fillOn = showCouncils && showAgr && zoom >= 5 && zoom < 8;
+    // Fill at overview zooms (z5–7): AGR on, or default people/km² view when AGR off.
+    const defaultViewOn = !showAgr && contextDataLoaded;
+    const fillOn =
+      showCouncils && zoom >= 5 && zoom < 8 && (showAgr || defaultViewOn);
     map.setLayoutProperty(
       "council-fill",
       "visibility",
       fillOn ? "visible" : "none",
     );
-  }, [mapReady, choropleth, showCouncils, showAgr, mapZoom]);
+  }, [mapReady, choropleth, showCouncils, showAgr, contextDataLoaded, mapZoom]);
 
   // GRID-BASE-1 — device-drawn lines on moveend; lazy-load proj4 chunk (G9).
   useEffect(() => {
@@ -3549,16 +3558,51 @@ export default function ScotlandMap() {
     const map = mapRef.current;
     if (!map?.getSource("council-metrics")) return;
     let cancelled = false;
-    void apiJson<GeoJSON.FeatureCollection>("/boundaries/councils")
+
+    const applyBoundariesFallback = () => {
+      void apiJson<GeoJSON.FeatureCollection>("/boundaries/councils")
+        .then((data) => {
+          if (cancelled || !mapRef.current) return;
+          setContextDataLoaded(false);
+          safeSetGeoJson(
+            map.getSource("council-metrics") as GeoJSONSource | undefined,
+            data,
+          );
+        })
+        .catch(() => {
+          /* boundaries optional — lines stay empty */
+          if (!cancelled) setContextDataLoaded(false);
+        });
+    };
+
+    const isFeatureCollection = (data: unknown): data is GeoJSON.FeatureCollection => {
+      if (!data || typeof data !== "object") return false;
+      const obj = data as { type?: string; features?: unknown };
+      return obj.type === "FeatureCollection" && Array.isArray(obj.features);
+    };
+
+    const hasNumericPopDensity = (data: GeoJSON.FeatureCollection): boolean =>
+      data.features.some((f) => {
+        const v = f.properties?.population_density_per_km2;
+        return typeof v === "number" && Number.isFinite(v);
+      });
+
+    void apiJson<GeoJSON.FeatureCollection>("/layers/councils")
       .then((data) => {
         if (cancelled || !mapRef.current) return;
+        if (!isFeatureCollection(data)) {
+          applyBoundariesFallback();
+          return;
+        }
+        setContextDataLoaded(hasNumericPopDensity(data));
         safeSetGeoJson(
           map.getSource("council-metrics") as GeoJSONSource | undefined,
           data,
         );
       })
       .catch(() => {
-        /* boundaries optional — lines stay empty */
+        if (cancelled) return;
+        applyBoundariesFallback();
       });
     return () => {
       cancelled = true;
@@ -5183,6 +5227,31 @@ export default function ScotlandMap() {
           </span>
         </button>
       ) : null}
+
+      {showCouncils &&
+      !showAgr &&
+      contextDataLoaded &&
+      mapZoom >= 5 &&
+      mapZoom < 8
+        ? (() => {
+            const metric =
+              metricById(DEFAULT_VIEW_METRIC_ID) ??
+              metricById("pop_density")!;
+            const legend = rangeLegendFromStops(metric.stops, {
+              metricId: metric.id,
+              unit: metric.unit,
+            });
+            return (
+              <MapRangeLegend
+                title={rangeLegendTitle(metric)}
+                ranges={legend.ranges}
+                showNoData
+                mode="bands"
+                layerId="density"
+              />
+            );
+          })()
+        : null}
 
       <div className="map-attribution-line" data-testid="map-attribution-line">
         <span>

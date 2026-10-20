@@ -32,7 +32,7 @@ test.describe("API reference (charter C1)", () => {
     await page.goto("/developers/api");
     await expect(page.getByTestId("api-teaser")).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-      "Developer API and bulk data: coming",
+      "Developer API and bulk data: later",
     );
     await expect(page.locator(".swagger-ui")).toHaveCount(0);
     await expect(page.locator(".swagger-ui .opblock")).toHaveCount(0);

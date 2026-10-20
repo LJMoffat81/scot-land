@@ -55,6 +55,19 @@ async function jump(page: Page, zoom: number) {
   }, zoom);
 }
 
+/** people/km² adds /layers/councils; wait until jump has actually landed. */
+async function waitZoomAtLeast(page: Page, zoom: number) {
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const map = (window as unknown as { __map?: { getZoom(): number } })
+          .__map;
+        return map?.getZoom() ?? 0;
+      }),
+    )
+    .toBeGreaterThanOrEqual(zoom);
+}
+
 test.describe("LAYERS-PERF-3", () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
@@ -125,6 +138,9 @@ test.describe("LAYERS-PERF-3", () => {
     await openMap(page);
     await waitForMap(page);
     await jump(page, 6);
+    // FRONTEND-BATCH-1 diagnosis: people/km² adds /layers/councils; wait for
+    // zoom ≥6 before the chip assert (test timing, not a product bug).
+    await waitZoomAtLeast(page, 6);
     await openLayers(page);
     await ensureLayersGroupOpen(page, "nature");
     await page.getByTestId("layer-toggle-designations").click();
@@ -176,6 +192,8 @@ test.describe("LAYERS-PERF-3", () => {
     await openMap(page);
     await waitForMap(page);
     await jump(page, 6);
+    // Same settle as the outlines-chip case: designations stay hidden below z6.
+    await waitZoomAtLeast(page, 6);
     await openLayers(page);
     await ensureLayersGroupOpen(page, "nature");
     await page.getByTestId("layer-toggle-designations").click();

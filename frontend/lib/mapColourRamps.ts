@@ -112,12 +112,19 @@ export const PUBLIC_CONTEXT_METRIC_IDS: readonly MetricId[] = [
 /** Default public reference ramp while council choropleth paint stays off. */
 export const DEFAULT_PUBLIC_CONTEXT_METRIC_ID: MetricId = "pop_density";
 
+/** FRONTEND-BATCH-1 default view; never a £ metric. */
+export const DEFAULT_VIEW_METRIC_ID: MetricId = DEFAULT_PUBLIC_CONTEXT_METRIC_ID;
+
 export function metricById(
   id: MetricId | string | undefined | null,
 ): MetricDef | undefined {
   if (!id) return undefined;
   return METRICS.find((m) => m.id === id);
 }
+
+/** Module-level guard: default view must never be a £ metric (tests import this). */
+export const DEFAULT_VIEW_METRIC_IS_NON_GBP =
+  metricById(DEFAULT_VIEW_METRIC_ID)?.unit !== "£";
 
 export function publicContextMetric(
   id: MetricId | string | undefined | null = DEFAULT_PUBLIC_CONTEXT_METRIC_ID,
@@ -132,17 +139,19 @@ export function publicContextMetric(
   );
 }
 
-/** Legend title: metric label plus unit when present (unit not repeated on each stop). */
+/**
+ * Legend title for the default-view (and any metric) fill.
+ * FRONTEND-BATCH-1: pop_density → "People per square kilometre (people/km²)".
+ * Older SW-022 title stays in POP_DENSITY_LEGEND_TITLE for buildActiveLegendView.
+ */
 export function rangeLegendTitle(metric: MetricDef): string {
-  if (metric.id === "pop_density") {
-    return POP_DENSITY_LEGEND_TITLE;
+  if (metric.unit && metric.unit !== "£" && !metric.unit.startsWith("£")) {
+    if (metric.unit === "%") {
+      return `${metric.label} (range)`;
+    }
+    return `${metric.label} (${metric.unit})`;
   }
-  const base = `${metric.label} (range)`;
-  if (!metric.unit || metric.unit === "£" || metric.unit.startsWith("£")) {
-    return base;
-  }
-  if (metric.unit === "%") return base;
-  return `${base} — ${metric.unit}`;
+  return `${metric.label} (range)`;
 }
 
 /**

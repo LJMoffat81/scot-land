@@ -47,7 +47,7 @@ test.describe("PRIVACY-1 contact form", () => {
   test("unset id shows coming soon and no address", async ({ page }) => {
     await page.goto("/about#contact");
     await expect(page.getByTestId("contact-form-soon")).toHaveText(
-      "Contact form coming soon",
+      "Contact form not open yet. Please check back.",
     );
     await expect(page.getByTestId("contact-form")).toHaveCount(0);
     const html = await page.locator("#contact").innerHTML();
@@ -71,7 +71,7 @@ test.describe("PRIVACY-1 contact form", () => {
     });
     await page.goto("/about#contact");
     await expect(page.getByTestId("contact-form-soon")).toHaveText(
-      "Contact form coming soon",
+      "Contact form not open yet. Please check back.",
     );
     await expect(page.getByTestId("contact-form")).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Send" })).toHaveCount(0);

@@ -106,7 +106,7 @@ export const AIM_TO_COVER: readonly AimGroup[] = [
         name: "Oil and gas",
         plain:
           "Rent from oil and gas fields beyond what extraction costs plus a normal return.",
-        status: "In progress",
+        status: "Later",
       },
       {
         id: "water-abstraction",
@@ -119,14 +119,14 @@ export const AIM_TO_COVER: readonly AimGroup[] = [
         id: "fishing-quota",
         name: "Fishing quota",
         plain: "Value of the right to catch a share of fish stocks.",
-        status: "Not started",
+        status: "Later",
       },
       {
         id: "fish-farm-seabed-leases",
         name: "Fish-farm seabed leases",
         plain:
           "Rent for fish farm sites on the seabed, beyond the lease paid to Crown Estate Scotland.",
-        status: "Not started",
+        status: "Later",
       },
       {
         id: "onshore-wind-and-hydro-sites",
@@ -140,7 +140,7 @@ export const AIM_TO_COVER: readonly AimGroup[] = [
         name: "Offshore wind and seabed",
         plain:
           "Rent for seabed and foreshore used for wind farms, cables and moorings.",
-        status: "In progress",
+        status: "Later",
       },
       {
         id: "timber",

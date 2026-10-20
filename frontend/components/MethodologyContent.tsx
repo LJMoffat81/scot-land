@@ -60,11 +60,11 @@ export default function MethodologyContent() {
       <section id="rollup">
         <h2>Small areas, added up honestly</h2>
         <p>
-          Every figure belongs to a Data Zone. Data Zones fit inside Intermediate
-          Zones, those fit inside council areas, and council areas make up
-          Scotland. This is the Scottish Government&apos;s own system. We add up
-          each kind of figure (Market, Modelled, Estimate) separately, and never
-          across different price years. Nothing is counted twice.
+          Every figure belongs to a Data Zone. Data Zones fit inside council areas,
+          and council areas make up Scotland. This is the Scottish
+          Government&apos;s own system. We add up each kind of figure (Market,
+          Modelled, Estimate) separately, and never across different price years.
+          Nothing is counted twice.
         </p>
         <p className="downloads-note">
           We show each small area on its own. We don&apos;t add areas up into

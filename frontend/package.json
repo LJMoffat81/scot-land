@@ -44,6 +44,8 @@
     "test:logo-fix": "node --experimental-strip-types scripts/test-logo-fix.mjs",
     "test:logo-h3": "node scripts/test-logo-h3.mjs",
     "test:basemap-err-1": "node --experimental-strip-types scripts/test-basemap-err-1.mjs",
+    "test:esri-csp": "node --experimental-strip-types scripts/test-esri-csp.mjs",
+    "test:esri-csp:selftest": "node --experimental-strip-types scripts/test-esri-csp.selftest.mjs",
     "test:privacy-1": "node scripts/test-privacy-1.mjs",
     "test:no-test-hook": "node scripts/test-no-test-hook.mjs",
     "test:map-layer-registry": "node --experimental-strip-types scripts/test-map-layer-registry.mjs",

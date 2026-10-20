@@ -6,7 +6,12 @@ import type { NextConfig } from "next";
 // Outside hosts the browser actually fetches: OpenFreeMap (style, tiles, sprites,
 // glyphs). Context tiles are same-origin proxies.
 // API docs at /developers/api use self-hosted swagger-ui under /swagger-ui/ — no CDN.
-const contentSecurityPolicy = [
+// Esri Aerial (only when NEXT_PUBLIC_ESRI_BASEMAP_API_KEY is set): exactly
+// https://basemapstyles-api.arcgis.com (style JSON),
+// https://ibasemaps-api.arcgis.com (World Imagery tiles),
+// https://basemaps-api.arcgis.com (label vector tiles + glyphs),
+// https://cdn.arcgis.com (sprite JSON + PNG). No other arcgis hosts.
+export const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
   "object-src 'none'",
@@ -16,9 +21,9 @@ const contentSecurityPolicy = [
   // cloudflareinsights.com connect). SHARE-FIX — keep analytics allowed.
   "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://tiles.openfreemap.org",
+  "img-src 'self' data: blob: https://tiles.openfreemap.org https://basemapstyles-api.arcgis.com https://ibasemaps-api.arcgis.com https://basemaps-api.arcgis.com https://cdn.arcgis.com",
   "font-src 'self'",
-  "connect-src 'self' https://formspree.io https://tiles.openfreemap.org https://cloudflareinsights.com http://localhost:* http://127.0.0.1:* https://localhost:* https://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*",
+  "connect-src 'self' https://formspree.io https://tiles.openfreemap.org https://cloudflareinsights.com https://basemapstyles-api.arcgis.com https://ibasemaps-api.arcgis.com https://basemaps-api.arcgis.com https://cdn.arcgis.com http://localhost:* http://127.0.0.1:* https://localhost:* https://127.0.0.1:* ws://localhost:* ws://127.0.0.1:* wss://localhost:* wss://127.0.0.1:*",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
 ].join("; ");

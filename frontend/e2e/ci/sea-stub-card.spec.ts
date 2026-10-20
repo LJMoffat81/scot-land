@@ -1,4 +1,4 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, isCiOptionalFailUrl, stubCiTileDataQuiet } from "./_mapCardsHelpers";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 
@@ -61,6 +61,9 @@ function attachConsoleGate(page: Page): ConsoleGate {
 
 function assertConsoleClean(gate: ConsoleGate) {
   const unexpectedResourceFails = gate.resourceFails.filter((fail) => {
+    if (isCiOptionalFailUrl(fail.url)) {
+      return false;
+    }
     if (
       (fail.status === 404 || fail.status === 400) &&
       /data-zones\/at|platform\/place|api\/place\.json/i.test(fail.url)
@@ -106,13 +109,8 @@ async function stubMapChrome(page: Page) {
       body: JSON.stringify(EMPTY_FC),
     });
   });
-  await page.route("**/backend/layers/councils**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
+  await stubLayersCouncilsQuiet(page);
+  await stubCiTileDataQuiet(page);
 
   await page.route("**/backend/health**", async (route) => {
     await route.fulfill({

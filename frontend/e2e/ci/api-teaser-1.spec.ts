@@ -11,9 +11,9 @@ registerOpenFreeMapFontStub();
  */
 
 const TEASER_H1 = "Developer API and bulk data: later";
-// Months are case-sensitive so modal "may" in the paid-services line is not a date.
+// Case-insensitive months/years; May excludes modal "may be" (paid-services line).
 const DATE_RE =
-  /\b(?:19|20)\d{2}\b|\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\b/;
+  /\b(?:19|20)\d{2}\b|\b(?:January|February|March|April|June|July|August|September|October|November|December)\b|\bMay\b(?!\s+be\b)/i;
 
 const HEALTH_OK = {
   status: "ok",

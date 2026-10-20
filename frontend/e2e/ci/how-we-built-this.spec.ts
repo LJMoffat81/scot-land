@@ -174,17 +174,17 @@ async function assertPageCopy(page: Page) {
     expect(text).not.toMatch(pattern);
   }
 
-  // FRONTEND-BATCH-1 binding: qualified|chartered only on intro + roles test ids.
+  // FRONTEND-BATCH-1 (spec sha256 95d91999…): qualified|chartered narrowed to
+  // intro + roles (gaps/reviewers intentionally say "qualified" / RICS). That
+  // spec did not narrow certified / expert team — keep those whole-page.
   const introText = await copy.getByTestId("how-we-built-intro").innerText();
   const rolesText = await copy.getByTestId("how-we-built-roles").innerText();
   expect(introText).not.toMatch(/\b(qualified|chartered)\b/i);
   expect(rolesText).not.toMatch(/\b(qualified|chartered)\b/i);
-  expect(introText).not.toMatch(/\bcertified\b/i);
-  expect(rolesText).not.toMatch(/\bcertified\b/i);
-  expect(introText).not.toMatch(/expert team/i);
-  expect(rolesText).not.toMatch(/expert team/i);
 
   const body = await page.locator("body").innerText();
+  expect(body).not.toMatch(/\bcertified\b/i);
+  expect(body).not.toMatch(/expert team/i);
   expect(body).not.toContain("£");
   assertNoConsoleErrors();
 }

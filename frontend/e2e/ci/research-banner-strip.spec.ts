@@ -1,4 +1,4 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, CI_OPTIONAL_FAIL_URL, isCiOptionalFailUrl, stubCiTileDataQuiet } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
@@ -59,13 +59,10 @@ const PLACE_CARD_FIXTURE = {
 };
 
 /** Optional static assets whose 404/503 may be ignored (must match URL). */
-const KNOWN_OPTIONAL_FAIL_URL = [
-  /\/favicon\.ico(?:\?|$)/i,
-  /\/apple-touch-icon/i,
-];
+const KNOWN_OPTIONAL_FAIL_URL = CI_OPTIONAL_FAIL_URL;
 
 function isKnownOptionalFailUrl(url: string): boolean {
-  return KNOWN_OPTIONAL_FAIL_URL.some((re) => re.test(url));
+  return isCiOptionalFailUrl(url);
 }
 
 test.describe("SW-016 research banner strip 390x844", () => {
@@ -101,21 +98,16 @@ test.describe("SW-016 research banner strip 390x844", () => {
     });
 
     await page.route("**/backend/boundaries/**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
-    await page.route("**/backend/layers/councils**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify(EMPTY_FC),
       });
     });
+    await stubLayersCouncilsQuiet(page);
+    await stubCiTileDataQuiet(page);
 
-  await page.route("**/backend/health**", async (route) => {
+    await page.route("**/backend/health**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",

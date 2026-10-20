@@ -1,7 +1,9 @@
 name: CI
 
+# pull_request covers PR branches; push only on main so PR pushes do not double-run.
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:

@@ -1,4 +1,4 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, stubCiTileDataQuiet } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
@@ -79,13 +79,8 @@ async function stubBackend(page: Page) {
     });
   });
 
-  await page.route("**/backend/layers/councils**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(EMPTY_FC),
-    });
-  });
+  await stubLayersCouncilsQuiet(page);
+  await stubCiTileDataQuiet(page);
 
 
   await page.route("**/backend/health**", async (route) => {

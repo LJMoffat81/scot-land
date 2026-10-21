@@ -850,6 +850,10 @@ for (const viewport of VIEWPORTS) {
         let geocodeCount = 0;
         let sentQ = "";
         await stubMapCardsBackend(page, { gbpLive: false });
+        // Force agr=false so search uses /geocode/postcode (not /place lookup).
+        await page.route("**/layers/catalog**", async (route) => {
+          await route.fulfill({ status: 404, body: "absent" });
+        });
         await stubCouncilsOk(page);
         await page.route("**/geocode/postcode**", async (route) => {
           geocodeCount += 1;
@@ -895,6 +899,9 @@ for (const viewport of VIEWPORTS) {
         const gate = attachConsoleGate(page);
         let geocodeCount = 0;
         await stubMapCardsBackend(page, { gbpLive: false });
+        await page.route("**/layers/catalog**", async (route) => {
+          await route.fulfill({ status: 404, body: "absent" });
+        });
         await stubCouncilsOk(page);
         await page.route("**/geocode/postcode**", async (route) => {
           geocodeCount += 1;

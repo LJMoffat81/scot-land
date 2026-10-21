@@ -1927,7 +1927,7 @@ export default function ScotlandMap() {
     clearSuggestions();
     setError(null);
     if (!looksLikeFullPostcode(q)) {
-// Refuse line under the search box (error alone only shows in the place card).
+      // Refuse line under the search box (error alone only shows in the place card).
       setSuggestNote(POSTCODES_ONLY);
       return;
     }

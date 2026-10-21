@@ -86,11 +86,10 @@ for (const width of WIDTHS) {
 
       const search = page.locator(".hud-search");
       const layers = page.getByTestId("hud-layers-btn");
-      const banner = page.getByTestId("research-banner");
       const basemap = page.getByTestId("basemap-switcher");
+      await expect(page.getByTestId("research-banner")).toHaveCount(0);
       await assertClear(brand, search, "lockup vs search");
       await assertClear(brand, layers, "lockup vs Layers");
-      await assertClear(brand, banner, "lockup vs banner");
       await assertClear(brand, basemap, "lockup vs basemap");
 
       await page.locator("#place-query").fill("55.95330, -3.18830");

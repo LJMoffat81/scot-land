@@ -296,22 +296,20 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
     const gate = attachConsoleGate(page);
     await stubMapChrome(page);
     await openMap(page);
+    // MAP-HINTS-OFF-1: no research banner on the map.
+    await expect(page.getByTestId("research-banner")).toHaveCount(0);
     await openPlaceCard(page);
 
-    // MAP-CARDS §3.6: research banner collapses (height 0) while a place card
-    // is open. U2 still requires 0 px intersection with any visible legend UI.
     const banner = page.locator(".research-banner-map");
-    await expect(banner).toBeAttached();
-    const bannerHeight = await banner.evaluate(
-      (el) => el.getBoundingClientRect().height,
-    );
-    const bannerVisible = bannerHeight > 0.5;
+    await expect(banner).toHaveCount(0);
+    const bannerVisible = false;
 
     const legendCandidates = [
       page.getByRole("button", { name: "Show legend" }),
       page.locator(".legend-compact"),
       page.locator(".hud-scotland-fold"),
       page.getByTestId("legend-strip"),
+      page.getByTestId("map-key-chip"),
     ];
     let visibleLegend = 0;
     for (const loc of legendCandidates) {
@@ -320,25 +318,11 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
         const el = loc.nth(i);
         if (!(await el.isVisible().catch(() => false))) continue;
         visibleLegend += 1;
-        if (bannerVisible) {
-          await assertNoBoxOverlap(
-            el,
-            banner,
-            "legend vs research-banner-map (0px tolerance)",
-          );
-        }
       }
     }
-    if (bannerVisible) {
-      expect(
-        visibleLegend,
-        "banner visible with card open → at least one legend element must be measured",
-      ).toBeGreaterThanOrEqual(1);
-      await expect(banner).toBeEnabled();
-    } else {
-      // Explicit collapse (MAP-CARDS say-it-once) — not a silent skip.
-      expect(bannerHeight, "research banner collapsed height").toBe(0);
-    }
+    // MAP-HINTS-OFF-1: banner absent on map; legend chrome may still show.
+    expect(bannerVisible).toBe(false);
+    void visibleLegend;
 
     assertConsoleClean(gate);
   });
@@ -471,21 +455,10 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
       "title bottom in slot",
     ).toBeLessThanOrEqual(slotBox!.y + slotBox!.height + 0.5);
 
-    // Overlap checks: run whenever banner/pill is visible; otherwise assert the
-    // MAP-CARDS expectation that neither is on screen with a place card open.
+    // MAP-HINTS-OFF-1: no research banner on the map.
     let overlapChecks = 0;
-    const banner = page.locator(".research-banner-map");
-    const bannerHeight = await banner.evaluate(
-      (el) => el.getBoundingClientRect().height,
-    );
-    if (bannerHeight > 0.5) {
-      await assertNoBoxOverlap(
-        banner,
-        title,
-        "research notice vs card title",
-      );
-      overlapChecks += 1;
-    }
+    await expect(page.getByTestId("research-banner")).toHaveCount(0);
+    await expect(page.locator(".research-banner-map")).toHaveCount(0);
     const legendPill = page.getByRole("button", { name: "Show legend" });
     if (
       (await legendPill.count()) > 0 &&
@@ -511,15 +484,14 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
       overlapChecks += 1;
     }
     if (overlapChecks === 0) {
-      // Expected after MAP-CARDS: banner height 0; Show legend / strip absent
-      // while the place panel is open (legend-strip only when panel closed).
-      expect(bannerHeight, "research notice collapsed").toBe(0);
+      // MAP-HINTS-OFF-1: no banner; Show legend / strip absent with place open.
+      await expect(page.getByTestId("research-banner")).toHaveCount(0);
       await expect(legendPill).toHaveCount(0);
       await expect(legendStrip).toHaveCount(0);
     } else {
       expect(
         overlapChecks,
-        "at least one pill/banner vs title overlap check ran",
+        "at least one pill vs title overlap check ran",
       ).toBeGreaterThanOrEqual(1);
     }
 

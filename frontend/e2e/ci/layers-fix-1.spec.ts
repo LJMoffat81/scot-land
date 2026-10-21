@@ -214,6 +214,10 @@ test.describe("LAYERS-FIX-1", () => {
     expect(discovered.length).toBeGreaterThan(0);
 
     for (const row of discovered) {
+      // FRONTEND-BATCH-4: map-layer-pop-density-key is a legend row, not a switch.
+      const toggle = page.getByTestId(`layer-toggle-${row.id}`);
+      if ((await toggle.count()) === 0) continue;
+
       await page.evaluate(() => {
         const map = (
           window as unknown as {
@@ -224,7 +228,6 @@ test.describe("LAYERS-FIX-1", () => {
         ).__map;
         map?.jumpTo({ center: [-4.2, 56.8], zoom: 5.5 });
       });
-      const toggle = page.getByTestId(`layer-toggle-${row.id}`);
       if ((await toggle.getAttribute("aria-checked")) !== "true") {
         await toggle.click();
       }

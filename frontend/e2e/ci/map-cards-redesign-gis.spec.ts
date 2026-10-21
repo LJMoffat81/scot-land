@@ -324,7 +324,7 @@ test.describe("MAP-CARDS tablet 768", () => {
     const gate = attachConsoleGate(page);
     await stubMapCardsBackend(page);
     await openMap(page);
-    await expect(page.getByTestId("map-rest-prompt")).toBeVisible();
+    await expect(page.getByTestId("map-rest-prompt")).toHaveCount(0);
     await openPlaceViaCoords(page);
     await expect(page.getByTestId("place-card")).toBeVisible();
     await expect(page.getByTestId("layers-panel")).toHaveCount(0);

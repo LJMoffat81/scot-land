@@ -6,6 +6,7 @@ import {
   gbpLiveFromCard,
   type SurfaceRentDisplay,
 } from "../lib/gbpLive";
+import { PLACE_CARD_ESTIMATE_LINE } from "../lib/siteNav";
 import {
   PLACE_CARD_AGR_LABEL,
   PLACE_CARD_AGR_SCOPE_NOTE,
@@ -480,6 +481,14 @@ export function PlaceCard({
                 </>
               )}
             </div>
+            {liveRangeOk ? (
+              <p
+                className="place-card-estimate-line layer-meta"
+                data-testid="place-card-estimate-line"
+              >
+                {PLACE_CARD_ESTIMATE_LINE}
+              </p>
+            ) : null}
             {/* Addendum A4 / GRID-BASE-1 row-6 */}
             {gridSquareLine ? (
               <p

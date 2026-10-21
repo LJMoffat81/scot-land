@@ -15,7 +15,6 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import MapCreditLine from "./MapCreditLine";
 import { layersAdd2Credit } from "@/lib/layersAdd2Credits";
 import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
-import ResearchBanner from "./ResearchBanner";
 import SiteNav, { SiteBrand } from "./SiteNav";
 import { fetchGbpLiveSettings } from "@/lib/gbpLive";
 import {
@@ -59,15 +58,14 @@ import type { LedgerToggleState } from "../lib/ledger";
 import MapRangeLegend from "./MapRangeLegend";
 import {
   CHOROPLETH_FILL_OPACITY,
-  DEFAULT_VIEW_METRIC_ID,
   NODATA_HATCH_OPACITY,
   POP_DENSITY_COLOURS_MIN_ZOOM,
-  metricById,
   paintMetricForChoropleth,
-  rangeLegendTitle,
   type MetricDef,
   type MetricId,
 } from "../lib/mapColourRamps";
+import { popDensityLegendProps } from "../lib/popDensityLegend";
+import { SEARCH_HINT_SR } from "../lib/siteNav";
 import {
   isLegendLayerOff,
   newlyEnabledLegendLayer,
@@ -77,7 +75,6 @@ import {
   NO_DATA_HATCH_IMAGE,
   createNoDataHatchImageData,
   paintForMetricWithNoData,
-  rangeLegendFromStops,
 } from "../lib/mapLicenceCredits";
 import {
   AERIAL_FAIL_WINDOW_MS,
@@ -937,7 +934,10 @@ export default function ScotlandMap() {
   const [builtupMaskCatalogGap, setBuiltupMaskCatalogGap] = useState(false);
   const [searchNoMatch, setSearchNoMatch] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  const [restPromptVisible, setRestPromptVisible] = useState(true);
+  /** Map key chip: expanded by default at ≥1280, collapsed at 390 (SW-085). */
+  const [mapKeyExpanded, setMapKeyExpanded] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 1280 : true,
+  );
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [liveMessage, setLiveMessage] = useState("");
   const panelHistoryRef = useRef(false);
@@ -1049,7 +1049,6 @@ export default function ScotlandMap() {
   })();
   const stripLayer = stripLayerId ? getMapLayer(stripLayerId) : undefined;
 
-  const [gbpLiveOn, setGbpLiveOn] = useState(false);
   const gbpLiveBootstrapped = useRef(false);
   useEffect(() => {
     let cancelled = false;
@@ -1126,7 +1125,6 @@ export default function ScotlandMap() {
     void fetchGbpLiveSettings().then((settings) => {
       if (cancelled) return;
       const on = Boolean(settings.enabled);
-      setGbpLiveOn((prev) => (prev === on ? prev : on));
       // §3.10 — GBP-LIVE on: enable AGR unless URL already set layers.
       // Additive only — never reset councils/vdl/hla the visitor already chose.
       if (on && !layersFromUrlAtLoad) {
@@ -1227,7 +1225,6 @@ export default function ScotlandMap() {
     setPanelCollapsed(false);
     placeDetentMemory = "half";
     setPanelDetent("half");
-    setRestPromptVisible(false);
 
     const map = mapRef.current;
     if (map) {
@@ -1325,7 +1322,6 @@ export default function ScotlandMap() {
     setPanelKind((k) => (k === "place" ? "closed" : k));
     setPanelCollapsed(false);
     placeAsideRef.current = false;
-    setRestPromptVisible(true);
     markerRef.current?.remove();
     markerRef.current = null;
     parcelLabelRef.current?.remove();
@@ -1421,7 +1417,6 @@ export default function ScotlandMap() {
       setError(null);
       setResult(null);
       setSearchNoMatch(false);
-      setRestPromptVisible(false);
       // Desktop: Layers stays open in the right column and the card stays left.
       // Mobile: map tap / search closes Layers and opens the card (SW-056 / SW-065).
       const narrow = isNarrowPanelRef.current;
@@ -1617,7 +1612,6 @@ export default function ScotlandMap() {
       // Right column. The place card, when open, stays in the left column.
       setDesktopLayersOpen(true);
     }
-    setRestPromptVisible(false);
     setLiveMessage("Map layers open");
     const placeShowing =
       !narrow && (panelKind === "place" || Boolean(placeStub));
@@ -5212,6 +5206,7 @@ export default function ScotlandMap() {
             aria-autocomplete="list"
             aria-expanded={suggestions.length > 0 || Boolean(suggestNote)}
             aria-controls="place-suggestions"
+            aria-describedby="search-hint"
             aria-activedescendant={
               activeSuggest >= 0 ? `suggest-${activeSuggest}` : undefined
             }
@@ -5271,6 +5266,9 @@ export default function ScotlandMap() {
               }
             }}
           />
+          <span id="search-hint" className="sr-only">
+            {SEARCH_HINT_SR}
+          </span>
           {query ? (
             <button
               type="button"
@@ -5292,11 +5290,6 @@ export default function ScotlandMap() {
             {loading ? "…" : "Search"}
           </button>
         </div>
-        {searchFocused && !query.trim() && !suggestOpen ? (
-          <p className="search-empty-hint" data-testid="search-empty-hint">
-            Type a postcode or place name, or tap the map.
-          </p>
-        ) : null}
         {searchNoMatch ? (
           <p className="search-no-match" data-testid="search-no-match" role="alert">
             {PLACE_CARD_NO_MATCH}
@@ -5328,16 +5321,6 @@ export default function ScotlandMap() {
         </div>
         <SiteNav current="map" variant="map" />
       </header>
-      <ResearchBanner
-        dismissible
-        collapseForSuggest={suggestOpen || placeOpen}
-      />
-
-      {restPromptVisible && panelKind === "closed" && !gbpLiveOn ? (
-        <p className="map-rest-prompt" data-testid="map-rest-prompt">
-          Search a place or pick a layer.
-        </p>
-      ) : null}
 
       {apiOk === false && (
         <div className="hud-banner">
@@ -5382,21 +5365,31 @@ export default function ScotlandMap() {
       mapZoom >= 5 &&
       mapZoom < 8
         ? (() => {
-            const metric =
-              metricById(DEFAULT_VIEW_METRIC_ID) ??
-              metricById("pop_density")!;
-            const legend = rangeLegendFromStops(metric.stops, {
-              metricId: metric.id,
-              unit: metric.unit,
-            });
+            const legend = popDensityLegendProps();
+            // Always mount MapRangeLegend so band/alpha tests and the expanded
+            // key share one tree; collapsed CSS shows title + five swatches only.
             return (
-              <MapRangeLegend
-                title={rangeLegendTitle(metric)}
-                ranges={legend.ranges}
-                showNoData
-                mode="bands"
-                layerId="density"
-              />
+              <button
+                type="button"
+                className={
+                  mapKeyExpanded
+                    ? "map-key-chip map-key-chip--expanded"
+                    : "map-key-chip map-key-chip--collapsed"
+                }
+                data-testid="map-key-chip"
+                aria-expanded={mapKeyExpanded}
+                aria-label={legend.title}
+                onClick={() => setMapKeyExpanded((v) => !v)}
+              >
+                <MapRangeLegend
+                  title={legend.title}
+                  ranges={legend.ranges}
+                  showNoData={legend.showNoData}
+                  mode={legend.mode}
+                  layerId={legend.layerId}
+                  source={legend.source}
+                />
+              </button>
             );
           })()
         : null}
@@ -5477,6 +5470,9 @@ export default function ScotlandMap() {
           <MapLayersDrawer
             className="layers-panel-in-shell"
             mapZoom={mapZoom}
+            popDensityKeyVisible={
+              showCouncils && !showAgr && contextDataLoaded
+            }
             onClose={closeLayersPanel}
             enabled={{
               ...ledgerEnabled,

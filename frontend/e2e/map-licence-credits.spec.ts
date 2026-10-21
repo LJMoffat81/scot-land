@@ -74,27 +74,15 @@ test.describe("map licence credits (catalog-driven)", () => {
 
     await openMap(page);
 
-    // At national zoom the density legend shows the zoom hint (no bands yet).
-    const legend = page.getByTestId("map-range-legend");
-    await expect(legend).toBeVisible();
-    await expect(legend).toContainText(/population density/i);
-    await expect(legend).toContainText(/Zoom in to see colours/i);
-    await expect(legend.getByText(/£\d/)).toHaveCount(0);
-
-    // Must frame Scotland before any user zoom (zoom marks userMoved and skips framing).
-    await page.locator("#map[data-framed='1']").waitFor({ timeout: 30_000 });
-    await panToGlasgow(page);
-
-    const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
-    for (let step = 0; step < 14; step += 1) {
-      await zoomIn.click({ timeout: 10_000 });
-      await page.waitForTimeout(500);
+    // FRONTEND-BATCH-4: legend lives in the expanded map key chip (z 5–<8).
+    const chip = page.getByTestId("map-key-chip");
+    await expect(chip).toBeVisible({ timeout: 60_000 });
+    if ((await chip.getAttribute("aria-expanded")) === "false") {
+      await chip.click();
     }
-
-    // Zoomed in: density bands + hatched no-data — still no rent £.
-    await expect(legend).toHaveAttribute("data-mode", "bands", {
-      timeout: 45_000,
-    });
+    const legend = chip.getByTestId("map-range-legend");
+    await expect(legend).toBeVisible();
+    await expect(legend).toHaveAttribute("data-mode", "bands");
     await expect(legend.getByTestId("map-range-legend-no-data")).toContainText(
       /no data/i,
     );

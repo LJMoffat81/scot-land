@@ -213,8 +213,17 @@ test.describe("SW-016 research banner strip 390x844", () => {
     page,
   }) => {
     test.setTimeout(90_000);
+    // MAP-HINTS-OFF-1: strip behaviour stays on content pages; map has no banner.
     await openMap(page);
+    await expect(page.getByTestId("research-banner")).toHaveCount(0);
+    const burger = page.getByTestId("site-nav-menu-btn");
+    const search = page.locator("#place-query");
+    await expect(burger).toBeVisible();
+    await expect(search).toBeVisible();
+    await assertCenterTappable(burger, "burger menu");
+    await assertCenterTappable(search, "search field");
 
+    await page.goto("/data");
     const banner = page.getByTestId("research-banner");
     await expect(banner).toBeVisible({ timeout: 15_000 });
     await expect(banner).toHaveAttribute("data-strip", "1");
@@ -231,17 +240,12 @@ test.describe("SW-016 research banner strip 390x844", () => {
       "Annual Ground Rent figures are not published yet",
     );
 
-    const burger = page.getByTestId("site-nav-menu-btn");
-    const search = page.locator("#place-query");
-    await expect(burger).toBeVisible();
-    await expect(search).toBeVisible();
-    await assertBannerClears(banner, burger, "burger menu");
-    await assertBannerClears(banner, search, "search field");
-    await assertCenterTappable(burger, "burger menu");
-    await assertCenterTappable(search, "search field");
+    const contentBurger = page.getByTestId("site-nav-menu-btn");
+    await expect(contentBurger).toBeVisible();
+    await assertBannerClears(banner, contentBurger, "burger menu");
+    await assertCenterTappable(contentBurger, "burger menu");
 
-    // Menu open: Map and About stay on top (first links, near the top of the panel).
-    await burger.click();
+    await contentBurger.click();
     const panel = page.getByTestId("site-nav-panel");
     await expect(panel).toBeVisible();
     const menuLinks = panel.getByRole("link");
@@ -256,16 +260,12 @@ test.describe("SW-016 research banner strip 390x844", () => {
       mapBox!.y,
     );
     expect(aboutBox!.y, "About should stay near the top").toBeLessThan(280);
-    // Topmost hit-test: nothing covers Map / About at their centres.
     await assertLinkTopmost(menuLinks.nth(0), "Map");
     await assertLinkTopmost(menuLinks.nth(1), "About");
     await page.keyboard.press("Escape");
     await expect(panel).toBeHidden();
 
-    // SW-081: collapsed map strip wraps so More stays inside two lines.
     const collapsedFit = await banner.locator(".research-banner-text").evaluate((el) => {
-      const style = getComputedStyle(el);
-      const lineHeight = parseFloat(style.lineHeight);
       const range = document.createRange();
       range.selectNodeContents(el);
       const lines = [...range.getClientRects()].filter(
@@ -288,7 +288,6 @@ test.describe("SW-016 research banner strip 390x844", () => {
       }
       return {
         lines: lines.length,
-        lineHeight,
         scrollWidth: el.scrollWidth,
         clientWidth: el.clientWidth,
         moreTop: more?.top ?? -1,
@@ -309,7 +308,6 @@ test.describe("SW-016 research banner strip 390x844", () => {
     expect(collapsedFit.lines).toBeGreaterThan(0);
     expect(collapsedFit.lines).toBeLessThanOrEqual(2);
 
-    // Expand / collapse while the place card is closed (card stacks above the strip).
     await toggle.click();
     await expect(banner).toHaveAttribute("data-expanded", "1");
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
@@ -318,10 +316,8 @@ test.describe("SW-016 research banner strip 390x844", () => {
       `${RESEARCH_BANNER_LEAD} ${RESEARCH_BANNER_BODY}`,
     );
     await expect(banner).not.toContainText("experimental");
-    await assertBannerClears(banner, burger, "burger with banner expanded");
-    await assertBannerClears(banner, search, "search with banner expanded");
-    await assertCenterTappable(burger, "burger with banner expanded");
-    await assertCenterTappable(search, "search with banner expanded");
+    await assertBannerClears(banner, contentBurger, "burger with banner expanded");
+    await assertCenterTappable(contentBurger, "burger with banner expanded");
 
     await toggle.click();
     await expect(banner).toHaveAttribute("data-expanded", "0");
@@ -330,6 +326,9 @@ test.describe("SW-016 research banner strip 390x844", () => {
       RESEARCH_BANNER_STRIP_COLLAPSED,
     );
 
+    // Map place-card chrome stays usable with no banner.
+    await openMap(page);
+    await expect(page.getByTestId("research-banner")).toHaveCount(0);
     await search.fill("55.86090, -4.25140");
     await page.locator(".hud-search-go").click();
     const card = page.getByTestId("place-card");
@@ -337,8 +336,7 @@ test.describe("SW-016 research banner strip 390x844", () => {
     const cardClose = page.getByRole("button", { name: "Close place card" });
     await expect(card).toBeVisible({ timeout: 30_000 });
     await expect(cardTitle).toBeVisible();
-    // MAP-CARDS §3.6 — research banner collapses while a card is open.
-    await expect(banner).toBeHidden();
+    await expect(page.getByTestId("research-banner")).toHaveCount(0);
     await assertCenterTappable(cardTitle, "place card title");
     await assertCenterTappable(cardClose, "place card close");
     await assertCenterTappable(burger, "burger with place card open");
@@ -410,15 +408,8 @@ test.describe("SW-016 research banner strip 390x844", () => {
     });
 
     await openMap(page);
-
-    const banner = page.getByTestId("research-banner");
-    const toggle = page.getByTestId("research-banner-toggle");
-    await expect(banner).toBeVisible({ timeout: 15_000 });
-    await expect(banner).toHaveAttribute("data-strip", "1");
-
-    // Expand the strip, then open suggestions — banner must collapse again.
-    await toggle.click();
-    await expect(banner).toHaveAttribute("data-expanded", "1");
+    // MAP-HINTS-OFF-1: no banner on map — suggestions stay tappable without strip.
+    await expect(page.getByTestId("research-banner")).toHaveCount(0);
 
     const search = page.locator("#place-query");
     await search.fill("EH1 1YZ");
@@ -427,18 +418,12 @@ test.describe("SW-016 research banner strip 390x844", () => {
     await expect(first).toContainText(/EH1/i);
 
     await expect(page.locator(".app-shell")).toHaveClass(/suggest-open/);
-    await expect(banner).toHaveAttribute("data-expanded", "0");
-    await expect(banner.locator(".research-banner-text")).toHaveText(
-      RESEARCH_BANNER_STRIP_COLLAPSED,
-    );
-    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByTestId("research-banner")).toHaveCount(0);
 
-    // First suggestion must be the top hit — not covered by the research banner.
+    // First suggestion must be the top hit.
     await assertCenterTappable(first, "first suggestion");
     const suggestBox = await first.boundingBox();
-    const bannerBox = await banner.boundingBox();
     expect(suggestBox, "first suggestion box").toBeTruthy();
-    expect(bannerBox, "banner box").toBeTruthy();
     const mid = {
       x: suggestBox!.x + suggestBox!.width / 2,
       y: suggestBox!.y + suggestBox!.height / 2,

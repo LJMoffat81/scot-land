@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import ConfidenceTag from "@/components/ConfidenceTag";
+import MapRangeLegend from "@/components/MapRangeLegend";
 import {
   aimStatusPanelTag,
   layersPanelAimRows,
@@ -18,6 +19,7 @@ import {
   mapDrawerLayersByGroup,
   type MapDrawerLayer,
 } from "@/lib/mapLayerGroups";
+import { popDensityLegendProps } from "@/lib/popDensityLegend";
 
 const LAND_HEADER = "LAND";
 const LAND_SUBTITLE = "Everything nature provides and no one made";
@@ -57,6 +59,11 @@ export type MapLayersDrawerProps = {
   onFloodKindChange?: (kind: "river" | "coastal" | "surface") => void;
   /** Current map zoom for inline legend zoom gates. */
   mapZoom?: number;
+  /**
+   * People/km² fill ready (councils on, AGR off, context loaded).
+   * When true, show the NRS key row under Council areas (SW-086).
+   */
+  popDensityKeyVisible?: boolean;
   /** Close control — parent owns open state (opening must not change layers). */
   onClose?: () => void;
   className?: string;
@@ -109,6 +116,7 @@ export default function MapLayersDrawer({
   floodKind = "river",
   onFloodKindChange,
   mapZoom,
+  popDensityKeyVisible = false,
   onClose,
   className,
   title = "Map layers",
@@ -250,15 +258,37 @@ export default function MapLayersDrawer({
           expanded={openGroups.has("places")}
           onToggle={() => toggleGroup("places")}
         >
-          {placesLayers.map((layer) => (
-            <DrawerLayerRow
-              key={layer.id}
-              layer={layer}
-              on={Boolean(enabled[layer.id])}
-              mapZoom={mapZoom}
-              onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
-            />
-          ))}
+          {placesLayers.map((layer) => {
+            const densityKey =
+              layer.id === "councils" && popDensityKeyVisible
+                ? popDensityLegendProps()
+                : null;
+            return (
+              <Fragment key={layer.id}>
+                <DrawerLayerRow
+                  layer={layer}
+                  on={Boolean(enabled[layer.id])}
+                  mapZoom={mapZoom}
+                  onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
+                />
+                {densityKey ? (
+                  <li
+                    className="layers-panel-row"
+                    data-testid="map-layer-pop-density-key"
+                  >
+                    <MapRangeLegend
+                      title={densityKey.title}
+                      ranges={densityKey.ranges}
+                      showNoData={densityKey.showNoData}
+                      mode={densityKey.mode}
+                      layerId={densityKey.layerId}
+                      source={densityKey.source}
+                    />
+                  </li>
+                ) : null}
+              </Fragment>
+            );
+          })}
         </LayersAccordion>
       </section>
 

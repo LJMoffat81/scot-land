@@ -221,13 +221,18 @@ test.describe("site nav + research banner (rewrite PR1)", () => {
           nav.getByRole("link", { name: label, exact: true }),
         ).toBeVisible();
       }
-      await expect(page.getByTestId("research-banner")).toHaveCount(1);
-      await expect(page.getByTestId("research-banner")).toContainText(
-        "Research estimate.",
-      );
-      await expect(page.getByTestId("research-banner")).toContainText(
-        "Annual Ground Rent figures are not published yet",
-      );
+      if (route.path === "/") {
+        // MAP-HINTS-OFF-1: research banner removed from the map.
+        await expect(page.getByTestId("research-banner")).toHaveCount(0);
+      } else {
+        await expect(page.getByTestId("research-banner")).toHaveCount(1);
+        await expect(page.getByTestId("research-banner")).toContainText(
+          "Research estimate.",
+        );
+        await expect(page.getByTestId("research-banner")).toContainText(
+          "Annual Ground Rent figures are not published yet",
+        );
+      }
       await expect(page.locator("body")).not.toContainText("not a rates bill");
     });
   }
@@ -466,9 +471,8 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
 
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor();
-    // Keep the research banner: SW-014 asserts suggest stacks above it (do not dismiss).
-    const banner = page.getByTestId("research-banner");
-    await expect(banner).toBeVisible({ timeout: 15_000 });
+    // MAP-HINTS-OFF-1: no research banner on the map.
+    await expect(page.getByTestId("research-banner")).toHaveCount(0);
 
     const input = page.locator("#place-query");
     await input.fill("EH1 1YZ");
@@ -477,12 +481,10 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
     await expect(first).toBeVisible({ timeout: 20_000 });
     await expect(first).toContainText(/EH1/i);
 
-    // Suggestion must sit above the research banner (clickable).
+    // Suggestion must stay clickable at its centre (no banner overlay).
     const suggestBox = await first.boundingBox();
-    const bannerBox = await banner.boundingBox();
     expect(suggestBox).toBeTruthy();
-    expect(bannerBox).toBeTruthy();
-    if (suggestBox && bannerBox) {
+    if (suggestBox) {
       const mid = {
         x: suggestBox.x + suggestBox.width / 2,
         y: suggestBox.y + suggestBox.height / 2,
@@ -497,7 +499,6 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
     await first.click();
     const placeCard = page.getByTestId("place-card");
     await expect(placeCard).toBeVisible({ timeout: 30_000 });
-    // Intro / rest prompt collapses while the card is open.
     await expect(page.locator(".app-shell")).toHaveClass(/place-open/);
     await expect(page.getByTestId("map-rest-prompt")).toHaveCount(0);
 
@@ -506,16 +507,13 @@ test.describe("site-watch PR A — SW-014 suggest click at 1280", () => {
       timeout: 10_000,
     });
 
-    // MAP-CARDS: card × clears selection; rest prompt returns at closed.
+    // MAP-CARDS: card × clears selection; rest prompt stays gone (MAP-HINTS-OFF-1).
     const close = placeCard.getByRole("button", { name: "Close place card" });
     await expect(close).toBeVisible();
     await close.click();
     await expect(placeCard).toHaveCount(0);
     await expect(page.locator(".app-shell")).not.toHaveClass(/place-open/);
-    await expect(page.getByTestId("map-rest-prompt")).toBeVisible();
-    await expect(page.getByTestId("map-rest-prompt")).toHaveText(
-      /Search a place or pick a layer/i,
-    );
+    await expect(page.getByTestId("map-rest-prompt")).toHaveCount(0);
   });
 });
 
@@ -582,7 +580,7 @@ test.describe("site-watch PR A — map footer + mobile banner", () => {
     await expect(
       page.getByTestId("map-all-sources"),
     ).toHaveAttribute("href", "/data#licences");
-    await expect(page.getByTestId("research-banner")).toHaveCount(1);
+    await expect(page.getByTestId("research-banner")).toHaveCount(0);
     await expect(line).not.toContainText("Research estimate");
   });
 
@@ -590,27 +588,10 @@ test.describe("site-watch PR A — map footer + mobile banner", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor();
-    await expect(page.getByTestId("research-banner")).toHaveCount(1);
+    // MAP-HINTS-OFF-1: no banner on map — search stays clear by absence.
+    await expect(page.getByTestId("research-banner")).toHaveCount(0);
     const input = page.locator("#place-query");
     await expect(input).toBeVisible();
-    const banner = page.getByTestId("research-banner");
-    await expect(banner).toBeVisible();
-    const inputBox = await input.boundingBox();
-    const bannerBox = await banner.boundingBox();
-    expect(inputBox).toBeTruthy();
-    expect(bannerBox).toBeTruthy();
-    if (inputBox && bannerBox) {
-      const overlapY =
-        inputBox.y < bannerBox.y + bannerBox.height &&
-        inputBox.y + inputBox.height > bannerBox.y;
-      const overlapX =
-        inputBox.x < bannerBox.x + bannerBox.width &&
-        inputBox.x + inputBox.width > bannerBox.x;
-      expect(
-        overlapX && overlapY,
-        "banner must not overlap the search input",
-      ).toBeFalsy();
-    }
     await input.fill("EH1");
     await expect(input).toHaveValue("EH1");
   });

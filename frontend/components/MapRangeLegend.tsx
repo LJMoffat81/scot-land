@@ -143,7 +143,10 @@ export default function MapRangeLegend({
         </ul>
       ) : null}
       {showBands && source ? (
-        <p className="map-range-legend-source" data-testid="map-range-legend-source">
+        <p
+          className="map-range-legend-source layer-meta"
+          data-testid="map-range-legend-source"
+        >
           {source}
         </p>
       ) : null}

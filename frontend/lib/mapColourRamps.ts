@@ -29,6 +29,13 @@ export type MetricDef = {
 export const POP_DENSITY_LEGEND_TITLE =
   "Population density — people per km²";
 
+/**
+ * Default-view (council fill) people/km² legend title.
+ * Single source for map chip, Layers key row, and e2e (FRONTEND-BATCH-4).
+ */
+export const POP_DENSITY_RANGE_LEGEND_TITLE =
+  "People per square kilometre (people/km²)";
+
 /** One-line blurb under the density title (SW-022). */
 export const POP_DENSITY_LEGEND_BLURB =
   "Busier places tend to have a higher Annual Ground Rent.";
@@ -147,10 +154,13 @@ export function publicContextMetric(
 
 /**
  * Legend title for the default-view (and any metric) fill.
- * FRONTEND-BATCH-1: pop_density → "People per square kilometre (people/km²)".
+ * FRONTEND-BATCH-1 / BATCH-4: pop_density → POP_DENSITY_RANGE_LEGEND_TITLE.
  * Older SW-022 title stays in POP_DENSITY_LEGEND_TITLE for buildActiveLegendView.
  */
 export function rangeLegendTitle(metric: MetricDef): string {
+  if (metric.id === "pop_density") {
+    return POP_DENSITY_RANGE_LEGEND_TITLE;
+  }
   if (metric.unit && metric.unit !== "£" && !metric.unit.startsWith("£")) {
     if (metric.unit === "%") {
       return `${metric.label} (range)`;

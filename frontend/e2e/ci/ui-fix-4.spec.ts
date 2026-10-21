@@ -165,18 +165,14 @@ test.describe("UI-FIX-4 390", () => {
     await waitMap(page);
 
     const aerial = page.getByTestId("basemap-switcher");
-    const strip = page.locator(".research-banner-map");
     await expect(aerial).toBeVisible();
-    await expect(strip).toBeVisible();
+    // MAP-HINTS-OFF-1: research banner gone from the map.
+    await expect(page.getByTestId("research-banner")).toHaveCount(0);
+    await expect(page.locator(".research-banner-map")).toHaveCount(0);
     const aerialBox = await aerial.boundingBox();
-    const stripBox = await strip.boundingBox();
     expect(aerialBox).toBeTruthy();
-    expect(stripBox).toBeTruthy();
     expect(aerialBox!.width).toBeGreaterThan(0);
     expect(aerialBox!.height).toBeGreaterThan(0);
-    expect(stripBox!.width).toBeGreaterThan(0);
-    expect(stripBox!.height).toBeGreaterThan(0);
-    expect(boxesOverlap(aerialBox!, stripBox!)).toBe(false);
 
     await openLayers(page);
     const pad = await page.locator(".layers-panel").evaluate((el) => {
@@ -298,9 +294,7 @@ test.describe("UI-FIX-4 390", () => {
     expect(peekScroll).toBe(0);
 
     await expect(page.getByTestId("place-card-footer")).toContainText(EXPERIMENTAL);
-    await expect(page.getByTestId("research-banner")).toContainText(
-      "Research estimate",
-    );
+    await expect(page.getByTestId("research-banner")).toHaveCount(0);
     await expect(page.getByTestId("map-footer-line")).toHaveCount(0);
     await expect(page.getByTestId("map-credit-info")).toBeVisible();
     await expect(page.getByTestId("map-credit-line")).not.toContainText(
@@ -388,10 +382,8 @@ test.describe("UI-FIX-4 1280", () => {
       expect(Math.abs(a!.y - b!.y), `${key} y`).toBeLessThanOrEqual(4);
     }
 
-    const bannerLeft = await page.locator(".research-banner-map").evaluate((el) => {
-      return el.getBoundingClientRect().left;
-    });
-    expect(bannerLeft).toBeGreaterThanOrEqual(0);
+    await expect(page.getByTestId("research-banner")).toHaveCount(0);
+    await expect(page.locator(".research-banner-map")).toHaveCount(0);
 
     const pad = await page.locator(".layers-panel").evaluate((el) => {
       const s = getComputedStyle(el);
@@ -420,9 +412,7 @@ test.describe("UI-FIX-4 1280", () => {
       .getByTestId("map-panel-scroll")
       .evaluate((el) => el.scrollTop);
     expect(cardScroll).toBe(0);
-    await expect(page.getByTestId("research-banner")).toContainText(
-      "Research estimate",
-    );
+    await expect(page.getByTestId("research-banner")).toHaveCount(0);
 
     await page.locator("#place-query").focus();
     let sawFocus = false;

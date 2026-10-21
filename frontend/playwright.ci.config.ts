@@ -25,7 +25,7 @@ export default defineConfig({
     command:
       "NEXT_PUBLIC_INTERNAL_PREVIEWS=1 NEXT_PUBLIC_E2E_HOOKS=1 npx next build && NEXT_PUBLIC_INTERNAL_PREVIEWS=1 NEXT_PUBLIC_E2E_HOOKS=1 npx next start -p 3100",
     url: baseURL,
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     timeout: 300_000,
     env: {
       ...process.env,

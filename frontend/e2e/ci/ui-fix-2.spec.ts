@@ -222,11 +222,9 @@ for (const viewport of [
       await stubMap(page);
       await openMap(page);
 
-      await assertClear(
-        page.getByTestId("map-rest-prompt"),
-        page.getByTestId("research-banner"),
-        "tip vs banner",
-      );
+      // MAP-HINTS-OFF-1: both gone from the map.
+      await expect(page.getByTestId("map-rest-prompt")).toHaveCount(0);
+      await expect(page.getByTestId("research-banner")).toHaveCount(0);
 
       await page.getByTestId("hud-layers-btn").click();
       await expect(page.getByTestId("layers-panel")).toBeVisible();

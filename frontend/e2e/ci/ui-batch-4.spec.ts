@@ -144,7 +144,10 @@ for (const viewport of [
       test.setTimeout(90_000);
       const gate = attachConsoleGate(page);
       await stubMapCardsBackend(page);
+      // MAP-HINTS-OFF-1: banner gone from map — strip fit runs on a content page.
       await openMap(page);
+      await expect(page.getByTestId("research-banner")).toHaveCount(0);
+      await page.goto("/data");
       await assertMoreInView(page);
       assertConsoleClean(gate);
     });

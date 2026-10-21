@@ -293,9 +293,7 @@ for (const viewport of [
 
       await page.goto("/");
       await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
-      await expect(page.getByTestId("map-rest-prompt")).toHaveText(
-        "Search a place or pick a layer.",
-      );
+      await expect(page.getByTestId("map-rest-prompt")).toHaveCount(0);
       await expect(page.getByTestId("land-values-coming-soon")).toHaveCount(0);
 
       await page.goto("/methodology");

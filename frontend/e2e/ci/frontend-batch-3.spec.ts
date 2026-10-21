@@ -731,6 +731,7 @@ for (const viewport of VIEWPORTS) {
       page,
     }) => {
       test.setTimeout(60_000);
+      await stubMapCardsBackend(page, { gbpLive: false });
       await page.goto("/roadmap");
       await expect(page.locator("#suggest-a-layer")).toHaveCount(0);
       await expect(page.getByText("Suggest a layer")).toHaveCount(0);
@@ -746,6 +747,7 @@ for (const viewport of VIEWPORTS) {
     }) => {
       test.setTimeout(90_000);
       const posts: string[] = [];
+      await stubMapCardsBackend(page, { gbpLive: false });
       await enableContactFormE2e(page);
       await page.route("**/formspree.io/f/**", async (route) => {
         posts.push(route.request().postData() ?? "");
@@ -793,6 +795,7 @@ for (const viewport of VIEWPORTS) {
       page,
     }) => {
       test.setTimeout(60_000);
+      await stubMapCardsBackend(page, { gbpLive: false });
       await page.goto("/roadmap");
 
       for (const sectionId of ["#map-layers", "#further-ahead"] as const) {

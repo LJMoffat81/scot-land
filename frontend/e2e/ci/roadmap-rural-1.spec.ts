@@ -1,6 +1,6 @@
 
 import { test, expect } from "./_fixtures";
-import { registerOpenFreeMapFontStub, BANNED_VISIBLE } from "./_mapCardsHelpers";
+import { registerOpenFreeMapFontStub, BANNED_VISIBLE, stubMapCardsBackend } from "./_mapCardsHelpers";
 import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
@@ -25,6 +25,7 @@ const BANNED = [
 ] as const;
 
 async function assertRuralRow(page: Page) {
+  await stubMapCardsBackend(page);
   await page.goto("/roadmap");
   const named = page.getByText(ROW_NAME, { exact: true });
   await expect(named).toHaveCount(1);

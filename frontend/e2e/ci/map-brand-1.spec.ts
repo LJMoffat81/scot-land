@@ -41,6 +41,7 @@ for (const width of WIDTHS) {
 
     test("shared lockup, breakpoint, and no overlap", async ({ page }) => {
       test.setTimeout(120_000);
+      await stubMapCardsBackend(page);
       await page.goto("/about");
       const aboutBrand = page.getByTestId("site-nav-brand");
       await expect(aboutBrand).toBeVisible();

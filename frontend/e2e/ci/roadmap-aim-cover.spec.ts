@@ -1,4 +1,4 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import { registerOpenFreeMapFontStub, stubMapCardsBackend } from "./_mapCardsHelpers";
 import { test, expect } from "./_fixtures";
 import { type Page } from "@playwright/test";
 
@@ -49,6 +49,7 @@ const GROUP_HEADINGS = [
 ] as const;
 
 async function assertAimCoverVisible(page: Page) {
+  await stubMapCardsBackend(page);
   await page.goto("/roadmap");
   const section = page.getByTestId("roadmap-aim");
   await expect(

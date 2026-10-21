@@ -2,6 +2,10 @@
  * CI-DEDUP-1b-r2 — strict console gate.
  * Same-origin 404/503 and app errors fail; only EXTERNAL_HOSTS locations and
  * the exact AbortError text are ignored. expectError is the sole intentional-error path.
+ *
+ * assertClean(): after the check (pass or throw), clears recorded errors and
+ * expectations so a later teardown assertClean is a no-op once the body (or an
+ * earlier assertClean) already ran.
  */
 import type { Page } from "@playwright/test";
 

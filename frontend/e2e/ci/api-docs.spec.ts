@@ -1,4 +1,4 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import { registerOpenFreeMapFontStub, stubMapCardsBackend } from "./_mapCardsHelpers";
 import { test, expect } from "./_fixtures";
 
 registerOpenFreeMapFontStub();
@@ -29,6 +29,7 @@ test.describe("API reference (charter C1)", () => {
       }
     });
 
+    await stubMapCardsBackend(page);
     await page.goto("/developers/api");
     await expect(page.getByTestId("api-teaser")).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(

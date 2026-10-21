@@ -54,6 +54,7 @@ test.describe("UI-BATCH-4 contact links off", () => {
 
   test("no page links to /about#contact", async ({ page }) => {
     test.setTimeout(180_000);
+    await stubMapCardsBackend(page);
     const sitemap = await page.request.get("/sitemap.xml");
     expect(sitemap.ok()).toBe(true);
     const xml = await sitemap.text();
@@ -76,6 +77,7 @@ test.describe("UI-BATCH-4 about and developers", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test("about has no first person singular phrases", async ({ page }) => {
+    await stubMapCardsBackend(page);
     await page.goto("/about");
     const text = await page.getByTestId("mission-page").innerText();
     expect(text).toContain("Why we are building this");
@@ -89,6 +91,7 @@ test.describe("UI-BATCH-4 about and developers", () => {
   });
 
   test("developers footer has no Source code text", async ({ page }) => {
+    await stubMapCardsBackend(page);
     await page.goto("/developers");
     await expect(page.getByText("Source code", { exact: true })).toHaveCount(0);
     const text = await page.locator("body").innerText();
@@ -100,6 +103,7 @@ test.describe("UI-BATCH-4 levels", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test("roadmap and How it works list the five levels", async ({ page }) => {
+    await stubMapCardsBackend(page);
     await page.goto("/roadmap");
     const levels = page.getByTestId("roadmap-level");
     await expect(levels).toHaveCount(AREA_LEVELS.length);

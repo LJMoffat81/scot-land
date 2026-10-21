@@ -65,6 +65,11 @@ test("P2 no global backend/api/catch-all routes in fixtures/gate/helpers", () =>
     join(ciDir, "_consoleGate.ts"),
     join(ciDir, "_mapCardsHelpers.ts"),
   ];
+  // Any route pattern whose first string arg mentions /backend/ or /api/
+  // (covers **/backend/**, **/backend/**/*, **/api/…, etc.).
+  const ROUTE_BACKEND_OR_API =
+    /\.route\s*\(\s*(["'`])([^"'`]*?(?:\/backend\/|\/api\/)[^"'`]*)\1/g;
+
   for (const file of files) {
     const src = readFileSync(file, "utf8");
     const base = file.split("/").pop();
@@ -76,6 +81,23 @@ test("P2 no global backend/api/catch-all routes in fixtures/gate/helpers", () =>
     }
     if (src.includes('route("**/*"') || src.includes("route('**/*'")) {
       assert.fail(`P2: ${base} has a catch-all route`);
+    }
+
+    // Shared auto-fixture / gate must not stub any backend or /api path.
+    // Helpers may still call explicit per-spec stubs (stubMapCardsBackend).
+    if (base === "_fixtures.ts" || base === "_consoleGate.ts") {
+      // Strip stubExternalHosts body — it only stubs EXTERNAL_HOSTS, never backend/api.
+      const withoutExternal = src.replace(
+        /export async function stubExternalHosts[\s\S]*?\n}\n/,
+        "",
+      );
+      ROUTE_BACKEND_OR_API.lastIndex = 0;
+      const hit = ROUTE_BACKEND_OR_API.exec(withoutExternal);
+      if (hit) {
+        assert.fail(
+          `P2: ${base} has a backend/api route pattern ${hit[2]}`,
+        );
+      }
     }
   }
 });

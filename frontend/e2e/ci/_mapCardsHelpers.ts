@@ -296,6 +296,48 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       body: JSON.stringify(HEALTH_OK),
     });
   });
+  // Local browser apiJson prefixes /backend → /backend/api/*.json (ledger, catalog, …).
+  await page.route("**/backend/api/**", async (route) => {
+    const url = route.request().url();
+    if (/ledger\.json/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          rows: [],
+          checks: [],
+          excluded: [],
+          benchmarks: [],
+        }),
+      });
+      return;
+    }
+    if (/catalog\.json/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ layers: [] }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ layers: [], rows: [], checks: [] }),
+    });
+  });
+  await page.route("**/api/ledger.json**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        rows: [],
+        checks: [],
+        excluded: [],
+        benchmarks: [],
+      }),
+    });
+  });
   // Broad geo stubs first — LIFO: catalog / manifest / DZ registered below win.
   for (const pattern of [
     "**/backend/layers/**",

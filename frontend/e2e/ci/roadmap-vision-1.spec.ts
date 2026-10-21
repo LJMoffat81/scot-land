@@ -1,6 +1,6 @@
 
 import { test, expect } from "./_fixtures";
-import { registerOpenFreeMapFontStub, BANNED_VISIBLE } from "./_mapCardsHelpers";
+import { registerOpenFreeMapFontStub, BANNED_VISIBLE, stubMapCardsBackend } from "./_mapCardsHelpers";
 import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
@@ -15,6 +15,7 @@ const VISION_FIRST_SENTENCE =
   "Our long-term aim is to give every piece of land in Scotland its own Annual Ground Rent value, per square metre.";
 
 async function assertVisionVisible(page: Page) {
+  await stubMapCardsBackend(page);
   await page.goto("/roadmap");
   const section = page.getByTestId("roadmap-vision");
   const heading = section.getByRole("heading", {

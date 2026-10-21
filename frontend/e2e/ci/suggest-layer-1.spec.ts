@@ -1,4 +1,4 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import { registerOpenFreeMapFontStub, stubMapCardsBackend } from "./_mapCardsHelpers";
 import { test, expect } from "./_fixtures";
 import { type Page } from "@playwright/test";
 import { SUGGEST_LAYER_COPY } from "../../components/SuggestLayerSection";
@@ -17,6 +17,7 @@ async function assertNoMailtoOrEmail(page: Page) {
 }
 
 async function assertRoadmapAdditions(page: Page) {
+  await stubMapCardsBackend(page);
   await page.goto("/roadmap");
 
   // Flag off (default): whole #suggest-a-layer section is out of the DOM.

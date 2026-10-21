@@ -9,7 +9,6 @@ import {
   test as base,
   expect,
   type BrowserContext,
-  type Page,
   type Route,
 } from "@playwright/test";
 import {
@@ -184,202 +183,6 @@ export async function stubExternalHosts(
   return { hits };
 }
 
-const HEALTH_OK = {
-  status: "ok",
-  routers: {
-    "api.agr_routes": { loaded: true },
-    "api.platform_routes": { loaded: true },
-  },
-};
-
-const EMPTY_FC = { type: "FeatureCollection", features: [] };
-
-const QUIET_PLACE = {
-  contract: "place_card_v1",
-  lat: 55.8609,
-  lng: -4.2514,
-  place_label: "City Centre",
-  council_name: "Glasgow City",
-  data_zone: {
-    status: "ok",
-    code: "S01014567",
-    name: "City Centre South",
-    vintage: 2022,
-  },
-  intermediate_zone: { status: "ok", name: "City Centre", code: "S02002645" },
-  dwellings: 410,
-  agr_rows: [],
-  constraints: [],
-  layers: [],
-  links: [],
-};
-
-/**
- * Quiet same-origin API defaults so Next rewrites do not 503 without FastAPI.
- * Specific paths only — never a global backend catch-all (P2). Specs override via LIFO.
- */
-async function stubCiOriginQuiet(page: Page): Promise<void> {
-  // Favicons / apple icons — same-origin 404s must not fail the strict gate.
-  await page.route("**/favicon.ico**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "image/png",
-      body: CI_TINY_PNG,
-    });
-  });
-  await page.route("**/apple-touch-icon**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "image/png",
-      body: CI_TINY_PNG,
-    });
-  });
-  await page.route("**/api/gbp-live**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ enabled: false }),
-    });
-  });
-  await page.route("**/api/catalog.json", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ layers: [] }),
-    });
-  });
-  // Local browser apiJson prefixes /backend → /backend/api/*.json
-  await page.route("**/backend/api/**", async (route) => {
-    const url = route.request().url();
-    const emptyList = JSON.stringify({ layers: [], rows: [], checks: [] });
-    if (/ledger\.json/i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          rows: [],
-          checks: [],
-          excluded: [],
-          benchmarks: [],
-        }),
-      });
-      return;
-    }
-    if (/catalog\.json/i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ layers: [] }),
-      });
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: emptyList,
-    });
-  });
-  await page.route("**/api/ledger.json**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        rows: [],
-        checks: [],
-        excluded: [],
-        benchmarks: [],
-      }),
-    });
-  });
-  await page.route("**/api/parcels/tiles/**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "image/png",
-      body: CI_TINY_PNG,
-    });
-  });
-  await page.route("**/api/context/**/tiles/**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "image/png",
-      body: CI_TINY_PNG,
-    });
-  });
-  await page.route("**/backend/health**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(HEALTH_OK),
-    });
-  });
-  await page.route("**/platform/gbp-live**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ enabled: false }),
-    });
-  });
-  // Broad backends first — LIFO: specifics registered below must win.
-  for (const pattern of [
-    "**/backend/layers/**",
-    "**/backend/boundaries/**",
-    "**/backend/w3w-grid**",
-    "**/backend/parcels**",
-  ] as const) {
-    await page.route(pattern, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(EMPTY_FC),
-      });
-    });
-  }
-  await page.route("**/backend/layers/add/tiles-manifest**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ version: 1, sources: [] }),
-    });
-  });
-  await page.route("**/backend/layers/catalog**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ version: 2, layers: [] }),
-    });
-  });
-  await page.route("**/backend/layers/context/data-zones/at**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        code: "S01014567",
-        name: "City Centre South",
-        vintage: 2022,
-      }),
-    });
-  });
-  await page.route("**/backend/platform/place**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(QUIET_PLACE),
-    });
-  });
-  // Register after platform/place so **/backend/place** does not steal it.
-  await page.route("**/backend/place**", async (route) => {
-    if (/platform\/place/i.test(route.request().url())) {
-      await route.continue();
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ kind: "places", matches: [] }),
-    });
-  });
-}
-
 type CiDedupFixtures = {
   /**
    * When false, skip EXTERNAL_HOSTS routing (csp-esri-1 keeps its own arcgis route).
@@ -407,7 +210,8 @@ export const test = base.extend<CiDedupFixtures>({
   },
 
   gate: async ({ page }, use) => {
-    await stubCiOriginQuiet(page);
+    // Backend/api stubs stay per-spec (stubMapCardsBackend etc.). No same-origin
+    // quiet routes here — §0 / §8 ban global backend stubs in shared fixtures.
     const gate = attachStrictConsoleGate(page);
     registerStrictGate(page, gate);
     await use(gate);

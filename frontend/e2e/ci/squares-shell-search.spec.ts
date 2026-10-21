@@ -1,4 +1,4 @@
-import { injectEsriBasemapKey, registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import { injectEsriBasemapKey, registerOpenFreeMapFontStub, stubMapCardsBackend } from "./_mapCardsHelpers";
 import { test, expect } from "./_fixtures";
 import { type Page } from "@playwright/test";
 
@@ -7,6 +7,7 @@ registerOpenFreeMapFontStub();
 
 async function openMap(page: Page) {
   await injectEsriBasemapKey(page);
+  await stubMapCardsBackend(page);
   await page.goto("/");
   await page.locator(".maplibregl-canvas").waitFor();
   await page.locator("#place-query").waitFor();

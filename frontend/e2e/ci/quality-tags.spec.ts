@@ -1,4 +1,4 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import { registerOpenFreeMapFontStub, stubMapCardsBackend } from "./_mapCardsHelpers";
 import { test, expect } from "./_fixtures";
 
 registerOpenFreeMapFontStub();
@@ -8,6 +8,7 @@ test.describe("quality-tag colours", () => {
   test.use({ viewport: { width: 1100, height: 800 } });
 
   test("developers page reuses quality-tag chips", async ({ page }) => {
+    await stubMapCardsBackend(page);
     await page.goto("/developers");
     const tags = page.getByTestId("quality-tag-inline").getByTestId("quality-tag");
     await expect(tags).toHaveCount(4);

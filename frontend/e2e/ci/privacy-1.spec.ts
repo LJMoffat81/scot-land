@@ -1,4 +1,5 @@
 import { expect, test } from "./_fixtures";
+import { stubMapCardsBackend } from "./_mapCardsHelpers";
 import { type Page } from "@playwright/test";
 
 /**
@@ -41,6 +42,10 @@ async function firstPartyJs(page: Page): Promise<string> {
   }
   return chunks.join("\n");
 }
+
+test.beforeEach(async ({ page }) => {
+  await stubMapCardsBackend(page);
+});
 
 test.describe("PRIVACY-1 contact form", () => {
   test.use({ viewport: { width: 1280, height: 800 } });

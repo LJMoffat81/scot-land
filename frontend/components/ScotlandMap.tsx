@@ -58,7 +58,9 @@ import {
 import type { LedgerToggleState } from "../lib/ledger";
 import MapRangeLegend from "./MapRangeLegend";
 import {
+  CHOROPLETH_FILL_OPACITY,
   DEFAULT_VIEW_METRIC_ID,
+  NODATA_HATCH_OPACITY,
   POP_DENSITY_COLOURS_MIN_ZOOM,
   metricById,
   paintMetricForChoropleth,
@@ -2491,7 +2493,7 @@ export default function ScotlandMap() {
           layout: { visibility: "none" },
           paint: {
             "fill-color": paintForMetric(initialPaintMetric),
-            "fill-opacity": 0.72,
+            "fill-opacity": CHOROPLETH_FILL_OPACITY,
           },
         },
         labelsBeforeId,
@@ -2510,7 +2512,7 @@ export default function ScotlandMap() {
           ] as unknown as ExpressionSpecification,
           paint: {
             "fill-pattern": NO_DATA_HATCH_IMAGE,
-            "fill-opacity": 0.85,
+            "fill-opacity": NODATA_HATCH_OPACITY,
           },
         },
         labelsBeforeId,

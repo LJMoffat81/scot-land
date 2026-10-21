@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import ContentPageFooter from "@/components/ContentPageFooter";
 import ResearchBanner from "@/components/ResearchBanner";
 import SiteNav from "@/components/SiteNav";
+import SuggestLayerSection from "@/components/SuggestLayerSection";
 import { AIM_TO_COVER, ROADMAP_FINAL_ROW } from "@/lib/aimToCover";
 import { AREA_LEVELS, AREA_LEVELS_EXPLANATION } from "@/lib/areaLevels";
-import { contactFormEnabled } from "@/lib/contactFormFlag";
 import { LAYERS_ADD_WAITING } from "@/lib/layersAddRegistry";
 import { MAP_LAYER_REGISTRY } from "@/lib/mapLayerRegistry";
 import { absoluteOgImageUrl, OG_IMAGES } from "@/lib/socialMeta";
@@ -69,11 +69,6 @@ const OUR_VISION_TEXT =
 
 const OUR_VISION_TODAY = "Today the map shows estimates for Data Zones only.";
 
-const SUGGEST_LAYER_COPY =
-  "Know a dataset that would make this map better? Tell us what the layer is, where the data comes from (a link), and why it matters for land value. We check every suggestion against its licence and our method before adding it.";
-
-const SUGGEST_LAYER_HREF = "/about#contact";
-
 export default function RoadmapPage() {
   return (
     <main className="methodology-page" data-testid="roadmap-page">
@@ -124,15 +119,7 @@ export default function RoadmapPage() {
         ))}
       </section>
 
-      <section id="suggest-a-layer" data-testid="roadmap-suggest-layer">
-        <h2>Suggest a layer</h2>
-        <p>{SUGGEST_LAYER_COPY}</p>
-        {contactFormEnabled() ? (
-          <p>
-            <a href={SUGGEST_LAYER_HREF}>Suggest a layer</a>
-          </p>
-        ) : null}
-      </section>
+      <SuggestLayerSection />
 
       <section id="map-layers" data-testid="roadmap-map-layers">
         <h2>Coming to the map</h2>
@@ -153,7 +140,11 @@ export default function RoadmapPage() {
                 <span className="roadmap-layer-blurb">{row.blurb}</span>
               ) : null}
               <span
-                className="roadmap-layer-status"
+                className={
+                  row.statusShort
+                    ? "roadmap-layer-status roadmap-layer-status--has-short"
+                    : "roadmap-layer-status"
+                }
                 data-testid={
                   row.id ? `roadmap-waiting-status-${row.id}` : undefined
                 }

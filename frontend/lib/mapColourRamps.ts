@@ -3,6 +3,12 @@
  * AGR / rent / fiscal £ ramps are removed from the public shell.
  */
 
+/** Choropleth fill alpha so basemap labels stay readable (BASEMAP-SHOWTHRU-1). */
+export const CHOROPLETH_FILL_OPACITY = 0.55;
+
+/** No-data hatch fill alpha (same pin as choropleth fill). */
+export const NODATA_HATCH_OPACITY = 0.55;
+
 export type MetricId =
   | "house_price"
   | "land_share"

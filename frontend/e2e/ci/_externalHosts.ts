@@ -45,6 +45,8 @@ function styleFixtureBody(): string {
 const OPENFREEMAP_STYLE = JSON.stringify({
   version: 8,
   name: "OpenFreeMap stub (CI-DEDUP-1b)",
+  // Glyphs URL required when any symbol uses text-field (SHOWTHRU / T-S2b).
+  glyphs: "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
   sources: {
     openmaptiles: {
       type: "vector",
@@ -78,6 +80,19 @@ const OPENFREEMAP_STYLE = JSON.stringify({
       source: "openmaptiles",
       "source-layer": "building",
       paint: { "fill-color": "#c0c0c0", "fill-opacity": 0.8 },
+    },
+    // Symbol so SHOWTHRU / T-S2b can place council fills below the first label.
+    {
+      id: "place_label",
+      type: "symbol",
+      source: "openmaptiles",
+      "source-layer": "place",
+      layout: {
+        "text-field": ["get", "name"],
+        "text-size": 12,
+        "text-font": ["Open Sans Regular"],
+      },
+      paint: { "text-color": "#333333" },
     },
   ],
 });

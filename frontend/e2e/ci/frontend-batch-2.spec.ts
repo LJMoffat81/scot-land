@@ -191,9 +191,12 @@ for (const viewport of VIEWPORTS) {
       });
     }
 
+    // Intentional ArcGIS 403/498/invalid JSON — skip strict console gate.
+    test.describe("T-M2/T-M3 aerial failure paths", () => {
+      test.use({ skipStrictConsoleAssert: true });
+
     test("T-M2 MC6 blocked tiles revert", async ({ page }) => {
       test.setTimeout(180_000);
-      const gate = attachConsoleGate(page);
       await injectEsriBasemapKey(page, DUMMY_ESRI_KEY);
       expect(DUMMY_ESRI_KEY).toBe("TEST" + "KEY" + "x".repeat(8));
 
@@ -248,12 +251,11 @@ for (const viewport of VIEWPORTS) {
         expect(Math.abs(after.zoom - before.zoom)).toBeLessThanOrEqual(0.01);
         await page.goto("about:blank");
       }
-      assertConsoleClean(gate);
+      // Intentional CDN 403/498 — do not assertConsoleClean.
     });
 
     test("T-M3 O1 missing attribution reverts", async ({ page }) => {
       test.setTimeout(180_000);
-      const gate = attachConsoleGate(page);
       await injectEsriBasemapKey(page, DUMMY_ESRI_KEY);
       const style = loadFixture();
       for (const src of Object.values(style.sources)) {
@@ -280,8 +282,9 @@ for (const viewport of VIEWPORTS) {
       expect(Math.abs(after.lng - before.lng)).toBeLessThanOrEqual(1e-5);
       expect(Math.abs(after.lat - before.lat)).toBeLessThanOrEqual(1e-5);
       expect(Math.abs(after.zoom - before.zoom)).toBeLessThanOrEqual(0.01);
-      assertConsoleClean(gate);
+      // Intentional aerial failure path — do not assertConsoleClean.
     });
+    }); // T-M2/T-M3 aerial failure paths
 
     test("T-M4 O1 credit exact + dynamic attribution", async ({ page }) => {
       test.setTimeout(180_000);

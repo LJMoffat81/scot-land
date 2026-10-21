@@ -840,6 +840,10 @@ for (const viewport of VIEWPORTS) {
       }
     });
 
+    // Intentional **/layers/catalog 404** (force agr=false) — skip strict gate.
+    test.describe("T-P1/T-P2 postcode gate (catalog 404)", () => {
+      test.use({ skipStrictConsoleAssert: true });
+
     for (const value of ["G63 0AA", "G630AA", "g63 0aa", "  G63  0AA "] as const) {
       test(`T-P1 accepts postcode ${JSON.stringify(value)}`, async ({
         page,
@@ -847,7 +851,6 @@ for (const viewport of VIEWPORTS) {
         test.setTimeout(90_000);
         expect(looksLikeFullPostcode(value)).toBe(true);
         const trimmed = value.trim();
-        const gate = attachConsoleGate(page);
         let geocodeCount = 0;
         let sentQ = "";
         await stubMapCardsBackend(page, { gbpLive: false });
@@ -880,7 +883,7 @@ for (const viewport of VIEWPORTS) {
           .toBe(1);
         expect(sentQ).toBe(trimmed);
         await expect(input).toHaveValue(trimmed);
-        assertConsoleClean(gate);
+        // Intentional catalog 404 — do not assertConsoleClean.
       });
     }
 
@@ -897,7 +900,6 @@ for (const viewport of VIEWPORTS) {
       }) => {
         test.setTimeout(90_000);
         expect(looksLikeFullPostcode(value)).toBe(false);
-        const gate = attachConsoleGate(page);
         let geocodeCount = 0;
         await stubMapCardsBackend(page, { gbpLive: false });
         await page.route("**/layers/catalog**", async (route) => {
@@ -927,9 +929,10 @@ for (const viewport of VIEWPORTS) {
           timeout: 15_000,
         });
         expect(geocodeCount).toBe(0);
-        assertConsoleClean(gate);
+        // Intentional catalog 404 — do not assertConsoleClean.
       });
     }
+    }); // T-P1/T-P2 postcode gate
 
     test("T-P3 search input word-spacing keeps postcode space visible", async ({
       page,

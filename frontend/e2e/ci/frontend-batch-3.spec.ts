@@ -839,7 +839,7 @@ for (const viewport of VIEWPORTS) {
         await getMap(page);
         const input = page.locator("#place-query");
         if (value === "") {
-          // Go is disabled when empty; Enter still runs searchPostcode("").
+          // Go is disabled when empty; Enter still runs the refuse path.
           await input.focus();
           await input.press("Enter");
         } else {

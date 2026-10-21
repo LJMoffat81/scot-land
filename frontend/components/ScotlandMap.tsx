@@ -1943,7 +1943,11 @@ export default function ScotlandMap() {
 
   const runSearch = async () => {
     const q = query.trim();
-    if (!q) return;
+    if (!q) {
+      // Idea 80 / T-P2: empty search is refused with the same postcode-only line.
+      setError(POSTCODES_ONLY);
+      return;
+    }
     const coords = parseCoordinates(q);
     if (coords) {
       const generation = ++lookupGen.current;

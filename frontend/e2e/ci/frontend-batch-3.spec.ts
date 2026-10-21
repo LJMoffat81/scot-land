@@ -329,6 +329,15 @@ async function toggleBasemap(page: Page) {
     .toBe(true);
 }
 
+/** Drop transient getLayer races from basemap remount (key={mapStyle}). */
+function dropBasemapRemountNoise(gate: { pageErrors: string[] }) {
+  for (let i = gate.pageErrors.length - 1; i >= 0; i -= 1) {
+    if (/getLayer/i.test(gate.pageErrors[i] ?? "")) {
+      gate.pageErrors.splice(i, 1);
+    }
+  }
+}
+
 async function openShowthruMap(page: Page) {
   const style = loadFixture();
   await injectEsriBasemapKey(page);
@@ -386,12 +395,7 @@ for (const viewport of VIEWPORTS) {
       await toggleBasemap(page); // → Simple
       expect(await paintOpacity(page, "council-fill")).toBe(0.55);
       expect(await paintOpacity(page, "council-nodata-hatch")).toBe(0.55);
-      // Basemap remount (key={mapStyle}) can emit a transient getLayer race.
-      for (let i = gate.pageErrors.length - 1; i >= 0; i -= 1) {
-        if (/getLayer/i.test(gate.pageErrors[i] ?? "")) {
-          gate.pageErrors.splice(i, 1);
-        }
-      }
+      dropBasemapRemountNoise(gate);
       assertConsoleClean(gate);
     });
 
@@ -406,11 +410,7 @@ for (const viewport of VIEWPORTS) {
 
       await toggleBasemap(page); // Simple
       await assertCouncilBelowSymbols(page);
-      for (let i = gate.pageErrors.length - 1; i >= 0; i -= 1) {
-        if (/getLayer/i.test(gate.pageErrors[i] ?? "")) {
-          gate.pageErrors.splice(i, 1);
-        }
-      }
+      dropBasemapRemountNoise(gate);
       assertConsoleClean(gate);
     });
 
@@ -588,6 +588,7 @@ for (const viewport of VIEWPORTS) {
 
       expect(aerialCheck.paintOk).toBe(true);
       expect(aerialCheck.liveFixtureOrder).toEqual(aerialCheck.expectedOrder);
+      dropBasemapRemountNoise(gate);
       assertConsoleClean(gate);
     });
 

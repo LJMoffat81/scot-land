@@ -106,6 +106,18 @@ function prepareStandalone(distName) {
   return standalone;
 }
 
+const children = [];
+
+function shutdownChildren() {
+  for (const child of children) {
+    try {
+      if (!child.killed) child.kill("SIGTERM");
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 function startStandalone(distName, port) {
   const standalone = prepareStandalone(distName);
   const env = baseEnv();
@@ -117,14 +129,25 @@ function startStandalone(distName, port) {
     stdio: "inherit",
     shell: false,
   });
+  children.push(child);
   child.on("exit", (code, signal) => {
     process.stderr.write(
       `esri-key-build-servers: standalone :${port} exited code=${code} signal=${signal}\n`,
     );
+    shutdownChildren();
     process.exit(code ?? 1);
   });
   return child;
 }
+
+process.on("SIGTERM", () => {
+  shutdownChildren();
+  process.exit(0);
+});
+process.on("SIGINT", () => {
+  shutdownChildren();
+  process.exit(0);
+});
 
 async function main() {
   for (const d of [DIST_B1, DIST_B2]) {

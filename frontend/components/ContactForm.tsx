@@ -37,17 +37,22 @@ type E2eContactOverride = {
 
 function readE2eContactOverride(): E2eContactOverride {
   if (typeof window === "undefined") return {};
+  // Production builds leave NEXT_PUBLIC_E2E_HOOKS unset so this block is dropped.
+  // Use __E2E_* names only — never __SC_CONTACT_FORM_ID (banned in visitor bundles).
   if (process.env.NEXT_PUBLIC_E2E_HOOKS !== "1") return {};
   const w = window as Window & {
     __E2E_CONTACT_FORM_ENABLED__?: boolean;
-    __SC_CONTACT_FORM_ID?: string;
+    __E2E_CONTACT_FORM_ID__?: string;
   };
   const out: E2eContactOverride = {};
   if (typeof w.__E2E_CONTACT_FORM_ENABLED__ === "boolean") {
     out.enabled = w.__E2E_CONTACT_FORM_ENABLED__;
   }
-  if (typeof w.__SC_CONTACT_FORM_ID === "string" && w.__SC_CONTACT_FORM_ID.trim()) {
-    out.formId = w.__SC_CONTACT_FORM_ID.trim();
+  if (
+    typeof w.__E2E_CONTACT_FORM_ID__ === "string" &&
+    w.__E2E_CONTACT_FORM_ID__.trim()
+  ) {
+    out.formId = w.__E2E_CONTACT_FORM_ID__.trim();
   }
   return out;
 }

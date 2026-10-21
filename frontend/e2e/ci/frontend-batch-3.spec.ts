@@ -327,12 +327,12 @@ async function enableContactFormE2e(page: Page) {
       (
         window as Window & {
           __E2E_CONTACT_FORM_ENABLED__?: boolean;
-          __SC_CONTACT_FORM_ID?: string;
+          __E2E_CONTACT_FORM_ID__?: string;
         }
       ).__E2E_CONTACT_FORM_ENABLED__ = enabled;
       (
-        window as Window & { __SC_CONTACT_FORM_ID?: string }
-      ).__SC_CONTACT_FORM_ID = formId;
+        window as Window & { __E2E_CONTACT_FORM_ID__?: string }
+      ).__E2E_CONTACT_FORM_ID__ = formId;
     },
     { enabled: true, formId: FORM_ID },
   );

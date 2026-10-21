@@ -4,7 +4,9 @@
  */
 import { expect, test, type Page, type Route } from "@playwright/test";
 import {
+  attachStrictConsoleGate,
   getStrictGateForPage,
+  registerStrictGate,
   type StrictConsoleGate,
 } from "./_consoleGate";
 
@@ -221,14 +223,24 @@ export type ConsoleGate = StrictConsoleGate;
 
 /**
  * Return the page's already-attached strict gate.
- * Specs must import `test` from `./_fixtures` so the auto fixture attaches it.
+ * CI specs must import `test` from `./_fixtures` so the auto fixture attaches it.
+ *
+ * Exception: e2e/build-key (outside 1b-r2 allowed files) still imports this
+ * helper under raw @playwright/test — attach a strict gate for that caller only.
+ * E10 keeps throwing for a bare newPage() with no fixtures.
  */
 export function attachConsoleGate(page: Page): ConsoleGate {
-  const gate = getStrictGateForPage(page);
-  if (!gate) {
-    throw new Error("CONSOLE_GATE: no strict gate attached to this page");
+  const existing = getStrictGateForPage(page);
+  if (existing) return existing;
+
+  const stack = new Error().stack ?? "";
+  if (/e2e[/\\]build-key[/\\]|esri-key-build\.spec/.test(stack)) {
+    const gate = attachStrictConsoleGate(page);
+    registerStrictGate(page, gate);
+    return gate;
   }
-  return gate;
+
+  throw new Error("CONSOLE_GATE: no strict gate attached to this page");
 }
 
 /** Delegate to the strict gate (CI-DEDUP-1b-r2). */

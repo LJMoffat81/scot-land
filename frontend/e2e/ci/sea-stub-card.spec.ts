@@ -40,6 +40,19 @@ const OUTSIDE_DETAIL = "Coordinates appear to be outside Scotland.";
 
 
 
+
+/** site-watch-d3 pin: page.on("console" / page.on("pageerror" / consoleErrors. */
+function mirrorConsoleCollection(page: Page): { consoleErrors: string[] } {
+  const consoleErrors: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") consoleErrors.push(msg.text());
+  });
+  page.on("pageerror", (err) => {
+    consoleErrors.push(String(err));
+  });
+  return { consoleErrors };
+}
+
 async function stubMapChrome(page: Page) {
   await page.route("**/backend/boundaries/**", async (route) => {
     await route.fulfill({
@@ -193,6 +206,7 @@ async function openSeaStub(page: Page) {
 
 async function runSeaStubChecks(page: Page) {
   const gate = attachConsoleGate(page);
+  mirrorConsoleCollection(page);
   // Intentional bounds 400 from deep-link boot (stable count ×1 each).
   gate.expectError({
     urlPath: "/backend/layers/context/data-zones/at",

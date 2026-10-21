@@ -35,6 +35,13 @@ export type StrictConsoleGate = {
   errors: RecordedError[];
   expectError: (e: ExpectErrorSpec) => void;
   assertClean: () => void;
+  /**
+   * Compat for e2e/build-key (out of 1b-r2 edit scope) which reads
+   * gate.consoleErrors / gate.pageErrors via assertConsoleStrict.
+   * consoleErrors = all recorded texts; pageErrors = pageerror texts only.
+   */
+  readonly consoleErrors: string[];
+  readonly pageErrors: string[];
 };
 
 /** Page → gate registry so helpers can look up the auto-attached gate. */
@@ -69,6 +76,7 @@ function isIgnored(rec: RecordedError): boolean {
  */
 export function attachStrictConsoleGate(page: Page): StrictConsoleGate {
   const errors: RecordedError[] = [];
+  const pageErrorTexts: string[] = [];
   const expectations: Expectation[] = [];
   const seenKeys = new Set<string>();
 
@@ -78,7 +86,9 @@ export function attachStrictConsoleGate(page: Page): StrictConsoleGate {
     errors.push({ text: msg.text(), url: loc?.url ?? "" });
   });
   page.on("pageerror", (err) => {
-    errors.push({ text: String(err), url: page.url() });
+    const text = String(err);
+    pageErrorTexts.push(text);
+    errors.push({ text, url: page.url() });
   });
 
   function expectError(e: ExpectErrorSpec): void {
@@ -208,7 +218,21 @@ export function attachStrictConsoleGate(page: Page): StrictConsoleGate {
     }
   }
 
-  return { errors, expectError, assertClean };
+  return {
+    errors,
+    expectError,
+    assertClean,
+    get consoleErrors() {
+      return errors.filter((e) => !isIgnored(e)).map((e) => e.text);
+    },
+    get pageErrors() {
+      // Only pageerror texts that are not ignored (EXTERNAL_HOSTS / exact Abort).
+      return pageErrorTexts.filter((text) => {
+        const rec = errors.find((e) => e.text === text);
+        return !rec || !isIgnored(rec);
+      });
+    },
+  };
 }
 
 export { isExternalHost };

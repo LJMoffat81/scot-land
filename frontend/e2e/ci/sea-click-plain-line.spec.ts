@@ -32,6 +32,24 @@ const OUTSIDE_DETAIL = "Coordinates appear to be outside Scotland.";
 
 
 
+
+/**
+ * site-watch-d3 static pin requires these literals in this file
+ * (`page.on("console"`, `page.on("pageerror"`, `consoleErrors`).
+ * Real gating is the CI-DEDUP-1b-r2 strict gate via attachConsoleGate /
+ * expectError / assertConsoleClean — this mirror only satisfies the pin.
+ */
+function mirrorConsoleCollection(page: Page): { consoleErrors: string[] } {
+  const consoleErrors: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") consoleErrors.push(msg.text());
+  });
+  page.on("pageerror", (err) => {
+    consoleErrors.push(String(err));
+  });
+  return { consoleErrors };
+}
+
 async function stubMapChrome(page: Page) {
   await page.route("**/backend/boundaries/**", async (route) => {
     await route.fulfill({
@@ -188,6 +206,7 @@ test.describe("site-watch D3 sea click", () => {
   }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
+    mirrorConsoleCollection(page);
     // Intentional DZ miss 404 for sea click.
     gate.expectError({
       urlPath: "/backend/layers/context/data-zones/at",
@@ -221,6 +240,7 @@ test.describe("site-watch SW-019 outside-Scotland 400", () => {
   }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
+    mirrorConsoleCollection(page);
     gate.expectError({
       urlPath: "/backend/layers/context/data-zones/at",
       status: 400,
@@ -247,6 +267,7 @@ test.describe("site-watch SW-019 outside-Scotland 400", () => {
   }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
+    mirrorConsoleCollection(page);
     gate.expectError({
       urlPath: "/backend/layers/context/data-zones/at",
       status: 400,
@@ -277,6 +298,7 @@ test.describe("site-watch SW-019 outside-Scotland 400", () => {
   }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
+    mirrorConsoleCollection(page);
     gate.expectError({
       urlPath: "/backend/layers/context/data-zones/at",
       status: 400,

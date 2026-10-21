@@ -49,6 +49,8 @@
     "test:esri-csp:selftest": "node --experimental-strip-types scripts/test-esri-csp.selftest.mjs",
     "test:esri-key-guard": "node --experimental-strip-types scripts/test-esri-key-guard.mjs --root ..",
     "test:esri-key-guard:selftest": "node --experimental-strip-types scripts/test-esri-key-guard.selftest.mjs",
+    "test:esri-key-resolver": "node --test scripts/test-esri-key-resolver.mjs",
+    "test:esri-key-build": "playwright test -c playwright.buildkey.config.ts",
     "test:privacy-1": "node scripts/test-privacy-1.mjs",
     "test:no-test-hook": "node scripts/test-no-test-hook.mjs",
     "test:map-layer-registry": "node --experimental-strip-types scripts/test-map-layer-registry.mjs",

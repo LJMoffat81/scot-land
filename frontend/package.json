@@ -9,6 +9,7 @@
     "lint": "next lint",
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test -c playwright.ci.config.ts",
+    "test:ci-dedup-1a": "node --test e2e/ci-meta/ci-dedup-1a.test.mjs",
     "test:ux10-agr-terminology": "node scripts/test-ux10-agr-terminology.mjs",
     "test:check-meanings": "node --experimental-strip-types scripts/test-check-meanings.mjs",
     "check:catalog-ui-drift": "node scripts/check-catalog-ui-drift.mjs",

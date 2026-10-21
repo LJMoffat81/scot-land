@@ -10,10 +10,29 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  changes:
+    name: Detect frontend changes
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.gate.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: gate
+        name: Paths gate
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "push" ]; then
+            node frontend/scripts/ci-paths-gate.mjs --push-main
+          else
+            node frontend/scripts/ci-paths-gate.mjs --base "origin/${{ github.base_ref }}"
+          fi
+
   guard:
     name: Publishability guard
     runs-on: ubuntu-latest
@@ -129,6 +148,7 @@ jobs:
       - run: npm run test:esri-csp:selftest
       - run: npm run test:esri-csp
       - run: npm run test:privacy-1
+      - run: npm run test:ci-dedup-1a
       - run: npx tsc --noEmit
       - run: npm run build
       - run: npm run test:no-test-hook
@@ -139,6 +159,8 @@ jobs:
 
   e2e:
     name: Frontend Playwright e2e
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -157,6 +179,41 @@ jobs:
         # Full map/GIS suite still needs a live API for many specs; gate the
         # stub-safe suite under frontend/e2e/ci/ (auto-discovered by
         # playwright.ci.config.ts — do not list files in package.json).
-        run: npm run test:e2e:ci
+        # Quarantined titles (@quarantine) run in e2e-quarantine only.
+        run: npm run test:e2e:ci -- --grep-invert @quarantine
         env:
           CI: "true"
+
+  e2e-quarantine:
+    name: Frontend Playwright e2e (quarantine, non-blocking)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run quarantined Playwright e2e
+        run: npx playwright test -c playwright.quarantine.config.ts --grep @quarantine
+        env:
+          CI: "true"
+      - name: Quarantine summary
+        if: always()
+        run: node scripts/ci-quarantine-summary.mjs quarantine-results.json
+      - name: Upload Playwright quarantine report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-quarantine-report
+          path: frontend/playwright-report/
+          if-no-files-found: ignore

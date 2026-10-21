@@ -147,7 +147,8 @@ async function openLayers(page: Page) {
 test.describe("UI-FIX-4 390", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("padding, peek, search, map tap, footer, reload, focus, one close", async ({
+  // QUARANTINE CI-DEDUP-1 Q4: flaky on unrelated PRs, runs 39507837359; owner Eng Lead; exit = 10 consecutive green quarantine runs then remove tag, or fix by 2026-11-21.
+  test("padding, peek, search, map tap, footer, reload, focus, one close @quarantine", async ({
     page,
   }) => {
     test.setTimeout(120_000);

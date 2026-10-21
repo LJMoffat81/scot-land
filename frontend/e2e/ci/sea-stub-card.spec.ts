@@ -322,7 +322,8 @@ test.describe("SW-028 sea stub card 1280", () => {
 test.describe("SW-028 sea stub card 390", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("compact height; Show me Scotland resets national view", async ({
+  // QUARANTINE CI-DEDUP-1 Q3: flaky on unrelated PRs, runs 39504926402; owner Eng Lead; exit = 10 consecutive green quarantine runs then remove tag, or fix by 2026-11-21.
+  test("compact height; Show me Scotland resets national view @quarantine", async ({
     page,
   }) => {
     test.setTimeout(90_000);

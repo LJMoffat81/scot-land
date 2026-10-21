@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -34,6 +35,41 @@ def _tracked_files() -> list[Path]:
         ["git", "ls-files", "-z"], cwd=REPO, text=True
     )
     return [REPO / rel for rel in out.split("\0") if rel]
+
+
+def _ensure_origin_main() -> str:
+    """Return a main tip ref usable for ``git diff`` (CI shallow clones lack it)."""
+    base_branch = (os.environ.get("GITHUB_BASE_REF") or "main").strip() or "main"
+    ref = f"origin/{base_branch}"
+    probe = subprocess.run(
+        ["git", "rev-parse", "--verify", ref],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+    )
+    if probe.returncode != 0:
+        subprocess.check_call(
+            [
+                "git",
+                "fetch",
+                "--no-tags",
+                "--depth=1",
+                "origin",
+                f"+{base_branch}:refs/remotes/origin/{base_branch}",
+            ],
+            cwd=REPO,
+        )
+    return ref
+
+
+def _files_changed_vs_main() -> list[str]:
+    ref = _ensure_origin_main()
+    out = subprocess.check_output(
+        ["git", "diff", "--name-only", f"{ref}...HEAD"],
+        cwd=REPO,
+        text=True,
+    )
+    return [line for line in out.splitlines() if line]
 
 
 def test_p1_no_token_literal():
@@ -113,23 +149,13 @@ def test_p6_no_frontend_clip():
         if _FRONTEND_CLIP.search(text):
             pytest.fail(f"P6: frontend clip helper in {path.relative_to(REPO)}")
     # No frontend file changed vs main.
-    diff = subprocess.check_output(
-        ["git", "diff", "--name-only", "origin/main...HEAD"],
-        cwd=REPO,
-        text=True,
-    )
-    for line in diff.splitlines():
+    for line in _files_changed_vs_main():
         if line.startswith("frontend/"):
             pytest.fail(f"P6: frontend file changed: {line}")
 
 
 def test_p7_no_pound_in_changed_files():
-    diff = subprocess.check_output(
-        ["git", "diff", "--name-only", "origin/main...HEAD"],
-        cwd=REPO,
-        text=True,
-    )
-    for rel in diff.splitlines():
+    for rel in _files_changed_vs_main():
         path = REPO / rel
         if not path.is_file():
             continue

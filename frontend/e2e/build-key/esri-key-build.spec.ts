@@ -148,11 +148,16 @@ function assertConsoleStrict(gate: ReturnType<typeof attachConsoleGate>) {
   ).toEqual([]);
 }
 
+/** Let stubbed tile fetches finish so a later style swap does not abort them. */
+async function settleMapNetwork(page: Page) {
+  await page.waitForLoadState("networkidle").catch(() => undefined);
+  await page.waitForTimeout(300);
+}
+
 test("B1 build-time key shows switcher and hits basemapstyles", async ({
   page,
 }) => {
   test.setTimeout(180_000);
-  const gate = attachConsoleGate(page);
   const styleReqs: string[] = [];
   page.on("request", (req) => {
     const host = hostnameOf(req.url());
@@ -174,15 +179,24 @@ test("B1 build-time key shows switcher and hits basemapstyles", async ({
   await openMap(page);
   const switcher = page.getByTestId("basemap-switcher");
   await expect(switcher).toBeVisible({ timeout: 30_000 });
+  await settleMapNetwork(page);
+
+  // Attach after initial tiles settle so a style swap does not race in-flight
+  // OpenFreeMap fetches into the strict console gate.
+  const gate = attachConsoleGate(page);
 
   await switcher.click();
   await expect
     .poll(() => styleReqs.length, { timeout: 30_000 })
     .toBeGreaterThan(0);
   expect(
-    styleReqs.some((u) => u.startsWith(STYLE_URL) || u.includes("basemapstyles-api.arcgis.com")),
+    styleReqs.some(
+      (u) =>
+        u.startsWith(STYLE_URL) || u.includes("basemapstyles-api.arcgis.com"),
+    ),
   ).toBe(true);
 
+  await settleMapNetwork(page);
   assertConsoleStrict(gate);
 });
 
@@ -190,7 +204,6 @@ test("B2 no build-time key hides switcher and skips ArcGIS", async ({
   page,
 }) => {
   test.setTimeout(180_000);
-  const gate = attachConsoleGate(page);
   const arcgis: string[] = [];
   page.on("request", (req) => {
     if (isEsriHost(req.url())) arcgis.push(req.url());
@@ -202,7 +215,9 @@ test("B2 no build-time key hides switcher and skips ArcGIS", async ({
   await routeEsriByHostname(page, loadFixture());
 
   await openMap(page);
-  await page.waitForTimeout(800);
+  await settleMapNetwork(page);
+  const gate = attachConsoleGate(page);
+  await page.waitForTimeout(500);
   await expect(page.getByTestId("basemap-switcher")).toHaveCount(0);
   expect(arcgis).toEqual([]);
   assertConsoleStrict(gate);

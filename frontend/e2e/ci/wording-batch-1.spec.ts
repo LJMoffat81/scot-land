@@ -235,12 +235,8 @@ test.describe("WORDING-BATCH-1 place card (390)", () => {
     await page.goto("/?lat=55.8609&lng=-4.2514");
     await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
     const card = page.getByTestId("place-card");
-    if ((await card.count()) === 0) {
-      await page.locator(".maplibregl-canvas").click({
-        position: { x: 195, y: 400 },
-      });
-    }
-    await expect(card).toBeVisible({ timeout: 30_000 });
+    // URL place boot only — canvas click races the half-panel handle on 390.
+    await expect(card).toBeVisible({ timeout: 45_000 });
 
     await expect(card).not.toContainText(/map reference/i);
     await expect(card.getByTestId("place-card-figure")).toContainText(PRE_POUND);
@@ -349,20 +345,49 @@ test.describe("WORDING-BATCH-1 deep-link vs Layers at 390", () => {
     test.setTimeout(120_000);
     const gate = attachConsoleGate(page);
     await stubMapBackend(page);
-    let releaseStyle = () => {};
-    const styleHeld = new Promise<void>((resolve) => {
-      releaseStyle = resolve;
+    let releasePlace = () => {};
+    const placeHeld = new Promise<void>((resolve) => {
+      releasePlace = resolve;
     });
-    await page.route("**/tiles.openfreemap.org/styles/**", async (route) => {
-      await styleHeld;
-      await route.continue();
+    // Hold place identify until Layers is open (quiet stubs would otherwise
+    // answer immediately and miss waitForRequest after style release).
+    await page.route("**/backend/platform/place**", async (route) => {
+      await placeHeld;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          contract: "place_card_v1",
+          lat: 55.8609,
+          lng: -4.2514,
+          place_label: "City Centre",
+          council_name: "Glasgow City",
+          data_zone: {
+            status: "ok",
+            code: "S01014567",
+            name: "City Centre South",
+            vintage: 2022,
+          },
+          intermediate_zone: {
+            status: "ok",
+            name: "City Centre",
+            code: "S02002645",
+          },
+          dwellings: 410,
+          agr_rows: [],
+          constraints: [],
+          layers: [],
+          links: [],
+        }),
+      });
     });
 
+    // Arm waiter before goto — place request starts on navigation.
+    const placeBoot = page.waitForRequest("**/platform/place**");
     await page.goto("/?lat=55.8609&lng=-4.2514");
     await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
     await openLayers(page);
-    const placeBoot = page.waitForRequest("**/platform/place**");
-    releaseStyle();
+    releasePlace();
     await placeBoot;
 
     const panel = page.getByTestId("layers-panel");

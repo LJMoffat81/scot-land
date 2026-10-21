@@ -98,16 +98,12 @@ async function stubBackend(page: Page) {
   });
 }
 
-async function openCard(page: Page, width: number) {
+async function openCard(page: Page, _width: number) {
   await page.goto("/?lat=55.8609&lng=-4.2514");
   await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
   const card = page.getByTestId("place-card");
-  if ((await card.count()) === 0) {
-    await page.locator(".maplibregl-canvas").click({
-      position: { x: Math.floor(width / 2), y: Math.floor(800 / 2) },
-    });
-  }
-  await expect(card).toBeVisible({ timeout: 30_000 });
+  // URL place boot only — canvas click races the half-panel handle on 390.
+  await expect(card).toBeVisible({ timeout: 45_000 });
   return card;
 }
 

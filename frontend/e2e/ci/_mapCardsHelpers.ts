@@ -284,6 +284,21 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       body: JSON.stringify(HEALTH_OK),
     });
   });
+  // Broad geo stubs first — LIFO: catalog / manifest / DZ registered below win.
+  for (const pattern of [
+    "**/backend/layers/**",
+    "**/backend/boundaries/**",
+    "**/backend/w3w-grid**",
+    "**/backend/parcels**",
+  ] as const) {
+    await page.route(pattern, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(EMPTY_FC),
+      });
+    });
+  }
   await page.route("**/backend/layers/add/tiles-manifest**", async (route) => {
     await route.fulfill({
       status: 200,
@@ -308,6 +323,17 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       }),
     });
   });
+  await page.route("**/backend/layers/context/data-zones/at**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        code: "S01014567",
+        name: "City Centre South",
+        vintage: 2022,
+      }),
+    });
+  });
   await page.route("**/backend/platform/place**", async (route) => {
     const url = route.request().url();
     const u = new URL(url);
@@ -328,17 +354,6 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       body: JSON.stringify(body),
     });
   });
-  await page.route("**/backend/layers/context/data-zones/at**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        code: "S01014567",
-        name: "City Centre South",
-        vintage: 2022,
-      }),
-    });
-  });
   await page.route("**/backend/place**", async (route) => {
     if (/platform\/place/i.test(route.request().url())) {
       await route.continue();
@@ -350,21 +365,6 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       body: JSON.stringify({ kind: "places", matches: [] }),
     });
   });
-  // Geo-ish FeatureCollections — bare {} makes MapLibre console.error(Error).
-  for (const pattern of [
-    "**/backend/layers/**",
-    "**/backend/boundaries/**",
-    "**/backend/w3w-grid**",
-    "**/backend/parcels**",
-  ] as const) {
-    await page.route(pattern, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(EMPTY_FC),
-      });
-    });
-  }
 
   await page.route("**/api/catalog.json", async (route) => {
     await route.fulfill({

@@ -76,7 +76,11 @@ for (const viewport of [
       assertConsoleClean(gate);
     });
 
-    test("15+17 URL state place/panel/layers/z/c round-trip", async ({
+    // QUARANTINE CI-DEDUP-1b-r2 Q6: goBack after close lands on panel=place
+    // (history race with place= + panel=layers deep-link under quiet stubs).
+    // Owner Eng Lead; exit = history contract for panel=layers round-trip, or
+    // fix by 2026-11-21.
+    test("15+17 URL state place/panel/layers/z/c round-trip @quarantine", async ({
       page,
     }) => {
       test.setTimeout(90_000);

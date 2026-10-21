@@ -176,18 +176,12 @@ async function assertSeaCardHeightFitsContent(card: Locator) {
 }
 
 async function openSeaStub(page: Page) {
-  // Prefer deep-link boot (avoids search chrome races in CI).
+  // Deep-link only — search fallback doubled intentional 400s.
   await injectEsriBasemapKey(page);
   await page.goto(`/?lat=${OUTSIDE_LAT}&lng=${OUTSIDE_LNG}`);
   await page.locator(".maplibregl-canvas").waitFor();
 
   const line = page.getByTestId("place-card-out-of-scotland");
-  if ((await line.count()) === 0) {
-    await page.locator("#place-query").waitFor();
-    await page.locator("#place-query").fill(`${OUTSIDE_LAT}, ${OUTSIDE_LNG}`);
-    await page.locator(".hud-search-go").click();
-  }
-
   await expect(line).toBeVisible({ timeout: 30_000 });
   await expect(line).toHaveText(OUT_OF_SCOTLAND_LINE);
 
@@ -199,6 +193,17 @@ async function openSeaStub(page: Page) {
 
 async function runSeaStubChecks(page: Page) {
   const gate = attachConsoleGate(page);
+  // Intentional bounds 400 from deep-link boot (stable count ×1 each).
+  gate.expectError({
+    urlPath: "/backend/layers/context/data-zones/at",
+    status: 400,
+    count: 1,
+  });
+  gate.expectError({
+    urlPath: "/backend/platform/place",
+    status: 400,
+    count: 1,
+  });
   await stubMapChrome(page);
   await stubSeaMissPlaceApis(page, OUTSIDE_LAT, OUTSIDE_LNG);
 

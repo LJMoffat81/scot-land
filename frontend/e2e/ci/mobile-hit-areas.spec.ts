@@ -242,7 +242,17 @@ test.describe("UX-01 mobile hit areas 390x844", () => {
       await page.keyboard.press("Escape");
     }
 
-    // Sea stub ×
+    // Sea stub × (intentional bounds 400).
+    gate.expectError({
+      urlPath: "/backend/layers/context/data-zones/at",
+      status: 400,
+      count: 1,
+    });
+    gate.expectError({
+      urlPath: "/backend/platform/place",
+      status: 400,
+      count: 1,
+    });
     await stubSeaMiss(page);
     await page.locator("#place-query").fill(`${OUTSIDE_LAT}, ${OUTSIDE_LNG}`);
     await searchGo.click();

@@ -188,6 +188,12 @@ test.describe("site-watch D3 sea click", () => {
   }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
+    // Intentional DZ miss 404 for sea click.
+    gate.expectError({
+      urlPath: "/backend/layers/context/data-zones/at",
+      status: 404,
+      count: 1,
+    });
     await stubMapChrome(page);
 
     const lat = 56.5;
@@ -215,6 +221,16 @@ test.describe("site-watch SW-019 outside-Scotland 400", () => {
   }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
+    gate.expectError({
+      urlPath: "/backend/layers/context/data-zones/at",
+      status: 400,
+      count: 1,
+    });
+    gate.expectError({
+      urlPath: "/backend/platform/place",
+      status: 400,
+      count: 1,
+    });
     await stubMapChrome(page);
     await stubSeaMissPlaceApis(page, OUTSIDE_LAT, OUTSIDE_LNG, "bounds400");
 
@@ -231,6 +247,16 @@ test.describe("site-watch SW-019 outside-Scotland 400", () => {
   }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
+    gate.expectError({
+      urlPath: "/backend/layers/context/data-zones/at",
+      status: 400,
+      count: 1,
+    });
+    gate.expectError({
+      urlPath: "/backend/platform/place",
+      status: 400,
+      count: 1,
+    });
     await stubMapChrome(page);
     await stubSeaMissPlaceApis(page, OUTSIDE_LAT, OUTSIDE_LNG, "bounds400");
 
@@ -251,6 +277,16 @@ test.describe("site-watch SW-019 outside-Scotland 400", () => {
   }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
+    gate.expectError({
+      urlPath: "/backend/layers/context/data-zones/at",
+      status: 400,
+      count: 1,
+    });
+    gate.expectError({
+      urlPath: "/backend/platform/place",
+      status: 400,
+      count: 1,
+    });
     await stubMapChrome(page);
     // Any click's lat/lng is mocked to the outside-Scotland 400 path.
     await stubSeaMissPlaceApis(page, OUTSIDE_LAT, OUTSIDE_LNG, "bounds400");

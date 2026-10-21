@@ -312,13 +312,6 @@ async function stubCiOriginQuiet(page: Page): Promise<void> {
       body: JSON.stringify(HEALTH_OK),
     });
   });
-  await page.route("**/backend/layers/add/tiles-manifest**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ version: 1, sources: [] }),
-    });
-  });
   await page.route("**/platform/gbp-live**", async (route) => {
     await route.fulfill({
       status: 200,
@@ -326,42 +319,7 @@ async function stubCiOriginQuiet(page: Page): Promise<void> {
       body: JSON.stringify({ enabled: false }),
     });
   });
-  await page.route("**/backend/layers/catalog**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ version: 2, layers: [] }),
-    });
-  });
-  await page.route("**/backend/platform/place**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(QUIET_PLACE),
-    });
-  });
-  await page.route("**/backend/layers/context/data-zones/at**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        code: "S01014567",
-        name: "City Centre South",
-        vintage: 2022,
-      }),
-    });
-  });
-  await page.route("**/backend/place**", async (route) => {
-    if (/platform\/place/i.test(route.request().url())) {
-      await route.continue();
-      return;
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ kind: "places", matches: [] }),
-    });
-  });
+  // Broad backends first — LIFO: specifics registered below must win.
   for (const pattern of [
     "**/backend/layers/**",
     "**/backend/boundaries/**",
@@ -376,6 +334,50 @@ async function stubCiOriginQuiet(page: Page): Promise<void> {
       });
     });
   }
+  await page.route("**/backend/layers/add/tiles-manifest**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ version: 1, sources: [] }),
+    });
+  });
+  await page.route("**/backend/layers/catalog**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ version: 2, layers: [] }),
+    });
+  });
+  await page.route("**/backend/layers/context/data-zones/at**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        code: "S01014567",
+        name: "City Centre South",
+        vintage: 2022,
+      }),
+    });
+  });
+  await page.route("**/backend/platform/place**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(QUIET_PLACE),
+    });
+  });
+  // Register after platform/place so **/backend/place** does not steal it.
+  await page.route("**/backend/place**", async (route) => {
+    if (/platform\/place/i.test(route.request().url())) {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ kind: "places", matches: [] }),
+    });
+  });
 }
 
 type CiDedupFixtures = {

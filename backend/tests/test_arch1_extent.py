@@ -51,7 +51,7 @@ def test_x1_load_only_creates_tables_and_gist(clean_ref, monkeypatch, tmp_path):
     # Point manifest lookup at fixture sha by copying into a temp gis folder layout.
     gis = tmp_path / "gis"
     gis.mkdir()
-    src = FIXTURES / "scotland_extent.27700.geojson"
+    src = FIXTURES / "extent_tiny.27700.geojson"
     dest = gis / "scotland_extent.27700.geojson"
     dest.write_bytes(src.read_bytes())
     sha = hashlib.sha256(dest.read_bytes()).hexdigest()
@@ -102,7 +102,7 @@ def test_x2_empty_file(clean_ref, monkeypatch, tmp_path):
 
 def test_x3_sha_mismatch(clean_ref, monkeypatch, tmp_path):
     monkeypatch.setenv("ARCH1_TEST_DSN", _dsn())
-    src = FIXTURES / "scotland_extent.27700.geojson"
+    src = FIXTURES / "extent_tiny.27700.geojson"
     dest = tmp_path / "scotland_extent.27700.geojson"
     dest.write_bytes(src.read_bytes())
     (tmp_path / "manifest.csv").write_text(

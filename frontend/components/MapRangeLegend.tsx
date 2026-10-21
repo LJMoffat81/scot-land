@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  CHOROPLETH_FILL_OPACITY,
+  NODATA_HATCH_OPACITY,
+} from "@/lib/mapColourRamps";
 import { NO_DATA_FILL, type RangeLegendStop } from "@/lib/mapLicenceCredits";
 
 /** off = nothing drawn (no bands); zoom-hint = layer active but colours not at this zoom. */
@@ -110,8 +114,12 @@ export default function MapRangeLegend({
               <li key={`${row.label ?? row.from}-${row.to}-${row.color}`}>
                 <span
                   className="map-range-legend-swatch"
-                  style={{ background: row.color }}
+                  style={{
+                    background: row.color,
+                    opacity: CHOROPLETH_FILL_OPACITY,
+                  }}
                   data-swatch-color={row.color}
+                  data-swatch-alpha={CHOROPLETH_FILL_OPACITY}
                   aria-hidden
                 />
                 <span data-testid="map-range-legend-text">{text}</span>
@@ -122,7 +130,11 @@ export default function MapRangeLegend({
             <li data-testid="map-range-legend-no-data">
               <span
                 className="map-range-legend-swatch map-range-legend-swatch-nodata"
-                style={{ backgroundColor: NO_DATA_FILL }}
+                style={{
+                  backgroundColor: NO_DATA_FILL,
+                  opacity: NODATA_HATCH_OPACITY,
+                }}
+                data-swatch-alpha={NODATA_HATCH_OPACITY}
                 aria-hidden
               />
               <span>No data</span>

@@ -122,6 +122,10 @@ together with its manifest. Never edit a file without updating its `rows`/`sha25
 larger than 50 MB are not committed: add them to `.gitignore` and record them here. None are
 that large today: the largest is `epc_dz_rollup.csv` at about 9.2 MB.
 
+| file | notes |
+|---|---|
+| `gis/scotland_extent.27700.geojson` | Scotland land + inshore (0–12 nm) + offshore (12–200 nm) extent for pipeline clipping (SCOTLAND-CLIP-1a). Built offline by `backend/etl/build_scotland_extent.py` from maps.gov.scot councils (32) and NMPi WFS assessment areas (21 = 11 SMR + 10 OMR). Licence OGL-3.0. Held from PostGIS load (shapes only; not a DZ boundary). Attribution: Marine Scotland OGL + Scottish Government / OS Crown copyright 2026. |
+
 Owner build scripts live in `etl/datazones/` and `etl/gis/` (see `etl/README.md`); raw
 downloads are never committed.
 

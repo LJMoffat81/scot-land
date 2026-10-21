@@ -40,6 +40,11 @@ from agr.seabed import seabed_record
 from agr.settlement import zone_class_for
 from layers.naturescot import cap_feature_collection
 from spatial.parcels import TRANSPARENT_PNG, tile_bounds_3857
+from spatial.scotland_clip import (
+    ScotlandClipError,
+    clip_features,
+    get_process_extent,
+)
 
 # Oil and gas GeoJSON stays within this body size after simplification.
 OIL_FIELDS_BYTE_BUDGET = 500 * 1024
@@ -123,6 +128,9 @@ _cache: dict[str, dict] = {}
 _cache_lock = threading.Lock()
 _oid_fields: dict[str, str] = {}
 _oid_lock = threading.Lock()
+# NSTA envelope pre-filter for the current fetch_context_geojson call.
+# Kept off the _arcgis_features signature so existing test stubs stay valid.
+_nsta_envelope: tuple[float, float, float, float] | None = None
 _bng_to_wgs = Transformer.from_crs("EPSG:27700", "EPSG:4326", always_xy=True)
 # The marine WMS sends only its leaf. This public Sectigo intermediate
 # completes the chain to a root already in the default store.
@@ -249,6 +257,9 @@ RASTER: dict[str, RasterSpec] = {
     # SEPA flood: no MapServer / viewer proxy. Ingest OGL download → PostGIS
     # (see open-layer PRs); context tile id "flood" stays unknown until then.
 }
+
+# Oil and gas: Scotland clip + NSTA envelope pre-filter (SCOTLAND-CLIP-1a).
+_CLIPPED_NSTA = frozenset({"oil-fields", "platforms", "pipelines"})
 
 FEATURES: dict[str, FeatureSpec] = {
     "oil-fields": FeatureSpec("oil-fields", "arcgis", _NSTA_FIELDS, "1=1", _NSTA),
@@ -458,6 +469,13 @@ def _arcgis_features(url: str, where: str, extra: dict | None = None) -> list[di
             "resultRecordCount": "1000",
             "geometryPrecision": "5",
         }
+        if _nsta_envelope is not None:
+            xmin, ymin, xmax, ymax = _nsta_envelope
+            # Pre-filter only; exact clip still uses clip_features.
+            params["geometry"] = f"{xmin},{ymin},{xmax},{ymax}"
+            params["geometryType"] = "esriGeometryEnvelope"
+            params["inSR"] = "4326"
+            params["spatialRel"] = "esriSpatialRelIntersects"
         if oid:
             params["orderByFields"] = oid
             params["resultOffset"] = str(offset)
@@ -542,6 +560,20 @@ def fetch_context_geojson(layer_id: str) -> dict:
         cached = _cache.get(layer_id)
     if cached is not None:
         return cached
+
+    global _nsta_envelope
+    extent = None
+    if layer_id in _CLIPPED_NSTA:
+        try:
+            extent = get_process_extent()
+            _nsta_envelope = extent.envelope_wgs84()
+        except ScotlandClipError:
+            _nsta_envelope = None
+            return _empty(layer_id, False, "Scotland boundary missing")
+        except Exception:
+            _nsta_envelope = None
+            return _empty(layer_id, False, "Scotland boundary missing")
+
     try:
         if spec.kind == "arcgis":
             features = _arcgis_features(spec.url, spec.where)
@@ -562,11 +594,22 @@ def fetch_context_geojson(layer_id: str) -> dict:
             features = _repd_features(response.text)
         else:
             return _empty(layer_id, False, "unknown kind")
+
+        clip_report = None
+        if layer_id in _CLIPPED_NSTA:
+            if extent is None:
+                return _empty(layer_id, False, "Scotland boundary missing")
+            features, clip_report = clip_features(features, extent, crs="EPSG:4326")
+
+        meta: dict = {"layer": layer_id, "ok": True, "count": len(features)}
+        if clip_report is not None:
+            meta["clip"] = clip_report
         geo = {
             "type": "FeatureCollection",
             "features": features,
-            "meta": {"layer": layer_id, "ok": True, "count": len(features)},
+            "meta": meta,
         }
+        # Cap after clip so the 500 KB oil-fields budget applies to Scotland-only.
         if layer_id == "oil-fields":
             geo = cap_feature_collection(geo, OIL_FIELDS_BYTE_BUDGET)
             if (geo.get("meta") or {}).get("hidden_below_zoom"):
@@ -578,6 +621,8 @@ def fetch_context_geojson(layer_id: str) -> dict:
                 return {**geo, "features": [], "meta": meta}
     except Exception:
         return _empty(layer_id, False, "layer did not load")
+    finally:
+        _nsta_envelope = None
     with _cache_lock:
         _cache[layer_id] = geo
     return geo

@@ -9,6 +9,16 @@ from __future__ import annotations
 import re
 from typing import Any
 
+# Scotland extent credits (SCOTLAND-CLIP-1a). Wording & UX reviews these lines.
+SCOTLAND_EXTENT_MARINE_CREDIT = (
+    "Contains information from the Scottish Government (Marine Scotland) "
+    "licensed under the Open Government Licence v3.0."
+)
+SCOTLAND_EXTENT_LAND_CREDIT = (
+    "Copyright Scottish Government, contains Ordnance Survey data "
+    "© Crown copyright and database right 2026."
+)
+
 # Forbidden jargon in visitor-facing description (site-watch PR B item 6).
 _JARGON = re.compile(
     r"PostGIS|LayersPanel|MapServer|value_tier|python\s+-m|\bbbox\b|"

@@ -98,7 +98,13 @@ FORCE_NOT_NULL_COLUMNS = ("flags",)
 TYPED_LOAD_FIRST = {"datazones": ("zone_spine",)}
 # Manifest-listed files deliberately NOT loaded yet (owner correcting them). Skipped with a
 # warning, never validated or loaded; the file need not be present. Add an entry to hold one.
-HELD_FILES: dict[tuple[str, str], str] = {}
+HELD_FILES: dict[tuple[str, str], str] = {
+    # Scotland clip extent (SCOTLAND-CLIP-1a): shapes only, not a DZ boundary table.
+    # Validated by spatial.scotland_clip / pin P4; never loaded into PostGIS.
+    ("gis", "scotland_extent.27700.geojson"): (
+        "Scotland extent for pipeline clip; not a zone boundary GeoJSON"
+    ),
+}
 # publish_level=internal files (e.g. GIS's dz_detached_plot_bands.csv) are never in the public
 # repo. They are skipped unless --include-internal, and then load into INTERNAL_SCHEMA, which
 # no public endpoint reads.

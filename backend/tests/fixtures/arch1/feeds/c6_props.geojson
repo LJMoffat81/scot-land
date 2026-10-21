@@ -1,0 +1,1 @@
+{"type": "FeatureCollection", "crs": {"type": "name", "properties": {"name": "urn:ogc:def:crs:EPSG::27700"}}, "features": [{"type": "Feature", "properties": {"OBJECTID": 99, "fieldname": "Alpha", "status": "Active", "extra": "keep"}, "geometry": {"type": "Polygon", "coordinates": [[[11000, 1000], [12000, 1000], [12000, 2000], [11000, 2000], [11000, 1000]]]}}]}

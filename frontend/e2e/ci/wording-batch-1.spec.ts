@@ -1,5 +1,6 @@
 import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -73,27 +74,8 @@ const PLACE_STUB = {
   links: [],
 };
 
-type ConsoleGate = {
-  consoleErrors: string[];
-  pageErrors: string[];
-};
 
-function attachConsoleGate(page: Page): ConsoleGate {
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => pageErrors.push(String(err)));
-  return { consoleErrors, pageErrors };
-}
 
-function filterNoise(errors: string[]): string[] {
-  return errors.filter(
-    (text) =>
-      !/AbortError|aborted|Failed to fetch|net::ERR_|400|404|503/i.test(text),
-  );
-}
 
 async function stubMapBackend(page: Page) {
   await page.route("**/backend/**", async (route) => {
@@ -180,7 +162,6 @@ for (const viewport of [
       page,
     }) => {
       test.setTimeout(120_000);
-      const gate = attachConsoleGate(page);
       await stubMapBackend(page);
       await page.goto("/?lat=55.8609&lng=-4.2514");
       await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
@@ -201,9 +182,6 @@ for (const viewport of [
       await expect(
         panel.getByTestId("map-layers-roadmap-link").locator("a"),
       ).toHaveAttribute("href", "/roadmap#map-layers");
-
-      expect(filterNoise(gate.consoleErrors)).toEqual([]);
-      expect(filterNoise(gate.pageErrors)).toEqual([]);
     });
   });
 }
@@ -215,7 +193,6 @@ test.describe("WORDING-BATCH-1 place card + MAP-CARDS (1280)", () => {
     page,
   }) => {
     test.setTimeout(120_000);
-    const gate = attachConsoleGate(page);
     await stubMapBackend(page);
     const card = await openPlaceCard(page);
 
@@ -240,9 +217,6 @@ test.describe("WORDING-BATCH-1 place card + MAP-CARDS (1280)", () => {
     const bodyText = await page.locator("body").innerText();
     expect(bodyText).not.toMatch(/£\d/);
     expect(bodyText).not.toMatch(BANNED);
-
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
   });
 });
 
@@ -251,7 +225,6 @@ test.describe("WORDING-BATCH-1 place card (390)", () => {
 
   test("§5 copy; no map reference; no Why?", async ({ page }) => {
     test.setTimeout(120_000);
-    const gate = attachConsoleGate(page);
     await stubMapBackend(page);
     await page.goto("/?lat=55.8609&lng=-4.2514");
     await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
@@ -271,9 +244,6 @@ test.describe("WORDING-BATCH-1 place card (390)", () => {
     );
     await expect(card).not.toContainText(/£\d/);
     await expect(card).not.toContainText(BANNED);
-
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
   });
 });
 
@@ -288,7 +258,6 @@ for (const viewport of [
       page,
     }) => {
       test.setTimeout(120_000);
-      const gate = attachConsoleGate(page);
       await stubMapBackend(page);
 
       await page.goto("/");
@@ -320,9 +289,6 @@ for (const viewport of [
         timeout: 30_000,
       });
       await expect(page.getByTestId("place-card")).toHaveCount(0);
-
-      expect(filterNoise(gate.consoleErrors)).toEqual([]);
-      expect(filterNoise(gate.pageErrors)).toEqual([]);
     });
   });
 }
@@ -339,7 +305,6 @@ test.describe("WORDING-BATCH-1 developers", () => {
         page,
       }) => {
         test.setTimeout(90_000);
-        const gate = attachConsoleGate(page);
         await stubMapBackend(page);
 
         await page.goto("/developers");
@@ -361,9 +326,6 @@ test.describe("WORDING-BATCH-1 developers", () => {
           return root.scrollWidth <= root.clientWidth + 1;
         });
         expect(noHScroll, "no horizontal scroll").toBe(true);
-
-        expect(filterNoise(gate.consoleErrors)).toEqual([]);
-        expect(filterNoise(gate.pageErrors)).toEqual([]);
       });
     });
   }
@@ -376,7 +338,6 @@ test.describe("WORDING-BATCH-1 deep-link vs Layers at 390", () => {
     page,
   }) => {
     test.setTimeout(120_000);
-    const gate = attachConsoleGate(page);
     await stubMapBackend(page);
     let releaseStyle = () => {};
     const styleHeld = new Promise<void>((resolve) => {
@@ -403,8 +364,5 @@ test.describe("WORDING-BATCH-1 deep-link vs Layers at 390", () => {
     await expect(
       panel.getByTestId("map-layers-roadmap-link").locator("a"),
     ).toHaveAttribute("href", "/roadmap#map-layers");
-
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
   });
 });

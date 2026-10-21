@@ -1,5 +1,6 @@
 import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Locator, type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -267,8 +268,7 @@ for (const viewport of [
         const meaningful = consoleErrors.filter((line) => {
           if (/favicon/i.test(line)) return false;
           if (/Download the React DevTools/i.test(line)) return false;
-          if (/Failed to load resource:.*(?:404|503)/i.test(line)) return false;
-          if (/AbortError|aborted|Failed to fetch|net::ERR_/i.test(line)) {
+                    if (/AbortError|aborted|Failed to fetch|net::ERR_/i.test(line)) {
             return false;
           }
           return true;

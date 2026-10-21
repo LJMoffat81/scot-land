@@ -1,5 +1,6 @@
 import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -81,27 +82,8 @@ function placeStub(label: string, lat: number, lng: number) {
   };
 }
 
-type ConsoleGate = {
-  consoleErrors: string[];
-  pageErrors: string[];
-};
 
-function attachConsoleGate(page: Page): ConsoleGate {
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => pageErrors.push(String(err)));
-  return { consoleErrors, pageErrors };
-}
 
-function filterNoise(errors: string[]): string[] {
-  return errors.filter(
-    (text) =>
-      !/AbortError|aborted|Failed to fetch|net::ERR_|400|404|503/i.test(text),
-  );
-}
 
 async function stubMapBackend(page: Page) {
   await page.route("**/backend/**", async (route) => {
@@ -261,7 +243,6 @@ for (const viewport of [
 
     test("home, place cards, layers, data, roadmap", async ({ page }) => {
       test.setTimeout(180_000);
-      const gate = attachConsoleGate(page);
       await stubMapBackend(page);
 
       await page.goto("/");
@@ -288,9 +269,6 @@ for (const viewport of [
         timeout: 30_000,
       });
       await assertNoNeighbourhood(page);
-
-      expect(filterNoise(gate.consoleErrors)).toEqual([]);
-      expect(filterNoise(gate.pageErrors)).toEqual([]);
     });
   });
 }

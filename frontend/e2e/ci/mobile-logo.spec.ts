@@ -1,6 +1,7 @@
 import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, CI_OPTIONAL_FAIL_URL, isCiOptionalFailUrl, stubCiTileDataQuiet } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
-import { expect, test, type Locator } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Locator } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -146,20 +147,7 @@ test.afterEach(() => {
     if (/\bAbortError\b|The user aborted|The operation was aborted/i.test(text)) {
       return false;
     }
-    if (
-      /Failed to load resource: the server responded with a status of (404|503)/i.test(
-        text,
-      )
-    ) {
-      // Ignore only for known optional URLs (message text), or Chromium's
-      // URL-less resource line when every recorded 404/503 was optional.
-      if (KNOWN_OPTIONAL_FAIL_URL.some((re) => re.test(text))) return false;
-      if (!/https?:\/\//i.test(text) && unknownResourceFails.length === 0) {
-        return false;
-      }
       return true;
-    }
-    return true;
   });
   expect(
     meaningful,

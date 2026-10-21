@@ -1,5 +1,6 @@
 import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page, type Route, type CDPSession } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page, type Route, type CDPSession } from "@playwright/test";
 import { ensureLayersGroupOpen } from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();

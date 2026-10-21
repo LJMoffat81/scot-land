@@ -5,7 +5,8 @@ import {
   stubCiTileDataQuiet,
 } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Locator, type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -161,8 +162,7 @@ test.describe("MAP-CARDS desktop one-panel layout 1280", () => {
     expect(pageErrors, `pageerrors:\n${pageErrors.join("\n")}`).toEqual([]);
     const meaningful = consoleErrors.filter((text) => {
       if (/\bAbortError\b|aborted/i.test(text)) return false;
-      if (/Failed to load resource:.*(?:404|503)/i.test(text)) return false;
-      return true;
+            return true;
     });
     expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
   });

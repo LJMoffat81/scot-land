@@ -1,5 +1,6 @@
 import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, isCiOptionalFailUrl, stubCiTileDataQuiet } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page } from "@playwright/test";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 
 registerOpenFreeMapFontStub();
@@ -75,17 +76,7 @@ function assertConsoleClean(gate: ConsoleGate) {
     if (/\bAbortError\b|The user aborted|The operation was aborted/i.test(text)) {
       return false;
     }
-    if (
-      /Failed to load resource: the server responded with a status of (400|404|503)/i.test(
-        text,
-      )
-    ) {
-      if (!/https?:\/\//i.test(text) && unexpectedResourceFails.length === 0) {
-        return false;
-      }
       return true;
-    }
-    return true;
   });
   expect(
     meaningful,

@@ -7,7 +7,8 @@ import {
   registerOpenFreeMapFontStub,
   stubMapCardsBackend,
 } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 

@@ -1,11 +1,6 @@
 import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import {
-  expect,
-  test,
-  type Locator,
-  type Page,
-  type Route,
-} from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Locator, type Page, type Route } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -103,8 +98,7 @@ function assertConsoleClean(gate: ConsoleGate) {
 
   const meaningful = gate.consoleErrors.filter((text) => {
     if (/\bAbortError\b|aborted/i.test(text)) return false;
-    if (/Failed to load resource:.*(?:400|404|503)/i.test(text)) return false;
-    return true;
+        return true;
   });
   expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
 }

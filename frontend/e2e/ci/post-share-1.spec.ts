@@ -1,5 +1,6 @@
 import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -99,23 +100,7 @@ const CATALOG_NOT_LIVE = {
   ],
 };
 
-function attachConsoleGate(page: Page) {
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => pageErrors.push(String(err)));
-  return { consoleErrors, pageErrors };
-}
 
-function filterNoise(errors: string[]) {
-  return errors.filter(
-    (t) =>
-      !/favicon|Download the React DevTools|net::ERR_ABORTED/i.test(t) &&
-      !/Failed to load resource:.*favicon/i.test(t),
-  );
-}
 
 async function stubMapBackend(page: Page) {
   const layerHits: string[] = [];
@@ -206,7 +191,6 @@ for (const viewport of [
       page,
     }) => {
       test.setTimeout(90_000);
-      const gate = attachConsoleGate(page);
       const layerHits = await stubMapBackend(page);
 
       await page.goto("/?lat=55.9533&lng=-3.1883");
@@ -251,8 +235,6 @@ for (const viewport of [
       await expect(page.getByTestId("layer-toggle-boundaries")).toHaveCount(0);
 
       expect(layerHits).toEqual([]);
-      expect(filterNoise(gate.consoleErrors)).toEqual([]);
-      expect(filterNoise(gate.pageErrors)).toEqual([]);
     });
   });
 }
@@ -264,7 +246,6 @@ test.describe("POST-SHARE-1 PAGE-WIDTH (1280)", () => {
     page,
   }) => {
     test.setTimeout(90_000);
-    const gate = attachConsoleGate(page);
     await page.route("**/backend/**", async (route) => {
       const url = route.request().url();
       await route.fulfill({
@@ -314,9 +295,6 @@ test.describe("POST-SHARE-1 PAGE-WIDTH (1280)", () => {
         `width ${paths[i]!.path} ${widths[i]} vs about ${baseline}`,
       ).toBeLessThanOrEqual(2);
     }
-
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
   });
 });
 
@@ -325,7 +303,6 @@ test.describe("POST-SHARE-1 SW-033 swagger badge", () => {
 
   test("swagger shows Scot-LAND API, not wealth-api-boot", async ({ page }) => {
     test.setTimeout(90_000);
-    const gate = attachConsoleGate(page);
     // Quiet footer /health and other probes so CI has no live FastAPI 503 noise.
     await page.route("**/backend/**", async (route) => {
       const url = route.request().url();
@@ -373,8 +350,5 @@ test.describe("POST-SHARE-1 SW-033 swagger badge", () => {
     await expect(page.locator(".swagger-ui")).toHaveCount(0);
     await expect(page.locator("body")).not.toContainText("wealth-api-boot");
     await expect(page.locator("body")).not.toContainText("Scot-LAND API");
-
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
   });
 });

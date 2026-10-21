@@ -1,5 +1,6 @@
 import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page, type Route } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page, type Route } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { ensureLayersGroupOpen } from "./_mapCardsHelpers";
 
@@ -50,22 +51,7 @@ type MapHandle = {
   once: (e: string, cb: () => void) => void;
 };
 
-function attachConsoleGate(page: Page) {
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => pageErrors.push(String(err)));
-  return { consoleErrors, pageErrors };
-}
 
-function filterNoise(errors: string[]): string[] {
-  return errors.filter(
-    (text) =>
-      !/AbortError|aborted|Failed to fetch|net::ERR_|400|404|503/i.test(text),
-  );
-}
 
 async function stubMapBackend(page: Page) {
   await page.route("**/backend/**", async (route: Route) => {
@@ -205,7 +191,6 @@ test.describe("GRID-BASE-1", () => {
   test("G1 G2 G15 — default off; Land group; switch; zoom hint", async ({
     page,
   }) => {
-    const gate = attachConsoleGate(page);
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/");
     await waitMap(page);
@@ -239,15 +224,11 @@ test.describe("GRID-BASE-1", () => {
 
     // G2 — no grid features below z17
     expect(await sourceFeatureCount(page, "grid3-lines")).toBe(0);
-
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
   });
 
   test("G3 G4 G6 G8 G13 G15 G16 G17 — paint, hover, maxZoom, URL, axe", async ({
     page,
   }) => {
-    const gate = attachConsoleGate(page);
     const badNet: string[] = [];
     page.on("request", (req) => {
       const u = req.url();
@@ -343,14 +324,11 @@ test.describe("GRID-BASE-1", () => {
     expect(serious, JSON.stringify(serious, null, 2)).toEqual([]);
 
     expect(badNet).toEqual([]);
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
   });
 
   test("G5 at z18.5 — click identify only (no row 6 from grid)", async ({
     page,
   }) => {
-    const gate = attachConsoleGate(page);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/?layers=grid3");
     await waitMap(page);
@@ -363,8 +341,6 @@ test.describe("GRID-BASE-1", () => {
     const row6 = page.getByTestId("place-card-row6-slot");
     const text = (await row6.textContent())?.trim() ?? "";
     expect(text).not.toMatch(/Grid square/);
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
   });
 
   test("G18 — west of E 0: no lines", async ({ page }) => {

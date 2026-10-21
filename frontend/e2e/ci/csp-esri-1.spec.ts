@@ -4,11 +4,11 @@
  * (`next build && next start` in playwright.ci.config.ts).
  * Widths 1280×800 and 390×844. Console CSP refusals fail the test.
  */
-import { expect, test, type Page, type Request } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page, type Request } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
-  attachConsoleGate,
   CI_TINY_PNG,
   EMPTY_GLYPH_PBF,
   openLayers,
@@ -19,6 +19,8 @@ import {
 } from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();
+
+test.use({ stubExternalHostsEnabled: false });
 
 // Playwright CI cwd is frontend/; avoid import.meta (not an ESM module here).
 const FIXTURE_PATH = join(
@@ -331,8 +333,6 @@ for (const viewport of VIEWPORTS) {
           hits.push(route.request().url());
           await route.abort();
         });
-
-        const gate = attachConsoleGate(page);
         await stubMapCardsBackend(page);
         await openMap(page);
         await waitForMap(page);
@@ -350,7 +350,6 @@ for (const viewport of VIEWPORTS) {
 
         expect(hits, `route hits:\n${hits.join("\n")}`).toHaveLength(0);
         expect(spy, `spy requests:\n${spy.join("\n")}`).toHaveLength(0);
-        void gate;
       });
     }
   });

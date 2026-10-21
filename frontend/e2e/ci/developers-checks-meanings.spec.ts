@@ -1,5 +1,5 @@
 import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./_fixtures";
 
 import { CHECK_MEANINGS, type CheckMeaningId } from "../../lib/checkMeanings";
 

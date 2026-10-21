@@ -244,35 +244,15 @@ export function attachConsoleGate(page: Page): ConsoleGate {
   return { consoleErrors, pageErrors };
 }
 
+/**
+ * Legacy helper filter for assertConsoleClean callers.
+ * CI-DEDUP-1b: must NOT drop same-origin 404/503 — the fixture strict gate is the
+ * source of truth; this only drops favicon / DevTools / exact Playwright abort.
+ */
 export function filterNoise(errors: string[]): string[] {
   return errors.filter((text) => {
-    // Keep real exceptions (stack traces); drop CDN / network / resource noise only.
-    if (
-      /favicon|Download the React DevTools|AbortError|aborted|net::ERR_|Failed to fetch|400|404|503|Service Unavailable/i.test(
-        text,
-      )
-    ) {
-      return false;
-    }
-    // Esri Aerial negative paths (MC6) — blocked style/tiles are expected.
-    // Chromium often omits the URL from "Failed to load resource" text.
-    if (
-      /Failed to load resource: the server responded with a status of (401|403|498|499|5\d\d)/i.test(
-        text,
-      )
-    ) {
-      return false;
-    }
-    if (
-      /arcgis\.com/i.test(text) &&
-      /401|403|498|499|5\d\d|Failed to load resource|invalid|JSON/i.test(text)
-    ) {
-      return false;
-    }
-    // MapLibre sprite/glyph CDN failures (no app stack).
-    if (/sprite|glyph/i.test(text) && /failed|error|load|404|503/i.test(text)) {
-      return false;
-    }
+    if (/favicon|Download the React DevTools/i.test(text)) return false;
+    if (text === "AbortError: The user aborted a request.") return false;
     return true;
   });
 }

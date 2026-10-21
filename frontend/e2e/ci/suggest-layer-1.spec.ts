@@ -1,5 +1,6 @@
 import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page } from "@playwright/test";
 import { SUGGEST_LAYER_COPY } from "../../components/SuggestLayerSection";
 
 registerOpenFreeMapFontStub();

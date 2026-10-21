@@ -1,6 +1,7 @@
 import { fulfillEmptyGlyph, registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, CI_OPTIONAL_FAIL_URL, isCiOptionalFailUrl } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -241,18 +242,7 @@ test.describe("SW-020 map logo vs Layers gap (390×844)", () => {
       ) {
         return false;
       }
-      if (
-        /Failed to load resource: the server responded with a status of (404|503)/i.test(
-          text,
-        )
-      ) {
-        if (KNOWN_OPTIONAL_FAIL_URL.some((re) => re.test(text))) return false;
-        if (!/https?:\/\//i.test(text) && unknownResourceFails.length === 0) {
-          return false;
-        }
         return true;
-      }
-      return true;
     });
     expect(
       meaningful,

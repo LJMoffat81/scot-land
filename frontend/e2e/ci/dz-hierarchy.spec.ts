@@ -1,5 +1,6 @@
 import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -127,13 +128,6 @@ function attachConsoleGate(page: Page): ConsoleGate {
 function assertConsoleClean(gate: ConsoleGate) {
   const meaningful = gate.consoleErrors.filter((text) => {
     if (/\bAbortError\b|The user aborted|The operation was aborted/i.test(text)) {
-      return false;
-    }
-    if (
-      /Failed to load resource: the server responded with a status of (400|404|503)/i.test(
-        text,
-      )
-    ) {
       return false;
     }
     return true;

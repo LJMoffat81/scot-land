@@ -1,5 +1,6 @@
 import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -100,7 +101,7 @@ test.beforeEach(async ({ page }) => {
 
 test.afterEach(() => {
   const meaningful = consoleErrors.filter(
-    (line) => !/favicon|AbortError|aborted|404|503/i.test(line),
+    (line) => !/favicon|AbortError|aborted/i.test(line),
   );
   expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
 });

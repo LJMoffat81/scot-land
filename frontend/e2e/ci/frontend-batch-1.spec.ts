@@ -3,7 +3,8 @@
  * Widths 1280×800 and 390×844. Console errors fail. Red-first on 7af495eb for
  * T-D1, T-D3 paint, T-C1 text, T-W2.
  */
-import { expect, test, type Page, type Route } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page, type Route } from "@playwright/test";
 import {
   DEFAULT_VIEW_METRIC_ID,
   DEFAULT_VIEW_METRIC_IS_NON_GBP,

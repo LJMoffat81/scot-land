@@ -9,7 +9,8 @@ import {
   EMPTY_GLYPH_PBF,
 } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Locator, type Page } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -237,19 +238,9 @@ test.afterEach(() => {
   ).toEqual([]);
 
   const meaningful = consoleErrors.filter((text) => {
+    if (text === "AbortError: The user aborted a request.") return false;
     if (/\bAbortError\b|The user aborted|The operation was aborted/i.test(text)) {
       return false;
-    }
-    if (
-      /Failed to load resource: the server responded with a status of (404|503)/i.test(
-        text,
-      )
-    ) {
-      if (KNOWN_OPTIONAL_FAIL_URL.some((re) => re.test(text))) return false;
-      if (!/https?:\/\//i.test(text) && unknownResourceFails.length === 0) {
-        return false;
-      }
-      return true;
     }
     return true;
   });

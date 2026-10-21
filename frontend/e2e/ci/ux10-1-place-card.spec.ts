@@ -1,5 +1,6 @@
 import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -117,9 +118,7 @@ function attachConsoleGate(page: Page): ConsoleGate {
 function assertConsoleClean(gate: ConsoleGate) {
   const meaningful = gate.consoleErrors.filter((text) => {
     if (/\bAbortError\b|aborted/i.test(text)) return false;
-    if (/Failed to load resource:.*(?:400|404|503|Service Unavailable)/i.test(text))
-      return false;
-    if (/openfreemap|sprite|glyph|tiles\.openfreemap/i.test(text)) return false;
+        if (/openfreemap|sprite|glyph|tiles\.openfreemap/i.test(text)) return false;
     return true;
   });
   expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);

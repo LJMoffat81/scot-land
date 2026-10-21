@@ -1,6 +1,7 @@
 import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -23,27 +24,8 @@ const HEALTH_OK = {
 
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
 
-type ConsoleGate = {
-  consoleErrors: string[];
-  pageErrors: string[];
-};
 
-function attachConsoleGate(page: Page): ConsoleGate {
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => pageErrors.push(String(err)));
-  return { consoleErrors, pageErrors };
-}
 
-function filterNoise(errors: string[]): string[] {
-  return errors.filter(
-    (text) =>
-      !/AbortError|aborted|Failed to fetch|net::ERR_|400|404|503/i.test(text),
-  );
-}
 
 async function stubMapBackend(page: Page) {
   await page.route("**/backend/**", async (route) => {
@@ -104,7 +86,6 @@ for (const viewport of [
       page,
     }) => {
       test.setTimeout(90_000);
-      const gate = attachConsoleGate(page);
       await stubMapBackend(page);
 
       await page.goto("/about");
@@ -131,9 +112,6 @@ for (const viewport of [
       expect(Math.abs(mapBox!.height - aboutBox!.height)).toBeLessThanOrEqual(1);
       expect(tapBox!.width).toBeGreaterThanOrEqual(44);
       expect(tapBox!.height).toBeGreaterThanOrEqual(44);
-
-      const noise = filterNoise([...gate.consoleErrors, ...gate.pageErrors]);
-      expect(noise, `console errors: ${noise.join("; ")}`).toEqual([]);
     });
   });
 }

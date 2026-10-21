@@ -84,27 +84,13 @@ export async function stubExternalHosts(
       }
       hits[hostname] = (hits[hostname] ?? 0) + 1;
 
-      const lower = `${pathname}${reqUrl}`.toLowerCase();
-      // Style JSON (Esri basemapstyles / .json style docs)
-      if (
-        /\/styles\//i.test(pathname) ||
-        /style\.json$/i.test(pathname) ||
-        (hostname === "basemapstyles-api.arcgis.com" &&
-          /\.json($|\?)/i.test(pathname))
-      ) {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: styleBody,
-        });
-        return;
-      }
-      // Raster / tile image bytes
+      const lower = pathname.toLowerCase();
+      // Raster / tile image bytes first (sprite.png, MapServer tiles, OFM z/x/y)
       if (
         /\.(png|jpe?g|webp|gif)($|\?)/i.test(pathname) ||
         /\/tile\//i.test(pathname) ||
-        /\/tiles\//i.test(pathname) ||
-        /\/MapServer\/tile\//i.test(pathname)
+        /\/MapServer\/tile\//i.test(pathname) ||
+        /\/tiles\/\d+\//i.test(pathname)
       ) {
         await route.fulfill({
           status: 200,
@@ -113,15 +99,44 @@ export async function stubExternalHosts(
         });
         return;
       }
-      // Glyphs / sprites / fonts
-      if (
-        /glyph|font|sprite|\.pbf/i.test(lower) ||
-        /\/fonts\//i.test(pathname)
-      ) {
+      // Fonts / vector glyph ranges
+      if (/\/fonts\//i.test(pathname) || /\.pbf($|\?)/i.test(pathname)) {
         await route.fulfill({
           status: 200,
           contentType: "application/x-protobuf",
           body: EMPTY_GLYPH_PBF,
+        });
+        return;
+      }
+      // Sprite index JSON (empty-but-valid)
+      if (/sprite/i.test(lower) && /\.json($|\?)/i.test(pathname)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: "{}",
+        });
+        return;
+      }
+      if (/sprite/i.test(lower)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "image/png",
+          body: TINY_PNG,
+        });
+        return;
+      }
+      // Style / VectorTileServer / any .json on listed hosts
+      if (
+        /\/styles\//i.test(pathname) ||
+        /style\.json/i.test(pathname) ||
+        /\.json($|\?)/i.test(pathname) ||
+        /VectorTileServer/i.test(pathname) ||
+        hostname === "basemapstyles-api.arcgis.com"
+      ) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: styleBody,
         });
         return;
       }
@@ -170,8 +185,9 @@ export function attachStrictConsoleGate(page: Page): StrictConsoleGate {
         return true;
       });
       if (app.length > 0) {
+        const first = app[0]!;
         throw new Error(
-          `CONSOLE_GATE: expected 0 app errors, got ${app.length}: ${app[0]!.text}`,
+          `CONSOLE_GATE: expected 0 app errors, got ${app.length}: ${first.text}`,
         );
       }
     },

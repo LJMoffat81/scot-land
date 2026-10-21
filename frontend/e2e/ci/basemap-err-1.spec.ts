@@ -14,6 +14,9 @@ import { join } from "node:path";
 
 registerOpenFreeMapFontStub();
 
+// Style is forced to 500; console AJAXError is part of the assertion below.
+test.use({ skipStrictConsoleAssert: true });
+
 /**
  * BASEMAP-ERR-1 — a failed style request shows the notice, the Data Zone
  * switch still responds, and the console gate records the failure.

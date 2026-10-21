@@ -52,8 +52,10 @@ function seaMissBody() {
 async function stubSeaMiss(page: Page) {
   await stubMapCardsBackend(page);
   await page.route("**/layers/context/data-zones/at**", async (route) => {
+    // 200 miss payload (not 404): a 404 logs a same-origin console error that
+    // CI-DEDUP-1b's strict gate correctly refuses to filter.
     await route.fulfill({
-      status: 404,
+      status: 200,
       contentType: "application/json",
       body: JSON.stringify({
         detail: { error: "no_data_zone_at_point", lat: SEA.lat, lon: SEA.lng },

@@ -4,13 +4,43 @@
  * csp-esri-1: test.use({ stubExternalHostsEnabled: false }).
  * Gate proof specs: test.use({ skipStrictConsoleAssert: true }).
  */
-import { test as base, expect } from "@playwright/test";
+import { test as base, expect, type Page } from "@playwright/test";
 import {
   attachStrictConsoleGate,
   stubExternalHosts,
   type ExternalHostStub,
   type StrictConsoleGate,
 } from "./_externalHosts";
+
+const HEALTH_OK = {
+  status: "ok",
+  routers: {
+    "api.agr_routes": { loaded: true },
+    "api.platform_routes": { loaded: true },
+  },
+};
+
+/**
+ * CI has no FastAPI. Quiet the origin health/gbp probes so same-origin 503
+ * from the Next rewrite is not mistaken for an app console-gate failure.
+ * Specs that need richer backends still call stubMapCardsBackend / friends.
+ */
+async function stubCiOriginQuiet(page: Page) {
+  await page.route("**/backend/health**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(HEALTH_OK),
+    });
+  });
+  await page.route("**/api/gbp-live**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ enabled: false }),
+    });
+  });
+}
 
 type CiDedupFixtures = {
   /** When false, skip EXTERNAL_HOSTS routing (csp-esri-1 observes real CSP). */
@@ -39,6 +69,7 @@ export const test = base.extend<CiDedupFixtures>({
   },
 
   consoleGate: async ({ page }, use) => {
+    await stubCiOriginQuiet(page);
     const gate = attachStrictConsoleGate(page);
     await use(gate);
   },

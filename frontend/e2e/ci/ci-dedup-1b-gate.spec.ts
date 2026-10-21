@@ -11,21 +11,25 @@ import {
   stubExternalHosts,
 } from "./_externalHosts";
 
-test.use({ skipStrictConsoleAssert: true });
-
 test.describe("CI-DEDUP-1b console gate", () => {
+  // Own stubs for G3/G4 hit counters; skip auto assert (G1/G2 expect errors).
+  test.use({
+    skipStrictConsoleAssert: true,
+    stubExternalHostsEnabled: false,
+  });
+
   test("G1 same-origin console.error fails assertClean with exact message", async ({
     page,
   }) => {
     const gate = attachStrictConsoleGate(page);
-    await page.goto("/");
+    await page.goto("about:blank");
     await page.evaluate(() => console.error("APP_ERR_SENTINEL"));
     await expect(async () => gate.assertClean()).rejects.toThrow(
       "CONSOLE_GATE: expected 0 app errors, got 1: APP_ERR_SENTINEL",
     );
   });
 
-  test("G2 same-origin 503 is not filtered", async ({ page }) => {
+  test("G2 same-origin 503 is not filtered", async ({ page, baseURL }) => {
     const gate = attachStrictConsoleGate(page);
     await page.route("**/__e2e_503_probe.json", async (route) => {
       await route.fulfill({
@@ -34,7 +38,7 @@ test.describe("CI-DEDUP-1b console gate", () => {
         body: JSON.stringify({ error: "unavailable" }),
       });
     });
-    await page.goto("/");
+    await page.goto(baseURL || "http://localhost:3100/");
     await page.evaluate(async () => {
       await fetch(`/__e2e_503_probe.json?t=${Date.now()}`);
       console.error("APP_503_SENTINEL");
@@ -52,7 +56,7 @@ test.describe("CI-DEDUP-1b console gate", () => {
   }) => {
     const stub = await stubExternalHosts(context);
     const gate = attachStrictConsoleGate(page);
-    await page.goto("/");
+    await page.goto("about:blank");
 
     const basemapHitsBefore = stub.hits["basemaps-api.arcgis.com"] ?? 0;
     const tilesHitsBefore = stub.hits["tiles.openfreemap.org"] ?? 0;
@@ -89,18 +93,21 @@ test.describe("CI-DEDUP-1b console gate", () => {
     page,
   }) => {
     const stub = await stubExternalHosts(context);
+    await page.goto("about:blank");
+    expect((EXTERNAL_HOSTS as readonly string[]).includes("example.invalid")).toBe(
+      false,
+    );
     const before = { ...stub.hits };
-    const gate = attachStrictConsoleGate(page);
-    await page.goto("/");
-
+    // Probe: request an unlisted host — EXTERNAL_HOSTS stub must not increment.
     await page.evaluate(async () => {
       await fetch("https://example.invalid/x").catch(() => undefined);
     });
-    // stubExternalHosts never matched example.invalid → listed counters unchanged.
     for (const h of EXTERNAL_HOSTS) {
       expect(stub.hits[h] ?? 0, h).toBe(before[h] ?? 0);
     }
 
+    // Fresh gate after the probe so DNS noise is not in the assertClean message.
+    const gate = attachStrictConsoleGate(page);
     await page.route("https://example.invalid/__e2e_err.js", async (route) => {
       await route.fulfill({
         status: 200,

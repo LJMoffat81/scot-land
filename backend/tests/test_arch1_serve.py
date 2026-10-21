@@ -192,7 +192,7 @@ def test_l1_lineage_columns_and_meta(tiny_extent, monkeypatch):
     assert geo["meta"].get("as_of") == receipt["as_of"]
 
 
-def test_l2_dataset_version_tracks_body(tiny_extent, monkeypatch):
+def test_l2_dataset_version_tracks_body(tiny_extent, monkeypatch, tmp_path):
     monkeypatch.setenv("ARCH1_TEST_DSN", _dsn())
     r1 = run_layer(
         "oil-fields", from_file=FEEDS / "inside3.geojson", conn=tiny_extent
@@ -205,7 +205,7 @@ def test_l2_dataset_version_tracks_body(tiny_extent, monkeypatch):
     # Change body → version changes.
     alt = json.loads((FEEDS / "inside3.geojson").read_text(encoding="utf-8"))
     alt["features"][0]["properties"]["name"] = "changed"
-    path = FEEDS / "_l2_changed.geojson"
+    path = tmp_path / "l2_changed.geojson"
     path.write_text(json.dumps(alt), encoding="utf-8")
     r2 = run_layer("oil-fields", from_file=path, conn=tiny_extent)
     assert r2["dataset_version"] != r1["dataset_version"]

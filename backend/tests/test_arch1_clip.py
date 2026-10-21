@@ -117,7 +117,7 @@ def test_c1_inside_fast_path_no_intersection(tiny_extent, monkeypatch):
         assert _wkb(tiny_extent, "oil-fields", fid) == wkb
 
 
-def test_c2_outside_dropped(tiny_extent, monkeypatch):
+def test_c2_outside_dropped(tiny_extent, monkeypatch, tmp_path):
     monkeypatch.setenv("ARCH1_TEST_DSN", _dsn())
     # Mix inside + outside so check still passes (count > 0).
     mixed = {
@@ -129,7 +129,7 @@ def test_c2_outside_dropped(tiny_extent, monkeypatch):
         "features": json.loads((FEEDS / "inside3.geojson").read_text())["features"]
         + json.loads((FEEDS / "outside2.geojson").read_text())["features"],
     }
-    path = FEEDS / "_mixed_c2.geojson"
+    path = tmp_path / "mixed_c2.geojson"
     path.write_text(json.dumps(mixed), encoding="utf-8")
     # Clip only (no check) so M1 surfaces as outside-count assert, not CheckError.
     from datetime import date
@@ -167,7 +167,7 @@ def test_c2_outside_dropped(tiny_extent, monkeypatch):
         assert cur.fetchone()[0] == 0
 
 
-def test_c3_straddlers_half_area(tiny_extent, monkeypatch):
+def test_c3_straddlers_half_area(tiny_extent, monkeypatch, tmp_path):
     monkeypatch.setenv("ARCH1_TEST_DSN", _dsn())
     mixed = {
         "type": "FeatureCollection",
@@ -178,7 +178,7 @@ def test_c3_straddlers_half_area(tiny_extent, monkeypatch):
         "features": json.loads((FEEDS / "inside3.geojson").read_text())["features"]
         + json.loads((FEEDS / "straddle2.geojson").read_text())["features"],
     }
-    path = FEEDS / "_mixed_c3.geojson"
+    path = tmp_path / "mixed_c3.geojson"
     path.write_text(json.dumps(mixed), encoding="utf-8")
     receipt = run_layer("oil-fields", from_file=path, conn=tiny_extent)
     with tiny_extent.cursor() as cur:

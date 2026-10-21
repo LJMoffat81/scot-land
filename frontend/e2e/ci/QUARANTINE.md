@@ -10,5 +10,6 @@ Exit rule for every entry: 10 consecutive green quarantine-job runs then remove 
 | Q2 | `layers-perf-3.spec.ts` | simplified outlines chip is shown at z6 and hidden at z10 | 38979369689, 39494972071 |
 | Q3 | `sea-stub-card.spec.ts` | compact height; Show me Scotland resets national view | 39504926402 |
 | Q4 | `ui-fix-4.spec.ts` | padding, peek, search, map tap, footer, reload, focus, one close | 39507837359 |
+| Q5 | `frontend-batch-2.spec.ts` | T-M3 O1 missing attribution reverts | CI-DEDUP-1b-r2 local: MapLibre `AbortError: signal is aborted without reason` + chunk stack on aerial remount after empty attribution |
 
-Exactly these four titles carry ` @quarantine`. word-area-1 click flake is fixed in item 5 (not quarantined).
+Exactly these five titles carry ` @quarantine`. word-area-1 click flake is fixed in item 5 of CI-DEDUP-1a (not quarantined).

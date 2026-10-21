@@ -675,6 +675,9 @@ for (const viewport of VIEWPORTS) {
       assertConsoleClean(gate);
     });
 
+    // T-H8 covers the place-card figure surface only. PlaceHectareStack /
+    // LedgerPanel still show placeholders (no live figure), so "every figure
+    // surface" on the map reduces to this card until real figures land.
     test("T-H8 estimate line, flag ON", async ({ page }) => {
       test.setTimeout(120_000);
       const gate = attachConsoleGate(page);
@@ -736,9 +739,13 @@ for (const viewport of VIEWPORTS) {
       await stubCouncilsOk(page);
       await openPlaceViaCoords(page);
       let card = page.getByTestId("place-card");
+      // Flag-ON branch: stub must yield a figure so the invariant is not vacuous.
+      await expect(card.getByTestId("place-card-figure")).toBeVisible();
+      await expect(card.getByTestId("place-card-figure-range")).toBeVisible();
       const figOn = await card.getByTestId("place-card-figure-range").count();
       const lineOn = await card.getByTestId("place-card-estimate-line").count();
-      if (figOn > 0) expect(lineOn).toBeGreaterThanOrEqual(1);
+      expect(figOn).toBeGreaterThan(0);
+      expect(lineOn).toBeGreaterThanOrEqual(1);
 
       await page.getByTestId("place-card-close").click();
       await stubMapCardsBackend(page, { gbpLive: false });

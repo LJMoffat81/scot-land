@@ -1,6 +1,11 @@
 import {
   injectEsriBasemapKey,
 } from "./ci/_mapCardsHelpers";
+import {
+  DEFAULT_VIEW_METRIC_ID,
+  metricById,
+  rangeLegendTitle,
+} from "../lib/mapColourRamps";
 import { expect, test, type Page } from "@playwright/test";
 
 const GLASGOW = { lng: -4.2514, lat: 55.8609 };
@@ -74,7 +79,33 @@ test.describe("map licence credits (catalog-driven)", () => {
 
     await openMap(page);
 
-    // FRONTEND-BATCH-4: legend lives in the expanded map key chip (z 5–<8).
+    // Must frame Scotland before any user zoom (zoom marks userMoved and skips framing).
+    await page.locator("#map[data-framed='1']").waitFor({ timeout: 30_000 });
+
+    // Stricter replacement for the old national-zoom "Zoom in to see colours"
+    // hint (§5): chip/legend only render at z5–<8, so below that range both
+    // are absent (no soft hint copy).
+    const zoomOut = page.locator(".maplibregl-ctrl-zoom-out");
+    for (let step = 0; step < 12; step += 1) {
+      if ((await page.getByTestId("map-key-chip").count()) === 0) break;
+      await zoomOut.click({ timeout: 10_000 });
+      await page.waitForTimeout(400);
+    }
+    await expect(page.getByTestId("map-key-chip")).toHaveCount(0);
+    await expect(page.getByTestId("map-range-legend")).toHaveCount(0);
+
+    await panToGlasgow(page);
+
+    // Zoom in until the key chip appears (bands live inside the expanded chip).
+    const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
+    for (let step = 0; step < 14; step += 1) {
+      if ((await page.getByTestId("map-key-chip").count()) > 0) break;
+      await zoomIn.click({ timeout: 10_000 });
+      await page.waitForTimeout(500);
+    }
+
+    // FRONTEND-BATCH-4 §5: selector is the expanded chip's map-range-legend;
+    // assertions otherwise restored (title via constant, bands, no rent £).
     const chip = page.getByTestId("map-key-chip");
     await expect(chip).toBeVisible({ timeout: 60_000 });
     if ((await chip.getAttribute("aria-expanded")) === "false") {
@@ -82,7 +113,16 @@ test.describe("map licence credits (catalog-driven)", () => {
     }
     const legend = chip.getByTestId("map-range-legend");
     await expect(legend).toBeVisible();
-    await expect(legend).toHaveAttribute("data-mode", "bands");
+    await expect(legend).toHaveAttribute("data-mode", "bands", {
+      timeout: 45_000,
+    });
+    const expectedTitle = rangeLegendTitle(
+      metricById(DEFAULT_VIEW_METRIC_ID)!,
+    );
+    expect(expectedTitle).not.toBe("");
+    await expect(legend.getByTestId("map-range-legend-title")).toHaveText(
+      expectedTitle,
+    );
     await expect(legend.getByTestId("map-range-legend-no-data")).toContainText(
       /no data/i,
     );

@@ -214,9 +214,17 @@ test.describe("LAYERS-FIX-1", () => {
     expect(discovered.length).toBeGreaterThan(0);
 
     for (const row of discovered) {
-      // FRONTEND-BATCH-4: map-layer-pop-density-key is a legend row, not a switch.
+      // FRONTEND-BATCH-4: pop-density-key is a legend/key row (no switch). Every
+      // other map-layer-* row must still expose a toggle.
       const toggle = page.getByTestId(`layer-toggle-${row.id}`);
-      if ((await toggle.count()) === 0) continue;
+      if (row.id === "pop-density-key") {
+        await expect(toggle).toHaveCount(0);
+        continue;
+      }
+      await expect(
+        toggle,
+        `map-layer-${row.id} must expose layer-toggle-${row.id}`,
+      ).toHaveCount(1);
 
       await page.evaluate(() => {
         const map = (

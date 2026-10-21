@@ -67,10 +67,12 @@ function readSrc(relPath) {
     /map reference/i,
     "search chrome must not say map reference",
   );
-  assert.match(
+  // MAP-HINTS-OFF-1: map-rest-prompt removed.
+  assert.doesNotMatch(
     map,
     /Search a place or pick a layer/,
   );
+  assert.doesNotMatch(map, /map-rest-prompt/);
   assert.doesNotMatch(
     map,
     /Figures for land\s*value are being checked/,

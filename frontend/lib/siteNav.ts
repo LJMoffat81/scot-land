@@ -19,6 +19,17 @@ export const RESEARCH_BANNER_BODY =
 
 export const RESEARCH_BANNER_TEXT = `${RESEARCH_BANNER_LEAD} ${RESEARCH_BANNER_BODY}`;
 
+/**
+ * Muted estimate line on the map place card when a rent figure is shown
+ * (FRONTEND-BATCH-4 / MAP-HINTS-OFF-1). Tests assert this constant.
+ */
+export const PLACE_CARD_ESTIMATE_LINE =
+  "Research estimate, not a bill or official valuation.";
+
+/** Screen-reader hint for the map search input (visible hint removed). */
+export const SEARCH_HINT_SR =
+  "Type a postcode or place name, or tap the map.";
+
 /** SW-016 collapsed strip (≤768px) — exact one-line copy including expand cue. */
 export const RESEARCH_BANNER_STRIP_COLLAPSED =
   "Research estimate. Not a bill or an official valuation. More";

@@ -137,7 +137,8 @@ for (const [rel, title] of Object.entries(titles)) {
 
 const scotlandMap = readSrc("components/ScotlandMap.tsx");
 assert.match(scotlandMap, /SiteNav current="map" variant="map"/);
-assert.match(scotlandMap, /ResearchBanner[\s\S]*?\bdismissible\b/);
+// MAP-HINTS-OFF-1: ResearchBanner removed from map; content pages keep it.
+assert.doesNotMatch(scotlandMap, /\bResearchBanner\b/);
 assert.doesNotMatch(scotlandMap, /not a rates bill/);
 
 const oldStrings = [

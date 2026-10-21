@@ -250,10 +250,8 @@ async function openMapSearch(page: Page) {
   await page.locator(".maplibregl-canvas").waitFor();
   const search = page.locator("#place-query");
   await search.waitFor();
-  const dismiss = page.getByTestId("research-banner-dismiss");
-  if (await dismiss.count()) {
-    await dismiss.click({ force: true });
-  }
+  // MAP-HINTS-OFF-1: no research banner on the map to dismiss.
+  await expect(page.getByTestId("research-banner")).toHaveCount(0);
   return search;
 }
 

@@ -1299,6 +1299,71 @@ button.basemap-switcher[aria-pressed="true"] {
   text-overflow: ellipsis;
 }
 
+/* SW-085: collapsed/expanded people/km² key above the attribution line. */
+.map-key-chip {
+  position: absolute;
+  z-index: 4;
+  left: 0.5rem;
+  /* Above .map-attribution-line (bottom 0.35rem) with 8px gap; room for multi-line credit. */
+  bottom: calc(0.35rem + 2.75rem + 8px);
+  max-width: min(22rem, calc(100% - 5.5rem));
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid rgba(11, 30, 58, 0.14);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 1px 4px rgba(11, 30, 58, 0.12);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.map-key-chip--expanded {
+  padding: 0.45rem 0.55rem;
+}
+
+.map-key-chip .map-range-legend {
+  margin: 0;
+  padding-top: 0;
+  border-top: 0;
+  pointer-events: none;
+}
+
+/* Collapsed: title + five colour swatches only (no labels / source / no-data). */
+.map-key-chip--collapsed .map-range-legend-source,
+.map-key-chip--collapsed .map-range-legend-blurb,
+.map-key-chip--collapsed .map-range-legend-paler,
+.map-key-chip--collapsed .map-range-legend-zoom-hint,
+.map-key-chip--collapsed [data-testid="map-range-legend-no-data"],
+.map-key-chip--collapsed [data-testid="map-range-legend-text"] {
+  display: none;
+}
+
+.map-key-chip--collapsed .map-range-legend-list {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.2rem;
+  margin-top: 0.28rem;
+}
+
+.map-key-chip--collapsed .map-range-legend-list li {
+  margin: 0;
+}
+
+@media (min-width: 900px) {
+  .app-shell.panel-open .map-key-chip,
+  .app-shell.place-open .map-key-chip {
+    left: calc(380px + 1.5rem);
+    max-width: min(22rem, calc(100% - 380px - 6rem));
+  }
+
+  .app-shell.tools-open:not(.place-open) .map-key-chip {
+    left: 0.5rem;
+    max-width: min(22rem, calc(100% - 380px - 2.5rem));
+  }
+}
+
 /* Clear of the 380px left panel column when place/Layers is open (desktop). */
 @media (min-width: 900px) {
   .app-shell.panel-open .map-attribution-line,
@@ -1417,26 +1482,6 @@ button.basemap-switcher[aria-pressed="true"] {
   pointer-events: none;
 }
 
-.map-rest-prompt {
-  position: absolute;
-  z-index: 5;
-  left: 50%;
-  /* Sit below the research banner. hud + 1rem left the "…a layer." tip under it. */
-  top: calc(var(--hud-height, 6.5rem) + 5.25rem);
-  transform: translateX(-50%);
-  margin: 0;
-  padding: 0.55rem 0.9rem;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(11, 30, 58, 0.12);
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(11, 30, 58, 0.12);
-  font-size: 0.92rem;
-  font-weight: 600;
-  /* Rest prompt is informational — never steal taps from banner / search. */
-  pointer-events: none;
-}
-
-.search-empty-hint,
 .search-no-match {
   margin: 0.25rem 0 0;
   padding: 0.4rem 0.55rem;

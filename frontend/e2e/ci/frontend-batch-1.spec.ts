@@ -8,6 +8,7 @@ import {
   DEFAULT_VIEW_METRIC_ID,
   DEFAULT_VIEW_METRIC_IS_NON_GBP,
   metricById,
+  rangeLegendTitle,
 } from "../../lib/mapColourRamps";
 import { paintForMetricWithNoData } from "../../lib/mapLicenceCredits";
 import {
@@ -297,8 +298,12 @@ for (const viewport of [
       await expect(layoutVis(page, "council-fill")).resolves.toBe("visible");
       const paint = await fillPaint(page);
       expect(paint).toEqual(EXPECTED_POP_PAINT);
+      const expectedTitle = rangeLegendTitle(
+        metricById(DEFAULT_VIEW_METRIC_ID)!,
+      );
+      expect(expectedTitle).not.toBe("");
       await expect(page.getByTestId("map-range-legend-title")).toHaveText(
-        "People per square kilometre (people/km²)",
+        expectedTitle,
       );
       assertConsoleClean(gate);
     });

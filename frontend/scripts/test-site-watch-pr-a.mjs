@@ -87,10 +87,16 @@ assert.match(
   /\.app-shell\.place-open[\s\S]*\.place-card-stub[\s\S]*z-index:\s*14/,
 );
 
-// —— Research banner collapses when place card is open (MAP-CARDS §3.6) ——
-assert.match(
+// —— MAP-HINTS-OFF-1: no map ResearchBanner (collapseForSuggest was banner-only) ——
+assert.doesNotMatch(
   readSrc("components/ScotlandMap.tsx"),
-  /collapseForSuggest=\{suggestOpen \|\| placeOpen\}/,
+  /\bcollapseForSuggest\b/,
+  "map must not wire ResearchBanner collapseForSuggest",
+);
+assert.doesNotMatch(
+  readSrc("components/ScotlandMap.tsx"),
+  /\bResearchBanner\b/,
+  "map must not render ResearchBanner",
 );
 assert.doesNotMatch(
   readSrc("components/ScotlandMap.tsx"),

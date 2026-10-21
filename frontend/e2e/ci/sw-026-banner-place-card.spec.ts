@@ -207,15 +207,12 @@ for (const vp of VIEWPORTS) {
       test.setTimeout(90_000);
       await openMap(page);
 
-      const banner = page.getByTestId("research-banner");
-      await expect(banner).toBeVisible({ timeout: 15_000 });
-      await expect(page.getByTestId("research-banner-dismiss")).toBeVisible();
+      // MAP-HINTS-OFF-1: banner never mounts on the map.
+      await expect(page.getByTestId("research-banner")).toHaveCount(0);
 
       const card = await openPlaceCard(page);
       await expect(page.locator(".app-shell.place-open")).toBeVisible();
-      // MAP-CARDS §3.6 / P1 — banner collapses to nothing while a card is open;
-      // the place card footer is the single trust line.
-      await expect(banner).toBeHidden();
+      await expect(page.getByTestId("research-banner")).toHaveCount(0);
       const cardBox = await card.boundingBox();
       expect(cardBox, "place card box").toBeTruthy();
       expect(cardBox!.height).toBeGreaterThan(40);

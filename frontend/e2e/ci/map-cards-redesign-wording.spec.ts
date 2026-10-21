@@ -173,15 +173,14 @@ for (const viewport of [
       assertConsoleClean(gate);
     });
 
-    test("36 default view prompt when gbp-live off", async ({ page }) => {
+    test("36 default view has no prompt card when gbp-live off", async ({
+      page,
+    }) => {
       test.setTimeout(90_000);
       const gate = attachConsoleGate(page);
       await stubMapCardsBackend(page, { gbpLive: false });
       await openMap(page);
-      await expect(page.getByTestId("map-rest-prompt")).toHaveText(
-        "Search a place or pick a layer.",
-      );
-      await expect(page.getByTestId("map-rest-prompt")).toHaveCount(1);
+      await expect(page.getByTestId("map-rest-prompt")).toHaveCount(0);
       await openLayers(page);
       await ensureLayersGroupOpen(page, "land");
       await expect(page.getByTestId("layer-toggle-1")).toHaveAttribute(

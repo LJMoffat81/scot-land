@@ -69,7 +69,7 @@ import {
   isLegendLayerOff,
   newlyEnabledLegendLayer,
 } from "../lib/mapActiveLegend";
-import { isEsriBasemapKeyConfigured } from "../lib/esriBasemapKey";
+import { isEsriBasemapKeyConfigured } from "../lib/esriBasemapKey.mjs";
 import {
   NO_DATA_HATCH_IMAGE,
   createNoDataHatchImageData,

@@ -1,33 +1,14 @@
 /**
- * Esri Basemap Styles API key — build-time NEXT_PUBLIC, empty when unset.
- * Whitespace counts as unset (MC5). E2E builds may inject a runtime override.
+ * Typed re-export of the runtime helpers in esriBasemapKey.mjs.
+ * Prefer importing from here in TS; Node strip-types tests may import the .mjs.
  */
 
-export const ESRI_BASEMAP_API_KEY_ENV = "NEXT_PUBLIC_ESRI_BASEMAP_API_KEY";
+export {
+  ESRI_BASEMAP_API_KEY_ENV,
+  isEsriBasemapKeyConfigured,
+  readEsriBasemapApiKey,
+} from "./esriBasemapKey.mjs";
 
 export type EsriKeyWindow = Window & {
   __E2E_ESRI_BASEMAP_API_KEY__?: string | null;
 };
-
-/**
- * Raw key string (may include whitespace). Prefer {@link isEsriBasemapKeyConfigured}
- * for presence checks.
- */
-export function readEsriBasemapApiKey(): string {
-  if (
-    typeof window !== "undefined" &&
-    process.env.NEXT_PUBLIC_E2E_HOOKS === "1"
-  ) {
-    const injected = (window as EsriKeyWindow).__E2E_ESRI_BASEMAP_API_KEY__;
-    if (injected === null) return "";
-    if (typeof injected === "string") return injected;
-  }
-  return process.env.NEXT_PUBLIC_ESRI_BASEMAP_API_KEY ?? "";
-}
-
-/** True when Aerial may be offered (non-empty after trim). */
-export function isEsriBasemapKeyConfigured(
-  key: string = readEsriBasemapApiKey(),
-): boolean {
-  return key.trim().length > 0;
-}

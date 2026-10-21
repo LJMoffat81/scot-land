@@ -36,15 +36,8 @@ def conn():
     connection.close()
 
 
-@pytest.fixture
-def tiny_extent(conn, monkeypatch, tmp_path):
-    monkeypatch.setenv("ARCH1_TEST_DSN", _dsn())
+def _drop_serve_tables(conn) -> None:
     with conn.cursor() as cur:
-        cur.execute("CREATE SCHEMA IF NOT EXISTS ref")
-        cur.execute("CREATE SCHEMA IF NOT EXISTS stage")
-        cur.execute("CREATE SCHEMA IF NOT EXISTS layers")
-        for table in ("extent_buf50_sub", "extent_sub", "extent"):
-            cur.execute(f"DROP TABLE IF EXISTS ref.{table} CASCADE")
         for table in (
             "oil-fields",
             "oil-fields_prev",
@@ -55,6 +48,18 @@ def tiny_extent(conn, monkeypatch, tmp_path):
         ):
             cur.execute(f'DROP TABLE IF EXISTS layers."{table}" CASCADE')
             cur.execute(f'DROP TABLE IF EXISTS stage."{table}" CASCADE')
+
+
+@pytest.fixture
+def tiny_extent(conn, monkeypatch, tmp_path):
+    monkeypatch.setenv("ARCH1_TEST_DSN", _dsn())
+    with conn.cursor() as cur:
+        cur.execute("CREATE SCHEMA IF NOT EXISTS ref")
+        cur.execute("CREATE SCHEMA IF NOT EXISTS stage")
+        cur.execute("CREATE SCHEMA IF NOT EXISTS layers")
+        for table in ("extent_buf50_sub", "extent_sub", "extent"):
+            cur.execute(f"DROP TABLE IF EXISTS ref.{table} CASCADE")
+    _drop_serve_tables(conn)
 
     gis = tmp_path / "gis"
     gis.mkdir()
@@ -72,7 +77,10 @@ def tiny_extent(conn, monkeypatch, tmp_path):
     load_only(dest)
     with _cache_lock:
         _cache.clear()
-    return conn
+    yield conn
+    _drop_serve_tables(conn)
+    with _cache_lock:
+        _cache.clear()
 
 
 def test_e1_endpoint_serves_from_table_no_httpx(tiny_extent, monkeypatch):
@@ -86,6 +94,16 @@ def test_e1_endpoint_serves_from_table_no_httpx(tiny_extent, monkeypatch):
 
     monkeypatch.setattr(httpx.Client, "get", ban)
     monkeypatch.setattr(httpx, "get", ban)
+    # Also ban the legacy ArcGIS helper so M5 (serve upstream) trips the same error.
+    import spatial.context_tiles as ct
+
+    monkeypatch.setattr(
+        ct,
+        "_arcgis_features",
+        lambda *_a, **_k: (_ for _ in ()).throw(
+            RuntimeError("upstream fetch in request path")
+        ),
+    )
     with _cache_lock:
         _cache.pop("oil-fields", None)
     geo = fetch_context_geojson("oil-fields")
@@ -159,9 +177,10 @@ def test_l1_lineage_columns_and_meta(tiny_extent, monkeypatch):
         rows = cur.fetchall()
         assert rows
         for source_ids, version, as_of, method in rows:
+            if as_of is None:
+                pytest.fail("null as_of in layers.oil-fields")
             assert source_ids is not None
             assert version is not None
-            assert as_of is not None
             assert method is not None
             assert source_ids == ["oil-fields"]
             assert method == "source"

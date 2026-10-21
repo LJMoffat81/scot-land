@@ -35,6 +35,13 @@ def conn():
     connection.close()
 
 
+def _drop_oil_tables(conn) -> None:
+    with conn.cursor() as cur:
+        for table in ("oil-fields", "oil-fields_prev", "oil-fields__new"):
+            cur.execute(f'DROP TABLE IF EXISTS layers."{table}" CASCADE')
+            cur.execute(f'DROP TABLE IF EXISTS stage."{table}" CASCADE')
+
+
 @pytest.fixture
 def tiny_extent(conn, monkeypatch, tmp_path):
     monkeypatch.setenv("ARCH1_TEST_DSN", _dsn())
@@ -44,13 +51,7 @@ def tiny_extent(conn, monkeypatch, tmp_path):
         cur.execute("CREATE SCHEMA IF NOT EXISTS layers")
         for table in ("extent_buf50_sub", "extent_sub", "extent"):
             cur.execute(f"DROP TABLE IF EXISTS ref.{table} CASCADE")
-        for table in (
-            "oil-fields",
-            "oil-fields_prev",
-            "oil-fields__new",
-        ):
-            cur.execute(f'DROP TABLE IF EXISTS layers."{table}" CASCADE')
-            cur.execute(f'DROP TABLE IF EXISTS stage."{table}" CASCADE')
+    _drop_oil_tables(conn)
 
     gis = tmp_path / "gis"
     gis.mkdir()
@@ -66,7 +67,8 @@ def tiny_extent(conn, monkeypatch, tmp_path):
         "etl.build_scotland_extent.MANIFEST_PATH", gis / "manifest.csv"
     )
     load_only(dest)
-    return conn
+    yield conn
+    _drop_oil_tables(conn)
 
 
 def test_f1_failed_fetch_keeps_last_good(tiny_extent, monkeypatch):
@@ -99,7 +101,8 @@ def test_f1_failed_fetch_keeps_last_good(tiny_extent, monkeypatch):
 
     with tiny_extent.cursor() as cur:
         cur.execute('SELECT count(*) FROM layers."oil-fields"')
-        assert cur.fetchone()[0] == good
+        # M12 non-atomic swap can wipe live → assert 0 == 3
+        assert cur.fetchone()[0] == 3
         cur.execute(
             """
             SELECT EXISTS (
@@ -108,15 +111,24 @@ def test_f1_failed_fetch_keeps_last_good(tiny_extent, monkeypatch):
             )
             """
         )
-        # _prev unchanged relative to pre-failed-run state (still absent after
-        # the first successful run which had no prior live table).
         assert cur.fetchone()[0] == had_prev
+        assert good == 3
 
 
 def test_f2_no_table_and_no_extent_notes(tiny_extent, monkeypatch):
     monkeypatch.setenv("ARCH1_TEST_DSN", _dsn())
+    import spatial.context_tiles as ct
+
     with _cache_lock:
         _cache.pop("oil-fields", None)
+
+    # Remove legacy FEATURES fallback so D9 fail-closed is visible (perf tests
+    # still exercise the FEATURES path when the clipped table is absent).
+    monkeypatch.setattr(
+        ct,
+        "FEATURES",
+        {k: v for k, v in ct.FEATURES.items() if k != "oil-fields"},
+    )
 
     # Table absent → layer not built.
     geo = fetch_context_geojson("oil-fields")

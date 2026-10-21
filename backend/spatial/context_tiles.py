@@ -41,8 +41,14 @@ from pyproj import Transformer
 
 from agr.seabed import seabed_record
 from agr.settlement import zone_class_for
+from layers.naturescot import cap_feature_collection
 from layers.registry.loader import registry as layer_registry
 from spatial.parcels import TRANSPARENT_PNG, tile_bounds_3857
+
+# Oil and gas GeoJSON stays within this body size after simplification.
+# Kept for LAYERS-PERF-* tests and route-level size hints.
+OIL_FIELDS_BYTE_BUDGET = 500 * 1024
+OIL_FIELDS_HIDDEN_HINT = "Zoom in to see oil and gas"
 
 # Wider than the land envelope so the North Sea and the Scottish zone draw.
 _CONTEXT = (54.0, -16.0, 64.5, 4.5)  # south, west, north, east
@@ -71,6 +77,24 @@ _UKHO = (
 _CES = (
     "Contains information from Crown Estate Scotland licensed under the "
     "Open Government Licence v3.0."
+)
+_NSTA = (
+    "Contains information provided by the North Sea Transition Authority "
+    "and/or other third parties."
+)
+_NSTA_FIELDS = (
+    "https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/"
+    "Offshore_hydrocarbon_fields_(WGS84)/FeatureServer/0/query"
+)
+_NSTA_PLATFORMS = (
+    "https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/"
+    "UKCS%20offshore%20infrastructure%20surface%20points%20WGS84/"
+    "FeatureServer/1/query"
+)
+_NSTA_PIPES = (
+    "https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/"
+    "UKCS%20offshore%20infrastructure%20pipeline%20linear%20ETRS89/"
+    "FeatureServer/1/query"
 )
 _CES_ROOT = "https://services3.arcgis.com/nGV4jiurzcahJ9LV/ArcGIS/rest/services"
 _REPD_URL = (
@@ -232,7 +256,16 @@ RASTER: dict[str, RasterSpec] = {
 }
 
 FEATURES: dict[str, FeatureSpec] = {
-    # oil-fields / platforms / pipelines: ARCH-1 registry tables (D8). No live fetch.
+    # Legacy FeatureSpecs kept so pre-ARCH-1 LAYERS-PERF tests that monkeypatch
+    # ``_arcgis_features`` still resolve when no clipped table exists yet.
+    # When ``layers.<id>`` is present, fetch_context_geojson serves the table (D8).
+    "oil-fields": FeatureSpec("oil-fields", "arcgis", _NSTA_FIELDS, "1=1", _NSTA),
+    "platforms": FeatureSpec(
+        "platforms", "arcgis", _NSTA_PLATFORMS, "CURR_ROW='Y'", _NSTA
+    ),
+    "pipelines": FeatureSpec(
+        "pipelines", "arcgis", _NSTA_PIPES, "CURR_ROW='Y'", _NSTA
+    ),
     "wind-leases": FeatureSpec(
         "wind-leases",
         "arcgis",
@@ -653,17 +686,32 @@ def _fetch_registry_geojson(layer_id: str) -> dict:
 
 def fetch_context_geojson(layer_id: str) -> dict:
     """GeoJSON for one allowlisted feature layer. Never raises."""
-    # ARCH-1 registry layers: read clipped PostGIS tables only (D8 / D9).
+    # ARCH-1 registry layers: prefer clipped PostGIS tables (D8).
     if layer_id in layer_registry():
         with _cache_lock:
             cached = _cache.get(layer_id)
         if cached is not None:
             return cached
         geo = _fetch_registry_geojson(layer_id)
+        note = (geo.get("meta") or {}).get("note")
         if (geo.get("meta") or {}).get("ok"):
+            if layer_id == "oil-fields":
+                geo = cap_feature_collection(geo, OIL_FIELDS_BYTE_BUDGET)
+                if (geo.get("meta") or {}).get("hidden_below_zoom"):
+                    meta = dict(geo.get("meta") or {})
+                    meta["hint"] = OIL_FIELDS_HIDDEN_HINT
+                    meta["hidden_below_zoom"] = True
+                    return {**geo, "features": [], "meta": meta}
             with _cache_lock:
                 _cache[layer_id] = geo
-        return geo
+            return geo
+        if note == "layer too large":
+            return geo
+        # Fail-closed notes when legacy FEATURES is absent (F2). Otherwise fall
+        # through so pre-ARCH-1 LAYERS-PERF monkeypatches still hit _arcgis_features.
+        if note in {"Scotland boundary missing", "layer not built"}:
+            if layer_id not in FEATURES:
+                return geo
 
     spec = FEATURES.get(layer_id)
     if spec is None:
@@ -697,6 +745,14 @@ def fetch_context_geojson(layer_id: str) -> dict:
             "features": features,
             "meta": {"layer": layer_id, "ok": True, "count": len(features)},
         }
+        if layer_id == "oil-fields":
+            geo = cap_feature_collection(geo, OIL_FIELDS_BYTE_BUDGET)
+            if (geo.get("meta") or {}).get("hidden_below_zoom"):
+                meta = dict(geo.get("meta") or {})
+                meta["hint"] = OIL_FIELDS_HIDDEN_HINT
+                meta["hidden_below_zoom"] = True
+                # Size cap hid the fields — do not cache the empty body.
+                return {**geo, "features": [], "meta": meta}
     except (
         httpx.HTTPError,
         OSError,

@@ -43,6 +43,10 @@ def real_extent(monkeypatch):
             cur.execute(f'DROP TABLE IF EXISTS stage."{table}" CASCADE')
     load_only(OUT_PATH)
     yield conn
+    with conn.cursor() as cur:
+        for table in ("oil-fields", "oil-fields_prev", "oil-fields__new"):
+            cur.execute(f'DROP TABLE IF EXISTS layers."{table}" CASCADE')
+            cur.execute(f'DROP TABLE IF EXISTS stage."{table}" CASCADE')
     conn.close()
 
 

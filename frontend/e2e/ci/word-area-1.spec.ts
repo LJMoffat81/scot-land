@@ -230,15 +230,19 @@ async function openPlace(page: Page, lat: number, lng: number) {
     .toBe(true);
   const card = page.getByTestId("place-card");
   // Web-first: idempotent click-if-needed inside toPass (no card.count gate).
+  // Click clear of the ~380px desktop place panel so the canvas stays actionable
+  // when a slow deep-link boot overlaps the left side (was x=200 under the panel).
   await expect(async () => {
     if (!(await card.isVisible())) {
       const box = await canvas.boundingBox();
-      await canvas.click({
-        position: {
-          x: box ? Math.min(200, box.width / 2) : 120,
-          y: box ? Math.min(240, box.height / 2) : 160,
-        },
-      });
+      const width = box?.width ?? 1280;
+      const height = box?.height ?? 800;
+      const x =
+        width >= 900
+          ? Math.min(width - 80, 380 + 120)
+          : Math.min(200, width / 2);
+      const y = Math.min(Math.max(height * 0.45, 220), height - 80);
+      await canvas.click({ position: { x, y } });
     }
     await expect(card).toBeVisible({ timeout: 5_000 });
   }).toPass({ timeout: 30_000 });

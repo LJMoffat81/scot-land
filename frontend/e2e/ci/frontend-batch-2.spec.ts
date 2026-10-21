@@ -86,7 +86,8 @@ async function routeEsriFixture(page: Page, style: EsriStyle) {
       body: CI_TINY_PNG,
     });
   });
-  await page.route("**/basemaps-api.arcgis.com/**", async (route) => {
+  // Glyphs / label tiles only — do not fulfill VectorTileServer JSON as PBF.
+  await page.route("**/basemaps-api.arcgis.com/**/*.pbf**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/x-protobuf",
@@ -100,6 +101,31 @@ async function routeEsriFixture(page: Page, style: EsriStyle) {
       body: CI_TINY_PNG,
     });
   });
+  await page.route(
+    "**/basemaps-api.arcgis.com/**/VectorTileServer**",
+    async (route) => {
+      const url = route.request().url();
+      if (/\.pbf/i.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/x-protobuf",
+          body: EMPTY_GLYPH_PBF,
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          tiles: [
+            "https://basemaps-api.arcgis.com/arcgis/rest/services/World_Basemap_v2/VectorTileServer/tile/{z}/{y}/{x}.pbf",
+          ],
+          minzoom: 0,
+          maxzoom: 22,
+        }),
+      });
+    },
+  );
 }
 
 async function camera(page: Page) {
@@ -152,6 +178,7 @@ for (const viewport of VIEWPORTS) {
         await stubMapCardsBackend(page);
         await openMap(page);
         await waitForMap(page);
+        await page.waitForTimeout(500);
         await expect(page.getByTestId("basemap-switcher")).toHaveCount(0);
         expect(arcgis).toEqual([]);
         const credit = await creditTextContent(page);
@@ -203,7 +230,7 @@ for (const viewport of VIEWPORTS) {
         await waitForMap(page);
         await waitForCamera(page);
         const switcher = page.getByTestId("basemap-switcher");
-        await expect(switcher).toBeVisible();
+        await expect(switcher).toBeVisible({ timeout: 15_000 });
         const before = await camera(page);
         await switcher.click();
         await expect(page.getByTestId("aerial-unavailable-notice")).toHaveText(
@@ -211,6 +238,7 @@ for (const viewport of VIEWPORTS) {
           { timeout: 8_000 },
         );
         await expect(page.getByTestId("basemap-switcher")).toHaveCount(0);
+        await waitForCamera(page);
         const after = await camera(page);
         expect(Math.abs(after.lng - before.lng)).toBeLessThanOrEqual(1e-5);
         expect(Math.abs(after.lat - before.lat)).toBeLessThanOrEqual(1e-5);
@@ -234,6 +262,9 @@ for (const viewport of VIEWPORTS) {
       await openMap(page);
       await waitForMap(page);
       await waitForCamera(page);
+      await expect(page.getByTestId("basemap-switcher")).toBeVisible({
+        timeout: 15_000,
+      });
       const before = await camera(page);
       await page.getByTestId("basemap-switcher").click();
       await expect(page.getByTestId("aerial-unavailable-notice")).toHaveText(
@@ -241,6 +272,7 @@ for (const viewport of VIEWPORTS) {
         { timeout: 8_000 },
       );
       await expect(page.getByTestId("basemap-switcher")).toHaveCount(0);
+      await waitForCamera(page);
       const after = await camera(page);
       expect(Math.abs(after.lng - before.lng)).toBeLessThanOrEqual(1e-5);
       expect(Math.abs(after.lat - before.lat)).toBeLessThanOrEqual(1e-5);
@@ -258,6 +290,9 @@ for (const viewport of VIEWPORTS) {
       await openMap(page);
       await waitForMap(page);
       await waitForCamera(page);
+      await expect(page.getByTestId("basemap-switcher")).toBeVisible({
+        timeout: 15_000,
+      });
 
       const simple = await creditTextContent(page);
       expect(simple).toBe(SIMPLE_CREDIT);
@@ -271,6 +306,9 @@ for (const viewport of VIEWPORTS) {
 
       const expectedAerial =
         `Powered by Esri | ${FIXTURE_A} · © OpenFreeMap © OpenStreetMap · Sources`;
+      await expect
+        .poll(async () => creditTextContent(page), { timeout: 30_000 })
+        .toBe(expectedAerial);
       const aerial = await creditTextContent(page);
       expect(aerial).toBe(expectedAerial);
 

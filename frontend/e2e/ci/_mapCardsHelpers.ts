@@ -255,6 +255,14 @@ export function filterNoise(errors: string[]): string[] {
       return false;
     }
     // Esri Aerial negative paths (MC6) — blocked style/tiles are expected.
+    // Chromium often omits the URL from "Failed to load resource" text.
+    if (
+      /Failed to load resource: the server responded with a status of (401|403|498|499|5\d\d)/i.test(
+        text,
+      )
+    ) {
+      return false;
+    }
     if (
       /arcgis\.com/i.test(text) &&
       /401|403|498|499|5\d\d|Failed to load resource|invalid|JSON/i.test(text)

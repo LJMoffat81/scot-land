@@ -171,10 +171,11 @@ for (const viewport of [
       await expect(toggle).toHaveAttribute("aria-label", "Aerial map");
       await expect(toggle).toHaveAttribute("title", "Aerial map");
       await expect(toggle).toHaveAttribute("aria-pressed", "false");
-      await expect(toggle).not.toContainText("Light");
-      await expect(toggle).not.toContainText("Detailed");
-      await expect(toggle).not.toContainText("Simple");
-      await expect(toggle).not.toContainText("Aerial");
+      const face = toggle.locator(".basemap-switcher-face");
+      await expect(face).not.toContainText("Light");
+      await expect(face).not.toContainText("Detailed");
+      await expect(face).not.toContainText("Simple");
+      await expect(face).not.toContainText("Aerial");
 
       const box = await toggle.boundingBox();
       expect(box!.width).toBeCloseTo(48, 0);
@@ -204,7 +205,7 @@ for (const viewport of [
       expect(Math.abs(after.lat - before.lat)).toBeLessThanOrEqual(1e-5);
       expect(Math.abs(after.zoom - before.zoom)).toBeLessThanOrEqual(0.01);
 
-      await expect(toggle.locator(".basemap-switcher-tooltip")).toHaveText(
+      await expect(page.getByRole("tooltip")).toHaveText(
         "Simple map",
       );
 
@@ -262,7 +263,10 @@ for (const viewport of [
       expect(toggleStyle.radius).toBe("24px");
       expect(zoomStyle.radius).toBe("24px");
       expect(toggleStyle.border).toContain("1px");
-      expect(toggleStyle.shadow).toBe(zoomStyle.shadow);
+      // R3.6 pressed adds a 2px accent ring on top of --ctrl-shadow.
+      expect(toggleStyle.shadow).toContain("rgba(11, 30, 58, 0.16)");
+      expect(toggleStyle.shadow).toContain("rgb(29, 79, 145)");
+      expect(zoomStyle.shadow).toContain("rgba(11, 30, 58, 0.16)");
 
       // Pressed Aerial: accent ring / contrast still readable on the control.
       const pressedColors = await toggle.evaluate((el) => {

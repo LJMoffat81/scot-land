@@ -862,7 +862,14 @@ export default function ScotlandMap() {
   const [aerialUnavailable, setAerialUnavailable] = useState(false);
   const [esriAttribution, setEsriAttribution] = useState<string | null>(null);
   const aerialFailArmedRef = useRef(false);
-  const esriKeyConfigured = isEsriBasemapKeyConfigured();
+  // Build-time key for SSR/hydration; E2E inject applies after mount.
+  const buildTimeEsriKey = (
+    process.env.NEXT_PUBLIC_ESRI_BASEMAP_API_KEY ?? ""
+  ).trim().length > 0;
+  const [esriKeyConfigured, setEsriKeyConfigured] = useState(buildTimeEsriKey);
+  useEffect(() => {
+    setEsriKeyConfigured(isEsriBasemapKeyConfigured());
+  }, []);
   const showBasemapSwitcher = esriKeyConfigured && !aerialUnavailable;
   const [mapZoom, setMapZoom] = useState(5.7);
   const [isNarrowPanel, setIsNarrowPanel] = useState(
@@ -2182,6 +2189,7 @@ export default function ScotlandMap() {
     const bootStyle = basemapStyleUrl(mapStyle);
     const bootAerial = mapStyle === "aerial";
     const preservedCamera = cameraPreserveRef.current;
+    let pendingEsriAttribution: string | null = null;
     const map = new maplibregl.Map({
       container,
       style: bootStyle,
@@ -2232,25 +2240,62 @@ export default function ScotlandMap() {
       window.setTimeout(() => setAerialNotice(false), 6_000);
     };
 
+    if (bootAerial) {
+      void fetch(bootStyle)
+        .then(async (res) => {
+          if (!basemapAlive) return;
+          if (!res.ok) {
+            failAerial();
+            return;
+          }
+          let json: { sources?: Record<string, unknown> };
+          try {
+            json = (await res.json()) as { sources?: Record<string, unknown> };
+          } catch {
+            failAerial();
+            return;
+          }
+          const attr = esriStyleAttributionText(json);
+          if (!attr) {
+            failAerial();
+            return;
+          }
+          pendingEsriAttribution = attr;
+          if (!aerialFailArmedRef.current) setEsriAttribution(attr);
+        })
+        .catch(() => {
+          if (basemapAlive) failAerial();
+        });
+    }
+
+    const applyAerialAttribution = () => {
+      if (!bootAerial || !basemapAlive || aerialFailArmedRef.current) return;
+      // Prefer the Esri style JSON captured at fetch time. map.getStyle() after
+      // app layers load includes every overlay attribution (O1 is Esri-only).
+      const attr =
+        pendingEsriAttribution ||
+        esriStyleAttributionText(map.getStyle() ?? {});
+      if (!attr) {
+        failAerial();
+        return;
+      }
+      setEsriAttribution(attr);
+      aerialFailArmedRef.current = false;
+    };
     const onBasemapStyle = () => {
       basemapStyleLoaded = true;
       window.clearTimeout(basemapTimer);
       if (basemapAlive) setBasemapNotice(false);
-      if (bootAerial && basemapAlive) {
-        const attr = esriStyleAttributionText(map.getStyle() ?? {});
-        if (!attr) {
-          failAerial();
-          return;
-        }
-        setEsriAttribution(attr);
-        aerialFailArmedRef.current = false;
-      }
+      applyAerialAttribution();
     };
     map.on("style.load", onBasemapStyle);
+    map.once("load", () => {
+      if (bootAerial) applyAerialAttribution();
+    });
     const aerialWatchdog = bootAerial
       ? window.setTimeout(() => {
           if (basemapAlive && !basemapStyleLoaded) failAerial();
-        }, AERIAL_FAIL_WINDOW_MS)
+        }, Math.max(1_000, AERIAL_FAIL_WINDOW_MS - 500))
       : undefined;
 
     map.on("error", (event) => {
@@ -2259,21 +2304,23 @@ export default function ScotlandMap() {
       );
       const sourceId = (event as { sourceId?: string }).sourceId;
       if (bootAerial) {
-        // Any load error inside the MC6 window reverts Aerial (style/tiles/JSON).
+        const aerialFail = isAerialFailureEvent({
+          error: (event as { error?: unknown }).error,
+          sourceId,
+        });
+        // Before style.load: treat HTTP/JSON failures as MC6 even if the
+        // hostname is missing from the message.
+        const bootFail =
+          !basemapStyleLoaded &&
+          Boolean(line) &&
+          /\b(401|403|498|499|5\d\d)\b|Unexpected token|valid JSON/i.test(
+            line ?? "",
+          );
+        if (!aerialFail && !bootFail) return;
         aerialTileAttempts += 1;
-        const aerialFail =
-          isAerialFailureEvent({
-            error: (event as { error?: unknown }).error,
-            sourceId,
-          }) || Boolean(line);
-        if (aerialFail) aerialTileFails += 1;
-        if (
-          aerialFail ||
-          (aerialTileAttempts >= 8 &&
-            aerialTileFails / Math.max(aerialTileAttempts, 1) > 0.5)
-        ) {
+        aerialTileFails += 1;
+        if (!basemapStyleLoaded || aerialTileFails / Math.max(aerialTileAttempts, 1) > 0.5) {
           failAerial();
-          return;
         }
         return;
       }
@@ -5014,51 +5061,58 @@ export default function ScotlandMap() {
       </div>
 
       {showBasemapSwitcher ? (
-        <button
-          type="button"
-          className={
-            mapStyle === "aerial"
-              ? "basemap-switcher is-aerial"
-              : "basemap-switcher is-light"
-          }
-          data-testid="basemap-switcher"
-          aria-pressed={mapStyle === "aerial"}
-          aria-label="Aerial map"
-          title="Aerial map"
-          onClick={() =>
-            selectBasemap(mapStyle === "aerial" ? "light" : "aerial")
-          }
-        >
-          <span className="basemap-switcher-tooltip" role="tooltip">
+        <div className="basemap-switcher-wrap">
+          <button
+            type="button"
+            className={
+              mapStyle === "aerial"
+                ? "basemap-switcher is-aerial"
+                : "basemap-switcher is-light"
+            }
+            data-testid="basemap-switcher"
+            aria-pressed={mapStyle === "aerial"}
+            aria-label="Aerial map"
+            title="Aerial map"
+            aria-describedby="basemap-switcher-tooltip"
+            onClick={() =>
+              selectBasemap(mapStyle === "aerial" ? "light" : "aerial")
+            }
+          >
+            <span className="basemap-switcher-face" aria-hidden="true">
+              <svg
+                className="basemap-switcher-globe"
+                width="22"
+                height="22"
+                viewBox="0 0 22 22"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle cx="11" cy="11" r="9" stroke="currentColor" strokeWidth="2" />
+                <ellipse
+                  cx="11"
+                  cy="11"
+                  rx="4"
+                  ry="9"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M2 11h18"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+          </button>
+          <span
+            id="basemap-switcher-tooltip"
+            className="basemap-switcher-tooltip"
+            role="tooltip"
+          >
             {mapStyle === "aerial" ? "Simple map" : "Aerial map"}
           </span>
-          <span className="basemap-switcher-face" aria-hidden="true">
-            <svg
-              className="basemap-switcher-globe"
-              width="22"
-              height="22"
-              viewBox="0 0 22 22"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <circle cx="11" cy="11" r="9" stroke="currentColor" strokeWidth="2" />
-              <ellipse
-                cx="11"
-                cy="11"
-                rx="4"
-                ry="9"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path
-                d="M2 11h18"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
-        </button>
+        </div>
       ) : null}
       {aerialNotice ? (
         <div

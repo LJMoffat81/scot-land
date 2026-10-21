@@ -477,11 +477,55 @@
 }
 
 /* r3: one 48×48 toggle above zoom (no desktop pill / narrow split). */
+
+.basemap-switcher-wrap {
+  position: absolute;
+  z-index: 3;
+  right: 0.65rem;
+  bottom: calc(var(--zoom-bottom, 10px) + 98px + var(--ctrl-gap, 8px));
+  width: var(--ctrl-h, 48px);
+  height: var(--ctrl-h, 48px);
+  pointer-events: none;
+}
+.basemap-switcher-wrap > button.basemap-switcher {
+  position: static;
+  right: auto;
+  bottom: auto;
+  pointer-events: auto;
+}
+.basemap-switcher-wrap .basemap-switcher-tooltip {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #0b1e3a;
+  color: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .basemap-switcher-wrap:hover .basemap-switcher-tooltip,
+  .basemap-switcher-wrap:focus-within .basemap-switcher-tooltip {
+    opacity: 1;
+  }
+}
+@media (max-width: 900px) {
+  .basemap-switcher-wrap {
+    right: 0.55rem;
+  }
+}
 button.basemap-switcher {
   position: absolute;
   z-index: 3;
   right: 0.65rem;
-  bottom: calc(var(--zoom-bottom, 10px) + 96px + var(--ctrl-gap, 8px));
+  /* 96px zoom stack + 2px group border so the visual gap is 8px (MC9). */
+  bottom: calc(var(--zoom-bottom, 10px) + 98px + var(--ctrl-gap, 8px));
   box-sizing: border-box;
   width: var(--ctrl-h, 48px);
   height: var(--ctrl-h, 48px);
@@ -531,29 +575,6 @@ button.basemap-switcher[aria-pressed="true"] {
   }
 }
 
-button.basemap-switcher .basemap-switcher-tooltip {
-  position: absolute;
-  right: calc(100% + 8px);
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: #0b1e3a;
-  color: #fff;
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  button.basemap-switcher:hover .basemap-switcher-tooltip,
-  button.basemap-switcher:focus-visible .basemap-switcher-tooltip {
-    opacity: 1;
-  }
-}
 
 @media (prefers-reduced-motion: no-preference) {
   button.basemap-switcher {
@@ -728,9 +749,9 @@ button.basemap-switcher .basemap-switcher-tooltip {
     right: 0.55rem;
   }
 
-  button.basemap-switcher {
+  .basemap-switcher-wrap {
     right: 0.55rem;
-    bottom: calc(var(--zoom-bottom, 10px) + 96px + var(--ctrl-gap, 8px));
+    bottom: calc(var(--zoom-bottom, 10px) + 98px + var(--ctrl-gap, 8px));
   }
 
   /*
@@ -1058,15 +1079,20 @@ button.basemap-switcher .basemap-switcher-tooltip {
     max-height: 62dvh;
   }
 
+  .map-cards-shell.panel-open.map-narrow[data-detent="full"] .basemap-switcher-wrap,
   .map-cards-shell.panel-open.map-narrow[data-detent="full"] .basemap-switcher,
+  .map-panel-slot--full ~ .basemap-switcher-wrap,
   .map-panel-slot--full ~ .basemap-switcher {
     /* controls hide at full via shell class */
   }
 
-  .map-cards-shell .map-panel-slot--full ~ .basemap-switcher,
+  .map-cards-shell .map-panel-slot--full ~ .basemap-switcher-wrap,
+  .map-panel-slot--full ~ .basemap-switcher,
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .basemap-switcher-wrap,
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .basemap-switcher,
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .maplibregl-ctrl-bottom-right,
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .hud-layers-btn,
+  .app-shell.map-narrow.tools-open:has(.map-panel-slot--full) .basemap-switcher-wrap,
   .app-shell.map-narrow.tools-open:has(.map-panel-slot--full) .basemap-switcher,
   .app-shell.map-narrow.tools-open:has(.map-panel-slot--full) .maplibregl-ctrl-bottom-right {
     opacity: 0;
@@ -1079,9 +1105,9 @@ button.basemap-switcher .basemap-switcher-tooltip {
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .maplibregl-ctrl-bottom-right {
     bottom: calc(196px + env(safe-area-inset-bottom, 0px) + 0.5rem) !important;
   }
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) button.basemap-switcher {
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .basemap-switcher-wrap {
     bottom: calc(
-      196px + env(safe-area-inset-bottom, 0px) + 0.5rem + 96px + var(--ctrl-gap, 8px)
+      196px + env(safe-area-inset-bottom, 0px) + 0.5rem + 98px + var(--ctrl-gap, 8px)
     );
   }
 
@@ -1089,7 +1115,7 @@ button.basemap-switcher .basemap-switcher-tooltip {
     bottom: auto !important;
     top: calc(var(--hud-height, 9.5rem) + 2px + 48px + var(--ctrl-gap, 8px));
   }
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .basemap-switcher {
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .basemap-switcher-wrap {
     bottom: auto;
     top: calc(var(--hud-height, 9.5rem) + 2px);
   }

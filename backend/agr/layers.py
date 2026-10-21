@@ -239,7 +239,7 @@ def _price_data() -> dict:
     if digest != DZ_PRICES_SHA256:
         raise LayerConfigError("dz2011_prices.csv sha256 does not match the pin")
     return {
-        "source": "RoS Residential Properties Sales and Price (statistics.gov.scot, OGL)",
+        "source": "RoS Residential Properties Sales and Price (data.gov.scot, OGL)",
         "file_sha256": digest,
         "year": 2023,
         "index": "UK HPI July 2026, annual mean of sale year to 2025-04-01",

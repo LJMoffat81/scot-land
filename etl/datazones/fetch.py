@@ -12,7 +12,7 @@
 Usage: python3 scripts/fetch.py [--raw DIR] [--sha-file FILE] [--park-overlay PATH] [--verify-only]
 Licence of all downloads: Open Government Licence v3.0 (see sources.md).
 """
-import argparse, hashlib, os, shutil, sys, time, urllib.request, zipfile, zlib
+import argparse, hashlib, os, shutil, sys, time, urllib.error, urllib.request, zipfile, zlib
 from pathlib import Path
 
 NRS = "https://www.nrscotland.gov.uk/media"
@@ -76,17 +76,19 @@ def load_sums(path):
 def download(url, dest):
     tmp = dest.with_name(dest.name + ".part")
     req = urllib.request.Request(url, headers={"User-Agent": "scot-land-datazones-fetch/1.0"})
+    e = None
     for attempt in range(3):
         try:
             with urllib.request.urlopen(req, timeout=120) as r, open(tmp, "wb") as f:
                 shutil.copyfileobj(r, f, 1 << 20)
             tmp.replace(dest)
             return
-        except Exception as e:  # network errors: retry, then fail loudly
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as err:
+            e = err  # network errors: retry, then fail loudly
             print(f"   download attempt {attempt + 1} failed: {e}", file=sys.stderr)
             time.sleep(3 * (attempt + 1))
     tmp.unlink(missing_ok=True)
-    raise SystemExit(f"FAIL: could not download {url}")
+    raise SystemExit(f"FAIL: could not download {url}: {type(e).__name__}")
 
 
 def extract(zpath, raw, target, members):

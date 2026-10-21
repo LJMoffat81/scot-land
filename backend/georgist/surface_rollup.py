@@ -4,7 +4,7 @@ Hierarchy (designer brief v3.1 / Laurie charter): Data Zone 2022 (S01) →
 Intermediate Zone (S02) → Council Area (S12) → Scotland (S92). Parent links
 come from ``datazones.zone_spine`` (``iz_code``, ``la_code``), which carries the
 official SG 2022 Data Zone lookup (OGL v3.0;
-https://statistics.gov.scot/data/data-zone-lookup-2022). Each DZ contributes
+https://data.gov.scot/dataset/2022_data_zone_lookup). Each DZ contributes
 once — no double counting.
 
 Only ``measured_rent`` is summed (rules §2). Mixed ``price_year`` or

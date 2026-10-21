@@ -83,6 +83,29 @@ const CLEAN_DOCKERIGNORE = `node_modules
 !.env.example
 `;
 
+const CLEAN_CI = `jobs:
+  typecheck:
+    name: Frontend typecheck and build
+    steps:
+      - run: npm run test:esri-key-guard
+  e2e:
+    name: Frontend Playwright e2e
+    steps:
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - run: npm run test:esri-key-resolver && npm run test:esri-key-build
+      - run: npm run test:e2e:ci
+`;
+
+const CLEAN_PACKAGE_JSON = `{
+  "name": "scot-land-frontend",
+  "scripts": {
+    "test:esri-key-build": "playwright test -c playwright.buildkey.config.ts",
+    "test:esri-key-resolver": "node --test scripts/test-esri-key-resolver.mjs"
+  }
+}
+`;
+
 function cleanFiles(extra = {}) {
   return {
     "frontend/Dockerfile": CLEAN_DOCKERFILE,
@@ -91,6 +114,8 @@ function cleanFiles(extra = {}) {
     ".env.example": CLEAN_ROOT_ENV_EXAMPLE,
     "frontend/.dockerignore": CLEAN_DOCKERIGNORE,
     ".gitignore": ".env\n.env.local\n",
+    ".github/workflows/ci.yml": CLEAN_CI,
+    "frontend/package.json": CLEAN_PACKAGE_JSON,
     "frontend/app/page.tsx": "export default function Page() { return null }\n",
     ...extra,
   };
@@ -276,5 +301,65 @@ withFixture(
     );
   },
 );
+
+// K12(a) — build test wired without prior playwright install in the same job
+withFixture(
+  cleanFiles({
+    ".github/workflows/ci.yml": `jobs:
+  typecheck:
+    steps:
+      - run: npm run test:esri-key-resolver && npm run test:esri-key-build
+  e2e:
+    steps:
+      - run: npx playwright install --with-deps chromium
+`,
+  }),
+  (root) => {
+    const res = run(root);
+    assert.equal(res.status, 1);
+    assert.equal(
+      res.stderr,
+      "esri-key-guard: test:esri-key-build must run after playwright install in the same job",
+    );
+  },
+);
+
+// K12(b) — package script installs browsers
+withFixture(
+  cleanFiles({
+    "frontend/package.json": `{
+  "scripts": {
+    "test:esri-key-build": "playwright install chromium && playwright test -c playwright.buildkey.config.ts"
+  }
+}
+`,
+  }),
+  (root) => {
+    const res = run(root);
+    assert.equal(res.status, 1);
+    assert.equal(
+      res.stderr,
+      "esri-key-guard: package scripts must not install browsers",
+    );
+  },
+);
+
+// K12(c) — scripts resolve the banned Playwright CLI path (needle assembled at runtime)
+{
+  const bannedCli = ["playwright", "cli.js"].join("/");
+  withFixture(
+    cleanFiles({
+      "frontend/scripts/leak-cli.mjs": `require.resolve("${bannedCli}");\n`,
+    }),
+    (root) => {
+      const res = run(root);
+      assert.equal(res.status, 1);
+      assert.equal(
+        res.stderr,
+        `esri-key-guard: do not resolve ${bannedCli}`,
+      );
+    },
+  );
+}
 
 process.stdout.write("test-esri-key-guard.selftest: ok\n");

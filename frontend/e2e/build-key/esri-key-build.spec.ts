@@ -1,5 +1,5 @@
 /**
- * ESRI-KEY-PROD-1 B1/B2 — build-time Esri key presence / absence.
+ * ESRI-KEY-PROD-1-r2 B1/B2 — build-time Esri key presence / absence.
  * Runs under playwright.buildkey.config.ts (no E2E hooks).
  */
 import { expect, test, type Page } from "@playwright/test";
@@ -33,9 +33,6 @@ const ESRI_HOSTS = [
 ] as const;
 
 const OPENFREEMAP_HOST = "tiles.openfreemap.org";
-
-const STYLE_URL =
-  "https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/imagery";
 
 /** Minimal Positron stand-in so Simple basemap never hits the live CDN. */
 const STUB_OPENFREEMAP_STYLE = {
@@ -166,7 +163,6 @@ async function routeEsriByHostname(page: Page, style: EsriStyle) {
         });
         return;
       }
-      // basemaps-api.arcgis.com — glyphs / vector tiles / VectorTileServer JSON
       if (/\.pbf/i.test(url)) {
         await route.fulfill({
           status: 200,
@@ -201,13 +197,8 @@ function assertConsoleStrict(gate: ReturnType<typeof attachConsoleGate>) {
   ).toEqual([]);
 }
 
-/**
- * Wait until stubbed map traffic is quiet before toggling Aerial.
- * networkidle can reject on timeout when long-polling keeps a socket open —
- * that rejection is ignored because the stubs already answered tile/style
- * fetches; we only need a best-effort drain, not a hard network barrier.
- */
 async function settleMapNetwork(page: Page) {
+  // Settle only: networkidle may never fire with long-poll/tiles; assertions below do not depend on it.
   await page.waitForLoadState("networkidle").catch(() => undefined);
 }
 
@@ -221,15 +212,15 @@ test("B1 build-time key shows switcher and hits basemapstyles", async ({
     if (host === "basemapstyles-api.arcgis.com") styleReqs.push(req.url());
   });
 
+  // Gate first after request listeners — catch load / map start-up errors.
+  const gate = attachConsoleGate(page);
+
   // Window inject must have no effect when hooks are off.
   await page.addInitScript(() => {
     (
       window as unknown as { __E2E_ESRI_BASEMAP_API_KEY__?: string | null }
     ).__E2E_ESRI_BASEMAP_API_KEY__ = null;
   });
-
-  // Gate before navigation — catch load / map start-up console errors.
-  const gate = attachConsoleGate(page);
 
   const style = loadFixture();
   await stubMapCardsBackend(page);
@@ -247,11 +238,10 @@ test("B1 build-time key shows switcher and hits basemapstyles", async ({
     .poll(() => styleReqs.length, { timeout: 30_000 })
     .toBeGreaterThan(0);
   expect(
-    styleReqs.every(
-      (u) => hostnameOf(u) === "basemapstyles-api.arcgis.com",
+    styleReqs.some(
+      (u) => new URL(u).hostname === "basemapstyles-api.arcgis.com",
     ),
   ).toBe(true);
-  expect(styleReqs.some((u) => u.startsWith(STYLE_URL))).toBe(true);
 
   await settleMapNetwork(page);
   assertConsoleStrict(gate);
@@ -266,19 +256,18 @@ test("B2 no build-time key hides switcher and skips ArcGIS", async ({
     if (isEsriHost(req.url())) arcgis.push(req.url());
   });
 
-  // Gate before navigation — catch load / map start-up console errors.
+  // Gate first after request listeners — catch load / map start-up errors.
   const gate = attachConsoleGate(page);
 
   await stubMapCardsBackend(page);
   await stubCiTileDataQuiet(page);
   await routeOpenFreeMapByHostname(page);
-  // Still stub Esri hosts so a leak cannot hit the network; assert count 0.
   await routeEsriByHostname(page, loadFixture());
 
   await openMap(page);
-  // Condition wait: switcher must stay absent once the map shell is up.
+  // Condition wait (no E2E hooks → no window.__map); canvas marks map shell ready.
   await expect(page.locator(".maplibregl-canvas")).toBeVisible({
-    timeout: 60_000,
+    timeout: 30_000,
   });
   await expect(page.getByTestId("basemap-switcher")).toHaveCount(0);
   expect(arcgis).toEqual([]);

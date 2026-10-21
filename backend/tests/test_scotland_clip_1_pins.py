@@ -37,32 +37,67 @@ def _tracked_files() -> list[Path]:
     return [REPO / rel for rel in out.split("\0") if rel]
 
 
+def _base_branch_name() -> str:
+    return (os.environ.get("GITHUB_BASE_REF") or "main").strip() or "main"
+
+
+def _unshallow_if_needed() -> None:
+    """Actions backend checkout defaults to fetch-depth 1 (shallow)."""
+    shallow = REPO / ".git" / "shallow"
+    if not shallow.is_file():
+        return
+    subprocess.check_call(
+        ["git", "fetch", "--unshallow", "--no-tags", "origin"],
+        cwd=REPO,
+    )
+
+
 def _ensure_origin_main() -> str:
-    """Return a main tip ref usable for ``git diff`` (CI shallow clones lack it)."""
-    base_branch = (os.environ.get("GITHUB_BASE_REF") or "main").strip() or "main"
+    """Return ``origin/<base>`` with enough history for a three-dot merge-base."""
+    base_branch = _base_branch_name()
     ref = f"origin/{base_branch}"
-    probe = subprocess.run(
-        ["git", "rev-parse", "--verify", ref],
+    _unshallow_if_needed()
+    # Full (non-depth) fetch so merge-base(origin/<base>, HEAD) can resolve.
+    subprocess.check_call(
+        [
+            "git",
+            "fetch",
+            "--no-tags",
+            "origin",
+            f"+{base_branch}:refs/remotes/origin/{base_branch}",
+        ],
+        cwd=REPO,
+    )
+    merge = subprocess.run(
+        ["git", "merge-base", ref, "HEAD"],
         cwd=REPO,
         capture_output=True,
         text=True,
     )
-    if probe.returncode != 0:
-        subprocess.check_call(
-            [
-                "git",
-                "fetch",
-                "--no-tags",
-                "--depth=1",
-                "origin",
-                f"+{base_branch}:refs/remotes/origin/{base_branch}",
-            ],
-            cwd=REPO,
-        )
+    if merge.returncode != 0:
+        # Rare: still disconnected after unshallow — deepen until merge-base exists.
+        for _ in range(40):
+            subprocess.check_call(
+                ["git", "fetch", "--deepen=50", "--no-tags", "origin"],
+                cwd=REPO,
+            )
+            merge = subprocess.run(
+                ["git", "merge-base", ref, "HEAD"],
+                cwd=REPO,
+                capture_output=True,
+                text=True,
+            )
+            if merge.returncode == 0:
+                break
+        else:
+            raise RuntimeError(
+                f"P6/P7: no merge-base between {ref} and HEAD after deepen"
+            )
     return ref
 
 
 def _files_changed_vs_main() -> list[str]:
+    """Files introduced on this branch vs main (three-dot; CI-shallow safe)."""
     ref = _ensure_origin_main()
     out = subprocess.check_output(
         ["git", "diff", "--name-only", f"{ref}...HEAD"],

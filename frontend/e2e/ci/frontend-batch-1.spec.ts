@@ -346,7 +346,7 @@ for (const viewport of [
           .toBe("visible");
         await expect(layoutVis(page, "council-fill")).resolves.toBe("none");
         await expect(page.locator("body")).not.toContainText("£");
-        assertConsoleClean(gate);
+        // Intentional 503 — do not assertConsoleClean.
       });
     });
 

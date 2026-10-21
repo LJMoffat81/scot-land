@@ -38,6 +38,59 @@ function styleFixtureBody(): string {
   );
 }
 
+/**
+ * OpenFreeMap style stub — inline tiles (no TileJSON URL) plus the layer ids
+ * T-D6 asserts (residential / landuse / building). Paint must stay untouched.
+ */
+const OPENFREEMAP_STYLE = JSON.stringify({
+  version: 8,
+  name: "OpenFreeMap stub (CI-DEDUP-1b)",
+  sources: {
+    openmaptiles: {
+      type: "vector",
+      tiles: ["https://tiles.openfreemap.org/e2e-stub/{z}/{x}/{y}.pbf"],
+      maxzoom: 14,
+    },
+  },
+  layers: [
+    {
+      id: "background",
+      type: "background",
+      paint: { "background-color": "#e7eef3" },
+    },
+    {
+      id: "landuse_residential",
+      type: "fill",
+      source: "openmaptiles",
+      "source-layer": "landuse",
+      paint: { "fill-color": "#d0d0d0", "fill-opacity": 0.5 },
+    },
+    {
+      id: "landuse",
+      type: "fill",
+      source: "openmaptiles",
+      "source-layer": "landuse",
+      paint: { "fill-color": "#e8e0d8", "fill-opacity": 0.4 },
+    },
+    {
+      id: "building",
+      type: "fill",
+      source: "openmaptiles",
+      "source-layer": "building",
+      paint: { "fill-color": "#c0c0c0", "fill-opacity": 0.8 },
+    },
+  ],
+});
+
+/** Minimal TileJSON so VectorTileServer /planet probes are valid JSON, not 204. */
+const TILEJSON_STUB = JSON.stringify({
+  tilejson: "2.2.0",
+  name: "CI-DEDUP-1b stub",
+  tiles: ["https://tiles.openfreemap.org/e2e-stub/{z}/{x}/{y}.pbf"],
+  minzoom: 0,
+  maxzoom: 14,
+});
+
 function isExternalHost(hostname: string): hostname is ExternalHost {
   return (EXTERNAL_HOSTS as readonly string[]).includes(hostname);
 }
@@ -125,21 +178,38 @@ export async function stubExternalHosts(
         });
         return;
       }
-      // Style / VectorTileServer / any .json on listed hosts
+      // Style JSON on listed hosts (OFM positron/liberty vs Esri imagery fixture)
       if (
         /\/styles\//i.test(pathname) ||
         /style\.json/i.test(pathname) ||
+        hostname === "basemapstyles-api.arcgis.com"
+      ) {
+        const body =
+          hostname === "tiles.openfreemap.org" ? OPENFREEMAP_STYLE : styleBody;
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body,
+        });
+        return;
+      }
+      // TileJSON / VectorTileServer root / any other .json — never bare 204
+      // (empty body → Response.json() SyntaxError with same-origin console location).
+      if (
         /\.json($|\?)/i.test(pathname) ||
         /VectorTileServer/i.test(pathname) ||
-        hostname === "basemapstyles-api.arcgis.com"
+        /\/planet\/?$/i.test(pathname) ||
+        pathname === "/" ||
+        pathname === "/x"
       ) {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: styleBody,
+          body: TILEJSON_STUB,
         });
         return;
       }
+      // Spec: 204 otherwise — but only for non-JSON probes (avoids console SyntaxError).
       await route.fulfill({ status: 204 });
     },
   );

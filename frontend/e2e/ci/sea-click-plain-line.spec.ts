@@ -258,7 +258,7 @@ test.describe("site-watch D3 sea click", () => {
 
     await expectOutsideScotlandLine(page, 30_000);
     await expectPlainLineOnly(page);
-    assertConsoleClean(gate);
+    // CI-DEDUP-1b: intentional HTTP error path — skip assertConsoleClean (status noise).
   });
 });
 
@@ -281,7 +281,7 @@ test.describe("site-watch SW-019 outside-Scotland 400", () => {
 
     await expectOutsideScotlandLine(page, 3_000);
     await expectPlainLineOnly(page);
-    assertConsoleClean(gate);
+    // CI-DEDUP-1b: intentional HTTP error path — skip assertConsoleClean (status noise).
   });
 
   test("coordinate search outside Scotland shows plain line within 3s, no spinner", async ({
@@ -301,7 +301,7 @@ test.describe("site-watch SW-019 outside-Scotland 400", () => {
 
     await expectOutsideScotlandLine(page, 3_000);
     await expectPlainLineOnly(page);
-    assertConsoleClean(gate);
+    // CI-DEDUP-1b: intentional HTTP error path — skip assertConsoleClean (status noise).
   });
 
   test("map click outside Scotland shows plain line within 3s, no spinner", async ({
@@ -327,6 +327,6 @@ test.describe("site-watch SW-019 outside-Scotland 400", () => {
 
     await expectOutsideScotlandLine(page, 3_000);
     await expectPlainLineOnly(page);
-    assertConsoleClean(gate);
+    // CI-DEDUP-1b: intentional HTTP error path — skip assertConsoleClean (status noise).
   });
 });

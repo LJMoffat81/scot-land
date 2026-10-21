@@ -27,6 +27,27 @@ const EMPTY_FC = { type: "FeatureCollection", features: [] };
  * Next rewrite is not mistaken for an app console-gate failure.
  * Spec-registered routes (LIFO) still win for intentional 4xx/5xx cases.
  */
+/** Quiet default place card so deep-links do not render a sea-miss without a stub. */
+const QUIET_PLACE = {
+  contract: "place_card_v1",
+  lat: 55.8609,
+  lng: -4.2514,
+  place_label: "City Centre",
+  council_name: "Glasgow City",
+  data_zone: {
+    status: "ok",
+    code: "S01014567",
+    name: "City Centre South",
+    vintage: 2022,
+  },
+  intermediate_zone: { status: "ok", name: "City Centre", code: "S02002645" },
+  dwellings: 410,
+  agr_rows: [],
+  constraints: [],
+  layers: [],
+  links: [],
+};
+
 async function stubCiOriginQuiet(page: Page) {
   await page.route("**/api/gbp-live**", async (route) => {
     await route.fulfill({
@@ -49,6 +70,27 @@ async function stubCiOriginQuiet(page: Page) {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify(HEALTH_OK),
+      });
+      return;
+    }
+    // data-zones/at expects {code,name} — FeatureCollection is a geo stub for other /layers/.
+    if (/\/layers\/context\/data-zones\/at/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          code: "S01014567",
+          name: "City Centre South",
+          vintage: 2022,
+        }),
+      });
+      return;
+    }
+    if (/\/platform\/place/i.test(url) || /\/api\/place\.json/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(QUIET_PLACE),
       });
       return;
     }

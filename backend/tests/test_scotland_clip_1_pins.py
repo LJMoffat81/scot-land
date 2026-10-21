@@ -155,6 +155,8 @@ def test_p6_no_frontend_clip():
 
 
 def test_p7_no_pound_in_changed_files():
+    # Pound sign built from codepoint so this pin file does not itself contain it.
+    pound = chr(0x00A3)
     for rel in _files_changed_vs_main():
         path = REPO / rel
         if not path.is_file():
@@ -163,5 +165,5 @@ def test_p7_no_pound_in_changed_files():
             text = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             continue
-        if "£" in text:
-            pytest.fail(f"P7: £ in changed file {rel}")
+        if pound in text:
+            pytest.fail(f"P7: {pound} in changed file {rel}")

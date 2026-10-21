@@ -218,6 +218,59 @@ def _require_am2_object(am2: object) -> dict:
     return am2
 
 
+def _validate_am2_years(am2: Mapping) -> None:
+    """Refuse bad excluded year types before any price field is read (§8)."""
+    excluded_raw = am2.get("excluded")
+    if not isinstance(excluded_raw, list):
+        return
+    for item in excluded_raw:
+        if not isinstance(item, dict):
+            continue
+        year = item.get("year")
+        if type(year) is not int:
+            raise PrimaryError(
+                "B4_PRIMARY_2023: ERROR: year row am2: expected integer, got "
+                f"{type(year).__name__}"
+            )
+
+
+def _priced_zones_without_price_read(sales_payload: object) -> set[str]:
+    """Zones with a complete 2023 sales row; does not call read_price_field."""
+    priced: set[str] = set()
+    for row_number, row in enumerate(_house_sales(sales_payload), start=1):
+        year = _screen_year(row, row_number)
+        if year < 2023:
+            continue
+        if not isinstance(row, dict):
+            cells = list(row)
+            for index, name in enumerate(FIELDS):
+                if _blank(cells[index]):
+                    raise PrimaryError(
+                        f"B4_PRIMARY_2023: ERROR: {name} row {row_number}: "
+                        "expected value, got blank"
+                    )
+            priced.add(str(cells[0]).strip())
+            continue
+        present = 0
+        for name in FIELDS:
+            if not _has_field(row, name):
+                raise PrimaryError(
+                    f"B4_PRIMARY_2023: ERROR: row {row_number}: expected "
+                    f"{len(FIELDS)} fields, got {present}"
+                )
+            present += 1
+            if name == "year":
+                continue
+            value = _raw_field(row, name)
+            if _blank(value):
+                raise PrimaryError(
+                    f"B4_PRIMARY_2023: ERROR: {name} row {row_number}: "
+                    "expected value, got blank"
+                )
+        priced.add(str(_raw_field(row, "zone")).strip())
+    return priced
+
+
 def classify_not_scored(
     am2: object, drc_zones: set[str], priced: set[str]
 ) -> list[dict[str, str]]:
@@ -348,38 +401,45 @@ def _not_scored_payload(
     }
 
 
-def build_primary_2023(b2_path: Path, drc_path: Path) -> dict:
+def build_primary_2023(
+    b2_path: Path, drc_path: Path, *, census_path: Path | None = None
+) -> dict:
     """Share and builder rows for 2023. Writes nothing.
 
     When ``am2`` is present on the B2 payload, also returns ``not_scored`` and
     ``not_scored_payload``. Legacy payloads (no ``am2`` key) are unchanged.
+
+    AM-2 refusals (object/year types, absent_from_file pins, census reconcile)
+    run before ``read_price_field`` (§8 spy 0 on every refusal).
     """
     _require_file(b2_path)
     _require_file(drc_path)
     sales_payload = json.loads(b2_path.read_text(encoding="utf-8"))
+    drc = _drc_map(json.loads(drc_path.read_text(encoding="utf-8")))
+
+    am2_present = isinstance(sales_payload, dict) and "am2" in sales_payload
+    not_scored: list[dict[str, str]] = []
+    if am2_present:
+        am2 = _require_am2_object(sales_payload["am2"])
+        _validate_am2_years(am2)
+        priced_ids = _priced_zones_without_price_read(sales_payload)
+        not_scored = classify_not_scored(am2, set(drc), priced_ids)
+        if census_path is not None:
+            reconcile_census(census_path, not_scored)
+        restricted: dict[str, float] = {}
+        for zone, cost in drc.items():
+            if zone in priced_ids:
+                restricted[zone] = cost
+        drc = restricted
+    elif census_path is not None:
+        raise PrimaryError("B4_PRIMARY_2023: ERROR: am2: expected object, got absent")
+
     kept: list[dict[str, object]] = []
     for row_number, row in enumerate(_house_sales(sales_payload), start=1):
         screened = _sales_row(row, row_number)
         if screened is not None:
             kept.append(screened)
-    drc = _drc_map(json.loads(drc_path.read_text(encoding="utf-8")))
     means = _weighted_means(kept)
-
-    am2_present = isinstance(sales_payload, dict) and "am2" in sales_payload
-    not_scored: list[dict[str, str]] = []
-    if am2_present:
-        am2 = sales_payload["am2"]
-        # Validate am2 object early (T22 list) even when every DRC zone is priced.
-        _require_am2_object(am2)
-        # Year types on excluded rows are checked inside classify_not_scored.
-        # Force a classify pass so year-type refusals fire even if priced covers DRC.
-        not_scored = classify_not_scored(am2, set(drc), set(means))
-        priced = set(means)
-        restricted: dict[str, float] = {}
-        for zone, cost in drc.items():
-            if zone in priced:
-                restricted[zone] = cost
-        drc = restricted
 
     zones = sorted(set(means) | set(drc))
     no_price = sum(1 for zone in zones if zone not in means)
@@ -448,13 +508,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--reconcile-census", type=Path, default=None)
     args = parser.parse_args(argv)
     try:
-        built = build_primary_2023(args.b2_out, args.drc)
-        if args.reconcile_census is not None:
-            if "not_scored" not in built:
-                raise PrimaryError(
-                    "B4_PRIMARY_2023: ERROR: am2: expected object, got absent"
-                )
-            reconcile_census(args.reconcile_census, built["not_scored"])
+        built = build_primary_2023(
+            args.b2_out, args.drc, census_path=args.reconcile_census
+        )
     except DroppedRows as exc:
         sys.stdout.write(f"dropped_no_price={exc.no_price} dropped_no_cost={exc.no_cost}\n")
         return 1

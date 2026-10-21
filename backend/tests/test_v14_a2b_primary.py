@@ -106,6 +106,19 @@ def _run(
     return primary_main(argv)
 
 
+def _spy_read_price_field(monkeypatch: pytest.MonkeyPatch) -> dict:
+    """§8: refusal paths must not call read_price_field."""
+    calls: dict = {"n": 0, "values": []}
+
+    def spy(value: object) -> object:
+        calls["n"] += 1
+        calls["values"].append(value)
+        return value
+
+    monkeypatch.setattr("scripts.build_v14_primary_2023.read_price_field", spy)
+    return calls
+
+
 # --- T8 suppressed 2023 zone NOT_SCORED ---
 
 
@@ -208,13 +221,13 @@ def test_t16_reconcile_ok(
 
 
 @pytest.mark.parametrize(
-    "case,census_rows,expect_a,expect_b",
+    "case,census_rows,message",
     [
         (
             "missing_zone",
             [("S01007788", "absent_from_file")],
-            1,
-            0,
+            "B4_PRIMARY_2023: REFUSED: not_scored reconcile: "
+            "expected 2 zones, got 1; only_in_s5=1 only_in_census=0",
         ),
         (
             "extra_zone",
@@ -223,8 +236,8 @@ def test_t16_reconcile_ok(
                 ("S01007788", "absent_from_file"),
                 ("S01006508", "no_2023_row"),
             ],
-            0,
-            1,
+            "B4_PRIMARY_2023: REFUSED: not_scored reconcile: "
+            "expected 2 zones, got 3; only_in_s5=0 only_in_census=1",
         ),
         (
             "reason_swapped",
@@ -232,8 +245,8 @@ def test_t16_reconcile_ok(
                 ("S01006507", "no_sales"),
                 ("S01007788", "absent_from_file"),
             ],
-            1,
-            1,
+            "B4_PRIMARY_2023: REFUSED: not_scored reconcile: "
+            "expected 2 zones, got 2; only_in_s5=1 only_in_census=1",
         ),
     ],
 )
@@ -243,14 +256,14 @@ def test_t17_reconcile_mismatch(
     capsys: pytest.CaptureFixture[str],
     case: str,
     census_rows: list[tuple[str, str]],
-    expect_a: int,
-    expect_b: int,
+    message: str,
 ) -> None:
     """T17: mismatch message; neither primary nor not_scored written."""
     monkeypatch.setattr(
         "scripts.build_v14_primary_2023.ABSENT_FROM_FILE_ZONES",
         frozenset({"S01007788"}),
     )
+    price_calls = _spy_read_price_field(monkeypatch)
     priced = ZONE
     suppressed = "S01006507"
     absent = "S01007788"
@@ -273,10 +286,8 @@ def test_t17_reconcile_mismatch(
     builder = tmp_path / "b.json"
     not_scored = tmp_path / "ns.json"
     assert _run(b2, drc, primary, builder, not_scored=not_scored, census=census) == 1
-    err = capsys.readouterr().err
-    assert err.startswith("B4_PRIMARY_2023: REFUSED: not_scored reconcile:")
-    assert f"only_in_s5={expect_a}" in err
-    assert f"only_in_census={expect_b}" in err
+    assert capsys.readouterr().err == message + "\n"
+    assert price_calls["n"] == 0
     assert not primary.exists()
     assert not builder.exists()
     assert not not_scored.exists()
@@ -363,6 +374,7 @@ def test_t18_census_refusals(
     for name, census_path, message in cases:
         case_dir = tmp_path / name
         case_dir.mkdir()
+        price_calls = _spy_read_price_field(monkeypatch)
         case_b2 = _write_b2(case_dir, sales, am2=am2)
         case_drc = _write_drc(case_dir, {priced: 40.0})
         primary = case_dir / "p.json"
@@ -370,6 +382,7 @@ def test_t18_census_refusals(
         not_scored = case_dir / "ns.json"
         assert _run(case_b2, case_drc, primary, builder, not_scored=not_scored, census=census_path) == 1
         assert capsys.readouterr().err == message + "\n"
+        assert price_calls["n"] == 0
         assert not primary.exists()
         assert not builder.exists()
         assert not not_scored.exists()
@@ -452,6 +465,7 @@ def test_t22_am2_payload_types(
         "scripts.build_v14_primary_2023.ABSENT_FROM_FILE_ZONES",
         frozenset(),
     )
+    price_calls = _spy_read_price_field(monkeypatch)
     sales = [_sale(ZONE, 2023, "100", "6")]
     b2 = _write_b2(tmp_path, sales, am2=am2)
     drc = _write_drc(tmp_path, {ZONE: 40.0})
@@ -460,6 +474,7 @@ def test_t22_am2_payload_types(
     not_scored = tmp_path / "ns.json"
     assert _run(b2, drc, primary, builder, not_scored=not_scored) == 1
     assert capsys.readouterr().err == message + "\n"
+    assert price_calls["n"] == 0
     assert not primary.exists()
     assert not builder.exists()
     assert not not_scored.exists()
@@ -502,6 +517,7 @@ def test_t23a_absent_not_pinned_refused(
         "scripts.build_v14_primary_2023.ABSENT_FROM_FILE_ZONES",
         frozenset(PINNED),
     )
+    price_calls = _spy_read_price_field(monkeypatch)
     sales = [_sale(ZONE, 2023, "100", "6")]
     am2 = _am2(zones_present=[ZONE])
     unknown = "S01009999"
@@ -509,13 +525,17 @@ def test_t23a_absent_not_pinned_refused(
     drc = _write_drc(tmp_path, {ZONE: 40.0, unknown: 40.0})
     primary = tmp_path / "p.json"
     builder = tmp_path / "b.json"
-    assert _run(b2, drc, primary, builder) == 1
+    not_scored = tmp_path / "ns.json"
+    assert _run(b2, drc, primary, builder, not_scored=not_scored) == 1
     assert capsys.readouterr().err == (
         "B4_PRIMARY_2023: REFUSED: absent_from_file: expected one of "
         "S01007788, S01010206, S01010226, S01010462, S01010493, S01011598, "
         f"got {unknown}\n"
     )
+    assert price_calls["n"] == 0
     assert not primary.exists()
+    assert not builder.exists()
+    assert not not_scored.exists()
 
 
 def test_t23b_pinned_present_refused(
@@ -526,6 +546,7 @@ def test_t23b_pinned_present_refused(
         "scripts.build_v14_primary_2023.ABSENT_FROM_FILE_ZONES",
         frozenset(PINNED),
     )
+    price_calls = _spy_read_price_field(monkeypatch)
     pinned = "S01007788"
     sales = [_sale(ZONE, 2023, "100", "6"), _sale(pinned, 2021, "90", "6")]
     am2 = _am2(zones_present=[ZONE, pinned])
@@ -533,12 +554,16 @@ def test_t23b_pinned_present_refused(
     drc = _write_drc(tmp_path, {ZONE: 40.0, pinned: 40.0})
     primary = tmp_path / "p.json"
     builder = tmp_path / "b.json"
-    assert _run(b2, drc, primary, builder) == 1
+    not_scored = tmp_path / "ns.json"
+    assert _run(b2, drc, primary, builder, not_scored=not_scored) == 1
     assert capsys.readouterr().err == (
         f"B4_PRIMARY_2023: REFUSED: absent_from_file {pinned}: "
         "expected absent from house_sales, got present\n"
     )
+    assert price_calls["n"] == 0
     assert not primary.exists()
+    assert not builder.exists()
+    assert not not_scored.exists()
 
 
 def test_t23c_pinned_six_absent_classified(
@@ -615,8 +640,17 @@ def test_classify_not_scored_no_2023_row(monkeypatch: pytest.MonkeyPatch) -> Non
     assert rows == [{"zone": "Z2", "reason": "no_2023_row"}]
 
 
-def test_ci_ignores_real_test_glob() -> None:
-    """TE X1: CI Full backend suite ignores *_real.py by path."""
+def test_ci_deselects_real_marker() -> None:
+    """TE X1 / ATTACH-1b A42a: both pytest CI calls deselect mark real; no *_real glob."""
     ci = Path(__file__).resolve().parents[2] / ".github" / "workflows" / "ci.yml"
     text = ci.read_text(encoding="utf-8")
-    assert "--ignore-glob=*_real.py" in text or "--ignore-glob='*_real.py'" in text
+    assert (
+        "        run: python -m pytest -q -p no:cacheprovider -m 'not real' tests/surface\n"
+        in text
+    )
+    assert (
+        "        run: python -m pytest -q -p no:cacheprovider -rs -m 'not real'\n"
+        in text
+    )
+    assert "--ignore-glob=*_real.py" not in text
+    assert "--ignore-glob='*_real.py'" not in text

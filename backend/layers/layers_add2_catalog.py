@@ -13,6 +13,7 @@ import re
 from typing import Any, Final
 
 from layers.layer_flags import derive_public
+from sources_datagov import DATAGOV_EPC_DOMESTIC
 from spatial.council_names import OFFICIAL_COUNCIL_NAMES
 
 LICENCE_STATUSES: Final[frozenset[str]] = frozenset(
@@ -356,9 +357,7 @@ def sweep_entries() -> list[dict[str, Any]]:
             layer_id="epc_domestic",
             title="Domestic energy certificates",
             publisher="Scottish Government",
-            source_url=(
-                "https://statistics.gov.scot/data/domestic-energy-performance-certificates"
-            ),
+            source_url=DATAGOV_EPC_DOMESTIC,
             service_type="7z bulk (auto)",
             licence_status="ogl",
             licence_url=OGL_LICENCE_URL,
@@ -370,6 +369,10 @@ def sweep_entries() -> list[dict[str, Any]]:
             refresh="Quarterly",
             acquisition="auto",
             aggregates_only=True,
+            note=(
+                "data.gov.scot slug is quarter-specific; update on each "
+                "quarterly release"
+            ),
         ),
         _entry(
             layer_id="os_open_uprn",

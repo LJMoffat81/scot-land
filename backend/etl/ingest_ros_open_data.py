@@ -9,7 +9,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# Path to the free RoS CSV provided by statistics.gov.scot
+# Path to the free RoS CSV from data.gov.scot
+# (https://data.gov.scot/dataset/house_prices___residential_properties_sales_and_price).
 # In production, this would be the path to the downloaded dataset
 ROS_DATA_PATH = PROCESSED_DIR / "ros_house_prices_zones.csv"  # DATA_DIR-aware
 
@@ -22,7 +23,11 @@ def ingest_ros_data():
     Expects a CSV with columns: zone_id, median_price, mean_price, sales_count
     """
     if not ROS_DATA_PATH.exists():
-        logger.error(f"RoS data file not found at {ROS_DATA_PATH}. Please download the Small Area Statistics from statistics.gov.scot.")
+        logger.error(
+            f"RoS data file not found at {ROS_DATA_PATH}. Please download the "
+            "Small Area Statistics from data.gov.scot "
+            "(https://data.gov.scot/dataset/house_prices___residential_properties_sales_and_price)."
+        )
         return
 
     logger.info(f"Ingesting free RoS data from {ROS_DATA_PATH}...")

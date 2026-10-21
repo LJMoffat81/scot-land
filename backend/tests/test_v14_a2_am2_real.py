@@ -1,4 +1,4 @@
-"""V14-SPEC-A2b T24: real-file reconcile. CI ignores *_real.py (TE X1).
+"""V14-SPEC-A2b T24: real-file reconcile. CI deselects mark real (-m 'not real').
 
 Fails with V14_REAL when inputs are absent (R-COMMON / K17). No pytest.skip.
 """

@@ -80,6 +80,7 @@ services:
       context: ./frontend
       args:
         NEXT_PUBLIC_API_URL: /backend
+        NEXT_PUBLIC_ESRI_BASEMAP_API_KEY: ${NEXT_PUBLIC_ESRI_BASEMAP_API_KEY:-}
     restart: unless-stopped
     ports:
       # Loopback only — matches API/db. Cloudflare Tunnel reaches this via cloudflared on the PC.

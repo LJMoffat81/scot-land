@@ -1,4 +1,5 @@
 import {
+  injectEsriBasemapKey,
   openMap,
   registerOpenFreeMapFontStub,
   stubMapCardsBackend,
@@ -55,6 +56,7 @@ for (const width of WIDTHS) {
         await expect(aboutBrand.locator(".site-nav-wordmark")).toHaveText("Scot-LAND");
       }
 
+      await injectEsriBasemapKey(page);
       await stubMapCardsBackend(page);
       await openMap(page);
       const brand = page.locator(".hud-brand").getByTestId("site-nav-brand");

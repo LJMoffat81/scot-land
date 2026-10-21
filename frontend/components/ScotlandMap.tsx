@@ -5,7 +5,6 @@ import {
   useEffect,
   useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import maplibregl, {
   Map,
@@ -13,7 +12,8 @@ import maplibregl, {
   ExpressionSpecification,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { MapStampFooter } from "./MapStampFooter";
+import MapCreditLine from "./MapCreditLine";
+import { layersAdd2Credit } from "@/lib/layersAdd2Credits";
 import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
 import ResearchBanner from "./ResearchBanner";
 import SiteNav, { SiteBrand } from "./SiteNav";
@@ -70,10 +70,7 @@ import {
   isLegendLayerOff,
   newlyEnabledLegendLayer,
 } from "../lib/mapActiveLegend";
-import {
-  OPENFREEMAP_ATTRIBUTION,
-  buildMapAttributionPieces,
-} from "../lib/mapAttributionLine";
+import { isEsriBasemapKeyConfigured } from "../lib/esriBasemapKey.mjs";
 import {
   NO_DATA_HATCH_IMAGE,
   createNoDataHatchImageData,
@@ -81,17 +78,20 @@ import {
   rangeLegendFromStops,
 } from "../lib/mapLicenceCredits";
 import {
+  AERIAL_FAIL_WINDOW_MS,
+  AERIAL_UNAVAILABLE_NOTICE,
   BASEMAP_LOAD_NOTICE,
   BASEMAP_STYLE_TIMEOUT_MS,
   DEFAULT_MAP_BASEMAP,
   MAP_MAX_ZOOM,
-  basemapLabel,
   basemapStyleUrl,
-  basemapSwitchTarget,
+  esriStyleAttributionText,
+  isAerialFailureEvent,
   isBasemapFailureEvent,
   mapErrorLogLine,
   type MapBasemapId,
 } from "../lib/mapBasemap";
+import { firstSymbolLayerId } from "../lib/mapLayerOrder";
 import {
   getMapLayer,
   defaultOnLayerIds,
@@ -680,6 +680,25 @@ export default function ScotlandMap() {
     y: number;
     ref: string;
   } | null>(null);
+  /** LAYERS-ADD-2 credit ids from ?layers= even when not yet a registry switch (R4 NRS). */
+  const [creditExtraIds, setCreditExtraIds] = useState<string[]>([]);
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("layers");
+    if (!raw) {
+      setCreditExtraIds([]);
+      return;
+    }
+    const out: string[] = [];
+    const seen = new Set<string>();
+    for (const token of raw.split(",")) {
+      const id = token.trim();
+      if (!id || seen.has(id)) continue;
+      if (!layersAdd2Credit(id)) continue;
+      out.push(id);
+      seen.add(id);
+    }
+    setCreditExtraIds(out);
+  }, []);
   const [showVdl, setShowVdl] = useState(false);
   const [showHla, setShowHla] = useState(false);
   // SG 2024 public/Crown dashboard: licence unverified/not open — never paint
@@ -859,6 +878,19 @@ export default function ScotlandMap() {
   desktopLayersOpenRef.current = desktopLayersOpen;
   const [mapStyle, setMapStyle] = useState<MapBasemapId>(DEFAULT_MAP_BASEMAP);
   const [basemapNotice, setBasemapNotice] = useState(false);
+  const [aerialNotice, setAerialNotice] = useState(false);
+  const [aerialUnavailable, setAerialUnavailable] = useState(false);
+  const [esriAttribution, setEsriAttribution] = useState<string | null>(null);
+  const aerialFailArmedRef = useRef(false);
+  // Build-time key for SSR/hydration; E2E inject applies after mount.
+  const buildTimeEsriKey = (
+    process.env.NEXT_PUBLIC_ESRI_BASEMAP_API_KEY ?? ""
+  ).trim().length > 0;
+  const [esriKeyConfigured, setEsriKeyConfigured] = useState(buildTimeEsriKey);
+  useEffect(() => {
+    setEsriKeyConfigured(isEsriBasemapKeyConfigured());
+  }, []);
+  const showBasemapSwitcher = esriKeyConfigured && !aerialUnavailable;
   const [mapZoom, setMapZoom] = useState(5.7);
   const [isNarrowPanel, setIsNarrowPanel] = useState(
     () =>
@@ -984,7 +1016,6 @@ export default function ScotlandMap() {
     ledgerEnabled,
     contextOn,
   });
-  const attributionPieces = buildMapAttributionPieces(activeLayerIds);
   // Prefer a non-default visitor layer for the closed-panel strip (MAP-CARDS §3.5).
   // Fall back to legendPreferredId only when it is itself non-default and on.
   const stripLayerId = (() => {
@@ -1135,15 +1166,15 @@ export default function ScotlandMap() {
       }
       shell.style.setProperty("--layers-panel-top", `${top}px`);
 
-      // Bottom inset: attribution / safe gap above the map-stage floor, plus
-      // any shell chrome below the stage (stamp footer). Zoom controls shift
-      // sideways while the drawer is open — do not reserve their full stack.
+      // Bottom inset: MapCreditLine / safe gap above the map-stage floor.
+      // Zoom controls shift sideways while the drawer is open — do not reserve
+      // their full stack.
       let gapAboveStageFloor = Math.round(1.75 * 16);
-      const attribBtn = stage.querySelector(
-        ".maplibregl-ctrl-attrib",
+      const creditLine = stage.querySelector(
+        "[data-testid='map-credit-line']",
       ) as HTMLElement | null;
-      if (attribBtn && attribBtn.offsetParent !== null) {
-        const a = attribBtn.getBoundingClientRect();
+      if (creditLine && creditLine.offsetParent !== null) {
+        const a = creditLine.getBoundingClientRect();
         const fromFloor = Math.round(stageRect.bottom - a.bottom);
         gapAboveStageFloor = Math.max(gapAboveStageFloor, fromFloor + 8);
       }
@@ -2176,7 +2207,9 @@ export default function ScotlandMap() {
     if (!container || mapRef.current) return;
 
     const bootStyle = basemapStyleUrl(mapStyle);
+    const bootAerial = mapStyle === "aerial";
     const preservedCamera = cameraPreserveRef.current;
+    let pendingEsriAttribution: string | null = null;
     const map = new maplibregl.Map({
       container,
       style: bootStyle,
@@ -2185,17 +2218,8 @@ export default function ScotlandMap() {
         : [-4.2, 57.5],
       zoom: preservedCamera ? preservedCamera.zoom : 5.7,
       maxZoom: MAP_MAX_ZOOM,
-      // Map footer is one line; legal credits live behind the (i) control.
-      attributionControl: {
-        compact: true,
-        customAttribution: [
-          OPENFREEMAP_ATTRIBUTION,
-          // Postcode / place search uses RM + ONS directories — keep once in the (i) control.
-          "Contains Royal Mail data © Royal Mail copyright and database right",
-          "Contains National Statistics data © Crown copyright and database right. Office for National Statistics",
-          "No data provider endorses this site",
-        ],
-      },
+      // MAP-FOOTER-1: credits live in MapCreditLine, not MapLibre's control.
+      attributionControl: false,
     });
 
     map.addControl(
@@ -2207,22 +2231,120 @@ export default function ScotlandMap() {
     // Log every map error as a message string. AbortError is the only skip.
     let basemapAlive = true;
     let basemapStyleLoaded = false;
+    let aerialTileAttempts = 0;
+    let aerialTileFails = 0;
+    const aerialWindowStart = Date.now();
     setBasemapNotice(false);
+    if (!bootAerial) setEsriAttribution(null);
     const basemapTimer = window.setTimeout(() => {
       if (basemapAlive && !basemapStyleLoaded) setBasemapNotice(true);
     }, BASEMAP_STYLE_TIMEOUT_MS);
+
+    const failAerial = () => {
+      if (!basemapAlive || !bootAerial || aerialFailArmedRef.current) return;
+      if (Date.now() - aerialWindowStart > AERIAL_FAIL_WINDOW_MS + 250) return;
+      aerialFailArmedRef.current = true;
+      const c = map.getCenter();
+      const box = map.getContainer();
+      cameraPreserveRef.current = {
+        lng: c.lng,
+        lat: c.lat,
+        zoom: map.getZoom(),
+        width: box.clientWidth,
+        height: box.clientHeight,
+      };
+      setEsriAttribution(null);
+      setAerialUnavailable(true);
+      setAerialNotice(true);
+      setMapStyle("light");
+      window.setTimeout(() => setAerialNotice(false), 6_000);
+    };
+
+    if (bootAerial) {
+      void fetch(bootStyle)
+        .then(async (res) => {
+          if (!basemapAlive) return;
+          if (!res.ok) {
+            failAerial();
+            return;
+          }
+          let json: { sources?: Record<string, unknown> };
+          try {
+            json = (await res.json()) as { sources?: Record<string, unknown> };
+          } catch {
+            failAerial();
+            return;
+          }
+          const attr = esriStyleAttributionText(json);
+          if (!attr) {
+            failAerial();
+            return;
+          }
+          pendingEsriAttribution = attr;
+          if (!aerialFailArmedRef.current) setEsriAttribution(attr);
+        })
+        .catch(() => {
+          if (basemapAlive) failAerial();
+        });
+    }
+
+    const applyAerialAttribution = () => {
+      if (!bootAerial || !basemapAlive || aerialFailArmedRef.current) return;
+      // Prefer the Esri style JSON captured at fetch time. map.getStyle() after
+      // app layers load includes every overlay attribution (O1 is Esri-only).
+      const attr =
+        pendingEsriAttribution ||
+        esriStyleAttributionText(map.getStyle() ?? {});
+      if (!attr) {
+        failAerial();
+        return;
+      }
+      setEsriAttribution(attr);
+      aerialFailArmedRef.current = false;
+    };
     const onBasemapStyle = () => {
       basemapStyleLoaded = true;
       window.clearTimeout(basemapTimer);
       if (basemapAlive) setBasemapNotice(false);
+      applyAerialAttribution();
     };
     map.on("style.load", onBasemapStyle);
+    map.once("load", () => {
+      if (bootAerial) applyAerialAttribution();
+    });
+    const aerialWatchdog = bootAerial
+      ? window.setTimeout(() => {
+          if (basemapAlive && !basemapStyleLoaded) failAerial();
+        }, Math.max(1_000, AERIAL_FAIL_WINDOW_MS - 500))
+      : undefined;
+
     map.on("error", (event) => {
       const line = mapErrorLogLine(
         (event as { error?: unknown }).error,
       );
-      if (line) console.error(line);
       const sourceId = (event as { sourceId?: string }).sourceId;
+      if (bootAerial) {
+        const aerialFail = isAerialFailureEvent({
+          error: (event as { error?: unknown }).error,
+          sourceId,
+        });
+        // Before style.load: treat HTTP/JSON failures as MC6 even if the
+        // hostname is missing from the message.
+        const bootFail =
+          !basemapStyleLoaded &&
+          Boolean(line) &&
+          /\b(401|403|498|499|5\d\d)\b|Unexpected token|valid JSON/i.test(
+            line ?? "",
+          );
+        if (!aerialFail && !bootFail) return;
+        aerialTileAttempts += 1;
+        aerialTileFails += 1;
+        if (!basemapStyleLoaded || aerialTileFails / Math.max(aerialTileAttempts, 1) > 0.5) {
+          failAerial();
+        }
+        return;
+      }
+      if (line) console.error(line);
       if (
         isBasemapFailureEvent(
           { error: (event as { error?: unknown }).error, sourceId },
@@ -2233,34 +2355,16 @@ export default function ScotlandMap() {
       }
     });
 
-    // MapLibre compact mode starts with maplibregl-compact-show (expanded).
-    // Collapse to the (i) control by default; user click still expands.
-    const collapseCompactAttribution = () => {
-      const el = map
-        .getContainer()
-        .querySelector(".maplibregl-ctrl-attrib");
-      if (!el?.classList.contains("maplibregl-compact")) return;
-      el.classList.remove("maplibregl-compact-show");
-      el.removeAttribute("open");
-    };
-    // Style reloads can append another compact (i). Adding is idempotent.
-    const ensureSingleAttribution = () => {
+    // Drop any leftover MapLibre attribution nodes if a style injects them.
+    const stripAttributionControls = () => {
       const root = map.getContainer();
-      const controls = root.querySelectorAll(".maplibregl-ctrl-attrib");
-      for (let i = 1; i < controls.length; i += 1) {
-        controls[i]?.remove();
-      }
-      const toggles = root.querySelectorAll(".maplibregl-ctrl-attrib-button");
-      for (let i = 1; i < toggles.length; i += 1) {
-        toggles[i]?.remove();
-      }
+      root.querySelectorAll(".maplibregl-ctrl-attrib").forEach((el) => {
+        el.remove();
+      });
     };
-    map.on("load", collapseCompactAttribution);
-    map.once("idle", collapseCompactAttribution);
-    map.on("styledata", ensureSingleAttribution);
-    map.on("resize", () => {
-      queueMicrotask(collapseCompactAttribution);
-    });
+    map.on("load", stripAttributionControls);
+    map.once("idle", stripAttributionControls);
+    map.on("styledata", stripAttributionControls);
 
     let userMoved = false;
     const noteUserMove = (event: { originalEvent?: Event }) => {
@@ -2377,38 +2481,65 @@ export default function ScotlandMap() {
       map.addSource("council-metrics", { type: "geojson", data: emptyCollection });
       // Bind paint to the public context ramp (never leave an AGR £ expression on the layer).
       const initialPaintMetric = paintMetricForChoropleth("off");
-      map.addLayer({
-        id: "council-fill",
-        type: "fill",
-        source: "council-metrics",
-        layout: { visibility: "none" },
-        paint: {
-          "fill-color": paintForMetric(initialPaintMetric),
-          "fill-opacity": 0.72,
+      // O2: choropleth below the first symbol layer so Esri/OFM labels draw over it.
+      const labelsBeforeId = firstSymbolLayerId(map);
+      map.addLayer(
+        {
+          id: "council-fill",
+          type: "fill",
+          source: "council-metrics",
+          layout: { visibility: "none" },
+          paint: {
+            "fill-color": paintForMetric(initialPaintMetric),
+            "fill-opacity": 0.72,
+          },
         },
-      });
+        labelsBeforeId,
+      );
       // Optional hatch overlay for polygons whose metric property is missing.
-      map.addLayer({
-        id: "council-nodata-hatch",
-        type: "fill",
-        source: "council-metrics",
-        layout: { visibility: "none" },
-        filter: [
-          "!=",
-          ["typeof", ["get", initialPaintMetric.property]],
-          "number",
-        ] as unknown as ExpressionSpecification,
-        paint: {
-          "fill-pattern": NO_DATA_HATCH_IMAGE,
-          "fill-opacity": 0.85,
+      map.addLayer(
+        {
+          id: "council-nodata-hatch",
+          type: "fill",
+          source: "council-metrics",
+          layout: { visibility: "none" },
+          filter: [
+            "!=",
+            ["typeof", ["get", initialPaintMetric.property]],
+            "number",
+          ] as unknown as ExpressionSpecification,
+          paint: {
+            "fill-pattern": NO_DATA_HATCH_IMAGE,
+            "fill-opacity": 0.85,
+          },
         },
-      });
-      map.addLayer({
-        id: "council-line",
-        type: "line",
-        source: "council-metrics",
-        paint: { "line-color": "#0c2c84", "line-width": 1.0, "line-opacity": 0.55 },
-      });
+        labelsBeforeId,
+      );
+      if (mapStyle === "aerial") {
+        // R2.4: 1.5px white casing under navy boundaries on Aerial.
+        map.addLayer(
+          {
+            id: "council-line-casing",
+            type: "line",
+            source: "council-metrics",
+            paint: {
+              "line-color": "#ffffff",
+              "line-width": 1.5,
+              "line-opacity": 0.9,
+            },
+          },
+          labelsBeforeId,
+        );
+      }
+      map.addLayer(
+        {
+          id: "council-line",
+          type: "line",
+          source: "council-metrics",
+          paint: { "line-color": "#0c2c84", "line-width": 1.0, "line-opacity": 0.55 },
+        },
+        labelsBeforeId,
+      );
       // Method outline: rural councils dashed emphasis
       map.addLayer({
         id: "council-method",
@@ -3049,6 +3180,7 @@ export default function ScotlandMap() {
     return () => {
       basemapAlive = false;
       window.clearTimeout(basemapTimer);
+      if (aerialWatchdog !== undefined) window.clearTimeout(aerialWatchdog);
       map.off("style.load", onBasemapStyle);
       resizeObserver.disconnect();
       markerRef.current?.remove();
@@ -3077,7 +3209,7 @@ export default function ScotlandMap() {
       // Allow deep-link boot on the next map instance (Strict Mode / style remount).
       urlBootDoneRef.current = false;
     };
-    // Remount when basemap style changes (OpenFreeMap light ↔ detailed).
+    // Remount when basemap style changes (OpenFreeMap light ↔ Esri aerial).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyle]);
 
@@ -4890,30 +5022,6 @@ export default function ScotlandMap() {
     setMapStyle(next);
   };
 
-  const onBasemapRadioKey = (
-    event: ReactKeyboardEvent<HTMLButtonElement>,
-  ) => {
-    const order: MapBasemapId[] = ["light", "detailed"];
-    const idx = order.indexOf(mapStyle);
-    let nextIndex = idx;
-    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-      nextIndex = Math.min(idx + 1, order.length - 1);
-    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
-      nextIndex = Math.max(idx - 1, 0);
-    } else {
-      return;
-    }
-    event.preventDefault();
-    const next = order[nextIndex]!;
-    selectBasemap(next);
-    const testId =
-      next === "light" ? "basemap-option-light" : "basemap-option-detailed";
-    window.setTimeout(() => {
-      document
-        .querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`)
-        ?.focus();
-    }, 0);
-  };
   const placeTitle =
     placeStub?.label ||
     placeStub?.dataZoneName ||
@@ -4972,51 +5080,69 @@ export default function ScotlandMap() {
         ) : null}
       </div>
 
-      <div className="basemap-switcher" data-testid="basemap-switcher">
-        <div
-          className="basemap-switcher-wide"
-          role="radiogroup"
-          aria-label="Map style"
-        >
-          {(["light", "detailed"] as const).map((id) => {
-            const selected = mapStyle === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                tabIndex={selected ? 0 : -1}
-                data-testid={
-                  id === "light"
-                    ? "basemap-option-light"
-                    : "basemap-option-detailed"
-                }
-                onClick={() => selectBasemap(id)}
-                onKeyDown={onBasemapRadioKey}
+      {showBasemapSwitcher ? (
+        <div className="basemap-switcher-wrap">
+          <button
+            type="button"
+            className={
+              mapStyle === "aerial"
+                ? "basemap-switcher is-aerial"
+                : "basemap-switcher is-light"
+            }
+            data-testid="basemap-switcher"
+            aria-pressed={mapStyle === "aerial"}
+            aria-label="Aerial map"
+            title="Aerial map"
+            aria-describedby="basemap-switcher-tooltip"
+            onClick={() =>
+              selectBasemap(mapStyle === "aerial" ? "light" : "aerial")
+            }
+          >
+            <span className="basemap-switcher-face" aria-hidden="true">
+              <svg
+                className="basemap-switcher-globe"
+                width="22"
+                height="22"
+                viewBox="0 0 22 22"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
               >
-                {basemapLabel(id)}
-              </button>
-            );
-          })}
+                <circle cx="11" cy="11" r="9" stroke="currentColor" strokeWidth="2" />
+                <ellipse
+                  cx="11"
+                  cy="11"
+                  rx="4"
+                  ry="9"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M2 11h18"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </span>
+          </button>
+          <span
+            id="basemap-switcher-tooltip"
+            className="basemap-switcher-tooltip"
+            role="tooltip"
+          >
+            {mapStyle === "aerial" ? "Simple map" : "Aerial map"}
+          </span>
         </div>
-        <button
-          type="button"
-          className={
-            mapStyle === "detailed"
-              ? "basemap-toggle-narrow is-detailed"
-              : "basemap-toggle-narrow is-light"
-          }
-          data-testid="basemap-toggle-narrow"
-          aria-pressed={mapStyle === "detailed"}
-          aria-label={basemapLabel(basemapSwitchTarget(mapStyle))}
-          onClick={() =>
-            selectBasemap(mapStyle === "detailed" ? "light" : "detailed")
-          }
+      ) : null}
+      {aerialNotice ? (
+        <div
+          className="basemap-notice"
+          role="status"
+          data-testid="aerial-unavailable-notice"
         >
-          {basemapLabel(basemapSwitchTarget(mapStyle))}
-        </button>
-      </div>
+          <p>{AERIAL_UNAVAILABLE_NOTICE}</p>
+        </div>
+      ) : null}
       {basemapNotice ? (
         <div
           className="basemap-notice"
@@ -5253,15 +5379,14 @@ export default function ScotlandMap() {
           })()
         : null}
 
-      <div className="map-attribution-line" data-testid="map-attribution-line">
-        <span>
-          {attributionPieces.map((p) => p.text).join(" · ")}
-        </span>
-        {" · "}
-        <a href="/data#licences" data-testid="map-all-sources">
-          All sources
-        </a>
-      </div>
+      <MapCreditLine
+        esriAttribution={mapStyle === "aerial" ? esriAttribution : null}
+        activeLayerIds={
+          creditExtraIds.length > 0
+            ? [...activeLayerIds, ...creditExtraIds]
+            : activeLayerIds
+        }
+      />
       </div>{/* map-stage — panel stays outside so inert modal does not block close */}
 
       {panelKind === "place" ? (
@@ -5378,7 +5503,6 @@ export default function ScotlandMap() {
           </ul>
         </div>
       ) : null}
-      <MapStampFooter />
     </div>
   );
 }

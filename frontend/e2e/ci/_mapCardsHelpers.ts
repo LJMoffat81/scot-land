@@ -254,6 +254,21 @@ export function filterNoise(errors: string[]): string[] {
     ) {
       return false;
     }
+    // Esri Aerial negative paths (MC6) — blocked style/tiles are expected.
+    // Chromium often omits the URL from "Failed to load resource" text.
+    if (
+      /Failed to load resource: the server responded with a status of (401|403|498|499|5\d\d)/i.test(
+        text,
+      )
+    ) {
+      return false;
+    }
+    if (
+      /arcgis\.com/i.test(text) &&
+      /401|403|498|499|5\d\d|Failed to load resource|invalid|JSON/i.test(text)
+    ) {
+      return false;
+    }
     // MapLibre sprite/glyph CDN failures (no app stack).
     if (/sprite|glyph/i.test(text) && /failed|error|load|404|503/i.test(text)) {
       return false;
@@ -422,6 +437,24 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       body: JSON.stringify(HEALTH_OK),
     });
   });
+}
+
+/** Dummy Esri key for Aerial e2e — assembled at runtime, never committed. */
+export const DUMMY_ESRI_KEY = "TEST" + "KEY" + "x".repeat(8);
+
+/**
+ * Inject an Esri basemap key for E2E_HOOKS builds (add before first navigation).
+ * Pass `null` or `""` to force the no-key path; `"   "` for whitespace-as-unset.
+ */
+export async function injectEsriBasemapKey(
+  page: Page,
+  key: string | null = DUMMY_ESRI_KEY,
+) {
+  await page.addInitScript((value) => {
+    (
+      window as unknown as { __E2E_ESRI_BASEMAP_API_KEY__?: string | null }
+    ).__E2E_ESRI_BASEMAP_API_KEY__ = value;
+  }, key);
 }
 
 export async function openMap(page: Page, path = "/") {

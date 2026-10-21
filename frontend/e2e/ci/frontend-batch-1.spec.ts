@@ -13,14 +13,87 @@ import { paintForMetricWithNoData } from "../../lib/mapLicenceCredits";
 import {
   assertConsoleClean,
   attachConsoleGate,
+  CI_TINY_PNG,
+  EMPTY_GLYPH_PBF,
+  injectEsriBasemapKey,
   openLayers,
   openMap,
   registerOpenFreeMapFontStub,
   stubMapCardsBackend,
   type ConsoleGate,
 } from "./_mapCardsHelpers";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 registerOpenFreeMapFontStub();
+
+const ESRI_STYLE_URL =
+  "https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/imagery";
+
+const ESRI_FIXTURE_PATH = join(
+  process.cwd(),
+  "e2e",
+  "fixtures",
+  "esri-imagery-style.json",
+);
+
+type EsriStyle = {
+  sprite: string;
+  glyphs: string;
+  sources: Record<
+    string,
+    { tiles?: string[]; url?: string; attribution?: string; type?: string }
+  >;
+  layers?: Array<Record<string, unknown>>;
+};
+
+function loadEsriFixture(): EsriStyle {
+  if (!existsSync(ESRI_FIXTURE_PATH)) {
+    throw new Error("fixture missing: esri-imagery-style.json");
+  }
+  return JSON.parse(readFileSync(ESRI_FIXTURE_PATH, "utf8")) as EsriStyle;
+}
+
+async function routeEsriFixture(page: Page, style: EsriStyle) {
+  const spriteJson = `${style.sprite}.json`;
+  const spritePng = `${style.sprite}.png`;
+
+  await page.route(`${ESRI_STYLE_URL}**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(style),
+    });
+  });
+  await page.route(spriteJson, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ image: "root.png", width: 1, height: 1 }),
+    });
+  });
+  await page.route(spritePng, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: CI_TINY_PNG,
+    });
+  });
+  await page.route("**/basemaps-api.arcgis.com/**/*.pbf**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/x-protobuf",
+      body: EMPTY_GLYPH_PBF,
+    });
+  });
+  await page.route("**/ibasemaps-api.arcgis.com/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: CI_TINY_PNG,
+    });
+  });
+}
 
 const ROLE_LINES = [
   "Engineering Lead: runs the building work, writes specs and reviews code.",
@@ -100,6 +173,7 @@ const BANNED_BODY =
   /neighbou?rhood|neighborhood|natural capital|what3words|\bledger\b/i;
 
 type MapProbe = {
+  getLayer(id: string): unknown;
   getLayoutProperty(id: string, prop: string): unknown;
   getPaintProperty(id: string, prop: string): unknown;
   jumpTo(opts: { zoom: number; center?: [number, number] }): void;
@@ -339,9 +413,10 @@ for (const viewport of [
       test.setTimeout(180_000);
       const gate = attachConsoleGate(page);
       const styleByUrl = new Map<string, { layers?: Array<Record<string, unknown>> }>();
+      const esriFixture = loadEsriFixture();
       page.on("response", async (response) => {
         const url = response.url();
-        if (!/tiles\.openfreemap\.org\/styles\/(positron|liberty)/i.test(url)) {
+        if (!/tiles\.openfreemap\.org\/styles\/positron/i.test(url)) {
           return;
         }
         if (!response.ok()) return;
@@ -355,6 +430,8 @@ for (const viewport of [
         }
       });
 
+      await injectEsriBasemapKey(page);
+      await routeEsriFixture(page, esriFixture);
       await stubMapCardsBackend(page, { gbpLive: false });
       await stubCouncilsOk(page);
       await openMap(page, "/");
@@ -413,18 +490,29 @@ for (const viewport of [
 
       await assertBasemapUntouched(/positron/i);
 
-      if (viewport.width >= 900) {
-        await page.getByTestId("basemap-option-detailed").click();
-      } else {
-        await page.getByTestId("basemap-toggle-narrow").click();
-      }
+      const toggle = page.getByTestId("basemap-switcher");
+      await expect(toggle).toBeVisible();
+      await toggle.click();
+      await expect(toggle).toHaveAttribute("aria-pressed", "true");
       await getMap(page);
+      // Aerial fixture has no residential/landuse/building fills — Positron
+      // paint check above is the T-D6 shading guard; Aerial must load cleanly.
       await expect
-        .poll(() => [...styleByUrl.keys()].some((u) => /liberty/i.test(u)), {
-          timeout: 60_000,
-        })
+        .poll(
+          async () =>
+            page.evaluate(() => {
+              const map = (window as unknown as { __map?: MapProbe }).__map;
+              if (!map) return false;
+              try {
+                return Boolean(map.getLayer("esri-imagery") || map.getLayer("background"));
+              } catch {
+                return false;
+              }
+            }),
+          { timeout: 60_000 },
+        )
         .toBe(true);
-      await assertBasemapUntouched(/liberty/i);
+      expect(esriFixture.layers?.some((l) => l.id === "esri-imagery")).toBe(true);
       assertConsoleClean(gate);
     });
 

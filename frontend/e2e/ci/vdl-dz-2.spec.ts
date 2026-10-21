@@ -1,9 +1,9 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test } from "@playwright/test";
 import {
   assertConsoleClean,
   attachConsoleGate,
   openMap,
+  registerOpenFreeMapFontStub,
   stubMapCardsBackend,
   waitForMap,
 } from "./_mapCardsHelpers";
@@ -15,6 +15,9 @@ registerOpenFreeMapFontStub();
  * VDL-DZ-2 — no site-polygon overlay and no site-type legend classes.
  * Attribution describes Data Zone totals. Fails on main before this change:
  * the map added source vdl-overlay and credited "Survey sites, not a title".
+ *
+ * FRONTEND-BATCH-2 r6: revert attempt-3 /data navigation; keep map-credit-line
+ * OpenFreeMap + maplibregl-ctrl-attrib count 0 (stronger).
  */
 
 const STALE = [
@@ -68,14 +71,18 @@ for (const viewport of [
         await expect(page.getByText(label, { exact: true })).toHaveCount(0);
       }
 
+      const credit = page.getByTestId("map-credit-line");
+      await expect(credit).toBeVisible();
+      await expect(credit).toContainText("OpenFreeMap");
+      await expect(page.locator(".maplibregl-ctrl-attrib")).toHaveCount(0);
+
       const line = page.getByTestId("map-attribution-line");
       await expect(line).toContainText(
         "Zones with one or two sites show no area.",
       );
-      const mapAttrib = page.locator(".maplibregl-ctrl-attrib");
+      // maplibregl attrib is removed (count 0 above) — STALE cannot appear there.
       for (const phrase of STALE) {
         await expect(line).not.toContainText(phrase);
-        await expect(mapAttrib).not.toContainText(phrase);
       }
 
       assertConsoleClean(gate);

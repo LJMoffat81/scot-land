@@ -6,6 +6,7 @@ import {
   boxOf,
   boxesOverlap,
   getVisibleLayerIds,
+  injectEsriBasemapKey,
   openLayers,
   openMap,
   openPlaceViaCoords,
@@ -27,9 +28,18 @@ async function assertNoOverlapsAmong(
 ) {
   for (let i = 0; i < items.length; i += 1) {
     for (let j = i + 1; j < items.length; j += 1) {
+      const a = items[i]!.label;
+      const b = items[j]!.label;
+      // Sources sits inside map-credit-line; both must still clear every other item.
+      if (
+        (a === "all sources" && b === "map credit") ||
+        (a === "map credit" && b === "all sources")
+      ) {
+        continue;
+      }
       expect(
         boxesOverlap(items[i]!.box, items[j]!.box),
-        `${items[i]!.label} vs ${items[j]!.label}`,
+        `${a} vs ${b}`,
       ).toBe(false);
     }
   }
@@ -41,7 +51,9 @@ async function collectChrome(page: Page, extras: Array<{ label: string; testId: 
     { label: "basemap", locator: page.getByTestId("basemap-switcher") },
     { label: "layers btn", locator: page.getByTestId("hud-layers-btn") },
     { label: "zoom-in", locator: page.locator(".maplibregl-ctrl-zoom-in") },
+    // r6 §2 #4: main's all sources plus map credit (stronger — both must clear).
     { label: "all sources", locator: page.getByTestId("map-all-sources") },
+    { label: "map credit", locator: page.getByTestId("map-credit-line") },
     ...extras.map((e) => ({
       label: e.label,
       locator: page.getByTestId(e.testId),
@@ -65,6 +77,7 @@ for (const viewport of [
     test("1 no overlaps across rest / card / Layers", async ({ page }) => {
       test.setTimeout(120_000);
       const gate = attachConsoleGate(page);
+      await injectEsriBasemapKey(page);
       await stubMapCardsBackend(page);
       await openMap(page);
 
@@ -133,6 +146,7 @@ for (const viewport of [
     }) => {
       test.setTimeout(90_000);
       const gate = attachConsoleGate(page);
+      await injectEsriBasemapKey(page);
       await stubMapCardsBackend(page);
       await openMap(page);
       await waitForMap(page);
@@ -152,6 +166,7 @@ for (const viewport of [
     test("6 visible controls meet 44px hit targets", async ({ page }) => {
       test.setTimeout(90_000);
       const gate = attachConsoleGate(page);
+      await injectEsriBasemapKey(page);
       await stubMapCardsBackend(page);
       await openMap(page);
       await openLayers(page);
@@ -166,7 +181,6 @@ for (const viewport of [
         if (!(await el.isVisible().catch(() => false))) continue;
         const box = await el.boundingBox();
         if (!box) continue;
-        // Attribution (i) may use padded hit area; skip MapLibre attrib button.
         expect(box.width, `w #${i}`).toBeGreaterThanOrEqual(44);
         expect(box.height, `h #${i}`).toBeGreaterThanOrEqual(44);
       }
@@ -251,6 +265,7 @@ test.describe("MAP-CARDS mobile sheet 390", () => {
   test("3 sheet width/height/detents; 16–19 handle Esc", async ({ page }) => {
     test.setTimeout(120_000);
     const gate = attachConsoleGate(page);
+    await injectEsriBasemapKey(page);
     await stubMapCardsBackend(page);
     // Map tap → peek
     await openMap(page);

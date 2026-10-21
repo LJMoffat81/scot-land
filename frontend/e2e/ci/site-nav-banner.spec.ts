@@ -1,4 +1,10 @@
-import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, CI_OPTIONAL_FAIL_URL, isCiOptionalFailUrl, stubCiTileDataQuiet } from "./_mapCardsHelpers";
+import {
+  registerOpenFreeMapFontStub,
+  stubLayersCouncilsQuiet,
+  CI_OPTIONAL_FAIL_URL,
+  isCiOptionalFailUrl,
+  stubCiTileDataQuiet,
+} from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Page } from "@playwright/test";
 
@@ -183,19 +189,10 @@ test.afterEach(() => {
   ).toEqual([]);
 });
 
-async function openAttributionIfCollapsed(page: Page) {
-  const attrib = page.locator(".maplibregl-ctrl-attrib");
-  const collapsed = await attrib.evaluate((el) => {
-    const compact = el.classList.contains("maplibregl-compact");
-    const shown = el.classList.contains("maplibregl-compact-show");
-    const inner = el.querySelector(".maplibregl-ctrl-attrib-inner");
-    if (!inner) return false;
-    const style = getComputedStyle(inner);
-    const hidden = style.display === "none" || style.visibility === "hidden";
-    return (compact && !shown) || hidden;
-  });
-  if (!collapsed) return;
-  await page.locator(".maplibregl-ctrl-attrib-button").click({ timeout: 10_000 });
+async function openMapCreditText(page: Page) {
+  // r6: credit text stays on the visible line (never ⓘ-only).
+  await expect(page.getByTestId("map-credit-line-text")).toBeVisible();
+  return page.getByTestId("map-credit-line-text");
 }
 
 test.describe("site nav + research banner (rewrite PR1)", () => {
@@ -573,18 +570,20 @@ test.describe("site-watch PR A — SW-011 mobile nav backdrop", () => {
 });
 
 test.describe("site-watch PR A — map footer + mobile banner", () => {
-  test("map footer wording and licences link", async ({ page }) => {
+  test("map credit wording and licences link", async ({ page }) => {
     await page.setViewportSize({ width: 1100, height: 800 });
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor();
-    const line = page.getByTestId("map-footer-line");
-    await expect(line).toHaveText(
-      "Research estimate · Open data · Sources and licences",
-    );
+    await expect(page.getByTestId("map-stamp-footer")).toHaveCount(0);
+    await expect(page.getByTestId("map-footer-line")).toHaveCount(0);
+    await expect(page.locator(".map-footer")).toHaveCount(0);
+    const line = page.getByTestId("map-credit-line-text");
+    await expect(line).toHaveText("© OpenFreeMap © OpenStreetMap · Sources");
     await expect(
-      line.getByRole("link", { name: "Sources and licences" }),
+      page.getByTestId("map-all-sources"),
     ).toHaveAttribute("href", "/data#licences");
     await expect(page.getByTestId("research-banner")).toHaveCount(1);
+    await expect(line).not.toContainText("Research estimate");
   });
 
   test("390px banner does not cover search", async ({ page }) => {
@@ -616,49 +615,40 @@ test.describe("site-watch PR A — map footer + mobile banner", () => {
     await expect(input).toHaveValue("EH1");
   });
 
-  test("map (i) attribution includes Royal Mail, ONS and endorsement", async ({
+  test("Sources page includes Royal Mail, ONS and endorsement", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1100, height: 800 });
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor();
-    await page.locator(".maplibregl-ctrl-attrib").waitFor();
-    await openAttributionIfCollapsed(page);
-    const attrib = page.locator(".maplibregl-ctrl-attrib");
-    await expect(attrib).toContainText("Royal Mail");
-    await expect(attrib).toContainText("Office for National Statistics");
-    await expect(attrib).toContainText("No data provider endorses this site");
-    // One-line footer unchanged.
-    await expect(page.getByTestId("map-footer-line")).toHaveText(
-      "Research estimate · Open data · Sources and licences",
-    );
+    await expect(page.locator(".maplibregl-ctrl-attrib")).toHaveCount(0);
+    const credit = await openMapCreditText(page);
+    await expect(credit).toHaveText("© OpenFreeMap © OpenStreetMap · Sources");
+    await page.getByTestId("map-all-sources").click();
+    await expect(page).toHaveURL(/\/data#licences/);
+    const footer = page.getByTestId("content-page-footer");
+    await expect(footer).toContainText("Royal Mail");
+    await expect(footer).toContainText("Office for National Statistics");
+    await expect(footer).toContainText("No data provider endorses this site");
+    await expect(page.getByTestId("map-footer-line")).toHaveCount(0);
   });
 });
 
 test.describe("site-watch PR A — chrome nits", () => {
-  test("390x844 footer + collapsed attribution ≤ ~10% height", async ({
-    page,
-  }) => {
+  test("390x844 credit ⓘ ≤ ~10% height", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor();
-    const attrib = page.locator(".maplibregl-ctrl-attrib");
-    await attrib.waitFor({ state: "attached" });
-    // App collapses MapLibre's initial compact-show; <details> without open
-    // is not "visible" to Playwright — assert class + (i) button instead.
-    await expect(attrib).toHaveClass(/maplibregl-compact/);
-    await expect(attrib).not.toHaveClass(/maplibregl-compact-show/);
-    const attribButton = page.locator(".maplibregl-ctrl-attrib-button");
-    await expect(attribButton).toBeVisible();
-    const footer = page.getByTestId("map-stamp-footer");
-    await expect(footer).toBeVisible();
-    const footerBox = await footer.boundingBox();
-    const attribBox = await attribButton.boundingBox();
-    expect(footerBox && attribBox).toBeTruthy();
-    if (footerBox && attribBox) {
-      const used = footerBox.height + attribBox.height;
-      expect(used).toBeLessThanOrEqual(844 * 0.1 + 8);
-    }
+    await expect(page.locator(".maplibregl-ctrl-attrib")).toHaveCount(0);
+    await expect(page.getByTestId("map-stamp-footer")).toHaveCount(0);
+    const info = page.getByTestId("map-credit-info");
+    await expect(info).toBeVisible();
+    await expect(info).toHaveAttribute("aria-label", "Map credits");
+    const infoBox = await info.boundingBox();
+    expect(infoBox).toBeTruthy();
+    expect(infoBox!.width).toBeGreaterThanOrEqual(44);
+    expect(infoBox!.height).toBeGreaterThanOrEqual(44);
+    expect(infoBox!.height).toBeLessThanOrEqual(844 * 0.1 + 8);
   });
 
   test("Layers button sits top-right at 1280", async ({ page }) => {

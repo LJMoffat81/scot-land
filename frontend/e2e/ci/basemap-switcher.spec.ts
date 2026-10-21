@@ -1,13 +1,23 @@
-import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, CI_OPTIONAL_FAIL_URL, isCiOptionalFailUrl, stubCiTileDataQuiet } from "./_mapCardsHelpers";
+import {
+  registerOpenFreeMapFontStub,
+  stubLayersCouncilsQuiet,
+  CI_OPTIONAL_FAIL_URL,
+  isCiOptionalFailUrl,
+  stubCiTileDataQuiet,
+  injectEsriBasemapKey,
+  CI_TINY_PNG,
+  EMPTY_GLYPH_PBF,
+} from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 registerOpenFreeMapFontStub();
 
-
 /**
- * MAP-CARDS basemap — Simple ↔ Detailed (open tiles). Locate removed.
- * Desktop uses radios. Narrow uses the icon toggle. Console errors fail the test.
+ * MAP-CONTROLS-1 r3 basemap — Simple ↔ Aerial (Esri imagery).
+ * Single 48×48 toggle at all widths. Console errors fail the test.
  */
 
 const consoleErrors: string[] = [];
@@ -51,6 +61,73 @@ const PLACE_STUB = {
 };
 
 const KNOWN_OPTIONAL_FAIL_URL = CI_OPTIONAL_FAIL_URL;
+
+const ESRI_STYLE_URL =
+  "https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/imagery";
+
+const FIXTURE_PATH = join(
+  process.cwd(),
+  "e2e",
+  "fixtures",
+  "esri-imagery-style.json",
+);
+
+type EsriStyle = {
+  sprite: string;
+  glyphs: string;
+  sources: Record<
+    string,
+    { tiles?: string[]; url?: string; attribution?: string; type?: string }
+  >;
+};
+
+function loadEsriFixture(): EsriStyle {
+  if (!existsSync(FIXTURE_PATH)) {
+    throw new Error("fixture missing: esri-imagery-style.json");
+  }
+  return JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as EsriStyle;
+}
+
+async function routeEsriFixture(page: Page, style: EsriStyle) {
+  const spriteJson = `${style.sprite}.json`;
+  const spritePng = `${style.sprite}.png`;
+
+  await page.route(`${ESRI_STYLE_URL}**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(style),
+    });
+  });
+  await page.route(spriteJson, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ image: "root.png", width: 1, height: 1 }),
+    });
+  });
+  await page.route(spritePng, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: CI_TINY_PNG,
+    });
+  });
+  await page.route("**/basemaps-api.arcgis.com/**/*.pbf**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/x-protobuf",
+      body: EMPTY_GLYPH_PBF,
+    });
+  });
+  await page.route("**/ibasemaps-api.arcgis.com/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: CI_TINY_PNG,
+    });
+  });
+}
 
 function isKnownOptionalFailUrl(url: string): boolean {
   return isCiOptionalFailUrl(url);
@@ -180,13 +257,15 @@ test.afterEach(() => {
 });
 
 async function openMap(page: Page) {
+  await injectEsriBasemapKey(page);
+  await routeEsriFixture(page, loadEsriFixture());
   await page.goto("/");
   await page.getByTestId("basemap-switcher").waitFor({ state: "attached" });
   await page.locator(".maplibregl-canvas").waitFor();
-  const attrib = page.locator(".maplibregl-ctrl-attrib");
-  await attrib.waitFor({ state: "attached" });
+  await page.getByTestId("map-credit-line").waitFor({ state: "attached" });
   await expect(page.locator(".maplibregl-ctrl-zoom-in")).toBeVisible();
   await expect(page.getByTestId("basemap-switcher")).toBeVisible();
+  await expect(page.locator(".maplibregl-ctrl-attrib")).toHaveCount(0);
 }
 
 async function openPlaceCard(page: Page) {
@@ -225,47 +304,46 @@ async function assertNoBoxOverlap(a: Locator, b: Locator, label: string) {
 
 async function runBasemapChecks(page: Page) {
   await openMap(page);
-  const narrow = (page.viewportSize()?.width ?? 1280) <= 900;
 
   await expect(page.getByRole("button", { name: "Locate" })).toHaveCount(0);
+  await expect(page.getByRole("radiogroup", { name: "Map style" })).toHaveCount(
+    0,
+  );
+  await expect(page.getByTestId("basemap-option-light")).toHaveCount(0);
+  await expect(page.getByTestId("basemap-option-detailed")).toHaveCount(0);
+  await expect(page.getByTestId("basemap-toggle-narrow")).toHaveCount(0);
+  await expect(page.getByText("Detailed", { exact: true })).toHaveCount(0);
+
   const switcher = page.getByTestId("basemap-switcher");
   await expect(switcher).toBeVisible();
-  await expect(switcher).not.toContainText(/Satellite/i);
-  await expect(switcher).not.toContainText("Light");
+  await expect(switcher).toHaveAttribute("aria-label", "Aerial map");
+  await expect(switcher).toHaveAttribute("title", "Aerial map");
+  await expect(switcher).toHaveAttribute("aria-pressed", "false");
+  const face = switcher.locator(".basemap-switcher-face");
+  await expect(face).not.toContainText(/Satellite/i);
+  await expect(face).not.toContainText("Light");
+  await expect(face).not.toContainText("Detailed");
+  await expect(face).not.toContainText("Simple");
+  await expect(face).not.toContainText("Aerial");
+
+  const box = await switcher.boundingBox();
+  expect(box).toBeTruthy();
+  expect(box!.width).toBeCloseTo(48, 0);
+  expect(box!.height).toBeCloseTo(48, 0);
 
   const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
   const zoomOut = page.locator(".maplibregl-ctrl-zoom-out");
 
-  if (narrow) {
-    await expect(page.locator(".basemap-switcher-wide")).toBeHidden();
-    const toggle = page.getByTestId("basemap-toggle-narrow");
-    await expect(toggle).toBeVisible();
-    await expect(toggle).toHaveAccessibleName("Detailed");
-    await expect(toggle).toHaveText("Detailed");
-    await expect(toggle.locator("svg")).toHaveCount(0);
-    await expect(toggle).toHaveAttribute("aria-pressed", "false");
-    await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-pressed", "true");
-    await expect(toggle).toHaveAccessibleName("Simple");
-    await expect(toggle).toHaveText("Simple");
-    await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-pressed", "false");
-    await expect(toggle).toHaveText("Detailed");
-  } else {
-    await expect(page.getByTestId("basemap-toggle-narrow")).toBeHidden();
-    const group = page.getByRole("radiogroup", { name: "Map style" });
-    await expect(group).toBeVisible();
-    const simple = page.getByTestId("basemap-option-light");
-    const detailed = page.getByTestId("basemap-option-detailed");
-    await expect(simple).toHaveAttribute("aria-checked", "true");
-    await expect(simple).toHaveText("Simple");
-    await expect(detailed).toHaveAttribute("aria-checked", "false");
-    await expect(detailed).toHaveText("Detailed");
-    await detailed.click();
-    await expect(detailed).toHaveAttribute("aria-checked", "true");
-    await simple.click();
-    await expect(simple).toHaveAttribute("aria-checked", "true");
-  }
+  await switcher.click();
+  await expect(switcher).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("tooltip")).toHaveText(
+    "Simple map",
+  );
+  await switcher.click();
+  await expect(switcher).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("tooltip")).toHaveText(
+    "Aerial map",
+  );
 
   await assertNoBoxOverlap(switcher, zoomIn, "basemap vs zoom-in");
   await assertNoBoxOverlap(switcher, zoomOut, "basemap vs zoom-out");
@@ -278,7 +356,7 @@ async function runBasemapChecks(page: Page) {
 test.describe("1280 desktop", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test("basemap radios Simple/Detailed; clear of zoom and place card", async ({
+  test("basemap Aerial toggle; clear of zoom and place card", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -289,7 +367,7 @@ test.describe("1280 desktop", () => {
 test.describe("390x844 mobile", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("basemap narrow toggle; clear of place card; no Locate", async ({
+  test("basemap Aerial toggle; clear of place card; no Locate", async ({
     page,
   }) => {
     test.setTimeout(120_000);

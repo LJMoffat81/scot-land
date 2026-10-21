@@ -334,7 +334,7 @@ test.describe("GRID-BASE-1", () => {
     await expect(page.getByTestId("layer-licence-grid3")).toHaveCount(0);
 
     const axe = await new AxeBuilder({ page })
-      .exclude(".maplibregl-ctrl-attrib")
+      .exclude("[data-testid='map-credit-line']")
       .exclude(".maplibregl-marker")
       .analyze();
     const serious = axe.violations.filter(

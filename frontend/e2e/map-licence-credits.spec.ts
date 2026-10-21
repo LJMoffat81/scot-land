@@ -1,12 +1,29 @@
+import {
+  injectEsriBasemapKey,
+} from "./ci/_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
 
 const GLASGOW = { lng: -4.2514, lat: 55.8609 };
 
+const BOUNDARIES_ATTRIBUTION =
+  "© Crown copyright. Reproduced with the permission of Registers of Scotland. Contains OS data © Crown copyright and database right 2026. OGL-3.0.";
+
+const NSTA_ATTRIBUTION =
+  "Contains information provided by the North Sea Transition Authority and/or other third parties. Non-commercial use only.";
+
 async function openMap(page: Page) {
+  await injectEsriBasemapKey(page);
   await page.goto("/");
   await page.locator(".maplibregl-canvas").waitFor();
   await page.locator("#place-query").waitFor();
-  await page.locator(".maplibregl-ctrl-attrib").waitFor();
+  await page.getByTestId("map-credit-line").waitFor();
+  await expect(page.locator(".maplibregl-ctrl-attrib")).toHaveCount(0);
+}
+
+async function openSources(page: Page) {
+  // r6: Sources stays on the visible credit line at every width.
+  await page.getByTestId("map-all-sources").click();
+  await expect(page).toHaveURL(/\/data#licences/);
 }
 
 test.describe("map licence credits (catalog-driven)", () => {
@@ -28,8 +45,7 @@ test.describe("map licence credits (catalog-driven)", () => {
           licence: "OGL-3.0",
           licence_url:
             "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-          attribution:
-            "© Crown copyright. Reproduced with the permission of Registers of Scotland. Contains OS data © Crown copyright and database right 2026. OGL-3.0.",
+          attribution: BOUNDARIES_ATTRIBUTION,
           source_url: "https://www.ros.gov.uk/open-data",
         },
       ],
@@ -42,6 +58,13 @@ test.describe("map licence credits (catalog-driven)", () => {
       });
     });
     await page.route("**/backend/layers/catalog**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(catalogBody),
+      });
+    });
+    await page.route("**/api/catalog.json", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -64,16 +87,9 @@ test.describe("map licence credits (catalog-driven)", () => {
 
     const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
     for (let step = 0; step < 14; step += 1) {
-      const ready = await page.locator(".maplibregl-ctrl-attrib").textContent();
-      if (ready?.includes("Registers of Scotland")) break;
       await zoomIn.click({ timeout: 10_000 });
       await page.waitForTimeout(500);
     }
-
-    await expect(page.locator(".maplibregl-ctrl-attrib")).toContainText(
-      "Registers of Scotland",
-      { timeout: 45_000 },
-    );
 
     // Zoomed in: density bands + hatched no-data — still no rent £.
     await expect(legend).toHaveAttribute("data-mode", "bands", {
@@ -84,15 +100,31 @@ test.describe("map licence credits (catalog-driven)", () => {
     );
     await expect(legend.getByText(/£\d/)).toHaveCount(0);
 
-    // Catalog-driven boundaries credit once parcels are on (zoom ≥ 14).
-    const credits = page.getByTestId("map-licence-credits");
-    await expect(credits).toBeVisible({ timeout: 45_000 });
-    await expect(page.getByTestId("map-credit-boundaries")).toBeVisible({
+    // Catalog-driven boundaries credit via Sources (MF3).
+    await openSources(page);
+    await expect(page.getByText("ROS INSPIRE parcels").first()).toBeVisible({
       timeout: 30_000,
     });
     await expect(
-      page.getByTestId("map-credit-licence-link-boundaries"),
-    ).toHaveAttribute("href", /open-government-licence/);
+      page.locator('a[href*="open-government-licence"]').first(),
+    ).toBeVisible();
+    const catalogOnSources = await page.evaluate(async () => {
+      const res = await fetch("/api/catalog.json");
+      return (await res.json()) as {
+        layers?: Array<{ attribution?: string; licence_url?: string }>;
+      };
+    });
+    const boundaries = catalogOnSources.layers?.find(
+      (layer) =>
+        typeof layer.attribution === "string" &&
+        layer.attribution.includes("Registers of Scotland"),
+    );
+    expect(boundaries?.attribution).toBe(BOUNDARIES_ATTRIBUTION);
+    expect(boundaries?.licence_url).toMatch(/open-government-licence/);
+
+    await page.goto("/");
+    await page.locator(".maplibregl-canvas").waitFor();
+    await page.getByTestId("map-credit-line").waitFor();
 
     // Coordinate search still opens a place card (no public rent £).
     const search = page.locator("#place-query");
@@ -110,61 +142,52 @@ test.describe("map licence credits (catalog-driven)", () => {
   test("non-commercial badge when ledger row 9 (NSTA) is on", async ({ page }) => {
     test.setTimeout(90_000);
 
+    const catalogBody = {
+      version: 2,
+      layers: [
+        {
+          id: "nsta_oil_gas",
+          group: "natural_capital",
+          status: "linked",
+          label: "NSTA oil and gas",
+          licence: "non-commercial",
+          licence_url: "https://www.nstauthority.co.uk/data-and-insights/",
+          attribution: NSTA_ATTRIBUTION,
+          ledger_row: "9",
+          ui_surface: "ledger",
+        },
+        {
+          id: "boundaries",
+          group: "spatial",
+          status: "live",
+          label: "ROS INSPIRE parcels",
+          licence: "OGL-3.0",
+          licence_url:
+            "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+          attribution:
+            "© Crown copyright. Reproduced with the permission of Registers of Scotland.",
+        },
+      ],
+    };
     await page.route("**/layers/catalog**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({
-          version: 2,
-          layers: [
-            {
-              id: "nsta_oil_gas",
-              group: "natural_capital",
-              status: "linked",
-              label: "NSTA oil and gas",
-              licence: "non-commercial",
-              licence_url: "https://www.nstauthority.co.uk/data-and-insights/",
-              attribution:
-                "Contains information provided by the North Sea Transition Authority and/or other third parties. Non-commercial use only.",
-              ledger_row: "9",
-              ui_surface: "ledger",
-            },
-            {
-              id: "boundaries",
-              group: "spatial",
-              status: "live",
-              label: "ROS INSPIRE parcels",
-              licence: "OGL-3.0",
-              licence_url:
-                "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
-              attribution:
-                "© Crown copyright. Reproduced with the permission of Registers of Scotland.",
-            },
-          ],
-        }),
+        body: JSON.stringify(catalogBody),
       });
     });
     await page.route("**/backend/layers/catalog**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({
-          version: 2,
-          layers: [
-            {
-              id: "nsta_oil_gas",
-              group: "natural_capital",
-              status: "linked",
-              label: "NSTA oil and gas",
-              licence: "non-commercial",
-              licence_url: "https://www.nstauthority.co.uk/data-and-insights/",
-              attribution:
-                "Contains information provided by the North Sea Transition Authority and/or other third parties. Non-commercial use only.",
-              ledger_row: "9",
-              ui_surface: "ledger",
-            },
-          ],
-        }),
+        body: JSON.stringify(catalogBody),
+      });
+    });
+    await page.route("**/api/catalog.json", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(catalogBody),
       });
     });
     await page.route("**/ledger**", async (route) => {
@@ -197,14 +220,32 @@ test.describe("map licence credits (catalog-driven)", () => {
     await expect(toggle).toBeVisible({ timeout: 20_000 });
     await toggle.click();
 
-    await expect(page.getByTestId("map-non-commercial-badge")).toBeVisible({
+    await openSources(page);
+    await expect(page.getByText(/NSTA oil and gas/i).first()).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByTestId("map-credit-nsta_oil_gas")).toBeVisible();
-    await expect(page.getByTestId("map-credit-nsta_oil_gas")).toHaveAttribute(
-      "data-non-commercial",
-      "1",
-    );
+    await expect(page.getByText(/non-commercial/i).first()).toBeVisible();
+    await expect(page.getByText(/ROS INSPIRE parcels/i).first()).toBeVisible();
+    const catalogOnSources = await page.evaluate(async () => {
+      const res = await fetch("/api/catalog.json");
+      return (await res.json()) as {
+        layers?: Array<{
+          id?: string;
+          attribution?: string;
+          licence?: string;
+        }>;
+      };
+    });
+    const nsta = catalogOnSources.layers?.find((l) => l.id === "nsta_oil_gas");
+    expect(nsta?.attribution).toBe(NSTA_ATTRIBUTION);
+    expect(nsta?.licence).toMatch(/non-commercial/i);
+    expect(
+      catalogOnSources.layers?.some(
+        (l) =>
+          typeof l.attribution === "string" &&
+          l.attribution.includes("Registers of Scotland"),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -246,4 +287,3 @@ async function panToGlasgow(page: Page) {
   await page.mouse.up();
   await page.waitForTimeout(400);
 }
-

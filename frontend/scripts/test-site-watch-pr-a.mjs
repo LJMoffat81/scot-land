@@ -119,26 +119,43 @@ assert.match(
   /\/developers\?moved=1#api/,
 );
 
-// —— Map (i) attribution carries RM / ONS / endorsement (footer stays one line) ——
+// —— MapCreditLine + Sources; RM / ONS / endorsement live on content footer ——
 const scotlandMap = readSrc("components/ScotlandMap.tsx");
-assert.match(scotlandMap, /attributionControl/);
-assert.match(scotlandMap, /customAttribution/);
-assert.match(scotlandMap, /Royal Mail data/);
-assert.match(scotlandMap, /Office for National Statistics/);
-assert.match(scotlandMap, /No data provider endorses this site/);
+assert.match(scotlandMap, /MapCreditLine/);
+assert.match(scotlandMap, /attributionControl:\s*false/);
+assert.doesNotMatch(scotlandMap, /customAttribution/);
+assert.doesNotMatch(
+  scotlandMap,
+  /MapStampFooter/,
+  "map page must not render MapStampFooter (MAP-FOOTER-1)",
+);
+const mapCredit = readSrc("components/MapCreditLine.tsx");
+assert.match(mapCredit, /map-credit-line/);
+assert.match(mapCredit, /map-credit-info/);
+assert.match(mapCredit, /map-credit-sheet/);
+assert.match(mapCredit, /href=\{MAP_CREDIT_SOURCES_HREF\}|\/data#licences/);
+assert.match(mapCredit, /© OpenFreeMap © OpenStreetMap/);
 assert.doesNotMatch(
   stamp,
   /Royal Mail data/,
-  "map one-line footer must not re-list Royal Mail (lives in (i))",
+  "MapStampFooter must not re-list Royal Mail (lives on content footer / Sources)",
 );
 
-// —— Item 5: mobile attribution fold + compact footer ——
-assert.match(chrome, /maplibregl-ctrl-attrib-inner/);
-assert.match(chrome, /maplibregl-compact-show/);
-assert.match(
-  chrome,
-  /@media \(max-width:\s*640px\)[\s\S]*\.map-footer[\s\S]*max-height/,
-);
+// —— Item 4: content footers (RM / ONS / endorsement; Sources link) ——
+assert.ok(existsSync(join(frontendRoot, "components/ContentPageFooter.tsx")));
+const contentFooter = readSrc("components/ContentPageFooter.tsx");
+assert.match(contentFooter, /href="\/data#licences"/);
+assert.match(contentFooter, /Research estimate · Open data ·/);
+assert.match(contentFooter, /engineVersionLine/);
+assert.match(contentFooter, /Royal Mail data/);
+assert.match(contentFooter, /Office for National Statistics/);
+assert.match(contentFooter, /No data provider endorses this site/);
+
+// —— Item 5: narrow credit ⓘ + sheet (MAP-FOOTER-1; MapLibre attrib stripped) ——
+assert.match(chrome, /\.map-credit-line--narrow/);
+assert.match(chrome, /\.map-credit-info-btn/);
+assert.match(chrome, /\.map-credit-sheet/);
+assert.match(scotlandMap, /stripAttributionControls|maplibregl-ctrl-attrib/);
 
 // —— Item 7: Layers button top-right ——
 assert.match(
@@ -153,13 +170,6 @@ const siteNav = readSrc("components/SiteNav.tsx");
 assert.match(siteNav, /site-nav-backdrop/);
 assert.match(siteNav, /Escape/);
 assert.match(siteNav, /pointerdown/);
-
-// —— Item 4: content footers ——
-assert.ok(existsSync(join(frontendRoot, "components/ContentPageFooter.tsx")));
-const contentFooter = readSrc("components/ContentPageFooter.tsx");
-assert.match(contentFooter, /href="\/data#licences"/);
-assert.match(contentFooter, /Research estimate · Open data ·/);
-assert.match(contentFooter, /engineVersionLine/);
 assert.match(readSrc("components/MissionContent.tsx"), /ContentPageFooter/);
 assert.match(readSrc("components/MethodologyContent.tsx"), /ContentPageFooter/);
 assert.match(readSrc("app/data/layout.tsx"), /ContentPageFooter/);

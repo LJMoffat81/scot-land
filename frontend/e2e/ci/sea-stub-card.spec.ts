@@ -1,4 +1,10 @@
-import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, isCiOptionalFailUrl, stubCiTileDataQuiet } from "./_mapCardsHelpers";
+import {
+  injectEsriBasemapKey,
+  registerOpenFreeMapFontStub,
+  stubLayersCouncilsQuiet,
+  isCiOptionalFailUrl,
+  stubCiTileDataQuiet,
+} from "./_mapCardsHelpers";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 
@@ -238,6 +244,7 @@ async function assertSeaCardHeightFitsContent(card: Locator) {
 
 async function openSeaStub(page: Page) {
   // Prefer deep-link boot (avoids search chrome races in CI).
+  await injectEsriBasemapKey(page);
   await page.goto(`/?lat=${OUTSIDE_LAT}&lng=${OUTSIDE_LNG}`);
   await page.locator(".maplibregl-canvas").waitFor();
 

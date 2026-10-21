@@ -32,8 +32,30 @@ const ESRI_HOSTS = [
   "cdn.arcgis.com",
 ] as const;
 
+const OPENFREEMAP_HOST = "tiles.openfreemap.org";
+
 const STYLE_URL =
   "https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/imagery";
+
+/** Minimal Positron stand-in so Simple basemap never hits the live CDN. */
+const STUB_OPENFREEMAP_STYLE = {
+  version: 8,
+  sources: {
+    stub: {
+      type: "raster",
+      tiles: [`https://${OPENFREEMAP_HOST}/e2e-stub/{z}/{x}/{y}.png`],
+      tileSize: 256,
+    },
+  },
+  layers: [
+    {
+      id: "background",
+      type: "background",
+      paint: { "background-color": "#e8eef4" },
+    },
+    { id: "stub-raster", type: "raster", source: "stub" },
+  ],
+};
 
 type EsriStyle = {
   sprite: string;
@@ -69,6 +91,37 @@ function hostnameOf(url: string): string | null {
 function isEsriHost(url: string): boolean {
   const host = hostnameOf(url);
   return host !== null && (ESRI_HOSTS as readonly string[]).includes(host);
+}
+
+/** Stub OpenFreeMap by exact hostname (style, fonts, tiles). */
+async function routeOpenFreeMapByHostname(page: Page) {
+  await page.route(
+    (url) => hostnameOf(url.toString()) === OPENFREEMAP_HOST,
+    async (route) => {
+      const url = route.request().url();
+      if (/\/styles\//i.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(STUB_OPENFREEMAP_STYLE),
+        });
+        return;
+      }
+      if (/\/fonts\//i.test(url) || /\.pbf/i.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/x-protobuf",
+          body: EMPTY_GLYPH_PBF,
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "image/png",
+        body: CI_TINY_PNG,
+      });
+    },
+  );
 }
 
 async function routeEsriByHostname(page: Page, style: EsriStyle) {
@@ -148,10 +201,14 @@ function assertConsoleStrict(gate: ReturnType<typeof attachConsoleGate>) {
   ).toEqual([]);
 }
 
-/** Let stubbed tile fetches finish so a later style swap does not abort them. */
+/**
+ * Wait until stubbed map traffic is quiet before toggling Aerial.
+ * networkidle can reject on timeout when long-polling keeps a socket open —
+ * that rejection is ignored because the stubs already answered tile/style
+ * fetches; we only need a best-effort drain, not a hard network barrier.
+ */
 async function settleMapNetwork(page: Page) {
   await page.waitForLoadState("networkidle").catch(() => undefined);
-  await page.waitForTimeout(300);
 }
 
 test("B1 build-time key shows switcher and hits basemapstyles", async ({
@@ -171,9 +228,13 @@ test("B1 build-time key shows switcher and hits basemapstyles", async ({
     ).__E2E_ESRI_BASEMAP_API_KEY__ = null;
   });
 
+  // Gate before navigation — catch load / map start-up console errors.
+  const gate = attachConsoleGate(page);
+
   const style = loadFixture();
   await stubMapCardsBackend(page);
   await stubCiTileDataQuiet(page);
+  await routeOpenFreeMapByHostname(page);
   await routeEsriByHostname(page, style);
 
   await openMap(page);
@@ -181,20 +242,16 @@ test("B1 build-time key shows switcher and hits basemapstyles", async ({
   await expect(switcher).toBeVisible({ timeout: 30_000 });
   await settleMapNetwork(page);
 
-  // Attach after initial tiles settle so a style swap does not race in-flight
-  // OpenFreeMap fetches into the strict console gate.
-  const gate = attachConsoleGate(page);
-
   await switcher.click();
   await expect
     .poll(() => styleReqs.length, { timeout: 30_000 })
     .toBeGreaterThan(0);
   expect(
-    styleReqs.some(
-      (u) =>
-        u.startsWith(STYLE_URL) || u.includes("basemapstyles-api.arcgis.com"),
+    styleReqs.every(
+      (u) => hostnameOf(u) === "basemapstyles-api.arcgis.com",
     ),
   ).toBe(true);
+  expect(styleReqs.some((u) => u.startsWith(STYLE_URL))).toBe(true);
 
   await settleMapNetwork(page);
   assertConsoleStrict(gate);
@@ -209,15 +266,20 @@ test("B2 no build-time key hides switcher and skips ArcGIS", async ({
     if (isEsriHost(req.url())) arcgis.push(req.url());
   });
 
+  // Gate before navigation — catch load / map start-up console errors.
+  const gate = attachConsoleGate(page);
+
   await stubMapCardsBackend(page);
   await stubCiTileDataQuiet(page);
+  await routeOpenFreeMapByHostname(page);
   // Still stub Esri hosts so a leak cannot hit the network; assert count 0.
   await routeEsriByHostname(page, loadFixture());
 
   await openMap(page);
-  await settleMapNetwork(page);
-  const gate = attachConsoleGate(page);
-  await page.waitForTimeout(500);
+  // Condition wait: switcher must stay absent once the map shell is up.
+  await expect(page.locator(".maplibregl-canvas")).toBeVisible({
+    timeout: 60_000,
+  });
   await expect(page.getByTestId("basemap-switcher")).toHaveCount(0);
   expect(arcgis).toEqual([]);
   assertConsoleStrict(gate);

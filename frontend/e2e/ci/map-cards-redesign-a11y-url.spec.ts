@@ -90,30 +90,45 @@ for (const viewport of [
       test.setTimeout(90_000);
       const gate = attachConsoleGate(page);
       await stubMapCardsBackend(page);
-      await page.goto(
-        "/?place=S01014567&panel=layers&layers=councils,access_services&z=8&c=-4.25,55.86",
-      );
-      await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
-      await expect(page.getByTestId("layers-panel")).toBeVisible({
-        timeout: 30_000,
+      // CI-DEDUP-1b: exact-host OFM stub makes mapReady early; deep-link place
+      // identify then steals panel=layers (close button detaches). Hold style
+      // until after the round-trip so mapReady/identify cannot run mid-test.
+      // URL still carries place=; canvas mounts without the style.
+      let releaseStyle = () => {};
+      const styleHeld = new Promise<void>((resolve) => {
+        releaseStyle = resolve;
       });
-      await expect(page.getByTestId("layer-toggle-access_services")).toHaveAttribute(
-        "aria-checked",
-        "true",
-      );
-
-      const url = page.url();
-      expect(url).toMatch(/panel=layers/);
-      expect(url).toMatch(/layers=/);
-      // No place selection as raw lat/lng-only identity when place= is set
-      expect(url).toMatch(/place=/);
-
-      await page.getByTestId("map-panel-slot-close").click();
-      await page.goBack();
-      await expect(page.getByTestId("layers-panel")).toBeVisible({
-        timeout: 15_000,
+      await page.route("**/tiles.openfreemap.org/styles/**", async (route) => {
+        await styleHeld;
+        await route.continue();
       });
-      assertConsoleClean(gate);
+      try {
+        await page.goto(
+          "/?place=S01014567&panel=layers&layers=councils,access_services&z=8&c=-4.25,55.86",
+        );
+        await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
+        await expect(page.getByTestId("layers-panel")).toBeVisible({
+          timeout: 30_000,
+        });
+        await expect(
+          page.getByTestId("layer-toggle-access_services"),
+        ).toHaveAttribute("aria-checked", "true");
+
+        const url = page.url();
+        expect(url).toMatch(/panel=layers/);
+        expect(url).toMatch(/layers=/);
+        // No place selection as raw lat/lng-only identity when place= is set
+        expect(url).toMatch(/place=/);
+
+        await page.getByTestId("map-panel-slot-close").click();
+        await page.goBack();
+        await expect(page.getByTestId("layers-panel")).toBeVisible({
+          timeout: 15_000,
+        });
+        assertConsoleClean(gate);
+      } finally {
+        releaseStyle();
+      }
     });
   });
 }

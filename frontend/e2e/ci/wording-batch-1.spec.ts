@@ -229,11 +229,8 @@ test.describe("WORDING-BATCH-1 place card (390)", () => {
     await page.goto("/?lat=55.8609&lng=-4.2514");
     await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
     const card = page.getByTestId("place-card");
-    if ((await card.count()) === 0) {
-      await page.locator(".maplibregl-canvas").click({
-        position: { x: 195, y: 400 },
-      });
-    }
+    // CI-DEDUP-1b: deep-link opens the card. count-then-canvas-click races the
+    // half-height panel (Playwright click hangs once the slot mounts).
     await expect(card).toBeVisible({ timeout: 30_000 });
 
     await expect(card).not.toContainText(/map reference/i);

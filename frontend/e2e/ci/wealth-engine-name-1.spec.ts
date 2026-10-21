@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { test, expect } from "./_fixtures";
 
 /**
  * WEALTH-ENGINE-NAME-1 — three verbatim lines at 1280 and 390.

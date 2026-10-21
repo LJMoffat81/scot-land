@@ -1,14 +1,6 @@
-import { expect, test, type Page } from "@playwright/test";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  ensureLayersGroupOpen,
-  ensureMapZoomAtLeast,
-  openLayers,
-  openMap,
-  registerOpenFreeMapFontStub,
-  stubMapCardsBackend,
-} from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
+import { assertConsoleClean, attachConsoleGate, ensureLayersGroupOpen, ensureMapZoomAtLeast, openLayers, openMap, registerOpenFreeMapFontStub, stubMapCardsBackend } from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();
 

@@ -2,7 +2,8 @@
  * FRONTEND-BATCH-2 r6 — R1–R5 credit-line reconciliation.
  * Viewports 1280×800 and 390×844. Console errors fail the test.
  */
-import { expect, test, type Page } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 import {
   mkdtempSync,
   mkdirSync,
@@ -12,20 +13,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import {
-  attachConsoleGate,
-  assertConsoleClean,
-  CI_TINY_PNG,
-  DUMMY_ESRI_KEY,
-  EMPTY_GLYPH_PBF,
-  injectEsriBasemapKey,
-  openLayers,
-  openMap,
-  openPlaceViaCoords,
-  registerOpenFreeMapFontStub,
-  stubMapCardsBackend,
-  waitForMap,
-} from "./_mapCardsHelpers";
+import { attachConsoleGate, assertConsoleClean, CI_TINY_PNG, DUMMY_ESRI_KEY, EMPTY_GLYPH_PBF, injectEsriBasemapKey, openLayers, openMap, openPlaceViaCoords, registerOpenFreeMapFontStub, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 import {
   buildMapAttributionPieces,
   shortLayerSourceName,

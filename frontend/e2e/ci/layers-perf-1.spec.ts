@@ -1,17 +1,9 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  ensureLayersGroupOpen,
-  openLayers,
-  openMap,
-  stubMapCardsBackend,
-  waitForMap,
-} from "./_mapCardsHelpers";
+
+import { test, expect } from "./_fixtures";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, ensureLayersGroupOpen, openLayers, openMap, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
-
 
 /**
  * LAYERS-PERF-1 — protected sites draw inside the payload budget, and

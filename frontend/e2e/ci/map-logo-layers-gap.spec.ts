@@ -1,6 +1,7 @@
-import { fulfillEmptyGlyph, registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, CI_OPTIONAL_FAIL_URL, isCiOptionalFailUrl } from "./_mapCardsHelpers";
+import { fulfillEmptyGlyph, registerOpenFreeMapFontStub, stubLayersCouncilsQuiet } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
-import { expect, test, type Page } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -12,8 +13,6 @@ registerOpenFreeMapFontStub();
  * errors.
  */
 
-const consoleErrors: string[] = [];
-const resourceFails: Array<{ url: string; status: number }> = [];
 
 const HEALTH_OK = {
   status: "ok",
@@ -25,7 +24,6 @@ const HEALTH_OK = {
 
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
 
-const KNOWN_OPTIONAL_FAIL_URL = CI_OPTIONAL_FAIL_URL;
 
 /** 1×1 PNG — stub raster tiles so MapLibre never depends on live CDN in CI. */
 const TINY_PNG = Buffer.from(
@@ -54,9 +52,6 @@ const STUB_MAP_STYLE = {
   ],
 };
 
-function isKnownOptionalFailUrl(url: string): boolean {
-  return isCiOptionalFailUrl(url);
-}
 
 function boxesOverlap(
   a: { x: number; y: number; width: number; height: number },
@@ -117,22 +112,9 @@ test.describe("SW-020 map logo vs Layers gap (390×844)", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test.beforeEach(async ({ page }) => {
-    consoleErrors.length = 0;
-    resourceFails.length = 0;
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
-    page.on("pageerror", (err) => {
-      consoleErrors.push(String(err));
-    });
-    page.on("response", (response) => {
-      const status = response.status();
-      if (status === 404 || status === 503) {
-        resourceFails.push({ url: response.url(), status });
-      }
-    });
+
+    
+    
 
     // Basemap first — MapLibre must not hit live CDN (CI pageerror "Error").
     await stubMapBasemap(page);
@@ -224,41 +206,7 @@ test.describe("SW-020 map logo vs Layers gap (390×844)", () => {
     await stubLayersAddQuiet(page);
   });
 
-  test.afterEach(() => {
-    const unknownResourceFails = resourceFails.filter(
-      (fail) => !isKnownOptionalFailUrl(fail.url),
-    );
-    expect(
-      unknownResourceFails,
-      `unexpected HTTP 404/503:\n${unknownResourceFails
-        .map((f) => `${f.status} ${f.url}`)
-        .join("\n")}`,
-    ).toEqual([]);
-
-    const meaningful = consoleErrors.filter((text) => {
-      if (
-        /\bAbortError\b|The user aborted|The operation was aborted/i.test(text)
-      ) {
-        return false;
-      }
-      if (
-        /Failed to load resource: the server responded with a status of (404|503)/i.test(
-          text,
-        )
-      ) {
-        if (KNOWN_OPTIONAL_FAIL_URL.some((re) => re.test(text))) return false;
-        if (!/https?:\/\//i.test(text) && unknownResourceFails.length === 0) {
-          return false;
-        }
-        return true;
-      }
-      return true;
-    });
-    expect(
-      meaningful,
-      `console errors on map logo/Layers e2e:\n${meaningful.join("\n")}`,
-    ).toEqual([]);
-  });
+  
 
   test("logo does not overlap Layers after tiles load", async ({ page }) => {
     test.setTimeout(90_000);

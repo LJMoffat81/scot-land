@@ -1,10 +1,6 @@
-import {
-  injectEsriBasemapKey,
-  openMap,
-  registerOpenFreeMapFontStub,
-  stubMapCardsBackend,
-} from "./_mapCardsHelpers";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { injectEsriBasemapKey, openMap, registerOpenFreeMapFontStub, stubMapCardsBackend } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Locator, type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 

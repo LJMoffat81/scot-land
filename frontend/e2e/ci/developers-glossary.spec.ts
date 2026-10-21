@@ -1,6 +1,7 @@
-import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, CI_OPTIONAL_FAIL_URL, isCiOptionalFailUrl, stubCiTileDataQuiet } from "./_mapCardsHelpers";
+import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, stubCiTileDataQuiet, attachConsoleGate, assertConsoleClean } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
-import { expect, test, type Page } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -44,70 +45,12 @@ const HEALTH_OK = {
 
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
 
-const KNOWN_OPTIONAL_FAIL_URL = CI_OPTIONAL_FAIL_URL;
 
-function isKnownOptionalFailUrl(url: string): boolean {
-  return isCiOptionalFailUrl(url);
-}
 
-type ConsoleGate = {
-  consoleErrors: string[];
-  resourceFails: Array<{ url: string; status: number }>;
-};
 
-function attachConsoleGate(page: Page): ConsoleGate {
-  const consoleErrors: string[] = [];
-  const resourceFails: Array<{ url: string; status: number }> = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") {
-      consoleErrors.push(msg.text());
-    }
-  });
-  page.on("pageerror", (err) => {
-    consoleErrors.push(String(err));
-  });
-  page.on("response", (response) => {
-    const status = response.status();
-    if (status === 404 || status === 503) {
-      resourceFails.push({ url: response.url(), status });
-    }
-  });
-  return { consoleErrors, resourceFails };
-}
 
-function assertConsoleClean(gate: ConsoleGate) {
-  const unknownResourceFails = gate.resourceFails.filter(
-    (fail) => !isKnownOptionalFailUrl(fail.url),
-  );
-  expect(
-    unknownResourceFails,
-    `unexpected HTTP 404/503:\n${unknownResourceFails
-      .map((f) => `${f.status} ${f.url}`)
-      .join("\n")}`,
-  ).toEqual([]);
 
-  const meaningful = gate.consoleErrors.filter((text) => {
-    if (/\bAbortError\b|The user aborted|The operation was aborted/i.test(text)) {
-      return false;
-    }
-    if (
-      /Failed to load resource: the server responded with a status of (404|503)/i.test(
-        text,
-      )
-    ) {
-      if (KNOWN_OPTIONAL_FAIL_URL.some((re) => re.test(text))) return false;
-      if (!/https?:\/\//i.test(text) && unknownResourceFails.length === 0) {
-        return false;
-      }
-      return true;
-    }
-    return true;
-  });
-  expect(
-    meaningful,
-    `console/pageerror:\n${meaningful.join("\n")}`,
-  ).toEqual([]);
-}
+
 
 async function stubBackend(page: Page) {
   // Catch-all first (Playwright is LIFO — later routes win).

@@ -1,19 +1,8 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test } from "@playwright/test";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  ensureMapZoomAtLeast,
-  getStyleSourceIds,
-  openLayers,
-  openMap,
-  openPlaceViaCoords,
-  stubMapCardsBackend,
-  waitForMap,
-} from "./_mapCardsHelpers";
+
+import { test, expect } from "./_fixtures";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, ensureMapZoomAtLeast, getStyleSourceIds, openLayers, openMap, openPlaceViaCoords, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();
-
 
 /**
  * MAP-CARDS checks 4, 24, 26–32, 34–35 — legend/layers GIS probes (stubbed).

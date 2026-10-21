@@ -1,14 +1,10 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+
+import { test, expect } from "./_fixtures";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, stubMapCardsBackend } from "./_mapCardsHelpers";
+import { type Page } from "@playwright/test";
 import { isScotlandViewCenter } from "../../lib/mapUrlState";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  stubMapCardsBackend,
-} from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();
-
 
 /**
  * HOTFIX-VIEW-1 — fresh visitors frame Scotland.

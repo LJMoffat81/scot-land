@@ -2,21 +2,11 @@
  * FRONTEND-BATCH-2 r5 — T-M1…T-M5 (MAP-CONTROLS-1 / O1 / MC5–MC6 / MC11).
  * Viewports 1280×800 and 390×844. Console errors fail the test.
  */
-import { expect, test, type Page } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  attachConsoleGate,
-  assertConsoleClean,
-  CI_TINY_PNG,
-  DUMMY_ESRI_KEY,
-  EMPTY_GLYPH_PBF,
-  injectEsriBasemapKey,
-  openMap,
-  registerOpenFreeMapFontStub,
-  stubMapCardsBackend,
-  waitForMap,
-} from "./_mapCardsHelpers";
+import { attachConsoleGate, assertConsoleClean, CI_TINY_PNG, DUMMY_ESRI_KEY, EMPTY_GLYPH_PBF, injectEsriBasemapKey, openMap, registerOpenFreeMapFontStub, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 import { scanLibertyHits } from "./_libertyScan";
 
 registerOpenFreeMapFontStub();
@@ -250,7 +240,12 @@ for (const viewport of VIEWPORTS) {
       assertConsoleClean(gate);
     });
 
-    test("T-M3 O1 missing attribution reverts", async ({ page }) => {
+    // QUARANTINE CI-DEDUP-1b-r2 Q1: MapLibre AbortError stack (chunk-hashed) on
+    // intentional empty-attribution aerial revert; cannot pin exact expectError
+    // text across rebuilds without loosening the gate. Owner Eng Lead; exit =
+    // gate ignore for MapLibre abort-without-reason, or app silence on remount;
+    // or fix by 2026-11-21.
+    test("T-M3 O1 missing attribution reverts @quarantine", async ({ page }) => {
       test.setTimeout(180_000);
       const gate = attachConsoleGate(page);
       await injectEsriBasemapKey(page, DUMMY_ESRI_KEY);

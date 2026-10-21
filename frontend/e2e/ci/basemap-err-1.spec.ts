@@ -1,13 +1,6 @@
-import {
-  CI_TINY_PNG,
-  EMPTY_GLYPH_PBF,
-  ensureLayersGroupOpen,
-  injectEsriBasemapKey,
-  openLayers,
-  registerOpenFreeMapFontStub,
-  stubMapCardsBackend,
-} from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { CI_TINY_PNG, EMPTY_GLYPH_PBF, ensureLayersGroupOpen, injectEsriBasemapKey, openLayers, registerOpenFreeMapFontStub, stubMapCardsBackend } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -94,14 +87,13 @@ test.describe("BASEMAP-ERR-1", () => {
 
   test("failed style shows the notice and a later style hides it", async ({
     page,
+    gate,
   }) => {
     test.setTimeout(120_000);
-    const consoleErrors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") consoleErrors.push(msg.text());
-    });
-    page.on("pageerror", (err) => {
-      consoleErrors.push(String(err));
+    // Intentional Positron style 500 → MapLibre AJAXError (same-origin chunk loc).
+    gate.expectError({
+      text: "Error: AJAXError: Internal Server Error (500): https://tiles.openfreemap.org/styles/positron https://tiles.openfreemap.org/styles/positron",
+      count: 1,
     });
 
     await page.route("**/tiles.openfreemap.org/styles/positron**", async (route) => {
@@ -130,10 +122,12 @@ test.describe("BASEMAP-ERR-1", () => {
     await expect(zones).toHaveAttribute("aria-checked", "true");
 
     expect(
-      consoleErrors.some((line) =>
-        /positron|openfreemap|AJAXError|Failed to fetch|style failed|500/i.test(line),
+      gate.errors.some((rec) =>
+        /positron|openfreemap|AJAXError|Failed to fetch|style failed|500/i.test(
+          rec.text,
+        ),
       ),
-      `expected the style failure in the console:\n${consoleErrors.join("\n")}`,
+      `expected the style failure in the console:\n${gate.errors.map((e) => e.text).join("\n")}`,
     ).toBe(true);
 
     await page.keyboard.press("Escape");

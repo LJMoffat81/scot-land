@@ -1,5 +1,10 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import {
+  assertConsoleClean,
+  attachConsoleGate,
+  registerOpenFreeMapFontStub,
+} from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -53,8 +58,6 @@ const PLACE_NO_OUTLINE = {
   links: [],
 };
 
-const consoleErrors: string[] = [];
-
 async function stubBackend(page: Page) {
   await page.route("**/backend/**", async (route) => {
     const url = route.request().url();
@@ -90,19 +93,7 @@ async function stubBackend(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => {
-  consoleErrors.length = 0;
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => consoleErrors.push(String(err)));
   await stubBackend(page);
-});
-
-test.afterEach(() => {
-  const meaningful = consoleErrors.filter(
-    (line) => !/favicon|AbortError|aborted|404|503/i.test(line),
-  );
-  expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
 });
 
 for (const viewport of [
@@ -116,6 +107,7 @@ for (const viewport of [
       page,
     }) => {
       test.setTimeout(90_000);
+      const gate = attachConsoleGate(page);
       await page.goto("/?lat=55.8609&lng=-4.2514");
       await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
       const card = page.getByTestId("place-card");
@@ -128,6 +120,7 @@ for (const viewport of [
       await expect(card).not.toContainText(/Why no outline/i);
       await expect(card).not.toContainText(/No registered outline/i);
       await expect(card).not.toContainText(/LAND OUTLINE/i);
+      assertConsoleClean(gate);
     });
   });
 }

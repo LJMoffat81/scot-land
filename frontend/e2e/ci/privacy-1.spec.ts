@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 /**
  * PRIVACY-1 — contact form states, and a crawl of the sitemap.

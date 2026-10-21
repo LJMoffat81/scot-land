@@ -1,6 +1,7 @@
-import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, CI_OPTIONAL_FAIL_URL, isCiOptionalFailUrl, stubCiTileDataQuiet } from "./_mapCardsHelpers";
+import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, stubCiTileDataQuiet } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { type Locator, type Page } from "@playwright/test";
 
 import {
   RESEARCH_BANNER_BODY,
@@ -18,8 +19,6 @@ registerOpenFreeMapFontStub();
  * (same stub + console gate as site-nav-banner.spec.ts).
  */
 
-const consoleErrors: string[] = [];
-const resourceFails: Array<{ url: string; status: number }> = [];
 
 const HEALTH_OK = {
   status: "ok",
@@ -59,32 +58,15 @@ const PLACE_CARD_FIXTURE = {
 };
 
 /** Optional static assets whose 404/503 may be ignored (must match URL). */
-const KNOWN_OPTIONAL_FAIL_URL = CI_OPTIONAL_FAIL_URL;
 
-function isKnownOptionalFailUrl(url: string): boolean {
-  return isCiOptionalFailUrl(url);
-}
 
 test.describe("SW-016 research banner strip 390x844", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test.beforeEach(async ({ page }) => {
-    consoleErrors.length = 0;
-    resourceFails.length = 0;
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        consoleErrors.push(msg.text());
-      }
-    });
-    page.on("pageerror", (err) => {
-      consoleErrors.push(String(err));
-    });
-    page.on("response", (response) => {
-      const status = response.status();
-      if (status === 404 || status === 503) {
-        resourceFails.push({ url: response.url(), status });
-      }
-    });
+
+    
+    
 
     // Catch-all first (Playwright is LIFO — later routes win).
     await page.route("**/backend/**", async (route) => {
@@ -173,41 +155,7 @@ test.describe("SW-016 research banner strip 390x844", () => {
     await stubLayersAddQuiet(page);
   });
 
-  test.afterEach(() => {
-    const unknownResourceFails = resourceFails.filter(
-      (fail) => !isKnownOptionalFailUrl(fail.url),
-    );
-    expect(
-      unknownResourceFails,
-      `unexpected HTTP 404/503:\n${unknownResourceFails
-        .map((f) => `${f.status} ${f.url}`)
-        .join("\n")}`,
-    ).toEqual([]);
-
-    const meaningful = consoleErrors.filter((text) => {
-      if (
-        /\bAbortError\b|The user aborted|The operation was aborted/i.test(text)
-      ) {
-        return false;
-      }
-      if (
-        /Failed to load resource: the server responded with a status of (404|503)/i.test(
-          text,
-        )
-      ) {
-        if (KNOWN_OPTIONAL_FAIL_URL.some((re) => re.test(text))) return false;
-        if (!/https?:\/\//i.test(text) && unknownResourceFails.length === 0) {
-          return false;
-        }
-        return true;
-      }
-      return true;
-    });
-    expect(
-      meaningful,
-      `console errors on map strip e2e:\n${meaningful.join("\n")}`,
-    ).toEqual([]);
-  });
+  
 
   test("collapsed strip expands and clears burger, search, and place card", async ({
     page,

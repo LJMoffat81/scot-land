@@ -1,5 +1,6 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -99,23 +100,8 @@ const CATALOG_NOT_LIVE = {
   ],
 };
 
-function attachConsoleGate(page: Page) {
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => pageErrors.push(String(err)));
-  return { consoleErrors, pageErrors };
-}
 
-function filterNoise(errors: string[]) {
-  return errors.filter(
-    (t) =>
-      !/favicon|Download the React DevTools|net::ERR_ABORTED/i.test(t) &&
-      !/Failed to load resource:.*favicon/i.test(t),
-  );
-}
+
 
 async function stubMapBackend(page: Page) {
   const layerHits: string[] = [];
@@ -251,8 +237,7 @@ for (const viewport of [
       await expect(page.getByTestId("layer-toggle-boundaries")).toHaveCount(0);
 
       expect(layerHits).toEqual([]);
-      expect(filterNoise(gate.consoleErrors)).toEqual([]);
-      expect(filterNoise(gate.pageErrors)).toEqual([]);
+    assertConsoleClean(gate);
     });
   });
 }
@@ -314,9 +299,7 @@ test.describe("POST-SHARE-1 PAGE-WIDTH (1280)", () => {
         `width ${paths[i]!.path} ${widths[i]} vs about ${baseline}`,
       ).toBeLessThanOrEqual(2);
     }
-
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
+    assertConsoleClean(gate);
   });
 });
 
@@ -373,8 +356,6 @@ test.describe("POST-SHARE-1 SW-033 swagger badge", () => {
     await expect(page.locator(".swagger-ui")).toHaveCount(0);
     await expect(page.locator("body")).not.toContainText("wealth-api-boot");
     await expect(page.locator("body")).not.toContainText("Scot-LAND API");
-
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
+    assertConsoleClean(gate);
   });
 });

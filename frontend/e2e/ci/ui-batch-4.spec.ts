@@ -1,13 +1,6 @@
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  injectEsriBasemapKey,
-  openMap,
-  registerOpenFreeMapFontStub,
-  stubMapCardsBackend,
-  waitForMap,
-} from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { assertConsoleClean, attachConsoleGate, injectEsriBasemapKey, openMap, registerOpenFreeMapFontStub, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 import { AREA_LEVELS } from "../../lib/areaLevels";
 
@@ -15,9 +8,6 @@ registerOpenFreeMapFontStub();
 
 const SEA = { lat: 56.5, lng: -1.5 };
 
-function abortOnly(errors: string[]): string[] {
-  return errors.filter((text) => !/AbortError/i.test(text));
-}
 
 async function assertMoreInView(page: Page) {
   const banner = page.getByTestId("research-banner");
@@ -232,7 +222,6 @@ test.describe("UI-BATCH-4 empty data zone", () => {
     await seen;
     await expect(page.getByTestId("place-card")).toHaveCount(0);
     await expect(page.getByTestId("map-panel-slot")).toHaveCount(0);
-    expect(abortOnly(gate.consoleErrors)).toEqual([]);
-    expect(abortOnly(gate.pageErrors)).toEqual([]);
+    assertConsoleClean(gate);
   });
 });

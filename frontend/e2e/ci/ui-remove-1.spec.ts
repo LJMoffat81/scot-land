@@ -1,9 +1,8 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test } from "@playwright/test";
-import { openMap, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
+
+import { test, expect } from "./_fixtures";
+import { registerOpenFreeMapFontStub, openMap, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();
-
 
 /**
  * UI-REMOVE-1 — the centre-identify button and its wording are gone.

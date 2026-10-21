@@ -2,7 +2,8 @@
  * FRONTEND-BATCH-4 — SW-086 + SW-085 + MAP-HINTS-OFF-1.
  * Viewports 1280×800 and 390×844. Console errors fail. Batch 1 stubs.
  */
-import { expect, test, type Page, type Route } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { type Page, type Route } from "@playwright/test";
 import {
   DEFAULT_VIEW_METRIC_ID,
   POP_DENSITY_LEGEND_SOURCE,
@@ -18,17 +19,7 @@ import {
   SEARCH_HINT_SR,
 } from "../../lib/siteNav";
 import { TRY_AGAIN } from "../../lib/api";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  boxesOverlap,
-  openLayers,
-  openMap,
-  openPlaceViaCoords,
-  registerOpenFreeMapFontStub,
-  stubMapCardsBackend,
-  type ConsoleGate,
-} from "./_mapCardsHelpers";
+import { assertConsoleClean, attachConsoleGate, boxesOverlap, openLayers, openMap, openPlaceViaCoords, registerOpenFreeMapFontStub, stubMapCardsBackend, type ConsoleGate } from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();
 
@@ -454,6 +445,11 @@ for (const viewport of VIEWPORTS) {
     test("T-H3 search still works", async ({ page }) => {
       test.setTimeout(120_000);
       const gate = attachConsoleGate(page);
+      // Intentional route.abort("failed") on EH1 1AA → TRY_AGAIN path.
+      gate.expectError({
+        text: "Failed to load resource: net::ERR_FAILED",
+        count: 1,
+      });
       await stubMapCardsBackend(page, { gbpLive: false });
       await stubCouncilsOk(page);
 
@@ -578,10 +574,7 @@ for (const viewport of VIEWPORTS) {
       ).toBeVisible({ timeout: 20_000 });
       await expect(page.getByText(TRY_AGAIN, { exact: true }).first()).toBeVisible();
       // Abort/"Failed to fetch" is expected for the TRY_AGAIN path.
-      const meaningful = gate.consoleErrors.filter(
-        (t) => !/Failed to fetch|net::ERR_|AbortError|aborted/i.test(t),
-      );
-      expect(meaningful, meaningful.join("\n")).toEqual([]);
+      assertConsoleClean(gate);
     });
 
     test("T-H4 prompt card gone", async ({ page }) => {

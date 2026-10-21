@@ -1,6 +1,7 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
-import { expect, test, type Page } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -23,27 +24,9 @@ const HEALTH_OK = {
   },
 };
 
-type ConsoleGate = {
-  consoleErrors: string[];
-  pageErrors: string[];
-};
 
-function attachConsoleGate(page: Page): ConsoleGate {
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => pageErrors.push(String(err)));
-  return { consoleErrors, pageErrors };
-}
 
-function filterNoise(errors: string[]): string[] {
-  return errors.filter(
-    (text) =>
-      !/AbortError|aborted|Failed to fetch|net::ERR_|400|404|503/i.test(text),
-  );
-}
+
 
 async function stubQuiet(page: Page) {
   await page.route("**/backend/**", async (route) => {
@@ -111,9 +94,7 @@ for (const viewport of [
 
       const apiLinks = page.locator('a[href*="/api/"]');
       await expect(apiLinks).toHaveCount(0);
-
-      expect(filterNoise(gate.consoleErrors)).toEqual([]);
-      expect(filterNoise(gate.pageErrors)).toEqual([]);
+    assertConsoleClean(gate);
     });
   });
 }

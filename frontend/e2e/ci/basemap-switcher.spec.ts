@@ -1,15 +1,16 @@
 import {
+  assertConsoleClean,
+  attachConsoleGate,
   registerOpenFreeMapFontStub,
   stubLayersCouncilsQuiet,
-  CI_OPTIONAL_FAIL_URL,
-  isCiOptionalFailUrl,
   stubCiTileDataQuiet,
   injectEsriBasemapKey,
   CI_TINY_PNG,
   EMPTY_GLYPH_PBF,
 } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { type Locator, type Page } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -19,9 +20,6 @@ registerOpenFreeMapFontStub();
  * MAP-CONTROLS-1 r3 basemap — Simple ↔ Aerial (Esri imagery).
  * Single 48×48 toggle at all widths. Console errors fail the test.
  */
-
-const consoleErrors: string[] = [];
-const resourceFails: Array<{ url: string; status: number }> = [];
 
 const HEALTH_OK = {
   status: "ok",
@@ -59,8 +57,6 @@ const PLACE_STUB = {
   layers: [],
   links: [],
 };
-
-const KNOWN_OPTIONAL_FAIL_URL = CI_OPTIONAL_FAIL_URL;
 
 const ESRI_STYLE_URL =
   "https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/imagery";
@@ -129,24 +125,7 @@ async function routeEsriFixture(page: Page, style: EsriStyle) {
   });
 }
 
-function isKnownOptionalFailUrl(url: string): boolean {
-  return isCiOptionalFailUrl(url);
-}
-
 test.beforeEach(async ({ page }) => {
-  consoleErrors.length = 0;
-  resourceFails.length = 0;
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => consoleErrors.push(String(err)));
-  page.on("response", (response) => {
-    const status = response.status();
-    if (status === 404 || status === 503) {
-      resourceFails.push({ url: response.url(), status });
-    }
-  });
-
   await page.route("**/backend/**", async (route) => {
     await route.fulfill({
       status: 404,
@@ -225,37 +204,6 @@ test.beforeEach(async ({ page }) => {
   await stubLayersAddQuiet(page);
 });
 
-test.afterEach(() => {
-  const unknownResourceFails = resourceFails.filter(
-    (fail) => !isKnownOptionalFailUrl(fail.url),
-  );
-  expect(
-    unknownResourceFails,
-    `unexpected HTTP 404/503:\n${unknownResourceFails
-      .map((f) => `${f.status} ${f.url}`)
-      .join("\n")}`,
-  ).toEqual([]);
-
-  const meaningful = consoleErrors.filter((text) => {
-    if (/\bAbortError\b|The user aborted|The operation was aborted/i.test(text)) {
-      return false;
-    }
-    if (
-      /Failed to load resource: the server responded with a status of (404|503)/i.test(
-        text,
-      )
-    ) {
-      if (KNOWN_OPTIONAL_FAIL_URL.some((re) => re.test(text))) return false;
-      if (!/https?:\/\//i.test(text) && unknownResourceFails.length === 0) {
-        return false;
-      }
-      return true;
-    }
-    return true;
-  });
-  expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
-});
-
 async function openMap(page: Page) {
   await injectEsriBasemapKey(page);
   await routeEsriFixture(page, loadEsriFixture());
@@ -303,6 +251,7 @@ async function assertNoBoxOverlap(a: Locator, b: Locator, label: string) {
 }
 
 async function runBasemapChecks(page: Page) {
+  const gate = attachConsoleGate(page);
   await openMap(page);
 
   await expect(page.getByRole("button", { name: "Locate" })).toHaveCount(0);
@@ -351,6 +300,7 @@ async function runBasemapChecks(page: Page) {
   const card = await openPlaceCard(page);
   await assertNoBoxOverlap(switcher, card, "basemap vs place card");
   await expect(page.getByRole("button", { name: "Locate" })).toHaveCount(0);
+  assertConsoleClean(gate);
 }
 
 test.describe("1280 desktop", () => {

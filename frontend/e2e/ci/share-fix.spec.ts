@@ -1,5 +1,6 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -19,24 +20,9 @@ const HEALTH_OK = {
 
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
 
-type ConsoleGate = { consoleErrors: string[]; pageErrors: string[] };
 
-function attachConsoleGate(page: Page): ConsoleGate {
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => pageErrors.push(String(err)));
-  return { consoleErrors, pageErrors };
-}
 
-function filterNoise(errors: string[]): string[] {
-  return errors.filter(
-    (text) =>
-      !/AbortError|aborted|Failed to fetch|net::ERR_|400|404|503/i.test(text),
-  );
-}
+
 
 async function openLayers(page: Page) {
   const btn = page.getByTestId("hud-layers-btn");
@@ -98,9 +84,7 @@ test.describe("MAP-CARDS deferred layers not in drawer", () => {
     await expect(
       page.getByTestId("map-layers-roadmap-link").locator("a"),
     ).toHaveAttribute("href", "/roadmap#map-layers");
-
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
+    assertConsoleClean(gate);
   });
 });
 
@@ -112,6 +96,12 @@ test.describe("SHARE-FIX place lookup Try again", () => {
   }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
+    // Intentional place-search 503 retries (SHARE-FIX).
+    gate.expectError({
+      urlPath: "/backend/place",
+      status: 503,
+      count: 3,
+    });
     let placeHits = 0;
     await page.route("**/backend/**", async (route) => {
       const url = route.request().url();
@@ -170,8 +160,6 @@ test.describe("SHARE-FIX place lookup Try again", () => {
     });
     await expect(page.locator("body")).not.toContainText(/Service busy/i);
     expect(placeHits).toBeGreaterThanOrEqual(2);
-
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
+    assertConsoleClean(gate);
   });
 });

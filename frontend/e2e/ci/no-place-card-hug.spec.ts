@@ -1,5 +1,6 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -23,64 +24,10 @@ const HEALTH_OK = {
 
 const EMPTY_FC = { type: "FeatureCollection", features: [] };
 
-type ConsoleGate = {
-  consoleErrors: string[];
-  resourceFails: Array<{ url: string; status: number }>;
-};
 
-function attachConsoleGate(page: Page): ConsoleGate {
-  const consoleErrors: string[] = [];
-  const resourceFails: Array<{ url: string; status: number }> = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") {
-      consoleErrors.push(msg.text());
-    }
-  });
-  page.on("pageerror", (err) => {
-    consoleErrors.push(String(err));
-  });
-  page.on("response", (response) => {
-    const status = response.status();
-    if (status === 404 || status === 400 || status === 503) {
-      resourceFails.push({ url: response.url(), status });
-    }
-  });
-  return { consoleErrors, resourceFails };
-}
 
-function assertConsoleClean(gate: ConsoleGate) {
-  const unexpectedResourceFails = gate.resourceFails.filter((fail) => {
-    if (
-      (fail.status === 404 || fail.status === 400) &&
-      /\/favicon|apple-touch|openfreemap|glyph|sprite/i.test(fail.url)
-    ) {
-      return false;
-    }
-    return true;
-  });
-  expect(
-    unexpectedResourceFails,
-    `unexpected HTTP 400/404/503:\n${unexpectedResourceFails
-      .map((f) => `${f.status} ${f.url}`)
-      .join("\n")}`,
-  ).toEqual([]);
 
-  const meaningful = gate.consoleErrors.filter((text) => {
-    if (/\bAbortError\b|The user aborted|The operation was aborted/i.test(text)) {
-      return false;
-    }
-    if (
-      /Failed to load resource: the server responded with a status of (400|404|503)/i.test(
-        text,
-      )
-    ) {
-      return false;
-    }
-    if (text === "Error") return false;
-    return true;
-  });
-  expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
-}
+
 
 async function stubNoMatchSearch(page: Page) {
   await page.route("**/backend/**", async (route) => {

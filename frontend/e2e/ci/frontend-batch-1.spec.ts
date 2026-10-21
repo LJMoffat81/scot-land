@@ -3,7 +3,8 @@
  * Widths 1280×800 and 390×844. Console errors fail. Red-first on 7af495eb for
  * T-D1, T-D3 paint, T-C1 text, T-W2.
  */
-import { expect, test, type Page, type Route } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { type Page, type Route } from "@playwright/test";
 import {
   DEFAULT_VIEW_METRIC_ID,
   DEFAULT_VIEW_METRIC_IS_NON_GBP,
@@ -11,18 +12,7 @@ import {
   rangeLegendTitle,
 } from "../../lib/mapColourRamps";
 import { paintForMetricWithNoData } from "../../lib/mapLicenceCredits";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  CI_TINY_PNG,
-  EMPTY_GLYPH_PBF,
-  injectEsriBasemapKey,
-  openLayers,
-  openMap,
-  registerOpenFreeMapFontStub,
-  stubMapCardsBackend,
-  type ConsoleGate,
-} from "./_mapCardsHelpers";
+import { assertConsoleClean, attachConsoleGate, CI_TINY_PNG, EMPTY_GLYPH_PBF, injectEsriBasemapKey, openLayers, openMap, registerOpenFreeMapFontStub, stubMapCardsBackend, type ConsoleGate } from "./_mapCardsHelpers";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -338,6 +328,12 @@ for (const viewport of [
     test("T-D4 fallback when /layers/councils is 503", async ({ page }) => {
       test.setTimeout(120_000);
       const gate = attachConsoleGate(page);
+      // Intentional councils 503 fallback path.
+      gate.expectError({
+        urlPath: "/backend/layers/councils",
+        status: 503,
+        count: 1,
+      });
       await stubMapCardsBackend(page, { gbpLive: false });
       await stubLayersCouncils(page, { detail: "unavailable" }, 503);
       await openMap(page, "/");

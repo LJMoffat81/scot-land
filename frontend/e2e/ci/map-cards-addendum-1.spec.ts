@@ -1,24 +1,10 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test } from "@playwright/test";
+
+import { test, expect } from "./_fixtures";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, ensureLayersGroupOpen, ensureMapZoomAtLeast, HIDDEN_LAYER_IDS, LIVE_LAYER_IDS, openLayers, openMap, openPlaceViaCoords, PLACE_FIXTURE, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 import { execFileSync } from "child_process";
 import path from "path";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  ensureLayersGroupOpen,
-  ensureMapZoomAtLeast,
-  HIDDEN_LAYER_IDS,
-  LIVE_LAYER_IDS,
-  openLayers,
-  openMap,
-  openPlaceViaCoords,
-  PLACE_FIXTURE,
-  stubMapCardsBackend,
-  waitForMap,
-} from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();
-
 
 /**
  * MAP-CARDS ADDENDUM A1–A6.

@@ -1,5 +1,10 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import {
+  assertConsoleClean,
+  attachConsoleGate,
+  registerOpenFreeMapFontStub,
+} from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Locator, type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -10,8 +15,6 @@ registerOpenFreeMapFontStub();
  * inset / attribution; one inner scroller; XOR with place (no dual float).
  * 390×844: sheet pattern (full detent) without covering stamp footer.
  */
-
-const consoleErrors: string[] = [];
 
 const HEALTH_OK = {
   status: "ok",
@@ -253,36 +256,14 @@ for (const viewport of [
       test.use({ viewport });
 
       test.beforeEach(async ({ page }) => {
-        consoleErrors.length = 0;
-        page.on("console", (msg) => {
-          if (msg.type() === "error") consoleErrors.push(msg.text());
-        });
-        page.on("pageerror", (err) => {
-          consoleErrors.push(String(err));
-        });
         await stubBackend(page);
-      });
-
-      test.afterEach(async () => {
-        const meaningful = consoleErrors.filter((line) => {
-          if (/favicon/i.test(line)) return false;
-          if (/Download the React DevTools/i.test(line)) return false;
-          if (/Failed to load resource:.*(?:404|503)/i.test(line)) return false;
-          if (/AbortError|aborted|Failed to fetch|net::ERR_/i.test(line)) {
-            return false;
-          }
-          return true;
-        });
-        expect(
-          meaningful,
-          `console errors:\n${meaningful.join("\n")}`,
-        ).toEqual([]);
       });
 
       test("height, position, scroll, no cover legend/card", async ({
         page,
       }) => {
         test.setTimeout(120_000);
+        const gate = attachConsoleGate(page);
         await page.goto("/");
         await page.locator(".maplibregl-canvas").waitFor();
         await page.locator("#place-query").waitFor();
@@ -386,6 +367,7 @@ for (const viewport of [
         const close = page.getByRole("button", { name: "Close place card" });
         await expect(close).toBeVisible();
         await expect(close).toBeEnabled();
+        assertConsoleClean(gate);
       });
     },
   );

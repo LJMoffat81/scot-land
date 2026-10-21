@@ -1,17 +1,10 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  openLayers,
-  openMap,
-  openPlaceViaCoords,
-  stubMapCardsBackend,
-} from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, openLayers, openMap, openPlaceViaCoords, stubMapCardsBackend } from "./_mapCardsHelpers";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
-
 
 /**
  * MAP-CARDS checks 13–15, 17, 25 — axe, keyboard, URL state.

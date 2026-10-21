@@ -13,6 +13,7 @@ ARG NEXT_PUBLIC_API_URL=http://localhost:8000
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_ESRI_BASEMAP_API_KEY=
 ENV NEXT_PUBLIC_ESRI_BASEMAP_API_KEY=$NEXT_PUBLIC_ESRI_BASEMAP_API_KEY
+RUN if [ -n "$(printf %s "$NEXT_PUBLIC_ESRI_BASEMAP_API_KEY" | tr -d '[:space:]')" ]; then echo "esri-basemap-key: present"; else echo "esri-basemap-key: absent (Aerial off)"; fi
 RUN npm run build
 
 FROM node:22-alpine AS runner

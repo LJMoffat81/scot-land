@@ -145,6 +145,52 @@ function checkK8(root, files) {
   }
 }
 
+function checkK9(root) {
+  const path = join(root, ".env.example");
+  if (!existsSync(path)) {
+    fail(
+      "esri-key-guard: root .env.example must have NEXT_PUBLIC_ESRI_BASEMAP_API_KEY= with no value",
+    );
+  }
+  const text = readFileSync(path, "utf8");
+  const lines = text.split(/\r?\n/);
+  const ok = lines.some((line) => line === "NEXT_PUBLIC_ESRI_BASEMAP_API_KEY=");
+  if (!ok) {
+    fail(
+      "esri-key-guard: root .env.example must have NEXT_PUBLIC_ESRI_BASEMAP_API_KEY= with no value",
+    );
+  }
+}
+
+function checkK10(root) {
+  for (const rel of [".env", "frontend/.env"]) {
+    const res = spawnSync("git", ["check-ignore", "-q", rel], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    if (res.status !== 0) {
+      fail("esri-key-guard: .env not gitignored");
+    }
+  }
+}
+
+function checkK11(root) {
+  const path = join(root, "frontend", ".dockerignore");
+  if (!existsSync(path)) {
+    fail("esri-key-guard: .dockerignore must exclude .env files");
+  }
+  const text = readFileSync(path, "utf8");
+  const lines = new Set(
+    text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean),
+  );
+  if (!lines.has(".env") || !lines.has(".env.*")) {
+    fail("esri-key-guard: .dockerignore must exclude .env files");
+  }
+}
+
 function main() {
   const { root } = parseArgs(process.argv.slice(2));
   const files = listTrackedFiles(root);
@@ -156,6 +202,9 @@ function main() {
   checkK6(root);
   checkK7(root);
   checkK8(root, files);
+  checkK9(root);
+  checkK10(root);
+  checkK11(root);
   process.stdout.write("test-esri-key-guard: ok\n");
 }
 

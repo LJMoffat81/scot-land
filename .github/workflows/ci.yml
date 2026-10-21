@@ -149,6 +149,7 @@ jobs:
       - run: npm run test:esri-csp
       - run: npm run test:esri-key-guard:selftest
       - run: npm run test:esri-key-guard
+      - run: npm run test:esri-key-resolver && npm run test:esri-key-build
       - run: npm run test:privacy-1
       - run: npm run test:ci-dedup-1a
       - run: npx tsc --noEmit

@@ -35,6 +35,16 @@ function styleReady(map: MaplibreMap): boolean {
   }
 }
 
+/** getLayer without throwing when the style was torn down mid-remount. */
+function hasLayer(map: MaplibreMap, id: string): boolean {
+  if (!styleReady(map)) return false;
+  try {
+    return Boolean(map.getLayer(id));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Empty outline slot above the grid (G19). Source id is not a plot/parcel
  * source — GIS 16 still strips real parcel geometry. Visibility stays none
@@ -46,7 +56,7 @@ function ensureZoneOutlineSlot(map: MaplibreMap): void {
   if (!map.getSource(ZONE_OUTLINE_SOURCE)) {
     map.addSource(ZONE_OUTLINE_SOURCE, { type: "geojson", data: EMPTY_FC });
   }
-  if (!map.getLayer("selected-square-fill")) {
+  if (!hasLayer(map, "selected-square-fill")) {
     map.addLayer({
       id: "selected-square-fill",
       type: "fill",
@@ -55,7 +65,7 @@ function ensureZoneOutlineSlot(map: MaplibreMap): void {
       paint: { "fill-color": "#1d4f91", "fill-opacity": 0.12 },
     });
   }
-  if (!map.getLayer("selected-square-outline")) {
+  if (!hasLayer(map, "selected-square-outline")) {
     map.addLayer({
       id: "selected-square-outline",
       type: "line",
@@ -81,13 +91,13 @@ export function ensureGrid3Layers(map: MaplibreMap): void {
   }
   ensureZoneOutlineSlot(map);
 
-  const beforeId = map.getLayer("selected-parcel-fill")
+  const beforeId = hasLayer(map, "selected-parcel-fill")
     ? "selected-parcel-fill"
-    : map.getLayer("selected-square-fill")
+    : hasLayer(map, "selected-square-fill")
       ? "selected-square-fill"
       : undefined;
 
-  if (!map.getLayer(GRID3_LAYER_LINES_HALO)) {
+  if (!hasLayer(map, GRID3_LAYER_LINES_HALO)) {
     map.addLayer(
       {
         id: GRID3_LAYER_LINES_HALO,
@@ -103,7 +113,7 @@ export function ensureGrid3Layers(map: MaplibreMap): void {
       beforeId,
     );
   }
-  if (!map.getLayer(GRID3_LAYER_LINES)) {
+  if (!hasLayer(map, GRID3_LAYER_LINES)) {
     map.addLayer(
       {
         id: GRID3_LAYER_LINES,
@@ -119,7 +129,7 @@ export function ensureGrid3Layers(map: MaplibreMap): void {
       beforeId,
     );
   }
-  if (!map.getLayer(GRID3_LAYER_HIGHLIGHT_FILL)) {
+  if (!hasLayer(map, GRID3_LAYER_HIGHLIGHT_FILL)) {
     map.addLayer(
       {
         id: GRID3_LAYER_HIGHLIGHT_FILL,
@@ -134,7 +144,7 @@ export function ensureGrid3Layers(map: MaplibreMap): void {
       beforeId,
     );
   }
-  if (!map.getLayer(GRID3_LAYER_HIGHLIGHT_HALO)) {
+  if (!hasLayer(map, GRID3_LAYER_HIGHLIGHT_HALO)) {
     map.addLayer(
       {
         id: GRID3_LAYER_HIGHLIGHT_HALO,
@@ -151,7 +161,7 @@ export function ensureGrid3Layers(map: MaplibreMap): void {
       beforeId,
     );
   }
-  if (!map.getLayer(GRID3_LAYER_HIGHLIGHT_LINE)) {
+  if (!hasLayer(map, GRID3_LAYER_HIGHLIGHT_LINE)) {
     map.addLayer(
       {
         id: GRID3_LAYER_HIGHLIGHT_LINE,
@@ -175,7 +185,7 @@ export function ensureGrid3Layers(map: MaplibreMap): void {
     "selected-square-fill",
     "selected-square-outline",
   ]) {
-    if (map.getLayer(id)) {
+    if (hasLayer(map, id)) {
       try {
         map.moveLayer(id);
       } catch {
@@ -190,7 +200,7 @@ export function setGrid3LinePaint(
   imagery: boolean,
 ): void {
   if (!styleReady(map)) return;
-  if (!map.getLayer(GRID3_LAYER_LINES)) return;
+  if (!hasLayer(map, GRID3_LAYER_LINES)) return;
   if (imagery) {
     map.setPaintProperty(
       GRID3_LAYER_LINES,
@@ -202,7 +212,7 @@ export function setGrid3LinePaint(
       "line-opacity",
       GRID3_LINE_OPACITY_IMAGERY,
     );
-    if (map.getLayer(GRID3_LAYER_LINES_HALO)) {
+    if (hasLayer(map, GRID3_LAYER_LINES_HALO)) {
       map.setLayoutProperty(GRID3_LAYER_LINES_HALO, "visibility", "visible");
     }
   } else {
@@ -212,7 +222,7 @@ export function setGrid3LinePaint(
       "line-opacity",
       GRID3_LINE_OPACITY,
     );
-    if (map.getLayer(GRID3_LAYER_LINES_HALO)) {
+    if (hasLayer(map, GRID3_LAYER_LINES_HALO)) {
       map.setLayoutProperty(GRID3_LAYER_LINES_HALO, "visibility", "none");
     }
   }
@@ -227,7 +237,7 @@ export function setGrid3Visibility(
   const lineVis = linesOn ? "visible" : "none";
   const hiVis = highlightOn ? "visible" : "none";
   for (const id of [GRID3_LAYER_LINES]) {
-    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", lineVis);
+    if (hasLayer(map, id)) map.setLayoutProperty(id, "visibility", lineVis);
   }
   // Halo only when imagery paint enables it separately.
   for (const id of [
@@ -235,6 +245,6 @@ export function setGrid3Visibility(
     GRID3_LAYER_HIGHLIGHT_HALO,
     GRID3_LAYER_HIGHLIGHT_LINE,
   ]) {
-    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", hiVis);
+    if (hasLayer(map, id)) map.setLayoutProperty(id, "visibility", hiVis);
   }
 }

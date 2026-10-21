@@ -144,6 +144,7 @@ export function layersAddLayerId(spec: LayersAddPaintSpec): string {
 }
 
 export function ensureLayersAddPaint(map: Map): void {
+  if (!styleIsReady(map)) return;
   for (const spec of LAYERS_ADD_PAINT) {
     const sourceId = layersAddSourceId(spec);
     if (!map.getSource(sourceId)) {

@@ -265,28 +265,59 @@ async function paintOpacity(page: Page, layerId: string): Promise<unknown> {
   }, layerId);
 }
 
+const COUNCIL_LAYER_IDS = [
+  "council-fill",
+  "council-nodata-hatch",
+  "council-line",
+] as const;
+
+/** T-S2b: council layers sit below the first symbol (default/Simple basemap). */
 async function assertCouncilBelowSymbols(page: Page) {
-  const order = await page.evaluate(() => {
+  const order = await page.evaluate((councilIds) => {
     const map = (window as unknown as { __map?: MapProbe }).__map;
     if (!map) throw new Error("window.__map missing");
     const layers = map.getStyle().layers ?? [];
     const ids = layers.map((l) => l.id);
     const types = layers.map((l) => l.type ?? "");
     const firstSym = types.findIndex((t) => t === "symbol");
-    return {
-      firstSym,
-      fill: ids.indexOf("council-fill"),
-      hatch: ids.indexOf("council-nodata-hatch"),
-      line: ids.indexOf("council-line"),
-    };
-  });
+    const council: Record<string, number> = {};
+    for (const id of councilIds) council[id] = ids.indexOf(id);
+    return { firstSym, council };
+  }, [...COUNCIL_LAYER_IDS]);
   expect(order.firstSym, "first symbol layer").toBeGreaterThanOrEqual(0);
-  expect(order.fill).toBeGreaterThanOrEqual(0);
-  expect(order.hatch).toBeGreaterThanOrEqual(0);
-  expect(order.line).toBeGreaterThanOrEqual(0);
-  expect(order.fill).toBeLessThan(order.firstSym);
-  expect(order.hatch).toBeLessThan(order.firstSym);
-  expect(order.line).toBeLessThan(order.firstSym);
+  for (const id of COUNCIL_LAYER_IDS) {
+    expect(order.council[id], id).toBeGreaterThanOrEqual(0);
+    expect(order.council[id], `${id} below first symbol`).toBeLessThan(
+      order.firstSym,
+    );
+  }
+}
+
+/**
+ * T-S2a / O2-AERIAL-1: real pinned Esri fixture has no symbols; every council
+ * layer sits above `esri-imagery`.
+ */
+async function assertCouncilAboveEsriImagery(page: Page) {
+  const order = await page.evaluate((councilIds) => {
+    const map = (window as unknown as { __map?: MapProbe }).__map;
+    if (!map) throw new Error("window.__map missing");
+    const layers = map.getStyle().layers ?? [];
+    const ids = layers.map((l) => l.id);
+    const types = layers.map((l) => l.type ?? "");
+    const imagery = ids.indexOf("esri-imagery");
+    const symbolCount = types.filter((t) => t === "symbol").length;
+    const council: Record<string, number> = {};
+    for (const id of councilIds) council[id] = ids.indexOf(id);
+    return { imagery, symbolCount, council };
+  }, [...COUNCIL_LAYER_IDS]);
+  expect(order.symbolCount, "Aerial fixture has no symbol layers").toBe(0);
+  expect(order.imagery, "esri-imagery present").toBeGreaterThanOrEqual(0);
+  for (const id of COUNCIL_LAYER_IDS) {
+    expect(order.council[id], id).toBeGreaterThanOrEqual(0);
+    expect(order.council[id], `${id} above esri-imagery`).toBeGreaterThan(
+      order.imagery,
+    );
+  }
 }
 
 async function toggleBasemap(page: Page) {
@@ -299,6 +330,22 @@ async function toggleBasemap(page: Page) {
     before === "true" ? "false" : "true",
   );
   await getMap(page);
+  // Remount uses key={mapStyle}; wait until council layers exist again.
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() => {
+          const map = (window as unknown as { __map?: MapProbe }).__map;
+          if (!map) return false;
+          try {
+            return Boolean(map.getLayer("council-fill"));
+          } catch {
+            return false;
+          }
+        }),
+      { timeout: 60_000 },
+    )
+    .toBe(true);
 }
 
 async function openShowthruMap(page: Page) {
@@ -361,17 +408,32 @@ for (const viewport of VIEWPORTS) {
       assertConsoleClean(gate);
     });
 
-    test("T-S2 labels above fill on Simple and Aerial", async ({ page }) => {
+    test("T-S2b default basemap: council layers below first symbol", async ({
+      page,
+    }) => {
       test.setTimeout(180_000);
       const gate = attachConsoleGate(page);
       await openShowthruMap(page);
       await assertCouncilBelowSymbols(page);
+      assertConsoleClean(gate);
+    });
 
-      await toggleBasemap(page); // Aerial
-      await assertCouncilBelowSymbols(page);
+    test("T-S2a Aerial: council layers above esri-imagery (no fixture symbols)", async ({
+      page,
+    }) => {
+      test.setTimeout(180_000);
+      const gate = attachConsoleGate(page);
+      const fixture = loadFixture();
+      const fixtureHasSymbol = (fixture.layers ?? []).some(
+        (l) => (l as { type?: string }).type === "symbol",
+      );
+      expect(fixtureHasSymbol, "pinned Esri fixture must have no symbols").toBe(
+        false,
+      );
 
-      await toggleBasemap(page); // Simple
-      await assertCouncilBelowSymbols(page);
+      await openShowthruMap(page);
+      await toggleBasemap(page); // → Aerial
+      await assertCouncilAboveEsriImagery(page);
       assertConsoleClean(gate);
     });
 
@@ -549,6 +611,13 @@ for (const viewport of VIEWPORTS) {
 
       expect(aerialCheck.paintOk).toBe(true);
       expect(aerialCheck.liveFixtureOrder).toEqual(aerialCheck.expectedOrder);
+      await assertCouncilAboveEsriImagery(page);
+
+      // O2-AERIAL-1 / T-S4: Aerial → default → Aerial keeps order; no getLayer errors.
+      await toggleBasemap(page); // → Simple
+      await assertCouncilBelowSymbols(page);
+      await toggleBasemap(page); // → Aerial
+      await assertCouncilAboveEsriImagery(page);
       assertConsoleClean(gate);
     });
 

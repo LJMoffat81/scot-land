@@ -110,7 +110,8 @@ test.describe("LAYERS-PERF-3", () => {
     assertConsoleClean(gate);
   });
 
-  test("simplified outlines chip is shown at z6 and hidden at z10", async ({
+  // QUARANTINE CI-DEDUP-1 Q2: flaky on unrelated PRs, runs 38979369689, 39494972071; owner Eng Lead; exit = 10 consecutive green quarantine runs then remove tag, or fix by 2026-11-21.
+  test("simplified outlines chip is shown at z6 and hidden at z10 @quarantine", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -156,7 +157,8 @@ test.describe("LAYERS-PERF-3", () => {
     assertConsoleClean(gate);
   });
 
-  test("oil and gas hint stacks under the protected-sites hint", async ({
+  // QUARANTINE CI-DEDUP-1 Q1: flaky on unrelated PRs, runs 39518106714, 39499629177; owner Eng Lead; exit = 10 consecutive green quarantine runs then remove tag, or fix by 2026-11-21.
+  test("oil and gas hint stacks under the protected-sites hint @quarantine", async ({
     page,
   }) => {
     test.setTimeout(120_000);

@@ -205,19 +205,43 @@ async function openLayers(page: Page) {
 
 async function openPlace(page: Page, lat: number, lng: number) {
   await page.goto(`/?lat=${lat}&lng=${lng}`);
-  await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
+  const canvas = page.locator(".maplibregl-canvas");
+  await expect(canvas).toBeVisible({ timeout: 60_000 });
+  // E2E map-ready hook (window.__map) when NEXT_PUBLIC_E2E_HOOKS is on.
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const map = (
+          window as unknown as {
+            __map?: {
+              isStyleLoaded?: () => boolean;
+              getStyle?: () => { sources?: Record<string, unknown> } | undefined;
+            };
+          }
+        ).__map;
+        if (!map) return false;
+        try {
+          return Boolean(map.isStyleLoaded?.() && map.getStyle?.()?.sources);
+        } catch {
+          return false;
+        }
+      }),
+    )
+    .toBe(true);
   const card = page.getByTestId("place-card");
-  if ((await card.count()) === 0) {
-    const canvas = page.locator(".maplibregl-canvas");
-    const box = await canvas.boundingBox();
-    await canvas.click({
-      position: {
-        x: box ? Math.min(200, box.width / 2) : 120,
-        y: box ? Math.min(240, box.height / 2) : 160,
-      },
-    });
-  }
-  await expect(card).toBeVisible({ timeout: 30_000 });
+  // Web-first: idempotent click-if-needed inside toPass (no card.count gate).
+  await expect(async () => {
+    if (!(await card.isVisible())) {
+      const box = await canvas.boundingBox();
+      await canvas.click({
+        position: {
+          x: box ? Math.min(200, box.width / 2) : 120,
+          y: box ? Math.min(240, box.height / 2) : 160,
+        },
+      });
+    }
+    await expect(card).toBeVisible({ timeout: 5_000 });
+  }).toPass({ timeout: 30_000 });
   await expect(card.getByTestId("place-card-typical-home")).toHaveText(
     TYPICAL_HOME,
   );

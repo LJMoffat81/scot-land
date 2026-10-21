@@ -1,5 +1,11 @@
-import { fulfillEmptyGlyph, registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import {
+  attachConsoleGate,
+  assertConsoleClean,
+  fulfillEmptyGlyph,
+  registerOpenFreeMapFontStub,
+} from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -46,32 +52,6 @@ const STUB_MAP_STYLE = {
     { id: "stub-raster", type: "raster", source: "stub" },
   ],
 };
-
-/**
- * Fail the test on pageerror and console error, same pattern as data-page.spec.ts.
- * Chromium also logs intentional HTTP error stubs as console "error"; allow those
- * statuses so a place 500 fixture does not false-fail the trap.
- */
-function attachConsoleTraps(
-  page: Page,
-  opts: { allowHttpStatuses?: number[] } = {},
-): string[] {
-  const allow = new Set(opts.allowHttpStatuses ?? []);
-  const consoleErrors: string[] = [];
-  page.on("console", (msg) => {
-    if (msg.type() !== "error") return;
-    const text = msg.text();
-    const statusMatch = text.match(
-      /Failed to load resource: the server responded with a status of (\d+)/,
-    );
-    if (statusMatch && allow.has(Number(statusMatch[1]))) return;
-    consoleErrors.push(text);
-  });
-  page.on("pageerror", (err) => {
-    consoleErrors.push(String(err));
-  });
-  return consoleErrors;
-}
 
 /** Stub basemap style/tiles so CDN flakes cannot throw bare pageerror "Error". */
 async function stubMapBasemap(page: Page) {
@@ -255,19 +235,12 @@ async function openMapSearch(page: Page) {
   return search;
 }
 
-function expectNoConsoleErrors(consoleErrors: string[]) {
-  expect(
-    consoleErrors,
-    `console errors:\n${consoleErrors.join("\n")}`,
-  ).toEqual([]);
-}
-
 test.describe("search dropdown Looking…", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
   test("selecting a postcode clears Looking… within 1s", async ({ page }) => {
     test.setTimeout(90_000);
-    const consoleErrors = attachConsoleTraps(page);
+    const gate = attachConsoleGate(page);
     await stubMapBackend(page, "success");
 
     const search = await openMapSearch(page);
@@ -282,12 +255,12 @@ test.describe("search dropdown Looking…", () => {
     await page.waitForTimeout(1000);
     await expect(page.getByText(LOOKING)).toHaveCount(0);
     await expect(page.locator(".search-suggest")).toHaveCount(0);
-    expectNoConsoleErrors(consoleErrors);
+    assertConsoleClean(gate);
   });
 
   test("empty results show No matches and clear Looking…", async ({ page }) => {
     test.setTimeout(60_000);
-    const consoleErrors = attachConsoleTraps(page);
+    const gate = attachConsoleGate(page);
     await stubMapBackend(page, "success");
 
     const search = await openMapSearch(page);
@@ -295,12 +268,12 @@ test.describe("search dropdown Looking…", () => {
     await expectLookingVisible(page);
     await expect(page.getByText("No matches")).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText(LOOKING)).toHaveCount(0);
-    expectNoConsoleErrors(consoleErrors);
+    assertConsoleClean(gate);
   });
 
   test("Escape clears Looking… after it appears", async ({ page }) => {
     test.setTimeout(60_000);
-    const consoleErrors = attachConsoleTraps(page);
+    const gate = attachConsoleGate(page);
     await stubMapBackend(page, "success");
 
     const search = await openMapSearch(page);
@@ -309,24 +282,30 @@ test.describe("search dropdown Looking…", () => {
     await search.press("Escape");
     await expect(page.getByText(LOOKING)).toHaveCount(0);
     await expect(page.locator(".search-suggest")).toHaveCount(0);
-    expectNoConsoleErrors(consoleErrors);
+    assertConsoleClean(gate);
   });
 
   test("place 500 clears Looking…", async ({ page }) => {
     test.setTimeout(60_000);
-    const consoleErrors = attachConsoleTraps(page, { allowHttpStatuses: [500] });
+    const gate = attachConsoleGate(page);
+    // Intentional place 500 fixture.
+    gate.expectError({
+      urlPath: "/backend/place",
+      status: 500,
+      count: 1,
+    });
     await stubMapBackend(page, "error");
 
     const search = await openMapSearch(page);
     await search.fill(POSTCODE);
     await expectLookingVisible(page);
     await expect(page.getByText(LOOKING)).toHaveCount(0, { timeout: 15_000 });
-    expectNoConsoleErrors(consoleErrors);
+    assertConsoleClean(gate);
   });
 
   test("blur clears Looking…", async ({ page }) => {
     test.setTimeout(60_000);
-    const consoleErrors = attachConsoleTraps(page);
+    const gate = attachConsoleGate(page);
     await stubMapBackend(page, "success");
 
     const search = await openMapSearch(page);
@@ -336,6 +315,6 @@ test.describe("search dropdown Looking…", () => {
     // onBlur clears after 180ms; allow debounce/abort to settle.
     await expect(page.getByText(LOOKING)).toHaveCount(0, { timeout: 10_000 });
     await expect(page.locator(".search-suggest")).toHaveCount(0);
-    expectNoConsoleErrors(consoleErrors);
+    assertConsoleClean(gate);
   });
 });

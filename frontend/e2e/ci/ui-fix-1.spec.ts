@@ -1,13 +1,6 @@
-import {
-  injectEsriBasemapKey,
-  registerOpenFreeMapFontStub,
-} from "./_mapCardsHelpers";
-import {
-  expect,
-  test,
-  type Locator,
-  type Page,
-} from "@playwright/test";
+import { injectEsriBasemapKey, registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Locator, type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -58,57 +51,12 @@ const PLACE_STUB = {
   links: [],
 };
 
-type ConsoleGate = {
-  consoleErrors: string[];
-  resourceFails: Array<{ url: string; status: number }>;
-};
 
 type Box = { x: number; y: number; width: number; height: number };
 
-function attachConsoleGate(page: Page): ConsoleGate {
-  const consoleErrors: string[] = [];
-  const resourceFails: Array<{ url: string; status: number }> = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => consoleErrors.push(String(err)));
-  page.on("response", (response) => {
-    const status = response.status();
-    if (status === 404 || status === 400 || status === 503) {
-      resourceFails.push({ url: response.url(), status });
-    }
-  });
-  return { consoleErrors, resourceFails };
-}
 
-function assertConsoleClean(gate: ConsoleGate) {
-  const unexpectedResourceFails = gate.resourceFails.filter((fail) => {
-    if (
-      (fail.status === 404 || fail.status === 400) &&
-      /data-zones\/at|platform\/place|api\/place\.json/i.test(fail.url)
-    ) {
-      return false;
-    }
-    if (/\/favicon\.ico(?:\?|$)|\/apple-touch-icon/i.test(fail.url)) {
-      return false;
-    }
-    return true;
-  });
-  expect(
-    unexpectedResourceFails,
-    `unexpected HTTP 400/404/503:\n${unexpectedResourceFails
-      .map((f) => `${f.status} ${f.url}`)
-      .join("\n")}`,
-  ).toEqual([]);
 
-  const meaningful = gate.consoleErrors.filter((text) => {
-    if (/\bAbortError\b|aborted/i.test(text)) return false;
-    if (/Failed to load resource:.*(?:400|404|503)/i.test(text)) return false;
-    if (/Download the React DevTools/i.test(text)) return false;
-    return true;
-  });
-  expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
-}
+
 
 function boxesOverlap(a: Box, b: Box): boolean {
   return !(

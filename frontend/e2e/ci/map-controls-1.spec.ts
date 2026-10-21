@@ -1,13 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
-import {
-  CI_TINY_PNG,
-  EMPTY_GLYPH_PBF,
-  injectEsriBasemapKey,
-  openMap,
-  registerOpenFreeMapFontStub,
-  stubMapCardsBackend,
-} from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { CI_TINY_PNG, EMPTY_GLYPH_PBF, injectEsriBasemapKey, openMap, registerOpenFreeMapFontStub, stubMapCardsBackend } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 

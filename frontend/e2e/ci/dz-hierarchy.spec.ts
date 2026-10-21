@@ -1,5 +1,6 @@
-import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, attachConsoleGate, assertConsoleClean } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -105,44 +106,10 @@ function eh1PlaceFixture(overrides: Record<string, unknown> = {}) {
   };
 }
 
-type ConsoleGate = {
-  consoleErrors: string[];
-  pageErrors: string[];
-};
 
-function attachConsoleGate(page: Page): ConsoleGate {
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") {
-      consoleErrors.push(msg.text());
-    }
-  });
-  page.on("pageerror", (err) => {
-    pageErrors.push(String(err));
-  });
-  return { consoleErrors, pageErrors };
-}
 
-function assertConsoleClean(gate: ConsoleGate) {
-  const meaningful = gate.consoleErrors.filter((text) => {
-    if (/\bAbortError\b|The user aborted|The operation was aborted/i.test(text)) {
-      return false;
-    }
-    if (
-      /Failed to load resource: the server responded with a status of (400|404|503)/i.test(
-        text,
-      )
-    ) {
-      return false;
-    }
-    return true;
-  });
-  expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
-  expect(gate.pageErrors, `pageerrors:\n${gate.pageErrors.join("\n")}`).toEqual(
-    [],
-  );
-}
+
+
 
 async function stubMapChrome(page: Page, fixture = eh1PlaceFixture()) {
   await page.route("**/backend/health**", async (route) => {

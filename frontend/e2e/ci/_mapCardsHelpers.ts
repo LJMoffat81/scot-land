@@ -3,6 +3,12 @@
  * Not a Playwright spec — imported by *.spec.ts only.
  */
 import { expect, test, type Page, type Route } from "@playwright/test";
+import {
+  attachStrictConsoleGate,
+  getStrictGateForPage,
+  registerStrictGate,
+  type StrictConsoleGate,
+} from "./_consoleGate";
 
 export const HEALTH_OK = {
   status: "ok",
@@ -63,23 +69,6 @@ export async function stubLayersCouncilsQuiet(
       body: JSON.stringify(body),
     });
   });
-}
-
-/**
- * Optional 404/503 in CI e2e: favicons plus live tile/data CDN paths.
- * Product API misses must still fail the suite.
- */
-export const CI_OPTIONAL_FAIL_URL = [
-  /\/favicon\.ico(?:\?|$)/i,
-  /\/apple-touch-icon/i,
-  /tiles\.openfreemap\.org/i,
-  /\/api\/parcels\/tiles\//i,
-  /\/api\/context\/[^/?]+\/tiles\//i,
-  /ArcGIS\/rest\/services\/World_Imagery/i,
-] as const;
-
-export function isCiOptionalFailUrl(url: string): boolean {
-  return CI_OPTIONAL_FAIL_URL.some((re) => re.test(url));
 }
 
 /** 1×1 PNG — stub raster tiles so MapLibre never depends on live CDN in CI. */
@@ -229,63 +218,34 @@ export const PLACE_FIXTURE = {
   links: [],
 };
 
-export type ConsoleGate = {
-  consoleErrors: string[];
-  pageErrors: string[];
-};
+/** Strict gate attached by the `./_fixtures` auto fixture (WeakMap lookup). */
+export type ConsoleGate = StrictConsoleGate;
 
+/**
+ * Return the page's already-attached strict gate.
+ * CI specs must import `test` from `./_fixtures` so the auto fixture attaches it.
+ *
+ * Exception: e2e/build-key (outside 1b-r2 allowed files) still imports this
+ * helper under raw @playwright/test — attach a strict gate for that caller only.
+ * E10 keeps throwing for a bare newPage() with no fixtures.
+ */
 export function attachConsoleGate(page: Page): ConsoleGate {
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => pageErrors.push(String(err)));
-  return { consoleErrors, pageErrors };
+  const existing = getStrictGateForPage(page);
+  if (existing) return existing;
+
+  const stack = new Error().stack ?? "";
+  if (/e2e[/\\]build-key[/\\]|esri-key-build\.spec/.test(stack)) {
+    const gate = attachStrictConsoleGate(page);
+    registerStrictGate(page, gate);
+    return gate;
+  }
+
+  throw new Error("CONSOLE_GATE: no strict gate attached to this page");
 }
 
-export function filterNoise(errors: string[]): string[] {
-  return errors.filter((text) => {
-    // Keep real exceptions (stack traces); drop CDN / network / resource noise only.
-    if (
-      /favicon|Download the React DevTools|AbortError|aborted|net::ERR_|Failed to fetch|400|404|503|Service Unavailable/i.test(
-        text,
-      )
-    ) {
-      return false;
-    }
-    // Esri Aerial negative paths (MC6) — blocked style/tiles are expected.
-    // Chromium often omits the URL from "Failed to load resource" text.
-    if (
-      /Failed to load resource: the server responded with a status of (401|403|498|499|5\d\d)/i.test(
-        text,
-      )
-    ) {
-      return false;
-    }
-    if (
-      /arcgis\.com/i.test(text) &&
-      /401|403|498|499|5\d\d|Failed to load resource|invalid|JSON/i.test(text)
-    ) {
-      return false;
-    }
-    // MapLibre sprite/glyph CDN failures (no app stack).
-    if (/sprite|glyph/i.test(text) && /failed|error|load|404|503/i.test(text)) {
-      return false;
-    }
-    return true;
-  });
-}
-
+/** Delegate to the strict gate (CI-DEDUP-1b-r2). */
 export function assertConsoleClean(gate: ConsoleGate) {
-  expect(
-    filterNoise(gate.consoleErrors),
-    `console errors:\n${gate.consoleErrors.join("\n")}`,
-  ).toEqual([]);
-  expect(
-    filterNoise(gate.pageErrors),
-    `pageerrors:\n${gate.pageErrors.join("\n")}`,
-  ).toEqual([]);
+  gate.assertClean();
 }
 
 export type StubOpts = {
@@ -328,93 +288,135 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
     });
   });
 
-  await page.route("**/backend/**", async (route) => {
-    const url = route.request().url();
-    if (/\/health/i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(HEALTH_OK),
-      });
-      return;
-    }
-    if (/\/layers\/add\/tiles-manifest/i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          version: 1,
-          sources: spatialHubLayerIds.map((id) => ({
-            layer_id: id,
-            display_id: id,
-          })),
-        }),
-      });
-      return;
-    }
-    if (/\/layers\/catalog/i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          version: 2,
-          layers: [],
-          flood_dz_loaded: opts.floodDzLoaded === true,
-        }),
-      });
-      return;
-    }
-    if (/\/platform\/place/i.test(url) || /\/api\/place\.json/i.test(url)) {
-      const u = new URL(url);
-      const latKey = u.searchParams.get("lat") ?? "";
-      const body =
-        (opts.placeByLat && opts.placeByLat[latKey]) ||
-        (opts.placeByLat &&
-          Object.entries(opts.placeByLat).find(([k]) =>
-            latKey.startsWith(k),
-          )?.[1]) ||
-        place;
-      if (delayMs > 0) {
-        await new Promise((r) => setTimeout(r, delayMs));
-      }
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(body),
-      });
-      return;
-    }
-    if (/\/layers\/context\/data-zones\/at/i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          code: "S01014567",
-          name: "City Centre South",
-          vintage: 2022,
-        }),
-      });
-      return;
-    }
-    if (/\/place\?/i.test(url) && !/platform\/place/i.test(url)) {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ kind: "places", matches: [] }),
-      });
-      return;
-    }
-    const wantsGeo =
-      /\/layers\//i.test(url) ||
-      /\/boundaries\//i.test(url) ||
-      /\/w3w-grid/i.test(url) ||
-      /\/parcels/i.test(url);
+  // Specific backend stubs only — no global **/backend/** (CI-DEDUP-1b-r2 P2).
+  await page.route("**/backend/health**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      // Always a FeatureCollection for geo-ish paths; bare {} makes MapLibre
-      // console.error(Error) with text "Error" (invalid GeoJSON).
-      body: JSON.stringify(wantsGeo ? EMPTY_FC : {}),
+      body: JSON.stringify(HEALTH_OK),
+    });
+  });
+  // Local browser apiJson prefixes /backend → /backend/api/*.json (ledger, catalog, …).
+  await page.route("**/backend/api/**", async (route) => {
+    const url = route.request().url();
+    if (/ledger\.json/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          rows: [],
+          checks: [],
+          excluded: [],
+          benchmarks: [],
+        }),
+      });
+      return;
+    }
+    if (/catalog\.json/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ layers: [] }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ layers: [], rows: [], checks: [] }),
+    });
+  });
+  await page.route("**/api/ledger.json**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        rows: [],
+        checks: [],
+        excluded: [],
+        benchmarks: [],
+      }),
+    });
+  });
+  // Broad geo stubs first — LIFO: catalog / manifest / DZ registered below win.
+  for (const pattern of [
+    "**/backend/layers/**",
+    "**/backend/boundaries/**",
+    "**/backend/w3w-grid**",
+    "**/backend/parcels**",
+  ] as const) {
+    await page.route(pattern, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(EMPTY_FC),
+      });
+    });
+  }
+  await page.route("**/backend/layers/add/tiles-manifest**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        version: 1,
+        sources: spatialHubLayerIds.map((id) => ({
+          layer_id: id,
+          display_id: id,
+        })),
+      }),
+    });
+  });
+  await page.route("**/backend/layers/catalog**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        version: 2,
+        layers: [],
+        flood_dz_loaded: opts.floodDzLoaded === true,
+      }),
+    });
+  });
+  await page.route("**/backend/layers/context/data-zones/at**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        code: "S01014567",
+        name: "City Centre South",
+        vintage: 2022,
+      }),
+    });
+  });
+  await page.route("**/backend/platform/place**", async (route) => {
+    const url = route.request().url();
+    const u = new URL(url);
+    const latKey = u.searchParams.get("lat") ?? "";
+    const body =
+      (opts.placeByLat && opts.placeByLat[latKey]) ||
+      (opts.placeByLat &&
+        Object.entries(opts.placeByLat).find(([k]) =>
+          latKey.startsWith(k),
+        )?.[1]) ||
+      place;
+    if (delayMs > 0) {
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    });
+  });
+  await page.route("**/backend/place**", async (route) => {
+    if (/platform\/place/i.test(route.request().url())) {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ kind: "places", matches: [] }),
     });
   });
 

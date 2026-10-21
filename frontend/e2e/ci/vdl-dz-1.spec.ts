@@ -1,16 +1,8 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test } from "@playwright/test";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  ensureMapZoomAtLeast,
-  openMap,
-  stubMapCardsBackend,
-  waitForMap,
-} from "./_mapCardsHelpers";
+
+import { test, expect } from "./_fixtures";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, ensureMapZoomAtLeast, openMap, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();
-
 
 /**
  * VDL-DZ-1 — a Data Zone place with vacant land must not show a site code.

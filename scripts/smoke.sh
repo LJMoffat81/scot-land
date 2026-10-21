@@ -8,7 +8,7 @@
 set -uo pipefail
 
 SITE_URL="${SITE_URL:-${1:-}}"
-API_URL="${API_URL:-${SITE_URL:-}}"
+API_URL="${API_URL:-${SITE_URL}/backend}"
 
 if [[ -z "${SITE_URL}" ]]; then
   echo "Usage: $0 <site-or-api-base-url>" >&2
@@ -65,19 +65,19 @@ PY
   status="${health_line%%|*}"
   version="${health_line#*|}"
   if [[ "$status" == "ok" && -n "$version" ]]; then
-    note_row PASS "/health" "HTTP 200 status=${status} version=${version}"
+    note_row PASS "/backend/health" "HTTP 200 status=${status} version=${version}"
   else
-    note_row FAIL "/health" "HTTP 200 but status/version missing (got status=${status} version=${version})"
+    note_row FAIL "/backend/health" "HTTP 200 but status/version missing (got status=${status} version=${version})"
   fi
 else
-  note_row FAIL "/health" "HTTP ${code} (want 200)"
+  note_row FAIL "/backend/health" "HTTP ${code} (want 200)"
 fi
 
 code="$(http_code "${API_URL}/layers/catalog")"
 if [[ "$code" != "200" ]]; then
-  note_row FAIL "/layers/catalog" "HTTP ${code} (want 200)"
+  note_row FAIL "/backend/layers/catalog" "HTTP ${code} (want 200)"
 else
-  note_row PASS "/layers/catalog" "HTTP 200"
+  note_row PASS "/backend/layers/catalog" "HTTP 200"
   mapfile -t LAYER_SPECS < <(python3 - <<'PY'
 import json
 data = json.load(open("/tmp/scot-land-smoke.body", encoding="utf-8"))

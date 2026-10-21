@@ -15,7 +15,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 if (-not $SiteUrl) { $SiteUrl = $BaseUrl }
-if (-not $ApiUrl) { $ApiUrl = $(if ($SiteUrl) { $SiteUrl } else { $BaseUrl }) }
+if (-not $ApiUrl) { $ApiUrl = $(if ($SiteUrl) { "$SiteUrl/backend" } else { $BaseUrl }) }
 
 if (-not $SiteUrl -or -not $ApiUrl) {
     Write-Error "Usage: .\scripts\smoke.ps1 -BaseUrl https://example.com"
@@ -74,21 +74,21 @@ if ($r.Code -eq 200) {
         $version = [string]$health.version
         # HEALTH-TRIM / SW-037: public /health is status + version only.
         if ($status -eq "ok" -and $version) {
-            Add-Row "PASS" "/health" "HTTP 200 status=$status version=$version"
+            Add-Row "PASS" "/backend/health" "HTTP 200 status=$status version=$version"
         }
-        else { Add-Row "FAIL" "/health" "HTTP 200 but status/version missing (got status=$status version=$version)" }
+        else { Add-Row "FAIL" "/backend/health" "HTTP 200 but status/version missing (got status=$status version=$version)" }
     } catch {
-        Add-Row "FAIL" "/health" "HTTP 200 but body is not JSON"
+        Add-Row "FAIL" "/backend/health" "HTTP 200 but body is not JSON"
     }
 } else {
-    Add-Row "FAIL" "/health" "HTTP $($r.Code) (want 200)"
+    Add-Row "FAIL" "/backend/health" "HTTP $($r.Code) (want 200)"
 }
 
 $r = Invoke-SmokeGet "$ApiUrl/layers/catalog"
 if ($r.Code -ne 200) {
-    Add-Row "FAIL" "/layers/catalog" "HTTP $($r.Code) (want 200)"
+    Add-Row "FAIL" "/backend/layers/catalog" "HTTP $($r.Code) (want 200)"
 } else {
-    Add-Row "PASS" "/layers/catalog" "HTTP 200"
+    Add-Row "PASS" "/backend/layers/catalog" "HTTP 200"
     $catalog = $r.Body | ConvertFrom-Json
     foreach ($layer in @($catalog.layers)) {
         if (-not $layer) { continue }

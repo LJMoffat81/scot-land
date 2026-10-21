@@ -1,11 +1,7 @@
-import {
-  isCiOptionalFailUrl,
-  registerOpenFreeMapFontStub,
-  stubCiTileDataQuiet,
-  stubLayersCouncilsQuiet,
-} from "./_mapCardsHelpers";
+import { registerOpenFreeMapFontStub, stubCiTileDataQuiet, stubLayersCouncilsQuiet } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { type Locator, type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -18,8 +14,6 @@ registerOpenFreeMapFontStub();
 
 const PROD_OG_IMAGE = "https://scot-land.scot/og-image.png";
 
-const consoleErrors: string[] = [];
-const resourceFails: Array<{ url: string; status: number }> = [];
 
 const HEALTH_OK = {
   status: "ok",
@@ -34,22 +28,9 @@ const EMPTY_FC = { type: "FeatureCollection", features: [] };
 const TAGLINE = "Land value we all create";
 
 test.beforeEach(async ({ page }) => {
-  consoleErrors.length = 0;
-  resourceFails.length = 0;
-  page.on("console", (msg) => {
-    if (msg.type() === "error") {
-      consoleErrors.push(msg.text());
-    }
-  });
-  page.on("pageerror", (err) => {
-    consoleErrors.push(String(err));
-  });
-  page.on("response", (response) => {
-    const status = response.status();
-    if (status === 404 || status === 503) {
-      resourceFails.push({ url: response.url(), status });
-    }
-  });
+
+  
+  
 
   await page.route("**/backend/**", async (route) => {
     await route.fulfill({
@@ -130,39 +111,7 @@ test.beforeEach(async ({ page }) => {
   await stubCiTileDataQuiet(page);
 });
 
-test.afterEach(() => {
-  const unknownResourceFails = resourceFails.filter(
-    (fail) => !isCiOptionalFailUrl(fail.url),
-  );
-  expect(
-    unknownResourceFails,
-    `unexpected HTTP 404/503:\n${unknownResourceFails
-      .map((f) => `${f.status} ${f.url}`)
-      .join("\n")}`,
-  ).toEqual([]);
 
-  const meaningful = consoleErrors.filter((text) => {
-    if (/\bAbortError\b|The user aborted|The operation was aborted/i.test(text)) {
-      return false;
-    }
-    if (
-      /Failed to load resource: the server responded with a status of (404|503)/i.test(
-        text,
-      )
-    ) {
-      if (isCiOptionalFailUrl(text)) return false;
-      if (!/https?:\/\//i.test(text) && unknownResourceFails.length === 0) {
-        return false;
-      }
-      return true;
-    }
-    return true;
-  });
-  expect(
-    meaningful,
-    `console errors:\n${meaningful.join("\n")}`,
-  ).toEqual([]);
-});
 
 function pngDimensions(buf: Buffer): { width: number; height: number } {
   // PNG IHDR: bytes 16–23 are width/height (big-endian uint32).

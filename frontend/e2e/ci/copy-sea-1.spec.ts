@@ -1,9 +1,9 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
-import { openMap, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
+
+import { test, expect } from "./_fixtures";
+import { registerOpenFreeMapFontStub, openMap, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
-
 
 /**
  * COPY-SEA-1 — a map click at sea shows the signed-off line and both controls.
@@ -85,8 +85,15 @@ for (const viewport of [
 
     test("click at sea shows the sea line and both controls", async ({
       page,
+      gate,
     }) => {
       test.setTimeout(90_000);
+      // Intentional data-zones/at 404 for the sea miss stub.
+      gate.expectError({
+        urlPath: "/backend/layers/context/data-zones/at",
+        status: 404,
+        count: 1,
+      });
       await stubSeaMiss(page);
       await openMap(page);
       await waitForMap(page);

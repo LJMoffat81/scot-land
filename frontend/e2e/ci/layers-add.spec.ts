@@ -1,17 +1,9 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  ensureLayersGroupOpen,
-  ensureMapZoomAtLeast,
-  openLayers,
-  openMap,
-  stubMapCardsBackend,
-} from "./_mapCardsHelpers";
+
+import { test, expect } from "./_fixtures";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, ensureLayersGroupOpen, ensureMapZoomAtLeast, openLayers, openMap, stubMapCardsBackend } from "./_mapCardsHelpers";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
-
 
 /**
  * LAYERS-ADD-1 — registry rows default OFF; LDP/HLS on roadmap; no £; banned names.

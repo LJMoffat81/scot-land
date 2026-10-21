@@ -1,5 +1,6 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { registerOpenFreeMapFontStub, stubMapCardsBackend } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -87,6 +88,7 @@ test.describe("BANNER-FIT-1 at 390", () => {
     test(`${path} collapsed banner wraps and keeps More visible`, async ({
       page,
     }) => {
+      await stubMapCardsBackend(page);
       await page.goto(path);
       await assertCollapsedBannerFits(page);
     });

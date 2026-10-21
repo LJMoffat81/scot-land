@@ -2,7 +2,8 @@
  * FRONTEND-BATCH-3 r4 — SHOWTHRU (0.55) + SW-082 + SW-083 + Idea 80 + T-C4.
  * Viewports 1280×800 and 390×844. Console errors fail the test.
  */
-import { expect, test, type Page, type Request, type Route } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { type Page, type Request, type Route } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -18,18 +19,7 @@ import {
   SUGGEST_LAYER_COPY,
   SUGGEST_LAYER_HREF,
 } from "../../components/SuggestLayerSection";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  CI_TINY_PNG,
-  DUMMY_ESRI_KEY,
-  EMPTY_GLYPH_PBF,
-  injectEsriBasemapKey,
-  openMap,
-  registerOpenFreeMapFontStub,
-  stubMapCardsBackend,
-  waitForMap,
-} from "./_mapCardsHelpers";
+import { assertConsoleClean, attachConsoleGate, CI_TINY_PNG, DUMMY_ESRI_KEY, EMPTY_GLYPH_PBF, injectEsriBasemapKey, openMap, registerOpenFreeMapFontStub, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();
 
@@ -741,6 +731,7 @@ for (const viewport of VIEWPORTS) {
       page,
     }) => {
       test.setTimeout(60_000);
+      await stubMapCardsBackend(page, { gbpLive: false });
       await page.goto("/roadmap");
       await expect(page.locator("#suggest-a-layer")).toHaveCount(0);
       await expect(page.getByText("Suggest a layer")).toHaveCount(0);
@@ -756,6 +747,7 @@ for (const viewport of VIEWPORTS) {
     }) => {
       test.setTimeout(90_000);
       const posts: string[] = [];
+      await stubMapCardsBackend(page, { gbpLive: false });
       await enableContactFormE2e(page);
       await page.route("**/formspree.io/f/**", async (route) => {
         posts.push(route.request().postData() ?? "");
@@ -803,6 +795,7 @@ for (const viewport of VIEWPORTS) {
       page,
     }) => {
       test.setTimeout(60_000);
+      await stubMapCardsBackend(page, { gbpLive: false });
       await page.goto("/roadmap");
 
       for (const sectionId of ["#map-layers", "#further-ahead"] as const) {
@@ -855,6 +848,8 @@ for (const viewport of VIEWPORTS) {
         expect(looksLikeFullPostcode(value)).toBe(true);
         const trimmed = value.trim();
         const gate = attachConsoleGate(page);
+        // Intentional catalog 404 — exact count pinned (CI-DEDUP-1b-r2).
+        gate.expectError({ urlPath: "/backend/layers/catalog", status: 404, count: 2 });
         let geocodeCount = 0;
         let sentQ = "";
         await stubMapCardsBackend(page, { gbpLive: false });
@@ -905,6 +900,7 @@ for (const viewport of VIEWPORTS) {
         test.setTimeout(90_000);
         expect(looksLikeFullPostcode(value)).toBe(false);
         const gate = attachConsoleGate(page);
+        gate.expectError({ urlPath: "/backend/layers/catalog", status: 404, count: 2 });
         let geocodeCount = 0;
         await stubMapCardsBackend(page, { gbpLive: false });
         await page.route("**/layers/catalog**", async (route) => {

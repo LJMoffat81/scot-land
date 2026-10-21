@@ -1,11 +1,6 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import {
-  expect,
-  test,
-  type Locator,
-  type Page,
-  type Route,
-} from "@playwright/test";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Locator, type Page, type Route } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -58,56 +53,12 @@ const PLACE_STUB = {
   links: [],
 };
 
-type ConsoleGate = {
-  consoleErrors: string[];
-  resourceFails: Array<{ url: string; status: number }>;
-};
 
 type Box = { x: number; y: number; width: number; height: number };
 
-function attachConsoleGate(page: Page): ConsoleGate {
-  const consoleErrors: string[] = [];
-  const resourceFails: Array<{ url: string; status: number }> = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => consoleErrors.push(String(err)));
-  page.on("response", (response) => {
-    const status = response.status();
-    if (status === 404 || status === 400 || status === 503) {
-      resourceFails.push({ url: response.url(), status });
-    }
-  });
-  return { consoleErrors, resourceFails };
-}
 
-function assertConsoleClean(gate: ConsoleGate) {
-  const unexpectedResourceFails = gate.resourceFails.filter((fail) => {
-    if (
-      (fail.status === 404 || fail.status === 400) &&
-      /data-zones\/at|platform\/place|api\/place\.json/i.test(fail.url)
-    ) {
-      return false;
-    }
-    if (/\/favicon\.ico(?:\?|$)|\/apple-touch-icon/i.test(fail.url)) {
-      return false;
-    }
-    return true;
-  });
-  expect(
-    unexpectedResourceFails,
-    `unexpected HTTP 400/404/503:\n${unexpectedResourceFails
-      .map((f) => `${f.status} ${f.url}`)
-      .join("\n")}`,
-  ).toEqual([]);
 
-  const meaningful = gate.consoleErrors.filter((text) => {
-    if (/\bAbortError\b|aborted/i.test(text)) return false;
-    if (/Failed to load resource:.*(?:400|404|503)/i.test(text)) return false;
-    return true;
-  });
-  expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
-}
+
 
 function boxesOverlap(a: Box, b: Box): boolean {
   return !(
@@ -291,7 +242,17 @@ test.describe("UX-01 mobile hit areas 390x844", () => {
       await page.keyboard.press("Escape");
     }
 
-    // Sea stub ×
+    // Sea stub × (intentional bounds 400).
+    gate.expectError({
+      urlPath: "/backend/layers/context/data-zones/at",
+      status: 400,
+      count: 1,
+    });
+    gate.expectError({
+      urlPath: "/backend/platform/place",
+      status: 400,
+      count: 1,
+    });
     await stubSeaMiss(page);
     await page.locator("#place-query").fill(`${OUTSIDE_LAT}, ${OUTSIDE_LNG}`);
     await searchGo.click();

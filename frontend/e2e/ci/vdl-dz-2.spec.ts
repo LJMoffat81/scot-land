@@ -1,12 +1,5 @@
-import { expect, test } from "@playwright/test";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  openMap,
-  registerOpenFreeMapFontStub,
-  stubMapCardsBackend,
-  waitForMap,
-} from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { assertConsoleClean, attachConsoleGate, openMap, registerOpenFreeMapFontStub, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();
 

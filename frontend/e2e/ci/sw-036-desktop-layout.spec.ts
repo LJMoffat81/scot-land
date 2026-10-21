@@ -1,11 +1,14 @@
 import {
+  assertConsoleClean,
+  attachConsoleGate,
   injectEsriBasemapKey,
   registerOpenFreeMapFontStub,
   stubLayersCouncilsQuiet,
   stubCiTileDataQuiet,
 } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { type Locator, type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -14,9 +17,6 @@ registerOpenFreeMapFontStub();
  * MAP-CARDS desktop layout at 1280×800 — one panel slot (place XOR Layers);
  * no bbox intersections among slot, zoom, basemap, banner ×.
  */
-
-const pageErrors: string[] = [];
-const consoleErrors: string[] = [];
 
 const HEALTH_OK = {
   status: "ok",
@@ -148,29 +148,14 @@ test.describe("MAP-CARDS desktop one-panel layout 1280", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
   test.beforeEach(async ({ page }) => {
-    pageErrors.length = 0;
-    consoleErrors.length = 0;
-    page.on("pageerror", (err) => pageErrors.push(String(err)));
-    page.on("console", (msg) => {
-      if (msg.type() === "error") consoleErrors.push(msg.text());
-    });
     await stubBackend(page);
-  });
-
-  test.afterEach(() => {
-    expect(pageErrors, `pageerrors:\n${pageErrors.join("\n")}`).toEqual([]);
-    const meaningful = consoleErrors.filter((text) => {
-      if (/\bAbortError\b|aborted/i.test(text)) return false;
-      if (/Failed to load resource:.*(?:404|503)/i.test(text)) return false;
-      return true;
-    });
-    expect(meaningful, `console errors:\n${meaningful.join("\n")}`).toEqual([]);
   });
 
   test("place XOR Layers; no chrome intersections; floating legend gone", async ({
     page,
   }) => {
     test.setTimeout(120_000);
+    const gate = attachConsoleGate(page);
 
     await injectEsriBasemapKey(page);
     await page.goto("/");
@@ -211,5 +196,6 @@ test.describe("MAP-CARDS desktop one-panel layout 1280", () => {
     assertPairClear(slotBox, zoomBox, "slot vs zoom");
     assertPairClear(slotBox, basemapBox, "slot vs basemap");
     assertPairClear(zoomBox, basemapBox, "zoom vs basemap");
+    assertConsoleClean(gate);
   });
 });

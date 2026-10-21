@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { stubMapCardsBackend } from "./_mapCardsHelpers";
 
 /**
  * WEALTH-ENGINE-NAME-1 — three verbatim lines at 1280 and 390.
@@ -20,6 +21,7 @@ for (const viewport of [
     test.use({ viewport });
 
     test("three lines sit where the spec puts them", async ({ page }) => {
+      await stubMapCardsBackend(page);
       await page.goto("/roadmap");
       const names = page.locator(".roadmap-layer-name");
       await expect(names.last()).toHaveText(ROADMAP_LINE);

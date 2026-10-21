@@ -151,6 +151,7 @@ jobs:
       - run: npm run test:esri-key-guard
       - run: npm run test:privacy-1
       - run: npm run test:ci-dedup-1a
+      - run: npm run test:ci-dedup-1b-r2
       - run: npx tsc --noEmit
       - run: npm run build
       - run: npm run test:no-test-hook

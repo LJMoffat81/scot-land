@@ -1,18 +1,9 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  ensureLayersGroupOpen,
-  getMapZoom,
-  openLayers,
-  openMap,
-  stubMapCardsBackend,
-  waitForMap,
-} from "./_mapCardsHelpers";
+
+import { test, expect } from "./_fixtures";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, ensureLayersGroupOpen, getMapZoom, openLayers, openMap, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
-
 
 /**
  * LAYERS-FIX-1 — every visible switch draws or shows a zoom hint.

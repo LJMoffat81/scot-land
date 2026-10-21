@@ -2,7 +2,8 @@
  * FRONTEND-BATCH-4 — SW-086 + SW-085 + MAP-HINTS-OFF-1.
  * Viewports 1280×800 and 390×844. Console errors fail. Batch 1 stubs.
  */
-import { expect, test, type Page, type Route } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { type Page, type Route } from "@playwright/test";
 import {
   DEFAULT_VIEW_METRIC_ID,
   POP_DENSITY_LEGEND_SOURCE,
@@ -18,17 +19,7 @@ import {
   SEARCH_HINT_SR,
 } from "../../lib/siteNav";
 import { TRY_AGAIN } from "../../lib/api";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  boxesOverlap,
-  openLayers,
-  openMap,
-  openPlaceViaCoords,
-  registerOpenFreeMapFontStub,
-  stubMapCardsBackend,
-  type ConsoleGate,
-} from "./_mapCardsHelpers";
+import { assertConsoleClean, attachConsoleGate, boxesOverlap, openLayers, openMap, openPlaceViaCoords, registerOpenFreeMapFontStub, stubMapCardsBackend, type ConsoleGate } from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();
 
@@ -454,10 +445,18 @@ for (const viewport of VIEWPORTS) {
     test("T-H3 search still works", async ({ page }) => {
       test.setTimeout(120_000);
       const gate = attachConsoleGate(page);
+      // Intentional place 404 on EH1 1AA Enter → TRY_AGAIN.
+      // Prefer 404 over route.abort: suggest's isServiceFailure catch clears the
+      // note on abort/5xx, which races Enter under load.
+      gate.expectError({
+        urlPath: "/backend/place",
+        status: 404,
+        count: 1,
+      });
       await stubMapCardsBackend(page, { gbpLive: false });
       await stubCouncilsOk(page);
 
-      // LIFO: place lookup stubs registered after backend catch-all.
+      await page.unroute("**/backend/place**");
       await page.route("**/backend/place**", async (route) => {
         const url = new URL(route.request().url());
         const q = (url.searchParams.get("q") || "").trim();
@@ -500,8 +499,12 @@ for (const viewport of VIEWPORTS) {
           return;
         }
         if (/^eh1\s*1aa$/i.test(q)) {
-          // Network failure → apiFetch catch → TRY_AGAIN (SHARE-FIX path).
-          await route.abort("failed");
+          // Empty body → apiFetch maps 404 to TRY_AGAIN visitor copy.
+          await route.fulfill({
+            status: 404,
+            contentType: "application/json",
+            body: "{}",
+          });
           return;
         }
         await route.fulfill({
@@ -571,17 +574,31 @@ for (const viewport of VIEWPORTS) {
         PLACE_CARD_NO_MATCH,
       );
 
-      await page.locator("#place-query").fill("EH1 1AA");
-      await page.locator("#place-query").press("Enter");
+      // Set query + submit in one evaluate so the 250ms suggest debounce never
+      // fires (runSearch clears the timer). Avoids suggest/Enter 404 count races.
+      const place404 = page.waitForResponse(
+        (res) =>
+          /\/backend\/place/i.test(res.url()) &&
+          /q=EH1/i.test(res.url()) &&
+          res.status() === 404,
+      );
+      await page.locator("#place-query").evaluate((el) => {
+        const input = el as HTMLInputElement;
+        const native = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          "value",
+        )?.set;
+        native?.call(input, "EH1 1AA");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        const go = document.querySelector(".hud-search-go");
+        if (go instanceof HTMLElement) go.click();
+      });
+      await place404;
       await expect(
         page.locator(".search-suggest-note", { hasText: TRY_AGAIN }),
       ).toBeVisible({ timeout: 20_000 });
       await expect(page.getByText(TRY_AGAIN, { exact: true }).first()).toBeVisible();
-      // Abort/"Failed to fetch" is expected for the TRY_AGAIN path.
-      const meaningful = gate.consoleErrors.filter(
-        (t) => !/Failed to fetch|net::ERR_|AbortError|aborted/i.test(t),
-      );
-      expect(meaningful, meaningful.join("\n")).toEqual([]);
+      assertConsoleClean(gate);
     });
 
     test("T-H4 prompt card gone", async ({ page }) => {
@@ -658,6 +675,7 @@ for (const viewport of VIEWPORTS) {
     }) => {
       test.setTimeout(90_000);
       const gate = attachConsoleGate(page);
+      await stubMapCardsBackend(page, { gbpLive: false });
       for (const path of ["/how-we-built-this", "/data", "/place"]) {
         await page.goto(path);
         const banner = page.getByTestId("research-banner");

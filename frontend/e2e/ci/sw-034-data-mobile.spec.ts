@@ -1,5 +1,6 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { registerOpenFreeMapFontStub, stubMapCardsBackend } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Locator, type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -85,6 +86,7 @@ async function mockCatalog(page: Page) {
 }
 
 async function gotoDataWithCatalog(page: Page) {
+  // stubMapCardsBackend first; mockCatalog (caller) registers after so LIFO wins.
   const catalogOk = page.waitForResponse(
     (res) => isCatalogRequest(res.url()) && res.ok(),
   );
@@ -136,6 +138,7 @@ test.describe("SW-034 /data mobile source cards", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
+    await stubMapCardsBackend(page);
     await mockCatalog(page);
     await gotoDataWithCatalog(page);
     await openAllGroups(page);
@@ -174,6 +177,7 @@ test.describe("SW-034 /data mobile source cards", () => {
 
   test("1280: desktop table with all columns", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
+    await stubMapCardsBackend(page);
     await mockCatalog(page);
     await gotoDataWithCatalog(page);
     await openAllGroups(page);

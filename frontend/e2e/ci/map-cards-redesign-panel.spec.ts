@@ -1,22 +1,9 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  boxOf,
-  boxesOverlap,
-  getVisibleLayerIds,
-  injectEsriBasemapKey,
-  openLayers,
-  openMap,
-  openPlaceViaCoords,
-  stubMapCardsBackend,
-  waitForMap,
-  type Box,
-} from "./_mapCardsHelpers";
+
+import { test, expect } from "./_fixtures";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, boxOf, boxesOverlap, getVisibleLayerIds, injectEsriBasemapKey, openLayers, openMap, openPlaceViaCoords, stubMapCardsBackend, waitForMap, type Box } from "./_mapCardsHelpers";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
-
 
 /**
  * MAP-CARDS checks 1–3, 5–7, 11, 16–19, 23 — panel slot, one-at-a-time,

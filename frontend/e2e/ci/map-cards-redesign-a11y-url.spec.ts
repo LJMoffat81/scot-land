@@ -1,17 +1,9 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  openLayers,
-  openMap,
-  openPlaceViaCoords,
-  stubMapCardsBackend,
-} from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, openLayers, openMap, openPlaceViaCoords, stubMapCardsBackend } from "./_mapCardsHelpers";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
-
 
 /**
  * MAP-CARDS checks 13–15, 17, 25 — axe, keyboard, URL state.
@@ -89,6 +81,23 @@ for (const viewport of [
       test.setTimeout(90_000);
       const gate = attachConsoleGate(page);
       await stubMapCardsBackend(page);
+      // Hold the OFM style so mapReady (and deep-link inspect) cannot race
+      // close→goBack. Layers UI boots from the URL without the style; place=
+      // stays on the query string. LIFO overrides the shared host stub.
+      await page.context().route(
+        (url) => {
+          try {
+            return new URL(url).hostname === "tiles.openfreemap.org";
+          } catch {
+            return false;
+          }
+        },
+        async () => {
+          await new Promise(() => {
+            /* pending until page close */
+          });
+        },
+      );
       await page.goto(
         "/?place=S01014567&panel=layers&layers=councils,access_services&z=8&c=-4.25,55.86",
       );

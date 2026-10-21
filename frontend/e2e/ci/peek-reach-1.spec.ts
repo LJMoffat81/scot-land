@@ -1,9 +1,6 @@
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  registerOpenFreeMapFontStub,
-} from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { assertConsoleClean, attachConsoleGate, registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 

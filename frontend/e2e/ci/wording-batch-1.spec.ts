@@ -1,5 +1,6 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -73,27 +74,9 @@ const PLACE_STUB = {
   links: [],
 };
 
-type ConsoleGate = {
-  consoleErrors: string[];
-  pageErrors: string[];
-};
 
-function attachConsoleGate(page: Page): ConsoleGate {
-  const consoleErrors: string[] = [];
-  const pageErrors: string[] = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
-  });
-  page.on("pageerror", (err) => pageErrors.push(String(err)));
-  return { consoleErrors, pageErrors };
-}
 
-function filterNoise(errors: string[]): string[] {
-  return errors.filter(
-    (text) =>
-      !/AbortError|aborted|Failed to fetch|net::ERR_|400|404|503/i.test(text),
-  );
-}
+
 
 async function stubMapBackend(page: Page) {
   await page.route("**/backend/**", async (route) => {
@@ -201,9 +184,7 @@ for (const viewport of [
       await expect(
         panel.getByTestId("map-layers-roadmap-link").locator("a"),
       ).toHaveAttribute("href", "/roadmap#map-layers");
-
-      expect(filterNoise(gate.consoleErrors)).toEqual([]);
-      expect(filterNoise(gate.pageErrors)).toEqual([]);
+    assertConsoleClean(gate);
     });
   });
 }
@@ -240,9 +221,7 @@ test.describe("WORDING-BATCH-1 place card + MAP-CARDS (1280)", () => {
     const bodyText = await page.locator("body").innerText();
     expect(bodyText).not.toMatch(/£\d/);
     expect(bodyText).not.toMatch(BANNED);
-
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
+    assertConsoleClean(gate);
   });
 });
 
@@ -256,12 +235,8 @@ test.describe("WORDING-BATCH-1 place card (390)", () => {
     await page.goto("/?lat=55.8609&lng=-4.2514");
     await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
     const card = page.getByTestId("place-card");
-    if ((await card.count()) === 0) {
-      await page.locator(".maplibregl-canvas").click({
-        position: { x: 195, y: 400 },
-      });
-    }
-    await expect(card).toBeVisible({ timeout: 30_000 });
+    // URL place boot only — canvas click races the half-panel handle on 390.
+    await expect(card).toBeVisible({ timeout: 45_000 });
 
     await expect(card).not.toContainText(/map reference/i);
     await expect(card.getByTestId("place-card-figure")).toContainText(PRE_POUND);
@@ -271,9 +246,7 @@ test.describe("WORDING-BATCH-1 place card (390)", () => {
     );
     await expect(card).not.toContainText(/£\d/);
     await expect(card).not.toContainText(BANNED);
-
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
+    assertConsoleClean(gate);
   });
 });
 
@@ -318,9 +291,7 @@ for (const viewport of [
         timeout: 30_000,
       });
       await expect(page.getByTestId("place-card")).toHaveCount(0);
-
-      expect(filterNoise(gate.consoleErrors)).toEqual([]);
-      expect(filterNoise(gate.pageErrors)).toEqual([]);
+    assertConsoleClean(gate);
     });
   });
 }
@@ -359,9 +330,7 @@ test.describe("WORDING-BATCH-1 developers", () => {
           return root.scrollWidth <= root.clientWidth + 1;
         });
         expect(noHScroll, "no horizontal scroll").toBe(true);
-
-        expect(filterNoise(gate.consoleErrors)).toEqual([]);
-        expect(filterNoise(gate.pageErrors)).toEqual([]);
+    assertConsoleClean(gate);
       });
     });
   }
@@ -376,20 +345,49 @@ test.describe("WORDING-BATCH-1 deep-link vs Layers at 390", () => {
     test.setTimeout(120_000);
     const gate = attachConsoleGate(page);
     await stubMapBackend(page);
-    let releaseStyle = () => {};
-    const styleHeld = new Promise<void>((resolve) => {
-      releaseStyle = resolve;
+    let releasePlace = () => {};
+    const placeHeld = new Promise<void>((resolve) => {
+      releasePlace = resolve;
     });
-    await page.route("**/tiles.openfreemap.org/styles/**", async (route) => {
-      await styleHeld;
-      await route.continue();
+    // Hold place identify until Layers is open (quiet stubs would otherwise
+    // answer immediately and miss waitForRequest after style release).
+    await page.route("**/backend/platform/place**", async (route) => {
+      await placeHeld;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          contract: "place_card_v1",
+          lat: 55.8609,
+          lng: -4.2514,
+          place_label: "City Centre",
+          council_name: "Glasgow City",
+          data_zone: {
+            status: "ok",
+            code: "S01014567",
+            name: "City Centre South",
+            vintage: 2022,
+          },
+          intermediate_zone: {
+            status: "ok",
+            name: "City Centre",
+            code: "S02002645",
+          },
+          dwellings: 410,
+          agr_rows: [],
+          constraints: [],
+          layers: [],
+          links: [],
+        }),
+      });
     });
 
+    // Arm waiter before goto — place request starts on navigation.
+    const placeBoot = page.waitForRequest("**/platform/place**");
     await page.goto("/?lat=55.8609&lng=-4.2514");
     await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
     await openLayers(page);
-    const placeBoot = page.waitForRequest("**/platform/place**");
-    releaseStyle();
+    releasePlace();
     await placeBoot;
 
     const panel = page.getByTestId("layers-panel");
@@ -401,8 +399,6 @@ test.describe("WORDING-BATCH-1 deep-link vs Layers at 390", () => {
     await expect(
       panel.getByTestId("map-layers-roadmap-link").locator("a"),
     ).toHaveAttribute("href", "/roadmap#map-layers");
-
-    expect(filterNoise(gate.consoleErrors)).toEqual([]);
-    expect(filterNoise(gate.pageErrors)).toEqual([]);
+    assertConsoleClean(gate);
   });
 });

@@ -1,22 +1,8 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
-import { expect, test } from "@playwright/test";
-import {
-  assertConsoleClean,
-  attachConsoleGate,
-  BANNED_VISIBLE,
-  countMatches,
-  ensureLayersGroupOpen,
-  ensureMapZoomAtLeast,
-  openLayers,
-  openMap,
-  openPlaceViaCoords,
-  PRE_POUND,
-  stubMapCardsBackend,
-  visibleMapText,
-} from "./_mapCardsHelpers";
+
+import { test, expect } from "./_fixtures";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, BANNED_VISIBLE, countMatches, ensureLayersGroupOpen, ensureMapZoomAtLeast, openLayers, openMap, openPlaceViaCoords, PRE_POUND, stubMapCardsBackend, visibleMapText } from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();
-
 
 /**
  * MAP-CARDS checks 8–10, 12, 20–22, 36 — say-it-once, wording, no-match,

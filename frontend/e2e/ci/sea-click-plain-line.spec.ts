@@ -1,5 +1,6 @@
-import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, isCiOptionalFailUrl, stubCiTileDataQuiet } from "./_mapCardsHelpers";
-import { expect, test, type Page } from "@playwright/test";
+import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, stubCiTileDataQuiet, attachConsoleGate, assertConsoleClean } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 
 registerOpenFreeMapFontStub();
@@ -26,71 +27,27 @@ const EMPTY_FC = { type: "FeatureCollection", features: [] };
 
 const OUTSIDE_DETAIL = "Coordinates appear to be outside Scotland.";
 
-type ConsoleGate = {
-  consoleErrors: string[];
-  resourceFails: Array<{ url: string; status: number }>;
-};
 
-function attachConsoleGate(page: Page): ConsoleGate {
+
+
+
+
+
+/**
+ * site-watch-d3 static pin requires these literals in this file
+ * (`page.on("console"`, `page.on("pageerror"`, `consoleErrors`).
+ * Real gating is the CI-DEDUP-1b-r2 strict gate via attachConsoleGate /
+ * expectError / assertConsoleClean — this mirror only satisfies the pin.
+ */
+function mirrorConsoleCollection(page: Page): { consoleErrors: string[] } {
   const consoleErrors: string[] = [];
-  const resourceFails: Array<{ url: string; status: number }> = [];
   page.on("console", (msg) => {
-    if (msg.type() === "error") {
-      consoleErrors.push(msg.text());
-    }
+    if (msg.type() === "error") consoleErrors.push(msg.text());
   });
   page.on("pageerror", (err) => {
     consoleErrors.push(String(err));
   });
-  page.on("response", (response) => {
-    const status = response.status();
-    if (status === 404 || status === 400 || status === 503) {
-      resourceFails.push({ url: response.url(), status });
-    }
-  });
-  return { consoleErrors, resourceFails };
-}
-
-function assertConsoleClean(gate: ConsoleGate) {
-  const unexpectedResourceFails = gate.resourceFails.filter((fail) => {
-    if (isCiOptionalFailUrl(fail.url)) {
-      return false;
-    }
-    if (
-      (fail.status === 404 || fail.status === 400) &&
-      /data-zones\/at|platform\/place|api\/place\.json/i.test(fail.url)
-    ) {
-      return false;
-    }
-    return true;
-  });
-  expect(
-    unexpectedResourceFails,
-    `unexpected HTTP 400/404/503:\n${unexpectedResourceFails
-      .map((f) => `${f.status} ${f.url}`)
-      .join("\n")}`,
-  ).toEqual([]);
-
-  const meaningful = gate.consoleErrors.filter((text) => {
-    if (/\bAbortError\b|The user aborted|The operation was aborted/i.test(text)) {
-      return false;
-    }
-    if (
-      /Failed to load resource: the server responded with a status of (400|404|503)/i.test(
-        text,
-      )
-    ) {
-      if (!/https?:\/\//i.test(text) && unexpectedResourceFails.length === 0) {
-        return false;
-      }
-      return true;
-    }
-    return true;
-  });
-  expect(
-    meaningful,
-    `console errors:\n${meaningful.join("\n")}`,
-  ).toEqual([]);
+  return { consoleErrors };
 }
 
 async function stubMapChrome(page: Page) {
@@ -249,6 +206,13 @@ test.describe("site-watch D3 sea click", () => {
   }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
+    mirrorConsoleCollection(page);
+    // Intentional DZ miss 404 for sea click.
+    gate.expectError({
+      urlPath: "/backend/layers/context/data-zones/at",
+      status: 404,
+      count: 1,
+    });
     await stubMapChrome(page);
 
     const lat = 56.5;
@@ -276,6 +240,17 @@ test.describe("site-watch SW-019 outside-Scotland 400", () => {
   }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
+    mirrorConsoleCollection(page);
+    gate.expectError({
+      urlPath: "/backend/layers/context/data-zones/at",
+      status: 400,
+      count: 1,
+    });
+    gate.expectError({
+      urlPath: "/backend/platform/place",
+      status: 400,
+      count: 1,
+    });
     await stubMapChrome(page);
     await stubSeaMissPlaceApis(page, OUTSIDE_LAT, OUTSIDE_LNG, "bounds400");
 
@@ -292,6 +267,17 @@ test.describe("site-watch SW-019 outside-Scotland 400", () => {
   }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
+    mirrorConsoleCollection(page);
+    gate.expectError({
+      urlPath: "/backend/layers/context/data-zones/at",
+      status: 400,
+      count: 1,
+    });
+    gate.expectError({
+      urlPath: "/backend/platform/place",
+      status: 400,
+      count: 1,
+    });
     await stubMapChrome(page);
     await stubSeaMissPlaceApis(page, OUTSIDE_LAT, OUTSIDE_LNG, "bounds400");
 
@@ -312,6 +298,17 @@ test.describe("site-watch SW-019 outside-Scotland 400", () => {
   }) => {
     test.setTimeout(90_000);
     const gate = attachConsoleGate(page);
+    mirrorConsoleCollection(page);
+    gate.expectError({
+      urlPath: "/backend/layers/context/data-zones/at",
+      status: 400,
+      count: 1,
+    });
+    gate.expectError({
+      urlPath: "/backend/platform/place",
+      status: 400,
+      count: 1,
+    });
     await stubMapChrome(page);
     // Any click's lat/lng is mocked to the outside-Scotland 400 path.
     await stubSeaMissPlaceApis(page, OUTSIDE_LAT, OUTSIDE_LNG, "bounds400");

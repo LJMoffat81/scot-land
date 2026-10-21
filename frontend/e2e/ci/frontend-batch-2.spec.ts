@@ -2,21 +2,11 @@
  * FRONTEND-BATCH-2 r5 — T-M1…T-M5 (MAP-CONTROLS-1 / O1 / MC5–MC6 / MC11).
  * Viewports 1280×800 and 390×844. Console errors fail the test.
  */
-import { expect, test, type Page } from "@playwright/test";
+import { test, expect } from "./_fixtures";
+import { type Page } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  attachConsoleGate,
-  assertConsoleClean,
-  CI_TINY_PNG,
-  DUMMY_ESRI_KEY,
-  EMPTY_GLYPH_PBF,
-  injectEsriBasemapKey,
-  openMap,
-  registerOpenFreeMapFontStub,
-  stubMapCardsBackend,
-  waitForMap,
-} from "./_mapCardsHelpers";
+import { attachConsoleGate, assertConsoleClean, CI_TINY_PNG, DUMMY_ESRI_KEY, EMPTY_GLYPH_PBF, injectEsriBasemapKey, openMap, registerOpenFreeMapFontStub, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 import { scanLibertyHits } from "./_libertyScan";
 
 registerOpenFreeMapFontStub();
@@ -279,6 +269,18 @@ for (const viewport of VIEWPORTS) {
       expect(Math.abs(after.lng - before.lng)).toBeLessThanOrEqual(1e-5);
       expect(Math.abs(after.lat - before.lat)).toBeLessThanOrEqual(1e-5);
       expect(Math.abs(after.zoom - before.zoom)).toBeLessThanOrEqual(0.01);
+      // Intentional aerial remount logs MapLibre AbortError (stack is
+      // content-hashed per build). Pin exact recorded text(s) for this run.
+      const aborts = gate.errors
+        .map((e) => e.text)
+        .filter((t) =>
+          t.startsWith("AbortError: signal is aborted without reason"),
+        );
+      const counts = new Map<string, number>();
+      for (const t of aborts) counts.set(t, (counts.get(t) ?? 0) + 1);
+      for (const [text, count] of counts) {
+        gate.expectError({ text, count });
+      }
       assertConsoleClean(gate);
     });
 

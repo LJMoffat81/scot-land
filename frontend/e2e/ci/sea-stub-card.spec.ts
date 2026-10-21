@@ -1,11 +1,6 @@
-import {
-  injectEsriBasemapKey,
-  registerOpenFreeMapFontStub,
-  stubLayersCouncilsQuiet,
-  isCiOptionalFailUrl,
-  stubCiTileDataQuiet,
-} from "./_mapCardsHelpers";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { injectEsriBasemapKey, registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, stubCiTileDataQuiet, attachConsoleGate, assertConsoleClean } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Locator, type Page } from "@playwright/test";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 
 registerOpenFreeMapFontStub();
@@ -40,71 +35,22 @@ const EMPTY_FC = { type: "FeatureCollection", features: [] };
 
 const OUTSIDE_DETAIL = "Coordinates appear to be outside Scotland.";
 
-type ConsoleGate = {
-  consoleErrors: string[];
-  resourceFails: Array<{ url: string; status: number }>;
-};
 
-function attachConsoleGate(page: Page): ConsoleGate {
+
+
+
+
+
+/** site-watch-d3 pin: page.on("console" / page.on("pageerror" / consoleErrors. */
+function mirrorConsoleCollection(page: Page): { consoleErrors: string[] } {
   const consoleErrors: string[] = [];
-  const resourceFails: Array<{ url: string; status: number }> = [];
   page.on("console", (msg) => {
-    if (msg.type() === "error") {
-      consoleErrors.push(msg.text());
-    }
+    if (msg.type() === "error") consoleErrors.push(msg.text());
   });
   page.on("pageerror", (err) => {
     consoleErrors.push(String(err));
   });
-  page.on("response", (response) => {
-    const status = response.status();
-    if (status === 404 || status === 400 || status === 503) {
-      resourceFails.push({ url: response.url(), status });
-    }
-  });
-  return { consoleErrors, resourceFails };
-}
-
-function assertConsoleClean(gate: ConsoleGate) {
-  const unexpectedResourceFails = gate.resourceFails.filter((fail) => {
-    if (isCiOptionalFailUrl(fail.url)) {
-      return false;
-    }
-    if (
-      (fail.status === 404 || fail.status === 400) &&
-      /data-zones\/at|platform\/place|api\/place\.json/i.test(fail.url)
-    ) {
-      return false;
-    }
-    return true;
-  });
-  expect(
-    unexpectedResourceFails,
-    `unexpected HTTP 400/404/503:\n${unexpectedResourceFails
-      .map((f) => `${f.status} ${f.url}`)
-      .join("\n")}`,
-  ).toEqual([]);
-
-  const meaningful = gate.consoleErrors.filter((text) => {
-    if (/\bAbortError\b|The user aborted|The operation was aborted/i.test(text)) {
-      return false;
-    }
-    if (
-      /Failed to load resource: the server responded with a status of (400|404|503)/i.test(
-        text,
-      )
-    ) {
-      if (!/https?:\/\//i.test(text) && unexpectedResourceFails.length === 0) {
-        return false;
-      }
-      return true;
-    }
-    return true;
-  });
-  expect(
-    meaningful,
-    `console errors:\n${meaningful.join("\n")}`,
-  ).toEqual([]);
+  return { consoleErrors };
 }
 
 async function stubMapChrome(page: Page) {
@@ -243,18 +189,12 @@ async function assertSeaCardHeightFitsContent(card: Locator) {
 }
 
 async function openSeaStub(page: Page) {
-  // Prefer deep-link boot (avoids search chrome races in CI).
+  // Deep-link only — search fallback doubled intentional 400s.
   await injectEsriBasemapKey(page);
   await page.goto(`/?lat=${OUTSIDE_LAT}&lng=${OUTSIDE_LNG}`);
   await page.locator(".maplibregl-canvas").waitFor();
 
   const line = page.getByTestId("place-card-out-of-scotland");
-  if ((await line.count()) === 0) {
-    await page.locator("#place-query").waitFor();
-    await page.locator("#place-query").fill(`${OUTSIDE_LAT}, ${OUTSIDE_LNG}`);
-    await page.locator(".hud-search-go").click();
-  }
-
   await expect(line).toBeVisible({ timeout: 30_000 });
   await expect(line).toHaveText(OUT_OF_SCOTLAND_LINE);
 
@@ -266,6 +206,18 @@ async function openSeaStub(page: Page) {
 
 async function runSeaStubChecks(page: Page) {
   const gate = attachConsoleGate(page);
+  mirrorConsoleCollection(page);
+  // Intentional bounds 400 from deep-link boot (stable count ×1 each).
+  gate.expectError({
+    urlPath: "/backend/layers/context/data-zones/at",
+    status: 400,
+    count: 1,
+  });
+  gate.expectError({
+    urlPath: "/backend/platform/place",
+    status: 400,
+    count: 1,
+  });
   await stubMapChrome(page);
   await stubSeaMissPlaceApis(page, OUTSIDE_LAT, OUTSIDE_LNG);
 

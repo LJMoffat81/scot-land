@@ -1,10 +1,6 @@
-import {
-  injectEsriBasemapKey,
-  openMap,
-  registerOpenFreeMapFontStub,
-  stubMapCardsBackend,
-} from "./_mapCardsHelpers";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { injectEsriBasemapKey, openMap, registerOpenFreeMapFontStub, stubMapCardsBackend } from "./_mapCardsHelpers";
+import { test, expect } from "./_fixtures";
+import { type Locator, type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
@@ -45,6 +41,7 @@ for (const width of WIDTHS) {
 
     test("shared lockup, breakpoint, and no overlap", async ({ page }) => {
       test.setTimeout(120_000);
+      await stubMapCardsBackend(page);
       await page.goto("/about");
       const aboutBrand = page.getByTestId("site-nav-brand");
       await expect(aboutBrand).toBeVisible();

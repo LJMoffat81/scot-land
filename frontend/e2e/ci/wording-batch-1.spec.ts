@@ -144,9 +144,7 @@ async function openPlaceCard(page: Page) {
   await page.goto("/?lat=55.8609&lng=-4.2514");
   await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
   const card = page.getByTestId("place-card");
-  if ((await card.count()) === 0) {
-    await page.locator(".maplibregl-canvas").click({ position: { x: 400, y: 300 } });
-  }
+  // CI-DEDUP-1b: deep-link opens the card; avoid canvas-click race with panel.
   await expect(card).toBeVisible({ timeout: 30_000 });
   return card;
 }

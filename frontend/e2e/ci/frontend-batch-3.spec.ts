@@ -271,7 +271,18 @@ async function assertCouncilBelowSymbols(page: Page) {
     if (!map) throw new Error("window.__map missing");
     const layers = map.getStyle().layers ?? [];
     const ids = layers.map((l) => l.id);
-    const types = layers.map((l) => l.type ?? "");
+    const types = layers.map((l) => {
+      if (l.type) return l.type;
+      try {
+        return (
+          (
+            map as unknown as { getLayer?: (id: string) => { type?: string } }
+          ).getLayer?.(l.id)?.type ?? ""
+        );
+      } catch {
+        return "";
+      }
+    });
     const firstSym = types.findIndex((t) => t === "symbol");
     return {
       firstSym,
@@ -298,7 +309,24 @@ async function toggleBasemap(page: Page) {
     "aria-pressed",
     before === "true" ? "false" : "true",
   );
+  // Remount uses key={mapStyle}; wait until the new map is style-loaded and
+  // council layers exist again so paint probes do not race the teardown.
   await getMap(page);
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() => {
+          const map = (window as unknown as { __map?: MapProbe }).__map;
+          if (!map) return false;
+          try {
+            return Boolean(map.getLayer("council-fill"));
+          } catch {
+            return false;
+          }
+        }),
+      { timeout: 60_000 },
+    )
+    .toBe(true);
 }
 
 async function openShowthruMap(page: Page) {
@@ -781,6 +809,10 @@ for (const viewport of VIEWPORTS) {
         let geocodeCount = 0;
         let sentQ = "";
         await stubMapCardsBackend(page, { gbpLive: false });
+        // Force agr=false so search uses /geocode/postcode (not /place lookup).
+        await page.route("**/layers/catalog**", async (route) => {
+          await route.fulfill({ status: 404, body: "absent" });
+        });
         await stubCouncilsOk(page);
         await page.route("**/geocode/postcode**", async (route) => {
           geocodeCount += 1;
@@ -826,6 +858,9 @@ for (const viewport of VIEWPORTS) {
         const gate = attachConsoleGate(page);
         let geocodeCount = 0;
         await stubMapCardsBackend(page, { gbpLive: false });
+        await page.route("**/layers/catalog**", async (route) => {
+          await route.fulfill({ status: 404, body: "absent" });
+        });
         await stubCouncilsOk(page);
         await page.route("**/geocode/postcode**", async (route) => {
           geocodeCount += 1;

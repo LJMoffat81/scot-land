@@ -1914,6 +1914,8 @@ export default function ScotlandMap() {
     setError(null);
     if (!looksLikeFullPostcode(q)) {
       setError(POSTCODES_ONLY);
+      // Keep the refuse line under the search box (error alone only shows in the place card).
+      setSuggestNote(POSTCODES_ONLY);
       return;
     }
     setLoading(true);
@@ -1943,9 +1945,12 @@ export default function ScotlandMap() {
 
   const runSearch = async () => {
     const q = query.trim();
+    // Idea 80 / T-P1: keep typed formatting, but drop leading/trailing space.
+    if (q !== query) setQuery(q);
     if (!q) {
       // Idea 80 / T-P2: empty search is refused with the same postcode-only line.
       setError(POSTCODES_ONLY);
+      setSuggestNote(POSTCODES_ONLY);
       return;
     }
     const coords = parseCoordinates(q);

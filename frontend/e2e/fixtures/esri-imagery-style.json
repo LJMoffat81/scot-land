@@ -30,6 +30,19 @@
       "source": "esri",
       "minzoom": 0,
       "maxzoom": 22
+    },
+    {
+      "id": "esri-reference-place",
+      "type": "symbol",
+      "source": "esri-labels",
+      "source-layer": "Place",
+      "layout": {
+        "text-field": ["get", "_name"],
+        "text-size": 12
+      },
+      "paint": {
+        "text-color": "#ffffff"
+      }
     }
   ]
 }

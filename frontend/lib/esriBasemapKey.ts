@@ -7,6 +7,7 @@ export {
   ESRI_BASEMAP_API_KEY_ENV,
   isEsriBasemapKeyConfigured,
   readEsriBasemapApiKey,
+  resolveEsriKey,
 } from "./esriBasemapKey.mjs";
 
 export type EsriKeyWindow = Window & {

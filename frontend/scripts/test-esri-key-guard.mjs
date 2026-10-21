@@ -145,6 +145,132 @@ function checkK8(root, files) {
   }
 }
 
+function checkK9(root) {
+  const path = join(root, ".env.example");
+  if (!existsSync(path)) {
+    fail(
+      "esri-key-guard: root .env.example must have NEXT_PUBLIC_ESRI_BASEMAP_API_KEY= with no value",
+    );
+  }
+  const text = readFileSync(path, "utf8");
+  const lines = text.split(/\r?\n/);
+  const ok = lines.some((line) => line === "NEXT_PUBLIC_ESRI_BASEMAP_API_KEY=");
+  if (!ok) {
+    fail(
+      "esri-key-guard: root .env.example must have NEXT_PUBLIC_ESRI_BASEMAP_API_KEY= with no value",
+    );
+  }
+}
+
+function checkK10(root) {
+  for (const rel of [".env", "frontend/.env"]) {
+    const res = spawnSync("git", ["check-ignore", "-q", rel], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    if (res.status !== 0) {
+      fail("esri-key-guard: .env not gitignored");
+    }
+  }
+}
+
+function checkK11(root) {
+  const path = join(root, "frontend", ".dockerignore");
+  if (!existsSync(path)) {
+    fail("esri-key-guard: .dockerignore must exclude .env files");
+  }
+  const text = readFileSync(path, "utf8");
+  const lines = new Set(
+    text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean),
+  );
+  if (!lines.has(".env") || !lines.has(".env.*")) {
+    fail("esri-key-guard: .dockerignore must exclude .env files");
+  }
+}
+
+function isCiJobHeader(line) {
+  return /^  [A-Za-z0-9_-]+:\s*(?:#.*)?$/.test(line);
+}
+
+function checkK12(root) {
+  const ciPath = join(root, ".github", "workflows", "ci.yml");
+  if (!existsSync(ciPath)) {
+    fail(
+      "esri-key-guard: test:esri-key-build must run after playwright install in the same job",
+    );
+  }
+  const ciLines = readFileSync(ciPath, "utf8").split(/\r?\n/);
+  let buildIdx = -1;
+  for (let i = 0; i < ciLines.length; i += 1) {
+    if ((ciLines[i] ?? "").includes("npm run test:esri-key-build")) {
+      buildIdx = i;
+      break;
+    }
+  }
+  if (buildIdx < 0) {
+    fail(
+      "esri-key-guard: test:esri-key-build must run after playwright install in the same job",
+    );
+  }
+  let jobStart = 0;
+  for (let i = buildIdx; i >= 0; i -= 1) {
+    if (isCiJobHeader(ciLines[i] ?? "")) {
+      jobStart = i;
+      break;
+    }
+  }
+  const before = ciLines.slice(jobStart, buildIdx);
+  const hasInstall = before.some((line) =>
+    (line ?? "").includes("playwright install --with-deps chromium"),
+  );
+  if (!hasInstall) {
+    fail(
+      "esri-key-guard: test:esri-key-build must run after playwright install in the same job",
+    );
+  }
+
+  const pkgPath = join(root, "frontend", "package.json");
+  if (!existsSync(pkgPath)) {
+    fail("esri-key-guard: package scripts must not install browsers");
+  }
+  const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+  for (const val of Object.values(pkg.scripts ?? {})) {
+    if (typeof val !== "string") continue;
+    if (/playwright install/.test(val) || /ensure-playwright/.test(val)) {
+      fail("esri-key-guard: package scripts must not install browsers");
+    }
+  }
+
+  // Built at runtime so this file never contains the contiguous banned path.
+  const bannedCli = ["playwright", "cli.js"].join("/");
+  const scriptsDir = join(root, "frontend", "scripts");
+  if (existsSync(scriptsDir)) {
+    const walk = (dir) => {
+      for (const name of readdirSync(dir)) {
+        const full = join(dir, name);
+        const st = statSync(full);
+        if (st.isDirectory()) {
+          walk(full);
+          continue;
+        }
+        let text;
+        try {
+          text = readFileSync(full, "utf8");
+        } catch {
+          continue;
+        }
+        if (text.includes(bannedCli)) {
+          fail(`esri-key-guard: do not resolve ${bannedCli}`);
+        }
+      }
+    };
+    walk(scriptsDir);
+  }
+}
+
 function main() {
   const { root } = parseArgs(process.argv.slice(2));
   const files = listTrackedFiles(root);
@@ -156,6 +282,10 @@ function main() {
   checkK6(root);
   checkK7(root);
   checkK8(root, files);
+  checkK9(root);
+  checkK10(root);
+  checkK11(root);
+  checkK12(root);
   process.stdout.write("test-esri-key-guard: ok\n");
 }
 

@@ -177,6 +177,7 @@ jobs:
       - run: npm ci
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
+      - run: npm run test:esri-key-resolver && npm run test:esri-key-build
       - name: Run Playwright e2e (rewrite / search / chrome gate)
         # Full map/GIS suite still needs a live API for many specs; gate the
         # stub-safe suite under frontend/e2e/ci/ (auto-discovered by

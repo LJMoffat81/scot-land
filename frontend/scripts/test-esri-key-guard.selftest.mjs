@@ -1,5 +1,5 @@
 /**
- * Self-test for test-esri-key-guard.mjs — one temp fixture per K1–K8 + clean.
+ * Self-test for test-esri-key-guard.mjs — one temp fixture per K1–K11 + clean.
  * Key-like strings are assembled at runtime so nothing is committed.
  */
 import assert from "node:assert/strict";
@@ -38,6 +38,17 @@ function writeTree(root, files) {
   }
 }
 
+function initGit(root) {
+  const init = spawnSync("git", ["init"], { cwd: root, encoding: "utf8" });
+  assert.equal(init.status, 0, `git init failed: ${init.stderr}`);
+  spawnSync("git", ["config", "user.email", "selftest@example.com"], {
+    cwd: root,
+  });
+  spawnSync("git", ["config", "user.name", "selftest"], { cwd: root });
+  const add = spawnSync("git", ["add", "-A"], { cwd: root, encoding: "utf8" });
+  assert.equal(add.status, 0, `git add failed: ${add.stderr}`);
+}
+
 const CLEAN_DOCKERFILE = `FROM node:22-alpine AS builder
 WORKDIR /app
 ARG NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -60,11 +71,51 @@ const CLEAN_ENV_EXAMPLE = `# Esri basemap key (referrer-locked). Set on the depl
 NEXT_PUBLIC_ESRI_BASEMAP_API_KEY=
 `;
 
+const CLEAN_ROOT_ENV_EXAMPLE = `# Copy to .env next to docker-compose.home.yml (gitignored). Never commit values.
+POSTGRES_PASSWORD=
+NEXT_PUBLIC_ESRI_BASEMAP_API_KEY=
+`;
+
+const CLEAN_DOCKERIGNORE = `node_modules
+.next
+.env
+.env.*
+!.env.example
+`;
+
+const CLEAN_CI = `jobs:
+  typecheck:
+    name: Frontend typecheck and build
+    steps:
+      - run: npm run test:esri-key-guard
+  e2e:
+    name: Frontend Playwright e2e
+    steps:
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - run: npm run test:esri-key-resolver && npm run test:esri-key-build
+      - run: npm run test:e2e:ci
+`;
+
+const CLEAN_PACKAGE_JSON = `{
+  "name": "scot-land-frontend",
+  "scripts": {
+    "test:esri-key-build": "playwright test -c playwright.buildkey.config.ts",
+    "test:esri-key-resolver": "node --test scripts/test-esri-key-resolver.mjs"
+  }
+}
+`;
+
 function cleanFiles(extra = {}) {
   return {
     "frontend/Dockerfile": CLEAN_DOCKERFILE,
     "docker-compose.home.yml": CLEAN_COMPOSE,
     "frontend/.env.example": CLEAN_ENV_EXAMPLE,
+    ".env.example": CLEAN_ROOT_ENV_EXAMPLE,
+    "frontend/.dockerignore": CLEAN_DOCKERIGNORE,
+    ".gitignore": ".env\n.env.local\n",
+    ".github/workflows/ci.yml": CLEAN_CI,
+    "frontend/package.json": CLEAN_PACKAGE_JSON,
     "frontend/app/page.tsx": "export default function Page() { return null }\n",
     ...extra,
   };
@@ -74,6 +125,7 @@ function withFixture(files, fn) {
   const root = mkdtempSync(join(tmpdir(), "esri-key-guard-"));
   try {
     writeTree(root, files);
+    initGit(root);
     return fn(root);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -200,11 +252,114 @@ withFixture(
   },
 );
 
-// K8 — tracked env file
+// K8 — tracked env file (force-add so it appears in git ls-files despite .gitignore)
 withFixture(cleanFiles({ "frontend/.env.local": "X=1\n" }), (root) => {
+  const force = spawnSync(
+    "git",
+    ["add", "-f", "frontend/.env.local"],
+    { cwd: root, encoding: "utf8" },
+  );
+  assert.equal(force.status, 0, `git add -f failed: ${force.stderr}`);
   const res = run(root);
   assert.equal(res.status, 1);
   assert.equal(res.stderr, "esri-key-guard: tracked env file frontend/.env.local");
 });
+
+// K9 — root .env.example has a value
+withFixture(
+  cleanFiles({
+    ".env.example": "NEXT_PUBLIC_ESRI_BASEMAP_API_KEY=abc\n",
+  }),
+  (root) => {
+    const res = run(root);
+    assert.equal(res.status, 1);
+    assert.equal(
+      res.stderr,
+      "esri-key-guard: root .env.example must have NEXT_PUBLIC_ESRI_BASEMAP_API_KEY= with no value",
+    );
+  },
+);
+
+// K10 — .env not gitignored
+withFixture(cleanFiles({ ".gitignore": "node_modules/\n" }), (root) => {
+  const res = run(root);
+  assert.equal(res.status, 1);
+  assert.equal(res.stderr, "esri-key-guard: .env not gitignored");
+});
+
+// K11 — .dockerignore missing .env lines
+withFixture(
+  cleanFiles({
+    "frontend/.dockerignore": "node_modules\n.next\n",
+  }),
+  (root) => {
+    const res = run(root);
+    assert.equal(res.status, 1);
+    assert.equal(
+      res.stderr,
+      "esri-key-guard: .dockerignore must exclude .env files",
+    );
+  },
+);
+
+// K12(a) — build test wired without prior playwright install in the same job
+withFixture(
+  cleanFiles({
+    ".github/workflows/ci.yml": `jobs:
+  typecheck:
+    steps:
+      - run: npm run test:esri-key-resolver && npm run test:esri-key-build
+  e2e:
+    steps:
+      - run: npx playwright install --with-deps chromium
+`,
+  }),
+  (root) => {
+    const res = run(root);
+    assert.equal(res.status, 1);
+    assert.equal(
+      res.stderr,
+      "esri-key-guard: test:esri-key-build must run after playwright install in the same job",
+    );
+  },
+);
+
+// K12(b) — package script installs browsers
+withFixture(
+  cleanFiles({
+    "frontend/package.json": `{
+  "scripts": {
+    "test:esri-key-build": "playwright install chromium && playwright test -c playwright.buildkey.config.ts"
+  }
+}
+`,
+  }),
+  (root) => {
+    const res = run(root);
+    assert.equal(res.status, 1);
+    assert.equal(
+      res.stderr,
+      "esri-key-guard: package scripts must not install browsers",
+    );
+  },
+);
+
+// K12(c) — scripts resolve the banned Playwright CLI path (needle assembled at runtime)
+{
+  const bannedCli = ["playwright", "cli.js"].join("/");
+  withFixture(
+    cleanFiles({
+      "frontend/scripts/leak-cli.mjs": `require.resolve("${bannedCli}");\n`,
+    }),
+    (root) => {
+      const res = run(root);
+      assert.equal(res.status, 1);
+      assert.equal(
+        res.stderr,
+        `esri-key-guard: do not resolve ${bannedCli}`,
+      );
+    },
+  );
+}
 
 process.stdout.write("test-esri-key-guard.selftest: ok\n");

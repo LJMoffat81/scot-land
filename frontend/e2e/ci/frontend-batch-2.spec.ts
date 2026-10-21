@@ -240,12 +240,7 @@ for (const viewport of VIEWPORTS) {
       assertConsoleClean(gate);
     });
 
-    // QUARANTINE CI-DEDUP-1b-r2 Q1: MapLibre AbortError stack (chunk-hashed) on
-    // intentional empty-attribution aerial revert; cannot pin exact expectError
-    // text across rebuilds without loosening the gate. Owner Eng Lead; exit =
-    // gate ignore for MapLibre abort-without-reason, or app silence on remount;
-    // or fix by 2026-11-21.
-    test("T-M3 O1 missing attribution reverts @quarantine", async ({ page }) => {
+    test("T-M3 O1 missing attribution reverts", async ({ page }) => {
       test.setTimeout(180_000);
       const gate = attachConsoleGate(page);
       await injectEsriBasemapKey(page, DUMMY_ESRI_KEY);
@@ -274,6 +269,18 @@ for (const viewport of VIEWPORTS) {
       expect(Math.abs(after.lng - before.lng)).toBeLessThanOrEqual(1e-5);
       expect(Math.abs(after.lat - before.lat)).toBeLessThanOrEqual(1e-5);
       expect(Math.abs(after.zoom - before.zoom)).toBeLessThanOrEqual(0.01);
+      // Intentional aerial remount logs MapLibre AbortError (stack is
+      // content-hashed per build). Pin exact recorded text(s) for this run.
+      const aborts = gate.errors
+        .map((e) => e.text)
+        .filter((t) =>
+          t.startsWith("AbortError: signal is aborted without reason"),
+        );
+      const counts = new Map<string, number>();
+      for (const t of aborts) counts.set(t, (counts.get(t) ?? 0) + 1);
+      for (const [text, count] of counts) {
+        gate.expectError({ text, count });
+      }
       assertConsoleClean(gate);
     });
 

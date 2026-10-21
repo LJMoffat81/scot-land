@@ -1,4 +1,3 @@
-
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "./_fixtures";
 import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, openLayers, openMap, openPlaceViaCoords, stubMapCardsBackend } from "./_mapCardsHelpers";
@@ -76,16 +75,29 @@ for (const viewport of [
       assertConsoleClean(gate);
     });
 
-    // QUARANTINE CI-DEDUP-1b-r2 Q6: goBack after close lands on panel=place
-    // (history race with place= + panel=layers deep-link under quiet stubs).
-    // Owner Eng Lead; exit = history contract for panel=layers round-trip, or
-    // fix by 2026-11-21.
-    test("15+17 URL state place/panel/layers/z/c round-trip @quarantine", async ({
+    test("15+17 URL state place/panel/layers/z/c round-trip", async ({
       page,
     }) => {
       test.setTimeout(90_000);
       const gate = attachConsoleGate(page);
       await stubMapCardsBackend(page);
+      // Hold the OFM style so mapReady (and deep-link inspect) cannot race
+      // close→goBack. Layers UI boots from the URL without the style; place=
+      // stays on the query string. LIFO overrides the shared host stub.
+      await page.context().route(
+        (url) => {
+          try {
+            return new URL(url).hostname === "tiles.openfreemap.org";
+          } catch {
+            return false;
+          }
+        },
+        async () => {
+          await new Promise(() => {
+            /* pending until page close */
+          });
+        },
+      );
       await page.goto(
         "/?place=S01014567&panel=layers&layers=councils,access_services&z=8&c=-4.25,55.86",
       );

@@ -98,7 +98,12 @@ FORCE_NOT_NULL_COLUMNS = ("flags",)
 TYPED_LOAD_FIRST = {"datazones": ("zone_spine",)}
 # Manifest-listed files deliberately NOT loaded yet (owner correcting them). Skipped with a
 # warning, never validated or loaded; the file need not be present. Add an entry to hold one.
-HELD_FILES: dict[tuple[str, str], str] = {}
+HELD_FILES: dict[tuple[str, str], str] = {
+    # ARCH-1 Scotland extent loads via etl.build_scotland_extent --load-only, not this loader.
+    ("gis", "scotland_extent.27700.geojson"): (
+        "ARCH-1 extent; loaded by build_scotland_extent --load-only into ref.extent"
+    ),
+}
 # publish_level=internal files (e.g. GIS's dz_detached_plot_bands.csv) are never in the public
 # repo. They are skipped unless --include-internal, and then load into INTERNAL_SCHEMA, which
 # no public endpoint reads.

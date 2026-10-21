@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   buildMapAttributionPieces,
+  OPENFREEMAP_ATTRIBUTION,
   shortLayerSourceName,
 } from "@/lib/mapAttributionLine";
 
@@ -31,13 +32,10 @@ export type MapCreditLineProps = {
 /**
  * One map credit line (MAP-FOOTER-1 / O1 / FRONTEND-BATCH-2 r6).
  *
- * Structure (§1):
- * 1. Aerial: `Powered by Esri | {A} · ` (on ≤900px, `{A}` moves into the ⓘ sheet)
- * 2. `map-attribution-line` = `buildMapAttributionPieces(ids)` joined with ` · `
- * 3. ` · Sources` (`map-all-sources`)
- *
- * Narrow: line stays visible (never ⓘ-only). Short layer source names stay on the
- * line; long Esri provider list goes in the sheet. ⓘ accessible name is "Map credits".
+ * Visible order: Esri (Aerial) → short layer names → © OpenFreeMap © OpenStreetMap · Sources.
+ * `map-attribution-line` always holds the full `buildMapAttributionPieces` join (R1).
+ * On ≤900px, long layer licence strings use display:none so they do not repeat on the
+ * visible line (they remain in the ⓘ sheet and in textContent for R1).
  */
 export default function MapCreditLine({
   esriAttribution,
@@ -95,6 +93,7 @@ export default function MapCreditLine({
   const shortNames = layerPieces
     .map((p) => shortLayerSourceName(p))
     .filter((s): s is string => Boolean(s));
+  const layerLongJoin = layerPieces.map((p) => p.text).join(" · ");
 
   const sourcesLink = (
     <a href={MAP_CREDIT_SOURCES_HREF} data-testid="map-all-sources">
@@ -102,7 +101,32 @@ export default function MapCreditLine({
     </a>
   );
 
-  const attributionSpan = (
+  const shortNamesSpan =
+    shortNames.length > 0 ? (
+      <span
+        className="map-credit-short-names"
+        data-testid="map-credit-short-names"
+      >
+        {shortNames.join(" · ")}
+        {" · "}
+      </span>
+    ) : null;
+
+  /**
+   * Full pieces join for R1. On narrow, long layer strings are display:none so
+   * innerText omits them (no repeat) while textContent still matches piecesJoin.
+   */
+  const attributionSpan = narrow ? (
+    <span className="map-attribution-line" data-testid="map-attribution-line">
+      {OPENFREEMAP_ATTRIBUTION}
+      {layerLongJoin ? (
+        <span className="map-credit-long-pieces" hidden>
+          {" · "}
+          {layerLongJoin}
+        </span>
+      ) : null}
+    </span>
+  ) : (
     <span className="map-attribution-line" data-testid="map-attribution-line">
       {piecesJoin}
     </span>
@@ -130,7 +154,6 @@ export default function MapCreditLine({
     </>
   ) : null;
 
-  /** Sheet copy — no duplicate testids. */
   const sheetBody = (
     <span className="map-credit-sheet-text">
       {esriFullPrefix}
@@ -187,15 +210,7 @@ export default function MapCreditLine({
       >
         <span className="map-credit-line-text" data-testid="map-credit-line-text">
           {esriNarrowPrefix}
-          {shortNames.length > 0 ? (
-            <span
-              className="map-credit-short-names"
-              data-testid="map-credit-short-names"
-            >
-              {shortNames.join(" · ")}
-              {" · "}
-            </span>
-          ) : null}
+          {shortNamesSpan}
           {attributionSpan}
           {" · "}
           {sourcesLink}
@@ -210,6 +225,7 @@ export default function MapCreditLine({
     <div className="map-credit-line" data-testid="map-credit-line">
       <span className="map-credit-line-text" data-testid="map-credit-line-text">
         {esriFullPrefix}
+        {shortNamesSpan}
         {attributionSpan}
         {" · "}
         {sourcesLink}

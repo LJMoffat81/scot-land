@@ -29,6 +29,7 @@ import {
 import {
   buildMapAttributionPieces,
   shortLayerSourceName,
+  VDL_ZONE_TOTALS_ATTRIBUTION,
 } from "../../lib/mapAttributionLine";
 import {
   LAYERS_ADD2_CREDITS,
@@ -62,6 +63,9 @@ const VDL_SHORT = shortLayerSourceName({
   id: "vdl",
   text: "x",
 })!;
+
+const OSM_CREDIT = "© OpenFreeMap © OpenStreetMap";
+const LONG_VDL_MARKER = "Zones with one or two sites show no area.";
 
 type Box = { x: number; y: number; width: number; height: number };
 
@@ -147,6 +151,51 @@ async function routeEsriFixture(page: Page) {
   );
 }
 
+/**
+ * Visible credit order (Aerial + layer short name): Esri → short → OSM → Sources.
+ * Uses innerText so hidden long pieces do not participate. Each index check can fail.
+ * "Sources" uses lastIndexOf so Esri {A}'s "Sources: Esri, …" does not false-match.
+ */
+async function assertAerialVdlCreditOrder(page: Page) {
+  const credit = page.getByTestId("map-credit-line");
+  await expect(credit).toBeVisible();
+  const visible = ((await credit.innerText()) ?? "").replace(/\s+/g, " ").trim();
+  const esri = visible.indexOf("Powered by Esri");
+  const short = visible.indexOf(VDL_SHORT);
+  const osm = visible.indexOf(OSM_CREDIT);
+  const sources = visible.lastIndexOf("Sources");
+  expect(esri, `missing Powered by Esri in ${JSON.stringify(visible)}`).toBeGreaterThanOrEqual(0);
+  expect(short, `missing short ${JSON.stringify(VDL_SHORT)} in ${JSON.stringify(visible)}`).toBeGreaterThanOrEqual(0);
+  expect(osm, `missing OSM credit in ${JSON.stringify(visible)}`).toBeGreaterThanOrEqual(0);
+  expect(sources, `missing Sources in ${JSON.stringify(visible)}`).toBeGreaterThanOrEqual(0);
+  expect(short, `short must follow Esri`).toBeGreaterThan(esri);
+  expect(osm, `OSM must follow short`).toBeGreaterThan(short);
+  expect(sources, `Sources must follow OSM`).toBeGreaterThan(osm);
+  await expect(page.getByTestId("map-all-sources")).toHaveText("Sources");
+}
+
+async function enableAerialWithVdl(page: Page) {
+  await injectEsriBasemapKey(page, DUMMY_ESRI_KEY);
+  await stubMapCardsBackend(page);
+  await routeEsriFixture(page);
+  await openMap(page, "/?layers=vdl&z=12&c=-4.25,55.86");
+  await waitForMap(page);
+  await expect(page.getByTestId("basemap-switcher")).toBeVisible({
+    timeout: 15_000,
+  });
+  await page.getByTestId("basemap-switcher").click();
+  await expect(page.getByTestId("basemap-switcher")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+    { timeout: 30_000 },
+  );
+  await expect
+    .poll(async () => page.getByTestId("map-credit-line").innerText(), {
+      timeout: 30_000,
+    })
+    .toContain("Powered by Esri");
+}
+
 for (const viewport of VIEWPORTS) {
   test.describe(`FRONTEND-BATCH-2 r6 ${viewport.width}x${viewport.height}`, () => {
     test.use({ viewport });
@@ -185,6 +234,9 @@ for (const viewport of VIEWPORTS) {
       expect(inner).toContain("Sources");
       // Short layer source name visible without a click (can fail).
       expect(inner).toContain(VDL_SHORT);
+      // Long licence text must not repeat on the visible narrow line.
+      expect(inner).not.toContain(LONG_VDL_MARKER);
+      expect(VDL_ZONE_TOTALS_ATTRIBUTION).toContain(LONG_VDL_MARKER);
       await expect(
         page.getByRole("button", { name: "Map credits" }),
       ).toBeVisible();
@@ -193,23 +245,31 @@ for (const viewport of VIEWPORTS) {
         "Map credits",
       );
 
-      await injectEsriBasemapKey(page, DUMMY_ESRI_KEY);
-      await routeEsriFixture(page);
-      await openMap(page, "/?layers=vdl&z=12&c=-4.25,55.86");
-      await waitForMap(page);
-      await expect(page.getByTestId("basemap-switcher")).toBeVisible({
-        timeout: 15_000,
-      });
-      await page.getByTestId("basemap-switcher").click();
-      await expect(page.getByTestId("basemap-switcher")).toHaveAttribute(
-        "aria-pressed",
-        "true",
-        { timeout: 30_000 },
-      );
+      await enableAerialWithVdl(page);
+      await assertAerialVdlCreditOrder(page);
       const aerialInner = await page.getByTestId("map-credit-line").innerText();
-      expect(aerialInner).toContain("Powered by Esri");
-      expect(aerialInner).toContain("© OpenStreetMap");
-      expect(aerialInner).toContain("Sources");
+      expect(aerialInner).not.toContain(LONG_VDL_MARKER);
+      assertConsoleClean(gate);
+    });
+
+    test("R2b Aerial+vdl credit order (Esri → short → OSM → Sources)", async ({
+      page,
+    }) => {
+      test.setTimeout(180_000);
+      const gate = attachConsoleGate(page);
+      await enableAerialWithVdl(page);
+      await assertAerialVdlCreditOrder(page);
+      // Short name must stay visible without opening ⓘ (can fail).
+      await expect(page.getByTestId("map-credit-short-names")).toContainText(
+        VDL_SHORT,
+      );
+      if (viewport.width <= 900) {
+        const visible = await page.getByTestId("map-credit-line").innerText();
+        expect(visible).not.toContain(LONG_VDL_MARKER);
+        await expect(
+          page.getByRole("button", { name: "Map credits" }),
+        ).toHaveAttribute("aria-label", "Map credits");
+      }
       assertConsoleClean(gate);
     });
 
@@ -249,7 +309,6 @@ for (const viewport of VIEWPORTS) {
           document.querySelector(".app-shell")?.classList.add("tools-open");
         }, detent);
         if (detent === "full" && narrow) {
-          // Full sheet hides the credit line on ≤899px (CSS port).
           await expect(credit).toBeHidden();
         } else if (await credit.isVisible().catch(() => false)) {
           const slot = page.getByTestId("map-panel-slot");
@@ -297,9 +356,12 @@ for (const viewport of VIEWPORTS) {
       const text = ((await line.textContent()) ?? "").replace(/\s+/g, " ").trim();
       expect(text).toBe(expected);
 
+      const inner = await page.getByTestId("map-credit-line").innerText();
+      expect(inner).toContain(NRS_SHORT);
       if (viewport.width <= 900) {
-        const inner = await page.getByTestId("map-credit-line").innerText();
-        expect(inner).toContain(NRS_SHORT);
+        expect(inner).not.toContain(
+          "Contains National Records of Scotland data licensed",
+        );
         await expect(
           page.getByRole("button", { name: "Map credits" }),
         ).toBeVisible();

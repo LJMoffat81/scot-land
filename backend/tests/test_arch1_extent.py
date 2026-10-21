@@ -116,14 +116,38 @@ def test_x3_sha_mismatch(clean_ref, monkeypatch, tmp_path):
         load_only(dest)
 
 
+def test_x3b_missing_manifest_row(clean_ref, monkeypatch, tmp_path):
+    """Valid GeoJSON with no manifest row must fail closed (B1)."""
+    monkeypatch.setenv("ARCH1_TEST_DSN", _dsn())
+    src = FIXTURES / "extent_tiny.27700.geojson"
+    dest = tmp_path / "scotland_extent.27700.geojson"
+    dest.write_bytes(src.read_bytes())
+    # Manifest exists but has no row for this file (or is absent).
+    (tmp_path / "manifest.csv").write_text(
+        "file,sha256\nother.geojson," + ("ab" * 32) + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        "etl.build_scotland_extent.MANIFEST_PATH", tmp_path / "manifest.csv"
+    )
+    with pytest.raises(ExtentError, match=r"CLIP: extent sha256 mismatch"):
+        load_only(dest)
+
+
 def test_x4_invalid_zone_no_repair(clean_ref, monkeypatch, tmp_path):
     monkeypatch.setenv("ARCH1_TEST_DSN", _dsn())
     src = FIXTURES / "invalid_bowtie.geojson"
     dest = tmp_path / "bad.geojson"
-    dest.write_bytes(src.read_bytes())
-    # No manifest row → sha check skipped; validity must still fail without make_valid.
+    body = src.read_bytes()
+    dest.write_bytes(body)
+    sha = hashlib.sha256(body).hexdigest()
+    # Real manifest row so sha check passes and validity still fails (no make_valid).
+    (tmp_path / "manifest.csv").write_text(
+        f"file,sha256\nbad.geojson,{sha}\n",
+        encoding="utf-8",
+    )
     monkeypatch.setattr(
-        "etl.build_scotland_extent.MANIFEST_PATH", tmp_path / "missing.csv"
+        "etl.build_scotland_extent.MANIFEST_PATH", tmp_path / "manifest.csv"
     )
     with pytest.raises(
         ExtentError, match=r"CLIP: zone land invalid: Self-intersection"

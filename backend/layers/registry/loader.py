@@ -66,16 +66,17 @@ def _validate_entry(
         raise RegistryError(
             f"REGISTRY: {entry_id}: $.id: must equal file name {entry_id!r}"
         )
+    # clip:none is only allowed with serve.mode raster — raise before schema so
+    # the message names $.clip (not the if/then serve.mode const failure).
+    if data.get("clip") == "none" and (data.get("serve") or {}).get("mode") != "raster":
+        raise RegistryError(
+            f"REGISTRY: {entry_id}: $.clip: 'none' is only allowed with serve.mode raster"
+        )
     try:
         validator.validate(data)
     except ValidationError as exc:
         path = _format_path(list(exc.absolute_path))
         raise RegistryError(f"REGISTRY: {entry_id}: {path}: {exc.message}") from exc
-    # clip:none is only allowed with serve.mode raster (schema if/then + explicit).
-    if data.get("clip") == "none" and (data.get("serve") or {}).get("mode") != "raster":
-        raise RegistryError(
-            f"REGISTRY: {entry_id}: $.clip: 'none' is only allowed with serve.mode raster"
-        )
 
 
 def _check_lineage_refs(entries: dict[str, LayerEntry]) -> None:

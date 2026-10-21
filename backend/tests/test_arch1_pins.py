@@ -28,7 +28,7 @@ _TOKEN_LITERAL = re.compile(
     r"|(?:" + "NMPI_WFS_TOKEN" + r"=\S+)"
 )
 _INSECURE = re.compile(r"verify\s*=\s*False|(?<!\w)-k(?!\w)|--insecure")
-_BLANKET_EXCEPT = re.compile(r"except\s+Exception\s*:")
+_BLANKET_EXCEPT = re.compile(r"except\s*(Exception|BaseException)?\s*:")
 _WFS_FETCH = re.compile(
     r"msmap1\.atkinsgeospatial\.com|services-eu1\.arcgis\.com|NMPI_WFS_TOKEN\s*:"
 )

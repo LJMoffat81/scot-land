@@ -57,4 +57,5 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.execute("DROP TABLE IF EXISTS ref.unit_hierarchy")
     op.execute("DROP TABLE IF EXISTS ref.unit")
-    # Leave schemas in place; other objects may exist.
+    # Intentionally leave schemas ref/stage/layers in place — other ARCH-1
+    # objects (extent tables, staged layers) may already live there.

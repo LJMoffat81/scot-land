@@ -712,13 +712,14 @@ def load_only(geojson_path: Path) -> dict:
 
     actual = hashlib.sha256(raw).hexdigest()
     expected = _manifest_sha_for(path)
-    if expected is not None and actual != expected:
+    # Fail-closed: missing manifest row/file is the same class of error as a mismatch.
+    if expected is None or actual != expected:
         raise ExtentError("CLIP: extent sha256 mismatch")
 
     try:
         collection = json.loads(raw.decode("utf-8"))
     except json.JSONDecodeError as exc:
-        raise ExtentError(f"CLIP: extent file empty: {path}") from exc
+        raise ExtentError(f"CLIP: extent file not GeoJSON: {path}") from exc
 
     features = collection.get("features") or []
     if not features:

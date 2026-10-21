@@ -70,7 +70,10 @@ def test_r2_missing_clip(tmp_path):
     data = _base_entry()
     del data["clip"]
     _write_dir(tmp_path, {"sample": data})
-    with pytest.raises(RegistryError, match=r"REGISTRY: sample:.*clip"):
+    with pytest.raises(
+        RegistryError,
+        match=r"REGISTRY: sample: \$: 'clip' is a required property",
+    ):
         load_registry(tmp_path)
 
 
@@ -85,7 +88,11 @@ def test_r4_unknown_nested_source_field(tmp_path):
     data = _base_entry()
     data["source"] = dict(data["source"], bar="x")
     _write_dir(tmp_path, {"sample": data})
-    with pytest.raises(RegistryError, match=r"REGISTRY: sample:.*source"):
+    with pytest.raises(
+        RegistryError,
+        match=r"REGISTRY: sample: \$\.source: Additional properties are not allowed "
+        r"\('bar' was unexpected\)",
+    ):
         load_registry(tmp_path)
 
 
@@ -100,7 +107,10 @@ def test_r6_clip_none_with_geojson(tmp_path):
     data = _base_entry(clip="none")
     data["serve"]["mode"] = "geojson"
     _write_dir(tmp_path, {"sample": data})
-    with pytest.raises(RegistryError, match=r"REGISTRY: sample:"):
+    with pytest.raises(
+        RegistryError,
+        match=r"REGISTRY: sample: \$\.clip: 'none' is only allowed with serve\.mode raster",
+    ):
         load_registry(tmp_path)
 
 
@@ -129,6 +139,9 @@ def test_r9_http_url(tmp_path):
 
 
 def test_r_duplicate_id(tmp_path, monkeypatch):
+    """Duplicate-id guard: id must equal file stem, so a real two-stem collision
+    cannot pass validation. Exercise the branch by returning the same path twice.
+    """
     a = _base_entry(id="dup")
     path = tmp_path / "dup.yaml"
     path.write_text(yaml.safe_dump(a), encoding="utf-8")

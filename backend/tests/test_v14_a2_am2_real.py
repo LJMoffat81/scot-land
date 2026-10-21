@@ -5,6 +5,7 @@ Fails with V14_REAL when inputs are absent (R-COMMON / K17). No pytest.skip.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
@@ -14,10 +15,16 @@ from scripts.build_v14_primary_2023 import main as primary_main
 
 pytestmark = pytest.mark.real
 
-STORE = Path("/cursor/stores/bc-6e71cd70-dc10-4637-afcb-780b94d8b31e")
-CENSUS = STORE / "am2" / "am2_census_2023_not_scored.csv"
-REAL_B2 = Path("/workspace/b2q/specA_dryrun/b2.json")
-REAL_DRC = Path("/workspace/b2q/specA_dryrun/drc.json")
+# §10 Pass 2 stub run outputs (labelled for Methods Auditor T24).
+REAL_B2 = Path("/workspace/b2q/specA_dryrun/out_probe/b2.json")
+REAL_DRC = Path("/workspace/b2q/specA_dryrun/out_probe/drc.json")
+CENSUS = Path(
+    "/workspace/scotland-rules/v14_run_prep/am2/am2_census_2023_not_scored.csv"
+)
+# Frozen am2 census sha256 (V14-SPEC-A2b); prefix 6062e2d8.
+CENSUS_SHA256 = (
+    "6062e2d8b4ce558880e610ee60597dd6ca70853b05903e587d377fe34427e65c"
+)
 
 
 def _require_real(path: Path) -> None:
@@ -30,6 +37,9 @@ def test_t24_real_reconcile(tmp_path: Path, capsys: pytest.CaptureFixture[str]) 
     _require_real(REAL_B2)
     _require_real(REAL_DRC)
     _require_real(CENSUS)
+    census_sha = hashlib.sha256(CENSUS.read_bytes()).hexdigest()
+    assert census_sha.startswith("6062e2d8")
+    assert census_sha == CENSUS_SHA256
     primary = tmp_path / "primary_estimates_2023.json"
     builder = tmp_path / "builder_output_2023.json"
     not_scored = tmp_path / "not_scored_2023.json"

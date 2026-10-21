@@ -424,6 +424,24 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
   });
 }
 
+/** Dummy Esri key for Aerial e2e — assembled at runtime, never committed. */
+export const DUMMY_ESRI_KEY = "TEST" + "KEY" + "x".repeat(8);
+
+/**
+ * Inject an Esri basemap key for E2E_HOOKS builds (add before first navigation).
+ * Pass `null` or `""` to force the no-key path; `"   "` for whitespace-as-unset.
+ */
+export async function injectEsriBasemapKey(
+  page: Page,
+  key: string | null = DUMMY_ESRI_KEY,
+) {
+  await page.addInitScript((value) => {
+    (
+      window as unknown as { __E2E_ESRI_BASEMAP_API_KEY__?: string | null }
+    ).__E2E_ESRI_BASEMAP_API_KEY__ = value;
+  }, key);
+}
+
 export async function openMap(page: Page, path = "/") {
   await page.goto(path);
   await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });

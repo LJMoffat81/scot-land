@@ -1,12 +1,13 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test } from "@playwright/test";
 import {
   assertConsoleClean,
   attachConsoleGate,
   openMap,
+  registerOpenFreeMapFontStub,
   stubMapCardsBackend,
   waitForMap,
 } from "./_mapCardsHelpers";
+import { VDL_ZONE_TOTALS_ATTRIBUTION } from "../../lib/mapAttributionLine";
 
 registerOpenFreeMapFontStub();
 
@@ -68,14 +69,37 @@ for (const viewport of [
         await expect(page.getByText(label, { exact: true })).toHaveCount(0);
       }
 
-      const line = page.getByTestId("map-attribution-line");
-      await expect(line).toContainText(
+      const credit = page.getByTestId("map-credit-line");
+      await expect(credit).toBeVisible();
+      await expect(credit).toContainText("OpenFreeMap");
+      await expect(page.locator(".maplibregl-ctrl-attrib")).toHaveCount(0);
+      await expect(page.getByTestId("map-attribution-line")).toHaveCount(0);
+      for (const phrase of STALE) {
+        await expect(credit).not.toContainText(phrase);
+        await expect(page.locator("body")).not.toContainText(phrase);
+      }
+      // Approved VDL zone-totals credit is reached via Sources (MAP-FOOTER-1).
+      const sources = page.getByTestId("map-credit-sources");
+      if ((await sources.count()) > 0) {
+        await sources.click();
+      } else {
+        await page.getByTestId("map-credit-info").click();
+        await expect(page.getByTestId("map-credit-sheet")).toBeVisible();
+        await page
+          .getByTestId("map-credit-sheet")
+          .getByTestId("map-credit-sources")
+          .click();
+      }
+      await expect(page).toHaveURL(/\/data#licences/);
+      await expect(page.getByText(/Vacant and Derelict/i).first()).toBeVisible({
+        timeout: 30_000,
+      });
+      expect(VDL_ZONE_TOTALS_ATTRIBUTION).toContain(
         "Zones with one or two sites show no area.",
       );
-      const mapAttrib = page.locator(".maplibregl-ctrl-attrib");
       for (const phrase of STALE) {
-        await expect(line).not.toContainText(phrase);
-        await expect(mapAttrib).not.toContainText(phrase);
+        await expect(page.locator("body")).not.toContainText(phrase);
+        expect(VDL_ZONE_TOTALS_ATTRIBUTION).not.toContain(phrase);
       }
 
       assertConsoleClean(gate);

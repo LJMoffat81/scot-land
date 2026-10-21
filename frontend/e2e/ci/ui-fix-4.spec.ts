@@ -1,4 +1,7 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import {
+  injectEsriBasemapKey,
+  registerOpenFreeMapFontStub,
+} from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
@@ -129,6 +132,11 @@ async function waitMap(page: Page) {
   await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
 }
 
+async function gotoMap(page: Page, path = "/") {
+  await injectEsriBasemapKey(page);
+  await page.goto(path);
+}
+
 function boxesOverlap(
   a: { x: number; y: number; width: number; height: number },
   b: { x: number; y: number; width: number; height: number },
@@ -153,22 +161,22 @@ test.describe("UI-FIX-4 390", () => {
   }) => {
     test.setTimeout(120_000);
     await stubMap(page);
-    await page.goto("/");
+    await gotoMap(page, "/");
     await waitMap(page);
 
-    const detailed = page.getByTestId("basemap-switcher");
+    const aerial = page.getByTestId("basemap-switcher");
     const strip = page.locator(".research-banner-map");
-    await expect(detailed).toBeVisible();
+    await expect(aerial).toBeVisible();
     await expect(strip).toBeVisible();
-    const detailedBox = await detailed.boundingBox();
+    const aerialBox = await aerial.boundingBox();
     const stripBox = await strip.boundingBox();
-    expect(detailedBox).toBeTruthy();
+    expect(aerialBox).toBeTruthy();
     expect(stripBox).toBeTruthy();
-    expect(detailedBox!.width).toBeGreaterThan(0);
-    expect(detailedBox!.height).toBeGreaterThan(0);
+    expect(aerialBox!.width).toBeGreaterThan(0);
+    expect(aerialBox!.height).toBeGreaterThan(0);
     expect(stripBox!.width).toBeGreaterThan(0);
     expect(stripBox!.height).toBeGreaterThan(0);
-    expect(boxesOverlap(detailedBox!, stripBox!)).toBe(false);
+    expect(boxesOverlap(aerialBox!, stripBox!)).toBe(false);
 
     await openLayers(page);
     const pad = await page.locator(".layers-panel").evaluate((el) => {
@@ -293,7 +301,9 @@ test.describe("UI-FIX-4 390", () => {
     await expect(page.getByTestId("research-banner")).toContainText(
       "Research estimate",
     );
-    await expect(page.getByTestId("map-footer-line")).toContainText(
+    await expect(page.getByTestId("map-footer-line")).toHaveCount(0);
+    await expect(page.getByTestId("map-credit-info")).toBeVisible();
+    await expect(page.getByTestId("map-credit-line")).not.toContainText(
       "Research estimate",
     );
   });
@@ -301,7 +311,7 @@ test.describe("UI-FIX-4 390", () => {
   test("panel=place reload has a heading", async ({ page }) => {
     test.setTimeout(90_000);
     await stubMap(page);
-    await page.goto("/?panel=place&c=-3.18830,55.95330");
+    await gotoMap(page, "/?panel=place&c=-3.18830,55.95330");
     await waitMap(page);
     const heading = page.getByTestId("place-card-place");
     await expect(heading).toBeVisible({ timeout: 30_000 });
@@ -318,7 +328,7 @@ test.describe("UI-FIX-4 1280", () => {
   }) => {
     test.setTimeout(120_000);
     await stubMap(page);
-    await page.goto("/");
+    await gotoMap(page, "/");
     await waitMap(page);
     await page.locator("#place-query").fill("55.95330, -3.18830");
     await page.locator(".hud-search-go").click();
@@ -342,8 +352,8 @@ test.describe("UI-FIX-4 1280", () => {
       };
       return {
         zoom: pick(".maplibregl-ctrl-zoom-in"),
-        detailed: pick('[data-testid="basemap-switcher"]'),
-        attrib: pick(".maplibregl-ctrl-attrib-button"),
+        aerial: pick('[data-testid="basemap-switcher"]'),
+        credit: pick('[data-testid="map-credit-line"]'),
       };
     });
 
@@ -365,11 +375,11 @@ test.describe("UI-FIX-4 1280", () => {
       };
       return {
         zoom: pick(".maplibregl-ctrl-zoom-in"),
-        detailed: pick('[data-testid="basemap-switcher"]'),
-        attrib: pick(".maplibregl-ctrl-attrib-button"),
+        aerial: pick('[data-testid="basemap-switcher"]'),
+        credit: pick('[data-testid="map-credit-line"]'),
       };
     });
-    for (const key of ["zoom", "detailed", "attrib"] as const) {
+    for (const key of ["zoom", "aerial", "credit"] as const) {
       const a = before[key];
       const b = after[key];
       expect(a, key).toBeTruthy();

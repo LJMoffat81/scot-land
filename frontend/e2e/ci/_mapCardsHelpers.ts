@@ -254,6 +254,13 @@ export function filterNoise(errors: string[]): string[] {
     ) {
       return false;
     }
+    // Esri Aerial negative paths (MC6) — blocked style/tiles are expected.
+    if (
+      /arcgis\.com/i.test(text) &&
+      /401|403|498|499|5\d\d|Failed to load resource|invalid|JSON/i.test(text)
+    ) {
+      return false;
+    }
     // MapLibre sprite/glyph CDN failures (no app stack).
     if (/sprite|glyph/i.test(text) && /failed|error|load|404|503/i.test(text)) {
       return false;

@@ -1,4 +1,7 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import {
+  injectEsriBasemapKey,
+  registerOpenFreeMapFontStub,
+} from "./_mapCardsHelpers";
 import {
   expect,
   test,
@@ -182,6 +185,7 @@ async function stubMapChrome(page: Page) {
 }
 
 async function openMap(page: Page) {
+  await injectEsriBasemapKey(page);
   await page.goto("/");
   await page.locator(".maplibregl-canvas").waitFor();
   await page.locator(".maplibregl-ctrl-zoom-in").waitFor();
@@ -203,9 +207,9 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
     await stubMapChrome(page);
     await openMap(page);
 
-    const attrib = page.locator(".maplibregl-ctrl-attrib-button");
-    await expect(attrib).toBeVisible({ timeout: 30_000 });
-    await assertMinHit(attrib, "Toggle attribution");
+    const creditInfo = page.getByTestId("map-credit-info");
+    await expect(creditInfo).toBeVisible({ timeout: 30_000 });
+    await assertMinHit(creditInfo, "Map credits and sources");
 
     await page.locator("#place-query").fill("EH1");
     const clear = page.getByRole("button", { name: "Clear search" });

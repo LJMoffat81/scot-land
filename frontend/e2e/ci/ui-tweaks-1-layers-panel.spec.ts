@@ -310,30 +310,25 @@ for (const viewport of [
           }).toPass({ timeout: 10_000 });
 
           const freshDrawer = await boxOf(drawer, "Layers drawer aligned");
-          const footer = page.getByTestId("map-stamp-footer");
-          const footerBox = await boxOf(footer, "map footer");
-          const attrib = page.locator(".maplibregl-ctrl-attrib");
-          let attribH = 28;
-          if ((await attrib.count()) > 0 && (await attrib.first().isVisible())) {
-            const a = await attrib.first().boundingBox();
-            if (a) attribH = Math.max(attribH, a.height);
-          }
-          const bottomAllowance = footerBox.height + attribH;
+          const credit = page.getByTestId("map-credit-line");
+          const creditBox = await boxOf(credit, "map credit line");
+          let creditH = creditBox.height;
+          const bottomAllowance = creditH + 8;
           expect(
             freshDrawer.y + freshDrawer.height,
-            "panel reaches bottom inset / attribution",
+            "panel reaches bottom inset / credit line",
           ).toBeGreaterThanOrEqual(viewport.height - bottomAllowance - 2);
         } else {
           // Mobile full sheet: bottom-anchored; fills most of the viewport.
           expect(drawerBox.y, "sheet below Layers button rest y").toBeGreaterThan(
             btnBox.y - 8,
           );
-          const footer = page.getByTestId("map-stamp-footer");
-          const footerBox = await boxOf(footer, "map footer");
+          const credit = page.getByTestId("map-credit-line");
+          const creditBox = await boxOf(credit, "map credit line");
           expect(
             drawerBox.y + drawerBox.height,
-            "sheet reaches above footer",
-          ).toBeGreaterThanOrEqual(viewport.height - footerBox.height - 4);
+            "sheet reaches above credit line",
+          ).toBeGreaterThanOrEqual(viewport.height - creditBox.height - 4);
           expect(
             drawerBox.height,
             "sheet ~full detent",

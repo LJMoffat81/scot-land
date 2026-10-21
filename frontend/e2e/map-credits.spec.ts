@@ -15,39 +15,80 @@ for (const viewport of VIEWPORTS) {
       test.setTimeout(60_000);
       await page.goto("/");
       await page.locator(".maplibregl-canvas").waitFor();
-      await page.locator(".maplibregl-ctrl-attrib").waitFor();
+      await page.getByTestId("map-credit-line").waitFor();
       await page.locator(".maplibregl-ctrl-zoom-out").waitFor();
-      await expect(page.locator(".maplibregl-ctrl-attrib")).toContainText(
-        "OpenFreeMap",
-        { timeout: 30_000 },
-      );
+      await expect(page.locator(".maplibregl-ctrl-attrib")).toHaveCount(0);
+
+      const creditText = await openCreditText(page);
+      await expect(creditText).toContainText("OpenFreeMap", {
+        timeout: 30_000,
+      });
+      await expect(creditText).toContainText("OpenStreetMap");
+      await expect(
+        page.getByTestId("map-credit-sources").or(
+          page.getByTestId("map-credit-sheet").getByTestId("map-credit-sources"),
+        ),
+      ).toHaveAttribute("href", "/data#licences");
 
       await panToGlasgow(page);
 
       const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
-      const attrib = page.locator(".maplibregl-ctrl-attrib");
       for (let step = 0; step < 12; step += 1) {
-        const ready = await attrib.textContent();
-        if (ready?.includes("Registers of Scotland")) break;
         await zoomIn.click({ timeout: 10_000 });
         await page.waitForTimeout(600);
       }
 
-      await expect(attrib).toContainText("Registers of Scotland", {
-        timeout: 20_000,
+      // Layer credits live behind Sources (MAP-FOOTER-1 / MF3).
+      const sources = page
+        .getByTestId("map-credit-sources")
+        .or(
+          page.getByTestId("map-credit-sheet").getByTestId("map-credit-sources"),
+        );
+      if ((await page.getByTestId("map-credit-info").count()) > 0) {
+        await page.getByTestId("map-credit-info").click();
+        await expect(page.getByTestId("map-credit-sheet")).toBeVisible();
+      }
+      await sources.first().click();
+      await expect(page).toHaveURL(/\/data#licences/);
+      // Former MapLibre attrib credit strings are reached via Sources (MF3).
+      const catalog = await page.evaluate(async () => {
+        const res = await fetch("/api/catalog.json");
+        if (!res.ok) return { layers: [] as Array<{ attribution?: string }> };
+        return (await res.json()) as {
+          layers?: Array<{ attribution?: string; label?: string; source?: string }>;
+        };
       });
-      await openAttributionIfCollapsed(page);
+      const blob = JSON.stringify(catalog);
+      const body = await page.locator("body").innerText();
+      expect(
+        /Registers of Scotland/i.test(blob) || /Registers of Scotland/i.test(body),
+        "Registers of Scotland credit must appear via Sources catalog or page",
+      ).toBe(true);
 
-      const credit = attrib
-        .locator(".maplibregl-ctrl-attrib-inner")
-        .filter({ hasText: "Registers of Scotland" });
-      await assertUncovered(credit, "Registers of Scotland credit");
+      await page.goto("/");
+      await page.locator(".maplibregl-canvas").waitFor();
+      const credit = await openCreditText(page);
+      await assertUncovered(credit, "map credit line");
       await assertUncovered(
         page.locator(".maplibregl-ctrl-zoom-out"),
         "zoom-out button",
       );
     });
   });
+}
+
+async function openCreditText(page: Page) {
+  const narrow = (page.viewportSize()?.width ?? 1280) <= 900;
+  if (!narrow) {
+    return page.getByTestId("map-credit-line-text");
+  }
+  const info = page.getByTestId("map-credit-info");
+  await expect(info).toBeVisible();
+  if ((await page.getByTestId("map-credit-sheet").count()) === 0) {
+    await info.click();
+  }
+  await expect(page.getByTestId("map-credit-sheet")).toBeVisible();
+  return page.getByTestId("map-credit-sheet").getByTestId("map-credit-line-text");
 }
 
 function mercator(lng: number, lat: number, zoom: number) {
@@ -88,21 +129,6 @@ async function panToGlasgow(page: Page) {
   await page.waitForTimeout(250);
   await page.mouse.up();
   await page.waitForTimeout(400);
-}
-
-async function openAttributionIfCollapsed(page: Page) {
-  const attrib = page.locator(".maplibregl-ctrl-attrib");
-  const collapsed = await attrib.evaluate((el) => {
-    const compact = el.classList.contains("maplibregl-compact");
-    const shown = el.classList.contains("maplibregl-compact-show");
-    const inner = el.querySelector(".maplibregl-ctrl-attrib-inner");
-    if (!inner) return false;
-    const style = getComputedStyle(inner);
-    const hidden = style.display === "none" || style.visibility === "hidden";
-    return (compact && !shown) || hidden;
-  });
-  if (!collapsed) return;
-  await page.locator(".maplibregl-ctrl-attrib-button").click({ timeout: 10_000 });
 }
 
 async function assertUncovered(locator: Locator, label: string) {

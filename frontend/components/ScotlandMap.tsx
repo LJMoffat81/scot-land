@@ -1139,15 +1139,15 @@ export default function ScotlandMap() {
       }
       shell.style.setProperty("--layers-panel-top", `${top}px`);
 
-      // Bottom inset: attribution / safe gap above the map-stage floor, plus
-      // any shell chrome below the stage (stamp footer). Zoom controls shift
-      // sideways while the drawer is open — do not reserve their full stack.
+      // Bottom inset: MapCreditLine / safe gap above the map-stage floor.
+      // Zoom controls shift sideways while the drawer is open — do not reserve
+      // their full stack.
       let gapAboveStageFloor = Math.round(1.75 * 16);
-      const attribBtn = stage.querySelector(
-        ".maplibregl-ctrl-attrib",
+      const creditLine = stage.querySelector(
+        "[data-testid='map-credit-line']",
       ) as HTMLElement | null;
-      if (attribBtn && attribBtn.offsetParent !== null) {
-        const a = attribBtn.getBoundingClientRect();
+      if (creditLine && creditLine.offsetParent !== null) {
+        const a = creditLine.getBoundingClientRect();
         const fromFloor = Math.round(stageRect.bottom - a.bottom);
         gapAboveStageFloor = Math.max(gapAboveStageFloor, fromFloor + 8);
       }

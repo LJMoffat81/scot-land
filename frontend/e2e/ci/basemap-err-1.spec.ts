@@ -1,33 +1,93 @@
 import {
+  CI_TINY_PNG,
+  EMPTY_GLYPH_PBF,
   ensureLayersGroupOpen,
+  injectEsriBasemapKey,
   openLayers,
   registerOpenFreeMapFontStub,
   stubMapCardsBackend,
 } from "./_mapCardsHelpers";
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 registerOpenFreeMapFontStub();
 
 /**
  * BASEMAP-ERR-1 — a failed style request shows the notice, the Data Zone
  * switch still responds, and the console gate records the failure.
- * A later style.load hides the notice. The error is asserted, not filtered.
+ * A later Aerial style.load hides the notice. The error is asserted, not filtered.
  */
 
 const NOTICE =
   "The background map didn't load. The land layers still work. Try reloading the page.";
 
-const LIBERTY_STYLE = JSON.stringify({
-  version: 8,
-  sources: {},
-  layers: [
-    {
-      id: "background",
-      type: "background",
-      paint: { "background-color": "#e7eef3" },
-    },
-  ],
-});
+const ESRI_STYLE_URL =
+  "https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/imagery";
+
+const FIXTURE_PATH = join(
+  process.cwd(),
+  "e2e",
+  "fixtures",
+  "esri-imagery-style.json",
+);
+
+type EsriStyle = {
+  sprite: string;
+  glyphs: string;
+  sources: Record<
+    string,
+    { tiles?: string[]; url?: string; attribution?: string; type?: string }
+  >;
+};
+
+function loadEsriFixture(): EsriStyle {
+  if (!existsSync(FIXTURE_PATH)) {
+    throw new Error("fixture missing: esri-imagery-style.json");
+  }
+  return JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as EsriStyle;
+}
+
+async function routeEsriFixture(page: Page, style: EsriStyle) {
+  const spriteJson = `${style.sprite}.json`;
+  const spritePng = `${style.sprite}.png`;
+
+  await page.route(`${ESRI_STYLE_URL}**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(style),
+    });
+  });
+  await page.route(spriteJson, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ image: "root.png", width: 1, height: 1 }),
+    });
+  });
+  await page.route(spritePng, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: CI_TINY_PNG,
+    });
+  });
+  await page.route("**/basemaps-api.arcgis.com/**/*.pbf**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/x-protobuf",
+      body: EMPTY_GLYPH_PBF,
+    });
+  });
+  await page.route("**/ibasemaps-api.arcgis.com/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: CI_TINY_PNG,
+    });
+  });
+}
 
 test.describe("BASEMAP-ERR-1", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
@@ -51,13 +111,8 @@ test.describe("BASEMAP-ERR-1", () => {
         body: JSON.stringify({ error: "style failed" }),
       });
     });
-    await page.route("**/tiles.openfreemap.org/styles/liberty**", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: LIBERTY_STYLE,
-      });
-    });
+    await injectEsriBasemapKey(page);
+    await routeEsriFixture(page, loadEsriFixture());
     await stubMapCardsBackend(page);
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
@@ -83,7 +138,10 @@ test.describe("BASEMAP-ERR-1", () => {
 
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("layers-panel")).toBeHidden();
-    await page.getByTestId("basemap-option-detailed").click();
+    const toggle = page.getByTestId("basemap-switcher");
+    await expect(toggle).toBeVisible();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
     await expect(notice).toBeHidden({ timeout: 20_000 });
   });
 });

@@ -35,7 +35,7 @@ export const GRID3_LAYER_HIGHLIGHT_FILL = "grid3-highlight-fill";
 export const GRID3_LAYER_HIGHLIGHT_LINE = "grid3-highlight-line";
 export const GRID3_LAYER_HIGHLIGHT_HALO = "grid3-highlight-halo";
 
-/** Faint grid lines — navy token at 18% (Positron / Liberty). */
+/** Faint grid lines — navy token at 18% (Positron / Aerial). */
 export const GRID3_LINE_COLOR = "#0b2340";
 export const GRID3_LINE_OPACITY = 0.18;
 export const GRID3_LINE_WIDTH = 1;

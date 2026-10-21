@@ -1,6 +1,7 @@
 import {
   assertConsoleClean,
   attachConsoleGate,
+  injectEsriBasemapKey,
   openMap,
   registerOpenFreeMapFontStub,
   stubMapCardsBackend,
@@ -153,41 +154,37 @@ for (const viewport of [
 test.describe("UI-BATCH-4 mobile style label", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("style button shows Detailed or Simple", async ({ page }) => {
+  test("style button is Aerial toggle (no Detailed/Simple label)", async ({
+    page,
+  }) => {
     test.setTimeout(90_000);
+    await injectEsriBasemapKey(page);
     await stubMapCardsBackend(page);
     await openMap(page);
-    const toggle = page.getByTestId("basemap-toggle-narrow");
+    const toggle = page.getByTestId("basemap-switcher");
     await expect(toggle).toBeVisible();
-    const label = ((await toggle.innerText()) ?? "").trim();
-    expect(["Simple", "Detailed"]).toContain(label);
+    await expect(toggle).toHaveAttribute("aria-label", "Aerial map");
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await expect(toggle).not.toContainText("Detailed");
+    await expect(toggle).not.toContainText("Simple");
+    await expect(toggle).not.toContainText("Aerial");
+    await expect(page.getByTestId("basemap-toggle-narrow")).toHaveCount(0);
     const box = await toggle.boundingBox();
     expect(box).toBeTruthy();
     expect(box!.width).toBeGreaterThanOrEqual(44);
     expect(box!.height).toBeGreaterThanOrEqual(44);
-    const textBox = await toggle.evaluate((el) => {
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      const rect = range.getBoundingClientRect();
-      const host = el.getBoundingClientRect();
-      return {
-        width: rect.width,
-        top: rect.top,
-        bottom: rect.bottom,
-        left: rect.left,
-        right: rect.right,
-        hostTop: host.top,
-        hostBottom: host.bottom,
-        hostLeft: host.left,
-        hostRight: host.right,
-      };
-    });
-    expect(textBox.width).toBeGreaterThan(0);
-    expect(textBox.left).toBeGreaterThanOrEqual(textBox.hostLeft - 1);
-    expect(textBox.right).toBeLessThanOrEqual(textBox.hostRight + 1);
-    expect(textBox.top).toBeGreaterThanOrEqual(0);
-    expect(textBox.bottom).toBeLessThanOrEqual(844);
-    await expect(toggle.locator("svg")).toHaveCount(0);
+    const face = toggle.locator(".basemap-switcher-face");
+    await expect(face).toBeVisible();
+    const faceBox = await face.boundingBox();
+    expect(faceBox).toBeTruthy();
+    expect(faceBox!.width).toBeGreaterThan(0);
+    expect(faceBox!.height).toBeGreaterThan(0);
+    expect(faceBox!.x).toBeGreaterThanOrEqual(box!.x - 1);
+    expect(faceBox!.x + faceBox!.width).toBeLessThanOrEqual(
+      box!.x + box!.width + 1,
+    );
+    expect(faceBox!.y).toBeGreaterThanOrEqual(0);
+    expect(faceBox!.y + faceBox!.height).toBeLessThanOrEqual(844);
   });
 });
 

@@ -1,4 +1,7 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import {
+  injectEsriBasemapKey,
+  registerOpenFreeMapFontStub,
+} from "./_mapCardsHelpers";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
@@ -8,7 +11,7 @@ registerOpenFreeMapFontStub();
  * UI-FIX-2 — mobile place-card layout after #173.
  * 390×844 and 1280×800. Opens a card by postcode/place search.
  * Asserts real boxes (0 px intersection) and counts, so a missing
- * control or a repeat of the attribution (i) fails.
+ * control or a repeat of the map credit (i) fails.
  */
 
 const PLACES = ["EH1 1YZ", "Inverness", "IV27 4HN"] as const;
@@ -179,9 +182,20 @@ async function stubMap(page: Page) {
 }
 
 async function openMap(page: Page) {
+  await injectEsriBasemapKey(page);
   await page.goto("/");
   await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
-  await expect(page.locator(".maplibregl-ctrl-attrib-button")).toBeVisible({
+  const narrow = (page.viewportSize()?.width ?? 1280) <= 900;
+  if (narrow) {
+    await expect(page.getByTestId("map-credit-info")).toBeVisible({
+      timeout: 30_000,
+    });
+  } else {
+    await expect(page.getByTestId("map-credit-line-text")).toBeVisible({
+      timeout: 30_000,
+    });
+  }
+  await expect(page.getByTestId("basemap-switcher")).toBeVisible({
     timeout: 30_000,
   });
 }
@@ -227,20 +241,27 @@ for (const viewport of [
       for (const [index, query] of PLACES.entries()) {
         await openCardBySearch(page, query);
 
+        const narrow = viewport.width <= 900;
+        if (narrow) {
+          await expect(
+            page.getByTestId("map-credit-info"),
+            `credit (i) after ${query}`,
+          ).toHaveCount(1);
+        } else {
+          await expect(
+            page.getByTestId("map-credit-line"),
+            `credit line after ${query}`,
+          ).toHaveCount(1);
+        }
         await expect(
-          page.locator(".maplibregl-ctrl-attrib-button"),
-          `attribution toggles after ${query}`,
-        ).toHaveCount(1);
-
-        const tiled = await page
-          .locator(".maplibregl-ctrl-attrib-button")
-          .evaluate((el) => getComputedStyle(el).backgroundRepeat);
-        expect(tiled, `attribution (i) tiles after ${query}`).toBe("no-repeat");
+          page.locator(".maplibregl-ctrl-attrib"),
+          `no MapLibre attrib after ${query}`,
+        ).toHaveCount(0);
 
         if (index >= 1) {
           await expect(
-            page.locator(".maplibregl-ctrl-attrib"),
-            `attribution controls after second card (${query})`,
+            page.getByTestId("map-credit-line"),
+            `credit control after second card (${query})`,
           ).toHaveCount(1);
         }
 
@@ -253,22 +274,14 @@ for (const viewport of [
           `centre wording absent after ${query}`,
         ).toHaveCount(0);
         await assertClear(
-          page.getByTestId(
-            viewport.width <= 900
-              ? "basemap-toggle-narrow"
-              : "basemap-option-detailed",
-          ),
+          page.getByTestId("basemap-switcher"),
           page.locator(".hud-search"),
-          `Detailed vs search (${query})`,
+          `Aerial toggle vs search (${query})`,
         );
         await assertClear(
-          page.getByTestId(
-            viewport.width <= 900
-              ? "basemap-toggle-narrow"
-              : "basemap-option-detailed",
-          ),
+          page.getByTestId("basemap-switcher"),
           page.locator(".hud-top"),
-          `Detailed vs top bar (${query})`,
+          `Aerial toggle vs top bar (${query})`,
         );
 
         expect(

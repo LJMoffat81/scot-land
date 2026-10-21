@@ -1,10 +1,14 @@
-import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
+import {
+  injectEsriBasemapKey,
+  registerOpenFreeMapFontStub,
+} from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
 
 async function openMap(page: Page) {
+  await injectEsriBasemapKey(page);
   await page.goto("/");
   await page.locator(".maplibregl-canvas").waitFor();
   await page.locator("#place-query").waitFor();
@@ -95,10 +99,11 @@ test.describe("squares shell mobile", () => {
     const box = await search.boundingBox();
     expect(box).toBeTruthy();
     expect(box!.width).toBeGreaterThan(200);
-    const basemap = page.getByTestId("basemap-toggle-narrow");
+    const basemap = page.getByTestId("basemap-switcher");
     await expect(basemap).toBeVisible();
-    await expect(basemap).toHaveAccessibleName("Detailed");
-    await expect(basemap).toHaveText("Detailed");
+    await expect(basemap).toHaveAccessibleName("Aerial map");
+    await expect(basemap).toHaveAttribute("aria-pressed", "false");
+    await expect(basemap).not.toContainText("Detailed");
     await expect(basemap).not.toContainText(/Satellite/i);
     await expect(
       page.getByRole("button", { name: "Layers", exact: true }),

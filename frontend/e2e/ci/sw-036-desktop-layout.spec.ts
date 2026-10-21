@@ -1,4 +1,9 @@
-import { registerOpenFreeMapFontStub, stubLayersCouncilsQuiet, stubCiTileDataQuiet } from "./_mapCardsHelpers";
+import {
+  injectEsriBasemapKey,
+  registerOpenFreeMapFontStub,
+  stubLayersCouncilsQuiet,
+  stubCiTileDataQuiet,
+} from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
@@ -167,6 +172,7 @@ test.describe("MAP-CARDS desktop one-panel layout 1280", () => {
   }) => {
     test.setTimeout(120_000);
 
+    await injectEsriBasemapKey(page);
     await page.goto("/");
     await page.locator(".maplibregl-canvas").waitFor();
     await page.locator("#place-query").waitFor();

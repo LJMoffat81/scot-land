@@ -101,17 +101,19 @@ export function basemapStyleUrl(id: MapBasemapId): string {
  * style order, joined with "; ". Empty → treat as style failure (O1).
  */
 export function esriStyleAttributionText(style: {
-  sources?: Record<
-    string,
-    { attribution?: string; copyrightText?: string } | undefined
-  >;
+  sources?: Record<string, unknown> | null;
 }): string | null {
   const sources = style.sources ?? {};
   const parts: string[] = [];
   const seen = new Set<string>();
   for (const source of Object.values(sources)) {
-    if (!source) continue;
-    const raw = (source.attribution ?? source.copyrightText ?? "").trim();
+    if (!source || typeof source !== "object") continue;
+    const rec = source as { attribution?: unknown; copyrightText?: unknown };
+    const attr =
+      typeof rec.attribution === "string" ? rec.attribution : "";
+    const copy =
+      typeof rec.copyrightText === "string" ? rec.copyrightText : "";
+    const raw = (attr || copy).trim();
     if (!raw || seen.has(raw)) continue;
     seen.add(raw);
     parts.push(raw);

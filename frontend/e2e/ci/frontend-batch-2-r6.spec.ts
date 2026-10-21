@@ -2,7 +2,8 @@
  * FRONTEND-BATCH-2 r6 — R1–R5 credit-line reconciliation.
  * Viewports 1280×800 and 390×844. Console errors fail the test.
  */
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page } from "@playwright/test";
 import {
   mkdtempSync,
   mkdirSync,

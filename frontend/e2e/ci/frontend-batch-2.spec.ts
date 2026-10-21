@@ -2,7 +2,8 @@
  * FRONTEND-BATCH-2 r5 — T-M1…T-M5 (MAP-CONTROLS-1 / O1 / MC5–MC6 / MC11).
  * Viewports 1280×800 and 390×844. Console errors fail the test.
  */
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {

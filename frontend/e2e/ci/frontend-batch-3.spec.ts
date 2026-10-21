@@ -2,7 +2,8 @@
  * FRONTEND-BATCH-3 r4 — SHOWTHRU (0.55) + SW-082 + SW-083 + Idea 80 + T-C4.
  * Viewports 1280×800 and 390×844. Console errors fail the test.
  */
-import { expect, test, type Page, type Request, type Route } from "@playwright/test";
+import { expect, test } from "./_fixtures";
+import { type Page, type Request, type Route } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {

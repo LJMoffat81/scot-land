@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scot-land.local/layers/registry/schema.json",
+  "title": "LayerRegistryEntry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "geography",
+    "clip",
+    "unit",
+    "licence",
+    "attribution",
+    "source",
+    "geometry",
+    "refresh",
+    "serve",
+    "zoom",
+    "style",
+    "legend",
+    "lineage"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "geography": { "type": "string", "enum": ["scotland"] },
+    "clip": {
+      "type": "string",
+      "enum": ["land", "sea", "land+sea", "none"]
+    },
+    "unit": {
+      "type": "string",
+      "enum": [
+        "scotland",
+        "council",
+        "dz2022",
+        "dz2011",
+        "parcel",
+        "square3m",
+        "point",
+        "none"
+      ]
+    },
+    "licence": {
+      "type": "string",
+      "enum": ["OGL-3.0", "NSTA-OGL", "ODbL-1.0", "CC-BY-4.0"]
+    },
+    "attribution": { "type": "string", "minLength": 1 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "url"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["arcgis", "wfs", "geojson_file"]
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "where": { "type": "string" },
+        "out_fields": { "type": "string" },
+        "page_size": { "type": "integer", "minimum": 1 },
+        "token_env": {
+          "type": "string",
+          "pattern": "^[A-Z_]+$"
+        }
+      }
+    },
+    "geometry": {
+      "type": "string",
+      "enum": ["point", "line", "polygon"]
+    },
+    "refresh": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cron", "max_mb", "max_s"],
+      "properties": {
+        "cron": { "type": "string", "minLength": 1 },
+        "max_mb": { "type": "number", "minimum": 0 },
+        "max_s": { "type": "number", "minimum": 0 }
+      }
+    },
+    "serve": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "simplify_m", "precision_dp", "max_mb"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["geojson", "pmtiles", "raster"]
+        },
+        "simplify_m": { "type": "number", "minimum": 0 },
+        "precision_dp": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 7
+        },
+        "max_mb": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 15
+        }
+      }
+    },
+    "zoom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max", "low_zoom"],
+      "properties": {
+        "min": { "type": "integer", "const": 0 },
+        "max": { "type": "integer", "minimum": 0, "maximum": 16 },
+        "low_zoom": {
+          "type": "string",
+          "enum": [
+            "simplify",
+            "coalesce",
+            "cluster",
+            "aggregate:council",
+            "aggregate:dz2022"
+          ]
+        }
+      }
+    },
+    "style": {
+      "type": "object"
+    },
+    "legend": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label", "color"],
+        "properties": {
+          "label": { "type": "string" },
+          "color": { "type": "string" }
+        }
+      }
+    },
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["derived_from", "method", "roll_up_to"],
+      "properties": {
+        "derived_from": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9-]+$" }
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "source",
+            "sum",
+            "mean",
+            "area_weighted",
+            "pop_weighted",
+            "median_of_children"
+          ]
+        },
+        "roll_up_to": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "scotland",
+              "council",
+              "dz2022",
+              "dz2011",
+              "parcel",
+              "square3m",
+              "point",
+              "none"
+            ]
+          }
+        }
+      }
+    },
+    "gated_by": { "type": "string" },
+    "keep_fields": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "clip": { "const": "none" } },
+        "required": ["clip"]
+      },
+      "then": {
+        "properties": {
+          "serve": {
+            "properties": { "mode": { "const": "raster" } },
+            "required": ["mode"]
+          }
+        }
+      }
+    }
+  ]
+}

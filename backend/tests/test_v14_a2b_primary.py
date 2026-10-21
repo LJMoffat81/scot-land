@@ -411,15 +411,20 @@ def test_t19_c14_exclusions_not_applied(tmp_path: Path, monkeypatch: pytest.Monk
 # --- T20 legacy path ---
 
 
-def test_t20_legacy_path_without_am2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_t20_legacy_path_without_am2(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     """T20: payload without am2 keeps DroppedRows behaviour (pr3a)."""
-    sales = [_sale("Z1", 2023, "80", "2"), _sale("Z2", 2023, "80", "2")]
+    price_calls = _spy_read_price_field(monkeypatch)
+    # No 2023 rows => DroppedRows without calling read_price_field (§8 spy 0).
+    sales = [_sale("Z1", 2022, "80", "2"), _sale("Z2", 2022, "80", "2")]
     b2 = _write_b2(tmp_path, sales)  # no am2 key
-    drc = _write_drc(tmp_path, {"Z1": 40.0, "Z2": 20.0, "Z3": 10.0})
+    drc = _write_drc(tmp_path, {"Z3": 10.0})
     primary = tmp_path / "p.json"
     builder = tmp_path / "b.json"
     assert _run(b2, drc, primary, builder) == 1
     assert capsys.readouterr().out == "dropped_no_price=1 dropped_no_cost=0\n"
+    assert price_calls["n"] == 0
     assert not primary.exists()
 
 
@@ -603,18 +608,22 @@ def test_t25_sentinel_via_primary_main(
         "scripts.build_v14_primary_2023.ABSENT_FROM_FILE_ZONES",
         frozenset(),
     )
+    price_calls = _spy_read_price_field(monkeypatch)
     sales = [_sale(ZONE, 2024, SENTINEL, "6")]
     am2 = _am2(zones_present=[ZONE])
     b2 = _write_b2(tmp_path, sales, am2=am2)
     drc = _write_drc(tmp_path, {ZONE: 40.0})
     primary = tmp_path / "p.json"
     builder = tmp_path / "b.json"
-    assert _run(b2, drc, primary, builder) == 1
+    not_scored = tmp_path / "ns.json"
+    assert _run(b2, drc, primary, builder, not_scored=not_scored) == 1
     captured = capsys.readouterr()
     assert SENTINEL not in captured.out
     assert SENTINEL not in captured.err
+    assert price_calls["n"] == 0
     assert not primary.exists()
     assert not builder.exists()
+    assert not not_scored.exists()
 
 
 def test_not_scored_reasons_constant() -> None:
@@ -654,3 +663,20 @@ def test_ci_deselects_real_marker() -> None:
     )
     assert "--ignore-glob=*_real.py" not in text
     assert "--ignore-glob='*_real.py'" not in text
+    assert "--ignore=tests/test_v14_a2_am2_real.py" not in text
+
+
+def test_real_modules_marked_real() -> None:
+    """§148: every backend/tests/*_real.py module carries pytest.mark.real."""
+    tests_dir = Path(__file__).resolve().parent
+    for path in sorted(tests_dir.glob("*_real.py")):
+        text = path.read_text(encoding="utf-8")
+        marked = (
+            "pytestmark = pytest.mark.real" in text
+            or "@pytest.mark.real" in text
+        )
+        if not marked:
+            rel = f"tests/{path.name}"
+            pytest.fail(
+                f"V14_REAL: ERROR: {rel}: expected pytest.mark.real, got absent"
+            )

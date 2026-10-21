@@ -14,6 +14,16 @@ const POSITRON_STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 const ESRI_IMAGERY_STYLE_BASE =
   "https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/imagery";
 
+/**
+ * Style URLs without secrets. Aerial resolves the token at request time via
+ * {@link basemapStyleUrl}; this map stays free of `token=` / `key=` for the
+ * LAYERS-ADD-2 free-style guard.
+ */
+export const MAP_BASEMAP_STYLE_URL: Readonly<Record<MapBasemapId, string>> = {
+  light: POSITRON_STYLE_URL,
+  aerial: ESRI_IMAGERY_STYLE_BASE,
+};
+
 /** Default rest basemap. */
 export const DEFAULT_MAP_BASEMAP: MapBasemapId = "light";
 
@@ -106,7 +116,11 @@ export function esriStyleAttributionText(style: {
   const sources = style.sources ?? {};
   const parts: string[] = [];
   const seen = new Set<string>();
-  for (const source of Object.values(sources)) {
+  const entries = Object.entries(sources);
+  // Prefer Esri-named sources when present (avoids overlay credits after load).
+  const preferred = entries.filter(([id]) => /^esri/i.test(id));
+  const list = preferred.length > 0 ? preferred : entries;
+  for (const [, source] of list) {
     if (!source || typeof source !== "object") continue;
     const rec = source as { attribution?: unknown; copyrightText?: unknown };
     const attr =
@@ -150,7 +164,11 @@ export function isAerialFailureEvent(event: {
   const sourceId = (event.sourceId ?? "").trim();
   if (sourceId && /esri/i.test(sourceId)) return true;
   // HTTP status tokens Esri / MapLibre often surface
-  if (/\b(401|403|498|499|5\d\d)\b/.test(line) && /arcgis|esri|imagery/i.test(line)) {
+  if (/\b(401|403|498|499|5\d\d)\b/.test(line) && /arcgis|esri|imagery|basemap/i.test(line)) {
+    return true;
+  }
+  // Invalid style JSON (T-M2) without a hostname in the message
+  if (/Unexpected token|is not valid JSON|JSON\.parse/i.test(line)) {
     return true;
   }
   return false;

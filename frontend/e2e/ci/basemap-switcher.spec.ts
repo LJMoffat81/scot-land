@@ -319,11 +319,12 @@ async function runBasemapChecks(page: Page) {
   await expect(switcher).toHaveAttribute("aria-label", "Aerial map");
   await expect(switcher).toHaveAttribute("title", "Aerial map");
   await expect(switcher).toHaveAttribute("aria-pressed", "false");
-  await expect(switcher).not.toContainText(/Satellite/i);
-  await expect(switcher).not.toContainText("Light");
-  await expect(switcher).not.toContainText("Detailed");
-  await expect(switcher).not.toContainText("Simple");
-  await expect(switcher).not.toContainText("Aerial");
+  const face = switcher.locator(".basemap-switcher-face");
+  await expect(face).not.toContainText(/Satellite/i);
+  await expect(face).not.toContainText("Light");
+  await expect(face).not.toContainText("Detailed");
+  await expect(face).not.toContainText("Simple");
+  await expect(face).not.toContainText("Aerial");
 
   const box = await switcher.boundingBox();
   expect(box).toBeTruthy();
@@ -335,12 +336,12 @@ async function runBasemapChecks(page: Page) {
 
   await switcher.click();
   await expect(switcher).toHaveAttribute("aria-pressed", "true");
-  await expect(switcher.locator(".basemap-switcher-tooltip")).toHaveText(
+  await expect(page.getByRole("tooltip")).toHaveText(
     "Simple map",
   );
   await switcher.click();
   await expect(switcher).toHaveAttribute("aria-pressed", "false");
-  await expect(switcher.locator(".basemap-switcher-tooltip")).toHaveText(
+  await expect(page.getByRole("tooltip")).toHaveText(
     "Aerial map",
   );
 

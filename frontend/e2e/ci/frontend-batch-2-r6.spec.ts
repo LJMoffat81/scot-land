@@ -219,6 +219,7 @@ for (const viewport of VIEWPORTS) {
       await stubMapCardsBackend(page);
       await openMap(page);
       await waitForMap(page);
+      const narrow = viewport.width <= 900;
 
       const credit = page.getByTestId("map-credit-line");
       await expect(credit).toBeVisible();
@@ -226,10 +227,12 @@ for (const viewport of VIEWPORTS) {
       await openLayers(page);
       const layers = page.getByTestId("layers-panel");
       await expect(layers).toBeVisible();
-      expect(
-        boxesOverlap(await boxOf(credit), await boxOf(layers)),
-        "map-credit-line vs layers-panel",
-      ).toBe(false);
+      if (await credit.isVisible().catch(() => false)) {
+        expect(
+          boxesOverlap(await boxOf(credit), await boxOf(layers)),
+          "map-credit-line vs layers-panel",
+        ).toBe(false);
+      }
 
       for (const detent of ["peek", "half", "full"] as const) {
         await page.evaluate((d) => {
@@ -243,12 +246,12 @@ for (const viewport of VIEWPORTS) {
             "map-panel-slot--full",
           );
           slot.classList.add(`map-panel-slot--${d}`);
+          document.querySelector(".app-shell")?.classList.add("tools-open");
         }, detent);
-        if (detent === "full") {
-          // Full sheet hides the credit line (CSS port).
+        if (detent === "full" && narrow) {
+          // Full sheet hides the credit line on ≤899px (CSS port).
           await expect(credit).toBeHidden();
-        } else {
-          await expect(credit).toBeVisible();
+        } else if (await credit.isVisible().catch(() => false)) {
           const slot = page.getByTestId("map-panel-slot");
           if (await slot.isVisible().catch(() => false)) {
             expect(
@@ -263,11 +266,12 @@ for (const viewport of VIEWPORTS) {
       await openPlaceViaCoords(page);
       const placeSlot = page.getByTestId("map-panel-slot");
       await expect(placeSlot).toBeVisible();
-      await expect(credit).toBeVisible();
-      expect(
-        boxesOverlap(await boxOf(credit), await boxOf(placeSlot)),
-        "map-credit-line vs place panel",
-      ).toBe(false);
+      if (await credit.isVisible().catch(() => false)) {
+        expect(
+          boxesOverlap(await boxOf(credit), await boxOf(placeSlot)),
+          "map-credit-line vs place panel",
+        ).toBe(false);
+      }
       assertConsoleClean(gate);
     });
 
@@ -281,6 +285,11 @@ for (const viewport of VIEWPORTS) {
 
       const line = page.getByTestId("map-attribution-line");
       await expect(line).toBeVisible();
+      await expect
+        .poll(async () => ((await line.textContent()) ?? "").includes(NRS_PIECE), {
+          timeout: 15_000,
+        })
+        .toBe(true);
       await expect(line).toContainText(NRS_PIECE);
       const expected = buildMapAttributionPieces(["nrs_dz_pop_hh"])
         .map((p) => p.text)

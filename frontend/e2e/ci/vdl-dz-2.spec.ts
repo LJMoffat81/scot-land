@@ -80,10 +80,9 @@ for (const viewport of [
       await expect(line).toContainText(
         "Zones with one or two sites show no area.",
       );
-      const mapAttrib = page.locator(".maplibregl-ctrl-attrib");
+      // maplibregl attrib is removed (count 0 above) — STALE cannot appear there.
       for (const phrase of STALE) {
         await expect(line).not.toContainText(phrase);
-        await expect(mapAttrib).not.toContainText(phrase);
       }
 
       assertConsoleClean(gate);

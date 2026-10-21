@@ -681,10 +681,13 @@ export default function ScotlandMap() {
     ref: string;
   } | null>(null);
   /** LAYERS-ADD-2 credit ids from ?layers= even when not yet a registry switch (R4 NRS). */
-  const [creditExtraIds] = useState(() => {
-    if (typeof window === "undefined") return [] as string[];
+  const [creditExtraIds, setCreditExtraIds] = useState<string[]>([]);
+  useEffect(() => {
     const raw = new URLSearchParams(window.location.search).get("layers");
-    if (!raw) return [];
+    if (!raw) {
+      setCreditExtraIds([]);
+      return;
+    }
     const out: string[] = [];
     const seen = new Set<string>();
     for (const token of raw.split(",")) {
@@ -694,8 +697,8 @@ export default function ScotlandMap() {
       out.push(id);
       seen.add(id);
     }
-    return out;
-  });
+    setCreditExtraIds(out);
+  }, []);
   const [showVdl, setShowVdl] = useState(false);
   const [showHla, setShowHla] = useState(false);
   // SG 2024 public/Crown dashboard: licence unverified/not open — never paint

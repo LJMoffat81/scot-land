@@ -716,17 +716,20 @@ button.basemap-switcher[aria-pressed="true"] {
 /* Lift above the mobile sheet so Sources does not sit under it. */
 @media (max-width: 899px) {
   .app-shell.panel-open:has(.map-panel-slot--peek) .map-credit-line,
-  .app-shell.place-open:has(.map-panel-slot--peek) .map-credit-line {
+  .app-shell.place-open:has(.map-panel-slot--peek) .map-credit-line,
+  .app-shell.tools-open:has(.map-panel-slot--peek) .map-credit-line {
     bottom: calc(196px + env(safe-area-inset-bottom, 0px) + 0.35rem);
   }
 
-  .app-shell.panel-open:has(.map-panel-slot--half) .map-credit-line {
+  .app-shell.panel-open:has(.map-panel-slot--half) .map-credit-line,
+  .app-shell.tools-open:has(.map-panel-slot--half) .map-credit-line {
     bottom: calc(55dvh + 0.35rem);
   }
 
   /* Full Layers sheet covers the map — hide attribution (check 1). */
   .app-shell.panel-open:has(.map-panel-slot--full) .map-credit-line,
-  .app-shell.tools-open:has(.map-panel-slot--full) .map-credit-line {
+  .app-shell.tools-open:has(.map-panel-slot--full) .map-credit-line,
+  .app-shell.place-open:has(.map-panel-slot--full) .map-credit-line {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;

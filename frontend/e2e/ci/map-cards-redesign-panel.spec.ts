@@ -28,9 +28,18 @@ async function assertNoOverlapsAmong(
 ) {
   for (let i = 0; i < items.length; i += 1) {
     for (let j = i + 1; j < items.length; j += 1) {
+      const a = items[i]!.label;
+      const b = items[j]!.label;
+      // Sources sits inside map-credit-line; both must still clear every other item.
+      if (
+        (a === "all sources" && b === "map credit") ||
+        (a === "map credit" && b === "all sources")
+      ) {
+        continue;
+      }
       expect(
         boxesOverlap(items[i]!.box, items[j]!.box),
-        `${items[i]!.label} vs ${items[j]!.label}`,
+        `${a} vs ${b}`,
       ).toBe(false);
     }
   }

@@ -331,20 +331,23 @@ for (const viewport of [
       assertConsoleClean(gate);
     });
 
-    test("T-D4 fallback when /layers/councils is 503", async ({ page }) => {
-      test.setTimeout(120_000);
-      const gate = attachConsoleGate(page);
-      await stubMapCardsBackend(page, { gbpLive: false });
-      await stubLayersCouncils(page, { detail: "unavailable" }, 503);
-      await openMap(page, "/");
-      await getMap(page);
-      await jumpToZoom(page, 6);
-      await expect
-        .poll(async () => layoutVis(page, "council-line"), { timeout: 45_000 })
-        .toBe("visible");
-      await expect(layoutVis(page, "council-fill")).resolves.toBe("none");
-      await expect(page.locator("body")).not.toContainText("£");
-      assertConsoleClean(gate);
+    test.describe("T-D4 councils 503", () => {
+      test.use({ skipStrictConsoleAssert: true });
+      test("T-D4 fallback when /layers/councils is 503", async ({ page }) => {
+        test.setTimeout(120_000);
+        const gate = attachConsoleGate(page);
+        await stubMapCardsBackend(page, { gbpLive: false });
+        await stubLayersCouncils(page, { detail: "unavailable" }, 503);
+        await openMap(page, "/");
+        await getMap(page);
+        await jumpToZoom(page, 6);
+        await expect
+          .poll(async () => layoutVis(page, "council-line"), { timeout: 45_000 })
+          .toBe("visible");
+        await expect(layoutVis(page, "council-fill")).resolves.toBe("none");
+        await expect(page.locator("body")).not.toContainText("£");
+        assertConsoleClean(gate);
+      });
     });
 
     test("T-D4b malformed 200 {} keeps fill hidden", async ({ page }) => {

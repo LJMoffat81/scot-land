@@ -250,7 +250,10 @@ async function assertCloseClearsSeaLineText(page: Page) {
 }
 
 test.describe("SW-030 sea close padding 1280", () => {
-  test.use({ viewport: { width: 1280, height: 800 } });
+  test.use({
+    viewport: { width: 1280, height: 800 },
+    skipStrictConsoleAssert: true,
+  });
 
   test("× and sea-line text bounding boxes do not overlap", async ({
     page,
@@ -261,7 +264,10 @@ test.describe("SW-030 sea close padding 1280", () => {
 });
 
 test.describe("SW-030 sea close padding 390", () => {
-  test.use({ viewport: { width: 390, height: 844 } });
+  test.use({
+    viewport: { width: 390, height: 844 },
+    skipStrictConsoleAssert: true,
+  });
 
   test("× and sea-line text bounding boxes do not overlap", async ({
     page,

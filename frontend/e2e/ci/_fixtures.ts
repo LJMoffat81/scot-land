@@ -20,24 +20,47 @@ const HEALTH_OK = {
   },
 };
 
+const EMPTY_FC = { type: "FeatureCollection", features: [] };
+
 /**
- * CI has no FastAPI. Quiet the origin health/gbp probes so same-origin 503
- * from the Next rewrite is not mistaken for an app console-gate failure.
- * Specs that need richer backends still call stubMapCardsBackend / friends.
+ * CI has no FastAPI. Quiet origin backend/gbp so same-origin 503 from the
+ * Next rewrite is not mistaken for an app console-gate failure.
+ * Spec-registered routes (LIFO) still win for intentional 4xx/5xx cases.
  */
 async function stubCiOriginQuiet(page: Page) {
-  await page.route("**/backend/health**", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(HEALTH_OK),
-    });
-  });
   await page.route("**/api/gbp-live**", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ enabled: false }),
+    });
+  });
+  await page.route("**/api/catalog.json", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ layers: [] }),
+    });
+  });
+  await page.route("**/backend/**", async (route) => {
+    const url = route.request().url();
+    if (/\/health/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(HEALTH_OK),
+      });
+      return;
+    }
+    const wantsGeo =
+      /\/layers\//i.test(url) ||
+      /\/boundaries\//i.test(url) ||
+      /\/w3w-grid/i.test(url) ||
+      /\/parcels/i.test(url);
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(wantsGeo ? EMPTY_FC : {}),
     });
   });
 }

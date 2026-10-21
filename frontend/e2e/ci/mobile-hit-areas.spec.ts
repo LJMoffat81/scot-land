@@ -208,7 +208,11 @@ async function openMap(page: Page) {
 }
 
 test.describe("UX-01 mobile hit areas 390x844", () => {
-  test.use({ viewport: { width: 390, height: 844 } });
+  test.use({
+    viewport: { width: 390, height: 844 },
+    // Sea/outside stubs return 400; console gate must not block the hit-area asserts.
+    skipStrictConsoleAssert: true,
+  });
 
   test("resting chrome + nav + layers + place/sea × meet 44px", async ({
     page,

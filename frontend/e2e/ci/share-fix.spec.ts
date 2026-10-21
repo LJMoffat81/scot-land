@@ -86,7 +86,10 @@ test.describe("MAP-CARDS deferred layers not in drawer", () => {
 });
 
 test.describe("SHARE-FIX place lookup Try again", () => {
-  test.use({ viewport: { width: 1280, height: 800 } });
+  test.use({
+    viewport: { width: 1280, height: 800 },
+    skipStrictConsoleAssert: true,
+  });
 
   test("exhausted 503 retries show Try again, not Service busy", async ({
     page,

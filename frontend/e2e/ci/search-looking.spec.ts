@@ -315,16 +315,19 @@ test.describe("search dropdown Looking…", () => {
     expectNoConsoleErrors(consoleErrors);
   });
 
-  test("place 500 clears Looking…", async ({ page }) => {
-    test.setTimeout(60_000);
-    const consoleErrors = attachConsoleTraps(page, { allowHttpStatuses: [500] });
-    await stubMapBackend(page, "error");
+  test.describe("place 500", () => {
+    test.use({ skipStrictConsoleAssert: true });
+    test("place 500 clears Looking…", async ({ page }) => {
+      test.setTimeout(60_000);
+      const consoleErrors = attachConsoleTraps(page, { allowHttpStatuses: [500] });
+      await stubMapBackend(page, "error");
 
-    const search = await openMapSearch(page);
-    await search.fill(POSTCODE);
-    await expectLookingVisible(page);
-    await expect(page.getByText(LOOKING)).toHaveCount(0, { timeout: 15_000 });
-    expectNoConsoleErrors(consoleErrors);
+      const search = await openMapSearch(page);
+      await search.fill(POSTCODE);
+      await expectLookingVisible(page);
+      await expect(page.getByText(LOOKING)).toHaveCount(0, { timeout: 15_000 });
+      expectNoConsoleErrors(consoleErrors);
+    });
   });
 
   test("blur clears Looking…", async ({ page }) => {

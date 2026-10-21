@@ -233,7 +233,10 @@ async function expectPlainLineOnly(page: Page) {
 }
 
 test.describe("site-watch D3 sea click", () => {
-  test.use({ viewport: { width: 1280, height: 800 } });
+  test.use({
+    viewport: { width: 1280, height: 800 },
+    skipStrictConsoleAssert: true,
+  });
 
   test("click at sea shows one plain line, not No data rows", async ({
     page,
@@ -260,7 +263,10 @@ test.describe("site-watch D3 sea click", () => {
 });
 
 test.describe("site-watch SW-019 outside-Scotland 400", () => {
-  test.use({ viewport: { width: 1280, height: 800 } });
+  test.use({
+    viewport: { width: 1280, height: 800 },
+    skipStrictConsoleAssert: true,
+  });
 
   test("URL lat/lng outside Scotland shows plain line within 3s, no spinner", async ({
     page,

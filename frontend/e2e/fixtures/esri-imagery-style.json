@@ -16,6 +16,10 @@
       "type": "vector",
       "url": "https://basemaps-api.arcgis.com/arcgis/rest/services/World_Basemap_v2/VectorTileServer",
       "attribution": "Sources: Esri, TomTom, Garmin, FAO, NOAA, USGS, © OpenStreetMap contributors, and the GIS User Community"
+    },
+    "esri-label-stub": {
+      "type": "geojson",
+      "data": { "type": "FeatureCollection", "features": [] }
     }
   },
   "layers": [
@@ -34,10 +38,9 @@
     {
       "id": "esri-reference-place",
       "type": "symbol",
-      "source": "esri-labels",
-      "source-layer": "Place",
+      "source": "esri-label-stub",
       "layout": {
-        "text-field": ["get", "_name"],
+        "text-field": "x",
         "text-size": 12
       },
       "paint": {

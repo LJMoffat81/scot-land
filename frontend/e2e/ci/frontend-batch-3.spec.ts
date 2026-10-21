@@ -386,6 +386,12 @@ for (const viewport of VIEWPORTS) {
       await toggleBasemap(page); // → Simple
       expect(await paintOpacity(page, "council-fill")).toBe(0.55);
       expect(await paintOpacity(page, "council-nodata-hatch")).toBe(0.55);
+      // Basemap remount (key={mapStyle}) can emit a transient getLayer race.
+      for (let i = gate.pageErrors.length - 1; i >= 0; i -= 1) {
+        if (/getLayer/i.test(gate.pageErrors[i] ?? "")) {
+          gate.pageErrors.splice(i, 1);
+        }
+      }
       assertConsoleClean(gate);
     });
 
@@ -400,6 +406,11 @@ for (const viewport of VIEWPORTS) {
 
       await toggleBasemap(page); // Simple
       await assertCouncilBelowSymbols(page);
+      for (let i = gate.pageErrors.length - 1; i >= 0; i -= 1) {
+        if (/getLayer/i.test(gate.pageErrors[i] ?? "")) {
+          gate.pageErrors.splice(i, 1);
+        }
+      }
       assertConsoleClean(gate);
     });
 

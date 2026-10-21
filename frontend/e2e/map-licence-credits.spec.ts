@@ -21,17 +21,8 @@ async function openMap(page: Page) {
 }
 
 async function openSources(page: Page) {
-  const narrow = (page.viewportSize()?.width ?? 1440) <= 900;
-  if (narrow) {
-    await page.getByTestId("map-credit-info").click();
-    await expect(page.getByTestId("map-credit-sheet")).toBeVisible();
-    await page
-      .getByTestId("map-credit-sheet")
-      .getByTestId("map-credit-sources")
-      .click();
-  } else {
-    await page.getByTestId("map-credit-sources").click();
-  }
+  // r6: Sources stays on the visible credit line at every width.
+  await page.getByTestId("map-all-sources").click();
   await expect(page).toHaveURL(/\/data#licences/);
 }
 

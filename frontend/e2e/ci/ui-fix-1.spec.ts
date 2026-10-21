@@ -209,7 +209,7 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
 
     const creditInfo = page.getByTestId("map-credit-info");
     await expect(creditInfo).toBeVisible({ timeout: 30_000 });
-    await assertMinHit(creditInfo, "Map credits and sources");
+    await assertMinHit(creditInfo, "Map credits");
 
     await page.locator("#place-query").fill("EH1");
     const clear = page.getByRole("button", { name: "Clear search" });

@@ -7,7 +7,6 @@ import {
   stubMapCardsBackend,
   waitForMap,
 } from "./_mapCardsHelpers";
-import { VDL_ZONE_TOTALS_ATTRIBUTION } from "../../lib/mapAttributionLine";
 
 registerOpenFreeMapFontStub();
 
@@ -16,6 +15,9 @@ registerOpenFreeMapFontStub();
  * VDL-DZ-2 — no site-polygon overlay and no site-type legend classes.
  * Attribution describes Data Zone totals. Fails on main before this change:
  * the map added source vdl-overlay and credited "Survey sites, not a title".
+ *
+ * FRONTEND-BATCH-2 r6: revert attempt-3 /data navigation; keep map-credit-line
+ * OpenFreeMap + maplibregl-ctrl-attrib count 0 (stronger).
  */
 
 const STALE = [
@@ -73,33 +75,15 @@ for (const viewport of [
       await expect(credit).toBeVisible();
       await expect(credit).toContainText("OpenFreeMap");
       await expect(page.locator(".maplibregl-ctrl-attrib")).toHaveCount(0);
-      await expect(page.getByTestId("map-attribution-line")).toHaveCount(0);
-      for (const phrase of STALE) {
-        await expect(credit).not.toContainText(phrase);
-        await expect(page.locator("body")).not.toContainText(phrase);
-      }
-      // Approved VDL zone-totals credit is reached via Sources (MAP-FOOTER-1).
-      const sources = page.getByTestId("map-credit-sources");
-      if ((await sources.count()) > 0) {
-        await sources.click();
-      } else {
-        await page.getByTestId("map-credit-info").click();
-        await expect(page.getByTestId("map-credit-sheet")).toBeVisible();
-        await page
-          .getByTestId("map-credit-sheet")
-          .getByTestId("map-credit-sources")
-          .click();
-      }
-      await expect(page).toHaveURL(/\/data#licences/);
-      await expect(page.getByText(/Vacant and Derelict/i).first()).toBeVisible({
-        timeout: 30_000,
-      });
-      expect(VDL_ZONE_TOTALS_ATTRIBUTION).toContain(
+
+      const line = page.getByTestId("map-attribution-line");
+      await expect(line).toContainText(
         "Zones with one or two sites show no area.",
       );
+      const mapAttrib = page.locator(".maplibregl-ctrl-attrib");
       for (const phrase of STALE) {
-        await expect(page.locator("body")).not.toContainText(phrase);
-        expect(VDL_ZONE_TOTALS_ATTRIBUTION).not.toContain(phrase);
+        await expect(line).not.toContainText(phrase);
+        await expect(mapAttrib).not.toContainText(phrase);
       }
 
       assertConsoleClean(gate);

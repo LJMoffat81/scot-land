@@ -1,0 +1,320 @@
+/**
+ * FRONTEND-BATCH-2 r6 — R1–R5 credit-line reconciliation.
+ * Viewports 1280×800 and 390×844. Console errors fail the test.
+ */
+import { expect, test, type Page } from "@playwright/test";
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+  readFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import {
+  attachConsoleGate,
+  assertConsoleClean,
+  CI_TINY_PNG,
+  DUMMY_ESRI_KEY,
+  EMPTY_GLYPH_PBF,
+  injectEsriBasemapKey,
+  openLayers,
+  openMap,
+  openPlaceViaCoords,
+  registerOpenFreeMapFontStub,
+  stubMapCardsBackend,
+  waitForMap,
+} from "./_mapCardsHelpers";
+import {
+  buildMapAttributionPieces,
+  shortLayerSourceName,
+} from "../../lib/mapAttributionLine";
+import {
+  LAYERS_ADD2_CREDITS,
+  layersAdd2Credit,
+} from "../../lib/layersAdd2Credits";
+import { scanLibertyHits } from "./_libertyScan";
+
+registerOpenFreeMapFontStub();
+
+const VIEWPORTS = [
+  { width: 1280, height: 800 },
+  { width: 390, height: 844 },
+] as const;
+
+const STYLE_URL =
+  "https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/imagery";
+
+const FIXTURE_PATH = join(
+  process.cwd(),
+  "e2e",
+  "fixtures",
+  "esri-imagery-style.json",
+);
+
+const NRS_PIECE = LAYERS_ADD2_CREDITS.nrs_dz_pop_hh.attribution;
+const NRS_SHORT = shortLayerSourceName({
+  id: "nrs_dz_pop_hh",
+  text: NRS_PIECE,
+})!;
+const VDL_SHORT = shortLayerSourceName({
+  id: "vdl",
+  text: "x",
+})!;
+
+type Box = { x: number; y: number; width: number; height: number };
+
+function boxesOverlap(a: Box, b: Box): boolean {
+  return !(
+    a.x + a.width <= b.x ||
+    b.x + b.width <= a.x ||
+    a.y + a.height <= b.y ||
+    b.y + b.height <= a.y
+  );
+}
+
+async function boxOf(locator: ReturnType<Page["locator"]>): Promise<Box> {
+  const box = await locator.boundingBox();
+  if (!box) throw new Error("missing box");
+  return box;
+}
+
+async function routeEsriFixture(page: Page) {
+  const style = JSON.parse(readFileSync(FIXTURE_PATH, "utf8")) as {
+    sprite: string;
+    sources: Record<string, unknown>;
+  };
+  await page.route(`${STYLE_URL}**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(style),
+    });
+  });
+  await page.route(`${style.sprite}.json`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ image: "root.png", width: 1, height: 1 }),
+    });
+  });
+  await page.route(`${style.sprite}.png`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: CI_TINY_PNG,
+    });
+  });
+  await page.route("**/basemaps-api.arcgis.com/**/*.pbf**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/x-protobuf",
+      body: EMPTY_GLYPH_PBF,
+    });
+  });
+  await page.route("**/ibasemaps-api.arcgis.com/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/png",
+      body: CI_TINY_PNG,
+    });
+  });
+  await page.route(
+    "**/basemaps-api.arcgis.com/**/VectorTileServer**",
+    async (route) => {
+      const url = route.request().url();
+      if (/\.pbf/i.test(url)) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/x-protobuf",
+          body: EMPTY_GLYPH_PBF,
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          tiles: [
+            "https://basemaps-api.arcgis.com/arcgis/rest/services/World_Basemap_v2/VectorTileServer/tile/{z}/{y}/{x}.pbf",
+          ],
+          minzoom: 0,
+          maxzoom: 22,
+        }),
+      });
+    },
+  );
+}
+
+for (const viewport of VIEWPORTS) {
+  test.describe(`FRONTEND-BATCH-2 r6 ${viewport.width}x${viewport.height}`, () => {
+    test.use({ viewport });
+
+    test("R1 layer pieces on the map", async ({ page }) => {
+      test.setTimeout(120_000);
+      const gate = attachConsoleGate(page);
+      await stubMapCardsBackend(page);
+      await openMap(page, "/?layers=data_zones,vdl&z=12&c=-4.25,55.86");
+      await waitForMap(page);
+
+      const expected = buildMapAttributionPieces(["data_zones", "vdl"])
+        .map((p) => p.text)
+        .join(" · ");
+      const line = page.getByTestId("map-attribution-line");
+      await expect(line).toBeVisible();
+      await expect(page.getByTestId("map-credit-line")).toBeVisible();
+      const text = ((await line.textContent()) ?? "").replace(/\s+/g, " ").trim();
+      expect(text).toBe(expected);
+      assertConsoleClean(gate);
+    });
+
+    test("R2 narrow visible credit", async ({ page }) => {
+      test.setTimeout(180_000);
+      test.skip(viewport.width > 900, "R2 is the 390 narrow rule");
+      const gate = attachConsoleGate(page);
+      await stubMapCardsBackend(page);
+      await openMap(page, "/?layers=vdl&z=12&c=-4.25,55.86");
+      await waitForMap(page);
+
+      const credit = page.getByTestId("map-credit-line");
+      await expect(credit).toBeVisible();
+      const inner = await credit.innerText();
+      expect(inner).toContain("© OpenFreeMap");
+      expect(inner).toContain("© OpenStreetMap");
+      expect(inner).toContain("Sources");
+      // Short layer source name visible without a click (can fail).
+      expect(inner).toContain(VDL_SHORT);
+      await expect(
+        page.getByRole("button", { name: "Map credits" }),
+      ).toBeVisible();
+      await expect(page.getByTestId("map-credit-info")).toHaveAttribute(
+        "aria-label",
+        "Map credits",
+      );
+
+      await injectEsriBasemapKey(page, DUMMY_ESRI_KEY);
+      await routeEsriFixture(page);
+      await openMap(page, "/?layers=vdl&z=12&c=-4.25,55.86");
+      await waitForMap(page);
+      await expect(page.getByTestId("basemap-switcher")).toBeVisible({
+        timeout: 15_000,
+      });
+      await page.getByTestId("basemap-switcher").click();
+      await expect(page.getByTestId("basemap-switcher")).toHaveAttribute(
+        "aria-pressed",
+        "true",
+        { timeout: 30_000 },
+      );
+      const aerialInner = await page.getByTestId("map-credit-line").innerText();
+      expect(aerialInner).toContain("Powered by Esri");
+      expect(aerialInner).toContain("© OpenStreetMap");
+      expect(aerialInner).toContain("Sources");
+      assertConsoleClean(gate);
+    });
+
+    test("R3 credit clears panel / layers", async ({ page }) => {
+      test.setTimeout(120_000);
+      const gate = attachConsoleGate(page);
+      await stubMapCardsBackend(page);
+      await openMap(page);
+      await waitForMap(page);
+
+      const credit = page.getByTestId("map-credit-line");
+      await expect(credit).toBeVisible();
+
+      await openLayers(page);
+      const layers = page.getByTestId("layers-panel");
+      await expect(layers).toBeVisible();
+      expect(
+        boxesOverlap(await boxOf(credit), await boxOf(layers)),
+        "map-credit-line vs layers-panel",
+      ).toBe(false);
+
+      for (const detent of ["peek", "half", "full"] as const) {
+        await page.evaluate((d) => {
+          const slot = document.querySelector(
+            '[data-testid="map-panel-slot"]',
+          );
+          if (!slot) return;
+          slot.classList.remove(
+            "map-panel-slot--peek",
+            "map-panel-slot--half",
+            "map-panel-slot--full",
+          );
+          slot.classList.add(`map-panel-slot--${d}`);
+        }, detent);
+        if (detent === "full") {
+          // Full sheet hides the credit line (CSS port).
+          await expect(credit).toBeHidden();
+        } else {
+          await expect(credit).toBeVisible();
+          const slot = page.getByTestId("map-panel-slot");
+          if (await slot.isVisible().catch(() => false)) {
+            expect(
+              boxesOverlap(await boxOf(credit), await boxOf(slot)),
+              `map-credit-line vs panel ${detent}`,
+            ).toBe(false);
+          }
+        }
+      }
+
+      await page.getByTestId("map-panel-slot-close").click().catch(() => undefined);
+      await openPlaceViaCoords(page);
+      const placeSlot = page.getByTestId("map-panel-slot");
+      await expect(placeSlot).toBeVisible();
+      await expect(credit).toBeVisible();
+      expect(
+        boxesOverlap(await boxOf(credit), await boxOf(placeSlot)),
+        "map-credit-line vs place panel",
+      ).toBe(false);
+      assertConsoleClean(gate);
+    });
+
+    test("R4 NRS credit + short name", async ({ page }) => {
+      test.setTimeout(120_000);
+      const gate = attachConsoleGate(page);
+      await stubMapCardsBackend(page);
+      expect(layersAdd2Credit("nrs_dz_pop_hh")).toBe(NRS_PIECE);
+      await openMap(page, "/?layers=nrs_dz_pop_hh");
+      await waitForMap(page);
+
+      const line = page.getByTestId("map-attribution-line");
+      await expect(line).toBeVisible();
+      await expect(line).toContainText(NRS_PIECE);
+      const expected = buildMapAttributionPieces(["nrs_dz_pop_hh"])
+        .map((p) => p.text)
+        .join(" · ");
+      const text = ((await line.textContent()) ?? "").replace(/\s+/g, " ").trim();
+      expect(text).toBe(expected);
+
+      if (viewport.width <= 900) {
+        const inner = await page.getByTestId("map-credit-line").innerText();
+        expect(inner).toContain(NRS_SHORT);
+        await expect(
+          page.getByRole("button", { name: "Map credits" }),
+        ).toBeVisible();
+        await expect(page.getByTestId("map-credit-info")).toHaveAttribute(
+          "aria-label",
+          "Map credits",
+        );
+      }
+      assertConsoleClean(gate);
+    });
+  });
+}
+
+test("R5 MC11 scan self-test", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "fb2-r6-scan-"));
+  try {
+    const sub = join(dir, "lib");
+    mkdirSync(sub);
+    writeFileSync(join(sub, "probe.ts"), "const x = 'liberty';\n");
+    const { hits, filesScanned } = scanLibertyHits(["lib"], dir);
+    expect(filesScanned).toBeGreaterThanOrEqual(1);
+    expect(hits).toHaveLength(1);
+    expect(hits[0]).toMatch(/probe\.ts:1$/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

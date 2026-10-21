@@ -5,7 +5,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
 import {
   attachConsoleGate,
   assertConsoleClean,
@@ -18,6 +17,7 @@ import {
   stubMapCardsBackend,
   waitForMap,
 } from "./_mapCardsHelpers";
+import { scanLibertyHits } from "./_libertyScan";
 
 registerOpenFreeMapFontStub();
 
@@ -145,11 +145,13 @@ async function waitForCamera(page: Page) {
 async function creditTextContent(page: Page): Promise<string> {
   const narrow = (page.viewportSize()?.width ?? 1280) <= 900;
   if (narrow) {
+    // Full Aerial line (incl. {A}) lives in the ⓘ sheet on narrow.
     await page.getByTestId("map-credit-info").click();
     const sheet = page.getByTestId("map-credit-sheet");
     await expect(sheet).toBeVisible();
-    const text = ((await sheet.locator("[data-testid=map-credit-line-text]").textContent()) ?? "")
+    const text = ((await sheet.textContent()) ?? "")
       .replace(/\s+/g, " ")
+      .replace(/^[×x]\s*/i, "")
       .trim();
     await page.getByTestId("map-credit-sheet-close").click();
     return text;
@@ -316,11 +318,16 @@ for (const viewport of VIEWPORTS) {
         const esriLink = page.locator('a[href="https://www.esri.com"]');
         await expect(esriLink).toHaveText("Esri");
       } else {
+        // r6: visible line has Powered by Esri + OSM without click; sheet holds {A}.
+        const visible = page.getByTestId("map-credit-line");
+        await expect(visible).toContainText("Powered by Esri");
+        await expect(visible).toContainText("© OpenStreetMap");
+        await expect(visible).not.toContainText("Vantor");
         await page.getByTestId("map-credit-info").click();
+        const sheet = page.getByTestId("map-credit-sheet");
+        await expect(sheet).toContainText("Vantor");
         await expect(
-          page
-            .getByTestId("map-credit-sheet")
-            .locator('a[href="https://www.esri.com"]'),
+          sheet.locator('a[href="https://www.esri.com"]'),
         ).toHaveText("Esri");
         await page.getByTestId("map-credit-sheet-close").click();
       }
@@ -359,15 +366,7 @@ for (const viewport of VIEWPORTS) {
 }
 
 test("T-M5 MC11 no liberty in app/components/lib", async () => {
-  const res = spawnSync(
-    "rg",
-    ["-i", "liberty", "app", "components", "lib"],
-    { cwd: process.cwd(), encoding: "utf8" },
-  );
-  // rg exit 1 = no matches
-  expect(res.status === 0 ? res.stdout : "").toBe("");
-  expect(res.status === 1 || res.status === 0).toBe(true);
-  if (res.status === 0) {
-    expect(res.stdout.trim()).toBe("");
-  }
+  const { hits, filesScanned } = scanLibertyHits(["app", "components", "lib"]);
+  expect(filesScanned).toBeGreaterThanOrEqual(50);
+  expect(hits).toEqual([]);
 });

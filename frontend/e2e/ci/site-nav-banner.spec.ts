@@ -190,17 +190,9 @@ test.afterEach(() => {
 });
 
 async function openMapCreditText(page: Page) {
-  const narrow = (page.viewportSize()?.width ?? 1280) <= 900;
-  if (!narrow) {
-    await expect(page.getByTestId("map-credit-line-text")).toBeVisible();
-    return page.getByTestId("map-credit-line-text");
-  }
-  const info = page.getByTestId("map-credit-info");
-  await expect(info).toBeVisible();
-  await info.click();
-  const sheet = page.getByTestId("map-credit-sheet");
-  await expect(sheet).toBeVisible();
-  return sheet.getByTestId("map-credit-line-text");
+  // r6: credit text stays on the visible line (never ⓘ-only).
+  await expect(page.getByTestId("map-credit-line-text")).toBeVisible();
+  return page.getByTestId("map-credit-line-text");
 }
 
 test.describe("site nav + research banner (rewrite PR1)", () => {
@@ -588,7 +580,7 @@ test.describe("site-watch PR A — map footer + mobile banner", () => {
     const line = page.getByTestId("map-credit-line-text");
     await expect(line).toHaveText("© OpenFreeMap © OpenStreetMap · Sources");
     await expect(
-      page.getByTestId("map-credit-sources"),
+      page.getByTestId("map-all-sources"),
     ).toHaveAttribute("href", "/data#licences");
     await expect(page.getByTestId("research-banner")).toHaveCount(1);
     await expect(line).not.toContainText("Research estimate");
@@ -632,7 +624,7 @@ test.describe("site-watch PR A — map footer + mobile banner", () => {
     await expect(page.locator(".maplibregl-ctrl-attrib")).toHaveCount(0);
     const credit = await openMapCreditText(page);
     await expect(credit).toHaveText("© OpenFreeMap © OpenStreetMap · Sources");
-    await page.getByTestId("map-credit-sources").click();
+    await page.getByTestId("map-all-sources").click();
     await expect(page).toHaveURL(/\/data#licences/);
     const footer = page.getByTestId("content-page-footer");
     await expect(footer).toContainText("Royal Mail");
@@ -651,7 +643,7 @@ test.describe("site-watch PR A — chrome nits", () => {
     await expect(page.getByTestId("map-stamp-footer")).toHaveCount(0);
     const info = page.getByTestId("map-credit-info");
     await expect(info).toBeVisible();
-    await expect(info).toHaveAttribute("aria-label", "Map credits and sources");
+    await expect(info).toHaveAttribute("aria-label", "Map credits");
     const infoBox = await info.boundingBox();
     expect(infoBox).toBeTruthy();
     expect(infoBox!.width).toBeGreaterThanOrEqual(44);

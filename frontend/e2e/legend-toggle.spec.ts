@@ -142,24 +142,11 @@ async function creditControl(page: Page) {
 }
 
 async function revealCredit(page: Page) {
-  const narrow = (page.viewportSize()?.width ?? 1280) <= 900;
-  if (narrow) {
-    const info = page.getByTestId("map-credit-info");
-    await expect(info).toBeVisible({ timeout: 30_000 });
-    await info.click();
-    const sheet = page.getByTestId("map-credit-sheet");
-    await expect(sheet).toBeVisible();
-    await expect(sheet.getByTestId("map-credit-line-text")).toContainText(
-      "OpenFreeMap",
-    );
-    await page.getByTestId("map-credit-sheet-close").click();
-    await expect(sheet).toBeHidden();
-  } else {
-    await expect(page.getByTestId("map-credit-line-text")).toContainText(
-      "OpenFreeMap",
-      { timeout: 30_000 },
-    );
-  }
+  // r6: OSM credit is on the visible line at every width.
+  await expect(page.getByTestId("map-credit-line-text")).toContainText(
+    "OpenFreeMap",
+    { timeout: 30_000 },
+  );
   await panToGlasgow(page);
   const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
   for (let step = 0; step < 12; step += 1) {
@@ -167,15 +154,7 @@ async function revealCredit(page: Page) {
     await page.waitForTimeout(600);
   }
   // Former Registers of Scotland attrib credit is behind Sources.
-  if (narrow) {
-    await page.getByTestId("map-credit-info").click();
-    await page
-      .getByTestId("map-credit-sheet")
-      .getByTestId("map-credit-sources")
-      .click();
-  } else {
-    await page.getByTestId("map-credit-sources").click();
-  }
+  await page.getByTestId("map-all-sources").click();
   await expect(page).toHaveURL(/\/data#licences/);
   await page.goto("/");
   await page.locator(".maplibregl-canvas").waitFor();

@@ -13,6 +13,7 @@ import maplibregl, {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import MapCreditLine from "./MapCreditLine";
+import { layersAdd2Credit } from "@/lib/layersAdd2Credits";
 import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
 import ResearchBanner from "./ResearchBanner";
 import SiteNav, { SiteBrand } from "./SiteNav";
@@ -679,6 +680,22 @@ export default function ScotlandMap() {
     y: number;
     ref: string;
   } | null>(null);
+  /** LAYERS-ADD-2 credit ids from ?layers= even when not yet a registry switch (R4 NRS). */
+  const [creditExtraIds] = useState(() => {
+    if (typeof window === "undefined") return [] as string[];
+    const raw = new URLSearchParams(window.location.search).get("layers");
+    if (!raw) return [];
+    const out: string[] = [];
+    const seen = new Set<string>();
+    for (const token of raw.split(",")) {
+      const id = token.trim();
+      if (!id || seen.has(id)) continue;
+      if (!layersAdd2Credit(id)) continue;
+      out.push(id);
+      seen.add(id);
+    }
+    return out;
+  });
   const [showVdl, setShowVdl] = useState(false);
   const [showHla, setShowHla] = useState(false);
   // SG 2024 public/Crown dashboard: licence unverified/not open — never paint
@@ -5361,6 +5378,11 @@ export default function ScotlandMap() {
 
       <MapCreditLine
         esriAttribution={mapStyle === "aerial" ? esriAttribution : null}
+        activeLayerIds={
+          creditExtraIds.length > 0
+            ? [...activeLayerIds, ...creditExtraIds]
+            : activeLayerIds
+        }
       />
       </div>{/* map-stage — panel stays outside so inert modal does not block close */}
 

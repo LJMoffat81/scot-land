@@ -242,6 +242,10 @@ test.describe("UX-01 mobile hit areas 390x844", () => {
       await assertMinHit(bannerMore, "banner More");
     }
     await assertMinHit(allSources, "All sources");
+    const creditInfo = page.getByTestId("map-credit-info");
+    if (await creditInfo.isVisible().catch(() => false)) {
+      await assertMinHit(creditInfo, "Map credits");
+    }
 
     await expect(page.getByRole("button", { name: "Show legend" })).toHaveCount(
       0,

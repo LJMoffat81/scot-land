@@ -75,3 +75,47 @@ export function formatAttributionLine(
     .map((p) => p.text)
     .join(" · ");
 }
+
+/**
+ * Short on-map source name for a non-basemap piece.
+ * Long licence text may sit in the ⓘ sheet on narrow screens; the short
+ * name stays visible (Wording & UX: e.g. "Flood maps: SEPA").
+ */
+export function shortLayerSourceName(
+  piece: AttributionPiece,
+): string | null {
+  if (piece.id === "basemap") return null;
+  switch (piece.id) {
+    case "data_zones":
+      return "Data zones: Scottish Government";
+    case "vdl":
+      return "Vacant land: SVDLS";
+    case "ros":
+      return "Boundaries: RoS / OS";
+    case "nrs_dz_pop_hh":
+      return "Population and households: NRS";
+    case "epc_domestic":
+      return "Domestic energy certificates: OGL";
+    case "ofcom_cn_fixed":
+      return "Broadband: Ofcom";
+    case "sg_urban_rural":
+      return "Town and country: Scottish Government";
+    case "os_open_roads":
+      return "Roads: OS";
+    case "os_open_greenspace":
+      return "Parks and green spaces: OS";
+    case "os_open_rivers":
+      return "Rivers: OS";
+    case "fls_estate":
+      return "Public forests and land: FLS";
+    case "ces_assets":
+      return "Crown Estate Scotland assets: CES";
+    case "flood":
+      return "Flood maps: SEPA";
+    default: {
+      const add2 = layersAdd2Credit(piece.id);
+      if (!add2) return null;
+      return piece.id.replace(/_/g, " ");
+    }
+  }
+}

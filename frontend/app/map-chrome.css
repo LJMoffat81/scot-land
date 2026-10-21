@@ -582,22 +582,27 @@ button.basemap-switcher[aria-pressed="true"] {
   }
 }
 
-/* MAP-FOOTER-1 — one credit line bottom-left */
+/* MAP-FOOTER-1 / FRONTEND-BATCH-2 r6 — one credit line bottom-left */
 .map-credit-line {
   position: absolute;
-  z-index: 3;
-  left: 8px;
-  bottom: 8px;
-  max-width: calc(100% - 96px - 24px);
+  z-index: 5;
+  left: 0.5rem;
+  right: 4.5rem;
+  bottom: 0.35rem;
+  max-width: calc(100% - 5rem);
   margin: 0;
-  padding: 3px 8px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(4px);
-  color: #0b1e3a;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.82);
+  color: rgba(11, 30, 58, 0.85);
   font-size: 12px;
-  line-height: 1.3;
+  line-height: 1.25;
   pointer-events: auto;
+  /* Wrap to at most 2 lines at 12px (r6 narrow rule). */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .map-credit-line-text {
@@ -605,21 +610,61 @@ button.basemap-switcher[aria-pressed="true"] {
 }
 
 .map-credit-line a {
-  color: inherit;
+  color: var(--slrg-navy, #0b1e3a);
+  font-weight: 600;
   text-decoration: underline;
 }
 
-.map-credit-line--narrow {
+/* Inner attribution pieces — not a second absolute strip. */
+.map-credit-line .map-attribution-line {
+  position: static;
+  display: inline;
+  left: auto;
+  right: auto;
+  bottom: auto;
   max-width: none;
+  margin: 0;
   padding: 0;
+  border-radius: 0;
   background: transparent;
-  backdrop-filter: none;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  pointer-events: auto;
+}
+
+.map-credit-line--narrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem;
+  max-width: calc(100% - 1rem);
+  right: 0.5rem;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+.map-credit-line--narrow .map-credit-line-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.25;
 }
 
 .map-credit-info-btn {
   box-sizing: border-box;
+  flex: 0 0 auto;
   width: 44px;
   height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: var(--ctrl-radius, 24px);
   border: var(--ctrl-border, 1px solid #6b7684);
   background: var(--ctrl-bg, #fff);
@@ -631,6 +676,61 @@ button.basemap-switcher[aria-pressed="true"] {
   font-size: 1.1rem;
   line-height: 1;
   cursor: pointer;
+}
+
+/* UX-01 — Sources is a real control; pad to ≥44×44 without growing the line. */
+.map-credit-line a[data-testid="map-all-sources"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.35rem 0.45rem;
+  margin: -0.35rem 0;
+  vertical-align: middle;
+}
+
+/* Clear of the 380px left panel column when place/Layers is open (desktop). */
+@media (min-width: 900px) {
+  .app-shell.panel-open .map-credit-line,
+  .app-shell.place-open .map-credit-line {
+    left: calc(380px + 1.5rem);
+    max-width: calc(100% - 380px - 6rem);
+  }
+
+  /* Layers sits in the right column, so the line stays left of that column. */
+  .app-shell.tools-open:not(.place-open) .map-credit-line {
+    left: 0.5rem;
+    right: calc(380px + 1.5rem);
+    max-width: calc(100% - 380px - 2.5rem);
+  }
+
+  .app-shell.tools-open.place-open .map-credit-line {
+    left: calc(380px + 1.5rem);
+    right: calc(380px + 1.5rem);
+    max-width: calc(100% - 760px - 3rem);
+  }
+}
+
+/* Lift above the mobile sheet so Sources does not sit under it. */
+@media (max-width: 899px) {
+  .app-shell.panel-open:has(.map-panel-slot--peek) .map-credit-line,
+  .app-shell.place-open:has(.map-panel-slot--peek) .map-credit-line {
+    bottom: calc(196px + env(safe-area-inset-bottom, 0px) + 0.35rem);
+  }
+
+  .app-shell.panel-open:has(.map-panel-slot--half) .map-credit-line {
+    bottom: calc(55dvh + 0.35rem);
+  }
+
+  /* Full Layers sheet covers the map — hide attribution (check 1). */
+  .app-shell.panel-open:has(.map-panel-slot--full) .map-credit-line,
+  .app-shell.tools-open:has(.map-panel-slot--full) .map-credit-line {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
 }
 
 .map-credit-sheet {

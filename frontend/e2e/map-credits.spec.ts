@@ -25,8 +25,8 @@ for (const viewport of VIEWPORTS) {
       });
       await expect(creditText).toContainText("OpenStreetMap");
       await expect(
-        page.getByTestId("map-credit-sources").or(
-          page.getByTestId("map-credit-sheet").getByTestId("map-credit-sources"),
+        page.getByTestId("map-all-sources").or(
+          page.getByTestId("map-credit-sheet").getByTestId("map-all-sources"),
         ),
       ).toHaveAttribute("href", "/data#licences");
 
@@ -40,9 +40,9 @@ for (const viewport of VIEWPORTS) {
 
       // Layer credits live behind Sources (MAP-FOOTER-1 / MF3).
       const sources = page
-        .getByTestId("map-credit-sources")
+        .getByTestId("map-all-sources")
         .or(
-          page.getByTestId("map-credit-sheet").getByTestId("map-credit-sources"),
+          page.getByTestId("map-credit-sheet").getByTestId("map-all-sources"),
         );
       if ((await page.getByTestId("map-credit-info").count()) > 0) {
         await page.getByTestId("map-credit-info").click();
@@ -78,17 +78,10 @@ for (const viewport of VIEWPORTS) {
 }
 
 async function openCreditText(page: Page) {
-  const narrow = (page.viewportSize()?.width ?? 1280) <= 900;
-  if (!narrow) {
-    return page.getByTestId("map-credit-line-text");
-  }
-  const info = page.getByTestId("map-credit-info");
-  await expect(info).toBeVisible();
-  if ((await page.getByTestId("map-credit-sheet").count()) === 0) {
-    await info.click();
-  }
-  await expect(page.getByTestId("map-credit-sheet")).toBeVisible();
-  return page.getByTestId("map-credit-sheet").getByTestId("map-credit-line-text");
+  // r6: OSM credit stays on the visible line at every width (never ⓘ-only).
+  const line = page.getByTestId("map-credit-line-text");
+  await expect(line).toBeVisible();
+  return line;
 }
 
 function mercator(lng: number, lat: number, zoom: number) {

@@ -42,6 +42,8 @@ async function collectChrome(page: Page, extras: Array<{ label: string; testId: 
     { label: "basemap", locator: page.getByTestId("basemap-switcher") },
     { label: "layers btn", locator: page.getByTestId("hud-layers-btn") },
     { label: "zoom-in", locator: page.locator(".maplibregl-ctrl-zoom-in") },
+    // r6 §2 #4: main's all sources plus map credit (stronger — both must clear).
+    { label: "all sources", locator: page.getByTestId("map-all-sources") },
     { label: "map credit", locator: page.getByTestId("map-credit-line") },
     ...extras.map((e) => ({
       label: e.label,

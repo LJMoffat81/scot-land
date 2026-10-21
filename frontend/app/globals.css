@@ -1154,6 +1154,8 @@ input {
   background: transparent;
   padding: 0.48rem 1rem;
   font-size: 0.95rem;
+  /* Idea 80: keep the postcode outward code / inward code space visible. */
+  word-spacing: 0.25em;
 }
 
 .hud-search input:focus,
@@ -3266,8 +3268,24 @@ button.primary:disabled {
 }
 
 .roadmap-layer-status {
+  display: block;
   font-size: 0.9rem;
   color: var(--slrg-muted);
+}
+
+/* SW-083: one status text per row — full on desktop, short on narrow when present. */
+.roadmap-waiting-status-short {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .roadmap-layer-status--has-short .roadmap-waiting-status-full {
+    display: none;
+  }
+
+  .roadmap-layer-status--has-short .roadmap-waiting-status-short {
+    display: inline;
+  }
 }
 
 .layers-panel-label {

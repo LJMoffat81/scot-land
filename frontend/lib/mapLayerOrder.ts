@@ -19,6 +19,17 @@ export function firstSymbolLayerId(
   return undefined;
 }
 
+/**
+ * O2-AERIAL-1: beforeId for council overlays.
+ * - Symbol present (Simple/OFM): insert below the first symbol so labels draw over fill.
+ * - No symbol (Aerial CSP-ESRI fixture): omit beforeId so layers sit above `esri-imagery`.
+ */
+export function councilOverlayBeforeId(
+  map: StyleLike,
+): string | undefined {
+  return firstSymbolLayerId(map);
+}
+
 /** Id of the last raster layer in the current style, if any. */
 export function lastRasterLayerId(map: StyleLike): string | undefined {
   const layers = map.getStyle?.()?.layers ?? [];

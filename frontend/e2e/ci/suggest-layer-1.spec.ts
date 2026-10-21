@@ -1,36 +1,29 @@
 import { registerOpenFreeMapFontStub } from "./_mapCardsHelpers";
 import { expect, test, type Page } from "@playwright/test";
+import { SUGGEST_LAYER_COPY } from "../../components/SuggestLayerSection";
 
 registerOpenFreeMapFontStub();
 
-
 /**
- * SUGGEST-LAYER-1 and the roadmap lines that sit with it.
- * The suggest section is before Coming to the map. The link uses the issue form.
+ * SUGGEST-LAYER-1 — flag-off: section omitted (SW-082 / FRONTEND-BATCH-3).
+ * Flag-on order + link assertions live in frontend-batch-3.spec.ts T-R2.
  */
 
-const SUGGEST_COPY =
-  "Know a dataset that would make this map better? Tell us what the layer is, where the data comes from (a link), and why it matters for land value. We check every suggestion against its licence and our method before adding it.";
+async function assertNoMailtoOrEmail(page: Page) {
+  await expect(page.locator('a[href^="mailto:"]')).toHaveCount(0);
+  const body = await page.locator("body").innerText();
+  expect(body).not.toMatch(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+}
 
 async function assertRoadmapAdditions(page: Page) {
   await page.goto("/roadmap");
 
-  const order = await page.evaluate(() => {
-    const headings = [...document.querySelectorAll("h2")].map((el) =>
-      (el.textContent || "").trim(),
-    );
-    return {
-      suggest: headings.indexOf("Suggest a layer"),
-      coming: headings.indexOf("Coming to the map"),
-    };
-  });
-  expect(order.suggest).toBeGreaterThanOrEqual(0);
-  expect(order.coming).toBeGreaterThan(order.suggest);
-
-  const suggest = page.getByTestId("roadmap-suggest-layer");
-  await expect(suggest).toContainText(SUGGEST_COPY);
-  await expect(suggest.getByRole("link", { name: "Suggest a layer", exact: true })).toHaveCount(0);
-  await expect(page.locator('a[href="/about#contact"]')).toHaveCount(0);
+  // Flag off (default): whole #suggest-a-layer section is out of the DOM.
+  await expect(page.locator("#suggest-a-layer")).toHaveCount(0);
+  await expect(page.getByTestId("roadmap-suggest-layer")).toHaveCount(0);
+  await expect(page.getByText("Suggest a layer")).toHaveCount(0);
+  await expect(page.getByText(SUGGEST_LAYER_COPY)).toHaveCount(0);
+  await assertNoMailtoOrEmail(page);
 
   const vision = page.getByTestId("roadmap-vision");
   await expect(vision).toContainText(
@@ -50,7 +43,9 @@ async function assertRoadmapAdditions(page: Page) {
 test.describe("SUGGEST-LAYER-1 at 1280", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test("suggest section, vision line, and vacant land status", async ({ page }) => {
+  test("flag off: no suggest section; vision line and vacant status", async ({
+    page,
+  }) => {
     await assertRoadmapAdditions(page);
   });
 });
@@ -58,7 +53,9 @@ test.describe("SUGGEST-LAYER-1 at 1280", () => {
 test.describe("SUGGEST-LAYER-1 at 390", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("suggest section, vision line, and vacant land status", async ({ page }) => {
+  test("flag off: no suggest section; vision line and vacant status", async ({
+    page,
+  }) => {
     await assertRoadmapAdditions(page);
   });
 });

@@ -58,7 +58,9 @@ import {
 import type { LedgerToggleState } from "../lib/ledger";
 import MapRangeLegend from "./MapRangeLegend";
 import {
+  CHOROPLETH_FILL_OPACITY,
   DEFAULT_VIEW_METRIC_ID,
+  NODATA_HATCH_OPACITY,
   POP_DENSITY_COLOURS_MIN_ZOOM,
   metricById,
   paintMetricForChoropleth,
@@ -91,7 +93,7 @@ import {
   mapErrorLogLine,
   type MapBasemapId,
 } from "../lib/mapBasemap";
-import { firstSymbolLayerId } from "../lib/mapLayerOrder";
+import { councilOverlayBeforeId } from "../lib/mapLayerOrder";
 import {
   getMapLayer,
   defaultOnLayerIds,
@@ -259,6 +261,20 @@ function safeSetGeoJson(source: GeoJSONSource | undefined, data: unknown) {
     return;
   }
   source.setData(data as GeoJSON.FeatureCollection);
+}
+
+/**
+ * Safe getLayer during basemap remount (key={mapStyle}): MapLibre throws
+ * TypeError "Cannot read properties of undefined (reading 'getLayer')" once
+ * the style is torn down. Never call map.getLayer unguarded from effects.
+ */
+function hasMapLayer(map: Map, id: string): boolean {
+  try {
+    if (!map.getStyle()?.layers) return false;
+    return Boolean(map.getLayer(id));
+  } catch {
+    return false;
+  }
 }
 
 const PUBLIC_LAND_BODIES: Array<{ name: string; color: string }> = [
@@ -627,7 +643,7 @@ function removePlotLevelMapBits(map: Map): void {
     "satellite",
   ];
   for (const id of layerIds) {
-    if (map.getLayer(id)) map.removeLayer(id);
+    if (hasMapLayer(map, id)) map.removeLayer(id);
   }
   const sourceIds = [
     "parcels-wms",
@@ -1911,7 +1927,8 @@ export default function ScotlandMap() {
     clearSuggestions();
     setError(null);
     if (!looksLikeFullPostcode(q)) {
-      setError(POSTCODES_ONLY);
+      // Refuse line under the search box (error alone only shows in the place card).
+      setSuggestNote(POSTCODES_ONLY);
       return;
     }
     setLoading(true);
@@ -1941,7 +1958,13 @@ export default function ScotlandMap() {
 
   const runSearch = async () => {
     const q = query.trim();
-    if (!q) return;
+    // Idea 80 / T-P1: keep typed formatting, but drop leading/trailing space.
+    if (q !== query) setQuery(q);
+    if (!q) {
+      // Idea 80 / T-P2: empty search is refused with the same postcode-only line.
+      setSuggestNote(POSTCODES_ONLY);
+      return;
+    }
     const coords = parseCoordinates(q);
     if (coords) {
       const generation = ++lookupGen.current;
@@ -2481,65 +2504,59 @@ export default function ScotlandMap() {
       map.addSource("council-metrics", { type: "geojson", data: emptyCollection });
       // Bind paint to the public context ramp (never leave an AGR £ expression on the layer).
       const initialPaintMetric = paintMetricForChoropleth("off");
-      // O2: choropleth below the first symbol layer so Esri/OFM labels draw over it.
-      const labelsBeforeId = firstSymbolLayerId(map);
-      map.addLayer(
-        {
-          id: "council-fill",
-          type: "fill",
-          source: "council-metrics",
-          layout: { visibility: "none" },
-          paint: {
-            "fill-color": paintForMetric(initialPaintMetric),
-            "fill-opacity": 0.72,
-          },
+      // O2-AERIAL-1: below first symbol when present; else no beforeId (above raster).
+      const labelsBeforeId = councilOverlayBeforeId(map);
+      const addCouncilLayer = (
+        layer: Parameters<Map["addLayer"]>[0],
+      ): void => {
+        if (labelsBeforeId) map.addLayer(layer, labelsBeforeId);
+        else map.addLayer(layer);
+      };
+      addCouncilLayer({
+        id: "council-fill",
+        type: "fill",
+        source: "council-metrics",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": paintForMetric(initialPaintMetric),
+          "fill-opacity": CHOROPLETH_FILL_OPACITY,
         },
-        labelsBeforeId,
-      );
+      });
       // Optional hatch overlay for polygons whose metric property is missing.
-      map.addLayer(
-        {
-          id: "council-nodata-hatch",
-          type: "fill",
-          source: "council-metrics",
-          layout: { visibility: "none" },
-          filter: [
-            "!=",
-            ["typeof", ["get", initialPaintMetric.property]],
-            "number",
-          ] as unknown as ExpressionSpecification,
-          paint: {
-            "fill-pattern": NO_DATA_HATCH_IMAGE,
-            "fill-opacity": 0.85,
-          },
+      addCouncilLayer({
+        id: "council-nodata-hatch",
+        type: "fill",
+        source: "council-metrics",
+        layout: { visibility: "none" },
+        filter: [
+          "!=",
+          ["typeof", ["get", initialPaintMetric.property]],
+          "number",
+        ] as unknown as ExpressionSpecification,
+        paint: {
+          "fill-pattern": NO_DATA_HATCH_IMAGE,
+          "fill-opacity": NODATA_HATCH_OPACITY,
         },
-        labelsBeforeId,
-      );
+      });
       if (mapStyle === "aerial") {
         // R2.4: 1.5px white casing under navy boundaries on Aerial.
-        map.addLayer(
-          {
-            id: "council-line-casing",
-            type: "line",
-            source: "council-metrics",
-            paint: {
-              "line-color": "#ffffff",
-              "line-width": 1.5,
-              "line-opacity": 0.9,
-            },
-          },
-          labelsBeforeId,
-        );
-      }
-      map.addLayer(
-        {
-          id: "council-line",
+        addCouncilLayer({
+          id: "council-line-casing",
           type: "line",
           source: "council-metrics",
-          paint: { "line-color": "#0c2c84", "line-width": 1.0, "line-opacity": 0.55 },
-        },
-        labelsBeforeId,
-      );
+          paint: {
+            "line-color": "#ffffff",
+            "line-width": 1.5,
+            "line-opacity": 0.9,
+          },
+        });
+      }
+      addCouncilLayer({
+        id: "council-line",
+        type: "line",
+        source: "council-metrics",
+        paint: { "line-color": "#0c2c84", "line-width": 1.0, "line-opacity": 0.55 },
+      });
       // Method outline: rural councils dashed emphasis
       map.addLayer({
         id: "council-method",
@@ -3053,7 +3070,7 @@ export default function ScotlandMap() {
     ) => {
       // Data Zone click → place card (boundaries only; no AGR £).
       const dzHits =
-        map.getLayer("data-zones-fill") &&
+        hasMapLayer(map, "data-zones-fill") &&
         map.getLayoutProperty("data-zones-fill", "visibility") === "visible"
           ? map.queryRenderedFeatures(point, {
               layers: ["data-zones-fill"],
@@ -3099,7 +3116,7 @@ export default function ScotlandMap() {
       // Layer popup: public land / SVDLS / LCA (ownership layers) — no parcels.
       try {
         const publicHits =
-          map.getLayer("public-land-fill") &&
+          hasMapLayer(map, "public-land-fill") &&
           map.getLayoutProperty("public-land-fill", "visibility") === "visible"
             ? map.queryRenderedFeatures(point, {
                 layers: ["public-land-fill"],
@@ -3114,7 +3131,7 @@ export default function ScotlandMap() {
             }
           | undefined;
         const lcaHits =
-          map.getLayer("lca-fill") &&
+          hasMapLayer(map, "lca-fill") &&
           map.getLayoutProperty("lca-fill", "visibility") === "visible"
             ? map.queryRenderedFeatures(point, {
                 layers: ["lca-fill"],
@@ -3189,8 +3206,9 @@ export default function ScotlandMap() {
       parcelLabelRef.current = null;
       layerPopupRef.current?.remove();
       layerPopupRef.current = null;
-      // Drop the ref before remove so moveend/styledata handlers still
-      // attached on this map do not touch a style that is going away.
+      // Drop ready + ref before remove so remount-coupled effects (e.g. grid
+      // with mapStyle in deps) and getLayer callers see a dead map first.
+      setMapReady(false);
       mapRef.current = null;
       if (E2E_HOOK_GATE) {
         (
@@ -3205,7 +3223,6 @@ export default function ScotlandMap() {
         const message = err instanceof Error ? err.message : String(err ?? "");
         if (!message.includes("Style is not done loading")) throw err;
       }
-      setMapReady(false);
       // Allow deep-link boot on the next map instance (Strict Mode / style remount).
       urlBootDoneRef.current = false;
     };
@@ -3370,10 +3387,10 @@ export default function ScotlandMap() {
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
-    if (!map?.getLayer("council-fill")) return;
+    if (!map || !hasMapLayer(map, "council-fill")) return;
     const metric = paintMetricForChoropleth(choropleth);
     map.setPaintProperty("council-fill", "fill-color", paintForMetric(metric));
-    if (map.getLayer("council-nodata-hatch")) {
+    if (hasMapLayer(map, "council-nodata-hatch")) {
       map.setFilter("council-nodata-hatch", [
         "!=",
         ["typeof", ["get", metric.property]],
@@ -3419,6 +3436,11 @@ export default function ScotlandMap() {
       }
     };
 
+    // Basemap remount (key={mapStyle}) re-runs this effect while mapReady is
+    // still stale-true and the new map has no style yet. Bail; the mapReady
+    // false→true cycle after style.load will re-enter with a live style.
+    if (!styleLive()) return;
+
     const queueRetry = () => {
       if (cancelled || retryQueued) return;
       retryQueued = true;
@@ -3434,7 +3456,7 @@ export default function ScotlandMap() {
       if (!styleLive()) return;
       const src = map.getSource("grid3-lines") as GeoJSONSource | undefined;
       src?.setData({ type: "FeatureCollection", features: [] });
-      if (map.getLayer("grid3-lines-layer")) {
+      if (hasMapLayer(map, "grid3-lines-layer")) {
         map.setLayoutProperty("grid3-lines-layer", "visibility", "none");
       }
     };
@@ -3513,7 +3535,7 @@ export default function ScotlandMap() {
         | undefined;
       src?.setData(collection);
       try {
-        if (map.getLayer(gridMod.GRID3_LAYER_LINES)) {
+        if (hasMapLayer(map, gridMod.GRID3_LAYER_LINES)) {
           map.setLayoutProperty(
             gridMod.GRID3_LAYER_LINES,
             "visibility",
@@ -3596,7 +3618,7 @@ export default function ScotlandMap() {
         mod.GRID3_LAYER_HIGHLIGHT_HALO,
         mod.GRID3_LAYER_HIGHLIGHT_LINE,
       ]) {
-        if (map.getLayer(id)) {
+        if (hasMapLayer(map, id)) {
           map.setLayoutProperty(id, "visibility", "visible");
         }
       }
@@ -3674,7 +3696,7 @@ export default function ScotlandMap() {
           gm.GRID3_LAYER_HIGHLIGHT_HALO,
           gm.GRID3_LAYER_HIGHLIGHT_LINE,
         ]) {
-          if (map.getLayer(id)) {
+          if (hasMapLayer(map, id)) {
             map.setLayoutProperty(id, "visibility", "visible");
           }
         }
@@ -3762,7 +3784,7 @@ export default function ScotlandMap() {
     if (!map) return;
 
     const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("data-zones-fill")) return;
+      if (!hasMapLayer(map, "data-zones-fill")) return;
       map.setLayoutProperty("data-zones-fill", "visibility", vis);
       map.setLayoutProperty("data-zones-line", "visibility", vis);
     };
@@ -3833,7 +3855,7 @@ export default function ScotlandMap() {
     if (!map) return;
 
     const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("dz2022-masked-fill")) return;
+      if (!hasMapLayer(map, "dz2022-masked-fill")) return;
       map.setLayoutProperty("dz2022-masked-fill", "visibility", vis);
       map.setLayoutProperty("dz2022-masked-line", "visibility", vis);
     };
@@ -3898,7 +3920,7 @@ export default function ScotlandMap() {
     if (!map) return;
 
     const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("repd-onshore-wind-circle")) return;
+      if (!hasMapLayer(map, "repd-onshore-wind-circle")) return;
       map.setLayoutProperty("repd-onshore-wind-circle", "visibility", vis);
     };
 
@@ -3975,7 +3997,7 @@ export default function ScotlandMap() {
     if (!map) return;
 
     const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("ces-aquaculture-fill")) return;
+      if (!hasMapLayer(map, "ces-aquaculture-fill")) return;
       map.setLayoutProperty("ces-aquaculture-fill", "visibility", vis);
       map.setLayoutProperty("ces-aquaculture-line", "visibility", vis);
     };
@@ -4063,7 +4085,7 @@ export default function ScotlandMap() {
     const on = Boolean(ledgerEnabled.designations);
 
     const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("designations-fill")) return;
+      if (!hasMapLayer(map, "designations-fill")) return;
       map.setLayoutProperty("designations-fill", "visibility", vis);
       map.setLayoutProperty("designations-line", "visibility", vis);
     };
@@ -4152,7 +4174,7 @@ export default function ScotlandMap() {
     if (!map) return;
 
     const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("hla-fill")) return;
+      if (!hasMapLayer(map, "hla-fill")) return;
       map.setLayoutProperty("hla-fill", "visibility", vis);
       map.setLayoutProperty("hla-line", "visibility", vis);
     };
@@ -4222,7 +4244,7 @@ export default function ScotlandMap() {
     if (!map) return;
 
     const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("ldp-fill")) return;
+      if (!hasMapLayer(map, "ldp-fill")) return;
       map.setLayoutProperty("ldp-fill", "visibility", vis);
       map.setLayoutProperty("ldp-line", "visibility", vis);
     };
@@ -4292,7 +4314,7 @@ export default function ScotlandMap() {
     if (!map) return;
 
     const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("community-ownership-circle")) return;
+      if (!hasMapLayer(map, "community-ownership-circle")) return;
       map.setLayoutProperty("community-ownership-circle", "visibility", vis);
     };
 
@@ -4361,12 +4383,12 @@ export default function ScotlandMap() {
     if (!map) return;
 
     const setNfiVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("nfi-fill")) return;
+      if (!hasMapLayer(map, "nfi-fill")) return;
       map.setLayoutProperty("nfi-fill", "visibility", vis);
       map.setLayoutProperty("nfi-line", "visibility", vis);
     };
     const setNativeVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("native-woodland-fill")) return;
+      if (!hasMapLayer(map, "native-woodland-fill")) return;
       map.setLayoutProperty("native-woodland-fill", "visibility", vis);
       map.setLayoutProperty("native-woodland-line", "visibility", vis);
     };
@@ -4470,7 +4492,7 @@ export default function ScotlandMap() {
     if (!map) return;
 
     const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("repd-circle")) return;
+      if (!hasMapLayer(map, "repd-circle")) return;
       map.setLayoutProperty("repd-circle", "visibility", vis);
     };
 
@@ -4548,7 +4570,7 @@ export default function ScotlandMap() {
     if (!map) return;
 
     const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("crown-leases-fill")) return;
+      if (!hasMapLayer(map, "crown-leases-fill")) return;
       map.setLayoutProperty("crown-leases-fill", "visibility", vis);
       map.setLayoutProperty("crown-leases-line", "visibility", vis);
     };
@@ -4616,7 +4638,7 @@ export default function ScotlandMap() {
     if (!map) return;
 
     const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("public-land-fill")) return;
+      if (!hasMapLayer(map, "public-land-fill")) return;
       map.setLayoutProperty("public-land-fill", "visibility", vis);
       map.setLayoutProperty("public-land-line", "visibility", vis);
     };
@@ -4686,7 +4708,7 @@ export default function ScotlandMap() {
     if (!map) return;
 
     const setVis = (vis: "visible" | "none") => {
-      if (!map.getLayer("lca-fill")) return;
+      if (!hasMapLayer(map, "lca-fill")) return;
       map.setLayoutProperty("lca-fill", "visibility", vis);
       map.setLayoutProperty("lca-line", "visibility", vis);
     };
@@ -4798,9 +4820,9 @@ export default function ScotlandMap() {
       const vis = on ? "visible" : "none";
       if (layer.kind === "fill") {
         for (const id of [`${layer.id}-fill`, `${layer.id}-line`]) {
-          if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
+          if (hasMapLayer(map, id)) map.setLayoutProperty(id, "visibility", vis);
         }
-      } else if (map.getLayer(layer.id)) {
+      } else if (hasMapLayer(map, layer.id)) {
         map.setLayoutProperty(layer.id, "visibility", vis);
       }
       if (on && agrAvailable === false) {

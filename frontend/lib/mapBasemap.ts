@@ -5,7 +5,7 @@
 import {
   isEsriBasemapKeyConfigured,
   readEsriBasemapApiKey,
-} from "./esriBasemapKey";
+} from "./esriBasemapKey.mjs";
 
 export type MapBasemapId = "light" | "aerial";
 

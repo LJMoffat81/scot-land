@@ -476,61 +476,17 @@
   margin: 0;
 }
 
-.basemap-switcher {
+/* r3: one 48×48 toggle above zoom (no desktop pill / narrow split). */
+button.basemap-switcher {
   position: absolute;
   z-index: 3;
   right: 0.65rem;
-  /* Clear the zoom stack and the compact (i) that sits under it, then 8px. */
-  bottom: calc(var(--zoom-bottom, 10px) + 142px + var(--ctrl-gap, 8px));
+  bottom: calc(var(--zoom-bottom, 10px) + 96px + var(--ctrl-gap, 8px));
+  box-sizing: border-box;
+  width: var(--ctrl-h, 48px);
+  height: var(--ctrl-h, 48px);
   margin: 0;
   padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  width: auto;
-  overflow: visible;
-  pointer-events: auto;
-}
-
-.basemap-switcher-wide {
-  display: flex;
-  align-items: center;
-  height: var(--ctrl-h, 48px);
-  border-radius: var(--ctrl-radius, 24px);
-  padding: 3px;
-  gap: 2px;
-  background: var(--ctrl-bg, #fff);
-  border: var(--ctrl-border, 1px solid #6b7684);
-  box-shadow: var(--ctrl-shadow, 0 2px 8px rgba(11, 30, 58, 0.16));
-}
-
-.basemap-switcher-wide button {
-  height: 40px;
-  border-radius: 20px;
-  padding: 0 16px;
-  border: 0;
-  background: transparent;
-  color: var(--ctrl-fg, #0b1e3a);
-  font: inherit;
-  font-weight: 700;
-  font-size: 0.875rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.basemap-switcher-wide button[aria-checked="true"] {
-  background: var(--ctrl-accent, #1d4f91);
-  color: #fff;
-}
-
-.basemap-toggle-narrow {
-  box-sizing: border-box;
-  width: auto;
-  min-width: var(--ctrl-h, 48px);
-  height: var(--ctrl-h, 48px);
   border-radius: var(--ctrl-radius, 24px);
   border: var(--ctrl-border, 1px solid #6b7684);
   background: var(--ctrl-bg, #fff);
@@ -539,31 +495,151 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 0.75rem;
-  font: inherit;
-  font-weight: 700;
-  font-size: 0.8125rem;
-  line-height: 1;
-  white-space: nowrap;
+  overflow: visible;
   cursor: pointer;
+  pointer-events: auto;
 }
 
-.basemap-toggle-narrow[aria-pressed="true"] {
+button.basemap-switcher .basemap-switcher-face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+button.basemap-switcher[aria-pressed="true"] {
   background: var(--ctrl-accent, #1d4f91);
   border-color: var(--ctrl-accent, #1d4f91);
   color: #fff;
+  box-shadow:
+    var(--ctrl-shadow, 0 2px 8px rgba(11, 30, 58, 0.16)),
+    0 0 0 2px var(--ctrl-accent, #1d4f91);
 }
 
-@media (max-width: 900px) {
-  .basemap-switcher-wide {
-    display: none;
+@media (hover: hover) and (pointer: fine) {
+  button.basemap-switcher:hover:not([aria-pressed="true"]) {
+    background: var(--ctrl-hover, #eef3f8);
+  }
+  button.basemap-switcher:active:not([aria-pressed="true"]) {
+    background: var(--ctrl-active, #dde6f0);
+  }
+  button.basemap-switcher[aria-pressed="true"]:active {
+    background: #173f74;
   }
 }
 
-@media (min-width: 901px) {
-  .basemap-toggle-narrow {
-    display: none;
+button.basemap-switcher .basemap-switcher-tooltip {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #0b1e3a;
+  color: #fff;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.basemap-switcher:hover .basemap-switcher-tooltip,
+  button.basemap-switcher:focus-visible .basemap-switcher-tooltip {
+    opacity: 1;
   }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  button.basemap-switcher {
+    transition: background-color 120ms;
+  }
+}
+
+/* MAP-FOOTER-1 — one credit line bottom-left */
+.map-credit-line {
+  position: absolute;
+  z-index: 3;
+  left: 8px;
+  bottom: 8px;
+  max-width: calc(100% - 96px - 24px);
+  margin: 0;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(4px);
+  color: #0b1e3a;
+  font-size: 12px;
+  line-height: 1.3;
+  pointer-events: auto;
+}
+
+.map-credit-line-text {
+  display: inline;
+}
+
+.map-credit-line a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.map-credit-line--narrow {
+  max-width: none;
+  padding: 0;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.map-credit-info-btn {
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--ctrl-radius, 24px);
+  border: var(--ctrl-border, 1px solid #6b7684);
+  background: var(--ctrl-bg, #fff);
+  color: var(--ctrl-fg, #0b1e3a);
+  box-shadow: var(--ctrl-shadow, 0 2px 8px rgba(11, 30, 58, 0.16));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.map-credit-sheet {
+  position: fixed;
+  z-index: 20;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  max-height: min(50vh, 20rem);
+  overflow: auto;
+  padding: 1rem 2.5rem 1rem 1rem;
+  border-radius: 12px;
+  background: #fff;
+  color: #0b1e3a;
+  box-shadow: var(--ctrl-shadow, 0 2px 8px rgba(11, 30, 58, 0.16));
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.map-credit-sheet-close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  background: transparent;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: inherit;
 }
 
 .basemap-notice {
@@ -652,9 +728,9 @@
     right: 0.55rem;
   }
 
-  .basemap-switcher {
+  button.basemap-switcher {
     right: 0.55rem;
-    bottom: calc(var(--zoom-bottom, 10px) + 138px + var(--ctrl-gap, 8px));
+    bottom: calc(var(--zoom-bottom, 10px) + 96px + var(--ctrl-gap, 8px));
   }
 
   /*
@@ -1003,9 +1079,9 @@
   .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .maplibregl-ctrl-bottom-right {
     bottom: calc(196px + env(safe-area-inset-bottom, 0px) + 0.5rem) !important;
   }
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .basemap-switcher {
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) button.basemap-switcher {
     bottom: calc(
-      196px + env(safe-area-inset-bottom, 0px) + 0.5rem + 138px + var(--ctrl-gap, 8px)
+      196px + env(safe-area-inset-bottom, 0px) + 0.5rem + 96px + var(--ctrl-gap, 8px)
     );
   }
 
@@ -1305,31 +1381,21 @@
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .basemap-switcher-wide button[aria-checked="false"]:hover,
-  .basemap-toggle-narrow[aria-pressed="false"]:hover,
   .map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button:hover:not(:disabled) {
     background: var(--ctrl-hover, #eef3f8);
   }
 }
 
-.basemap-switcher-wide button:active,
-.basemap-toggle-narrow:active,
 .map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button:active:not(:disabled) {
   background: var(--ctrl-active, #dde6f0);
 }
 
-.basemap-switcher-wide button[aria-checked="true"]:active,
-.basemap-toggle-narrow[aria-pressed="true"]:active {
-  background: #173f74;
-}
-
-.basemap-switcher button,
 .map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button {
   transition: background-color 120ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .basemap-switcher button,
+  button.basemap-switcher,
   .map-stage .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group button {
     transition: none;
   }
@@ -1337,7 +1403,7 @@
 
 /* GOV.UK yellow focus ring on map chrome */
 .map-cards-shell .hud-layers-btn:focus-visible,
-.map-cards-shell .basemap-switcher button:focus-visible,
+.map-cards-shell button.basemap-switcher:focus-visible,
 .map-cards-shell .maplibregl-ctrl-group button:focus-visible,
 .map-cards-shell .legend-strip:focus-visible,
 .map-cards-shell .map-panel-handle:focus-visible,
@@ -1350,7 +1416,7 @@
   box-shadow: 0 0 0 1px #0b1e3a;
 }
 
-.map-cards-shell .basemap-switcher button:focus-visible,
+.map-cards-shell button.basemap-switcher:focus-visible,
 .map-cards-shell .maplibregl-ctrl-group button:focus-visible {
   outline: 3px solid #ffdd00;
   outline-offset: 0;

@@ -1,14 +1,18 @@
 /**
- * MAP-CARDS basemap — OpenFreeMap Positron (light) ↔ Liberty (detailed).
- * Esri satellite is not offered (licence).
+ * Map basemap — OpenFreeMap Positron (Simple) ↔ Esri World Imagery (Aerial).
  */
 
-export type MapBasemapId = "light" | "detailed";
+import {
+  isEsriBasemapKeyConfigured,
+  readEsriBasemapApiKey,
+} from "./esriBasemapKey";
 
-export const MAP_BASEMAP_STYLE_URL: Readonly<Record<MapBasemapId, string>> = {
-  light: "https://tiles.openfreemap.org/styles/positron",
-  detailed: "https://tiles.openfreemap.org/styles/liberty",
-};
+export type MapBasemapId = "light" | "aerial";
+
+const POSITRON_STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
+
+const ESRI_IMAGERY_STYLE_BASE =
+  "https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/arcgis/imagery";
 
 /** Default rest basemap. */
 export const DEFAULT_MAP_BASEMAP: MapBasemapId = "light";
@@ -16,17 +20,24 @@ export const DEFAULT_MAP_BASEMAP: MapBasemapId = "light";
 /** Explicit map ceiling — GRID-BASE-1 supersedes addendum A3 (was 19). */
 export const MAP_MAX_ZOOM = 20;
 
+/** Aerial failure / fallback notice (idea 78 / MC6). */
+export const AERIAL_UNAVAILABLE_NOTICE =
+  "Aerial map isn't available right now. Showing the simple map.";
+
+/** How long Aerial style/tiles may fail before MC6 revert. */
+export const AERIAL_FAIL_WINDOW_MS = 8_000;
+
 /** The other style from the current one. */
 export function basemapSwitchTarget(current: MapBasemapId): MapBasemapId {
-  return current === "light" ? "detailed" : "light";
+  return current === "light" ? "aerial" : "light";
 }
 
 /** User-facing name. The id stays `light`; the label is Simple. */
-export function basemapLabel(id: MapBasemapId): "Simple" | "Detailed" {
-  return id === "detailed" ? "Detailed" : "Simple";
+export function basemapLabel(id: MapBasemapId): "Simple" | "Aerial" {
+  return id === "aerial" ? "Aerial" : "Simple";
 }
 
-/** Shown when the basemap style or its tiles do not load. */
+/** Shown when the Simple basemap style or its tiles do not load. */
 export const BASEMAP_LOAD_NOTICE =
   "The background map didn't load. The land layers still work. Try reloading the page.";
 
@@ -66,6 +77,48 @@ export function reduceBasemapNotice(
   return state;
 }
 
+export function esriImageryStyleUrl(token: string): string {
+  const key = token.trim();
+  const url = new URL(ESRI_IMAGERY_STYLE_BASE);
+  url.searchParams.set("token", key);
+  url.searchParams.set("language", "en");
+  return url.toString();
+}
+
+export function basemapStyleUrl(id: MapBasemapId): string {
+  if (id === "aerial") {
+    const key = readEsriBasemapApiKey();
+    if (!isEsriBasemapKeyConfigured(key)) {
+      return POSITRON_STYLE_URL;
+    }
+    return esriImageryStyleUrl(key);
+  }
+  return POSITRON_STYLE_URL;
+}
+
+/**
+ * Distinct non-empty attribution values from an Esri style's sources, in
+ * style order, joined with "; ". Empty → treat as style failure (O1).
+ */
+export function esriStyleAttributionText(style: {
+  sources?: Record<
+    string,
+    { attribution?: string; copyrightText?: string } | undefined
+  >;
+}): string | null {
+  const sources = style.sources ?? {};
+  const parts: string[] = [];
+  const seen = new Set<string>();
+  for (const source of Object.values(sources)) {
+    if (!source) continue;
+    const raw = (source.attribution ?? source.copyrightText ?? "").trim();
+    if (!raw || seen.has(raw)) continue;
+    seen.add(raw);
+    parts.push(raw);
+  }
+  return parts.length > 0 ? parts.join("; ") : null;
+}
+
 /**
  * True when a MapLibre error event is the basemap style or one of its tiles.
  * AbortError is not a failure. Glyph and sprite errors without a tile source
@@ -80,11 +133,25 @@ export function isBasemapFailureEvent(
   if (styleUrl && line.includes(styleUrl)) return true;
   const sourceId = (event.sourceId ?? "").trim();
   if (sourceId && /tiles\.openfreemap\.org/i.test(line)) return true;
+  if (/arcgis\.com/i.test(line)) return true;
   return false;
 }
 
-export function basemapStyleUrl(id: MapBasemapId): string {
-  return MAP_BASEMAP_STYLE_URL[id];
+/** True when the error line looks like an Aerial / Esri load failure. */
+export function isAerialFailureEvent(event: {
+  error?: unknown;
+  sourceId?: string | null;
+}): boolean {
+  const line = mapErrorLogLine(event.error);
+  if (!line) return false;
+  if (/arcgis\.com/i.test(line)) return true;
+  const sourceId = (event.sourceId ?? "").trim();
+  if (sourceId && /esri/i.test(sourceId)) return true;
+  // HTTP status tokens Esri / MapLibre often surface
+  if (/\b(401|403|498|499|5\d\d)\b/.test(line) && /arcgis|esri|imagery/i.test(line)) {
+    return true;
+  }
+  return false;
 }
 
 /**

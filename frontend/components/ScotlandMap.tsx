@@ -3888,15 +3888,25 @@ export default function ScotlandMap() {
           tileDzSourceLayerRef.current = dzEntry.source_layer || "dz2022";
         }
 
+        // MapLibre workers cannot resolve same-origin relative tile URLs
+        // (Request fails without a document base). Absolutize at addSource time;
+        // the factory still emits the §5 /backend/... template (TF-4).
+        const origin =
+          typeof window !== "undefined" ? window.location.origin : "";
         for (const [sourceId, sourceSpec] of Object.entries(built.sources)) {
           if (map.getSource(sourceId)) continue;
-          const spec =
-            sourceId === "tile-dz2022"
-              ? {
-                  ...sourceSpec,
-                  attribution: DATA_ZONE_BOUNDARIES_2022_CREDIT,
-                }
-              : sourceSpec;
+          const tiles = Array.isArray(sourceSpec.tiles)
+            ? (sourceSpec.tiles as string[]).map((t) =>
+                t.startsWith("/") && origin ? `${origin}${t}` : t,
+              )
+            : sourceSpec.tiles;
+          const spec = {
+            ...sourceSpec,
+            tiles,
+            ...(sourceId === "tile-dz2022"
+              ? { attribution: DATA_ZONE_BOUNDARIES_2022_CREDIT }
+              : {}),
+          };
           map.addSource(
             sourceId,
             spec as Parameters<Map["addSource"]>[1],

@@ -194,6 +194,13 @@ def test_p9_no_blanket_except():
         BACKEND / "etl" / "run_layer.py",
         BACKEND / "etl" / "build_scotland_extent.py",
         BACKEND / "layers" / "registry" / "loader.py",
+        # ARCH-2a P-T4 additions
+        BACKEND / "tiles" / "build.py",
+        BACKEND / "tiles" / "storage.py",
+        BACKEND / "tiles" / "measure.py",
+        BACKEND / "tiles" / "profiles.py",
+        BACKEND / "etl" / "adapters" / "postgis_table.py",
+        BACKEND / "api" / "tiles_routes.py",
     ]
     changed = set(_files_changed_vs_main())
     ctx = BACKEND / "spatial" / "context_tiles.py"

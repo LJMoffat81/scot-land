@@ -31,5 +31,5 @@ def fetch_geojson_file(
         raise RuntimeError(f"geojson file not a FeatureCollection: {file_path}")
     features = collection.get("features")
     if not isinstance(features, list):
-        collection = {"type": "FeatureCollection", "features": []}
+        raise RuntimeError(f"geojson file not a FeatureCollection: {file_path}")
     return collection, raw, f"file://{file_path.resolve()}"

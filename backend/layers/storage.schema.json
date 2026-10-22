@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scot-land.local/layers/storage.schema.json",
+  "title": "TileStorageConfig",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["storage", "root_env", "keep_versions"],
+  "properties": {
+    "storage": {
+      "type": "string",
+      "enum": ["local"]
+    },
+    "root_env": {
+      "type": "string",
+      "pattern": "^[A-Z_]+$"
+    },
+    "keep_versions": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    }
+  }
+}

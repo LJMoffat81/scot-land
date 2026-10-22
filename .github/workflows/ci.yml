@@ -93,6 +93,28 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements*.txt
       - run: pip install -r requirements-dev.txt
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/tippecanoe-4f2621186acfec33b63ddf636f665623c0fef2dd
+          key: tippecanoe-4f2621186acfec33b63ddf636f665623c0fef2dd
+      - name: Install tippecanoe (ARCH-2a pin)
+        env:
+          TIPPECANOE_SHA: 4f2621186acfec33b63ddf636f665623c0fef2dd
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential libsqlite3-dev zlib1g-dev git
+          cache_dir="$HOME/.cache/tippecanoe-$TIPPECANOE_SHA"
+          if [ ! -x "$cache_dir/tippecanoe" ]; then
+            rm -rf /tmp/tippecanoe-src
+            git clone https://github.com/felt/tippecanoe.git /tmp/tippecanoe-src
+            cd /tmp/tippecanoe-src
+            git checkout "$TIPPECANOE_SHA"
+            make -j"$(nproc)"
+            mkdir -p "$cache_dir"
+            cp tippecanoe tippecanoe-decode tile-join "$cache_dir/"
+          fi
+          sudo cp "$cache_dir/tippecanoe" "$cache_dir/tippecanoe-decode" "$cache_dir/tile-join" /usr/local/bin/
+          tippecanoe --version
       - name: PostGIS extension available
         run: |
           sudo apt-get update -qq

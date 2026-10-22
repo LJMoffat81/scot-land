@@ -15,26 +15,15 @@ source:
   out_fields: "*"
   page_size: 1000
 geometry: line
-refresh:
-  cron: "0 4 * * 1"
-  max_mb: 300
-  max_s: 600
-serve:
-  mode: geojson
-  simplify_m: 5
-  precision_dp: 5
-  max_mb: 15
-zoom:
-  min: 0
-  max: 14
-  low_zoom: coalesce
+refresh: {cron: "0 4 * * 1", max_mb: 300, max_s: 600}
+serve: {mode: geojson, simplify_m: 5, precision_dp: 5, max_mb: 15}
+zoom: {min: 0, max: 14, low_zoom: coalesce}
 style: {}
 legend: []
-lineage:
-  derived_from: []
-  method: source
-  roll_up_to: []
-keep_fields:
-  - pipename
-  - fluid
-  - description
+lineage: {derived_from: [], method: source, roll_up_to: []}
+keep_fields: [PIPE_NAME, FLUID, DESCRIPTIO]
+tiles:
+  budget:
+    total_mb: 15
+    tile_kb: 500
+    z0_7_mb: 2

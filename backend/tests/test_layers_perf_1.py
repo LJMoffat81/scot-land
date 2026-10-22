@@ -180,6 +180,8 @@ def _seed_oil_fields_clipped_table(monkeypatch, *, dense: bool = False) -> None:
         or ""
     ).strip()
     if not dsn:
+        if os.environ.get("CI") == "true":
+            pytest.fail("PERF: ARCH1_TEST_DSN / DATABASE_URL not set in CI")
         pytest.skip("ARCH1_TEST_DSN / DATABASE_URL not set")
     monkeypatch.setenv("ARCH1_TEST_DSN", dsn)
 

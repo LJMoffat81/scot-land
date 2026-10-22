@@ -35,6 +35,11 @@ lineage:
   method: source
   roll_up_to: []
 keep_fields:
-  - fieldname
-  - fieldtype
-  - status
+  - FIELDNAME
+  - FIELDTYPE
+  - STATUS
+tiles:
+  budget:
+    total_mb: 4
+    tile_kb: 500
+    z0_7_mb: 0.5

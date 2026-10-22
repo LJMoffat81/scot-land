@@ -53,15 +53,23 @@
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "url"],
+      "required": ["type"],
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["arcgis", "wfs", "geojson_file"]
+          "enum": ["arcgis", "wfs", "geojson_file", "postgis_table"]
         },
         "url": {
           "type": "string",
           "pattern": "^https://"
+        },
+        "table": {
+          "type": "string",
+          "pattern": "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)?$"
+        },
+        "id_field": {
+          "type": "string",
+          "pattern": "^[a-z_][a-z0-9_]*$"
         },
         "where": { "type": "string" },
         "out_fields": { "type": "string" },
@@ -70,7 +78,21 @@
           "type": "string",
           "pattern": "^[A-Z_]+$"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "type": { "const": "postgis_table" } },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["table", "id_field", "where"]
+          },
+          "else": {
+            "required": ["url"]
+          }
+        }
+      ]
     },
     "geometry": {
       "type": "string",
@@ -118,6 +140,7 @@
         "low_zoom": {
           "type": "string",
           "enum": [
+            "keep_all",
             "simplify",
             "coalesce",
             "cluster",
@@ -184,6 +207,35 @@
     "keep_fields": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "tiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["budget"],
+      "properties": {
+        "budget": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["total_mb", "tile_kb", "z0_7_mb"],
+          "properties": {
+            "total_mb": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 200
+            },
+            "tile_kb": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1024
+            },
+            "z0_7_mb": {
+              "type": "number",
+              "minimum": 0.01,
+              "maximum": 20
+            }
+          }
+        }
+      }
     }
   },
   "allOf": [

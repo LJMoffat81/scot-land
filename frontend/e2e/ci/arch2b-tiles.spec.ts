@@ -3,8 +3,7 @@
  * Auto-discovered under e2e/ci/; strict gate via ./_fixtures; no global stubs.
  */
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { expect, test } from "./_fixtures";
 import {
   assertConsoleClean,
@@ -20,10 +19,9 @@ import type { Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
-const FIXTURES = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "../fixtures/arch2b",
-);
+// Playwright CI cwd is frontend/; avoid import.meta (not an ESM module here).
+const FIXTURES = join(process.cwd(), "e2e", "fixtures", "arch2b");
+
 const VERSION = "2026-10-22.d28ecc72";
 
 const MVT: Record<string, Buffer> = {

@@ -1,7 +1,6 @@
 
 import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { test, expect } from "./_fixtures";
 import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, ensureLayersGroupOpen, openLayers, openMap, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 import { type Page } from "@playwright/test";
@@ -13,7 +12,8 @@ registerOpenFreeMapFontStub();
  * Oil and gas tiles load once per session (ARCH-2b route swap).
  */
 
-const ARCH2B = join(dirname(fileURLToPath(import.meta.url)), "../fixtures/arch2b");
+// Playwright CI cwd is frontend/; avoid import.meta (not an ESM module here).
+const ARCH2B = join(process.cwd(), "e2e", "fixtures", "arch2b");
 const OIL_MVT = readFileSync(join(ARCH2B, "oil-fields.mvt"));
 const TILE_VERSION = "2026-10-22.d28ecc72";
 

@@ -183,15 +183,9 @@ def test_b9_tippecanoe_exit_3(conn, tiles_env, monkeypatch, tmp_path):
 
 
 def test_b10_tile_kb_budget(conn, tiles_env, monkeypatch):
-    feats = [
-        {
-            "id": f"c{i}",
-            "properties": {"name": f"n{i}"},
-            "geometry": square(1000 + (i % 3) * 1000, 1000 + (i // 3) * 1000, 900),
-        }
-        for i in range(10)
-    ]
-    seed_layer_table(conn, "x", feats)
+    # dz_grid-scale polygons alone gzip under 1 KB at z0; use dense so a tile
+    # exceeds tile_kb:1 (message still names the first oversize tile).
+    seed_layer_table(conn, "x", dense_features(20000))
     entry = make_entry(
         "x",
         tiles={"budget": {"total_mb": 60, "tile_kb": 1, "z0_7_mb": 4}},
@@ -353,7 +347,13 @@ def test_b17_fail_closed(conn, tiles_env, monkeypatch):
     prev_pmtiles = pmtiles_path.read_bytes()
     prev_manifest = manifest_path.read_bytes()
 
-    # Fail at budget on rebuild
+    # Fail at budget: swap in dense content so tile_kb:1 is exceeded.
+    seed_layer_table(
+        conn,
+        "x",
+        dense_features(5000),
+        dataset_version="x@2026-10-22-bad00001",
+    )
     entry.raw["tiles"]["budget"]["tile_kb"] = 1
     with pytest.raises(TilesError, match=r"budget exceeded"):
         build_tileset("x", conn=conn, storage_path=tiles_env["storage"])
@@ -510,12 +510,12 @@ def test_b21_cli_subprocess(conn, tiles_env, monkeypatch, tmp_path):
     manifest = json.loads(
         (tiles_env["dir"] / "manifest.json").read_text(encoding="utf-8")
     )
-    assert list(sorted(manifest["tilesets"])) == [
+    assert sorted(manifest["tilesets"]) == [
         "dz2022",
         "oil-fields",
-        "platforms",
         "pipelines",
+        "platforms",
     ]
     # build_all returns sorted ids; rebuild via import to assert order
     ids = build_all(conn=conn, storage_path=tiles_env["storage"])
-    assert ids == ["dz2022", "oil-fields", "platforms", "pipelines"]
+    assert ids == ["dz2022", "oil-fields", "pipelines", "platforms"]

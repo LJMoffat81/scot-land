@@ -93,7 +93,7 @@ def seed_dz_grid(conn) -> None:
         )
         rows: list[tuple[Any, ...]] = []
         # 3×3 grid of 1 km squares inside land (0–10000), origin (1000,1000)
-        codes_2022 = [f"S010134{n}" for n in range(482, 491)]  # S01013482–S01013490
+        codes_2022 = [f"S01013{n}" for n in range(482, 491)]  # S01013482–S01013490
         for idx, code in enumerate(codes_2022):
             col, row = idx % 3, idx // 3
             x0 = 1000 + col * 1000
@@ -129,7 +129,7 @@ def seed_dz_grid(conn) -> None:
         # Straddler: half outside north edge of extent (y=10000)
         rows.append(
             (
-                "S01013491",
+                "S01013491",  # synthetic; not in the 482–490 block
                 "DZ straddle",
                 2022,
                 2000,

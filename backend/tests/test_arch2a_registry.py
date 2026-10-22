@@ -210,7 +210,7 @@ def test_r2_14_keep_fields_non_string(tmp_path):
 def test_r2_15_committed_tiled_entries():
     entries = load_registry(REGISTRY)
     tiled = sorted(eid for eid, e in entries.items() if "tiles" in e.raw)
-    assert tiled == ["dz2022", "oil-fields", "platforms", "pipelines"]
+    assert tiled == ["dz2022", "oil-fields", "pipelines", "platforms"]
     assert entries["oil-fields"].raw["keep_fields"] == [
         "FIELDNAME",
         "FIELDTYPE",

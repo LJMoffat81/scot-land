@@ -111,10 +111,8 @@ def _export_geojsonseq(
     geom_expr = f"ST_AsGeoJSON(ST_Transform(geom, 4326), {int(precision_dp)})"
     sql = f"SELECT {select_cols}, {geom_expr} AS geojson FROM {table}"
     count = 0
-    with dest.open("w", encoding="utf-8") as out, conn.cursor(
-        name=f"tiles_export_{layer_id.replace('-', '_')}"
-    ) as cur:
-        cur.itersize = 500
+    # Unnamed cursor: named (server-side) cursors cannot run with autocommit.
+    with dest.open("w", encoding="utf-8") as out, conn.cursor() as cur:
         cur.execute(sql)
         for row in cur:
             *values, geojson = row

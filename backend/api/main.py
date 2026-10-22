@@ -37,6 +37,7 @@ API_VERSION_FALLBACK = "wealth-api-boot"
 OPTIONAL_ROUTERS: tuple[tuple[str, str], ...] = (
     ("api.agr_routes", "router"),
     ("api.platform_routes", "router"),
+    ("api.tiles_routes", "router"),
 )
 
 ROUTER_STATUS: dict[str, dict[str, Any]] = {

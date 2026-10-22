@@ -192,6 +192,41 @@ stay open. Identity rules stay in the Cloudflare account — not in git.
   upstream already sent `no-store` / `private`, or a longer `max-age` (kept,
   with `ETag`). The tunnel template does not rewrite these headers.
 
+### ARCH-2a tiles (PMTiles → `/v1/tiles` MVT)
+
+Host directory (gitignored machine state; default sibling of the repo):
+
+```powershell
+$env:SCOT_LAND_TILES_DIR = "C:\path\to\scot-land-tiles"   # or ../scot-land-tiles
+New-Item -ItemType Directory -Force -Path $env:SCOT_LAND_TILES_DIR | Out-Null
+```
+
+Build all registry tilesets (one-off container, tiles volume read-write):
+
+```powershell
+docker compose -f docker-compose.home.yml run --rm --no-deps `
+  -v "${env:SCOT_LAND_TILES_DIR}:/app/tiles" `
+  -e TILES_DIR=/app/tiles `
+  api python -m tiles.build --all
+```
+
+The live/canary `api` services mount the same path read-only as `/app/tiles`
+with `TILES_DIR=/app/tiles`. Clients use:
+
+- `GET /v1/tiles/manifest.json` (short cache)
+- `GET /v1/tiles/{id}/{version}/{z}/{x}/{y}.mvt` (immutable)
+
+**Cloudflare Cache Rule (free plan, dashboard — not in this repo):** Cloudflare
+does not cache `.mvt` / `.json` by default. Add one Cache Rule before 2b goes
+live:
+
+- When: `hostname eq scot-land.scot` and
+  `starts_with(http.request.uri.path, "/backend/v1/tiles/")`
+- Then: *Eligible for cache*, edge TTL **use origin Cache-Control**
+
+No paid Cloudflare feature is required. Until the rule exists, tiles are
+fetched from origin with the correct `Cache-Control` / `ETag` headers.
+
 ## Daily PostGIS backup (14 copies)
 
 ```powershell

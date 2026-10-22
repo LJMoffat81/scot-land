@@ -21,6 +21,7 @@ services:
     volumes:
       - ./data:/app/data:ro
       - ${SCOT_LAND_LOCAL_DIR:-../scot-land-local}:/app/local:ro
+      - ${SCOT_LAND_TILES_DIR:-../scot-land-tiles}:/app/tiles:ro
     environment:
       W3W_API_KEY: ${W3W_API_KEY:-}
       SPATIALHUB_AUTHKEY: ${SPATIALHUB_AUTHKEY:-}
@@ -28,6 +29,7 @@ services:
       ALLOW_VERCEL_PREVIEWS: "false"
       PORT: "8000"
       DATA_DIR: /app/data
+      TILES_DIR: /app/tiles
       DATABASE_URL: postgresql://${POSTGRES_USER:-scotland}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@host.docker.internal:5433/${POSTGRES_DB:-scotland_wealth}
 
   frontend:

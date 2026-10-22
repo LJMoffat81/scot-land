@@ -27,12 +27,14 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data:ro
+      - ${SCOT_LAND_TILES_DIR:-../scot-land-tiles}:/app/tiles:ro
     environment:
       W3W_API_KEY: ${W3W_API_KEY:-}
       ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
       ALLOW_VERCEL_PREVIEWS: "false"
       PORT: "8000"
       DATA_DIR: /app/data
+      TILES_DIR: /app/tiles
       # Password must be URL-safe (or percent-encoded) inside DATABASE_URL.
       DATABASE_URL: postgresql://${POSTGRES_USER:-scotland}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-scotland_wealth}
     depends_on:

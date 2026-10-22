@@ -86,11 +86,24 @@ def test_b2_no_tiles_block(monkeypatch):
         build_tileset("x")
 
 
-def test_b3_gated(monkeypatch):
+def test_b3_gated(conn, tiles_env, monkeypatch):
+    # Seed a valid layer so removing the gated check (M12) yields DID NOT RAISE
+    # rather than a later STORAGE/layer error.
+    seed_layer_table(
+        conn,
+        "x",
+        [
+            {
+                "id": "1",
+                "properties": {"name": "a"},
+                "geometry": square(1000, 1000, 500),
+            }
+        ],
+    )
     entry = make_entry("x", gated_by="money_flag")
     _install_registry(monkeypatch, entry)
     with _raises_tiles("TILES: x: gated by money_flag"):
-        build_tileset("x")
+        build_tileset("x", conn=conn, storage_path=tiles_env["storage"])
 
 
 def test_b4_layer_not_built(conn, tiles_env, monkeypatch):

@@ -46,7 +46,9 @@ def test_s4_yaml_list(tmp_path):
     _raises(path, "STORAGE: $: ['local'] is not of type 'object'")
 
 
-def test_s5_storage_r2(tmp_path):
+def test_s5_storage_r2(tmp_path, monkeypatch):
+    # TILES_DIR set so M9 (enum gains r2) yields DID NOT RAISE, not env failure.
+    monkeypatch.setenv("TILES_DIR", str(tmp_path))
     path = _write(
         tmp_path / "storage.yaml",
         "storage: r2\nroot_env: TILES_DIR\nkeep_versions: 3\n",

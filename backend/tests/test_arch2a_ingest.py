@@ -142,8 +142,15 @@ def test_i5_geojson_features_refusals(tiny_extent, monkeypatch, tmp_path, kind):
     path.write_text(json.dumps(body), encoding="utf-8")
 
     msg = f"INGEST: oil-fields geojson file not a FeatureCollection: {path}"
-    with pytest.raises(IngestError, match=re.escape(msg) + "$"):
+    # Non-IngestError outcomes (M10 accepts bad features then clip fails) → DID NOT RAISE.
+    try:
         run_layer("oil-fields", from_file=path, conn=tiny_extent)
+    except IngestError as exc:
+        assert re.search(re.escape(msg) + "$", str(exc))
+    except Exception as exc:
+        pytest.fail(f"DID NOT RAISE {IngestError}")
+    else:
+        pytest.fail(f"DID NOT RAISE {IngestError}")
 
 
 def test_i5_geojson_empty_file(tiny_extent, monkeypatch, tmp_path):

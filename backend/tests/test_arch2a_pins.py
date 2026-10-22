@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-from _pytest.outcomes import Failed
+from _pytest.outcomes import Failed, Skipped
 
 REPO = Path(__file__).resolve().parents[2]
 BACKEND = REPO / "backend"
@@ -75,5 +75,12 @@ def test_ca1_ci_fails_without_dsn(monkeypatch):
     spec.loader.exec_module(mod)
 
     msg = "PERF: ARCH1_TEST_DSN / DATABASE_URL not set in CI"
-    with pytest.raises(Failed, match=re.escape(msg) + "$"):
+    # Skipped must not mark this test skipped (M11): treat it as DID NOT RAISE Failed.
+    try:
         mod._seed_oil_fields_clipped_table(monkeypatch)
+    except Failed as exc:
+        assert re.search(re.escape(msg) + "$", str(exc))
+    except Skipped as exc:
+        raise Failed(f"DID NOT RAISE {Failed}") from exc
+    else:
+        raise Failed(f"DID NOT RAISE {Failed}")

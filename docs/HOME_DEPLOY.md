@@ -42,11 +42,18 @@ array (for example `@('-f', $ComposePath, 'up', '-d', '--no-recreate', 'db')`).
 Do not pass bare remaining arguments: PowerShell would bind `-d` / `-p` / `-f` to
 common parameters and the compose step can hang attached. Do not move `HEAD` by
 hand before running the script — `last-good-sha` records `HEAD` before the pull.
+All docker/git calls go through `Invoke-Native`, which judges success only by exit code, so stderr progress text
+under PowerShell 5.1 never aborts a deploy. `last-good-sha` is written only after live health passes (or recorded
+before a pull when HEAD already equals it / none exists); rollback never writes it. If a pull changes
+`deploy-home.ps1`, the script stops with exit 3 and asks you to re-run the same command.
 
 1. Confirm `cloudflared` policy: **never stop the tunnel**.
 2. Optional `-Pull`: **before** `git pull`, record current `HEAD` as
-   `.deploy/last-good-sha` and tag current `:local` images as `:last-good`.
-3. Optional `git pull origin main` (only after step 2).
+   `.deploy/last-good-sha` and tag current `:local` images as `:last-good`
+   only when last-good is missing or already equals that `HEAD` (otherwise keep
+   the confirmed SHA and do not re-snapshot images).
+3. Optional `git pull origin main` (only after step 2). If the pull changes
+   `deploy-home.ps1`, exit 3 and re-run the same command (nothing built yet).
 4. Ensure live **db** is up (API/frontend keep serving the previous images).
 5. Snapshot `:local` → `:last-good` when last-good is known and `-Pull` was not
    used (so a build cannot erase the restore tags).
@@ -59,7 +66,8 @@ hand before running the script — `last-good-sha` records `HEAD` before the pul
    the app services. **Never** recreate `cloudflared` (not in this compose;
    stay out of its process/service too).
 10. Require live `http://127.0.0.1:3000/backend/health`.
-11. Tear down canary; write `.deploy/last-good-sha`; retag new `:local` as `:last-good`.
+11. Write `.deploy/last-good-sha`; retag new `:local` as `:last-good`; then tear
+    down canary (best-effort — teardown failure must not roll back a healthy deploy).
 
 ### On failure
 

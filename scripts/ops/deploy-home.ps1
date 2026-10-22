@@ -67,14 +67,30 @@ function Assert-CloudflaredUntouched {
     Write-DeployLog "cloudflared policy: never stop the tunnel (running=$(Get-CloudflaredRunning))"
 }
 
+# Native docker/git: success is $LASTEXITCODE only (stderr must not abort under 5.1 Stop).
+function Invoke-Native {
+    param(
+        [Parameter(Mandatory)][string]$Exe,
+        [Parameter(Mandatory)][string[]]$ArgList,
+        [switch]$AllowNonZero
+    )
+    $ErrorActionPreference = 'Continue'
+    $out = & $Exe @ArgList 2>&1
+    $code = $LASTEXITCODE
+    $stdout = @($out | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] } | ForEach-Object { "$_" })
+    $stderr = @($out | Where-Object { $_ -is  [System.Management.Automation.ErrorRecord] } | ForEach-Object { "$_" })
+    foreach ($l in $stdout + $stderr) { Write-Host $l }
+    if ($code -ne 0 -and -not $AllowNonZero) {
+        throw "native command failed: $Exe $($ArgList -join ' ') (exit $code)"
+    }
+    [pscustomobject]@{ ExitCode = $code; StdOut = ($stdout -join "`n"); StdErr = ($stderr -join "`n") }
+}
+
 # Pass compose argv as one explicit array via -ComposeArgs. Do not use
 # ValueFromRemainingArguments: bare -d/-p/-f bind to common parameters and hang.
 function Invoke-Compose {
     param([string[]]$ComposeArgs)
-    & docker compose @ComposeArgs
-    if ($LASTEXITCODE -ne 0) {
-        throw "docker compose $($ComposeArgs -join ' ') failed with exit $LASTEXITCODE"
-    }
+    Invoke-Native -Exe docker -ArgList (@('compose') + $ComposeArgs) | Out-Null
 }
 
 function Test-HttpOk {
@@ -122,10 +138,28 @@ function Write-LastGoodSha {
     Write-DeployLog "Recorded last-good SHA: $Sha"
 }
 
+function Test-PrePullRecordAllowed {
+    param([string]$Existing, [string]$Head)
+    return (-not $Existing) -or ($Existing -eq $Head)
+}
+
+function Get-DeployScriptHash {
+    param([Parameter(Mandatory)][string]$Path)
+    return (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash
+}
+
+function Test-DeployScriptChanged {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$Before
+    )
+    $after = Get-DeployScriptHash -Path $Path
+    return ($after -ne $Before)
+}
+
 function Test-DockerImageExists {
     param([string]$Image)
-    & docker image inspect $Image 2>$null | Out-Null
-    return ($LASTEXITCODE -eq 0)
+    return ((Invoke-Native -Exe docker -ArgList @('image', 'inspect', $Image) -AllowNonZero).ExitCode -eq 0)
 }
 
 function Save-LastGoodImages {
@@ -139,10 +173,8 @@ function Save-LastGoodImages {
             Write-DeployLog "No $($p.Src) to snapshot as $($p.Dst) (first deploy or missing image)" "WARN"
             continue
         }
-        & docker tag $p.Src $p.Dst
-        if ($LASTEXITCODE -ne 0) {
-            throw "docker tag $($p.Src) $($p.Dst) failed with exit $LASTEXITCODE"
-        }
+        # docker tag (native via Invoke-Native)
+        Invoke-Native -Exe docker -ArgList @('tag', $p.Src, $p.Dst) | Out-Null
         Write-DeployLog "Tagged $($p.Src) -> $($p.Dst)"
     }
 }
@@ -158,9 +190,10 @@ function Restore-LastGoodImages {
             Write-DeployLog "Missing $($p.Src); cannot retag to $($p.Dst)" "ERROR"
             return $false
         }
-        & docker tag $p.Src $p.Dst
-        if ($LASTEXITCODE -ne 0) {
-            Write-DeployLog "docker tag $($p.Src) $($p.Dst) failed with exit $LASTEXITCODE" "ERROR"
+        # docker tag (native via Invoke-Native)
+        $tagResult = Invoke-Native -Exe docker -ArgList @('tag', $p.Src, $p.Dst) -AllowNonZero
+        if ($tagResult.ExitCode -ne 0) {
+            Write-DeployLog "docker tag $($p.Src) $($p.Dst) failed with exit $($tagResult.ExitCode)" "ERROR"
             return $false
         }
         Write-DeployLog "Retagged $($p.Src) -> $($p.Dst)"
@@ -170,20 +203,25 @@ function Restore-LastGoodImages {
 
 function Stop-Canary {
     Write-DeployLog "Stopping canary project $CanaryProject (live + tunnel untouched)"
-    & docker compose -p $CanaryProject -f $CanaryPath down --remove-orphans 2>$null
+    $down = Invoke-Native -Exe docker -ArgList @('compose', '-p', $CanaryProject, '-f', $CanaryPath, 'down', '--remove-orphans') -AllowNonZero
+    if ($down.ExitCode -ne 0) {
+        Write-DeployLog "canary teardown exit $($down.ExitCode)" "WARN"
+    }
 }
 
 function Invoke-GitLastGood {
     param([string]$LastGood)
     # Stay on main: checkout the branch, then hard-reset to last-good (never detach).
     Write-DeployLog "Checking out main and resetting to last-good $LastGood (not detached)"
-    & git checkout --force main
-    if ($LASTEXITCODE -ne 0) {
+    # git checkout --force main
+    $co = Invoke-Native -Exe git -ArgList @('checkout', '--force', 'main') -AllowNonZero
+    if ($co.ExitCode -ne 0) {
         Write-DeployLog "git checkout main failed" "ERROR"
         return $false
     }
-    & git reset --hard $LastGood
-    if ($LASTEXITCODE -ne 0) {
+    # git reset --hard $LastGood
+    $rs = Invoke-Native -Exe git -ArgList @('reset', '--hard', $LastGood) -AllowNonZero
+    if ($rs.ExitCode -ne 0) {
         Write-DeployLog "git reset --hard $LastGood failed" "ERROR"
         return $false
     }
@@ -248,23 +286,35 @@ function Invoke-Rollback {
 if (-not (Test-Path $ComposePath)) { throw "Missing $ComposePath" }
 if (-not (Test-Path $CanaryPath)) { throw "Missing $CanaryPath" }
 
+$scriptHashBefore = Get-DeployScriptHash $PSCommandPath
+
 Assert-CloudflaredUntouched
 if (-not (Get-CloudflaredRunning)) {
     Write-DeployLog "WARNING: cloudflared not detected as a process/service. Continuing deploy; will still never stop it." "WARN"
 }
 
 # Required before any pull: record HEAD as last-good and snapshot :local images.
-$prePullSha = (& git rev-parse HEAD).Trim()
+$prePullSha = (Invoke-Native -Exe git -ArgList @('rev-parse', 'HEAD')).StdOut.Trim()
 if ($Pull) {
-    Write-DeployLog "Recording HEAD as last-good before pull: $prePullSha"
-    Write-LastGoodSha $prePullSha
-    Save-LastGoodImages
+    $existingPre = Read-LastGoodSha
+    if (Test-PrePullRecordAllowed -Existing $existingPre -Head $prePullSha) {
+        Write-DeployLog "Recording HEAD as last-good before pull: $prePullSha"
+        Write-LastGoodSha $prePullSha
+        Save-LastGoodImages
+    } else {
+        Write-DeployLog "Keeping last-good $existingPre; HEAD $prePullSha was never confirmed deployed (no overwrite, no image snapshot)" "WARN"
+    }
     Write-DeployLog "git pull origin main"
-    & git pull origin main
-    if ($LASTEXITCODE -ne 0) { throw "git pull failed" }
+    Invoke-Native -Exe git -ArgList @('pull', 'origin', 'main') | Out-Null
+    if (Test-DeployScriptChanged -Path $PSCommandPath -Before $scriptHashBefore) {
+        $msg = "DEPLOY-SCRIPT-CHANGED: git pull updated deploy-home.ps1. Re-run the same command to deploy with the new script."
+        Write-DeployLog $msg "WARN"
+        Write-Host $msg
+        exit 3
+    }
 }
 
-$targetSha = (& git rev-parse HEAD).Trim()
+$targetSha = (Invoke-Native -Exe git -ArgList @('rev-parse', 'HEAD')).StdOut.Trim()
 $env:GIT_COMMIT = $targetSha
 Write-DeployLog "Deploy target SHA: $targetSha"
 
@@ -318,9 +368,9 @@ try {
         exit 1
     }
 
-    Stop-Canary
     Write-LastGoodSha $targetSha
     Save-LastGoodImages
+    Stop-Canary
     Assert-CloudflaredUntouched
     Write-DeployLog "Deploy SUCCESS at $targetSha"
     exit 0

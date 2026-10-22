@@ -284,6 +284,32 @@ def _render_sql(
     )
 
 
+def _make_valid(
+    conn, layer_id: str, entry: LayerEntry
+) -> tuple[int, list[str]]:
+    """CLIP-VALID-1: repair invalid polygons in stage; fail closed on leftovers."""
+    if (entry.raw.get("geometry") or "polygon") != "polygon":
+        return 0, []
+    src = _table("stage", layer_id)
+    dim = str(_GEOM_DIM["polygon"])
+    fix = (SQL_DIR / "make_valid.sql").read_text(encoding="utf-8")
+    chk = (SQL_DIR / "check_valid.sql").read_text(encoding="utf-8")
+    with conn.cursor() as cur:
+        cur.execute(fix.replace("__SRC__", src).replace("__DIM__", dim))
+        repaired_ids = sorted(str(r[0]) for r in cur.fetchall())
+        repaired = len(repaired_ids)
+        cur.execute(chk.replace("__SRC__", src))
+        bad = [str(r[0]) for r in cur.fetchall()]
+    conn.commit()
+    if bad:
+        shown = ", ".join(bad[:5])
+        raise IngestError(
+            f"INGEST: {layer_id}: {len(bad)} geometries invalid or empty "
+            f"after ST_MakeValid: {shown}"
+        )
+    return repaired, repaired_ids[:20]
+
+
 def _clip(
     conn,
     layer_id: str,
@@ -487,11 +513,18 @@ def run_layer(
             already_27700=already_27700,
         )
 
+        repaired, repaired_ids = _make_valid(connection, layer_id, entry)
+
         reset_intersection_counter(connection)
         clip_t0 = time.monotonic()
         after = _clip(connection, layer_id, entry, new_name=new_name)
         clip_s = time.monotonic() - clip_t0
 
+        if entry.raw.get("clip_keep_all") and after != before:
+            raise CheckError(
+                f"CHECK: {layer_id}: clip kept {after} of {before} features "
+                "(clip_keep_all)"
+            )
         outside = _check(connection, layer_id, new_name)
         _swap_impl(connection, layer_id, new_name)
 
@@ -500,6 +533,8 @@ def run_layer(
             "before": before,
             "after": after,
             "outside": outside,
+            "repaired": repaired,
+            "repaired_ids": repaired_ids,
             "fetch_s": round(fetch_s, 3),
             "clip_s": round(clip_s, 3),
             "total_s": round(time.monotonic() - started, 3),

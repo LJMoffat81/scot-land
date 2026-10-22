@@ -16,3 +16,6 @@ openpyxl>=3.1
 # Schema migrations (baseline + future revisions)
 alembic>=1.14
 sqlalchemy>=2.0
+# ARCH-2a PMTiles build / measure
+pmtiles>=3.8,<4
+mapbox-vector-tile>=2.1,<3

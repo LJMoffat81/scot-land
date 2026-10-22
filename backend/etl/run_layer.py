@@ -25,6 +25,7 @@ import psycopg2.extras
 
 from etl.adapters.arcgis import fetch_arcgis
 from etl.adapters.geojson_file import fetch_geojson_file
+from etl.adapters.postgis_table import fetch_postgis_table
 from etl.build_scotland_extent import ExtentError
 from layers.registry.loader import LayerEntry, RegistryError, registry
 
@@ -382,6 +383,7 @@ def _fetch_entry(
     entry: LayerEntry,
     *,
     from_file: Path | None,
+    conn=None,
 ) -> tuple[dict[str, Any], bytes, str]:
     layer_id = entry.id
     source = entry.raw.get("source") or {}
@@ -410,6 +412,20 @@ def _fetch_entry(
             )
         if src_type == "geojson_file":
             return fetch_geojson_file(source["url"], max_mb=max_mb)
+        if src_type == "postgis_table":
+            if conn is None:
+                raise IngestError(
+                    f"INGEST: {layer_id} postgis_table requires a database connection"
+                )
+            keep_fields = list(entry.raw.get("keep_fields") or [])
+            return fetch_postgis_table(
+                conn,
+                source["table"],
+                source["id_field"],
+                source.get("where") or "TRUE",
+                keep_fields,
+                max_mb=max_mb,
+            )
         raise IngestError(f"INGEST: {layer_id} unknown source.type {src_type!r}")
     except RuntimeError as exc:
         msg = str(exc)
@@ -418,8 +434,13 @@ def _fetch_entry(
             raise IngestError(
                 f"INGEST: {layer_id} budget exceeded: {kind}"
             ) from exc
+        # postgis missing-relation messages are wrapped as fetch failed
+        if "does not exist" in msg:
+            raise IngestError(f"INGEST: {layer_id} fetch failed: {msg}") from exc
         raise IngestError(f"INGEST: {layer_id} {msg}") from exc
     except (httpx.HTTPError, OSError, ValueError, KeyError, TypeError) as exc:
+        raise IngestError(f"INGEST: {layer_id} fetch failed: {exc}") from exc
+    except psycopg2.Error as exc:
         raise IngestError(f"INGEST: {layer_id} fetch failed: {exc}") from exc
 
 
@@ -447,7 +468,7 @@ def run_layer(
 
         fetch_t0 = time.monotonic()
         collection, raw_body, redacted_url = _fetch_entry(
-            entry, from_file=from_file
+            entry, from_file=from_file, conn=connection
         )
         fetch_s = time.monotonic() - fetch_t0
         features = list(collection.get("features") or [])

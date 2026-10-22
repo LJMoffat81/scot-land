@@ -1,0 +1,3 @@
+storage: local
+root_env: TILES_DIR
+keep_versions: 3

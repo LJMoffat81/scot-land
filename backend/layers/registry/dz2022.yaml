@@ -1,0 +1,41 @@
+id: dz2022
+title: Data Zones 2022
+geography: scotland
+clip: land+sea
+unit: dz2022
+licence: OGL-3.0
+attribution: >-
+  Copyright Scottish Government, contains Ordnance Survey data © Crown copyright
+  and database right 2026.
+source:
+  type: postgis_table
+  table: dz_boundaries
+  id_field: code
+  where: "vintage = 2022"
+geometry: polygon
+refresh:
+  cron: "0 5 1 * *"
+  max_mb: 300
+  max_s: 600
+serve:
+  mode: pmtiles
+  simplify_m: 0
+  precision_dp: 6
+  max_mb: 15
+zoom:
+  min: 0
+  max: 14
+  low_zoom: keep_all
+style: {}
+legend: []
+lineage:
+  derived_from: []
+  method: source
+  roll_up_to: [council, scotland]
+keep_fields:
+  - name
+tiles:
+  budget:
+    total_mb: 60
+    tile_kb: 500
+    z0_7_mb: 4

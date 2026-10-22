@@ -72,6 +72,15 @@ def _validate_entry(
         raise RegistryError(
             f"REGISTRY: {entry_id}: $.clip: 'none' is only allowed with serve.mode raster"
         )
+    source = data.get("source") or {}
+    if source.get("type") == "postgis_table" and "url" in source:
+        raise RegistryError(
+            f"REGISTRY: {entry_id}: $.source.url: not allowed for postgis_table"
+        )
+    if "tiles" in data and (data.get("serve") or {}).get("mode") == "raster":
+        raise RegistryError(
+            f"REGISTRY: {entry_id}: $.tiles: not allowed with serve.mode raster"
+        )
     try:
         validator.validate(data)
     except ValidationError as exc:

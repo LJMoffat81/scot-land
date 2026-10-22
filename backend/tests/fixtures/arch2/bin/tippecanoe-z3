@@ -1,0 +1,4 @@
+#!/bin/sh
+# ARCH-2a B-16: wrap real tippecanoe and force minzoom 3 via trailing -Z3
+REAL_TIPPECANOE="${REAL_TIPPECANOE:-/usr/local/bin/tippecanoe}"
+exec "$REAL_TIPPECANOE" "$@" -Z3

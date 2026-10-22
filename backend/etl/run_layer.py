@@ -329,6 +329,18 @@ def _clip(
     dim = _GEOM_DIM.get(geom_kind, 3)
     is_point = geom_kind == "point"
     template = (SQL_DIR / "clip.sql").read_text(encoding="utf-8")
+    # GEOS 3.9 (CI postgis/postgis:16-3.4) can report ST_Covers=true but
+    # ST_Intersects=false for covered invalid degenerates (e.g. collapsed
+    # LINESTRING). The candidates filter would drop them before the fast path.
+    # Accept Covers as well so covered features stay candidates; for valid
+    # geometries Covers ⇒ Intersects so this is a no-op.
+    template = template.replace(
+        "AND e.geom && s.geom\n"
+        "      AND ST_Intersects(e.geom, s.geom)",
+        "AND e.geom && s.geom\n"
+        "      AND (ST_Intersects(e.geom, s.geom) OR ST_Covers(e.geom, s.geom))",
+        1,
+    )
     src = _table("stage", layer_id)
     dst = _table("layers", new_name)
     sql = _render_sql(

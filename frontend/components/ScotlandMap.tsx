@@ -3850,22 +3850,18 @@ export default function ScotlandMap() {
     };
     map.on("sourcedata", onSourceData);
 
-    // E2E builds: only hit /v1/tiles when a tile spec sets
-    // window.__ARCH2B_LOAD_TILES__ (arch2b-tiles / layers-perf / layers-fix).
-    // Catch-all **/backend/** → 404 stubs must not see a manifest fetch — a
-    // shared quiet stub is forbidden (§6); empty tilesets without a network
-    // round-trip is the valid TF-2 outcome for specs that do not exercise tiles.
-    if (E2E_HOOK_GATE) {
-      const loadTiles = Boolean(
-        (window as unknown as { __ARCH2B_LOAD_TILES__?: boolean })
-          .__ARCH2B_LOAD_TILES__,
-      );
-      if (!loadTiles) {
-        return () => {
-          cancelled = true;
-          map.off("sourcedata", onSourceData);
-        };
-      }
+    // Single read of __ARCH2B_LOAD_TILES__: absent/undefined → load (production
+    // default). Only an explicit false (e2e harness opt-out) skips the fetch.
+    // Visitor builds drop this block (E2E_HOOK_GATE → false).
+    if (
+      E2E_HOOK_GATE &&
+      (window as unknown as { __ARCH2B_LOAD_TILES__?: boolean })
+        .__ARCH2B_LOAD_TILES__ === false
+    ) {
+      return () => {
+        cancelled = true;
+        map.off("sourcedata", onSourceData);
+      };
     }
 
     void apiJson<unknown>("/v1/tiles/manifest.json")

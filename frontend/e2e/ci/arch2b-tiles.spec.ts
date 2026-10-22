@@ -169,8 +169,7 @@ async function routeArch2bTiles(
   const valuesMode = opts.values ?? "ok";
   const tile404Path = opts.tile404Path ?? null;
 
-  // Opt into ScotlandMap's tile manifest fetch (E2E_HOOKS builds skip it
-  // unless set — avoids catch-all **/backend/** 404s in unrelated specs).
+  // Re-enable tiles after the CI harness opt-out (__ARCH2B_LOAD_TILES__=false).
   await page.addInitScript(() => {
     (
       window as unknown as { __ARCH2B_LOAD_TILES__?: boolean }

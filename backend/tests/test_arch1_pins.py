@@ -148,8 +148,8 @@ def test_p4_one_extent_matches_manifest():
 _ARCH2A_TILES_ROUTER_LINE = '    ("api.tiles_routes", "router"),\n'
 
 # Exact frontend paths authorised by ARCH-2b_ad7700e6 §8 (Lead exemption for #254).
-# Literal list only — no glob, no regex, no directory prefix. P6 stays red for
-# any other frontend/ path.
+# Plus e2e/ci/_fixtures.ts — Lead ruling: harness sets __ARCH2B_LOAD_TILES__=false
+# (opt-out only; absent → load). Literal list only — no glob/regex/prefix.
 _ARCH2B_FRONTEND_ALLOW = frozenset(
     [
         "frontend/lib/tileLayerFactory.ts",
@@ -168,6 +168,7 @@ _ARCH2B_FRONTEND_ALLOW = frozenset(
         "frontend/e2e/ci/layers-perf-3.spec.ts",
         "frontend/e2e/ci/layers-fix-1.spec.ts",
         "frontend/scripts/test-proxy-null-body.mjs",
+        "frontend/e2e/ci/_fixtures.ts",
     ]
 )
 

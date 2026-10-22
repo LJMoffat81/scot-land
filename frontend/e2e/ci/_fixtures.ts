@@ -212,6 +212,14 @@ export const test = base.extend<CiDedupFixtures>({
   gate: async ({ page }, use) => {
     // Backend/api stubs stay per-spec (stubMapCardsBackend etc.). No same-origin
     // quiet routes here — §0 / §8 ban global backend stubs in shared fixtures.
+    // ARCH-2b Lead: opt-out only — ScotlandMap loads tiles when this flag is
+    // absent; catch-all **/backend/** specs set false so the manifest fetch
+    // does not 404 the strict gate. Tile specs re-enable with = true.
+    await page.addInitScript(() => {
+      (
+        window as unknown as { __ARCH2B_LOAD_TILES__?: boolean }
+      ).__ARCH2B_LOAD_TILES__ = false;
+    });
     const gate = attachStrictConsoleGate(page);
     registerStrictGate(page, gate);
     await use(gate);

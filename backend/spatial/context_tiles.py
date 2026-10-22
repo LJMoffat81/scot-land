@@ -25,7 +25,9 @@ from __future__ import annotations
 import asyncio
 import csv
 import io
+import json
 import math
+import os
 import re
 import ssl
 import threading
@@ -34,14 +36,17 @@ from pathlib import Path
 from urllib.parse import urlencode, urlparse
 
 import httpx
+import psycopg2
 from pyproj import Transformer
 
 from agr.seabed import seabed_record
 from agr.settlement import zone_class_for
 from layers.naturescot import cap_feature_collection
+from layers.registry.loader import registry as layer_registry
 from spatial.parcels import TRANSPARENT_PNG, tile_bounds_3857
 
 # Oil and gas GeoJSON stays within this body size after simplification.
+# Kept for LAYERS-PERF-* tests and route-level size hints.
 OIL_FIELDS_BYTE_BUDGET = 500 * 1024
 OIL_FIELDS_HIDDEN_HINT = "Zoom in to see oil and gas"
 
@@ -60,10 +65,6 @@ _ALLOWED_HOSTS = frozenset(
     }
 )
 
-_NSTA = (
-    "Contains information provided by the North Sea Transition Authority "
-    "and/or other third parties."
-)
 _SG = (
     "Contains information from the Scottish Government (Marine Scotland) "
     "licensed under the Open Government Licence v3.0."
@@ -76,20 +77,6 @@ _UKHO = (
 _CES = (
     "Contains information from Crown Estate Scotland licensed under the "
     "Open Government Licence v3.0."
-)
-_NSTA_FIELDS = (
-    "https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/"
-    "Offshore_hydrocarbon_fields_(WGS84)/FeatureServer/0/query"
-)
-_NSTA_PLATFORMS = (
-    "https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/"
-    "UKCS%20offshore%20infrastructure%20surface%20points%20WGS84/"
-    "FeatureServer/1/query"
-)
-_NSTA_PIPES = (
-    "https://services-eu1.arcgis.com/OZMfUznmLTnWccBc/arcgis/rest/services/"
-    "UKCS%20offshore%20infrastructure%20pipeline%20linear%20ETRS89/"
-    "FeatureServer/1/query"
 )
 _CES_ROOT = "https://services3.arcgis.com/nGV4jiurzcahJ9LV/ArcGIS/rest/services"
 _REPD_URL = (
@@ -251,13 +238,8 @@ RASTER: dict[str, RasterSpec] = {
 }
 
 FEATURES: dict[str, FeatureSpec] = {
-    "oil-fields": FeatureSpec("oil-fields", "arcgis", _NSTA_FIELDS, "1=1", _NSTA),
-    "platforms": FeatureSpec(
-        "platforms", "arcgis", _NSTA_PLATFORMS, "CURR_ROW='Y'", _NSTA
-    ),
-    "pipelines": FeatureSpec(
-        "pipelines", "arcgis", _NSTA_PIPES, "CURR_ROW='Y'", _NSTA
-    ),
+    # oil-fields / platforms / pipelines: clipped ``layers.<id>`` only (D8/D9).
+    # Never fall through to a live NSTA fetch on the request path.
     "wind-leases": FeatureSpec(
         "wind-leases",
         "arcgis",
@@ -533,8 +515,172 @@ def _repd_features(text: str) -> list[dict]:
     return features
 
 
+def _registry_dsn() -> str:
+    return (
+        os.environ.get("ARCH1_TEST_DSN")
+        or os.environ.get("DATABASE_URL")
+        or ""
+    ).strip()
+
+
+def _registry_extent_present(conn) -> bool:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_schema='ref' AND table_name='extent_sub'
+            )
+            """
+        )
+        if not cur.fetchone()[0]:
+            return False
+        cur.execute(
+            "SELECT count(*) FROM ref.extent_sub WHERE geography='scotland'"
+        )
+        return int(cur.fetchone()[0]) > 0
+
+
+def _registry_table_exists(conn, layer_id: str) -> bool:
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT EXISTS (
+              SELECT 1 FROM information_schema.tables
+              WHERE table_schema='layers' AND table_name=%s
+            )
+            """,
+            (layer_id,),
+        )
+        return bool(cur.fetchone()[0])
+
+
+def _fetch_registry_geojson(layer_id: str) -> dict:
+    """Serve a clipped registry layer from ``layers.<id>`` (no upstream fetch)."""
+    entries = layer_registry()
+    entry = entries.get(layer_id)
+    if entry is None:
+        return _empty(layer_id, False, "unknown layer")
+
+    dsn = _registry_dsn()
+    if not dsn:
+        return _empty(layer_id, False, "layer not built")
+
+    serve = entry.raw.get("serve") or {}
+    simplify_m = float(serve.get("simplify_m") or 0)
+    precision_dp = int(serve.get("precision_dp") or 6)
+    max_mb = float(serve.get("max_mb") or 15)
+    attribution = str(entry.raw.get("attribution") or "")
+
+    try:
+        conn = psycopg2.connect(dsn)
+    except psycopg2.Error:
+        return _empty(layer_id, False, "layer not built")
+
+    rows: list = []
+    try:
+        if not _registry_extent_present(conn):
+            return _empty(layer_id, False, "Scotland boundary missing")
+        if not _registry_table_exists(conn, layer_id):
+            return _empty(layer_id, False, "layer not built")
+
+        q_id = '"' + layer_id.replace('"', "") + '"'
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                SELECT
+                  feature_id,
+                  props,
+                  ST_AsGeoJSON(
+                    ST_Transform(
+                      CASE
+                        WHEN %s > 0 THEN ST_Simplify(geom, %s)
+                        ELSE geom
+                      END,
+                      4326
+                    ),
+                    %s
+                  ),
+                  dataset_version,
+                  as_of
+                FROM layers.{q_id}
+                """,
+                (simplify_m, simplify_m, precision_dp),
+            )
+            rows = cur.fetchall()
+    except psycopg2.Error:
+        return _empty(layer_id, False, "layer not built")
+    finally:
+        conn.close()
+
+    features: list[dict] = []
+    dataset_version = None
+    as_of = None
+    for feature_id, props, geom_json, version, row_as_of in rows:
+        if geom_json is None:
+            continue
+        geometry = json.loads(geom_json) if isinstance(geom_json, str) else geom_json
+        properties = dict(props or {})
+        properties["feature_id"] = feature_id
+        features.append(
+            {
+                "type": "Feature",
+                "geometry": geometry,
+                "properties": properties,
+            }
+        )
+        dataset_version = version
+        as_of = (
+            row_as_of.isoformat()
+            if hasattr(row_as_of, "isoformat")
+            else row_as_of
+        )
+
+    meta: dict = {
+        "layer": layer_id,
+        "ok": True,
+        "count": len(features),
+        "attribution": attribution,
+    }
+    if dataset_version is not None:
+        meta["dataset_version"] = dataset_version
+    if as_of is not None:
+        meta["as_of"] = as_of
+
+    geo = {
+        "type": "FeatureCollection",
+        "features": features,
+        "meta": meta,
+    }
+    body = json.dumps(geo, separators=(",", ":")).encode("utf-8")
+    if len(body) > max_mb * 1024 * 1024:
+        return _empty(layer_id, False, "layer too large")
+    return geo
+
+
 def fetch_context_geojson(layer_id: str) -> dict:
     """GeoJSON for one allowlisted feature layer. Never raises."""
+    # ARCH-1 registry layers: clipped PostGIS tables only (D8 / D9). Never
+    # fall through to a live upstream fetch for oil-fields/platforms/pipelines.
+    if layer_id in layer_registry():
+        with _cache_lock:
+            cached = _cache.get(layer_id)
+        if cached is not None:
+            return cached
+        geo = _fetch_registry_geojson(layer_id)
+        if (geo.get("meta") or {}).get("ok"):
+            if layer_id == "oil-fields":
+                geo = cap_feature_collection(geo, OIL_FIELDS_BYTE_BUDGET)
+                if (geo.get("meta") or {}).get("hidden_below_zoom"):
+                    meta = dict(geo.get("meta") or {})
+                    meta["hint"] = OIL_FIELDS_HIDDEN_HINT
+                    meta["hidden_below_zoom"] = True
+                    # Size cap hid the fields — do not cache the empty body.
+                    return {**geo, "features": [], "meta": meta}
+            with _cache_lock:
+                _cache[layer_id] = geo
+        return geo
+
     spec = FEATURES.get(layer_id)
     if spec is None:
         return _empty(layer_id, False, "unknown layer")
@@ -567,16 +713,14 @@ def fetch_context_geojson(layer_id: str) -> dict:
             "features": features,
             "meta": {"layer": layer_id, "ok": True, "count": len(features)},
         }
-        if layer_id == "oil-fields":
-            geo = cap_feature_collection(geo, OIL_FIELDS_BYTE_BUDGET)
-            if (geo.get("meta") or {}).get("hidden_below_zoom"):
-                meta = dict(geo.get("meta") or {})
-                meta["hint"] = OIL_FIELDS_HIDDEN_HINT
-                meta["hidden_below_zoom"] = True
-                # A size cap hid the fields. Do not store that empty body:
-                # the next request must be allowed to try again.
-                return {**geo, "features": [], "meta": meta}
-    except Exception:
+    except (
+        httpx.HTTPError,
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        json.JSONDecodeError,
+    ):
         return _empty(layer_id, False, "layer did not load")
     with _cache_lock:
         _cache[layer_id] = geo

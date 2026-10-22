@@ -11,7 +11,13 @@ from layers.naturescot import (
     dumps_feature_collection,
     simplify_tolerance_m,
 )
-from tests.test_layers_perf_1 import BUDGET_Z6, _huge_polygon, _patch_query
+from spatial import context_tiles
+from tests.test_layers_perf_1 import (
+    BUDGET_Z6,
+    _huge_polygon,
+    _patch_query,
+    _seed_oil_fields_clipped_table,
+)
 
 _OIL_HINT = "Zoom in to see oil and gas"
 
@@ -96,26 +102,18 @@ def test_sssi_z6_z7_z8_warm_under_two_seconds(client, monkeypatch):
 
 def test_size_capped_oil_and_gas_is_not_cached_empty(client, monkeypatch):
     """A size cap that hides every field must not be stored as an empty success."""
-    from spatial import context_tiles
+    _seed_oil_fields_clipped_table(monkeypatch, dense=True)
 
     calls = {"n": 0}
+    real_fetch = context_tiles._fetch_registry_geojson
 
-    def _features(_url, _where, extra=None):
+    def _counted(layer_id):
         calls["n"] += 1
-        return [
-            {
-                "type": "Feature",
-                "geometry": {
-                    "type": "Polygon",
-                    "coordinates": [[[-2.0, 58.0], [-1.0, 58.0], [-1.5, 59.0], [-2.0, 58.0]]],
-                },
-                "properties": {"name": "North Sea"},
-            }
-        ]
+        return real_fetch(layer_id)
 
     with context_tiles._cache_lock:
         context_tiles._cache.pop("oil-fields", None)
-    monkeypatch.setattr(context_tiles, "_arcgis_features", _features)
+    monkeypatch.setattr(context_tiles, "_fetch_registry_geojson", _counted)
     monkeypatch.setattr(context_tiles, "OIL_FIELDS_BYTE_BUDGET", 80)
     try:
         first = client.get("/layers/context/oil-fields")

@@ -9,6 +9,7 @@ import {
   test as base,
   expect,
   type BrowserContext,
+  type Page,
   type Route,
 } from "@playwright/test";
 import {
@@ -18,6 +19,31 @@ import {
   registerStrictGate,
   type StrictConsoleGate,
 } from "./_consoleGate";
+
+/** A1 (ARCH-2b-r3a): exact tiles manifest pathname — shared by CI gate + build-key B1. */
+export const TILES_MANIFEST_PATHNAME = "/backend/v1/tiles/manifest.json";
+
+/** Committed empty manifest (no layers). Path relative to this file. */
+export function emptyTilesManifestFixturePath(): string {
+  return join(__dirname, "fixtures", "tiles-manifest-empty.json");
+}
+
+/**
+ * A1: serve ONLY the exact tiles manifest URL with the committed empty file.
+ * No other backend stubs. Tile specs register their own routes later (LIFO).
+ * Guarded by G1.
+ */
+export async function routeEmptyTilesManifest(page: Page): Promise<void> {
+  await page.route(
+    (url) => url.pathname === TILES_MANIFEST_PATHNAME,
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        path: emptyTilesManifestFixturePath(),
+      }),
+  );
+}
 
 /** 1×1 PNG — same bytes as CI_TINY_PNG in helpers. */
 const CI_TINY_PNG = Buffer.from(
@@ -212,6 +238,57 @@ export const test = base.extend<CiDedupFixtures>({
   gate: async ({ page }, use) => {
     // Backend/api stubs stay per-spec (stubMapCardsBackend etc.). No same-origin
     // quiet routes here — §0 / §8 ban global backend stubs in shared fixtures.
+    // A1 (ARCH-2b-r2): CI has no FastAPI, so the map's one-time tiles manifest
+    // fetch would 404/503 and trip the strict gate in every map spec. The shared
+    // gate serves ONLY this exact URL, with a committed empty manifest (no layers).
+    // Do not add tile, values or other backend stubs here: tile specs register
+    // their own page.route() (registered later, so they win). Guarded by G1.
+    // Catch-all **/backend/** stubs register after this fixture (LIFO) and would
+    // otherwise steal the manifest; wrap non-manifest-specific handlers so A1
+    // still wins for this pathname only. Manifest-specific routes are untouched.
+    // T-M2 and similar call page.unrouteAll — restore A1 via originalRoute only.
+    await routeEmptyTilesManifest(page);
+    const fulfillEmptyManifest = (route: Route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        path: emptyTilesManifestFixturePath(),
+      });
+    const isManifestSpecificPattern = (
+      url: string | RegExp | ((u: URL) => boolean),
+    ): boolean => {
+      if (typeof url === "string") return url.includes("v1/tiles/manifest");
+      if (url instanceof RegExp) return url.source.includes("manifest");
+      return false;
+    };
+    const originalRoute = page.route.bind(page);
+    const originalUnrouteAll = page.unrouteAll.bind(page);
+    page.route = (async (url, handler) => {
+      if (isManifestSpecificPattern(url as never)) {
+        return originalRoute(url as never, handler as never);
+      }
+      return originalRoute(url as never, async (route) => {
+        let pathname = "";
+        try {
+          pathname = new URL(route.request().url()).pathname;
+        } catch {
+          pathname = "";
+        }
+        if (pathname === TILES_MANIFEST_PATHNAME) {
+          return fulfillEmptyManifest(route);
+        }
+        return (handler as (r: Route) => unknown)(route);
+      });
+    }) as typeof page.route;
+    page.unrouteAll = (async (options) => {
+      const result = await originalUnrouteAll(options);
+      // Restore via originalRoute (not page.route) so the LIFO wrap is not nested.
+      await originalRoute(
+        (url) => url.pathname === TILES_MANIFEST_PATHNAME,
+        fulfillEmptyManifest,
+      );
+      return result;
+    }) as typeof page.unrouteAll;
     const gate = attachStrictConsoleGate(page);
     registerStrictGate(page, gate);
     await use(gate);

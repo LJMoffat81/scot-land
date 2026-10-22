@@ -15,6 +15,7 @@ source:
   out_fields: "*"
   page_size: 1000
 geometry: polygon
+clip_keep_all: false
 refresh:
   cron: "0 4 * * 1"
   max_mb: 300

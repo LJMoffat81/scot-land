@@ -253,6 +253,15 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": { "geometry": { "const": "polygon" } },
+        "required": ["geometry"]
+      },
+      "then": {
+        "required": ["clip_keep_all"]
+      }
     }
   ]
 }

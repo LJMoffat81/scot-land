@@ -171,6 +171,8 @@ _ARCH2B_R2_FRONTEND_ALLOW = frozenset(
         "frontend/e2e/ci/fixtures/tiles-manifest-empty.json",
         # Lead A2 (ARCH-2b-r2_b19a3157): esri-key-build B1 only — A1 shared helper.
         "frontend/e2e/build-key/esri-key-build.spec.ts",
+        # Lead A3′ (ARCH-2b-r2_b19a3157): sw-036 /backend/place stub only.
+        "frontend/e2e/ci/sw-036-desktop-layout.spec.ts",
     ]
 )
 

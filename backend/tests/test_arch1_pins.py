@@ -143,13 +143,35 @@ def test_p4_one_extent_matches_manifest():
         pytest.fail("P4: extent sha256 != manifest")
 
 
+# Exact OPTIONAL_ROUTERS registration authorised by ARCH-2a_4ca4ba1c §5/§8.
+# P6 still fails on any other change to backend/api/main.py.
+_ARCH2A_TILES_ROUTER_LINE = '    ("api.tiles_routes", "router"),\n'
+
+
+def _assert_main_py_only_arch2a_tiles_registration() -> None:
+    """HEAD main.py must equal origin/main plus exactly the ARCH-2a tiles line."""
+    head = (BACKEND / "api" / "main.py").read_text(encoding="utf-8")
+    base = subprocess.check_output(
+        ["git", "show", "origin/main:backend/api/main.py"],
+        cwd=REPO,
+        text=True,
+    )
+    if head.count(_ARCH2A_TILES_ROUTER_LINE) != 1:
+        pytest.fail("P6: forbidden file changed: backend/api/main.py")
+    stripped = head.replace(_ARCH2A_TILES_ROUTER_LINE, "", 1)
+    if stripped != base:
+        pytest.fail("P6: forbidden file changed: backend/api/main.py")
+
+
 def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
     for rel in changed:
         if rel.startswith("frontend/"):
             pytest.fail(f"P6: frontend file changed: {rel}")
-        if rel in {"AGENTS.md", "backend/main.py", "backend/api/main.py"}:
+        if rel in {"AGENTS.md", "backend/main.py"}:
             pytest.fail(f"P6: forbidden file changed: {rel}")
+        if rel == "backend/api/main.py":
+            _assert_main_py_only_arch2a_tiles_registration()
 
 
 def test_p7_no_pound_in_changed_files():

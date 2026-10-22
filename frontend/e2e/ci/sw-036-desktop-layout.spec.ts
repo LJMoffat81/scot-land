@@ -76,6 +76,18 @@ async function stubBackend(page: Page) {
       }),
     });
   });
+  // mirrors stubMapCardsBackend place route; dedupe in E2E-STUB-DEDUP-1
+  await page.route("**/backend/place**", async (route) => {
+    if (/platform\/place/i.test(route.request().url())) {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ kind: "places", matches: [] }),
+    });
+  });
   await page.route("**/backend/boundaries/**", async (route) => {
     await route.fulfill({
       status: 200,

@@ -29,6 +29,7 @@ def _base_entry(**over) -> dict:
             "where": "1=1",
         },
         "geometry": "polygon",
+        "clip_keep_all": False,
         "refresh": {"cron": "0 4 * * 1", "max_mb": 10, "max_s": 60},
         "serve": {
             "mode": "geojson",

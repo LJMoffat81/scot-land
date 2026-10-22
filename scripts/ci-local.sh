@@ -45,6 +45,14 @@ need_cmd node
 need_cmd npm
 need_cmd python3
 
+# P6 (and other pins) use origin/main...HEAD. Uncommitted frontend/backend
+# edits are invisible to that diff — running before commit falsely greens P6.
+if [[ -n "$(git -C "$ROOT" status --porcelain)" ]]; then
+  echo "ci:local: working tree is dirty; commit (or stash) before running so HEAD matches what CI will test:" >&2
+  git -C "$ROOT" status --porcelain >&2
+  exit 1
+fi
+
 # --- tippecanoe (ARCH-2a pin; same as .github/workflows/ci.yml) ---
 install_tippecanoe() {
   local TIPPECANOE_SHA=4f2621186acfec33b63ddf636f665623c0fef2dd
@@ -133,6 +141,7 @@ export WEALTH_TEST_DATABASE_URL="$DATABASE_URL"
 export WEALTH_REQUIRE_POSTGIS="1"
 export ARCH1_TEST_DSN="postgresql://arch1:arch1@127.0.0.1:5433/arch1"
 
+# Exact backend pytest commands from .github/workflows/ci.yml (backend job).
 run_job "backend-postgis-pytest" \
   bash -c 'cd "'"$ROOT"'/backend"
     if [[ -x .venv/bin/python ]]; then PY=.venv/bin/python; else PY=python3; fi
@@ -140,6 +149,9 @@ run_job "backend-postgis-pytest" \
       -c "CREATE EXTENSION IF NOT EXISTS postgis; SELECT postgis_version();"
     docker exec "'"$PG16_NAME"'" psql -U arch1 -d arch1 -v ON_ERROR_STOP=1 \
       -c "CREATE EXTENSION IF NOT EXISTS postgis; SELECT postgis_version();"
+    # Valuation surface tests (ci.yml)
+    "$PY" -m pytest -q -p no:cacheprovider -m "not real" tests/surface
+    # Full backend suite (ci.yml)
     "$PY" -m pytest -q -p no:cacheprovider -rs -m "not real"'
 
 # --- frontend typecheck ---

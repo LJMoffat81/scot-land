@@ -14,6 +14,7 @@ import {
   stubCiTileDataQuiet,
   stubMapCardsBackend,
 } from "../ci/_mapCardsHelpers";
+import { routeEmptyTilesManifest } from "../ci/_fixtures";
 
 registerOpenFreeMapFontStub();
 
@@ -227,6 +228,8 @@ test("B1 build-time key shows switcher and hits basemapstyles", async ({
   await stubCiTileDataQuiet(page);
   await routeOpenFreeMapByHostname(page);
   await routeEsriByHostname(page, style);
+  // A1 (ARCH-2b-r2 Lead A2): exact manifest URL only — shared helper, not a copy.
+  await routeEmptyTilesManifest(page);
 
   await openMap(page);
   const switcher = page.getByTestId("basemap-switcher");

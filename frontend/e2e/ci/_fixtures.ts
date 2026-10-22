@@ -9,6 +9,7 @@ import {
   test as base,
   expect,
   type BrowserContext,
+  type Page,
   type Route,
 } from "@playwright/test";
 import {
@@ -18,6 +19,30 @@ import {
   registerStrictGate,
   type StrictConsoleGate,
 } from "./_consoleGate";
+
+/** A1 (ARCH-2b-r2): exact tiles manifest pathname — shared by CI gate + build-key B1. */
+export const TILES_MANIFEST_PATHNAME = "/backend/v1/tiles/manifest.json";
+
+/** Committed empty manifest (no layers). Path relative to this file. */
+export function emptyTilesManifestFixturePath(): string {
+  return join(__dirname, "fixtures/tiles-manifest-empty.json");
+}
+
+/**
+ * A1: serve ONLY the exact tiles manifest URL with the committed empty file.
+ * No other backend stubs. Tile specs register their own routes later (LIFO).
+ */
+export async function routeEmptyTilesManifest(page: Page): Promise<void> {
+  await page.route(
+    (url) => url.pathname === TILES_MANIFEST_PATHNAME,
+    (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        path: emptyTilesManifestFixturePath(),
+      }),
+  );
+}
 
 /** 1×1 PNG — same bytes as CI_TINY_PNG in helpers. */
 const CI_TINY_PNG = Buffer.from(
@@ -220,16 +245,12 @@ export const test = base.extend<CiDedupFixtures>({
     // Catch-all **/backend/** stubs register after this fixture (LIFO) and would
     // otherwise steal the manifest; wrap non-manifest-specific handlers so A1
     // still wins for this pathname only. Manifest-specific routes are untouched.
-    const tilesManifestPath = "/backend/v1/tiles/manifest.json";
-    const emptyManifestFile = join(
-      __dirname,
-      "fixtures/tiles-manifest-empty.json",
-    );
+    await routeEmptyTilesManifest(page);
     const fulfillEmptyManifest = (route: Route) =>
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        path: emptyManifestFile,
+        path: emptyTilesManifestFixturePath(),
       });
     const isManifestSpecificPattern = (
       url: string | RegExp | ((u: URL) => boolean),
@@ -240,10 +261,6 @@ export const test = base.extend<CiDedupFixtures>({
     };
     const originalRoute = page.route.bind(page);
     const originalUnrouteAll = page.unrouteAll.bind(page);
-    await originalRoute(
-      (url) => url.pathname === tilesManifestPath,
-      fulfillEmptyManifest,
-    );
     page.route = (async (url, handler) => {
       if (isManifestSpecificPattern(url as never)) {
         return originalRoute(url as never, handler as never);
@@ -255,7 +272,7 @@ export const test = base.extend<CiDedupFixtures>({
         } catch {
           pathname = "";
         }
-        if (pathname === tilesManifestPath) {
+        if (pathname === TILES_MANIFEST_PATHNAME) {
           return fulfillEmptyManifest(route);
         }
         return (handler as (r: Route) => unknown)(route);
@@ -263,8 +280,9 @@ export const test = base.extend<CiDedupFixtures>({
     }) as typeof page.route;
     page.unrouteAll = (async (options) => {
       const result = await originalUnrouteAll(options);
+      // Restore via originalRoute (not page.route) so the LIFO wrap is not nested.
       await originalRoute(
-        (url) => url.pathname === tilesManifestPath,
+        (url) => url.pathname === TILES_MANIFEST_PATHNAME,
         fulfillEmptyManifest,
       );
       return result;

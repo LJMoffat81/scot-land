@@ -374,6 +374,10 @@ const HLA_MIN_ZOOM = 8;
 const HLA_FILL = "#7b5ea7";
 /** Built-up mask (dz2022_masked) — readable from area zoom. */
 const DATA_ZONE_MIN_ZOOM = POP_DENSITY_COLOURS_MIN_ZOOM;
+/** Site-watch PR B pin — also set on the tile-dz2022 MapLibre source. */
+const DATA_ZONE_BOUNDARIES_2022_CREDIT =
+  "Scottish Government Data Zone boundaries 2022 (OGL). Outlines only — not a rent.";
+
 const NFI_MIN_ZOOM = 7;
 const NATIVE_WOODLAND_MIN_ZOOM = 8;
 const NFI_FILL = "#1f6b3a";
@@ -3886,9 +3890,16 @@ export default function ScotlandMap() {
 
         for (const [sourceId, sourceSpec] of Object.entries(built.sources)) {
           if (map.getSource(sourceId)) continue;
+          const spec =
+            sourceId === "tile-dz2022"
+              ? {
+                  ...sourceSpec,
+                  attribution: DATA_ZONE_BOUNDARIES_2022_CREDIT,
+                }
+              : sourceSpec;
           map.addSource(
             sourceId,
-            sourceSpec as Parameters<Map["addSource"]>[1],
+            spec as Parameters<Map["addSource"]>[1],
           );
         }
         for (const layer of built.layers) {

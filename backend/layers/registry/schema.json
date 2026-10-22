@@ -204,6 +204,7 @@
       }
     },
     "gated_by": { "type": "string" },
+    "clip_keep_all": { "type": "boolean" },
     "keep_fields": {
       "type": "array",
       "items": { "type": "string" }

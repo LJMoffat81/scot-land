@@ -39,3 +39,4 @@ tiles:
     total_mb: 60
     tile_kb: 500
     z0_7_mb: 4
+clip_keep_all: true

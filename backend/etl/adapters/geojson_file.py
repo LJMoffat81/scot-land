@@ -7,15 +7,22 @@ from pathlib import Path
 from typing import Any
 
 
-def fetch_geojson_file(path: Path | str) -> tuple[dict[str, Any], bytes, str]:
+def fetch_geojson_file(
+    path: Path | str,
+    *,
+    max_mb: float | None = None,
+) -> tuple[dict[str, Any], bytes, str]:
     """Return ``(collection, raw_bytes, redacted_url)`` for a local file.
 
+    Enforces ``max_mb`` when set (same budget as the ArcGIS adapter).
     Raises ``RuntimeError`` with an ``INGEST:``-ready message on bad input.
     """
     file_path = Path(path)
     if not file_path.is_file():
         raise RuntimeError(f"geojson file missing: {file_path}")
     raw = file_path.read_bytes()
+    if max_mb is not None and len(raw) > float(max_mb) * 1024 * 1024:
+        raise RuntimeError("budget exceeded: mb")
     try:
         collection = json.loads(raw.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:

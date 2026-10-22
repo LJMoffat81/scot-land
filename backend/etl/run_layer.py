@@ -384,18 +384,16 @@ def _fetch_entry(
     from_file: Path | None,
 ) -> tuple[dict[str, Any], bytes, str]:
     layer_id = entry.id
-    if from_file is not None:
-        try:
-            return fetch_geojson_file(from_file)
-        except RuntimeError as exc:
-            raise IngestError(f"INGEST: {layer_id} {exc}") from exc
-
     source = entry.raw.get("source") or {}
     refresh = entry.raw.get("refresh") or {}
-    src_type = source.get("type")
     max_mb = float(refresh.get("max_mb") or 300)
     max_s = float(refresh.get("max_s") or 600)
+
     try:
+        if from_file is not None:
+            return fetch_geojson_file(from_file, max_mb=max_mb)
+
+        src_type = source.get("type")
         if src_type == "arcgis":
             token = None
             token_env = source.get("token_env")
@@ -411,7 +409,7 @@ def _fetch_entry(
                 token=token,
             )
         if src_type == "geojson_file":
-            return fetch_geojson_file(source["url"])
+            return fetch_geojson_file(source["url"], max_mb=max_mb)
         raise IngestError(f"INGEST: {layer_id} unknown source.type {src_type!r}")
     except RuntimeError as exc:
         msg = str(exc)

@@ -7,11 +7,14 @@ import json
 import os
 from pathlib import Path
 
+import httpx
 import psycopg2
 import pytest
 
+from etl.adapters.arcgis import fetch_arcgis
 from etl.build_scotland_extent import load_only
 from etl.run_layer import IngestError, run_layer
+from layers.registry.loader import registry
 from spatial.context_tiles import _cache, _cache_lock, fetch_context_geojson
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "arch1"
@@ -116,21 +119,12 @@ def test_f1_failed_fetch_keeps_last_good(tiny_extent, monkeypatch):
 
 
 def test_f2_no_table_and_no_extent_notes(tiny_extent, monkeypatch):
+    """Fail-closed without monkeypatching FEATURES / upstream fetch away."""
     monkeypatch.setenv("ARCH1_TEST_DSN", _dsn())
-    import spatial.context_tiles as ct
-
     with _cache_lock:
         _cache.pop("oil-fields", None)
 
-    # Remove legacy FEATURES fallback so D9 fail-closed is visible (perf tests
-    # still exercise the FEATURES path when the clipped table is absent).
-    monkeypatch.setattr(
-        ct,
-        "FEATURES",
-        {k: v for k, v in ct.FEATURES.items() if k != "oil-fields"},
-    )
-
-    # Table absent → layer not built.
+    # Table absent → layer not built (no live NSTA fallthrough).
     geo = fetch_context_geojson("oil-fields")
     assert geo["meta"]["ok"] is False
     assert geo["meta"]["note"] == "layer not built"
@@ -148,15 +142,76 @@ def test_f2_no_table_and_no_extent_notes(tiny_extent, monkeypatch):
     assert geo2["meta"]["note"] == "Scotland boundary missing"
 
 
-def test_f3_budget_mb_exceeded(tiny_extent, monkeypatch):
+def test_f3_budget_mb_exceeded(tiny_extent, monkeypatch, tmp_path):
+    """Budget check must live in the adapters; deleting it turns this red.
+
+    Covers both the ArcGIS paging path and ``--from-file``.
+    """
     monkeypatch.setenv("ARCH1_TEST_DSN", _dsn())
+    entry = registry()["pipelines"]
+    original_max = entry.raw["refresh"]["max_mb"]
+    entry.raw["refresh"]["max_mb"] = 1  # 1 MB budget
+    try:
+        fat_body = b"x" * (2 * 1024 * 1024)
 
-    def fat_fetch(*_a, **_k):
-        raise RuntimeError("budget exceeded: mb")
+        class _Resp:
+            content = fat_body
+            status_code = 200
 
-    monkeypatch.setattr("etl.run_layer.fetch_arcgis", fat_fetch)
-    # Force arcgis path (no --from-file).
-    with pytest.raises(
-        IngestError, match=r"INGEST: pipelines budget exceeded: mb"
-    ):
-        run_layer("pipelines", conn=tiny_extent)
+            def raise_for_status(self) -> None:
+                return None
+
+            def json(self) -> dict:
+                return {"type": "FeatureCollection", "features": []}
+
+        class _Client:
+            def __init__(self, *args, **kwargs) -> None:
+                return None
+
+            def get(self, *args, **kwargs):
+                return _Resp()
+
+            def close(self) -> None:
+                return None
+
+        # Direct adapter first: deleting the size check in adapters/arcgis.py
+        # makes this assertion fail (no RuntimeError).
+        with pytest.raises(RuntimeError, match=r"budget exceeded: mb"):
+            fetch_arcgis(
+                "https://example.invalid/FeatureServer/0/query",
+                max_mb=1,
+                max_s=60,
+                client=_Client(),
+            )
+
+        # ArcGIS ingest path via run_layer (httpx Client patched).
+        monkeypatch.setattr(httpx, "Client", _Client)
+        with pytest.raises(
+            IngestError, match=r"INGEST: pipelines budget exceeded: mb"
+        ):
+            run_layer("pipelines", conn=tiny_extent)
+
+        # --- from-file path: same budget applied to local GeoJSON bytes ---
+        fat_file = tmp_path / "fat_pipelines.geojson"
+        pad = " " * (1024 * 1024)
+        fat_file.write_text(
+            json.dumps(
+                {
+                    "type": "FeatureCollection",
+                    "crs": {
+                        "type": "name",
+                        "properties": {"name": "urn:ogc:def:crs:EPSG::27700"},
+                    },
+                    "features": [],
+                    "pad": pad,
+                }
+            ),
+            encoding="utf-8",
+        )
+        assert fat_file.stat().st_size > 1024 * 1024
+        with pytest.raises(
+            IngestError, match=r"INGEST: pipelines budget exceeded: mb"
+        ):
+            run_layer("pipelines", from_file=fat_file, conn=tiny_extent)
+    finally:
+        entry.raw["refresh"]["max_mb"] = original_max

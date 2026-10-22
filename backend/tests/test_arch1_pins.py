@@ -147,6 +147,24 @@ def test_p4_one_extent_matches_manifest():
 # P6 still fails on any other change to backend/api/main.py.
 _ARCH2A_TILES_ROUTER_LINE = '    ("api.tiles_routes", "router"),\n'
 
+# Literal P6 exemptions for ARCH-2b-r3a harness files only (no globs).
+_ARCH2B_R3A_FRONTEND_ALLOW = frozenset(
+    [
+        # ARCH-2b-r3a d555ca98 (A1)
+        "frontend/e2e/ci/_fixtures.ts",
+        # ARCH-2b-r3a d555ca98 (A1)
+        "frontend/e2e/ci/arch2b-a1-g1.spec.ts",
+        # ARCH-2b-r3a d555ca98 (A1)
+        "frontend/e2e/ci/fixtures/tiles-manifest-empty.json",
+        # ARCH-2b-r3a d555ca98 (A2)
+        "frontend/e2e/build-key/esri-key-build.spec.ts",
+        # ARCH-2b-r3a d555ca98 (A3′)
+        "frontend/e2e/ci/sw-036-desktop-layout.spec.ts",
+        # ARCH-2b-r3a d555ca98 (ci:local)
+        "frontend/package.json",
+    ]
+)
+
 
 def _assert_main_py_only_arch2a_tiles_registration() -> None:
     """HEAD main.py must equal origin/main plus exactly the ARCH-2a tiles line."""
@@ -167,7 +185,9 @@ def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
     for rel in changed:
         if rel.startswith("frontend/"):
-            pytest.fail(f"P6: frontend file changed: {rel}")
+            if rel not in _ARCH2B_R3A_FRONTEND_ALLOW:
+                pytest.fail(f"P6: frontend file changed: {rel}")
+            continue
         if rel in {"AGENTS.md", "backend/main.py"}:
             pytest.fail(f"P6: forbidden file changed: {rel}")
         if rel == "backend/api/main.py":

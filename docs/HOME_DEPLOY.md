@@ -37,6 +37,12 @@ Run on the home PC from the repo root (PowerShell):
 .\scripts\ops\rebuild-home.ps1 -Pull
 ```
 
+`Invoke-Compose` in `deploy-home.ps1` takes one explicit `-ComposeArgs` string
+array (for example `@('-f', $ComposePath, 'up', '-d', '--no-recreate', 'db')`).
+Do not pass bare remaining arguments: PowerShell would bind `-d` / `-p` / `-f` to
+common parameters and the compose step can hang attached. Do not move `HEAD` by
+hand before running the script — `last-good-sha` records `HEAD` before the pull.
+
 1. Confirm `cloudflared` policy: **never stop the tunnel**.
 2. Optional `-Pull`: **before** `git pull`, record current `HEAD` as
    `.deploy/last-good-sha` and tag current `:local` images as `:last-good`.

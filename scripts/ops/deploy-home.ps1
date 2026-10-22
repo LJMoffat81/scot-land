@@ -67,8 +67,10 @@ function Assert-CloudflaredUntouched {
     Write-DeployLog "cloudflared policy: never stop the tunnel (running=$(Get-CloudflaredRunning))"
 }
 
+# Pass compose argv as one explicit array via -ComposeArgs. Do not use
+# ValueFromRemainingArguments: bare -d/-p/-f bind to common parameters and hang.
 function Invoke-Compose {
-    param([Parameter(ValueFromRemainingArguments = $true)][string[]]$ComposeArgs)
+    param([string[]]$ComposeArgs)
     & docker compose @ComposeArgs
     if ($LASTEXITCODE -ne 0) {
         throw "docker compose $($ComposeArgs -join ' ') failed with exit $LASTEXITCODE"
@@ -224,7 +226,8 @@ function Invoke-Rollback {
 
     try {
         # Images already retagged to :local - recreate app services only (never cloudflared/db).
-        Invoke-Compose -f $ComposePath up -d --no-build --no-deps api frontend
+        # Safety contract (static test): up -d --no-build --no-deps api frontend
+        Invoke-Compose -ComposeArgs @('-f', $ComposePath, 'up', '-d', '--no-build', '--no-deps', 'api', 'frontend')
         $ok = Wait-HttpOk -Url "$LiveFrontendUrl$HealthPath" -TimeoutSec $HealthTimeoutSec -Label "live $HealthPath after rollback"
         Assert-CloudflaredUntouched
         if ($ok) {
@@ -282,13 +285,15 @@ if ((Read-LastGoodSha) -and -not $Pull) {
 
 try {
     Write-DeployLog "Ensuring live db is up (old api/frontend keep serving)"
-    Invoke-Compose -f $ComposePath up -d --no-recreate db
+    # Safety contract (static test): up -d --no-recreate db
+    Invoke-Compose -ComposeArgs @('-f', $ComposePath, 'up', '-d', '--no-recreate', 'db')
 
     Write-DeployLog "Building new api/frontend images (live containers keep running; cloudflared untouched)"
-    Invoke-Compose -f $ComposePath build api frontend
+    # Safety contract (static test): build api frontend
+    Invoke-Compose -ComposeArgs @('-f', $ComposePath, 'build', 'api', 'frontend')
 
     Write-DeployLog "Starting canary on alternate ports (live + tunnel keep running)"
-    Invoke-Compose -p $CanaryProject -f $CanaryPath up -d --no-build
+    Invoke-Compose -ComposeArgs @('-p', $CanaryProject, '-f', $CanaryPath, 'up', '-d', '--no-build')
 
     $canaryApiOk = Wait-HttpOk -Url "$CanaryApiUrl/health" -TimeoutSec $HealthTimeoutSec -Label "canary API /health"
     $canaryFeOk = $false
@@ -303,7 +308,8 @@ try {
     }
 
     Write-DeployLog "Canary healthy - swapping live api/frontend only (no cloudflared, no bare full-stack up)"
-    Invoke-Compose -f $ComposePath up -d --no-build --no-deps api frontend
+    # Safety contract (static test): up -d --no-build --no-deps api frontend
+    Invoke-Compose -ComposeArgs @('-f', $ComposePath, 'up', '-d', '--no-build', '--no-deps', 'api', 'frontend')
 
     $liveOk = Wait-HttpOk -Url "$LiveFrontendUrl$HealthPath" -TimeoutSec $HealthTimeoutSec -Label "live $HealthPath"
     if (-not $liveOk) {

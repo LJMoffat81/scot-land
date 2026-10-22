@@ -133,7 +133,7 @@ jobs:
         run: python -m pytest -q -p no:cacheprovider -m 'not real' tests/surface
       - name: Full backend suite (PostGIS tests must run, not skip)
         run: python -m pytest -q -p no:cacheprovider -rs -m 'not real'
-      - name: Deploy-home Pester (Invoke-Compose T1/T2)
+      - name: Deploy-home Pester (T1-T7)
         working-directory: ${{ github.workspace }}
         run: |
           set -euo pipefail

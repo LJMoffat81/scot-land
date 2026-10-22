@@ -151,7 +151,17 @@
       }
     },
     "style": {
-      "type": "object"
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fill": { "type": "object" },
+        "line": { "type": "object" },
+        "circle": { "type": "object" }
+      }
+    },
+    "measure": {
+      "type": "string",
+      "enum": ["pop_density", "simd_decile"]
     },
     "legend": {
       "type": "array",
@@ -204,7 +214,6 @@
       }
     },
     "gated_by": { "type": "string" },
-    "clip_keep_all": { "type": "boolean" },
     "keep_fields": {
       "type": "array",
       "items": { "type": "string" }

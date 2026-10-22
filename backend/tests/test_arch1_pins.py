@@ -147,6 +147,31 @@ def test_p4_one_extent_matches_manifest():
 # P6 still fails on any other change to backend/api/main.py.
 _ARCH2A_TILES_ROUTER_LINE = '    ("api.tiles_routes", "router"),\n'
 
+# Exact frontend paths authorised by ARCH-2b-r2_b19a3157 §6.2 / §8' (P6').
+# Literal list only — no glob/regex/prefix/skip.
+_ARCH2B_R2_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/lib/tileLayerFactory.ts",
+        "frontend/scripts/test-tile-layer-factory.mjs",
+        "frontend/e2e/ci/arch2b-tiles.spec.ts",
+        "frontend/e2e/fixtures/arch2b/dz2022.mvt",
+        "frontend/e2e/fixtures/arch2b/oil-fields.mvt",
+        "frontend/e2e/fixtures/arch2b/platforms.mvt",
+        "frontend/e2e/fixtures/arch2b/pipelines.mvt",
+        "frontend/e2e/fixtures/arch2b/make_fixtures.py",
+        "frontend/components/ScotlandMap.tsx",
+        "frontend/lib/contextLayers.ts",
+        "frontend/app/backend/[...path]/route.ts",
+        "frontend/package.json",
+        "frontend/e2e/ci/layers-perf-1.spec.ts",
+        "frontend/e2e/ci/layers-perf-3.spec.ts",
+        "frontend/e2e/ci/layers-fix-1.spec.ts",
+        "frontend/scripts/test-proxy-null-body.mjs",
+        "frontend/e2e/ci/_fixtures.ts",
+        "frontend/e2e/ci/fixtures/tiles-manifest-empty.json",
+    ]
+)
+
 
 def _assert_main_py_only_arch2a_tiles_registration() -> None:
     """HEAD main.py must equal origin/main plus exactly the ARCH-2a tiles line."""
@@ -167,7 +192,9 @@ def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
     for rel in changed:
         if rel.startswith("frontend/"):
-            pytest.fail(f"P6: frontend file changed: {rel}")
+            if rel not in _ARCH2B_R2_FRONTEND_ALLOW:
+                pytest.fail(f"P6: frontend file changed: {rel}")
+            continue
         if rel in {"AGENTS.md", "backend/main.py"}:
             pytest.fail(f"P6: forbidden file changed: {rel}")
         if rel == "backend/api/main.py":

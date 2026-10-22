@@ -26,8 +26,60 @@ zoom:
   min: 0
   max: 14
   low_zoom: keep_all
-style: {}
-legend: []
+measure: pop_density
+style:
+  fill:
+    fill-color:
+      - case
+      - - ==
+        - - feature-state
+          - v
+        - null
+      - "#d9d9d9"
+      - - interpolate
+        - - linear
+        - - feature-state
+          - v
+        - 10
+        - "#c6dbef"
+        - 100
+        - "#6baed6"
+        - 500
+        - "#2171b5"
+        - 1500
+        - "#08519c"
+        - 3000
+        - "#08306b"
+    fill-opacity:
+      - interpolate
+      - - linear
+      - - zoom
+      - 4.5
+      - 0
+      - 5
+      - 0.55
+      - 14
+      - 0.55
+      - 15
+      - 0.4
+  line:
+    line-color: "#0b1e3a"
+    line-width: 1.05
+    line-opacity:
+      - interpolate
+      - - linear
+      - - zoom
+      - 8.5
+      - 0
+      - 9.5
+      - 0.6
+legend:
+  - {label: "10", color: "#c6dbef"}
+  - {label: "100", color: "#6baed6"}
+  - {label: "500", color: "#2171b5"}
+  - {label: "1500", color: "#08519c"}
+  - {label: "3000", color: "#08306b"}
+  - {label: "No value", color: "#d9d9d9"}
 lineage:
   derived_from: []
   method: source
@@ -39,4 +91,3 @@ tiles:
     total_mb: 60
     tile_kb: 500
     z0_7_mb: 4
-clip_keep_all: true

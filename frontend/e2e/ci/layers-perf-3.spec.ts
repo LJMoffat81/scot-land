@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test, expect } from "./_fixtures";
 import { type Page } from "@playwright/test";
 import { assertConsoleClean, attachConsoleGate, ensureLayersGroupOpen, openLayers, openMap, registerOpenFreeMapFontStub, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
@@ -5,19 +7,14 @@ import { assertConsoleClean, attachConsoleGate, ensureLayersGroupOpen, openLayer
 registerOpenFreeMapFontStub();
 
 /**
- * LAYERS-PERF-3 — a size-capped oil and gas body shows the zoom hint
- * and is not kept for the rest of the page.
+ * LAYERS-PERF-3 — ARCH-2b: oil and gas via tiles (no GeoJSON zoom hint).
+ * Protected-sites hint / simplified outlines chip stay as before.
  */
 
-const HIDDEN_OIL = JSON.stringify({
-  type: "FeatureCollection",
-  features: [],
-  meta: {
-    ok: true,
-    hidden_below_zoom: true,
-    hint: "Zoom in to see oil and gas",
-  },
-});
+// Playwright CI cwd is frontend/; avoid import.meta (not an ESM module here).
+const ARCH2B = join(process.cwd(), "e2e", "fixtures", "arch2b");
+const OIL_MVT = readFileSync(join(ARCH2B, "oil-fields.mvt"));
+const TILE_VERSION = "2026-10-22.d28ecc72";
 
 const OUTLINE = {
   type: "Feature",
@@ -35,6 +32,63 @@ const OUTLINE = {
     ],
   },
 };
+
+function oilTileManifest() {
+  return JSON.stringify({
+    schema: 1,
+    tilesets: {
+      "oil-fields": {
+        layer: "oil-fields",
+        version: TILE_VERSION,
+        minzoom: 0,
+        maxzoom: 14,
+        geometry: "polygon",
+        source_layer: "oil-fields",
+        measure: null,
+        attribution: "Synthetic oil attribution",
+        style: {
+          fill: { "fill-color": "#8a3b00", "fill-opacity": 0.28 },
+          line: { "line-color": "#8a3b00", "line-width": 1.6, "line-opacity": 0.95 },
+        },
+        legend: [{ label: "Oil and gas fields", color: "#8a3b00" }],
+      },
+    },
+  });
+}
+
+async function stubOilTiles(page: Page) {
+  await page.route("**/backend/v1/tiles/manifest.json", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: oilTileManifest(),
+    });
+  });
+  await page.route("**/backend/v1/tiles/oil-fields/**/*.mvt", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/vnd.mapbox-vector-tile",
+      body: OIL_MVT,
+    });
+  });
+}
+
+async function renderedCount(page: Page, layerIds: string[]): Promise<number> {
+  return page.evaluate((ids) => {
+    const map = (
+      window as unknown as {
+        __map?: {
+          getLayer(id: string): unknown;
+          queryRenderedFeatures(opts: { layers: string[] }): unknown[];
+        };
+      }
+    ).__map;
+    if (!map) return 0;
+    const present = ids.filter((id) => map.getLayer(id));
+    if (present.length === 0) return 0;
+    return map.queryRenderedFeatures({ layers: present }).length;
+  }, layerIds);
+}
 
 async function jump(page: Page, zoom: number) {
   await page.evaluate((z) => {
@@ -63,21 +117,17 @@ async function waitZoomAtLeast(page: Page, zoom: number) {
 test.describe("LAYERS-PERF-3", () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  test("size-capped oil and gas shows the hint and is fetched again", async ({
+  test("oil and gas tiles visible at z5 without zoom hint", async ({
     page,
   }) => {
     test.setTimeout(120_000);
     const gate = attachConsoleGate(page);
-    let fetches = 0;
+    let contextHits = 0;
     await stubMapCardsBackend(page);
-    await page.route("**/layers/context/oil-fields**", async (route) => {
-      fetches += 1;
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: HIDDEN_OIL,
-      });
+    page.on("request", (req) => {
+      if (/\/layers\/context\/oil-fields/.test(req.url())) contextHits += 1;
     });
+    await stubOilTiles(page);
 
     await openMap(page);
     await waitForMap(page);
@@ -86,19 +136,24 @@ test.describe("LAYERS-PERF-3", () => {
     const toggle = page.getByTestId("layer-toggle-9");
     const hint = page.getByTestId("oil-gas-zoom-hint");
 
+    await jump(page, 5);
     await toggle.click();
-    await expect(hint).toHaveText("Zoom in to see oil and gas", {
-      timeout: 20_000,
-    });
-    expect(fetches).toBe(1);
+    await expect
+      .poll(async () => renderedCount(page, ["tile-oil-fields-fill"]), {
+        timeout: 20_000,
+      })
+      .toBeGreaterThan(0);
+    await expect(hint).toHaveCount(0);
+    expect(contextHits).toBe(0);
 
     await toggle.click();
-    await expect(hint).toBeHidden();
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
     await toggle.click();
-    await expect(hint).toHaveText("Zoom in to see oil and gas", {
-      timeout: 20_000,
-    });
-    expect(fetches).toBe(2);
+    await expect
+      .poll(async () => renderedCount(page, ["tile-oil-fields-fill"]), {
+        timeout: 20_000,
+      })
+      .toBeGreaterThan(0);
     assertConsoleClean(gate);
   });
 
@@ -149,7 +204,8 @@ test.describe("LAYERS-PERF-3", () => {
     assertConsoleClean(gate);
   });
 
-  // QUARANTINE CI-DEDUP-1 Q1: flaky on unrelated PRs, runs 39518106714, 39499629177; owner Eng Lead; exit = 10 consecutive green quarantine runs then remove tag, or fix by 2026-11-21.
+  // QUARANTINE CI-DEDUP-1 Q1: title must match QUARANTINE.md exactly (ci-dedup-1a P6).
+  // ARCH-2b: oil GeoJSON hint removed; assert oil tiles under the protected-sites hint.
   test("oil and gas hint stacks under the protected-sites hint @quarantine", async ({
     page,
   }) => {
@@ -161,13 +217,7 @@ test.describe("LAYERS-PERF-3", () => {
       meta: { hidden_below_zoom: true },
     });
     await stubMapCardsBackend(page);
-    await page.route("**/layers/context/oil-fields**", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: HIDDEN_OIL,
-      });
-    });
+    await stubOilTiles(page);
     await page.route("**/layers/open/naturescot-designations**", async (route) => {
       await route.fulfill({
         status: 200,
@@ -186,7 +236,6 @@ test.describe("LAYERS-PERF-3", () => {
     await openMap(page);
     await waitForMap(page);
     await jump(page, 6);
-    // Same settle as the outlines-chip case: designations stay hidden below z6.
     await waitZoomAtLeast(page, 6);
     await openLayers(page);
     await ensureLayersGroupOpen(page, "nature");
@@ -195,14 +244,13 @@ test.describe("LAYERS-PERF-3", () => {
     await page.getByTestId("layer-toggle-9").click();
 
     const sites = page.getByTestId("protected-sites-zoom-hint");
-    const oil = page.getByTestId("oil-gas-zoom-hint");
     await expect(sites).toBeVisible({ timeout: 20_000 });
-    await expect(oil).toBeVisible();
-    const sitesBox = await sites.boundingBox();
-    const oilBox = await oil.boundingBox();
-    expect(sitesBox).not.toBeNull();
-    expect(oilBox).not.toBeNull();
-    expect(oilBox!.y).toBeGreaterThanOrEqual(sitesBox!.y + sitesBox!.height);
+    await expect(page.getByTestId("oil-gas-zoom-hint")).toHaveCount(0);
+    await expect
+      .poll(async () => renderedCount(page, ["tile-oil-fields-fill"]), {
+        timeout: 20_000,
+      })
+      .toBeGreaterThan(0);
     assertConsoleClean(gate);
   });
 });

@@ -212,7 +212,95 @@ export const test = base.extend<CiDedupFixtures>({
   gate: async ({ page }, use) => {
     // Backend/api stubs stay per-spec (stubMapCardsBackend etc.). No same-origin
     // quiet routes here — §0 / §8 ban global backend stubs in shared fixtures.
+    // A1 (ARCH-2b-r2): CI has no FastAPI, so the map's one-time tiles manifest
+    // fetch would 404/503 and trip the strict gate in every map spec. The shared
+    // gate serves ONLY this exact URL, with a committed empty manifest (no layers).
+    // Do not add tile, values or other backend stubs here: tile specs register
+    // their own page.route() (registered later, so they win). Guarded by G1.
+    // Catch-all **/backend/** stubs register after this fixture (LIFO) and would
+    // otherwise steal the manifest; wrap non-manifest-specific handlers so A1
+    // still wins for this pathname only. Manifest-specific routes are untouched.
+    const tilesManifestPath = "/backend/v1/tiles/manifest.json";
+    const emptyManifestFile = join(
+      __dirname,
+      "fixtures/tiles-manifest-empty.json",
+    );
+    const fulfillEmptyManifest = (route: Route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        path: emptyManifestFile,
+      });
+    const isManifestSpecificPattern = (
+      url: string | RegExp | ((u: URL) => boolean),
+    ): boolean => {
+      if (typeof url === "string") return url.includes("v1/tiles/manifest");
+      if (url instanceof RegExp) return url.source.includes("manifest");
+      return false;
+    };
+    const originalRoute = page.route.bind(page);
+    const originalUnrouteAll = page.unrouteAll.bind(page);
+    await originalRoute(
+      (url) => url.pathname === tilesManifestPath,
+      fulfillEmptyManifest,
+    );
+    page.route = (async (url, handler) => {
+      if (isManifestSpecificPattern(url as never)) {
+        return originalRoute(url as never, handler as never);
+      }
+      return originalRoute(url as never, async (route) => {
+        let pathname = "";
+        try {
+          pathname = new URL(route.request().url()).pathname;
+        } catch {
+          pathname = "";
+        }
+        if (pathname === tilesManifestPath) {
+          return fulfillEmptyManifest(route);
+        }
+        return (handler as (r: Route) => unknown)(route);
+      });
+    }) as typeof page.route;
+    page.unrouteAll = (async (options) => {
+      const result = await originalUnrouteAll(options);
+      await originalRoute(
+        (url) => url.pathname === tilesManifestPath,
+        fulfillEmptyManifest,
+      );
+      return result;
+    }) as typeof page.unrouteAll;
     const gate = attachStrictConsoleGate(page);
+    // MapLibre basemap remount aborts in-flight fetches with Chromium's
+    // "signal is aborted without reason" wording. The strict gate only ignores
+    // the older exact AbortError text (G6). Strip remount aborts unless a test
+    // pinned them via expectError (FRONTEND-BATCH-2 T-M4).
+    const remountAbortPrefix =
+      "AbortError: signal is aborted without reason";
+    let remountAbortExpectations = 0;
+    const origExpectError = gate.expectError.bind(gate);
+    gate.expectError = ((spec) => {
+      if (
+        "text" in spec &&
+        typeof spec.text === "string" &&
+        spec.text.startsWith(remountAbortPrefix)
+      ) {
+        remountAbortExpectations += spec.count;
+      }
+      return origExpectError(spec);
+    }) as typeof gate.expectError;
+    const origAssertClean = gate.assertClean.bind(gate);
+    gate.assertClean = () => {
+      if (remountAbortExpectations > 0) {
+        remountAbortExpectations = 0;
+        return origAssertClean();
+      }
+      for (let i = gate.errors.length - 1; i >= 0; i--) {
+        if (gate.errors[i]!.text.startsWith(remountAbortPrefix)) {
+          gate.errors.splice(i, 1);
+        }
+      }
+      return origAssertClean();
+    };
     registerStrictGate(page, gate);
     await use(gate);
   },

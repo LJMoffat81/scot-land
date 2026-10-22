@@ -16,10 +16,17 @@ source:
   page_size: 1000
 geometry: point
 refresh: {cron: "0 4 * * 1", max_mb: 300, max_s: 600}
-serve: {mode: geojson, simplify_m: 0, precision_dp: 6, max_mb: 15}
+serve: {mode: pmtiles, simplify_m: 0, precision_dp: 6, max_mb: 15}
 zoom: {min: 0, max: 14, low_zoom: cluster}
-style: {}
-legend: []
+style:
+  circle:
+    circle-color: "#8a3b00"
+    circle-radius: 4.5
+    circle-stroke-width: 1
+    circle-stroke-color: "#ffffff"
+    circle-opacity: 0.9
+legend:
+  - {label: "Platforms", color: "#8a3b00"}
 lineage: {derived_from: [], method: source, roll_up_to: []}
 keep_fields: [NAME, INF_TYPE]
 tiles:

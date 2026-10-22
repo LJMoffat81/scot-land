@@ -25,6 +25,12 @@ logger = logging.getLogger("scot_land.api.tiles")
 router = APIRouter(tags=["tiles"])
 
 _VERSION_RE = re.compile(r"^\d{4}-\d{2}-\d{2}\.[0-9a-f]{8}$")
+_LAYER_ID_RE = re.compile(r"^[a-z0-9-]{1,40}$")
+_ALLOWED_MEASURES = frozenset({"pop_density", "simd_decile"})
+_MEASURE_PROPERTIES = {
+    "pop_density": "population_density_per_km2",
+    "simd_decile": "simd_decile",
+}
 _IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
 _MANIFEST_CACHE = "public, max-age=60"
 _READER_CACHE_MAX = 8
@@ -165,6 +171,110 @@ def _is_gzip(data: bytes) -> bool:
 def _etag(version: str, z: int, x: int, y: int) -> str:
     sha8 = version.rsplit(".", 1)[-1]
     return f'"{sha8}-{z}-{x}-{y}"'
+
+
+def _values_etag(version: str, measure: str) -> str:
+    sha8 = version.rsplit(".", 1)[-1]
+    return f'"{sha8}-values-{measure}"'
+
+
+@router.get("/v1/tiles/{layer_id}/{version}/values/{measure}.json")
+def tiles_values(
+    layer_id: str,
+    version: str,
+    measure: str,
+    request: Request,
+) -> Response:
+    """Immutable per-feature measure values for feature-state joins (ARCH-2b)."""
+    if not _LAYER_ID_RE.fullmatch(layer_id):
+        raise HTTPException(status_code=404, detail="unknown tileset")
+
+    root = _tiles_root()
+    if root is None:
+        raise HTTPException(status_code=404, detail="unknown tileset")
+
+    if not _in_registry(layer_id) or _is_gated(layer_id):
+        raise HTTPException(status_code=404, detail="unknown tileset")
+
+    data, note = _read_manifest(root)
+    if note is not None and note == "no tiles built":
+        raise HTTPException(status_code=404, detail="unknown tileset")
+    tilesets = data.get("tilesets") or {}
+    manifest_entry = tilesets.get(layer_id)
+    if not isinstance(manifest_entry, dict):
+        raise HTTPException(status_code=404, detail="unknown tileset")
+
+    if not _VERSION_RE.fullmatch(version):
+        raise HTTPException(status_code=404, detail="unknown version")
+
+    tile_path = _resolve_tile_path(root, layer_id, version, manifest_entry)
+    if tile_path is None:
+        raise HTTPException(status_code=404, detail="unknown version")
+
+    # Measure gates: layer's registered measure must match, and allow-list only.
+    try:
+        entries = registry()
+    except RegistryError:
+        raise HTTPException(status_code=404, detail="unknown measure") from None
+    entry = entries.get(layer_id)
+    layer_measure = (entry.raw.get("measure") if entry is not None else None)
+    if layer_measure != measure or measure not in _ALLOWED_MEASURES:
+        raise HTTPException(status_code=404, detail="unknown measure")
+
+    prop = _MEASURE_PROPERTIES[measure]
+    try:
+        from layers.dz_context import build_metrics_payload
+
+        payload = build_metrics_payload(vintage=2022, include_geometry=False)
+        features = payload.get("features") if isinstance(payload, dict) else None
+        if not isinstance(features, list) or not features:
+            raise HTTPException(status_code=404, detail="values unavailable")
+        values: dict[str, float | int] = {}
+        for feat in features:
+            if not isinstance(feat, dict):
+                continue
+            props = feat.get("properties")
+            if not isinstance(props, dict):
+                continue
+            code = props.get("code")
+            raw_val = props.get(prop)
+            if code is None or raw_val is None:
+                continue
+            if not isinstance(raw_val, (int, float)) or isinstance(raw_val, bool):
+                continue
+            if not (raw_val == raw_val) or raw_val in (float("inf"), float("-inf")):
+                continue
+            values[str(code)] = raw_val
+        if not values:
+            raise HTTPException(status_code=404, detail="values unavailable")
+    except HTTPException:
+        raise
+    except (OSError, ValueError, KeyError):
+        raise HTTPException(status_code=404, detail="values unavailable") from None
+
+    body = {
+        "layer": layer_id,
+        "version": version,
+        "measure": measure,
+        "values": values,
+    }
+    etag = _values_etag(version, measure)
+    inm = request.headers.get("if-none-match")
+    if inm is not None and inm.strip() == etag:
+        return Response(
+            status_code=304,
+            headers={
+                "Cache-Control": _IMMUTABLE_CACHE,
+                "ETag": etag,
+            },
+        )
+    return JSONResponse(
+        body,
+        headers={
+            "Cache-Control": _IMMUTABLE_CACHE,
+            "ETag": etag,
+        },
+    )
 
 
 @router.get("/v1/tiles/manifest.json")

@@ -37,23 +37,10 @@ Run on the home PC from the repo root (PowerShell):
 .\scripts\ops\rebuild-home.ps1 -Pull
 ```
 
-`Invoke-Compose` in `deploy-home.ps1` takes one explicit `-ComposeArgs` string
-array (for example `@('-f', $ComposePath, 'up', '-d', '--no-recreate', 'db')`).
-Do not pass bare remaining arguments: PowerShell would bind `-d` / `-p` / `-f` to
-common parameters and the compose step can hang attached. Do not move `HEAD` by
-hand before running the script — `last-good-sha` records `HEAD` before the pull.
-All docker/git calls go through `Invoke-Native`, which judges success only by exit code, so stderr progress text
-under PowerShell 5.1 never aborts a deploy. `last-good-sha` is written only after live health passes (or recorded
-before a pull when HEAD already equals it / none exists); rollback never writes it. If a pull changes
-`deploy-home.ps1`, the script stops with exit 3 and asks you to re-run the same command.
-
 1. Confirm `cloudflared` policy: **never stop the tunnel**.
 2. Optional `-Pull`: **before** `git pull`, record current `HEAD` as
-   `.deploy/last-good-sha` and tag current `:local` images as `:last-good`
-   only when last-good is missing or already equals that `HEAD` (otherwise keep
-   the confirmed SHA and do not re-snapshot images).
-3. Optional `git pull origin main` (only after step 2). If the pull changes
-   `deploy-home.ps1`, exit 3 and re-run the same command (nothing built yet).
+   `.deploy/last-good-sha` and tag current `:local` images as `:last-good`.
+3. Optional `git pull origin main` (only after step 2).
 4. Ensure live **db** is up (API/frontend keep serving the previous images).
 5. Snapshot `:local` → `:last-good` when last-good is known and `-Pull` was not
    used (so a build cannot erase the restore tags).
@@ -66,8 +53,7 @@ before a pull when HEAD already equals it / none exists); rollback never writes 
    the app services. **Never** recreate `cloudflared` (not in this compose;
    stay out of its process/service too).
 10. Require live `http://127.0.0.1:3000/backend/health`.
-11. Write `.deploy/last-good-sha`; retag new `:local` as `:last-good`; then tear
-    down canary (best-effort — teardown failure must not roll back a healthy deploy).
+11. Tear down canary; write `.deploy/last-good-sha`; retag new `:local` as `:last-good`.
 
 ### On failure
 
@@ -229,6 +215,11 @@ with `TILES_DIR=/app/tiles`. Clients use:
 
 - `GET /v1/tiles/manifest.json` (short cache)
 - `GET /v1/tiles/{id}/{version}/{z}/{x}/{y}.mvt` (immutable)
+- `GET /v1/tiles/{id}/{version}/values/{measure}.json` (immutable; pop_density / simd_decile only)
+
+After deploying ARCH-2b, run `tiles.build --all` once so the manifest gains
+`title`, `geometry`, `style`, `legend`, `measure`, and `source_layer` from the
+registry. Old PMTiles files stay valid; only the manifest keys are new.
 
 **Cloudflare Cache Rule (free plan, dashboard — not in this repo):** Cloudflare
 does not cache `.mvt` / `.json` by default. Add one Cache Rule before 2b goes

@@ -1,14 +1,45 @@
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test, expect } from "./_fixtures";
 import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, ensureLayersGroupOpen, getMapZoom, openLayers, openMap, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
+// Playwright CI cwd is frontend/; avoid import.meta (not an ESM module here).
+const ARCH2B = join(process.cwd(), "e2e", "fixtures", "arch2b");
+const OIL_MVT = readFileSync(join(ARCH2B, "oil-fields.mvt"));
+const TILE_VERSION = "2026-10-22.d28ecc72";
+
+function oilTileManifest() {
+  return JSON.stringify({
+    schema: 1,
+    tilesets: {
+      "oil-fields": {
+        layer: "oil-fields",
+        version: TILE_VERSION,
+        minzoom: 0,
+        maxzoom: 14,
+        geometry: "polygon",
+        source_layer: "oil-fields",
+        measure: null,
+        attribution: "Synthetic oil attribution",
+        style: {
+          fill: { "fill-color": "#8a3b00", "fill-opacity": 0.28 },
+          line: { "line-color": "#8a3b00", "line-width": 1.6, "line-opacity": 0.95 },
+        },
+        legend: [{ label: "Oil and gas fields", color: "#8a3b00" }],
+      },
+    },
+  });
+}
+
 /**
  * LAYERS-FIX-1 — every visible switch draws or shows a zoom hint.
  * On 1bdfdf6 the empty stubs are switches, upstream 204 becomes 503,
  * protected sites and oil and gas draw nothing, and AGR has no zoom-out hint.
+ * ARCH-2b: oil and gas uses /v1/tiles (route swap).
  */
 
 const HIDDEN_STUBS = [
@@ -122,11 +153,18 @@ async function stubOverviewShapes(page: Page) {
       body: councilsBody,
     });
   });
-  await page.route("**/layers/context/oil-fields**", async (route) => {
+  await page.route("**/backend/v1/tiles/manifest.json", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: featureCollection([SCOTLAND_POLYGON, NORTH_SEA_POLYGON]),
+      body: oilTileManifest(),
+    });
+  });
+  await page.route("**/backend/v1/tiles/oil-fields/**/*.mvt", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/vnd.mapbox-vector-tile",
+      body: OIL_MVT,
     });
   });
   await page.route("**/layers/open/crown-estate-leases**", async (route) => {
@@ -192,15 +230,31 @@ test.describe("LAYERS-FIX-1", () => {
 
     const rows = page.locator("[data-testid^='map-layer-']");
     const discovered = await rows.evaluateAll((els) =>
-      els.map((el) => ({
-        id: (el.getAttribute("data-testid") || "").replace("map-layer-", ""),
-        minzoom: Number(el.getAttribute("data-minzoom")),
-        maxzoom: Number(el.getAttribute("data-maxzoom")),
-        zoomOutAbove: el.getAttribute("data-zoom-out-above") || "",
-        paintLayers: (el.getAttribute("data-paint-layers") || "")
+      els.map((el) => {
+        const id = (el.getAttribute("data-testid") || "").replace(
+          "map-layer-",
+          "",
+        );
+        // ARCH-2b: registry paint ids still name the old GeoJSON layers; map
+        // queries must use the tile layer ids ScotlandMap actually adds.
+        const paintLayers = (el.getAttribute("data-paint-layers") || "")
           .split(" ")
-          .filter(Boolean),
-      })),
+          .filter(Boolean)
+          .flatMap((paintId) => {
+            if (paintId === "oil-fields-fill") return ["tile-oil-fields-fill"];
+            if (paintId === "data-zones-line") {
+              return ["tile-dz2022-fill", "tile-dz2022-line"];
+            }
+            return [paintId];
+          });
+        return {
+          id,
+          minzoom: Number(el.getAttribute("data-minzoom")),
+          maxzoom: Number(el.getAttribute("data-maxzoom")),
+          zoomOutAbove: el.getAttribute("data-zoom-out-above") || "",
+          paintLayers,
+        };
+      }),
     );
     expect(discovered.length).toBeGreaterThan(0);
 
@@ -352,7 +406,7 @@ test.describe("LAYERS-FIX-1", () => {
     });
     await page.getByTestId("layer-toggle-9").click();
     await expect
-      .poll(async () => renderedCount(page, ["oil-fields-fill"]), {
+      .poll(async () => renderedCount(page, ["tile-oil-fields-fill"]), {
         timeout: 20_000,
       })
       .toBeGreaterThan(0);

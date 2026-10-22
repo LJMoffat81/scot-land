@@ -44,7 +44,7 @@ import {
   parseCoordinates,
   visitorFacingError,
 } from "../lib/api";
-import { CONTEXT_LAYERS } from "../lib/contextLayers";
+import { CONTEXT_LAYERS, TILE_LAYER_IDS } from "../lib/contextLayers";
 import {
   syncLayersAddPaint,
   type FloodKind,
@@ -65,6 +65,15 @@ import {
   type MetricId,
 } from "../lib/mapColourRamps";
 import { popDensityLegendProps } from "../lib/popDensityLegend";
+import {
+  parseTileManifest,
+  buildTileLayers,
+  applyMeasureValues,
+  TILE_WANTED_IDS,
+  TileManifestError,
+  type TileLegendItem,
+  type MeasureValuesPayload,
+} from "../lib/tileLayerFactory";
 import { SEARCH_HINT_SR } from "../lib/siteNav";
 import {
   isLegendLayerOff,
@@ -337,8 +346,6 @@ type ContextFeaturePayload = GeoJSON.FeatureCollection & {
   };
 };
 
-const OIL_GAS_ZOOM_HINT = "Zoom in to see oil and gas";
-
 /** One fetch per context layer for the life of the page. Toggles only change visibility. */
 const contextFeatureCache: Record<string, ContextFeaturePayload> = {};
 const contextFeatureInflight: Record<string, Promise<ContextFeaturePayload>> = {};
@@ -350,13 +357,7 @@ function loadContextFeature(layerId: string): Promise<ContextFeaturePayload> {
   if (pending) return pending;
   const request = apiJson<ContextFeaturePayload>(`/layers/context/${layerId}`)
     .then((data) => {
-      const sizeCapHidOil =
-        layerId === "oil-fields" && data?.meta?.hidden_below_zoom === true;
-      if (
-        data?.type === "FeatureCollection" &&
-        data.meta?.ok !== false &&
-        !sizeCapHidOil
-      ) {
+      if (data?.type === "FeatureCollection" && data.meta?.ok !== false) {
         contextFeatureCache[layerId] = data;
       }
       delete contextFeatureInflight[layerId];
@@ -371,8 +372,12 @@ function loadContextFeature(layerId: string): Promise<ContextFeaturePayload> {
 }
 const HLA_MIN_ZOOM = 8;
 const HLA_FILL = "#7b5ea7";
-/** Data Zone outlines / density colours — readable from area zoom. */
+/** Built-up mask (dz2022_masked) — readable from area zoom. */
 const DATA_ZONE_MIN_ZOOM = POP_DENSITY_COLOURS_MIN_ZOOM;
+/** Site-watch PR B pin — also set on the tile-dz2022 MapLibre source. */
+const DATA_ZONE_BOUNDARIES_2022_CREDIT =
+  "Scottish Government Data Zone boundaries 2022 (OGL). Outlines only — not a rent.";
+
 const NFI_MIN_ZOOM = 7;
 const NATIVE_WOODLAND_MIN_ZOOM = 8;
 const NFI_FILL = "#1f6b3a";
@@ -744,9 +749,18 @@ export default function ScotlandMap() {
   const [layerNotice, setLayerNotice] = useState<string | null>(null);
   const [protectedSitesHint, setProtectedSitesHint] = useState(false);
   const [protectedSitesDrawn, setProtectedSitesDrawn] = useState(false);
-  const [oilGasHint, setOilGasHint] = useState(false);
   const layerPopupRef = useRef<maplibregl.Popup | null>(null);
   const dzHoverPopupRef = useRef<maplibregl.Popup | null>(null);
+  /** ARCH-2b: tile manifest version / measure / legend (refs; legend also mirrored in state for strip). */
+  const tileDzVersionRef = useRef<string | null>(null);
+  const tileDzSourceLayerRef = useRef<string>("dz2022");
+  const tileMeasureValuesRef = useRef<MeasureValuesPayload | null>(null);
+  const tileLegendsRef = useRef<Record<string, TileLegendItem[]>>({});
+  const [tileLegends, setTileLegends] = useState<
+    Record<string, TileLegendItem[]>
+  >({});
+  const showDataZonesRef = useRef(false);
+  showDataZonesRef.current = showDataZones;
   const identifyAbortRef = useRef<AbortController | null>(null);
   const identifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const showGrid3Ref = useRef(false);
@@ -855,6 +869,8 @@ export default function ScotlandMap() {
   const [placeLoading, setPlaceLoading] = useState(false);
 
   const [contextOn, setContextOn] = useState<Record<string, boolean>>({});
+  const contextOnRef = useRef(contextOn);
+  contextOnRef.current = contextOn;
 
   const [urbanRuralName, setUrbanRuralName] = useState<string | null>(null);
   const [dataZone, setDataZone] = useState<{
@@ -1048,6 +1064,24 @@ export default function ScotlandMap() {
     return null;
   })();
   const stripLayer = stripLayerId ? getMapLayer(stripLayerId) : undefined;
+  // Prefer ARCH-2b manifest legend colours when available (data zones / oil).
+  const stripLegendClasses = (() => {
+    if (!stripLayer) return undefined;
+    const manifestKey =
+      stripLayerId === "data_zones"
+        ? "dz2022"
+        : stripLayerId === "9"
+          ? "oil-fields"
+          : null;
+    const fromManifest = manifestKey ? tileLegends[manifestKey] : undefined;
+    if (fromManifest && fromManifest.length > 0) {
+      return fromManifest.map((item) => ({
+        label: item.label,
+        color: item.color,
+      }));
+    }
+    return stripLayer.classes;
+  })();
 
   const gbpLiveBootstrapped = useRef(false);
   useEffect(() => {
@@ -2566,67 +2600,33 @@ export default function ScotlandMap() {
         },
       });
 
-      map.addSource("data-zones-overlay", {
-        type: "geojson",
-        data: emptyCollection,
-        attribution:
-          "Scottish Government Data Zone boundaries 2022 (OGL). Outlines only — not a rent.",
-      });
-      map.addLayer({
-        id: "data-zones-fill",
-        type: "fill",
-        source: "data-zones-overlay",
-        layout: { visibility: "none" },
-        paint: {
-          "fill-color": "#0b1e3a",
-          "fill-opacity": 0.04,
-        },
-      });
-      map.addLayer({
-        id: "data-zones-line",
-        type: "line",
-        source: "data-zones-overlay",
-        layout: { visibility: "none" },
-        paint: {
-          "line-color": "#0b1e3a",
-          "line-width": 1.05,
-          "line-opacity": 0.78,
-        },
-      });
-
-      // UX10-2: dz2022_masked fill under faint full DZ outlines (click stays on data-zones).
+      // UX10-2: dz2022_masked fill (tile-dz2022 added later; no beforeId → no dangling refs).
       map.addSource("dz2022-masked-overlay", {
         type: "geojson",
         data: emptyCollection,
         attribution: "NRS Settlements 2022 (OGL v3), contains OS data",
       });
-      map.addLayer(
-        {
-          id: "dz2022-masked-fill",
-          type: "fill",
-          source: "dz2022-masked-overlay",
-          layout: { visibility: "none" },
-          paint: {
-            "fill-color": "#1a4a6e",
-            "fill-opacity": 0.12,
-          },
+      map.addLayer({
+        id: "dz2022-masked-fill",
+        type: "fill",
+        source: "dz2022-masked-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": "#1a4a6e",
+          "fill-opacity": 0.12,
         },
-        "data-zones-fill",
-      );
-      map.addLayer(
-        {
-          id: "dz2022-masked-line",
-          type: "line",
-          source: "dz2022-masked-overlay",
-          layout: { visibility: "none" },
-          paint: {
-            "line-color": "#1a4a6e",
-            "line-width": 0.6,
-            "line-opacity": 0.35,
-          },
+      });
+      map.addLayer({
+        id: "dz2022-masked-line",
+        type: "line",
+        source: "dz2022-masked-overlay",
+        layout: { visibility: "none" },
+        paint: {
+          "line-color": "#1a4a6e",
+          "line-width": 0.6,
+          "line-opacity": 0.35,
         },
-        "data-zones-line",
-      );
+      });
 
       map.addSource("repd-onshore-wind-overlay", {
         type: "geojson",
@@ -2921,6 +2921,8 @@ export default function ScotlandMap() {
 
 
       for (const layer of CONTEXT_LAYERS) {
+        // ARCH-2b: oil-fields / platforms / pipelines (and dz2022) use vector tiles.
+        if (TILE_LAYER_IDS.has(layer.id)) continue;
         if (layer.kind === "raster") {
           map.addSource(layer.id, {
             type: "raster",
@@ -3013,18 +3015,29 @@ export default function ScotlandMap() {
       setMapReady(true);
     });
 
-    map.on("mousemove", "data-zones-fill", (event) => {
+    map.on("mousemove", "tile-dz2022-fill", (event) => {
       map.getCanvas().style.cursor = "pointer";
       const feat = event.features?.[0];
-      const props = feat?.properties as
-        | { code?: string; name?: string; la_name?: string }
+      const raw = feat?.properties as
+        | {
+            feature_id?: string;
+            code?: string;
+            name?: string;
+            la_name?: string;
+          }
         | undefined;
-      if (!props?.code || !event.lngLat) return;
-      const label = props.name
-        ? `${escapeHtml(props.name)} (${escapeHtml(props.code)})`
-        : escapeHtml(props.code);
-      const la = props.la_name
-        ? `<br/><span class="popup-source">${escapeHtml(props.la_name)}</span>`
+      // Tile props: feature_id → code, name → name (popup still reads code/name).
+      const code =
+        typeof raw?.feature_id === "string" && raw.feature_id
+          ? raw.feature_id
+          : raw?.code;
+      const name = raw?.name;
+      if (!code || !event.lngLat) return;
+      const label = name
+        ? `${escapeHtml(name)} (${escapeHtml(code)})`
+        : escapeHtml(code);
+      const la = raw?.la_name
+        ? `<br/><span class="popup-source">${escapeHtml(raw.la_name)}</span>`
         : "";
       if (!dzHoverPopupRef.current) {
         dzHoverPopupRef.current = new maplibregl.Popup({
@@ -3041,7 +3054,7 @@ export default function ScotlandMap() {
         )
         .addTo(map);
     });
-    map.on("mouseleave", "data-zones-fill", () => {
+    map.on("mouseleave", "tile-dz2022-fill", () => {
       map.getCanvas().style.cursor = "";
       dzHoverPopupRef.current?.remove();
     });
@@ -3064,14 +3077,15 @@ export default function ScotlandMap() {
     ) => {
       // Data Zone click → place card (boundaries only; no AGR £).
       const dzHits =
-        hasMapLayer(map, "data-zones-fill") &&
-        map.getLayoutProperty("data-zones-fill", "visibility") === "visible"
+        hasMapLayer(map, "tile-dz2022-fill") &&
+        map.getLayoutProperty("tile-dz2022-fill", "visibility") === "visible"
           ? map.queryRenderedFeatures(point, {
-              layers: ["data-zones-fill"],
+              layers: ["tile-dz2022-fill"],
             })
           : [];
-      const dzProps = dzHits[0]?.properties as
+      const dzRaw = dzHits[0]?.properties as
         | {
+            feature_id?: string;
             code?: string;
             name?: string;
             vintage?: number | string;
@@ -3082,7 +3096,12 @@ export default function ScotlandMap() {
             dw_year?: number | string;
           }
         | undefined;
-      if (dzProps?.code) {
+      const dzCode =
+        typeof dzRaw?.feature_id === "string" && dzRaw.feature_id
+          ? dzRaw.feature_id
+          : dzRaw?.code;
+      const dzName = dzRaw?.name;
+      if (dzCode) {
         dzHoverPopupRef.current?.remove();
         const asNum = (v: number | string | undefined): number | null => {
           if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -3093,15 +3112,15 @@ export default function ScotlandMap() {
         };
         void inspectRef.current(lat, lng, {
           fly: false,
-          label: dzProps.name || dzProps.code,
-          dataZoneCode: dzProps.code,
-          dataZoneName: dzProps.name || null,
-          dataZoneVintage: asNum(dzProps.vintage),
-          laName: dzProps.la_name || null,
-          population: asNum(dzProps.population),
-          popYear: asNum(dzProps.pop_year),
-          dwellings: asNum(dzProps.dwellings),
-          dwYear: asNum(dzProps.dw_year),
+          label: dzName || dzCode,
+          dataZoneCode: dzCode,
+          dataZoneName: dzName || null,
+          dataZoneVintage: asNum(dzRaw?.vintage),
+          laName: dzRaw?.la_name || null,
+          population: asNum(dzRaw?.population),
+          popYear: asNum(dzRaw?.pop_year),
+          dwellings: asNum(dzRaw?.dwellings),
+          dwYear: asNum(dzRaw?.dw_year),
         });
         grid3AfterIdentifyRef.current?.(lng, lat);
         return;
@@ -3188,6 +3207,30 @@ export default function ScotlandMap() {
       (window as unknown as { __SCOT_LAND_MAP__?: Map }).__SCOT_LAND_MAP__ =
         map;
     }
+    // Basemap remount (key={mapStyle}) aborts in-flight MapLibre fetches; the
+    // DOMException text is "signal is aborted without reason" and must not
+    // surface as a pageerror (strict e2e gate only ignores the older wording).
+    // Page-lifetime singleton: aborts can fire after remove() returns.
+    const abortGuardWindow = window as unknown as {
+      __scotLandAbortGuard?: boolean;
+    };
+    if (!abortGuardWindow.__scotLandAbortGuard) {
+      abortGuardWindow.__scotLandAbortGuard = true;
+      const isAbortReason = (reason: unknown): boolean =>
+        (typeof reason === "object" &&
+          reason !== null &&
+          "name" in reason &&
+          (reason as { name?: unknown }).name === "AbortError") ||
+        String(reason ?? "").includes("AbortError");
+      window.addEventListener("unhandledrejection", (event) => {
+        if (isAbortReason(event.reason)) event.preventDefault();
+      });
+      window.addEventListener("error", (event) => {
+        if (isAbortReason(event.error ?? event.message)) {
+          event.preventDefault();
+        }
+      });
+    }
     return () => {
       basemapAlive = false;
       window.clearTimeout(basemapTimer);
@@ -3211,11 +3254,33 @@ export default function ScotlandMap() {
         delete (window as unknown as { __SCOT_LAND_MAP__?: Map })
           .__SCOT_LAND_MAP__;
       }
+      const consoleError = console.error;
+      console.error = (...args: unknown[]) => {
+        const abort = args.some((arg) => {
+          if (typeof arg === "object" && arg !== null && "name" in arg) {
+            return (arg as { name?: unknown }).name === "AbortError";
+          }
+          return String(arg ?? "").includes("AbortError");
+        });
+        if (abort) return;
+        consoleError.apply(console, args as []);
+      };
       try {
         map.remove();
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err ?? "");
-        if (!message.includes("Style is not done loading")) throw err;
+        const name = err instanceof Error ? err.name : "";
+        if (
+          message.includes("Style is not done loading") ||
+          name === "AbortError" ||
+          message.includes("AbortError")
+        ) {
+          /* remount / in-flight tile abort */
+        } else {
+          throw err;
+        }
+      } finally {
+        console.error = consoleError;
       }
       // Allow deep-link boot on the next map instance (Strict Mode / style remount).
       urlBootDoneRef.current = false;
@@ -3771,76 +3836,169 @@ export default function ScotlandMap() {
     ledgerEnabled,
   ]);
 
-  // Data Zone boundaries (simplified GeoJSON by view bounds — outlines only, no AGR £)
+  // ARCH-2b: Data Zone visibility on tile-dz2022-* (no GeoJSON refetch).
   useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map) return;
+    const vis = showDataZones ? "visible" : "none";
+    for (const id of ["tile-dz2022-fill", "tile-dz2022-line"]) {
+      if (hasMapLayer(map, id)) map.setLayoutProperty(id, "visibility", vis);
+    }
+    if (!showDataZones) dzHoverPopupRef.current?.remove();
+  }, [mapReady, showDataZones]);
 
-    const setVis = (vis: "visible" | "none") => {
-      if (!hasMapLayer(map, "data-zones-fill")) return;
-      map.setLayoutProperty("data-zones-fill", "visibility", vis);
-      map.setLayoutProperty("data-zones-line", "visibility", vis);
+  // ARCH-2b: fetch tile manifest once per mapReady; add vector sources/layers.
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    let cancelled = false;
+
+    const syncTileVisibility = () => {
+      const dzVis = showDataZonesRef.current ? "visible" : "none";
+      for (const id of ["tile-dz2022-fill", "tile-dz2022-line"]) {
+        if (hasMapLayer(map, id)) map.setLayoutProperty(id, "visibility", dzVis);
+      }
+      const on = contextOnRef.current;
+      for (const layerId of ["oil-fields", "platforms", "pipelines"] as const) {
+        const vis = on[layerId] ? "visible" : "none";
+        for (const suffix of ["fill", "line", "circle"] as const) {
+          const id = `tile-${layerId}-${suffix}`;
+          if (hasMapLayer(map, id)) map.setLayoutProperty(id, "visibility", vis);
+        }
+      }
     };
 
-    if (!showDataZones) {
-      setVis("none");
-      dzHoverPopupRef.current?.remove();
-      return;
-    }
-
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    let inFlight = false;
-
-    const loadDataZones = () => {
-      if (cancelled || !mapRef.current || inFlight) return;
-      const b = map.getBounds();
-      if (!b) return;
-      if (map.getZoom() < DATA_ZONE_MIN_ZOOM) {
-        setVis("none");
+    const applyDzValuesIfReady = () => {
+      const payload = tileMeasureValuesRef.current;
+      if (!payload || !map.getSource("tile-dz2022")) return;
+      try {
+        if (!map.isSourceLoaded("tile-dz2022")) return;
+      } catch {
         return;
       }
-      inFlight = true;
-      setLayerBusy(true);
-      const path =
-        `/layers/open/data-zones?south=${b.getSouth()}&west=${b.getWest()}` +
-        `&north=${b.getNorth()}&east=${b.getEast()}&max_features=120`;
-      void apiJson<GeoJSON.FeatureCollection>(path)
-        .then((data) => {
-          if (cancelled) return;
-          safeSetGeoJson(map.getSource("data-zones-overlay") as GeoJSONSource | undefined, data);
-          setVis("visible");
-          setLayerNotice(null);
-        })
-        .catch((err: unknown) => {
-          if (cancelled) return;
-          setVis("none");
-          if (err instanceof ApiError && err.status === 503) {
-            setLayerNotice(
-              "Data Zone boundaries are not available right now (source unavailable). Gaps are not filled with guesses.",
-            );
+      try {
+        applyMeasureValues(
+          map,
+          "tile-dz2022",
+          tileDzSourceLayerRef.current,
+          payload,
+        );
+      } catch {
+        /* bad payload — leave fill grey */
+      }
+    };
+
+    const onSourceData = (event: { sourceId?: string; isSourceLoaded?: boolean }) => {
+      if (event.sourceId !== "tile-dz2022" || !event.isSourceLoaded) return;
+      applyDzValuesIfReady();
+    };
+    map.on("sourcedata", onSourceData);
+
+    // ARCH-2b-r2: always fetch once on map ready. Empty/missing wanted ids are
+    // not an error (R5). ok:false or parse refusal → note; no retry.
+    void apiJson<unknown>("/v1/tiles/manifest.json")
+      .then((body) => {
+        if (cancelled || mapRef.current !== map) return;
+        if (
+          body &&
+          typeof body === "object" &&
+          (body as { ok?: unknown }).ok === false
+        ) {
+          setLayerNotice("One layer did not load.");
+          return;
+        }
+        let manifest;
+        try {
+          manifest = parseTileManifest(body);
+        } catch (err: unknown) {
+          // TileManifestError / refusal → existing note; no retry.
+          if (err instanceof TileManifestError) {
+            setLayerNotice("One layer did not load.");
+            return;
           }
-        })
-        .finally(() => {
-          inFlight = false;
-          if (!cancelled) setLayerBusy(false);
-        });
-    };
+          setLayerNotice("One layer did not load.");
+          return;
+        }
+        const built = buildTileLayers(manifest, TILE_WANTED_IDS);
+        const legends: Record<string, TileLegendItem[]> = {};
+        for (const id of TILE_WANTED_IDS) {
+          const entry = manifest.tilesets[id];
+          if (entry?.legend?.length) legends[id] = entry.legend;
+        }
+        tileLegendsRef.current = legends;
+        setTileLegends(legends);
 
-    const onMove = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(loadDataZones, 700);
-    };
+        const dzEntry = manifest.tilesets.dz2022;
+        if (dzEntry) {
+          tileDzVersionRef.current = dzEntry.version;
+          tileDzSourceLayerRef.current = dzEntry.source_layer || "dz2022";
+        }
 
-    loadDataZones();
-    map.on("moveend", onMove);
+        // MapLibre workers cannot resolve same-origin relative tile URLs
+        // (Request fails without a document base). Absolutize at addSource time;
+        // the factory still emits the §5 /backend/... template (TF-4).
+        const origin =
+          typeof window !== "undefined" ? window.location.origin : "";
+        for (const [sourceId, sourceSpec] of Object.entries(built.sources)) {
+          if (map.getSource(sourceId)) continue;
+          const tiles = Array.isArray(sourceSpec.tiles)
+            ? (sourceSpec.tiles as string[]).map((t) =>
+                t.startsWith("/") && origin ? `${origin}${t}` : t,
+              )
+            : sourceSpec.tiles;
+          const spec = {
+            ...sourceSpec,
+            tiles,
+            ...(sourceId === "tile-dz2022"
+              ? { attribution: DATA_ZONE_BOUNDARIES_2022_CREDIT }
+              : {}),
+          };
+          map.addSource(
+            sourceId,
+            spec as Parameters<Map["addSource"]>[1],
+          );
+        }
+        for (const layer of built.layers) {
+          const id = typeof layer.id === "string" ? layer.id : "";
+          if (!id || hasMapLayer(map, id)) continue;
+          const layout = {
+            ...((layer.layout as Record<string, unknown> | undefined) ?? {}),
+            visibility: "none",
+          };
+          map.addLayer({
+            ...(layer as Parameters<Map["addLayer"]>[0]),
+            layout,
+          } as Parameters<Map["addLayer"]>[0]);
+        }
+        syncTileVisibility();
+
+        if (dzEntry?.version) {
+          const version = dzEntry.version;
+          void apiJson<MeasureValuesPayload>(
+            `/v1/tiles/dz2022/${version}/values/pop_density.json`,
+          )
+            .then((payload) => {
+              if (cancelled || mapRef.current !== map) return;
+              tileMeasureValuesRef.current = payload;
+              applyDzValuesIfReady();
+            })
+            .catch((err: unknown) => {
+              // 404 → leave fill grey (no crash).
+              if (err instanceof ApiError && err.status === 404) return;
+            });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLayerNotice("One layer did not load.");
+      });
+
     return () => {
       cancelled = true;
-      if (timer) clearTimeout(timer);
-      map.off("moveend", onMove);
+      map.off("sourcedata", onSourceData);
     };
-  }, [mapReady, showDataZones]);
+  }, [mapReady]);
 
   // UX10-2 built-up mask (dz2022_masked) — display only; full DZ outlines stay clickable
   useEffect(() => {
@@ -4062,7 +4220,7 @@ export default function ScotlandMap() {
     };
   }, [mapReady, showCesAquaculture, markTileUnavailable]);
 
-  // Oil and gas switch paints the existing oil-fields context layer.
+  // Oil and gas switch paints tile-oil-fields-* (ARCH-2b vector tiles).
   useEffect(() => {
     const on = Boolean(ledgerEnabled["9"]);
     setContextOn((cur) => {
@@ -4812,6 +4970,14 @@ export default function ScotlandMap() {
     for (const layer of CONTEXT_LAYERS) {
       const on = Boolean(contextOn[layer.id]);
       const vis = on ? "visible" : "none";
+      // ARCH-2b: tile layers — visibility only; never loadContextFeature.
+      if (TILE_LAYER_IDS.has(layer.id)) {
+        for (const suffix of ["fill", "line", "circle"] as const) {
+          const id = `tile-${layer.id}-${suffix}`;
+          if (hasMapLayer(map, id)) map.setLayoutProperty(id, "visibility", vis);
+        }
+        continue;
+      }
       if (layer.kind === "fill") {
         for (const id of [`${layer.id}-fill`, `${layer.id}-line`]) {
           if (hasMapLayer(map, id)) map.setLayoutProperty(id, "visibility", vis);
@@ -4823,9 +4989,6 @@ export default function ScotlandMap() {
         setContextNote("This layer isn't available on this server yet.");
         continue;
       }
-      if (layer.id === "oil-fields" && !on) {
-        setOilGasHint(false);
-      }
       if (!on || layer.kind === "raster" || contextLoaded.current.has(layer.id)) {
         continue;
       }
@@ -4835,15 +4998,10 @@ export default function ScotlandMap() {
           if (cancelled || data?.type !== "FeatureCollection") return;
           const source = map.getSource(`${layerId}-src`) as GeoJSONSource | undefined;
           safeSetGeoJson(source, data);
-          if (layerId === "oil-fields" && data.meta?.hidden_below_zoom === true) {
-            setOilGasHint(data.meta.hint === OIL_GAS_ZOOM_HINT);
-            return;
-          }
           if (data.meta?.ok === false) {
             setContextNote(data.meta.note || "One layer did not load.");
             return;
           }
-          if (layerId === "oil-fields") setOilGasHint(false);
           contextLoaded.current.add(layerId);
         })
         .catch(() => {
@@ -5054,24 +5212,14 @@ export default function ScotlandMap() {
           role="application"
           aria-label="Scotland map"
         />
-        {protectedSitesHint || oilGasHint ? (
+        {protectedSitesHint ? (
           <div className="map-zoom-hint-stack">
-            {protectedSitesHint ? (
-              <p
-                className="protected-sites-zoom-hint"
-                data-testid="protected-sites-zoom-hint"
-              >
-                Zoom in to see protected sites
-              </p>
-            ) : null}
-            {oilGasHint ? (
-              <p
-                className="protected-sites-zoom-hint"
-                data-testid="oil-gas-zoom-hint"
-              >
-                Zoom in to see oil and gas
-              </p>
-            ) : null}
+            <p
+              className="protected-sites-zoom-hint"
+              data-testid="protected-sites-zoom-hint"
+            >
+              Zoom in to see protected sites
+            </p>
           </div>
         ) : null}
         {protectedSitesDrawn && mapZoom < SIMPLIFIED_OUTLINES_BELOW_ZOOM ? (
@@ -5169,6 +5317,11 @@ export default function ScotlandMap() {
           <button type="button" onClick={() => window.location.reload()}>
             Reload
           </button>
+        </div>
+      ) : null}
+      {layerNotice ? (
+        <div className="basemap-notice" role="status" data-testid="layer-notice">
+          <p>{layerNotice}</p>
         </div>
       ) : null}
 
@@ -5345,7 +5498,7 @@ export default function ScotlandMap() {
         >
           <span className="legend-strip-name">{stripLayer.label}</span>
           <span className="legend-strip-ramp" aria-hidden="true">
-            {stripLayer.classes.slice(0, 5).map((c, i) => (
+            {(stripLegendClasses ?? stripLayer.classes).slice(0, 5).map((c, i) => (
               <span
                 key={`${c.color}-${i}`}
                 className="legend-strip-swatch"
@@ -5353,6 +5506,12 @@ export default function ScotlandMap() {
               />
             ))}
           </span>
+          {/* ARCH-2b: manifest "No value" is the 6th class (beyond strip swatches). */}
+          {(stripLegendClasses ?? stripLayer.classes).some(
+            (c) => c.label === "No value",
+          ) ? (
+            <span className="legend-strip-novalue">No value</span>
+          ) : null}
           <span className="legend-strip-chevron" aria-hidden="true">
             ▸
           </span>

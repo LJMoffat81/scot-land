@@ -133,6 +133,21 @@ jobs:
         run: python -m pytest -q -p no:cacheprovider -m 'not real' tests/surface
       - name: Full backend suite (PostGIS tests must run, not skip)
         run: python -m pytest -q -p no:cacheprovider -rs -m 'not real'
+      - name: Deploy-home Pester (Invoke-Compose T1/T2)
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          if ! command -v pwsh >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq wget apt-transport-https software-properties-common
+            wget -q https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb
+            sudo dpkg -i /tmp/packages-microsoft-prod.deb
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq powershell
+          fi
+          pwsh -NoProfile -Command \
+            "Install-Module Pester -Force -SkipPublisherCheck -Scope CurrentUser -MinimumVersion 5.0.0; \
+             Invoke-Pester -Path scripts/ops/tests/DeployHome.Tests.ps1 -CI -Output Detailed"
       - name: Processed-data manifests (GIS and Data Zones; see docs/processed_data_manifest.md)
         run: python -m etl.load_processed --check
 

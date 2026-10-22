@@ -439,6 +439,11 @@ test.describe("ARCH-2b tiles", () => {
       count: 1,
     });
     await stubMapCardsBackend(page);
+    await page.addInitScript(() => {
+      (
+        window as unknown as { __ARCH2B_LOAD_TILES__?: boolean }
+      ).__ARCH2B_LOAD_TILES__ = true;
+    });
     await page.route("**/backend/v1/tiles/manifest.json", async (route) => {
       await route.fulfill({
         status: 200,

@@ -1,9 +1,4 @@
-import {
-  fulfillEmptyGlyph,
-  registerOpenFreeMapFontStub,
-  stubArch2bTilesQuiet,
-  stubLayersCouncilsQuiet,
-} from "./_mapCardsHelpers";
+import { fulfillEmptyGlyph, registerOpenFreeMapFontStub, stubLayersCouncilsQuiet } from "./_mapCardsHelpers";
 import { stubLayersAddQuiet } from "./_layersAddStub";
 import { test, expect } from "./_fixtures";
 import { type Page } from "@playwright/test";
@@ -133,8 +128,6 @@ test.describe("SW-020 map logo vs Layers gap (390×844)", () => {
         }),
       });
     });
-    // ARCH-2b: quiet tiles manifest so the catch-all 404 does not trip the gate.
-    await stubArch2bTilesQuiet(page);
 
     await page.route("**/backend/boundaries/**", async (route) => {
       await route.fulfill({

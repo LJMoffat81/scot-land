@@ -137,6 +137,11 @@ function polygonInBbox(url: string): string {
 }
 
 async function stubOverviewShapes(page: Page) {
+  await page.addInitScript(() => {
+    (
+      window as unknown as { __ARCH2B_LOAD_TILES__?: boolean }
+    ).__ARCH2B_LOAD_TILES__ = true;
+  });
   // FRONTEND-BATCH-1: map loads /layers/councils first; keep density + geometry.
   const councilsBody = featureCollection([SCOTLAND_POLYGON]);
   await page.route("**/layers/councils**", async (route) => {

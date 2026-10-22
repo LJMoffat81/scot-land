@@ -403,6 +403,9 @@ def test_p_t5_publication_rules_diff_only_v1_tiles():
                 "P-T5: publication_rules change outside /v1/tiles declarations"
             )
     # Keys may be on the line before LayerRule; accept either form.
+    # Min added /v1/tiles/ diff-line count is 1 (was 2 on 2a) because P-T5'
+    # below asserts the live table has exactly three /v1/tiles keys — that
+    # exact-count check is stricter than requiring two diff hunks.
     key_lines = [
         ln for ln in diff.splitlines()
         if ln.startswith("+") and "/v1/tiles/" in ln

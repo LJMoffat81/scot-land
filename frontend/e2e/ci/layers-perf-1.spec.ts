@@ -41,6 +41,11 @@ function oilTileManifest() {
 }
 
 async function stubOilTiles(page: Page, onManifest: () => void) {
+  await page.addInitScript(() => {
+    (
+      window as unknown as { __ARCH2B_LOAD_TILES__?: boolean }
+    ).__ARCH2B_LOAD_TILES__ = true;
+  });
   await page.route("**/backend/v1/tiles/manifest.json", async (route) => {
     onManifest();
     await route.fulfill({

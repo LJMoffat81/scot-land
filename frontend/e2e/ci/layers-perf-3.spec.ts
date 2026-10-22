@@ -204,9 +204,9 @@ test.describe("LAYERS-PERF-3", () => {
     assertConsoleClean(gate);
   });
 
-  // QUARANTINE CI-DEDUP-1 Q1: flaky on unrelated PRs; ARCH-2b replaces oil-gas
-  // hint stack with oil tiles visible under the protected-sites hint.
-  test("oil tiles render under the protected-sites hint @quarantine", async ({
+  // QUARANTINE CI-DEDUP-1 Q1: title must match QUARANTINE.md exactly (ci-dedup-1a P6).
+  // ARCH-2b: oil GeoJSON hint removed; assert oil tiles under the protected-sites hint.
+  test("oil and gas hint stacks under the protected-sites hint @quarantine", async ({
     page,
   }) => {
     test.setTimeout(120_000);

@@ -5458,6 +5458,12 @@ export default function ScotlandMap() {
               />
             ))}
           </span>
+          {/* ARCH-2b: manifest "No value" is the 6th class (beyond strip swatches). */}
+          {(stripLegendClasses ?? stripLayer.classes).some(
+            (c) => c.label === "No value",
+          ) ? (
+            <span className="legend-strip-novalue">No value</span>
+          ) : null}
           <span className="legend-strip-chevron" aria-hidden="true">
             ▸
           </span>

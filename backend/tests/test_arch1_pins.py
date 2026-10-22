@@ -168,6 +168,8 @@ _ARCH2B_FRONTEND_ALLOW = frozenset(
         "frontend/e2e/ci/layers-perf-3.spec.ts",
         "frontend/e2e/ci/layers-fix-1.spec.ts",
         "frontend/scripts/test-proxy-null-body.mjs",
+        "frontend/e2e/ci/_mapCardsHelpers.ts",
+        "frontend/e2e/ci/map-logo-layers-gap.spec.ts",
     ]
 )
 

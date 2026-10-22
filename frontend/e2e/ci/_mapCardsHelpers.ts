@@ -120,6 +120,45 @@ export async function stubCiTileDataQuiet(page: Page) {
       body: CI_TINY_PNG,
     });
   });
+  // ARCH-2b: ScotlandMap always fetches the tiles manifest. Empty tilesets
+  // keeps catch-all **/backend/** → 404 stubs from poisoning the console gate.
+  await stubArch2bTilesQuiet(page);
+}
+
+/** Quiet /v1/tiles when a spec does not exercise ARCH-2b layers. */
+export async function stubArch2bTilesQuiet(page: Page) {
+  // Single handler (LIFO-safe). Specs that need real tiles register more
+  // specific routes afterwards so they win.
+  await page.route("**/backend/v1/tiles/**", async (route) => {
+    const url = route.request().url();
+    if (/\/manifest\.json(?:\?|$)/i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ schema: 1, tilesets: {} }),
+      });
+      return;
+    }
+    if (/\/values\//i.test(url)) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          layer: "dz2022",
+          version: "2026-10-22.d28ecc72",
+          measure: "pop_density",
+          values: {},
+        }),
+      });
+      return;
+    }
+    // Empty MVT body — MapLibre ignores; no console 404.
+    await route.fulfill({
+      status: 200,
+      contentType: "application/vnd.mapbox-vector-tile",
+      body: Buffer.alloc(0),
+    });
+  });
 }
 
 export const LIVE_LAYER_IDS = [
@@ -430,6 +469,7 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
   // Same idea as the raster tile stub: answer glyph ranges here so CI never
   // fetches tiles.openfreemap.org fonts. The live map still requests that host.
   await stubOpenFreeMapFonts(page);
+  await stubArch2bTilesQuiet(page);
   await page.route("**/health**", async (route) => {
     // Fulfill all health probes (including /backend/health). Continuing to the
     // Next rewrite yields 503 and noisy console errors in CI without an API.

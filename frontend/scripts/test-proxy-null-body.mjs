@@ -43,6 +43,15 @@ try {
     { params: Promise.resolve({ path: ["health"] }) },
   );
   assert.equal(busy.status, 503);
+
+  // ARCH-2b: tiles manifest stays quiet (empty tilesets) when API is down.
+  const quietManifest = await GET(
+    new Request("http://localhost/backend/v1/tiles/manifest.json"),
+    { params: Promise.resolve({ path: ["v1", "tiles", "manifest.json"] }) },
+  );
+  assert.equal(quietManifest.status, 200);
+  const quietBody = await quietManifest.json();
+  assert.deepEqual(quietBody, { schema: 1, tilesets: {} });
 } finally {
   globalThis.fetch = realFetch;
 }

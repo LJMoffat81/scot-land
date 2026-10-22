@@ -205,6 +205,15 @@ function layersAddQuietWhenApiDown(pathname: string): Response | null {
   if (pathname.endsWith("/layers/councils")) {
     return Response.json({}, { status: 200 });
   }
+  // ARCH-2b: ScotlandMap always fetches the tiles manifest on map ready.
+  // Empty tilesets is a valid manifest (factory yields no layers); avoids CI
+  // console 503 when the API process is not running.
+  if (pathname.endsWith("/v1/tiles/manifest.json")) {
+    return Response.json(
+      { schema: 1, tilesets: {} },
+      { status: 200, headers: { "Cache-Control": "public, max-age=60" } },
+    );
+  }
   return null;
 }
 

@@ -459,6 +459,8 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
     ),
     "/place": LayerRule("site", "site", "none", note="place search; location only, no rent"),
     "/address": LayerRule("site", "site", "none", note="door search; location only, no rent"),
+    "/v1/tiles/manifest.json": LayerRule("site", "site", "none", note="ARCH-2a tile manifest; no AGR values"),
+    "/v1/tiles/{layer_id}/{version}/{z}/{x}/{y}.mvt": LayerRule("site", "site", "none", note="ARCH-2a vector tiles of clipped layers + DZ outlines; no AGR values"),
 }
 
 for _path, _rule in PUBLIC_ROUTE_RULES.items():

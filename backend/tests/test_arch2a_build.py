@@ -240,7 +240,10 @@ def test_b12_total_budget(conn, tiles_env, monkeypatch):
 
 
 def test_b13_keep_all_vs_coalesce(conn, tiles_env, monkeypatch):
-    seed_layer_table(conn, "x", dense_features(20000))
+    # 200 m squares: four-flag keep_all keeps all 20k at z5; coalesce drops
+    # (20 m squares need tippecanoe detail flags the production profile must not
+    # carry — see ARCH-2a §4 / review B1).
+    seed_layer_table(conn, "x", dense_features(20000, size=200.0))
     entry = make_entry(
         "x",
         zoom={"min": 0, "max": 14, "low_zoom": "keep_all"},
@@ -337,8 +340,10 @@ def test_b16_minzoom_override(conn, tiles_env, monkeypatch, tmp_path):
     stub = wrap_bin / "tippecanoe"
     shutil.copy(ARCH2_BIN / "tippecanoe-z3", stub)
     stub.chmod(0o755)
+    real = shutil.which("tippecanoe")
+    assert real, "tippecanoe must be on PATH before B-16 override"
     monkeypatch.setenv("PATH", f"{wrap_bin}:{os.environ.get('PATH', '')}")
-    monkeypatch.setenv("REAL_TIPPECANOE", "/usr/local/bin/tippecanoe")
+    monkeypatch.setenv("REAL_TIPPECANOE", real)
     with _raises_tiles("TILES: x: minzoom 3 != 0"):
         build_tileset("x", conn=conn, storage_path=tiles_env["storage"])
 

@@ -242,8 +242,17 @@ def line(coords: list[list[float]]) -> dict[str, Any]:
 
 
 def dense_features(n: int = 20000, size: float = 20.0) -> list[dict[str, Any]]:
-    """n squares of ``size`` m inside the tiny land extent (generated, not committed)."""
-    cols = 200  # 200 × 20 m = 4000 m
+    """n squares of ``size`` m (generated in the test, not committed).
+
+    Default ``size=20`` packs into the tiny land extent (budget tests B-10–B-12).
+    B-13 uses a larger size so the four-flag ``keep_all`` profile retains every
+    id at z5 while tippecanoe defaults / coalesce still drop some (M1).
+    Larger grids may extend beyond the tiny extent; tile build does not re-clip.
+    """
+    if size <= 20.0:
+        cols = 200  # 200 × 20 m = 4000 m inside tiny land
+    else:
+        cols = max(1, int(n**0.5))
     features: list[dict[str, Any]] = []
     for i in range(n):
         col, row = i % cols, i // cols

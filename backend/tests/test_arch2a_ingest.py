@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from etl.run_layer import IngestError, run_layer
+from etl.run_layer import CheckError, IngestError, run_layer
 from layers.registry.loader import registry
 
 _HELPERS_PATH = (
@@ -147,7 +147,7 @@ def test_i5_geojson_features_refusals(tiny_extent, monkeypatch, tmp_path, kind):
         run_layer("oil-fields", from_file=path, conn=tiny_extent)
     except IngestError as exc:
         assert re.search(re.escape(msg) + "$", str(exc))
-    except Exception as exc:
+    except (CheckError, RuntimeError) as exc:
         pytest.fail(f"DID NOT RAISE {IngestError}")
     else:
         pytest.fail(f"DID NOT RAISE {IngestError}")

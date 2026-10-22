@@ -230,15 +230,31 @@ test.describe("LAYERS-FIX-1", () => {
 
     const rows = page.locator("[data-testid^='map-layer-']");
     const discovered = await rows.evaluateAll((els) =>
-      els.map((el) => ({
-        id: (el.getAttribute("data-testid") || "").replace("map-layer-", ""),
-        minzoom: Number(el.getAttribute("data-minzoom")),
-        maxzoom: Number(el.getAttribute("data-maxzoom")),
-        zoomOutAbove: el.getAttribute("data-zoom-out-above") || "",
-        paintLayers: (el.getAttribute("data-paint-layers") || "")
+      els.map((el) => {
+        const id = (el.getAttribute("data-testid") || "").replace(
+          "map-layer-",
+          "",
+        );
+        // ARCH-2b: registry paint ids still name the old GeoJSON layers; map
+        // queries must use the tile layer ids ScotlandMap actually adds.
+        const paintLayers = (el.getAttribute("data-paint-layers") || "")
           .split(" ")
-          .filter(Boolean),
-      })),
+          .filter(Boolean)
+          .flatMap((paintId) => {
+            if (paintId === "oil-fields-fill") return ["tile-oil-fields-fill"];
+            if (paintId === "data-zones-line") {
+              return ["tile-dz2022-fill", "tile-dz2022-line"];
+            }
+            return [paintId];
+          });
+        return {
+          id,
+          minzoom: Number(el.getAttribute("data-minzoom")),
+          maxzoom: Number(el.getAttribute("data-maxzoom")),
+          zoomOutAbove: el.getAttribute("data-zoom-out-above") || "",
+          paintLayers,
+        };
+      }),
     );
     expect(discovered.length).toBeGreaterThan(0);
 

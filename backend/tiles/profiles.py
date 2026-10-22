@@ -10,14 +10,11 @@ class ProfileError(Exception):
 def tippecanoe_flags(low_zoom: str, *, zoom_max: int, keep_fields: list[str]) -> list[str]:
     """Return tippecanoe argv flags for the given ``low_zoom`` profile."""
     if low_zoom == "keep_all":
-        # full/low detail 16: retain sub-pixel polygons at mid zooms (B-13 dense).
         return [
             "--no-feature-limit",
             "--no-tile-size-limit",
             "--no-tiny-polygon-reduction",
             "--detect-shared-borders",
-            "--full-detail=16",
-            "--low-detail=16",
         ]
     if low_zoom == "simplify":
         return [

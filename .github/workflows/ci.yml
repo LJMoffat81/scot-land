@@ -183,6 +183,7 @@ jobs:
       - run: npm run test:check-meanings
       - run: npm run test:ux10-agr-terminology
       - run: npm run test:proxy-null-body
+      - run: npm run test:tile-layer-factory
       - run: npm run check:developers-links
       - run: npm run test:basemap-err-1
       - run: npm run test:esri-csp:selftest

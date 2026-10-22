@@ -324,6 +324,12 @@ def test_v11_publication_rules_and_check_router():
     assert (
         "/v1/tiles/{layer_id}/{version}/{z}/{x}/{y}.mvt" in PUBLIC_ROUTE_RULES
     )
+    assert (
+        "/v1/tiles/{layer_id}/{version}/values/{measure}.json"
+        in PUBLIC_ROUTE_RULES
+    )
+    tiles_keys = [k for k in PUBLIC_ROUTE_RULES if k.startswith("/v1/tiles/")]
+    assert len(tiles_keys) == 3
 
 
 def test_p_t5_publication_rules_diff_only_v1_tiles():
@@ -396,17 +402,20 @@ def test_p_t5_publication_rules_diff_only_v1_tiles():
             pytest.fail(
                 "P-T5: publication_rules change outside /v1/tiles declarations"
             )
-    # Must have added the two /v1/tiles keys (once committed they still show in diff vs base).
-    tiles_keys = [
-        ln for ln in diff.splitlines()
-        if ln.startswith("+") and "/v1/tiles/" in ln and "LayerRule" in ln
-    ]
     # Keys may be on the line before LayerRule; accept either form.
     key_lines = [
         ln for ln in diff.splitlines()
         if ln.startswith("+") and "/v1/tiles/" in ln
     ]
-    if len(key_lines) < 2:
+    if len(key_lines) < 1:
         pytest.fail(
             "P-T5: publication_rules change outside /v1/tiles declarations"
         )
+    # P-T5': live rules table must have exactly three /v1/tiles keys.
+    from georgist.publication_rules import PUBLIC_ROUTE_RULES
+
+    live = [k for k in PUBLIC_ROUTE_RULES if k.startswith("/v1/tiles/")]
+    assert len(live) == 3, f"P-T5': expected 3 /v1/tiles keys, got {live}"
+    assert (
+        "/v1/tiles/{layer_id}/{version}/values/{measure}.json" in live
+    )

@@ -17,6 +17,7 @@ import csv
 import hashlib
 import json
 import os
+import re
 import tempfile
 import zipfile
 from datetime import datetime, timezone
@@ -29,6 +30,15 @@ from shapely import make_valid
 from shapely.errors import GEOSException
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, box, mapping, shape
 from shapely.ops import unary_union
+
+# Kept for etl.adapters.arcgis (and any other callers) that redact query tokens
+# from logged URLs. SRC-A no longer fetches NMPi; the helper stays generic.
+_TOKEN_RE = re.compile(r"(token=)[^&\s]+", re.IGNORECASE)
+
+
+def redact(url: str) -> str:
+    """Replace ``token=<x>`` with ``token=***`` in every log/receipt/manifest line."""
+    return _TOKEN_RE.sub(r"\1***", url)
 
 from etl.extent_geom import (
     SEED_LAT,

@@ -50,13 +50,31 @@ class ExtentSource:
 
 
 @dataclass(frozen=True)
+class SolwayConfig:
+    """§3.7 Upper Solway AOI (EPSG:27700) and corridor buffer (metres)."""
+
+    aoi: tuple[float, float, float, float]  # minx, miny, maxx, maxy
+    corridor_m: float
+
+
+@dataclass(frozen=True)
 class ExtentSourcesConfig:
     snap_m: float
     densify_max_m: float
     sources: dict[str, ExtentSource]
+    solway: SolwayConfig
+    # sha256 of data/reference/sea/ukho_tsl_scotland.27700.geojson
+    tsl_reference_sha256: str
 
     def get(self, source_id: str) -> ExtentSource:
         return self.sources[source_id]
+
+    def reference_sha256_manifest(self) -> dict[str, str]:
+        """Filename → sha256 for C5/K7 committed reference inputs."""
+        return {
+            "si1999_1126_vertices.27700.geojson": self.get("si-1999-1126").sha256,
+            "ukho_tsl_scotland.27700.geojson": self.tsl_reference_sha256,
+        }
 
 
 def _as_date_str(value: Any, *, source_id: str, key: str) -> str:
@@ -178,7 +196,13 @@ def load_extent_sources(path: Path | str) -> ExtentSourcesConfig:
     if not isinstance(data, dict):
         raise ExtentError("EXTENT-SRC: sources root must be a mapping")
 
-    allowed = {"snap_m", "densify_max_m", "sources"}
+    allowed = {
+        "snap_m",
+        "densify_max_m",
+        "sources",
+        "solway",
+        "tsl_reference_sha256",
+    }
     for key in data:
         if key not in allowed:
             raise ExtentError(f"EXTENT-SRC: unknown key {key}")
@@ -189,11 +213,21 @@ def load_extent_sources(path: Path | str) -> ExtentSourcesConfig:
         raise ExtentError("EXTENT-SRC: missing key sources")
     if "densify_max_m" not in data:
         raise ExtentError("EXTENT-SRC: missing key sources")
+    if "solway" not in data:
+        raise ExtentError("EXTENT-SRC: missing key solway")
+    if "tsl_reference_sha256" not in data:
+        raise ExtentError("EXTENT-SRC: missing key tsl_reference_sha256")
 
     snap_m = _parse_number(data["snap_m"], key="snap_m", lo_exclusive=0.0, hi=150.0)
     densify_max_m = _parse_number(
         data["densify_max_m"], key="densify_max_m", lo_exclusive=0.0, hi=1000.0
     )
+    solway = _parse_solway(data["solway"])
+    tsl_sha = data["tsl_reference_sha256"]
+    if not isinstance(tsl_sha, str):
+        raise ExtentError("EXTENT-SRC: tsl_reference_sha256 must be a string")
+    if not _SHA256_RE.fullmatch(tsl_sha):
+        raise ExtentError("EXTENT-SRC: tsl_reference_sha256 invalid")
 
     entries = data["sources"]
     if not isinstance(entries, list):
@@ -214,7 +248,37 @@ def load_extent_sources(path: Path | str) -> ExtentSourcesConfig:
         snap_m=snap_m,
         densify_max_m=densify_max_m,
         sources=sources,
+        solway=solway,
+        tsl_reference_sha256=tsl_sha,
     )
+
+
+def _parse_solway(value: Any) -> SolwayConfig:
+    if not isinstance(value, dict):
+        raise ExtentError("EXTENT-SRC: solway must be a mapping")
+    allowed = {"aoi", "corridor_m"}
+    for key in value:
+        if key not in allowed:
+            raise ExtentError(f"EXTENT-SRC: unknown key solway.{key}")
+    if "aoi" not in value:
+        raise ExtentError("EXTENT-SRC: solway missing key aoi")
+    if "corridor_m" not in value:
+        raise ExtentError("EXTENT-SRC: solway missing key corridor_m")
+    aoi = value["aoi"]
+    if not isinstance(aoi, list) or len(aoi) != 4:
+        raise ExtentError("EXTENT-SRC: solway aoi must be [minx, miny, maxx, maxy]")
+    coords: list[float] = []
+    for item in aoi:
+        if isinstance(item, bool) or not isinstance(item, (int, float)):
+            raise ExtentError("EXTENT-SRC: solway aoi must be [minx, miny, maxx, maxy]")
+        coords.append(float(item))
+    minx, miny, maxx, maxy = coords
+    if not (minx < maxx and miny < maxy):
+        raise ExtentError("EXTENT-SRC: solway aoi must be [minx, miny, maxx, maxy]")
+    corridor_m = _parse_number(
+        value["corridor_m"], key="solway.corridor_m", lo_exclusive=0.0, hi=10_000.0
+    )
+    return SolwayConfig(aoi=(minx, miny, maxx, maxy), corridor_m=corridor_m)
 
 
 def load_si_vertices(

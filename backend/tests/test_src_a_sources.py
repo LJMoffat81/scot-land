@@ -43,6 +43,11 @@ def test_s25_committed_sources_validate_and_load():
     cfg = load_extent_sources(SOURCES)
     assert cfg.snap_m == 150
     assert cfg.densify_max_m == 1000
+    assert cfg.solway.aoi == (305000.0, 555000.0, 340000.0, 572000.0)
+    assert cfg.solway.corridor_m == 700.0
+    assert cfg.tsl_reference_sha256 == (
+        "c3e3f484f1ea46f7ed5993e79c5b3c54c265d6aef031d51e4aba751ed41152e1"
+    )
     assert cfg.get("ukho-mlb").attribution == UKHO_ATTRIBUTION
 
 
@@ -258,6 +263,158 @@ def test_s24_duplicate_source(tmp_path):
     data["sources"].append(dict(data["sources"][0]))
     path = _write_yaml(tmp_path / "dup.yaml", data)
     with pytest.raises(ExtentError, match=r"^EXTENT-SRC: duplicate source ukho-mlb$"):
+        load_extent_sources(path)
+
+
+# --- solway refusals (isolated) ---
+
+
+def test_solway_missing(tmp_path):
+    data = _valid_sources_dict()
+    del data["solway"]
+    path = _write_yaml(tmp_path / "nosolway.yaml", data)
+    with pytest.raises(ExtentError, match=r"^EXTENT-SRC: missing key solway$"):
+        load_extent_sources(path)
+
+
+def test_solway_not_mapping(tmp_path):
+    data = _valid_sources_dict()
+    data["solway"] = [305000, 555000, 340000, 572000]
+    path = _write_yaml(tmp_path / "sollist.yaml", data)
+    with pytest.raises(ExtentError, match=r"^EXTENT-SRC: solway must be a mapping$"):
+        load_extent_sources(path)
+
+
+def test_solway_unknown_key(tmp_path):
+    data = _valid_sources_dict()
+    data["solway"]["extra"] = 1
+    path = _write_yaml(tmp_path / "solextra.yaml", data)
+    with pytest.raises(ExtentError, match=r"^EXTENT-SRC: unknown key solway\.extra$"):
+        load_extent_sources(path)
+
+
+def test_solway_aoi_missing(tmp_path):
+    data = _valid_sources_dict()
+    del data["solway"]["aoi"]
+    path = _write_yaml(tmp_path / "noaoi.yaml", data)
+    with pytest.raises(ExtentError, match=r"^EXTENT-SRC: solway missing key aoi$"):
+        load_extent_sources(path)
+
+
+def test_solway_corridor_m_missing(tmp_path):
+    data = _valid_sources_dict()
+    del data["solway"]["corridor_m"]
+    path = _write_yaml(tmp_path / "nocorridor.yaml", data)
+    with pytest.raises(
+        ExtentError, match=r"^EXTENT-SRC: solway missing key corridor_m$"
+    ):
+        load_extent_sources(path)
+
+
+def test_solway_aoi_wrong_length(tmp_path):
+    data = _valid_sources_dict()
+    data["solway"]["aoi"] = [305000, 555000, 340000]
+    path = _write_yaml(tmp_path / "aoilen.yaml", data)
+    with pytest.raises(
+        ExtentError,
+        match=r"^EXTENT-SRC: solway aoi must be \[minx, miny, maxx, maxy\]$",
+    ):
+        load_extent_sources(path)
+
+
+def test_solway_aoi_bool(tmp_path):
+    data = _valid_sources_dict()
+    data["solway"]["aoi"] = [True, 555000, 340000, 572000]
+    path = _write_yaml(tmp_path / "aoibool.yaml", data)
+    with pytest.raises(
+        ExtentError,
+        match=r"^EXTENT-SRC: solway aoi must be \[minx, miny, maxx, maxy\]$",
+    ):
+        load_extent_sources(path)
+
+
+def test_solway_aoi_non_number(tmp_path):
+    data = _valid_sources_dict()
+    data["solway"]["aoi"] = ["305000", 555000, 340000, 572000]
+    path = _write_yaml(tmp_path / "aoistr.yaml", data)
+    with pytest.raises(
+        ExtentError,
+        match=r"^EXTENT-SRC: solway aoi must be \[minx, miny, maxx, maxy\]$",
+    ):
+        load_extent_sources(path)
+
+
+def test_solway_aoi_minx_ge_maxx(tmp_path):
+    data = _valid_sources_dict()
+    data["solway"]["aoi"] = [340000, 555000, 305000, 572000]
+    path = _write_yaml(tmp_path / "aoiorder.yaml", data)
+    with pytest.raises(
+        ExtentError,
+        match=r"^EXTENT-SRC: solway aoi must be \[minx, miny, maxx, maxy\]$",
+    ):
+        load_extent_sources(path)
+
+
+def test_solway_corridor_bool(tmp_path):
+    data = _valid_sources_dict()
+    data["solway"]["corridor_m"] = True
+    path = _write_yaml(tmp_path / "corbool.yaml", data)
+    with pytest.raises(
+        ExtentError, match=r"^EXTENT-SRC: solway\.corridor_m must be a number$"
+    ):
+        load_extent_sources(path)
+
+
+def test_solway_corridor_le_zero(tmp_path):
+    data = _valid_sources_dict()
+    data["solway"]["corridor_m"] = 0
+    path = _write_yaml(tmp_path / "corzero.yaml", data)
+    with pytest.raises(
+        ExtentError, match=r"^EXTENT-SRC: solway\.corridor_m out of range$"
+    ):
+        load_extent_sources(path)
+
+
+def test_solway_corridor_non_number(tmp_path):
+    data = _valid_sources_dict()
+    data["solway"]["corridor_m"] = "700"
+    path = _write_yaml(tmp_path / "corstr.yaml", data)
+    with pytest.raises(
+        ExtentError, match=r"^EXTENT-SRC: solway\.corridor_m must be a number$"
+    ):
+        load_extent_sources(path)
+
+
+# --- tsl_reference_sha256 refusals (isolated) ---
+
+
+def test_tsl_reference_sha256_missing(tmp_path):
+    data = _valid_sources_dict()
+    del data["tsl_reference_sha256"]
+    path = _write_yaml(tmp_path / "notsl.yaml", data)
+    with pytest.raises(
+        ExtentError, match=r"^EXTENT-SRC: missing key tsl_reference_sha256$"
+    ):
+        load_extent_sources(path)
+
+
+def test_tsl_reference_sha256_not_string(tmp_path):
+    data = _valid_sources_dict()
+    data["tsl_reference_sha256"] = 123
+    path = _write_yaml(tmp_path / "tslint.yaml", data)
+    with pytest.raises(
+        ExtentError, match=r"^EXTENT-SRC: tsl_reference_sha256 must be a string$"
+    ):
+        load_extent_sources(path)
+
+
+def test_tsl_reference_sha256_invalid(tmp_path):
+    data = _valid_sources_dict()
+    data["tsl_reference_sha256"] = "a" * 63
+    path = _write_yaml(tmp_path / "tslshort.yaml", data)
+    with pytest.raises(
+        ExtentError, match=r"^EXTENT-SRC: tsl_reference_sha256 invalid$"
+    ):
         load_extent_sources(path)
 
 

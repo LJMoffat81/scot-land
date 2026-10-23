@@ -653,6 +653,8 @@ def build_geometry(
         offshore=offshore_z,
         si_s1=densified["sch1_pt2_s1"],
         s1_vertices=si_parts["sch1_pt2_s1"],
+        aoi_bounds=cfg.solway.aoi,
+        corridor_m=cfg.solway.corridor_m,
     )
     inshore_z = _as_multipolygon(make_valid(inshore_z.difference(land_z)))
     # Keep zones disjoint after the Solway add.

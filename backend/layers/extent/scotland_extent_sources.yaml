@@ -1,5 +1,11 @@
 snap_m: 150
 densify_max_m: 1000
+# §3.7 Upper Solway face-split AOI (EPSG:27700) and corridor buffer (m).
+solway:
+  aoi: [305000, 555000, 340000, 572000]
+  corridor_m: 700
+# data/reference/sea/ukho_tsl_scotland.27700.geojson (C2 / C5 / K7)
+tsl_reference_sha256: c3e3f484f1ea46f7ed5993e79c5b3c54c265d6aef031d51e4aba751ed41152e1
 sources:
   - id: ukho-mlb
     publisher: UK Hydrographic Office

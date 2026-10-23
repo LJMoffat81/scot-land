@@ -31,7 +31,6 @@ def _base(**over) -> dict:
             "where": "vintage = 2022",
         },
         "geometry": "polygon",
-        "clip_keep_all": True,
         "refresh": {"cron": "0 5 1 * *", "max_mb": 300, "max_s": 600},
         "serve": {
             "mode": "pmtiles",

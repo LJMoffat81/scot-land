@@ -58,7 +58,7 @@ def source_meta(kind: MaskKind = "builtup_mask") -> dict[str, Any]:
     return {
         "source": layer.get("name")
         or block.get("name")
-        or "Built-up display mask (NRS Settlements 2022 + OS Open UPRN)",
+            or "Built-up display mask (our estimate from NRS Settlements 2022 and OS Open UPRN)",
         "licence": block.get("licence") or "OGL-3.0",
         "attribution": block.get("attribution") or BUILTUP_CREDIT,
         "source_url": block.get("source_url")

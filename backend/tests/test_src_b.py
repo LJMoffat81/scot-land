@@ -202,7 +202,10 @@ def test_n2c_mutation_exemption_removed_fails(tmp_path, monkeypatch):
         "max_mb": 15,
     }
     _write(tmp_path, data)
-    with pytest.raises(RegistryError, match=r"required for polygon unit 'none'"):
+    with pytest.raises(
+        RegistryError,
+        match=r"^REGISTRY: x: \$\.ladder_level: required for polygon unit 'none'$",
+    ):
         load_registry(tmp_path)
 
 
@@ -314,13 +317,18 @@ def test_n7_report_mismatch(tmp_path):
 # --- B3 / N8 ---
 
 
-def test_n8_builtup_credit_pin(tmp_path):
-    for site in _B3_CREDIT_SITES:
-        text = site.read_text(encoding="utf-8")
+def assert_builtup_credit(paths: list[Path]) -> None:
+    """Raise if any path's text lacks the locked BUILTUP_CREDIT string."""
+    for path in paths:
+        text = Path(path).read_text(encoding="utf-8")
         if BUILTUP_CREDIT not in text:
             raise AssertionError(
-                f"builtup credit drift: {site} does not contain BUILTUP_CREDIT"
+                f"builtup credit drift: {path} does not contain BUILTUP_CREDIT"
             )
+
+
+def test_b3_credit_sites_contain_builtup_credit():
+    assert_builtup_credit(_B3_CREDIT_SITES)
     # Old string must not appear except the literal-exempt SQL history comment.
     for path in REPO.rglob("*"):
         if not path.is_file():
@@ -353,18 +361,21 @@ def test_n8_builtup_credit_pin(tmp_path):
         if _OLD_BUILTUP in text:
             pytest.fail(f"old builtup credit still present in {path}")
 
-    # Negative: tmp copy missing the credit raises the anchored message.
-    bad = tmp_path / "drift.txt"
-    bad.write_text("no credit here\n", encoding="utf-8")
+
+def test_n8_builtup_credit_pin(tmp_path):
+    """N8: shared assert_builtup_credit fails on a real site copy with credit removed."""
+    src = _B3_CREDIT_SITES[0]
+    assert BUILTUP_CREDIT in src.read_text(encoding="utf-8")
+    copy = tmp_path / src.name
+    copy.write_text(
+        src.read_text(encoding="utf-8").replace(BUILTUP_CREDIT, "REMOVED"),
+        encoding="utf-8",
+    )
     with pytest.raises(
         AssertionError,
         match=r"^builtup credit drift: .+ does not contain BUILTUP_CREDIT$",
     ):
-        text = bad.read_text(encoding="utf-8")
-        if BUILTUP_CREDIT not in text:
-            raise AssertionError(
-                f"builtup credit drift: {bad} does not contain BUILTUP_CREDIT"
-            )
+        assert_builtup_credit([copy])
 
 
 def test_b3_method_note_locked():

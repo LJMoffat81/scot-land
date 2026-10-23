@@ -23,6 +23,7 @@ from etl.extent_geom import (
     check_labels_and_sources,
     check_no_ext_shelf_in_extent,
     check_reference_sha,
+    check_registry_title,
     check_si_vertices_near_extent,
     check_tsl_median,
     check_zone_areas,
@@ -53,15 +54,13 @@ EXPECTED_KM2 = {
     "union": 533_963.0,
 }
 
-# Committed reference inputs — sha pins for C5 / K7 (SI matches sources YAML).
-REFERENCE_SHA256 = {
-    "si1999_1126_vertices.27700.geojson": (
-        "b0007d096b050e962bf2a1acf829d15f3081fe20a06789e2dd306e2c29b7aa9c"
-    ),
-    "ukho_tsl_scotland.27700.geojson": (
-        "c3e3f484f1ea46f7ed5993e79c5b3c54c265d6aef031d51e4aba751ed41152e1"
-    ),
-}
+# Committed reference inputs — sha pins from sources YAML (SI + tsl_reference_sha256).
+REFERENCE_SHA256 = load_extent_sources(SOURCES).reference_sha256_manifest()
+
+DEFAULT_EXTENT_ZONES = frozenset({"land", "inshore_0_12nm", "offshore_12_200nm"})
+SHELF_REQUIRED_NOTE = (
+    "Seabed rights only; not Scottish waters; outside the default clip"
+)
 
 
 def _zones() -> dict[str, MultiPolygon]:
@@ -131,10 +130,12 @@ def test_c4_ext_shelf_disjoint_and_hatton():
     check_no_ext_shelf_in_extent(zones)
     shelf = json.loads(EXT_SHELF.read_text(encoding="utf-8"))
     for feature in shelf["features"]:
-        assert feature["properties"].get("zone") != "ext_shelf_optional" or True
-        assert feature["properties"]["zone"] == "ext_shelf_optional"
-        note = feature["properties"].get("note") or ""
-        assert "Seabed rights only" in note
+        props = feature["properties"]
+        note = props.get("note") or ""
+        assert note == SHELF_REQUIRED_NOTE
+        zone = props.get("zone")
+        assert zone not in DEFAULT_EXTENT_ZONES
+        assert zone == "ext_shelf_optional"
     shelf_geoms = [shape(f["geometry"]) for f in shelf["features"]]
     shelf_u = unary_union(shelf_geoms)
     extent_u = unary_union(list(zones.values()))
@@ -598,7 +599,7 @@ def test_r1_scotland_extent_registry():
 
     entries = load_registry()
     entry = entries["scotland-extent"]
-    assert "(illustrative)" in entry.raw["title"]
+    check_registry_title(entry)
     assert SCOTLAND_EXTENT_MARINE_CREDIT in entry.raw["attribution"]
 
 
@@ -607,15 +608,12 @@ def test_r1_negative_title(tmp_path):
     data["title"] = "Scotland land and sea area"
     path = tmp_path / "bad.yaml"
     path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
     with pytest.raises(
         ExtentError,
         match=r"^EXTENT-CHECK: scotland-extent title missing illustrative$",
     ):
-        loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
-        if "illustrative" not in str(loaded.get("title", "")).lower():
-            raise ExtentError(
-                "EXTENT-CHECK: scotland-extent title missing illustrative"
-            )
+        check_registry_title(loaded)
 
 
 def test_p4_optional_not_scotland_extent_prefix():

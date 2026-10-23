@@ -478,9 +478,9 @@ def solway_include_scottish_pockets(
     inshore: MultiPolygon,
     offshore: MultiPolygon,
     si_s1: LineString,
+    aoi_bounds: Sequence[float],
+    corridor_m: float,
     s1_vertices: Sequence[tuple[float, float]] | None = None,
-    aoi_bounds: Sequence[float] | None = None,
-    corridor_m: float | None = None,
 ) -> MultiPolygon:
     """§3.7 Upper Solway: include Scottish-side faces along densified SI s1.
 
@@ -493,17 +493,14 @@ def solway_include_scottish_pockets(
     inside land (C1b).
 
     ``aoi_bounds`` is ``(minx, miny, maxx, maxy)`` and ``corridor_m`` the buffer
-    around upper s1; both come from ``scotland_extent_sources.yaml`` ``solway``.
+    around upper s1; both are required and come from
+    ``scotland_extent_sources.yaml`` ``solway`` (no hard-coded fallbacks).
     """
     del offshore
     verts = list(s1_vertices) if s1_vertices is not None else list(si_s1.coords)
     if len(verts) < 5:
         return inshore
 
-    if aoi_bounds is None:
-        aoi_bounds = (305_000.0, 555_000.0, 340_000.0, 572_000.0)
-    if corridor_m is None:
-        corridor_m = 700.0
     minx, miny, maxx, maxy = (float(v) for v in aoi_bounds)
     aoi = box(minx, miny, maxx, maxy)
     upper = LineString(verts[0:5])
@@ -718,6 +715,20 @@ def check_labels_and_sources(features: list[dict]) -> None:
             raise ExtentError(f"EXTENT-CHECK: zone {zone} label missing illustrative")
         if not props.get("source_dates"):
             raise ExtentError(f"EXTENT-CHECK: zone {zone} label missing illustrative")
+
+
+def check_registry_title(entry: object) -> None:
+    """R1: ``scotland-extent`` registry title must contain ``illustrative``."""
+    if hasattr(entry, "raw"):
+        title = getattr(entry, "raw", {}).get("title", "")
+    elif isinstance(entry, dict):
+        title = entry.get("title", "")
+    else:
+        title = ""
+    if "illustrative" not in str(title).lower():
+        raise ExtentError(
+            "EXTENT-CHECK: scotland-extent title missing illustrative"
+        )
 
 
 def is_art4_tsl_segment(geom, props: dict) -> bool:

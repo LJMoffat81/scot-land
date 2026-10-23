@@ -63,9 +63,18 @@ class ExtentSourcesConfig:
     densify_max_m: float
     sources: dict[str, ExtentSource]
     solway: SolwayConfig
+    # sha256 of data/reference/sea/ukho_tsl_scotland.27700.geojson
+    tsl_reference_sha256: str
 
     def get(self, source_id: str) -> ExtentSource:
         return self.sources[source_id]
+
+    def reference_sha256_manifest(self) -> dict[str, str]:
+        """Filename → sha256 for C5/K7 committed reference inputs."""
+        return {
+            "si1999_1126_vertices.27700.geojson": self.get("si-1999-1126").sha256,
+            "ukho_tsl_scotland.27700.geojson": self.tsl_reference_sha256,
+        }
 
 
 def _as_date_str(value: Any, *, source_id: str, key: str) -> str:
@@ -187,7 +196,13 @@ def load_extent_sources(path: Path | str) -> ExtentSourcesConfig:
     if not isinstance(data, dict):
         raise ExtentError("EXTENT-SRC: sources root must be a mapping")
 
-    allowed = {"snap_m", "densify_max_m", "sources", "solway"}
+    allowed = {
+        "snap_m",
+        "densify_max_m",
+        "sources",
+        "solway",
+        "tsl_reference_sha256",
+    }
     for key in data:
         if key not in allowed:
             raise ExtentError(f"EXTENT-SRC: unknown key {key}")
@@ -200,12 +215,19 @@ def load_extent_sources(path: Path | str) -> ExtentSourcesConfig:
         raise ExtentError("EXTENT-SRC: missing key sources")
     if "solway" not in data:
         raise ExtentError("EXTENT-SRC: missing key solway")
+    if "tsl_reference_sha256" not in data:
+        raise ExtentError("EXTENT-SRC: missing key tsl_reference_sha256")
 
     snap_m = _parse_number(data["snap_m"], key="snap_m", lo_exclusive=0.0, hi=150.0)
     densify_max_m = _parse_number(
         data["densify_max_m"], key="densify_max_m", lo_exclusive=0.0, hi=1000.0
     )
     solway = _parse_solway(data["solway"])
+    tsl_sha = data["tsl_reference_sha256"]
+    if not isinstance(tsl_sha, str):
+        raise ExtentError("EXTENT-SRC: tsl_reference_sha256 must be a string")
+    if not _SHA256_RE.fullmatch(tsl_sha):
+        raise ExtentError("EXTENT-SRC: tsl_reference_sha256 invalid")
 
     entries = data["sources"]
     if not isinstance(entries, list):
@@ -227,6 +249,7 @@ def load_extent_sources(path: Path | str) -> ExtentSourcesConfig:
         densify_max_m=densify_max_m,
         sources=sources,
         solway=solway,
+        tsl_reference_sha256=tsl_sha,
     )
 
 

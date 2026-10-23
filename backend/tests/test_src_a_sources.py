@@ -301,6 +301,16 @@ def test_solway_aoi_missing(tmp_path):
         load_extent_sources(path)
 
 
+def test_solway_corridor_m_missing(tmp_path):
+    data = _valid_sources_dict()
+    del data["solway"]["corridor_m"]
+    path = _write_yaml(tmp_path / "nocorridor.yaml", data)
+    with pytest.raises(
+        ExtentError, match=r"^EXTENT-SRC: solway missing key corridor_m$"
+    ):
+        load_extent_sources(path)
+
+
 def test_solway_aoi_wrong_length(tmp_path):
     data = _valid_sources_dict()
     data["solway"]["aoi"] = [305000, 555000, 340000]
@@ -371,6 +381,39 @@ def test_solway_corridor_non_number(tmp_path):
     path = _write_yaml(tmp_path / "corstr.yaml", data)
     with pytest.raises(
         ExtentError, match=r"^EXTENT-SRC: solway\.corridor_m must be a number$"
+    ):
+        load_extent_sources(path)
+
+
+# --- tsl_reference_sha256 refusals (isolated) ---
+
+
+def test_tsl_reference_sha256_missing(tmp_path):
+    data = _valid_sources_dict()
+    del data["tsl_reference_sha256"]
+    path = _write_yaml(tmp_path / "notsl.yaml", data)
+    with pytest.raises(
+        ExtentError, match=r"^EXTENT-SRC: missing key tsl_reference_sha256$"
+    ):
+        load_extent_sources(path)
+
+
+def test_tsl_reference_sha256_not_string(tmp_path):
+    data = _valid_sources_dict()
+    data["tsl_reference_sha256"] = 123
+    path = _write_yaml(tmp_path / "tslint.yaml", data)
+    with pytest.raises(
+        ExtentError, match=r"^EXTENT-SRC: tsl_reference_sha256 must be a string$"
+    ):
+        load_extent_sources(path)
+
+
+def test_tsl_reference_sha256_invalid(tmp_path):
+    data = _valid_sources_dict()
+    data["tsl_reference_sha256"] = "a" * 63
+    path = _write_yaml(tmp_path / "tslshort.yaml", data)
+    with pytest.raises(
+        ExtentError, match=r"^EXTENT-SRC: tsl_reference_sha256 invalid$"
     ):
         load_extent_sources(path)
 

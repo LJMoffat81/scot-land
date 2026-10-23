@@ -36,6 +36,18 @@ s1 corridor, and merges them into `inshore_0_12nm` with `difference(land)`.
 No invented disks. Pinned in-land vertices 3 and 4 (C1b) stay inside OS land;
 land is never cut.
 
+The AOI box and corridor buffer are configured in
+`backend/layers/extent/scotland_extent_sources.yaml` under `solway`
+(`aoi: [305000, 555000, 340000, 572000]`, `corridor_m: 700`) — not hard-coded
+in the builder.
+
+**Connector length vs `snap_m`:** the s1#1 / s1#2 → land-boundary connectors
+are ~594 m and ~409 m. That is intentional and **not** a violation of
+`snap_m: 150`. `SNAP_M` only caps endpoint snaps when noding the flood graph
+(§3.4). The Solway connectors are a separate §3.7 step that closes the local
+polygonize graph so Scottish-side faces exist; they are shortest-path links
+to OS land, not snap fillers, and may exceed 150 m.
+
 ## Hatton / optional shelf
 
 `scotland_ext_shelf_optional.27700.geojson` holds UK continental shelf beyond

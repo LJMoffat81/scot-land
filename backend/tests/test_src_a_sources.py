@@ -43,6 +43,8 @@ def test_s25_committed_sources_validate_and_load():
     cfg = load_extent_sources(SOURCES)
     assert cfg.snap_m == 150
     assert cfg.densify_max_m == 1000
+    assert cfg.solway.aoi == (305000.0, 555000.0, 340000.0, 572000.0)
+    assert cfg.solway.corridor_m == 700.0
     assert cfg.get("ukho-mlb").attribution == UKHO_ATTRIBUTION
 
 

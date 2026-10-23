@@ -11,15 +11,18 @@ from pathlib import Path
 
 import pytest
 import yaml
+from pyproj import Transformer
+from shapely.affinity import scale
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon, box, mapping, shape
 from shapely.ops import unary_union
-
-from pyproj import Transformer
 
 from etl.extent_geom import (
     IN_LAND_SI,
     TransformStats,
+    area_km2,
     check_labels_and_sources,
+    check_no_ext_shelf_in_extent,
+    check_reference_sha,
     check_si_vertices_near_extent,
     check_tsl_median,
     check_zone_areas,
@@ -48,6 +51,16 @@ EXPECTED_KM2 = {
     "inshore_0_12nm": 89_034.0,
     "offshore_12_200nm": 364_711.0,
     "union": 533_963.0,
+}
+
+# Committed reference inputs — sha pins for C5 / K7 (SI matches sources YAML).
+REFERENCE_SHA256 = {
+    "si1999_1126_vertices.27700.geojson": (
+        "b0007d096b050e962bf2a1acf829d15f3081fe20a06789e2dd306e2c29b7aa9c"
+    ),
+    "ukho_tsl_scotland.27700.geojson": (
+        "c3e3f484f1ea46f7ed5993e79c5b3c54c265d6aef031d51e4aba751ed41152e1"
+    ),
 }
 
 
@@ -115,7 +128,7 @@ def test_c3_zone_areas():
 
 def test_c4_ext_shelf_disjoint_and_hatton():
     zones = _zones()
-    assert "ext_shelf_optional" not in zones
+    check_no_ext_shelf_in_extent(zones)
     shelf = json.loads(EXT_SHELF.read_text(encoding="utf-8"))
     for feature in shelf["features"]:
         assert feature["properties"].get("zone") != "ext_shelf_optional" or True
@@ -137,6 +150,9 @@ def test_c5_labels_sources_manifest():
     check_labels_and_sources(fc["features"])
     text = MANIFEST.read_text(encoding="utf-8")
     assert SCOTLAND_EXTENT_MARINE_CREDIT in text
+    # Both committed reference files match the pinned sha manifest.
+    check_reference_sha(SI_REF, REFERENCE_SHA256)
+    check_reference_sha(TSL_REF, REFERENCE_SHA256)
 
 
 def test_c6_densify_rhumb_segments():
@@ -519,38 +535,31 @@ def test_k3_tsl_median_60():
 
 
 def test_k4_ext_shelf_in_default_extent(tmp_path):
-    fc = json.loads(EXTENT.read_text(encoding="utf-8"))
-    bad = copy.deepcopy(fc)
-    bad["features"].append(
-        {
-            "type": "Feature",
-            "properties": {
-                "zone": "ext_shelf_optional",
-                "label": "illustrative",
-                "sources": ["x"],
-                "source_dates": {"x": "2026-01-01"},
-            },
-            "geometry": bad["features"][0]["geometry"],
-        }
-    )
-    with pytest.raises(ExtentError, match=r"^EXTENT-CHECK: ext_shelf in default extent$"):
-        zones = {f["properties"]["zone"] for f in bad["features"]}
-        if "ext_shelf_optional" in zones:
-            raise ExtentError("EXTENT-CHECK: ext_shelf in default extent")
+    zones = _zones()
+    bad_names = set(zones) | {"ext_shelf_optional"}
+    with pytest.raises(
+        ExtentError, match=r"^EXTENT-CHECK: ext_shelf in default extent$"
+    ):
+        check_no_ext_shelf_in_extent(bad_names)
 
 
 def test_k5_inshore_area_out():
     zones = _zones()
+    # Scale inshore area ×1.02 relative to the C3 pin so the message is exact.
+    pin = EXPECTED_KM2["inshore_0_12nm"]
+    current = area_km2(zones["inshore_0_12nm"])
+    factor = math.sqrt((pin * 1.02) / current)
     mutated = dict(zones)
-    # Scale inshore area conceptually — raise with formatted message.
-    got = 89034.0 * 1.02
+    mutated["inshore_0_12nm"] = scale(
+        zones["inshore_0_12nm"], xfact=factor, yfact=factor, origin="centroid"
+    )
+    got = area_km2(mutated["inshore_0_12nm"])
+    assert abs(got - pin * 1.02) < 0.05
     with pytest.raises(
         ExtentError,
         match=r"^EXTENT-CHECK: inshore_0_12nm area 90814\.7 km2 outside ±1% of 89034$",
     ):
-        raise ExtentError(
-            f"EXTENT-CHECK: inshore_0_12nm area {got:.1f} km2 outside ±1% of 89034"
-        )
+        check_zone_areas(mutated, EXPECTED_KM2, tol=0.01)
 
 
 def test_k6_label_missing_illustrative():
@@ -572,14 +581,16 @@ def test_k6_label_missing_illustrative():
         )
 
 
-def test_k7_reference_sha_mismatch():
+def test_k7_reference_sha_mismatch(tmp_path):
+    altered = tmp_path / SI_REF.name
+    data = bytearray(SI_REF.read_bytes())
+    data[0] = (data[0] + 1) % 256
+    altered.write_bytes(bytes(data))
     with pytest.raises(
         ExtentError,
         match=r"^EXTENT-CHECK: reference sha256 mismatch: si1999_1126_vertices.27700.geojson$",
     ):
-        raise ExtentError(
-            "EXTENT-CHECK: reference sha256 mismatch: si1999_1126_vertices.27700.geojson"
-        )
+        check_reference_sha(altered, REFERENCE_SHA256)
 
 
 def test_r1_scotland_extent_registry():

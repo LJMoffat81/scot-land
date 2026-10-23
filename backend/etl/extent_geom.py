@@ -479,6 +479,8 @@ def solway_include_scottish_pockets(
     offshore: MultiPolygon,
     si_s1: LineString,
     s1_vertices: Sequence[tuple[float, float]] | None = None,
+    aoi_bounds: Sequence[float] | None = None,
+    corridor_m: float | None = None,
 ) -> MultiPolygon:
     """§3.7 Upper Solway: include Scottish-side faces along densified SI s1.
 
@@ -489,16 +491,23 @@ def solway_include_scottish_pockets(
     faces that touch land inside the upper-s1 corridor, and merge into inshore
     with ``difference(land)`` — OS land is never cut. Vertices 3 and 4 stay
     inside land (C1b).
+
+    ``aoi_bounds`` is ``(minx, miny, maxx, maxy)`` and ``corridor_m`` the buffer
+    around upper s1; both come from ``scotland_extent_sources.yaml`` ``solway``.
     """
     del offshore
     verts = list(s1_vertices) if s1_vertices is not None else list(si_s1.coords)
     if len(verts) < 5:
         return inshore
 
-    # Upper Solway corridor (EPSG:27700) around Sch1 Pt II s1 east of ~3.35°W.
-    aoi = box(305_000.0, 555_000.0, 340_000.0, 572_000.0)
+    if aoi_bounds is None:
+        aoi_bounds = (305_000.0, 555_000.0, 340_000.0, 572_000.0)
+    if corridor_m is None:
+        corridor_m = 700.0
+    minx, miny, maxx, maxy = (float(v) for v in aoi_bounds)
+    aoi = box(minx, miny, maxx, maxy)
     upper = LineString(verts[0:5])
-    corridor = upper.buffer(700.0)
+    corridor = upper.buffer(float(corridor_m))
     land_boundary = land.boundary
 
     connectors: list[LineString] = []
@@ -675,6 +684,25 @@ def check_zone_areas(
                 f"EXTENT-CHECK: {name} area {got:.1f} km2 outside ±1% of "
                 f"{int(expected) if expected == int(expected) else expected}"
             )
+
+
+def check_no_ext_shelf_in_extent(zones: dict[str, MultiPolygon] | set[str]) -> None:
+    """C4/K4 static half: default extent must not name ``ext_shelf_optional``."""
+    names = set(zones) if not isinstance(zones, set) else zones
+    if "ext_shelf_optional" in names:
+        raise ExtentError("EXTENT-CHECK: ext_shelf in default extent")
+
+
+def check_reference_sha(path: Path | str, manifest: dict[str, str]) -> None:
+    """C5/K7: committed reference file sha256 must match the manifest pin."""
+    file_path = Path(path)
+    name = file_path.name
+    expected = manifest.get(name)
+    if expected is None:
+        raise ExtentError(f"EXTENT-CHECK: reference sha256 mismatch: {name}")
+    actual = hashlib.sha256(file_path.read_bytes()).hexdigest()
+    if actual != expected:
+        raise ExtentError(f"EXTENT-CHECK: reference sha256 mismatch: {name}")
 
 
 def check_labels_and_sources(features: list[dict]) -> None:

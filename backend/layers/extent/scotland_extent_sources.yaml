@@ -1,5 +1,9 @@
 snap_m: 150
 densify_max_m: 1000
+# §3.7 Upper Solway face-split AOI (EPSG:27700) and corridor buffer (m).
+solway:
+  aoi: [305000, 555000, 340000, 572000]
+  corridor_m: 700
 sources:
   - id: ukho-mlb
     publisher: UK Hydrographic Office

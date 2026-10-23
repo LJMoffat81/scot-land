@@ -4,7 +4,7 @@
   "title": "ScotlandExtentSources",
   "type": "object",
   "additionalProperties": false,
-  "required": ["snap_m", "densify_max_m", "sources"],
+  "required": ["snap_m", "densify_max_m", "solway", "sources"],
   "properties": {
     "snap_m": {
       "type": "number",
@@ -15,6 +15,25 @@
       "type": "number",
       "exclusiveMinimum": 0,
       "maximum": 1000
+    },
+    "solway": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["aoi", "corridor_m"],
+      "properties": {
+        "aoi": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": { "type": "number" },
+          "description": "EPSG:27700 [minx, miny, maxx, maxy] Upper Solway AOI"
+        },
+        "corridor_m": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 10000
+        }
+      }
     },
     "sources": {
       "type": "array",

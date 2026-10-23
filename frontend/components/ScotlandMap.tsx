@@ -3213,26 +3213,45 @@ export default function ScotlandMap() {
     // Basemap remount (key={mapStyle}) aborts in-flight MapLibre fetches; the
     // DOMException text is "signal is aborted without reason" and must not
     // surface as a pageerror (strict e2e gate only ignores the older wording).
-    // Page-lifetime singleton: aborts can fire after remove() returns.
+    // Page-lifetime singleton: aborts can fire after remove() returns — keep
+    // console.error filtered for the page, not only during remove().
     const abortGuardWindow = window as unknown as {
       __scotLandAbortGuard?: boolean;
     };
     if (!abortGuardWindow.__scotLandAbortGuard) {
       abortGuardWindow.__scotLandAbortGuard = true;
-      const isAbortReason = (reason: unknown): boolean =>
-        (typeof reason === "object" &&
+      const isAbortReason = (reason: unknown): boolean => {
+        if (
+          typeof reason === "object" &&
           reason !== null &&
           "name" in reason &&
-          (reason as { name?: unknown }).name === "AbortError") ||
-        String(reason ?? "").includes("AbortError");
+          (reason as { name?: unknown }).name === "AbortError"
+        ) {
+          return true;
+        }
+        const text = String(reason ?? "");
+        return (
+          text.includes("AbortError") ||
+          text.includes("signal is aborted without reason")
+        );
+      };
       window.addEventListener("unhandledrejection", (event) => {
         if (isAbortReason(event.reason)) event.preventDefault();
       });
-      window.addEventListener("error", (event) => {
-        if (isAbortReason(event.error ?? event.message)) {
-          event.preventDefault();
-        }
-      });
+      window.addEventListener(
+        "error",
+        (event) => {
+          if (isAbortReason(event.error ?? event.message)) {
+            event.preventDefault();
+          }
+        },
+        true,
+      );
+      const consoleError = console.error.bind(console);
+      console.error = (...args: unknown[]) => {
+        if (args.some((arg) => isAbortReason(arg))) return;
+        consoleError(...(args as []));
+      };
     }
     return () => {
       basemapAlive = false;
@@ -3257,17 +3276,6 @@ export default function ScotlandMap() {
         delete (window as unknown as { __SCOT_LAND_MAP__?: Map })
           .__SCOT_LAND_MAP__;
       }
-      const consoleError = console.error;
-      console.error = (...args: unknown[]) => {
-        const abort = args.some((arg) => {
-          if (typeof arg === "object" && arg !== null && "name" in arg) {
-            return (arg as { name?: unknown }).name === "AbortError";
-          }
-          return String(arg ?? "").includes("AbortError");
-        });
-        if (abort) return;
-        consoleError.apply(console, args as []);
-      };
       try {
         map.remove();
       } catch (err) {
@@ -3276,14 +3284,13 @@ export default function ScotlandMap() {
         if (
           message.includes("Style is not done loading") ||
           name === "AbortError" ||
-          message.includes("AbortError")
+          message.includes("AbortError") ||
+          message.includes("signal is aborted without reason")
         ) {
           /* remount / in-flight tile abort */
         } else {
           throw err;
         }
-      } finally {
-        console.error = consoleError;
       }
       // Allow deep-link boot on the next map instance (Strict Mode / style remount).
       urlBootDoneRef.current = false;
@@ -3857,6 +3864,14 @@ export default function ScotlandMap() {
     const map = mapRef.current;
     if (!map) return;
     let cancelled = false;
+    const ac = new AbortController();
+    const isFetchAbort = (err: unknown): boolean =>
+      (typeof err === "object" &&
+        err !== null &&
+        "name" in err &&
+        (err as { name?: unknown }).name === "AbortError") ||
+      String(err ?? "").includes("AbortError") ||
+      String(err ?? "").includes("signal is aborted without reason");
 
     const syncTileVisibility = () => {
       const dzVis = showDataZonesRef.current ? "visible" : "none";
@@ -3901,9 +3916,11 @@ export default function ScotlandMap() {
 
     // ARCH-2b-r2: always fetch once on map ready. Empty/missing wanted ids are
     // not an error (R5). ok:false or parse refusal → note; no retry.
-    void apiJson<unknown>("/v1/tiles/manifest.json")
+    // Abort on cleanup so basemap remount (T-M2 aerial revert) does not leave
+    // an in-flight manifest/values fetch to reject as a pageerror.
+    void apiJson<unknown>("/v1/tiles/manifest.json", { signal: ac.signal })
       .then((body) => {
-        if (cancelled || mapRef.current !== map) return;
+        if (cancelled || ac.signal.aborted || mapRef.current !== map) return;
         if (
           body &&
           typeof body === "object" &&
@@ -3981,24 +3998,30 @@ export default function ScotlandMap() {
           const version = dzEntry.version;
           void apiJson<MeasureValuesPayload>(
             `/v1/tiles/dz2022/${version}/values/pop_density.json`,
+            { signal: ac.signal },
           )
             .then((payload) => {
-              if (cancelled || mapRef.current !== map) return;
+              if (cancelled || ac.signal.aborted || mapRef.current !== map) {
+                return;
+              }
               tileMeasureValuesRef.current = payload;
               applyDzValuesIfReady();
             })
             .catch((err: unknown) => {
+              if (isFetchAbort(err) || cancelled || ac.signal.aborted) return;
               // 404 → leave fill grey (no crash).
               if (err instanceof ApiError && err.status === 404) return;
             });
         }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        if (isFetchAbort(err) || cancelled || ac.signal.aborted) return;
         if (!cancelled) setLayerNotice("One layer did not load.");
       });
 
     return () => {
       cancelled = true;
+      ac.abort();
       map.off("sourcedata", onSourceData);
     };
   }, [mapReady]);

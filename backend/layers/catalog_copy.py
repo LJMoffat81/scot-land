@@ -9,14 +9,16 @@ from __future__ import annotations
 import re
 from typing import Any
 
-# ARCH-1 Scotland extent credits (Marine Scotland + OS via SG).
+# SRC-A Scotland extent credits (UKHO + OS Boundary-Line).
 SCOTLAND_EXTENT_MARINE_CREDIT = (
-    "Contains information from the Scottish Government (Marine Scotland) "
-    "licensed under the Open Government Licence v3.0."
+    "Contains public sector information, licensed under the Open Government "
+    "Licence v3.0, from UK Hydrographic Office."
 )
 SCOTLAND_EXTENT_LAND_CREDIT = (
-    "Copyright Scottish Government, contains Ordnance Survey data "
-    "© Crown copyright and database right 2026."
+    "Contains OS data © Crown copyright and database right 2026."
+)
+SCOTLAND_EXTENT_LABEL = (
+    "Illustrative; not prejudicial to delimitation. Not for navigation."
 )
 
 # Forbidden jargon in visitor-facing description (site-watch PR B item 6).

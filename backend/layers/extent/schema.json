@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://scot-land.local/layers/extent/schema.json",
+  "title": "ScotlandExtentSources",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["snap_m", "densify_max_m", "sources"],
+  "properties": {
+    "snap_m": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 150
+    },
+    "densify_max_m": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1000
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "publisher",
+          "url",
+          "licence",
+          "attribution",
+          "published",
+          "fetched",
+          "sha256",
+          "crs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": ["ukho-mlb", "si-1999-1126", "os-boundary-line", "ostn15"]
+          },
+          "publisher": { "type": "string", "minLength": 1 },
+          "url": {
+            "type": "string",
+            "pattern": "^https://"
+          },
+          "licence": {
+            "type": "string",
+            "enum": ["OGL-3.0"]
+          },
+          "attribution": { "type": "string", "minLength": 1 },
+          "published": {
+            "anyOf": [
+              { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+              { "type": "string", "format": "date" }
+            ]
+          },
+          "fetched": {
+            "anyOf": [
+              { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+              { "type": "string", "format": "date" }
+            ]
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "crs": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

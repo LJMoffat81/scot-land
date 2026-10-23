@@ -1,0 +1,41 @@
+id: scotland-extent
+title: "Scotland land and sea area (illustrative)"
+geography: scotland
+clip: land+sea
+clip_keep_all: true
+unit: scotland
+licence: OGL-3.0
+attribution: >-
+  Contains public sector information, licensed under the Open Government
+  Licence v3.0, from UK Hydrographic Office. Contains OS data © Crown copyright
+  and database right 2026.
+source:
+  type: postgis_table
+  table: ref.extent
+  id_field: zone
+  where: "geography = 'scotland'"
+geometry: polygon
+refresh:
+  cron: "0 5 1 * *"
+  max_mb: 50
+  max_s: 600
+serve:
+  mode: pmtiles
+  simplify_m: 25
+  precision_dp: 6
+  max_mb: 15
+zoom:
+  min: 0
+  max: 12
+  low_zoom: simplify
+style:
+  line:
+    line-color: "#1f4e79"
+    line-width: 1.5
+    line-opacity: 0.95
+legend:
+  - {label: "Scotland land and sea area (illustrative)", color: "#1f4e79"}
+lineage:
+  derived_from: []
+  method: source
+  roll_up_to: []

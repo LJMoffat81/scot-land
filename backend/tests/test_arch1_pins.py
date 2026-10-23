@@ -42,6 +42,8 @@ def _tracked_files() -> list[Path]:
         BACKEND / "etl" / "build_scotland_extent.py",
         BACKEND / "etl" / "run_layer.py",
         BACKEND / "layers" / "registry" / "loader.py",
+        BACKEND / "etl" / "extent_sources.py",
+        BACKEND / "etl" / "extent_geom.py",
     ]
     for path in extra:
         if path.is_file() and path not in paths:
@@ -283,6 +285,9 @@ def test_p9_no_blanket_except():
         BACKEND / "tiles" / "profiles.py",
         BACKEND / "etl" / "adapters" / "postgis_table.py",
         BACKEND / "api" / "tiles_routes.py",
+        # SRC-A P9 add-only
+        BACKEND / "etl" / "extent_sources.py",
+        BACKEND / "etl" / "extent_geom.py",
     ]
     changed = set(_files_changed_vs_main())
     ctx = BACKEND / "spatial" / "context_tiles.py"
@@ -331,6 +336,11 @@ def test_p10_token_env_is_name_only():
 
 def test_k2_catalog_credits():
     assert "Open Government Licence v3.0" in SCOTLAND_EXTENT_MARINE_CREDIT
-    assert "Marine Scotland" in SCOTLAND_EXTENT_MARINE_CREDIT
-    assert "Ordnance Survey" in SCOTLAND_EXTENT_LAND_CREDIT
+    assert SCOTLAND_EXTENT_MARINE_CREDIT == (
+        "Contains public sector information, licensed under the Open Government "
+        "Licence v3.0, from UK Hydrographic Office."
+    )
+    assert SCOTLAND_EXTENT_LAND_CREDIT == (
+        "Contains OS data © Crown copyright and database right 2026."
+    )
     assert "Crown copyright" in SCOTLAND_EXTENT_LAND_CREDIT

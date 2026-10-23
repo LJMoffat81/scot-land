@@ -103,6 +103,10 @@ HELD_FILES: dict[tuple[str, str], str] = {
     ("gis", "scotland_extent.27700.geojson"): (
         "ARCH-1 extent; loaded by build_scotland_extent --load-only into ref.extent"
     ),
+    # SRC-A optional Hatton/Faroe shelf — not in CLIP_ZONES / ref.extent.
+    ("gis", "scotland_ext_shelf_optional.27700.geojson"): (
+        "SRC-A optional shelf; seabed rights only; outside default clip"
+    ),
 }
 # publish_level=internal files (e.g. GIS's dz_detached_plot_bands.csv) are never in the public
 # repo. They are skipped unless --include-internal, and then load into INTERNAL_SCHEMA, which

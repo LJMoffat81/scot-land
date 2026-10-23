@@ -21,7 +21,7 @@ refresh:
   max_mb: 300
   max_s: 600
 serve:
-  mode: geojson
+  mode: pmtiles
   simplify_m: 0
   precision_dp: 6
   max_mb: 15
@@ -29,8 +29,16 @@ zoom:
   min: 0
   max: 14
   low_zoom: simplify
-style: {}
-legend: []
+style:
+  fill:
+    fill-color: "#8a3b00"
+    fill-opacity: 0.28
+  line:
+    line-color: "#8a3b00"
+    line-width: 1.6
+    line-opacity: 0.95
+legend:
+  - {label: "Oil and gas fields", color: "#8a3b00"}
 lineage:
   derived_from: []
   method: source

@@ -1,5 +1,7 @@
 
-import { test, expect } from "./_fixtures";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { test, expect, routeManifestOverride } from "./_fixtures";
 import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, ensureLayersGroupOpen, openLayers, openMap, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 import { type Page } from "@playwright/test";
 
@@ -7,8 +9,54 @@ registerOpenFreeMapFontStub();
 
 /**
  * LAYERS-PERF-1 — protected sites draw inside the payload budget, and
- * Oil and gas is fetched once per session.
+ * Oil and gas tiles load once per session (ARCH-2b route swap).
  */
+
+// Playwright CI cwd is frontend/; avoid import.meta (not an ESM module here).
+const ARCH2B = join(process.cwd(), "e2e", "fixtures", "arch2b");
+const OIL_MVT = readFileSync(join(ARCH2B, "oil-fields.mvt"));
+const TILE_VERSION = "2026-10-22.d28ecc72";
+
+function oilTileManifest() {
+  return JSON.stringify({
+    schema: 1,
+    tilesets: {
+      "oil-fields": {
+        layer: "oil-fields",
+        version: TILE_VERSION,
+        minzoom: 0,
+        maxzoom: 14,
+        geometry: "polygon",
+        source_layer: "oil-fields",
+        measure: null,
+        attribution: "Synthetic oil attribution",
+        style: {
+          fill: { "fill-color": "#8a3b00", "fill-opacity": 0.28 },
+          line: { "line-color": "#8a3b00", "line-width": 1.6, "line-opacity": 0.95 },
+        },
+        legend: [{ label: "Oil and gas fields", color: "#8a3b00" }],
+      },
+    },
+  });
+}
+
+async function stubOilTiles(page: Page, onManifest: () => void) {
+  await routeManifestOverride(page, async (route) => {
+    onManifest();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: oilTileManifest(),
+    });
+  });
+  await page.route("**/backend/v1/tiles/oil-fields/**/*.mvt", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/vnd.mapbox-vector-tile",
+      body: OIL_MVT,
+    });
+  });
+}
 
 const HIGHLAND_POLYGON = {
   type: "Feature",
@@ -143,15 +191,14 @@ test.describe("LAYERS-PERF-1", () => {
   test("Oil and gas on/off/on three times fetches once", async ({ page }) => {
     test.setTimeout(120_000);
     const gate = attachConsoleGate(page);
-    let oilHits = 0;
+    let manifestHits = 0;
+    let contextHits = 0;
     await stubMapCardsBackend(page);
-    await page.route("**/layers/context/oil-fields**", async (route) => {
-      oilHits += 1;
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: featureCollection([NORTH_SEA_POLYGON]),
-      });
+    page.on("request", (req) => {
+      if (/\/layers\/context\/oil-fields/.test(req.url())) contextHits += 1;
+    });
+    await stubOilTiles(page, () => {
+      manifestHits += 1;
     });
     await openMap(page);
     await waitForMap(page);
@@ -164,7 +211,7 @@ test.describe("LAYERS-PERF-1", () => {
         await toggle.click();
       }
       await expect
-        .poll(async () => renderedCount(page, ["oil-fields-fill"]), {
+        .poll(async () => renderedCount(page, ["tile-oil-fields-fill"]), {
           timeout: 20_000,
         })
         .toBeGreaterThan(0);
@@ -172,12 +219,13 @@ test.describe("LAYERS-PERF-1", () => {
       await expect(toggle).toHaveAttribute("aria-checked", "false");
       await toggle.click();
       await expect
-        .poll(async () => renderedCount(page, ["oil-fields-fill"]), {
+        .poll(async () => renderedCount(page, ["tile-oil-fields-fill"]), {
           timeout: 20_000,
         })
         .toBeGreaterThan(0);
     }
-    expect(oilHits).toBe(1);
+    expect(manifestHits).toBe(1);
+    expect(contextHits).toBe(0);
     assertConsoleClean(gate);
   });
 });

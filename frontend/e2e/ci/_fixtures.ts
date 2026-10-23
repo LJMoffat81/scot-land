@@ -45,6 +45,31 @@ export async function routeEmptyTilesManifest(page: Page): Promise<void> {
   );
 }
 
+
+/** Un-wrapped page.route from the active gate fixture (LIFO override support). */
+const pageRouteOriginals = new WeakMap<
+  Page,
+  Page["route"]
+>();
+
+/**
+ * Explicit manifest override for one test. Registered on the un-wrapped page.route,
+ * after A1, so it wins (LIFO) and the catch-all wrapper never masks it.
+ */
+export async function routeManifestOverride(
+  page: Page,
+  handler: (route: Route) => unknown,
+): Promise<void> {
+  const originalRoute = pageRouteOriginals.get(page);
+  if (!originalRoute) {
+    throw new Error("routeManifestOverride: gate fixture not active");
+  }
+  await originalRoute(
+    (url) => url.pathname === TILES_MANIFEST_PATHNAME,
+    handler as never,
+  );
+}
+
 /** 1×1 PNG — same bytes as CI_TINY_PNG in helpers. */
 const CI_TINY_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
@@ -244,9 +269,9 @@ export const test = base.extend<CiDedupFixtures>({
     // Do not add tile, values or other backend stubs here: tile specs register
     // their own page.route() (registered later, so they win). Guarded by G1.
     // Catch-all **/backend/** stubs register after this fixture (LIFO) and would
-    // otherwise steal the manifest; wrap non-manifest-specific handlers so A1
-    // still wins for this pathname only. Manifest-specific routes are untouched.
-    // T-M2 and similar call page.unrouteAll — restore A1 via originalRoute only.
+    // otherwise steal the manifest; wrap every page.route handler so A1 still
+    // wins for this pathname. Specs override via routeManifestOverride only
+    // (exact-pathname on the un-wrapped route). T-M2 page.unrouteAll restores A1.
     await routeEmptyTilesManifest(page);
     const fulfillEmptyManifest = (route: Route) =>
       route.fulfill({
@@ -254,19 +279,12 @@ export const test = base.extend<CiDedupFixtures>({
         contentType: "application/json",
         path: emptyTilesManifestFixturePath(),
       });
-    const isManifestSpecificPattern = (
-      url: string | RegExp | ((u: URL) => boolean),
-    ): boolean => {
-      if (typeof url === "string") return url.includes("v1/tiles/manifest");
-      if (url instanceof RegExp) return url.source.includes("manifest");
-      return false;
-    };
+    // Wrap every handler: manifest pathname → empty A1; else the spec handler.
+    // Manifest overrides must use routeManifestOverride (predicate via WeakMap).
     const originalRoute = page.route.bind(page);
+    pageRouteOriginals.set(page, originalRoute);
     const originalUnrouteAll = page.unrouteAll.bind(page);
     page.route = (async (url, handler) => {
-      if (isManifestSpecificPattern(url as never)) {
-        return originalRoute(url as never, handler as never);
-      }
       return originalRoute(url as never, async (route) => {
         let pathname = "";
         try {

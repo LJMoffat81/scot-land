@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ARCH-2b-r3a — run the CI required jobs locally.
+# ARCH-2b-r3b — run the CI required jobs locally.
 # Exits non-zero if any job fails. Prints a full summary at the end.
 set -euo pipefail
 
@@ -154,9 +154,54 @@ run_job "backend-postgis-pytest" \
     # Full backend suite (ci.yml)
     "$PY" -m pytest -q -p no:cacheprovider -rs -m "not real"'
 
-# --- frontend typecheck ---
-run_job "typecheck" \
-  bash -c 'cd "'"$ROOT"'/frontend" && npm ci && npx tsc --noEmit'
+# --- frontend job (parity with .github/workflows/ci.yml frontend:) ---
+# Extract `- run: npm …` / `npx tsc` lines from the frontend job so new steps
+# (e.g. test:tile-layer-factory) are picked up automatically; then npm run build.
+run_job "frontend-job" \
+  bash -c '
+set -euo pipefail
+cd "'"$ROOT"'/frontend"
+npm ci
+mapfile -t RUNS < <(
+  python3 - <<"PY"
+from pathlib import Path
+text = Path("../.github/workflows/ci.yml").read_text()
+start = text.index("\n  frontend:\n")
+rest = text[start + 1 :]
+end = rest.index("\n  e2e:\n")
+block = rest[:end]
+for line in block.splitlines():
+    s = line.strip()
+    if s.startswith("- run: npm ") or s.startswith("- run: npx tsc"):
+        print(s[len("- run: "):])
+PY
+)
+for cmd in "${RUNS[@]}"; do
+  echo "+ $cmd"
+  eval "$cmd"
+done
+if ! printf "%s\n" "${RUNS[@]}" | grep -qx "npm run build"; then
+  echo "+ npm run build"
+  npm run build
+fi
+'
+
+# --- Deploy-home Pester (backend job) — skip locally when pwsh absent ---
+if command -v pwsh >/dev/null 2>&1; then
+  run_job "pester" \
+    bash -c 'cd "'"$ROOT"'" && pwsh -NoProfile -Command \
+      "Install-Module Pester -Force -SkipPublisherCheck -Scope CurrentUser -MinimumVersion 5.0.0; \
+       Invoke-Pester -Path scripts/ops/tests/DeployHome.Tests.ps1 -CI -Output Detailed"'
+else
+  SUMMARY+=("SKIP  pester (no pwsh)")
+  echo "======== SKIP pester (no pwsh) ========"
+fi
+
+# --- processed-data manifests (backend job) ---
+run_job "processed-data-manifests" \
+  bash -c 'cd "'"$ROOT"'/backend"
+    if [[ -x .venv/bin/python ]]; then PY=.venv/bin/python; else PY=python3; fi
+    "$PY" -m etl.load_processed --check'
 
 # --- both Playwright e2e projects with CI stubs + test:esri-key-build ---
 # CI e2e job: playwright install, then test:esri-key-build (2 projects) + test:e2e:ci (chromium).

@@ -26,11 +26,24 @@
       "type": "string",
       "pattern": "^[a-z0-9-]+$"
     },
-    "title": { "type": "string", "minLength": 1 },
-    "geography": { "type": "string", "enum": ["scotland"] },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "geography": {
+      "type": "string",
+      "enum": [
+        "scotland"
+      ]
+    },
     "clip": {
       "type": "string",
-      "enum": ["land", "sea", "land+sea", "none"]
+      "enum": [
+        "land",
+        "sea",
+        "land+sea",
+        "none"
+      ]
     },
     "unit": {
       "type": "string",
@@ -47,17 +60,32 @@
     },
     "licence": {
       "type": "string",
-      "enum": ["OGL-3.0", "NSTA-OGL", "ODbL-1.0", "CC-BY-4.0"]
+      "enum": [
+        "OGL-3.0",
+        "NSTA-OGL",
+        "ODbL-1.0",
+        "CC-BY-4.0"
+      ]
     },
-    "attribution": { "type": "string", "minLength": 1 },
+    "attribution": {
+      "type": "string",
+      "minLength": 1
+    },
     "source": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type"],
+      "required": [
+        "type"
+      ],
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["arcgis", "wfs", "geojson_file", "postgis_table"]
+          "enum": [
+            "arcgis",
+            "wfs",
+            "geojson_file",
+            "postgis_table"
+          ]
         },
         "url": {
           "type": "string",
@@ -71,9 +99,16 @@
           "type": "string",
           "pattern": "^[a-z_][a-z0-9_]*$"
         },
-        "where": { "type": "string" },
-        "out_fields": { "type": "string" },
-        "page_size": { "type": "integer", "minimum": 1 },
+        "where": {
+          "type": "string"
+        },
+        "out_fields": {
+          "type": "string"
+        },
+        "page_size": {
+          "type": "integer",
+          "minimum": 1
+        },
         "token_env": {
           "type": "string",
           "pattern": "^[A-Z_]+$"
@@ -82,42 +117,83 @@
       "allOf": [
         {
           "if": {
-            "properties": { "type": { "const": "postgis_table" } },
-            "required": ["type"]
+            "properties": {
+              "type": {
+                "const": "postgis_table"
+              }
+            },
+            "required": [
+              "type"
+            ]
           },
           "then": {
-            "required": ["table", "id_field", "where"]
+            "required": [
+              "table",
+              "id_field",
+              "where"
+            ]
           },
           "else": {
-            "required": ["url"]
+            "required": [
+              "url"
+            ]
           }
         }
       ]
     },
     "geometry": {
       "type": "string",
-      "enum": ["point", "line", "polygon"]
+      "enum": [
+        "point",
+        "line",
+        "polygon"
+      ]
     },
     "refresh": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["cron", "max_mb", "max_s"],
+      "required": [
+        "cron",
+        "max_mb",
+        "max_s"
+      ],
       "properties": {
-        "cron": { "type": "string", "minLength": 1 },
-        "max_mb": { "type": "number", "minimum": 0 },
-        "max_s": { "type": "number", "minimum": 0 }
+        "cron": {
+          "type": "string",
+          "minLength": 1
+        },
+        "max_mb": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_s": {
+          "type": "number",
+          "minimum": 0
+        }
       }
     },
     "serve": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["mode", "simplify_m", "precision_dp", "max_mb"],
+      "required": [
+        "mode",
+        "simplify_m",
+        "precision_dp",
+        "max_mb"
+      ],
       "properties": {
         "mode": {
           "type": "string",
-          "enum": ["geojson", "pmtiles", "raster"]
+          "enum": [
+            "geojson",
+            "pmtiles",
+            "raster"
+          ]
         },
-        "simplify_m": { "type": "number", "minimum": 0 },
+        "simplify_m": {
+          "type": "number",
+          "minimum": 0
+        },
         "precision_dp": {
           "type": "integer",
           "minimum": 4,
@@ -133,10 +209,21 @@
     "zoom": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["min", "max", "low_zoom"],
+      "required": [
+        "min",
+        "max",
+        "low_zoom"
+      ],
       "properties": {
-        "min": { "type": "integer", "const": 0 },
-        "max": { "type": "integer", "minimum": 0, "maximum": 16 },
+        "min": {
+          "type": "integer",
+          "const": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 16
+        },
         "low_zoom": {
           "type": "string",
           "enum": [
@@ -151,28 +238,61 @@
       }
     },
     "style": {
-      "type": "object"
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fill": {
+          "type": "object"
+        },
+        "line": {
+          "type": "object"
+        },
+        "circle": {
+          "type": "object"
+        }
+      }
+    },
+    "measure": {
+      "type": "string",
+      "enum": [
+        "pop_density",
+        "simd_decile"
+      ]
     },
     "legend": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["label", "color"],
+        "required": [
+          "label",
+          "color"
+        ],
         "properties": {
-          "label": { "type": "string" },
-          "color": { "type": "string" }
+          "label": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          }
         }
       }
     },
     "lineage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["derived_from", "method", "roll_up_to"],
+      "required": [
+        "derived_from",
+        "method",
+        "roll_up_to"
+      ],
       "properties": {
         "derived_from": {
           "type": "array",
-          "items": { "type": "string", "pattern": "^[a-z0-9-]+$" }
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          }
         },
         "method": {
           "type": "string",
@@ -203,21 +323,33 @@
         }
       }
     },
-    "gated_by": { "type": "string" },
-    "clip_keep_all": { "type": "boolean" },
+    "gated_by": {
+      "type": "string"
+    },
+    "clip_keep_all": {
+      "type": "boolean"
+    },
     "keep_fields": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "tiles": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["budget"],
+      "required": [
+        "budget"
+      ],
       "properties": {
         "budget": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["total_mb", "tile_kb", "z0_7_mb"],
+          "required": [
+            "total_mb",
+            "tile_kb",
+            "z0_7_mb"
+          ],
           "properties": {
             "total_mb": {
               "type": "number",
@@ -242,25 +374,45 @@
   "allOf": [
     {
       "if": {
-        "properties": { "clip": { "const": "none" } },
-        "required": ["clip"]
+        "properties": {
+          "clip": {
+            "const": "none"
+          }
+        },
+        "required": [
+          "clip"
+        ]
       },
       "then": {
         "properties": {
           "serve": {
-            "properties": { "mode": { "const": "raster" } },
-            "required": ["mode"]
+            "properties": {
+              "mode": {
+                "const": "raster"
+              }
+            },
+            "required": [
+              "mode"
+            ]
           }
         }
       }
     },
     {
       "if": {
-        "properties": { "geometry": { "const": "polygon" } },
-        "required": ["geometry"]
+        "properties": {
+          "geometry": {
+            "const": "polygon"
+          }
+        },
+        "required": [
+          "geometry"
+        ]
       },
       "then": {
-        "required": ["clip_keep_all"]
+        "required": [
+          "clip_keep_all"
+        ]
       }
     }
   ]

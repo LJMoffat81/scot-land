@@ -165,6 +165,46 @@ _ARCH2B_R3A_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# ARCH-2b-r3b 7fc93d8f — literal frontend allow-list (§7); unioned with r3a.
+_ARCH2B_R3B_FRONTEND_ALLOW = frozenset(
+    [
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/lib/tileLayerFactory.ts",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/scripts/test-tile-layer-factory.mjs",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/e2e/ci/arch2b-tiles.spec.ts",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/e2e/fixtures/arch2b/dz2022.mvt",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/e2e/fixtures/arch2b/oil-fields.mvt",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/e2e/fixtures/arch2b/platforms.mvt",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/e2e/fixtures/arch2b/pipelines.mvt",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/e2e/fixtures/arch2b/make_fixtures.py",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/components/ScotlandMap.tsx",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/lib/contextLayers.ts",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/app/backend/[...path]/route.ts",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/package.json",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/e2e/ci/layers-perf-1.spec.ts",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/e2e/ci/layers-perf-3.spec.ts",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/e2e/ci/layers-fix-1.spec.ts",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/scripts/test-proxy-null-body.mjs",
+        # ARCH-2b-r3b 7fc93d8f
+        "frontend/e2e/ci/_fixtures.ts",
+    ]
+)
+
 
 def _assert_main_py_only_arch2a_tiles_registration() -> None:
     """HEAD main.py must equal origin/main plus exactly the ARCH-2a tiles line."""
@@ -185,7 +225,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
     for rel in changed:
         if rel.startswith("frontend/"):
-            if rel not in _ARCH2B_R3A_FRONTEND_ALLOW:
+            if rel not in (_ARCH2B_R3A_FRONTEND_ALLOW | _ARCH2B_R3B_FRONTEND_ALLOW):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue
         if rel in {"AGENTS.md", "backend/main.py"}:

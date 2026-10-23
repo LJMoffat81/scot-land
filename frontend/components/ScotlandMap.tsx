@@ -2607,7 +2607,8 @@ export default function ScotlandMap() {
       map.addSource("dz2022-masked-overlay", {
         type: "geojson",
         data: emptyCollection,
-        attribution: "NRS Settlements 2022 (OGL v3), contains OS data",
+        attribution:
+          "Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)",
       });
       map.addLayer({
         id: "dz2022-masked-fill",

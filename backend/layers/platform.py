@@ -227,11 +227,7 @@ def platform_catalog() -> dict[str, Any]:
                 "group": "spatial",
                 "status": "live",
                 "label": "Built-up display mask",
-                "description": (
-                    "Built-up extent used to clip map colour later (NRS Settlements 2022 "
-                    "plus buffers around address points outside them). Display only — "
-                    "not a rent, and not ownership."
-                ),
+                "description": "This is our own estimate of built-up land, not an official boundary. We start with National Records of Scotland's 2022 settlement boundaries, add a 50 m area around each OS Open UPRN address point outside them, then cut the result to each 2022 Data Zone. It only decides which parts of the map are coloured. It is not used in any land value.",
                 "developer_note": (
                     "UX10-2: PostGIS map_builtup_mask + dz2022_masked. Vector tiles at "
                     "/layers/open/builtup-mask/tiles/{z}/{x}/{y} and "
@@ -246,7 +242,7 @@ def platform_catalog() -> dict[str, Any]:
                     "https://www.nationalarchives.gov.uk/doc/"
                     "open-government-licence/version/3/"
                 ),
-                "attribution": "NRS Settlements 2022 (OGL v3), contains OS data",
+                "attribution": "Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)",
                 "minzoom": 10,
                 "source_url": (
                     "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer"

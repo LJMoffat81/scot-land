@@ -207,6 +207,14 @@ _ARCH2B_R3B_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# SRC-B §2a — literal P6 allow-list entry for built-up credit string site.
+_SRC_B_FRONTEND_ALLOW = frozenset(
+    [
+        # SRC-B
+        "frontend/lib/layerCatalog.ts",
+    ]
+)
+
 
 def _assert_main_py_only_arch2a_tiles_registration() -> None:
     """HEAD main.py must equal origin/main plus exactly the ARCH-2a tiles line."""
@@ -227,7 +235,11 @@ def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
     for rel in changed:
         if rel.startswith("frontend/"):
-            if rel not in (_ARCH2B_R3A_FRONTEND_ALLOW | _ARCH2B_R3B_FRONTEND_ALLOW):
+            if rel not in (
+                _ARCH2B_R3A_FRONTEND_ALLOW
+                | _ARCH2B_R3B_FRONTEND_ALLOW
+                | _SRC_B_FRONTEND_ALLOW
+            ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue
         if rel in {"AGENTS.md", "backend/main.py"}:

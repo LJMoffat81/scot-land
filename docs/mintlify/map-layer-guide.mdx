@@ -22,7 +22,7 @@ Every layer listed here is under the **Open Government Licence v3.0**, and **non
 | Layer | API path | Source | Licence | Rows loaded | Quality |
 |---|---|---|---|---|---|
 | Data Zone boundaries | `/layers/open/data-zones` | Scottish Government, 2011 and 2022 | OGL v3.0 | 2011 + 2022 sets | `official`, `context` |
-| Built-up display mask | `/layers/open/dz2022-masked` (+ MVT tiles) | NRS Settlements 2022 + OS Open UPRN (display only) | OGL v3.0 | 7,392 DZ2022 when loaded | `official`, `context` |
+| Built-up display mask | `/layers/open/dz2022-masked` (+ MVT tiles) | Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3). This is our own estimate of built-up land, not an official boundary. We start with National Records of Scotland's 2022 settlement boundaries, add a 50 m area around each OS Open UPRN address point outside them, then cut the result to each 2022 Data Zone. It only decides which parts of the map are coloured. It is not used in any land value. | OGL v3.0 | 7,392 DZ2022 when loaded | `official`, `context` |
 | NRS Settlements | `/layers/open/settlements` | National Records of Scotland, Census 2022 | OGL v3.0 | 503 | `official`, `context` |
 | NRS Localities | `/layers/open/localities` | National Records of Scotland, Census 2022 | OGL v3.0 | 656 | `official`, `context` |
 | Data Zone house prices, SIMD, population density | `/layers/open/dz-context` | Scottish Government / NRS | OGL v3.0 | per Data Zone | `official`, `context` |

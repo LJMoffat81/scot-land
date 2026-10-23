@@ -6,7 +6,7 @@ with addresses). Served as zoom-simplified viewport GeoJSON for MapLibre
 vector layers (same contract as Data Zones / NRS places — not national raw
 GeoJSON).
 
-Attribution (visitor): NRS Settlements 2022 (OGL v3), contains OS data.
+Attribution (visitor): Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)
 """
 
 from __future__ import annotations
@@ -35,7 +35,9 @@ TABLES: dict[MaskKind, str] = {
 MAX_FEATURES = 400
 EXPECTED_DZ2022_MASKED = 7392
 
-VISITOR_ATTRIBUTION = "NRS Settlements 2022 (OGL v3), contains OS data"
+BUILTUP_CREDIT = "Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)"
+BUILTUP_METHOD_NOTE = "This is our own estimate of built-up land, not an official boundary. We start with National Records of Scotland's 2022 settlement boundaries, add a 50 m area around each OS Open UPRN address point outside them, then cut the result to each 2022 Data Zone. It only decides which parts of the map are coloured. It is not used in any land value."
+VISITOR_ATTRIBUTION = BUILTUP_CREDIT
 
 
 class LayerUnavailable(Exception):
@@ -58,7 +60,7 @@ def source_meta(kind: MaskKind = "builtup_mask") -> dict[str, Any]:
         or block.get("name")
         or "Built-up display mask (NRS Settlements 2022 + OS Open UPRN)",
         "licence": block.get("licence") or "OGL-3.0",
-        "attribution": block.get("attribution") or VISITOR_ATTRIBUTION,
+        "attribution": block.get("attribution") or BUILTUP_CREDIT,
         "source_url": block.get("source_url")
         or "https://www.nrscotland.gov.uk/statistics-and-data/geography",
         "vintage": block.get("vintage") or "Census 2022",

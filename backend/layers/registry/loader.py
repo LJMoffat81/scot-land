@@ -86,6 +86,22 @@ def _validate_entry(
     except ValidationError as exc:
         path = _format_path(list(exc.absolute_path))
         raise RegistryError(f"REGISTRY: {entry_id}: {path}: {exc.message}") from exc
+    # After schema validation so existing R2 messages stay intact.
+    _check_ladder_fields(entry_id, data)
+
+
+def _check_ladder_fields(entry_id: str, data: dict[str, Any]) -> None:
+    """Require ladder_level + nests for polygon entries whose unit is not point/none."""
+    if data.get("geometry") != "polygon":
+        return
+    unit = data.get("unit")
+    if unit in ("point", "none"):
+        return
+    for key in ("ladder_level", "nests"):
+        if key not in data:
+            raise RegistryError(
+                f"REGISTRY: {entry_id}: $.{key}: required for polygon unit '{unit}'"
+            )
 
 
 def _check_lineage_refs(entries: dict[str, LayerEntry]) -> None:

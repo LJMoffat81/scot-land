@@ -99,7 +99,8 @@ export const LAYER_ATTRIBUTION: Record<
       "https://www.spatialdata.gov.scot/geonetwork/srv/eng/catalog.search#/metadata/7d564e13-a967-495a-ae2f-048ffdfa4b03",
   },
   builtup_mask: {
-    source: "NRS Settlements 2022 (OGL v3), contains OS data",
+    source:
+      "Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)",
     licence: "OGL-3.0",
     sourceUrl:
       "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer",

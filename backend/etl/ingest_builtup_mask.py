@@ -41,8 +41,7 @@ FIXTURE_DIR = REPO_ROOT / "backend" / "tests" / "fixtures" / "builtup_mask"
 DEFAULT_DIR = DATA_DIR / "external" / "builtup"
 EXPECTED_DZ = 7392
 CODE_RE = re.compile(r"^S01[0-9]{6}$")
-
-VISITOR_ATTRIBUTION = "NRS Settlements 2022 (OGL v3), contains OS data"
+VISITOR_ATTRIBUTION = "Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)"
 
 
 def ensure_tables(conn) -> None:

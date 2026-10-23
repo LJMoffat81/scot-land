@@ -45,6 +45,18 @@
         "none"
       ]
     },
+    "ladder_level": {
+      "type": "string",
+      "enum": [
+        "scotland",
+        "council",
+        "iz2022",
+        "dz2022",
+        "parcel",
+        "square3m"
+      ]
+    },
+    "nests": { "type": "boolean" },
     "licence": {
       "type": "string",
       "enum": ["OGL-3.0", "NSTA-OGL", "ODbL-1.0", "CC-BY-4.0"]

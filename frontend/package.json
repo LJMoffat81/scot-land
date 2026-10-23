@@ -57,6 +57,7 @@
     "test:no-test-hook": "node scripts/test-no-test-hook.mjs",
     "test:map-layer-registry": "node --experimental-strip-types scripts/test-map-layer-registry.mjs",
     "test:proxy-null-body": "node --experimental-strip-types --import ./scripts/proxy-null-body-register.mjs scripts/test-proxy-null-body.mjs",
+    "test:tile-layer-factory": "node --experimental-strip-types --import ./scripts/proxy-null-body-register.mjs scripts/test-tile-layer-factory.mjs",
     "check:developers-links": "node scripts/check-developers-links.mjs"
   },
   "dependencies": {

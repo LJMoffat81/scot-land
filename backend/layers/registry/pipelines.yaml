@@ -16,10 +16,15 @@ source:
   page_size: 1000
 geometry: line
 refresh: {cron: "0 4 * * 1", max_mb: 300, max_s: 600}
-serve: {mode: geojson, simplify_m: 5, precision_dp: 5, max_mb: 15}
+serve: {mode: pmtiles, simplify_m: 5, precision_dp: 5, max_mb: 15}
 zoom: {min: 0, max: 14, low_zoom: coalesce}
-style: {}
-legend: []
+style:
+  line:
+    line-color: "#5c4a32"
+    line-width: 1.4
+    line-opacity: 0.9
+legend:
+  - {label: "Pipelines", color: "#5c4a32"}
 lineage: {derived_from: [], method: source, roll_up_to: []}
 keep_fields: [PIPE_NAME, FLUID, DESCRIPTIO]
 tiles:

@@ -331,6 +331,12 @@ def build_tileset(
             "max_tile_zoom": measurements.max_tile_zoom,
             "attribution": attribution,
             "built_at": datetime.now(timezone.utc).isoformat(),
+            "title": str(raw.get("title") or layer_id),
+            "geometry": str(raw.get("geometry") or ""),
+            "style": raw.get("style") if isinstance(raw.get("style"), dict) else {},
+            "legend": raw.get("legend") if isinstance(raw.get("legend"), list) else [],
+            "measure": raw.get("measure"),
+            "source_layer": layer_id,
         }
         if measurements.distinct_z5 is not None:
             entry_payload["distinct_z5"] = measurements.distinct_z5

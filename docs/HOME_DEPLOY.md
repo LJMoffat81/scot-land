@@ -229,6 +229,11 @@ with `TILES_DIR=/app/tiles`. Clients use:
 
 - `GET /v1/tiles/manifest.json` (short cache)
 - `GET /v1/tiles/{id}/{version}/{z}/{x}/{y}.mvt` (immutable)
+- `GET /v1/tiles/{id}/{version}/values/{measure}.json` (immutable; pop_density / simd_decile only)
+
+After deploying ARCH-2b, run `tiles.build --all` once so the manifest gains
+`title`, `geometry`, `style`, `legend`, `measure`, and `source_layer` from the
+registry. Old PMTiles files stay valid; only the manifest keys are new.
 
 **Cloudflare Cache Rule (free plan, dashboard — not in this repo):** Cloudflare
 does not cache `.mvt` / `.json` by default. Add one Cache Rule before 2b goes

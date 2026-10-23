@@ -1,3 +1,5 @@
+import { gzipSync } from "node:zlib";
+
 import { SERVICE_BUSY } from "../../../lib/api";
 
 /**
@@ -8,6 +10,25 @@ import { SERVICE_BUSY } from "../../../lib/api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+/** ARCH-2b D5: re-gzip MVT after Node fetch has gunzipped the upstream body. */
+export function gzipIfTile(
+  contentType: string | null,
+  buf: ArrayBuffer | null,
+): { body: ArrayBuffer | null; encoding: string | null } {
+  if (buf === null) {
+    return { body: null, encoding: null };
+  }
+  const ct = (contentType || "").split(";")[0].trim().toLowerCase();
+  if (ct !== "application/vnd.mapbox-vector-tile") {
+    return { body: buf, encoding: null };
+  }
+  const gz = gzipSync(Buffer.from(buf), { level: 6 });
+  return {
+    body: gz.buffer.slice(gz.byteOffset, gz.byteOffset + gz.byteLength) as ArrayBuffer,
+    encoding: "gzip",
+  };
+}
 
 function apiOrigin(): string {
   return (
@@ -144,7 +165,12 @@ async function proxy(request: Request, context: Ctx): Promise<Response> {
     }
 
     const buf = await upstream.arrayBuffer();
-    return new Response(buf, { status: upstream.status, headers: responseHeaders });
+    const { body, encoding } = gzipIfTile(ct, buf);
+    if (encoding) {
+      responseHeaders.set("Content-Encoding", encoding);
+      responseHeaders.set("Vary", "Accept-Encoding");
+    }
+    return new Response(body, { status: upstream.status, headers: responseHeaders });
   } catch {
     const quiet = layersAddQuietWhenApiDown(new URL(request.url).pathname);
     if (quiet) return quiet;

@@ -13,6 +13,16 @@ export type ContextLayer = {
   opacity?: number;
 };
 
+/** ARCH-2b: served as native vector tiles, not GeoJSON context fetches. */
+export const TILE_LAYER_IDS_ORDERED = [
+  "dz2022",
+  "oil-fields",
+  "platforms",
+  "pipelines",
+] as const;
+
+export const TILE_LAYER_IDS: ReadonlySet<string> = new Set(TILE_LAYER_IDS_ORDERED);
+
 const nsta =
   "Contains information provided by the North Sea Transition Authority and/or other third parties.";
 const sg =

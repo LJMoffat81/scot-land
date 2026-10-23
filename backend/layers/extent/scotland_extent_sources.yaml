@@ -1,0 +1,43 @@
+snap_m: 150
+densify_max_m: 1000
+sources:
+  - id: ukho-mlb
+    publisher: UK Hydrographic Office
+    url: https://datahub.admiralty.co.uk/portal/sharing/rest/content/items/bf77b2ac1b654efc95dc3665c0501e23/data
+    licence: OGL-3.0
+    attribution: >-
+      Contains public sector information, licensed under the Open Government
+      Licence v3.0, from UK Hydrographic Office.
+    published: "2026-01-07"
+    fetched: "2026-10-23"
+    sha256: e592db91734603b228f9c2bdfda2113fcf2b3f04569ab91d5655539efc08d225
+    crs: 4326
+  - id: si-1999-1126
+    publisher: legislation.gov.uk
+    url: https://www.legislation.gov.uk/uksi/1999/1126/data.xml
+    licence: OGL-3.0
+    attribution: >-
+      Contains public sector information licensed under the Open Government
+      Licence v3.0.
+    published: "1999-04-13"
+    fetched: "2026-10-23"
+    sha256: b0007d096b050e962bf2a1acf829d15f3081fe20a06789e2dd306e2c29b7aa9c
+    crs: 27700
+  - id: os-boundary-line
+    publisher: Ordnance Survey
+    url: https://api.os.uk/downloads/v1/products/BoundaryLine/downloads?area=GB&format=GeoPackage&redirect
+    licence: OGL-3.0
+    attribution: Contains OS data © Crown copyright and database right 2026.
+    published: "2026-10-01"
+    fetched: "2026-10-23"
+    sha256: 151b027b621ac4cdac3f7a6635cd26dd65fb3b5bf1cb8eb392cc00e1687e3bd4
+    crs: 27700
+  - id: ostn15
+    publisher: Ordnance Survey / PROJ
+    url: https://cdn.proj.org/uk_os_OSTN15_NTv2_OSGBtoETRS.tif
+    licence: OGL-3.0
+    attribution: Contains OS data © Crown copyright and database right 2026.
+    published: "2016-08-15"
+    fetched: "2026-10-23"
+    sha256: 5d6ed64d2119952c4c559fa1fccbc594b6520fc3ec3ef2fc10be13202c4384fa
+    crs: 4936

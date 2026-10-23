@@ -4,6 +4,8 @@ geography: scotland
 clip: land+sea
 clip_keep_all: true
 unit: scotland
+ladder_level: scotland
+nests: false
 licence: OGL-3.0
 attribution: >-
   Contains public sector information, licensed under the Open Government

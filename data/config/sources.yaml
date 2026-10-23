@@ -118,7 +118,15 @@ urban_rural:
 
 boundaries:
   councils:
-    source_url: https://raw.githubusercontent.com/martinjc/UK-GeoJSON/master/json/administrative/gb/lad.json
+    # OS Boundary-Line district_borough_unitary (SRC-A pin; Census_Code S12%).
+    source_url: https://api.os.uk/downloads/v1/products/BoundaryLine/downloads?area=GB&format=GeoPackage&redirect
+    version: "2026-10"
+    published: "2026-10-01"
+    sha256: 151b027b621ac4cdac3f7a6635cd26dd65fb3b5bf1cb8eb392cc00e1687e3bd4
+    layer: district_borough_unitary
+    census_code_prefix: S12
+    expected_count: 32
+    attribution: Contains OS data © Crown copyright and database right 2026.
     simplify_tolerance_degrees: 0.0008
   glasgow_ward_18:
     source_url: https://www.boundaries.scot/wp-content/uploads/2025/09/4th_Review_2007_2017_All_Scotland_wards_1758892796.zip
@@ -616,7 +624,7 @@ map_builtup_mask:
   name: Built-up display mask (UX10-2)
   role: map_display_mask_dz2022_only
   licence: OGL-3.0
-  attribution: NRS Settlements 2022 (OGL v3), contains OS data
+  attribution: "Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)"
   attribution_long: >-
     Contains NRS data © Crown copyright and database right 2026.
     Contains OS data © Crown copyright and database right 2026.

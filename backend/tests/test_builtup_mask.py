@@ -5,12 +5,16 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from etl.ingest_builtup_mask import VISITOR_ATTRIBUTION
 from layers.builtup_mask import (
+    BUILTUP_CREDIT,
     EXPECTED_DZ2022_MASKED,
-    VISITOR_ATTRIBUTION,
     LayerUnavailable,
 )
 from layers.platform import platform_catalog
+
+# Pin: exact BUILTUP_CREDIT text must appear in this file (SRC-B N8 / §2a).
+_BUILTUP_CREDIT_PIN = "Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)"
 
 GLASGOW_BBOX = {
     "south": 55.84,
@@ -85,7 +89,9 @@ def test_catalog_lists_builtup_mask_live_with_nrs_os_attribution():
     assert row["endpoint"] == "/layers/open/dz2022-masked"
     assert row["tile_endpoint"] == "/layers/open/dz2022-masked/tiles/{z}/{x}/{y}"
     assert row["licence"] == "OGL-3.0"
-    assert row["attribution"] == VISITOR_ATTRIBUTION
+    assert _BUILTUP_CREDIT_PIN == BUILTUP_CREDIT
+    assert VISITOR_ATTRIBUTION == BUILTUP_CREDIT
+    assert row["attribution"] == BUILTUP_CREDIT
     assert "NRS Settlements 2022" in row["attribution"]
     assert "OS data" in row["attribution"]
     assert "£" not in json.dumps(row)

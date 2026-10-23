@@ -20,6 +20,8 @@ def _base(**over) -> dict:
         "geography": "scotland",
         "clip": "land+sea",
         "unit": "dz2022",
+        "ladder_level": "dz2022",
+        "nests": True,
         "licence": "OGL-3.0",
         "attribution": "Test attribution",
         "source": {

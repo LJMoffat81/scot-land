@@ -1,0 +1,39 @@
+id: councils
+title: Scottish council areas
+geography: scotland
+clip: land
+clip_keep_all: true
+unit: council
+ladder_level: council
+nests: false
+licence: OGL-3.0
+attribution: Contains OS data © Crown copyright and database right 2026.
+source:
+  type: geojson_file
+  url: >-
+    https://api.os.uk/downloads/v1/products/BoundaryLine/downloads?area=GB&format=GeoPackage&redirect
+geometry: polygon
+refresh:
+  cron: "0 5 1 1 *"
+  max_mb: 100
+  max_s: 600
+serve:
+  mode: pmtiles
+  simplify_m: 25
+  precision_dp: 6
+  max_mb: 15
+zoom:
+  min: 0
+  max: 12
+  low_zoom: simplify
+style:
+  line:
+    line-color: "#334155"
+    line-width: 1.2
+    line-opacity: 0.85
+legend:
+  - {label: "Council area", color: "#334155"}
+lineage:
+  derived_from: []
+  method: source
+  roll_up_to: [scotland]

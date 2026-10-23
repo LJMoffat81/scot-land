@@ -10,6 +10,8 @@ from typing import Iterable, Sequence
 
 from pyproj import CRS, Transformer
 from shapely import make_valid
+from shapely import node as shapely_node
+from shapely import set_precision
 from shapely.geometry import (
     GeometryCollection,
     LineString,
@@ -17,10 +19,11 @@ from shapely.geometry import (
     MultiPolygon,
     Point,
     Polygon,
+    box,
     mapping,
     shape,
 )
-from shapely.ops import linemerge, polygonize, snap, unary_union
+from shapely.ops import linemerge, nearest_points, polygonize, snap, unary_union
 
 from etl.extent_sources import ExtentError
 
@@ -136,17 +139,20 @@ def load_ostn15_grid(path: Path | str, *, expected_sha256: str) -> Path:
     return grid_path
 
 
-def make_ukho_transformers(grid_path: Path) -> tuple[Transformer, Transformer]:
-    """Return (OSTN15 pipeline, Helmert EPSG:1314 via 4326→27700)."""
-    # Explicit PROJ pipeline: unitconvert → inv hgridshift → tmerc BNG.
-    pipeline = (
+def ostn15_pipeline_string(grid_path: Path | str) -> str:
+    """Explicit OSTN15 PROJ pipeline (unitconvert → inv hgridshift → tmerc BNG)."""
+    return (
         "+proj=pipeline "
         "+step +proj=unitconvert +xy_in=deg +xy_out=rad "
-        f"+step +proj=hgridshift +inv +grids={grid_path.as_posix()} "
+        f"+step +proj=hgridshift +inv +grids={Path(grid_path).as_posix()} "
         "+step +proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 "
         "+x_0=400000 +y_0=-100000 +ellps=airy"
     )
-    ostn = Transformer.from_pipeline(pipeline)
+
+
+def make_ukho_transformers(grid_path: Path) -> tuple[Transformer, Transformer]:
+    """Return (OSTN15 pipeline, Helmert EPSG:1314 via 4326→27700)."""
+    ostn = Transformer.from_pipeline(ostn15_pipeline_string(grid_path))
     helmert = Transformer.from_crs("EPSG:4326", "EPSG:27700", always_xy=True)
     return ostn, helmert
 
@@ -473,30 +479,71 @@ def solway_include_scottish_pockets(
     offshore: MultiPolygon,
     si_s1: LineString,
     s1_vertices: Sequence[tuple[float, float]] | None = None,
-    disk_m: float = 150.0,
 ) -> MultiPolygon:
-    """§3.7 Upper Solway: restore Scottish-side sea so s1#1/#2 meet C1.
+    """§3.7 Upper Solway: include Scottish-side faces along densified SI s1.
 
-    Boundary-Line MLW crosses SI Sch1 Pt II s1 east of ~3.35°W, so flood miss
-    water pockets between Scottish land and the SI line. Add 150 m water disks
-    at undensified s1 vertices 1 and 2 (difference land — never cut OS land).
-    Vertices 3 and 4 stay inside land and are checked by C1b.
+    Boundary-Line MLW crosses SI Sch1 Pt II s1 east of ~3.35°W, so the main
+    flood misses water pockets between Scottish land and the SI line. Locally
+    polygonize land boundary + densified s1 (with shortest connectors from
+    undensified s1#1/#2 to the land boundary so the graph closes), keep water
+    faces that touch land inside the upper-s1 corridor, and merge into inshore
+    with ``difference(land)`` — OS land is never cut. Vertices 3 and 4 stay
+    inside land (C1b).
     """
-    del offshore  # reserved for callers; disks only touch inshore
+    del offshore
     verts = list(s1_vertices) if s1_vertices is not None else list(si_s1.coords)
-    add: list = []
+    if len(verts) < 5:
+        return inshore
+
+    # Upper Solway corridor (EPSG:27700) around Sch1 Pt II s1 east of ~3.35°W.
+    aoi = box(305_000.0, 555_000.0, 340_000.0, 572_000.0)
+    upper = LineString(verts[0:5])
+    corridor = upper.buffer(700.0)
+    land_boundary = land.boundary
+
+    connectors: list[LineString] = []
     for i in (1, 2):
-        if i >= len(verts):
+        vertex = Point(verts[i])
+        land_pt, _ = nearest_points(land_boundary, vertex)
+        if vertex.distance(land_pt) > 1.0:
+            connectors.append(LineString([vertex, land_pt]))
+
+    lines: list[LineString] = []
+    for geom in (
+        land_boundary.intersection(aoi.buffer(3_000.0)),
+        si_s1.intersection(aoi.buffer(3_000.0)),
+    ):
+        if geom.is_empty:
             continue
-        pt = Point(verts[i])
-        # Skip if already on/inside the union edge within tolerance.
-        disk = make_valid(pt.buffer(disk_m).difference(land))
-        if not disk.is_empty:
-            add.append(disk)
+        if geom.geom_type == "LineString":
+            lines.append(geom)
+        elif geom.geom_type == "MultiLineString":
+            lines.extend(list(geom.geoms))
+    lines.extend(connectors)
+    if not lines:
+        return inshore
+
+    noded = shapely_node(set_precision(unary_union(lines), 0.1))
+    add: list = []
+    land_touch = land.buffer(1.0)
+    for face in polygonize(noded):
+        if face.area <= 1.0:
+            continue
+        land_frac = face.intersection(land).area / face.area
+        if land_frac > 0.05:
+            continue
+        if not face.intersects(land_touch):
+            continue
+        if not face.intersects(corridor):
+            continue
+        add.append(face)
     if not add:
         return inshore
-    merged = make_valid(unary_union([inshore, *add]).difference(land))
-    return _as_multipolygon(merged)
+
+    pocket = make_valid(unary_union(add).difference(land))
+    return _as_multipolygon(
+        make_valid(unary_union([inshore, pocket]).difference(land))
+    )
 
 
 def make_disjoint_zones(

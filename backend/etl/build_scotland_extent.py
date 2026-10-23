@@ -27,7 +27,15 @@ import psycopg2
 import psycopg2.extras
 from shapely import make_valid
 from shapely.errors import GEOSException
-from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, box, mapping, shape
+from shapely.geometry import (
+    LineString,
+    MultiLineString,
+    MultiPolygon,
+    Point,
+    box,
+    mapping,
+    shape,
+)
 from shapely.ops import unary_union
 
 from etl.extent_geom import (
@@ -418,6 +426,21 @@ def _load_land(bdline_zip: Path, expected_sha: str) -> MultiPolygon:
     return _as_multipolygon(land.simplify(25.0, preserve_topology=True))
 
 
+def _ukho_lines_from_shape(shp_shape) -> list[LineString]:
+    """Convert a pyshp polyline shape into shapely LineStrings (WGS 84)."""
+    points = list(shp_shape.points or [])
+    if len(points) < 2:
+        return []
+    parts = list(shp_shape.parts or [0])
+    lines: list[LineString] = []
+    for i, start in enumerate(parts):
+        end = parts[i + 1] if i + 1 < len(parts) else len(points)
+        coords = points[start:end]
+        if len(coords) >= 2:
+            lines.append(LineString(coords))
+    return lines
+
+
 def _load_ukho(
     ukho_zip: Path,
     *,
@@ -426,8 +449,8 @@ def _load_ukho(
     helmert,
     stats: TransformStats,
 ) -> dict[str, list[LineString]]:
-    # Fiona is offline-build-only; keep import lazy (see _load_land).
-    import fiona
+    # pyshp is in requirements.txt so T7/T8 can drive this loader in CI.
+    import shapefile
 
     if _sha256_file(ukho_zip) != expected_sha:
         raise ExtentError("EXTENT: UKHO sha256 mismatch")
@@ -444,22 +467,23 @@ def _load_ukho(
             "continental_shelf": [],
             "boundary_faroe_ireland": [],
         }
-        seen_classes: set[str] = set()
-        with fiona.open(shp) as src:
-            for feature in src:
-                props = dict(feature["properties"] or {})
-                geom = shape(feature["geometry"])
+        with shapefile.Reader(str(shp)) as reader:
+            fields = [f[0] for f in reader.fields[1:]]
+            for sr in reader.iterShapeRecords():
+                props = dict(zip(fields, sr.record, strict=False))
+                line_geoms = _ukho_lines_from_shape(sr.shape)
+                if not line_geoms:
+                    continue
+                geom = (
+                    line_geoms[0]
+                    if len(line_geoms) == 1
+                    else MultiLineString(line_geoms)
+                )
                 if not geom.intersects(AOI):
                     continue
                 state = props.get("State")
                 feat = props.get("Feature") or ""
                 boundary = props.get("Boundary") or ""
-                seen_classes.add(feat)
-                coords = list(geom.coords) if geom.geom_type == "LineString" else []
-                if geom.geom_type == "MultiLineString":
-                    line_geoms = list(geom.geoms)
-                else:
-                    line_geoms = [geom]
                 transformed = []
                 for lg in line_geoms:
                     if lg.is_empty:
@@ -485,7 +509,9 @@ def _load_ukho(
                 if is_art4_tsl_segment(geom, props):
                     buckets["art4"].append(
                         transform_linestring_ukho(
-                            list(geom.coords),
+                            list(geom.coords)
+                            if geom.geom_type == "LineString"
+                            else list(line_geoms[0].coords),
                             ostn=ostn,
                             helmert=helmert,
                             stats=stats,
@@ -514,13 +540,6 @@ def _load_ukho(
                     # Included for noding only — not flood barriers (§3.5).
                     buckets["boundary_faroe_ireland"].append(line)
 
-        for required in UKHO_REQUIRED_CLASSES:
-            if required not in seen_classes and not any(
-                required.startswith("Median") and k == "median" and buckets[k]
-                for k in ("median",)
-            ):
-                # Median line name is long; check bucket.
-                pass
         if not buckets["eez"]:
             raise ExtentError(
                 "EXTENT: UKHO class missing: Exclusive Economic Zone Limit"
@@ -627,8 +646,7 @@ def build_geometry(
         land, inshore_raw, offshore_raw, simplify_m=25.0
     )
 
-    # §3.7 Upper Solway after simplify so C1 distances stay ≤150 m on the
-    # committed geometry. Disks never cut OS land (difference land).
+    # §3.7 Upper Solway: Scottish-side faces along densified s1 (no land cut).
     inshore_z = solway_include_scottish_pockets(
         land=land_z,
         inshore=inshore_z,
@@ -754,6 +772,9 @@ def _write_ext_shelf(built: BuiltZones, built_at: str) -> str | None:
     geom = built.ext_shelf_optional
     polys = list(geom.geoms) if geom.geom_type == "MultiPolygon" else [geom]
     for poly in polys:
+        # Drop numerical dust faces (< 0.001 km²) left by noding.
+        if poly.is_empty or poly.area < 1_000.0:
+            continue
         features.append(
             {
                 "type": "Feature",
@@ -771,6 +792,8 @@ def _write_ext_shelf(built: BuiltZones, built_at: str) -> str | None:
                 "geometry": mapping(poly),
             }
         )
+    if not features:
+        return None
     collection = {
         "type": "FeatureCollection",
         "name": "scotland_ext_shelf_optional",
@@ -824,11 +847,9 @@ def build(
             f"(expected {expected} ±1%)"
         )
         if not (lo <= got <= hi):
-            print(
-                f"EXTENT: {zone} area {got:.1f} outside expected",
-                flush=True,
+            raise ExtentError(
+                f"EXTENT: {zone} area {got:.1f} outside expected ±1%"
             )
-            # Do not hard-exit during Solway iteration; caller/CI checks pin.
     sha, size = _write_extent_geojson(built, built_at)
     shelf_sha = _write_ext_shelf(built, built_at)
 

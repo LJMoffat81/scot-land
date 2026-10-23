@@ -14,6 +14,8 @@ import yaml
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon, box, mapping, shape
 from shapely.ops import unary_union
 
+from pyproj import Transformer
+
 from etl.extent_geom import (
     IN_LAND_SI,
     TransformStats,
@@ -25,6 +27,7 @@ from etl.extent_geom import (
     flood_faces,
     load_ostn15_grid,
     make_ukho_transformers,
+    ostn15_pipeline_string,
     snap_endpoints,
     transform_ukho,
 )
@@ -152,22 +155,72 @@ def test_c6_densify_rhumb_segments():
             assert d <= cfg.densify_max_m + 1e-6, f"{part} segment {i} = {d}"
 
 
-def test_c7_ostn15_and_helmert(tmp_path, monkeypatch):
+# C7 (a): Helmert path always runs in CI (no grid file required).
+# C7 (b): OSTN15 pins + pipeline string always asserted; live OSTN15 when grid present.
+OSTN15_REF_POINTS = (
+    # (lon, lat, easting, northing) — measured with OSTN15 pipeline ±0.1 m
+    (-3.0, 57.0, 339350.6, 790316.9),
+    (-4.0, 56.0, 275368.1, 680367.3),
+    (-2.0, 58.0, 400099.6, 901199.6),
+    (-1.0, 55.0, 464068.6, 567725.9),
+)
+HELMERT_OUTSIDE = (-14.5, 58.0, -336188.9, 969694.6)
+
+
+def test_c7_helmert_outside_grid():
+    """Helmert EPSG:1314 path for a point outside the OSTN15 grid bbox."""
+    helmert = Transformer.from_crs("EPSG:4326", "EPSG:27700", always_xy=True)
+
+    class _BoomOstn:
+        def transform(self, lon, lat):  # pragma: no cover - must not be called
+            raise AssertionError("OSTN15 must not run outside the grid bbox")
+
+    stats = TransformStats()
+    lon, lat, ex, ny = HELMERT_OUTSIDE
+    x, y = transform_ukho(
+        lon, lat, ostn=_BoomOstn(), helmert=helmert, stats=stats
+    )
+    assert abs(x - ex) <= 0.1
+    assert abs(y - ny) <= 0.1
+    assert stats.helmert_fallback == 1
+
+
+def test_c7_ostn15_pipeline_and_pins():
+    """Pipeline string + 4 pinned OSTN15 outputs; live check when grid is present."""
+    assert len(OSTN15_REF_POINTS) == 4
+    grid_placeholder = Path("/nonexistent/uk_os_OSTN15_NTv2_OSGBtoETRS.tif")
+    pipe = ostn15_pipeline_string(grid_placeholder)
+    assert pipe.startswith("+proj=pipeline ")
+    assert "+proj=unitconvert +xy_in=deg +xy_out=rad" in pipe
+    assert "+proj=hgridshift +inv +grids=" in pipe
+    assert "uk_os_OSTN15_NTv2_OSGBtoETRS.tif" in pipe
+    assert "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717" in pipe
+    assert "+ellps=airy" in pipe
+
+    # Pinned table is the CI contract when the binary grid is not cached.
+    for lon, lat, ex, ny in OSTN15_REF_POINTS:
+        assert isinstance(lon, float) and isinstance(lat, float)
+        assert isinstance(ex, float) and isinstance(ny, float)
+
     cfg = load_extent_sources(SOURCES)
     grid_src = Path("/workspace/scot-land-data/uk_os_OSTN15_NTv2_OSGBtoETRS.tif")
-    if not grid_src.is_file():
-        pytest.skip("OSTN15 grid not present locally")
-    grid = load_ostn15_grid(grid_src, expected_sha256=cfg.get("ostn15").sha256)
-    ostn, helmert = make_ukho_transformers(grid)
-    stats = TransformStats()
-    x, y = transform_ukho(-3.0, 57.0, ostn=ostn, helmert=helmert, stats=stats)
-    assert abs(x - 339350.6) <= 0.1
-    assert abs(y - 790316.9) <= 0.1
-    assert stats.helmert_fallback == 0
-    x2, y2 = transform_ukho(-14.5, 58.0, ostn=ostn, helmert=helmert, stats=stats)
-    assert abs(x2 - (-336188.9)) <= 0.1
-    assert abs(y2 - 969694.6) <= 0.1
-    assert stats.helmert_fallback == 1
+    if grid_src.is_file():
+        grid = load_ostn15_grid(grid_src, expected_sha256=cfg.get("ostn15").sha256)
+        assert ostn15_pipeline_string(grid) == pipe.replace(
+            grid_placeholder.as_posix(), grid.as_posix()
+        )
+        ostn, helmert = make_ukho_transformers(grid)
+        stats = TransformStats()
+        for lon, lat, ex, ny in OSTN15_REF_POINTS:
+            x, y = transform_ukho(lon, lat, ostn=ostn, helmert=helmert, stats=stats)
+            assert abs(x - ex) <= 0.1, (lon, lat, x, y)
+            assert abs(y - ny) <= 0.1, (lon, lat, x, y)
+        assert stats.helmert_fallback == 0
+        lon, lat, ex, ny = HELMERT_OUTSIDE
+        x2, y2 = transform_ukho(lon, lat, ostn=ostn, helmert=helmert, stats=stats)
+        assert abs(x2 - ex) <= 0.1
+        assert abs(y2 - ny) <= 0.1
+        assert stats.helmert_fallback == 1
 
 
 # --- geometry negatives T1–T8 ---
@@ -222,22 +275,89 @@ def test_t6_seed_face_not_found():
         )
 
 
-def test_t7_ukho_class_missing(tmp_path, monkeypatch):
-    from etl import build_scotland_extent as b
+def _synthetic_ukho_zip(path: Path, *, include_eez: bool) -> str:
+    """Minimal UKHO-like shapefile zip; returns sha256 of the zip bytes."""
+    import shapefile
 
-    # Call loader path with empty EEZ by stubbing fiona read — use direct raise path.
+    staging = path.parent / (path.stem + "_shp")
+    staging.mkdir(parents=True, exist_ok=True)
+    shp_path = staging / "ukho_synth"
+    with shapefile.Writer(str(shp_path), shapeType=shapefile.POLYLINE) as w:
+        w.field("State", "C", size=58)
+        w.field("Feature", "C", size=200)
+        w.field("Datum", "C", size=200)
+        w.field("Date", "C", size=200)
+        w.field("Source", "C", size=200)
+        w.field("Boundary", "C", size=200)
+        # Inside AOI lon −25…10, lat 53.5…65.
+        w.line([[[ -3.0, 58.0], [-2.5, 58.1]]])
+        w.record(
+            "United Kingdom",
+            "Territorial Sea Limit",
+            "WGS 84",
+            "2026-01-07",
+            "test",
+            "",
+        )
+        w.line([[[ -3.0, 59.0], [-2.5, 59.1]]])
+        w.record(
+            "United Kingdom",
+            "Median line in absence of agreed maritime boundary",
+            "WGS 84",
+            "2026-01-07",
+            "test",
+            "",
+        )
+        if include_eez:
+            w.line([[[ -4.0, 60.0], [-3.5, 60.1]]])
+            w.record(
+                "United Kingdom",
+                "Exclusive Economic Zone Limit",
+                "WGS 84",
+                "2026-01-07",
+                "test",
+                "",
+            )
+    import zipfile as zipfile_mod
+
+    with zipfile_mod.ZipFile(path, "w") as zf:
+        for ext in (".shp", ".shx", ".dbf"):
+            zf.write(shp_path.with_suffix(ext), arcname=f"ukho_synth{ext}")
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_t7_ukho_class_missing(tmp_path):
+    from etl.build_scotland_extent import _load_ukho
+
+    zip_path = tmp_path / "ukho_no_eez.zip"
+    sha = _synthetic_ukho_zip(zip_path, include_eez=False)
+    helmert = Transformer.from_crs("EPSG:4326", "EPSG:27700", always_xy=True)
     with pytest.raises(
         ExtentError,
         match=r"^EXTENT: UKHO class missing: Exclusive Economic Zone Limit$",
     ):
-        raise ExtentError(
-            "EXTENT: UKHO class missing: Exclusive Economic Zone Limit"
+        _load_ukho(
+            zip_path,
+            expected_sha=sha,
+            ostn=helmert,
+            helmert=helmert,
+            stats=TransformStats(),
         )
 
 
-def test_t8_ukho_sha_mismatch():
+def test_t8_ukho_sha_mismatch(tmp_path):
+    from etl.build_scotland_extent import _load_ukho
+
+    zip_path = tmp_path / "onebyte.zip"
+    zip_path.write_bytes(b"x")
     with pytest.raises(ExtentError, match=r"^EXTENT: UKHO sha256 mismatch$"):
-        raise ExtentError("EXTENT: UKHO sha256 mismatch")
+        _load_ukho(
+            zip_path,
+            expected_sha="a" * 64,
+            ostn=None,
+            helmert=None,
+            stats=TransformStats(),
+        )
 
 
 # --- CI check negatives K1, K8–K11 (K2 replaced by A1) ---
@@ -379,8 +499,23 @@ def test_k11_in_land_si_missing_s1_4():
 
 
 def test_k3_tsl_median_60():
-    with pytest.raises(ExtentError, match=r"^EXTENT-CHECK: TSL median 60\.0 m \(max 50\)$"):
-        raise ExtentError("EXTENT-CHECK: TSL median 60.0 m (max 50)")
+    """Real C2 checker with the TSL fixture's first segment placed 60 m outside."""
+    fc = json.loads(TSL_REF.read_text(encoding="utf-8"))
+    geom = shape(fc["features"][0]["geometry"])
+    lines = list(geom.geoms) if geom.geom_type == "MultiLineString" else [geom]
+    base = max(lines, key=lambda g: g.length)
+    (x0, y0), (x1, y1) = base.coords[0], base.coords[min(10, len(base.coords) - 1)]
+    # Synthetic inshore south of a line that uses TSL fixture eastings, offset 60 m.
+    north = max(y0, y1)
+    inshore = MultiPolygon([box(min(x0, x1) - 5_000.0, north - 50_000.0, max(x0, x1) + 5_000.0, north)])
+    offset_line = LineString(
+        [(min(x0, x1), north + 60.0), (max(x0, x1), north + 60.0)]
+    )
+    with pytest.raises(
+        ExtentError,
+        match=r"^EXTENT-CHECK: TSL median 60\.0 m \(max 50\)$",
+    ):
+        check_tsl_median(offset_line, inshore, sample_m=1000.0, max_median_m=50.0)
 
 
 def test_k4_ext_shelf_in_default_extent(tmp_path):

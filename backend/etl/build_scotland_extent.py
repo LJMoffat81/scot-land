@@ -23,22 +23,12 @@ import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-import fiona
 import psycopg2
 import psycopg2.extras
 from shapely import make_valid
 from shapely.errors import GEOSException
 from shapely.geometry import LineString, MultiLineString, MultiPolygon, Point, box, mapping, shape
 from shapely.ops import unary_union
-
-# Kept for etl.adapters.arcgis (and any other callers) that redact query tokens
-# from logged URLs. SRC-A no longer fetches NMPi; the helper stays generic.
-_TOKEN_RE = re.compile(r"(token=)[^&\s]+", re.IGNORECASE)
-
-
-def redact(url: str) -> str:
-    """Replace ``token=<x>`` with ``token=***`` in every log/receipt/manifest line."""
-    return _TOKEN_RE.sub(r"\1***", url)
 
 from etl.extent_geom import (
     SEED_LAT,
@@ -69,6 +59,15 @@ from layers.catalog_copy import (
     SCOTLAND_EXTENT_LAND_CREDIT,
     SCOTLAND_EXTENT_MARINE_CREDIT,
 )
+
+# Kept for etl.adapters.arcgis (and any other callers) that redact query tokens
+# from logged URLs. SRC-A no longer fetches NMPi; the helper stays generic.
+_TOKEN_RE = re.compile(r"(token=)[^&\s]+", re.IGNORECASE)
+
+
+def redact(url: str) -> str:
+    """Replace ``token=<x>`` with ``token=***`` in every log/receipt/manifest line."""
+    return _TOKEN_RE.sub(r"\1***", url)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SQL_DIR = Path(__file__).resolve().parent / "sql"
@@ -397,6 +396,10 @@ def load_only(geojson_path: Path) -> dict:
 
 
 def _load_land(bdline_zip: Path, expected_sha: str) -> MultiPolygon:
+    # Fiona is offline-build-only; keep import lazy so CI test collection
+    # (load_only / redact / ExtentError) does not require it.
+    import fiona
+
     if _sha256_file(bdline_zip) != expected_sha:
         raise ExtentError("EXTENT: Boundary-Line sha256 mismatch")
     path = f"/vsizip/{bdline_zip.as_posix()}/Data/bdline_gb.gpkg"
@@ -423,6 +426,9 @@ def _load_ukho(
     helmert,
     stats: TransformStats,
 ) -> dict[str, list[LineString]]:
+    # Fiona is offline-build-only; keep import lazy (see _load_land).
+    import fiona
+
     if _sha256_file(ukho_zip) != expected_sha:
         raise ExtentError("EXTENT: UKHO sha256 mismatch")
     with tempfile.TemporaryDirectory() as tmp:

@@ -11,6 +11,7 @@ No modelled AGR £ is attached.
 from __future__ import annotations
 
 import csv
+import hashlib
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -282,6 +283,62 @@ def _boundaries_geojson(vintage: int) -> dict[str, Any] | None:
         return None
 
 
+def _metrics_csv_sha8() -> str:
+    """First 8 hex chars of SHA-256 over ``dz_context_metrics.csv`` bytes."""
+    if not METRICS_CSV.is_file():
+        return hashlib.sha256(b"").hexdigest()[:8]
+    return hashlib.sha256(METRICS_CSV.read_bytes()).hexdigest()[:8]
+
+
+def dz_values_lineage(
+    vintage: int,
+    *,
+    codes: list[str],
+    measure: str = "pop_density",
+) -> dict[str, Any]:
+    """Lineage block for Data Zone value payloads (TARGET-ARCH-1 §Lineage)."""
+    if type(vintage) is not int or vintage not in (2011, 2022):
+        raise ValueError(
+            f"DZ: vintage must be 2011 or 2022, got {vintage!r}"
+        )
+    if type(measure) is not str or not measure.strip() or measure not in METRIC_DEFS:
+        raise ValueError(
+            f"DZ: measure must be one of {sorted(METRIC_DEFS)}, got {measure!r}"
+        )
+    if type(codes) is not list:
+        raise ValueError(
+            f"DZ: codes must be a non-empty list of non-empty strings, got {type(codes).__name__}"
+        )
+    if not codes:
+        raise ValueError(
+            "DZ: codes must be a non-empty list of non-empty strings"
+        )
+    cleaned: list[str] = []
+    for code in codes:
+        if type(code) is not str or not code.strip():
+            raise ValueError(
+                f"DZ: codes must be a non-empty list of non-empty strings, got element {code!r}"
+            )
+        cleaned.append(code.strip())
+    ordered = sorted(set(cleaned))
+    unit = f"dz{vintage}"
+    as_of = f"{vintage}-01-01"
+    sha8 = _metrics_csv_sha8()
+    child_set_hash = hashlib.sha256(
+        "\n".join(ordered).encode("utf-8")
+    ).hexdigest()
+    return {
+        "source_layer_ids": [unit],
+        "dataset_version": f"{unit}@{as_of}-{sha8}",
+        "as_of": as_of,
+        "method": "source",
+        "unit": unit,
+        "roll_up_to": ["council", "scotland"],
+        "child_count": len(ordered),
+        "child_set_hash": child_set_hash,
+    }
+
+
 def build_metrics_payload(*, vintage: int = 2011, include_geometry: bool = True) -> dict[str, Any]:
     """Attribute FeatureCollection; geometry only when dz_boundaries is loaded."""
     pg_rows = _rows_from_postgis()
@@ -364,6 +421,18 @@ def build_metrics_payload(*, vintage: int = 2011, include_geometry: bool = True)
                 "hpi_council": {"url": HPI_SOURCE_URL, "licence": LICENCE},
                 "ros_house_prices": {"url": ROS_PRICES_URL, "licence": LICENCE},
             },
+            "lineage": (
+                dz_values_lineage(
+                    vintage,
+                    codes=[
+                        str(f["properties"]["code"])
+                        for f in features
+                        if f.get("properties", {}).get("code")
+                    ],
+                )
+                if features
+                else None
+            ),
         },
     }
 

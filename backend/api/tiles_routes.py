@@ -184,6 +184,7 @@ def tiles_values(
     version: str,
     measure: str,
     request: Request,
+    lineage: bool = False,
 ) -> Response:
     """Immutable per-feature measure values for feature-state joins (ARCH-2b)."""
     if not _LAYER_ID_RE.fullmatch(layer_id):
@@ -223,7 +224,7 @@ def tiles_values(
 
     prop = _MEASURE_PROPERTIES[measure]
     try:
-        from layers.dz_context import build_metrics_payload
+        from layers.dz_context import build_metrics_payload, dz_values_lineage
 
         payload = build_metrics_payload(vintage=2022, include_geometry=False)
         features = payload.get("features") if isinstance(payload, dict) else None
@@ -252,13 +253,22 @@ def tiles_values(
     except (OSError, ValueError, KeyError):
         raise HTTPException(status_code=404, detail="values unavailable") from None
 
-    body = {
+    body: dict[str, Any] = {
         "layer": layer_id,
         "version": version,
         "measure": measure,
         "values": values,
     }
     etag = _values_etag(version, measure)
+    if lineage:
+        as_of, sha8_ver = version.rsplit(".", 1)
+        lin = dz_values_lineage(
+            2022, codes=sorted(values.keys()), measure=measure
+        )
+        lin["dataset_version"] = f"{layer_id}@{as_of}-{sha8_ver}"
+        lin["as_of"] = as_of
+        body["lineage"] = lin
+        etag = f'{_values_etag(version, measure)[:-1]}-lineage"'
     inm = request.headers.get("if-none-match")
     if inm is not None and inm.strip() == etag:
         return Response(

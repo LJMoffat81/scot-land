@@ -202,7 +202,8 @@ run_job "processed-data-manifests" \
   bash -c 'cd "'"$ROOT"'/backend"
     if [[ -x .venv/bin/python ]]; then PY=.venv/bin/python; else PY=python3; fi
     "$PY" -m etl.load_processed --check
-    "$PY" -m etl.refresh_registry --check'
+    "$PY" -m etl.refresh_registry --check
+    "$PY" -m etl.load_unit_hierarchy --check'
 
 # --- both Playwright e2e projects with CI stubs + test:esri-key-build ---
 # CI e2e job: playwright install, then test:esri-key-build (2 projects) + test:e2e:ci (chromium).

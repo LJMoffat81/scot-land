@@ -329,11 +329,6 @@ def _builtup_bbox(
     max_features: int,
 ) -> JSONResponse:
     _scotland_bbox_check(south, west, north, east)
-    if south >= north or west >= east:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid bbox: require south < north and west < east",
-        )
     try:
         return JSONResponse(
             builtup_mask_bbox(kind, south, west, north, east, max_features=max_features)
@@ -683,11 +678,6 @@ def layer_open_community_ownership(
     assets in view.
     """
     _scotland_bbox_check(south, west, north, east)
-    if south >= north or west >= east:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid bbox: require south < north and west < east",
-        )
     try:
         payload = community_ownership_bbox(
             south, west, north, east, max_features=max_features
@@ -836,11 +826,6 @@ def layer_open_lca(
     changes best use only.
     """
     _scotland_bbox_check(south, west, north, east)
-    if south >= north or west >= east:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid bbox: require south < north and west < east",
-        )
     try:
         return JSONResponse(
             lca_bbox(south, west, north, east, max_features=max_features)

@@ -23,14 +23,18 @@ const EXPECTED_CONCURRENCY = `concurrency:
   group: ci-\${{ github.workflow }}-\${{ github.event.pull_request.head.ref || github.ref }}
   cancel-in-progress: \${{ github.ref != 'refs/heads/main' }}`;
 
-test("P1 triggers are push branches [main] plus pull_request", () => {
+test("P1 triggers are push [main], pull_request, weekly schedule, workflow_dispatch", () => {
   const onMatch = ciYml.match(/^on:\n([\s\S]*?)\n\npermissions:/m);
   assert.ok(onMatch, "expected on: block before permissions");
   const onBlock = `on:\n${onMatch[1]}`;
+  // ARCH-6: weekly offline refresh guard (never fetches WFS/upstreams).
   const expected = `on:
   push:
     branches: [main]
-  pull_request:`;
+  pull_request:
+  schedule:
+    - cron: "15 5 * * 1"
+  workflow_dispatch:`;
   assert.equal(
     onBlock,
     expected,

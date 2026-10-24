@@ -44,6 +44,7 @@ def _tracked_files() -> list[Path]:
         BACKEND / "layers" / "registry" / "loader.py",
         BACKEND / "etl" / "extent_sources.py",
         BACKEND / "etl" / "extent_geom.py",
+        BACKEND / "etl" / "refresh_registry.py",
     ]
     for path in extra:
         if path.is_file() and path not in paths:
@@ -355,6 +356,13 @@ _ARCH5C_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+_ARCH6_FRONTEND_ALLOW = frozenset(
+    [
+        # ARCH-6: pin ci.yml weekly schedule + workflow_dispatch triggers
+        "frontend/e2e/ci-meta/ci-dedup-1a.test.mjs",
+    ]
+)
+
 
 def _assert_main_py_only_arch2a_tiles_registration() -> None:
     """HEAD main.py must equal origin/main plus exactly the ARCH-2a tiles line."""
@@ -386,6 +394,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _SRC_B_SETTLEMENTS_FRONTEND_ALLOW
                 | _ARCH5B_FRONTEND_ALLOW
                 | _ARCH5C_FRONTEND_ALLOW
+                | _ARCH6_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue
@@ -447,6 +456,8 @@ def test_p9_no_blanket_except():
         # SRC-A P9 add-only
         BACKEND / "etl" / "extent_sources.py",
         BACKEND / "etl" / "extent_geom.py",
+        # ARCH-6 P9
+        BACKEND / "etl" / "refresh_registry.py",
     ]
     changed = set(_files_changed_vs_main())
     ctx = BACKEND / "spatial" / "context_tiles.py"

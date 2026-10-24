@@ -1,10 +1,14 @@
 name: CI
 
 # pull_request covers PR branches; push only on main so PR pushes do not double-run.
+# Weekly schedule runs the same offline CI (never fetches WFS/upstreams).
 on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "15 5 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -150,6 +154,8 @@ jobs:
              Invoke-Pester -Path scripts/ops/tests/DeployHome.Tests.ps1 -CI -Output Detailed"
       - name: Processed-data manifests (GIS and Data Zones; see docs/processed_data_manifest.md)
         run: python -m etl.load_processed --check
+      - name: Run offline refresh receipt and cron guard
+        run: python -m etl.refresh_registry --check
 
   frontend:
     name: Frontend typecheck and build

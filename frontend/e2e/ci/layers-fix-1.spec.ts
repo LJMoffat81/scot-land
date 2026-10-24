@@ -174,6 +174,14 @@ async function stubOverviewShapes(page: Page) {
       body: polygonInBbox(route.request().url()),
     });
   });
+  // ARCH-5b: access_services (and other LAYERS-ADD fills) fetch at z=5.5
+  await page.route("**/layers/add/viewport/**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: polygonInBbox(route.request().url()),
+    });
+  });
 }
 
 async function renderedCount(page: Page, layerIds: string[]): Promise<number> {

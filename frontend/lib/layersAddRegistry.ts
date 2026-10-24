@@ -52,7 +52,7 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
     label: "Local deprivation by topic, 2020",
     subline: "One topic at a time · context, not land value",
     family: "fill",
-    minzoom: 8,
+    minzoom: 0,
     maxzoom: 20,
     defaultOn: false,
     caption: "Scottish Government · 2020",
@@ -64,7 +64,7 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
     group: "places",
     label: "Area boundaries",
     family: "context",
-    minzoom: 10,
+    minzoom: 0,
     maxzoom: 20,
     defaultOn: false,
     caption: "Scottish Government · 2022",
@@ -76,7 +76,7 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
     group: "places",
     label: "Bus and train stops",
     family: "context",
-    minzoom: 14,
+    minzoom: 0,
     maxzoom: 20,
     defaultOn: false,
     caption: "Department for Transport · {YEAR}",
@@ -89,7 +89,7 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
     group: "places",
     label: "Conservation areas",
     family: "context",
-    minzoom: 8,
+    minzoom: 0,
     maxzoom: 20,
     defaultOn: false,
     caption: "Historic Environment Scotland · {YEAR}",
@@ -101,7 +101,7 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
     group: "places",
     label: "Listed buildings",
     family: "context",
-    minzoom: 14,
+    minzoom: 0,
     maxzoom: 20,
     defaultOn: false,
     caption: "Historic Environment Scotland · {YEAR}",
@@ -113,7 +113,7 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
     group: "land",
     label: "Flood risk (SEPA)",
     family: "fill",
-    minzoom: 8,
+    minzoom: 0,
     maxzoom: 20,
     defaultOn: false,
     caption: "SEPA · {YEAR}",
@@ -125,7 +125,7 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
     group: "places",
     label: "Green belt",
     family: "context",
-    minzoom: 8,
+    minzoom: 0,
     maxzoom: 20,
     defaultOn: false,
     caption: "Improvement Service · {YEAR}",
@@ -140,7 +140,7 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
     group: "places",
     label: "School catchments",
     family: "context",
-    minzoom: 10,
+    minzoom: 0,
     maxzoom: 20,
     defaultOn: false,
     caption: "Improvement Service · council data, years vary",
@@ -153,7 +153,7 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
     group: "land",
     label: "Vacant and derelict land",
     family: "context",
-    minzoom: 10,
+    minzoom: 0,
     maxzoom: 20,
     defaultOn: false,
     caption: "Improvement Service · {YEAR}",
@@ -166,7 +166,7 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
     group: "land",
     label: "Contaminated land",
     family: "context",
-    minzoom: 12,
+    minzoom: 0,
     maxzoom: 20,
     defaultOn: false,
     caption: "Improvement Service · {YEAR}",
@@ -236,4 +236,47 @@ export function spatialHubPresenceFromManifest(
     }
   }
   return present;
+}
+
+export function assertLayersAddEveryZoom(...args: unknown[]): void {
+  const rows = args.length === 0 ? LAYERS_ADD_REGISTRY : args[0];
+  if (!Array.isArray(rows) || rows.length === 0) {
+    throw new Error("EVERY-ZOOM: layersAdd rows must be a non-empty array");
+  }
+  for (const row of rows) {
+    if (typeof row !== "object" || row === null || Array.isArray(row)) {
+      throw new Error("EVERY-ZOOM: layersAdd row must be an object");
+    }
+    const rec = row as Record<string, unknown>;
+    const id = rec.id;
+    if (typeof id !== "string" || id.trim() === "") {
+      throw new Error("EVERY-ZOOM: layersAdd row id must be a non-empty string");
+    }
+    const minzoom = rec.minzoom;
+    if (
+      typeof minzoom !== "number" ||
+      Number.isNaN(minzoom) ||
+      !Number.isInteger(minzoom)
+    ) {
+      throw new Error(
+        `EVERY-ZOOM: layersAdd '${id}': minzoom must be an integer`,
+      );
+    }
+    if (minzoom !== 0) {
+      throw new Error(
+        `EVERY-ZOOM: layersAdd '${id}': minzoom must be 0, got ${minzoom}`,
+      );
+    }
+    const maxzoom = rec.maxzoom;
+    if (
+      typeof maxzoom !== "number" ||
+      Number.isNaN(maxzoom) ||
+      !Number.isInteger(maxzoom) ||
+      maxzoom < 1
+    ) {
+      throw new Error(
+        `EVERY-ZOOM: layersAdd '${id}': maxzoom must be a positive integer`,
+      );
+    }
+  }
 }

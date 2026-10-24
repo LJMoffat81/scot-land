@@ -458,6 +458,8 @@ def test_p9_no_blanket_except():
         BACKEND / "etl" / "extent_geom.py",
         # ARCH-6 P9
         BACKEND / "etl" / "refresh_registry.py",
+        # ARCH-4a P9
+        BACKEND / "etl" / "load_unit_hierarchy.py",
     ]
     changed = set(_files_changed_vs_main())
     ctx = BACKEND / "spatial" / "context_tiles.py"

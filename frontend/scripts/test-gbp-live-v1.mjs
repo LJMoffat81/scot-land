@@ -92,7 +92,10 @@ assert.equal(gbp.formatGbpPerM2(0.12), "\u00a30.120 per m²");
   assert.match(credits, /allowRentGbp/);
   const map = readSrc("components/ScotlandMap.tsx");
   assert.match(map, /fetchGbpLiveSettings/);
-  assert.match(map, /legend-strip/);
+  assert.doesNotMatch(
+    map,
+    /data-testid="legend-strip"|data-testid="map-key-chip"/,
+  );
   const registry = readSrc("lib/mapLayerRegistry.ts");
   assert.match(registry, /Annual Ground Rent/);
 }

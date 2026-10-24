@@ -29,7 +29,12 @@ const VDL_LEGEND_SWATCHES: ReadonlyArray<{ label: string; color: string }> = [
 ];
 
 /** Live Layers panel groups (accordion). */
-export type MapLayerGroupKey = "land" | "resources" | "nature" | "places";
+export type MapLayerGroupKey =
+  | "land"
+  | "tenure"
+  | "resources"
+  | "nature"
+  | "places";
 
 export type MapLayerEvidenceTag = "market" | "proxy" | "shadow";
 
@@ -91,6 +96,7 @@ export type MapLayerRegistryEntry = {
 
 export const MAP_LAYER_GROUP_ORDER: MapLayerGroupKey[] = [
   "land",
+  "tenure",
   "resources",
   "nature",
   "places",
@@ -98,10 +104,47 @@ export const MAP_LAYER_GROUP_ORDER: MapLayerGroupKey[] = [
 
 export const PLACES_AND_BOUNDARIES_LABEL = "Places and boundaries";
 
+export const TENURE_LABEL = "Who holds the land";
+
+/** One-line Georgist note under each Layers group (W-LC-1). */
+export const MAP_LAYER_GROUP_NOTES: Readonly<Record<MapLayerGroupKey, string>> =
+  {
+    land: "Land is worth what its location gives access to: homes, jobs, services and permission to build.",
+    tenure: "Who holds land decides who collects its rent.",
+    resources:
+      "Oil, gas, seabed, wind and water are commons. Their rent belongs to everyone, not only the licence holder.",
+    nature: "Estimates only. Never taxed.",
+    places: "The official lines everything else is measured within.",
+  };
+
+const VALID_GROUPS = new Set<string>(MAP_LAYER_GROUP_ORDER);
+
+export function mapLayerGroupNote(
+  group: unknown,
+  notes: unknown = MAP_LAYER_GROUP_NOTES,
+): string {
+  if (typeof group !== "string" || !group.trim()) {
+    throw new Error("LAYERS-CARD: group must be a non-empty string");
+  }
+  if (!VALID_GROUPS.has(group)) {
+    throw new Error(`LAYERS-CARD: unknown group '${group}'`);
+  }
+  if (notes === null || typeof notes !== "object" || Array.isArray(notes)) {
+    throw new Error("LAYERS-CARD: notes must be an object");
+  }
+  const note = (notes as Record<string, unknown>)[group];
+  if (typeof note !== "string" || !note.trim()) {
+    throw new Error(`LAYERS-CARD: ${group}: note must be a non-empty string`);
+  }
+  return note.trim();
+}
+
 export function mapLayerGroupLabel(group: MapLayerGroupKey): string {
   switch (group) {
     case "land":
       return RENT_GROUP_NAME.land;
+    case "tenure":
+      return TENURE_LABEL;
     case "resources":
       return RENT_GROUP_NAME.resources;
     case "nature":
@@ -332,7 +375,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
   },
   {
     id: "crofting",
-    group: "nature",
+    group: "tenure",
     label: "Crofting / common grazings",
     minzoom: 6,
     maxzoom: 20,
@@ -630,6 +673,11 @@ export function assertRegistryZoomAndGroup(
     }
     if (!entry.group || typeof entry.group !== "string") {
       throw new Error(`layer ${entry.id}: group must be non-empty`);
+    }
+    if (!VALID_GROUPS.has(entry.group)) {
+      throw new Error(
+        `LAYERS-CARD: layer ${entry.id}: unknown group '${entry.group}'`,
+      );
     }
   }
 }

@@ -187,13 +187,16 @@ test.describe("MAP-CARDS legend strip / inline (1280)", () => {
     await page.getByTestId("layer-toggle-access_services").click();
     await page.getByTestId("map-panel-slot-close").click();
 
-    await expect(page.getByTestId("legend-strip")).toBeVisible();
+    await expect(page.getByTestId("legend-strip")).toHaveCount(0);
+    await expect(page.getByTestId("map-key-chip")).toHaveCount(0);
     await page.locator("#place-query").fill("55.86090, -4.25140");
     await page.locator(".hud-search-go").click();
     const card = page.getByTestId("place-card");
     await expect(card).toBeVisible({ timeout: 45_000 });
-    // With place open, strip may hide; floating legend must stay gone
+    // Floating map legend must stay gone (keys live only in Layers)
     await expect(page.getByTestId("map-legend-panel")).toHaveCount(0);
+    await expect(page.getByTestId("legend-strip")).toHaveCount(0);
+    await expect(page.getByTestId("map-key-chip")).toHaveCount(0);
     await expect(card).not.toContainText(/£\d/);
   });
 });

@@ -262,6 +262,46 @@ _ARCH5A_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# LAYERS-CARD-1 ce9beb28 — literal P6 allow-list (§5); unioned with prior sets.
+_LAYERS_CARD_1_FRONTEND_ALLOW = frozenset(
+    [
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/components/MapLayersDrawer.tsx",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/components/ScotlandMap.tsx",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/lib/mapLayerRegistry.ts",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/scripts/test-gbp-live-v1.mjs",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/scripts/test-map-layer-registry.mjs",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/scripts/test-map-legend-wording.mjs",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/e2e/ci/a11y-names-landmarks.spec.ts",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/e2e/ci/arch2b-tiles.spec.ts",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/e2e/ci/frontend-batch-1.spec.ts",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/e2e/ci/frontend-batch-3.spec.ts",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/e2e/ci/frontend-batch-4.spec.ts",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/e2e/ci/layers-card-1.spec.ts",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/e2e/ci/layers-fix-1.spec.ts",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/e2e/ci/layers-nav-1.spec.ts",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/e2e/ci/map-cards-addendum-1.spec.ts",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/e2e/ci/map-cards-redesign-gis.spec.ts",
+        # LAYERS-CARD-1 ce9beb28
+        "frontend/e2e/ci/sw-045-046-legend.spec.ts",
+    ]
+)
+
 
 def _assert_main_py_only_arch2a_tiles_registration() -> None:
     """HEAD main.py must equal origin/main plus exactly the ARCH-2a tiles line."""
@@ -289,6 +329,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _SRC_C_FRONTEND_ALLOW
                 | _SEA_EXTENT_2_FRONTEND_ALLOW
                 | _ARCH5A_FRONTEND_ALLOW
+                | _LAYERS_CARD_1_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

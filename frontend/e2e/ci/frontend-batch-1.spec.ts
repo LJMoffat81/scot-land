@@ -292,6 +292,7 @@ for (const viewport of [
         metricById(DEFAULT_VIEW_METRIC_ID)!,
       );
       expect(expectedTitle).not.toBe("");
+      await openLayers(page);
       await expect(page.getByTestId("map-range-legend-title")).toHaveText(
         expectedTitle,
       );
@@ -303,6 +304,7 @@ for (const viewport of [
       const gate = attachConsoleGate(page);
       await openDefaultMap(page, gate);
       await expect(page.locator("body")).not.toContainText("£");
+      await openLayers(page);
       const title = await page.getByTestId("map-range-legend-title").innerText();
       expect(title).not.toMatch(/£/);
       assertConsoleClean(gate);

@@ -596,7 +596,12 @@ test.describe("ARCH-2b tiles", () => {
         timeout: 30_000,
       })
       .toBeGreaterThan(0);
-    await expect(page.getByText("No value")).toBeVisible({ timeout: 20_000 });
+    await openLayers(page);
+    await expect(
+      page
+        .getByTestId("layer-inline-legend-data_zones")
+        .getByText("No value", { exact: true }),
+    ).toBeVisible({ timeout: 20_000 });
     assertConsoleClean(gate);
   });
 

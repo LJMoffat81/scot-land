@@ -60,7 +60,6 @@ import {
   type CatalogLayer,
 } from "../lib/layerCatalog";
 import type { LedgerToggleState } from "../lib/ledger";
-import MapRangeLegend from "./MapRangeLegend";
 import {
   CHOROPLETH_FILL_OPACITY,
   NODATA_HATCH_OPACITY,
@@ -69,7 +68,6 @@ import {
   type MetricDef,
   type MetricId,
 } from "../lib/mapColourRamps";
-import { popDensityLegendProps } from "../lib/popDensityLegend";
 import {
   parseTileManifest,
   buildTileLayers,
@@ -80,10 +78,6 @@ import {
 } from "../lib/tileLayerFactory";
 import { asOfMapForDrawerLayers } from "../lib/tileAsOf";
 import { SEARCH_HINT_SR } from "../lib/siteNav";
-import {
-  isLegendLayerOff,
-  newlyEnabledLegendLayer,
-} from "../lib/mapActiveLegend";
 import { isEsriBasemapKeyConfigured } from "../lib/esriBasemapKey.mjs";
 import {
   NO_DATA_HATCH_IMAGE,
@@ -105,11 +99,7 @@ import {
   type MapBasemapId,
 } from "../lib/mapBasemap";
 import { councilOverlayBeforeId } from "../lib/mapLayerOrder";
-import {
-  getMapLayer,
-  defaultOnLayerIds,
-  manifestLegendsForDrawerLayer,
-} from "../lib/mapLayerRegistry";
+import { defaultOnLayerIds } from "../lib/mapLayerRegistry";
 import {
   isScotlandViewCenter,
   pushMapUrl,
@@ -562,18 +552,6 @@ function activeRegistryLayerIds(opts: {
   return ids;
 }
 
-/** Non-default visitor layers (legend strip when Layers closed). */
-function legendStripLayerId(
-  enabled: Record<string, boolean>,
-): string | null {
-  const defaults = new Set(defaultOnLayerIds());
-  const preferred = ["1", "vdl", "hla", "3", "4", "9", "8", "designations", "flood", "crofting", "data_zones", "access_services"];
-  for (const id of preferred) {
-    if (enabled[id] && !defaults.has(id)) return id;
-  }
-  return null;
-}
-
 const PANEL_DESKTOP_WIDTH = 380;
 const PANEL_DESKTOP_GAP = 12;
 const PANEL_MOBILE_BREAKPOINT = 900;
@@ -793,40 +771,6 @@ export default function ScotlandMap() {
     if (tileUnavailableIds.has("hla") && sanitized.hla) sanitized.hla = false;
     if (tileUnavailableIds.has("3") && sanitized["3"]) sanitized["3"] = false;
 
-    const prevEnabled: Record<string, boolean> = {
-      ...ledgerEnabled,
-      councils: showCouncils,
-      data_zones: showDataZones,
-      vdl: showVdl,
-      hla: showHla,
-      [GRID3_LAYER_ID]: showGrid3,
-    };
-    const nextEnabled: Record<string, boolean> = {
-      ...sanitized,
-      councils:
-        "councils" in sanitized
-          ? Boolean(sanitized.councils)
-          : showCouncils,
-      data_zones:
-        "data_zones" in sanitized
-          ? Boolean(sanitized.data_zones)
-          : showDataZones,
-      vdl: "vdl" in sanitized ? Boolean(sanitized.vdl) : showVdl,
-      hla: "hla" in sanitized ? Boolean(sanitized.hla) : showHla,
-      [GRID3_LAYER_ID]:
-        GRID3_LAYER_ID in sanitized
-          ? Boolean(sanitized[GRID3_LAYER_ID])
-          : showGrid3,
-    };
-    const activated = newlyEnabledLegendLayer(prevEnabled, nextEnabled);
-    if (activated) {
-      setLegendPreferredId(activated);
-    } else if (
-      legendPreferredId &&
-      isLegendLayerOff(legendPreferredId, nextEnabled)
-    ) {
-      setLegendPreferredId(null);
-    }
     setLedgerEnabled(sanitized);
     if ("councils" in sanitized) {
       setShowCouncils(Boolean(sanitized.councils));
@@ -946,12 +890,6 @@ export default function ScotlandMap() {
    * A deep-link place boot that lands afterwards must not take the sheet.
    */
   const narrowLayersOpenRef = useRef(false);
-  /**
-   * Most recently activated legend-capable layer (drawer id) for strip chip.
-   */
-  const [legendPreferredId, setLegendPreferredId] = useState<string | null>(
-    null,
-  );
   const [catalogLayers, setCatalogLayers] = useState<CatalogLayer[]>([]);
   /** Built-up mask tiles/geo returned service-unavailable. */
   const [builtupMaskUnavailable, setBuiltupMaskUnavailable] = useState(false);
@@ -962,10 +900,6 @@ export default function ScotlandMap() {
   const [builtupMaskCatalogGap, setBuiltupMaskCatalogGap] = useState(false);
   const [searchNoMatch, setSearchNoMatch] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
-  /** Map key chip: expanded by default at ≥1280, collapsed at 390 (SW-085). */
-  const [mapKeyExpanded, setMapKeyExpanded] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth >= 1280 : true,
-  );
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [liveMessage, setLiveMessage] = useState("");
   const panelHistoryRef = useRef(false);
@@ -1038,15 +972,6 @@ export default function ScotlandMap() {
     };
   }
 
-  const registryEnabled: Record<string, boolean> = {
-    ...ledgerEnabled,
-    "1": showAgr,
-    councils: showCouncils,
-    data_zones: showDataZones,
-    vdl: showVdl,
-    hla: showHla,
-    [GRID3_LAYER_ID]: showGrid3,
-  };
   const activeLayerIds = activeRegistryLayerIds({
     showCouncils,
     showDataZones,
@@ -1060,31 +985,6 @@ export default function ScotlandMap() {
     ledgerEnabled,
     contextOn,
   });
-  // Prefer a non-default visitor layer for the closed-panel strip (MAP-CARDS §3.5).
-  // Fall back to legendPreferredId only when it is itself non-default and on.
-  const stripLayerId = (() => {
-    const fromActive = legendStripLayerId(registryEnabled);
-    if (fromActive) return fromActive;
-    const defaults = new Set(defaultOnLayerIds());
-    if (
-      legendPreferredId &&
-      registryEnabled[legendPreferredId] &&
-      !defaults.has(legendPreferredId)
-    ) {
-      return legendPreferredId;
-    }
-    return null;
-  })();
-  const stripLayer = stripLayerId ? getMapLayer(stripLayerId) : undefined;
-  // Prefer ARCH-2b / ARCH-5a manifest legend colours when available.
-  const stripLegendClasses = (() => {
-    if (!stripLayer || !stripLayerId) return undefined;
-    return (
-      manifestLegendsForDrawerLayer(stripLayerId, tileLegends) ??
-      stripLayer.classes
-    );
-  })();
-
   const gbpLiveBootstrapped = useRef(false);
   useEffect(() => {
     let cancelled = false;
@@ -1167,7 +1067,6 @@ export default function ScotlandMap() {
         setLedgerEnabled((cur) =>
           cur["1"] ? cur : { ...cur, "1": true },
         );
-        setLegendPreferredId((prev) => prev ?? "1");
       }
     });
     return () => {
@@ -5530,71 +5429,6 @@ export default function ScotlandMap() {
           </button>
         </div>
       )}
-
-      {panelKind === "closed" && !layersOpen && stripLayer ? (
-        <button
-          type="button"
-          className="legend-strip"
-          data-testid="legend-strip"
-          aria-label={`Legend: ${stripLayer.label}`}
-          onClick={() => openLayersPanel()}
-        >
-          <span className="legend-strip-name">{stripLayer.label}</span>
-          <span className="legend-strip-ramp" aria-hidden="true">
-            {(stripLegendClasses ?? stripLayer.classes).slice(0, 5).map((c, i) => (
-              <span
-                key={`${c.color}-${i}`}
-                className="legend-strip-swatch"
-                style={{ background: c.color }}
-              />
-            ))}
-          </span>
-          {/* ARCH-2b: manifest "No value" is the 6th class (beyond strip swatches). */}
-          {(stripLegendClasses ?? stripLayer.classes).some(
-            (c) => c.label === "No value",
-          ) ? (
-            <span className="legend-strip-novalue">No value</span>
-          ) : null}
-          <span className="legend-strip-chevron" aria-hidden="true">
-            ▸
-          </span>
-        </button>
-      ) : null}
-
-      {showCouncils &&
-      !showAgr &&
-      contextDataLoaded &&
-      mapZoom >= 5 &&
-      mapZoom < 8
-        ? (() => {
-            const legend = popDensityLegendProps();
-            // Always mount MapRangeLegend so band/alpha tests and the expanded
-            // key share one tree; collapsed CSS shows title + five swatches only.
-            return (
-              <button
-                type="button"
-                className={
-                  mapKeyExpanded
-                    ? "map-key-chip map-key-chip--expanded"
-                    : "map-key-chip map-key-chip--collapsed"
-                }
-                data-testid="map-key-chip"
-                aria-expanded={mapKeyExpanded}
-                aria-label={legend.title}
-                onClick={() => setMapKeyExpanded((v) => !v)}
-              >
-                <MapRangeLegend
-                  title={legend.title}
-                  ranges={legend.ranges}
-                  showNoData={legend.showNoData}
-                  mode={legend.mode}
-                  layerId={legend.layerId}
-                  source={legend.source}
-                />
-              </button>
-            );
-          })()
-        : null}
 
       <MapCreditLine
         esriAttribution={mapStyle === "aerial" ? esriAttribution : null}

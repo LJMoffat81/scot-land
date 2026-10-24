@@ -24,8 +24,9 @@ const drawerSource = readFileSync(
 );
 
 assert.ok(
-  mapSource.includes('data-testid="legend-strip"'),
-  "ScotlandMap must expose the legend strip chip",
+  !mapSource.includes('data-testid="legend-strip"') &&
+    !mapSource.includes('data-testid="map-key-chip"'),
+  "ScotlandMap must not expose floating legend-strip or map-key-chip",
 );
 assert.doesNotMatch(
   mapSource,

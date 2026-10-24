@@ -56,7 +56,6 @@ _MERC_EXTENT = 20037508.342789244
 
 _ALLOWED_HOSTS = frozenset(
     {
-        "msmap1.atkinsgeospatial.com",
         "maps.gov.scot",
         "ogc.nature.scot",
         "services-eu1.arcgis.com",
@@ -143,46 +142,8 @@ class FeatureSpec:
 
 
 RASTER: dict[str, RasterSpec] = {
-    "sea-12nm": RasterSpec(
-        "sea-12nm",
-        "wms",
-        "https://msmap1.atkinsgeospatial.com/geoserver/nmp/wms",
-        "nmp:New_12_Nautical_Mile_Limit",
-        3,
-        18,
-    ),
-    "marine-regions": RasterSpec(
-        "marine-regions",
-        "wms",
-        "https://msmap1.atkinsgeospatial.com/geoserver/nmp/wms",
-        "nmp:Scottish_Marine_Regions",
-        3,
-        18,
-    ),
-    "scottish-zone": RasterSpec(
-        "scottish-zone",
-        "wms",
-        "https://msmap1.atkinsgeospatial.com/geoserver/nmp/wms",
-        "nmp:EEZ",
-        3,
-        18,
-    ),
-    "harbours": RasterSpec(
-        "harbours",
-        "wms",
-        "https://msmap1.atkinsgeospatial.com/geoserver/nmp/wms",
-        "nmp:port_limits",
-        7,
-        18,
-    ),
-    "wind-plan": RasterSpec(
-        "wind-plan",
-        "wms",
-        "https://msmap1.atkinsgeospatial.com/geoserver/nmp/wms",
-        "nmp:smp_offshore_wind_energy_plan_options_2020",
-        4,
-        18,
-    ),
+    # ARCH-4b: sea-12nm, marine-regions, scottish-zone, harbours, wind-plan
+    # (Atkins GeoServer NMPi re-host) are parked in backend/layers/parked_sources.yaml.
     "woodland": RasterSpec(
         "woodland",
         "wms",

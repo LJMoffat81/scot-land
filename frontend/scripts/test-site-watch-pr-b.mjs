@@ -26,12 +26,12 @@ function read(path) {
   return readFileSync(path, "utf8");
 }
 
-// --- 1. Map attribution + legend say Data Zone boundaries 2022 ---
+// --- 1. Map attribution + legend (SRC-C W-1 OS credit on tile-dz2022) ---
 const mapSrc = read(join(frontendRoot, "components/ScotlandMap.tsx"));
 assert.match(
   mapSrc,
-  /Data Zone boundaries 2022/,
-  "map attribution must say Data Zone boundaries 2022",
+  /Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right 2026\. Outlines only — not a rent\./,
+  "map attribution must use SRC-C W-1 data-zone credit",
 );
 assert.doesNotMatch(
   mapSrc,
@@ -116,13 +116,16 @@ if (existsSync(nextDir)) {
         `built HTML must not contain ${phrase}`,
       );
     }
-    // Prefer 2022 wording somewhere in the built app when map chunks are present.
+    // Prefer W-1 OS credit in built map chunks when present (SRC-C).
     const mapChunk = walk(join(nextDir, "static")).filter((p) =>
       /ScotlandMap|page-/.test(p),
     );
     const mapBlob = mapChunk.map((p) => read(p)).join("\n");
-    if (mapBlob.includes("Data Zone boundaries")) {
-      assert.match(mapBlob, /Data Zone boundaries 2022/);
+    if (mapBlob.includes("DATA_ZONE_BOUNDARIES_2022_CREDIT") || mapBlob.includes("Outlines only")) {
+      assert.match(
+        mapBlob,
+        /Ordnance Survey data © Crown copyright and database right 2026/,
+      );
     }
   }
 }

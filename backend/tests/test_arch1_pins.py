@@ -215,7 +215,7 @@ _SRC_B_FRONTEND_ALLOW = frozenset(
     ]
 )
 
-# SRC-C 63ab45e1 — literal P6 allow-list (§6); unioned with prior sets.
+# SRC-C 63ab45e1 — literal P6 allow-list (§6 + W-1 site-watch pin bookkeeping).
 _SRC_C_FRONTEND_ALLOW = frozenset(
     [
         # SRC-C 63ab45e1
@@ -226,6 +226,8 @@ _SRC_C_FRONTEND_ALLOW = frozenset(
         "frontend/components/MapLayersDrawer.tsx",
         # SRC-C 63ab45e1
         "frontend/e2e/ci/src-c.spec.ts",
+        # SRC-C bookkeeping: retarget site-watch pin to locked W-1 credit
+        "frontend/scripts/test-site-watch-pr-b.mjs",
     ]
 )
 

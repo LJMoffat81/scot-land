@@ -215,16 +215,16 @@ _SRC_B_FRONTEND_ALLOW = frozenset(
     ]
 )
 
-# SRC-C 0219d6d5 — literal P6 allow-list (§6); unioned with prior sets.
+# SRC-C 63ab45e1 — literal P6 allow-list (§6); unioned with prior sets.
 _SRC_C_FRONTEND_ALLOW = frozenset(
     [
-        # SRC-C 0219d6d5
+        # SRC-C 63ab45e1
         "frontend/lib/mapLayerRegistry.ts",
-        # SRC-C 0219d6d5
+        # SRC-C 63ab45e1
         "frontend/lib/tileAsOf.ts",
-        # SRC-C 0219d6d5
+        # SRC-C 63ab45e1
         "frontend/components/MapLayersDrawer.tsx",
-        # SRC-C 0219d6d5
+        # SRC-C 63ab45e1
         "frontend/e2e/ci/src-c.spec.ts",
     ]
 )

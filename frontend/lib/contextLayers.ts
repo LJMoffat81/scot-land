@@ -13,8 +13,12 @@ export type ContextLayer = {
   opacity?: number;
 };
 
+/** Permanent land-and-waters outline (SEA-EXTENT-2); not a Layers-drawer row. */
+export const TILE_BASE_OUTLINE_ID = "scotland-extent";
+
 /** ARCH-2b: served as native vector tiles, not GeoJSON context fetches. */
 export const TILE_LAYER_IDS_ORDERED = [
+  TILE_BASE_OUTLINE_ID,
   "dz2022",
   "oil-fields",
   "platforms",

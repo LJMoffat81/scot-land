@@ -490,6 +490,16 @@ def test_b21_cli_subprocess(conn, tiles_env, monkeypatch, tmp_path):
             "feats": line_features(),
             "keep": ["PIPE_NAME", "FLUID", "DESCRIPTIO"],
         },
+        "scotland-extent": {
+            "feats": [
+                {
+                    "id": "scotland",
+                    "properties": {},
+                    "geometry": square(2000, 2000, 800),
+                }
+            ],
+            "keep": [],
+        },
     }
     for layer_id, spec in specs.items():
         seed_layer_table(
@@ -533,7 +543,8 @@ def test_b21_cli_subprocess(conn, tiles_env, monkeypatch, tmp_path):
         "oil-fields",
         "pipelines",
         "platforms",
+        "scotland-extent",
     ]
     # build_all returns sorted ids; rebuild via import to assert order
     ids = build_all(conn=conn, storage_path=tiles_env["storage"])
-    assert ids == ["dz2022", "oil-fields", "pipelines", "platforms"]
+    assert ids == ["dz2022", "oil-fields", "pipelines", "platforms", "scotland-extent"]

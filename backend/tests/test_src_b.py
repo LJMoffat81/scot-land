@@ -650,10 +650,8 @@ def test_n3_mutation_expected_counts_removed_fails(
     # or the load proceeds; either way N3's exact message must not fire.
     try:
         run_layer("settlements-2022", from_file=path, conn=tiny_extent)
-    except IngestError as exc:
+    except (IngestError, CheckError) as exc:
         assert "expected 503 features, got 502" not in str(exc)
-    except Exception:
-        pass
 
 
 def test_n5_ingest_builtup_mask_deprecated():
@@ -742,7 +740,9 @@ def test_n10_endpoint_reads_settlements_not_old_mask(
         "layers.builtup_mask._live_table",
         lambda: "public.map_builtup_mask",
     )
-    with pytest.raises(Exception):
+    from layers.builtup_mask import LayerUnavailable
+
+    with pytest.raises(LayerUnavailable, match=r"^Built-up mask query failed:"):
         query_bbox(
             "builtup_mask",
             49.7,
@@ -810,3 +810,65 @@ def test_n12_settlements_nests_mismatch(tmp_path):
         ),
     ):
         assert_registry_matches_report(registry_dir=reg, report_path=REPORT_PATH)
+
+
+def test_r28_f1_scotland_extent_has_tiles_budget():
+    """r28 Finding 1: scotland-extent must carry tiles.budget for PMTiles build."""
+    entries = load_registry(REGISTRY_DIR)
+    entry = entries["scotland-extent"]
+    raw = entry.raw
+    assert raw.get("clip_keep_all") is True
+    assert raw.get("keep_fields") == []
+    tiles = raw.get("tiles")
+    assert isinstance(tiles, dict)
+    budget = tiles.get("budget")
+    assert budget == {"total_mb": 15, "tile_kb": 500, "z0_7_mb": 2}
+
+
+def test_r28_f3_scotland_bbox_check_mobile_overlap_and_refusals():
+    """r28 Finding 3: envelope intersection, not midpoint; invalid types refuse."""
+    import math
+
+    from fastapi import HTTPException
+
+    from api.platform_routes import _scotland_bbox_check
+
+    # Mobile default-zoom bbox (390x844) — midpoint lat 53.82 is south of 54.5,
+    # but the envelope intersects Scotland, so it must pass.
+    _scotland_bbox_check(48.694975, -8.257182, 58.951058, -0.170933)
+
+    # Valid tight Scotland bbox
+    _scotland_bbox_check(55.0, -5.0, 56.0, -3.0)
+
+    outside_cases = [
+        (48.0, -5.0, 54.4, -3.0),  # entirely south
+        (61.1, -5.0, 63.0, -3.0),  # entirely north
+        (55.0, -12.0, 56.0, -8.6),  # entirely west
+        (55.0, -0.4, 56.0, 2.0),  # entirely east
+    ]
+    for south, west, north, east in outside_cases:
+        with pytest.raises(HTTPException) as exc:
+            _scotland_bbox_check(south, west, north, east)
+        assert exc.value.status_code == 400
+        assert exc.value.detail == "Coordinates appear to be outside Scotland."
+
+    invalid_pairs = [
+        (56.0, -5.0, 55.0, -3.0),  # south >= north
+        (55.0, -3.0, 56.0, -5.0),  # west >= east
+    ]
+    for south, west, north, east in invalid_pairs:
+        with pytest.raises(HTTPException) as exc:
+            _scotland_bbox_check(south, west, north, east)
+        assert exc.value.status_code == 400
+        assert exc.value.detail == "Invalid bbox: require south < north and west < east"
+
+    bad_values = [True, False, None, "55", math.nan, math.inf, -math.inf]
+    for bad in bad_values:
+        with pytest.raises(HTTPException) as exc:
+            _scotland_bbox_check(bad, -5.0, 56.0, -3.0)  # type: ignore[arg-type]
+        assert exc.value.status_code == 400
+        assert exc.value.detail == "Invalid bbox: require south < north and west < east"
+        with pytest.raises(HTTPException) as exc:
+            _scotland_bbox_check(55.0, bad, 56.0, -3.0)  # type: ignore[arg-type]
+        assert exc.value.status_code == 400
+        assert exc.value.detail == "Invalid bbox: require south < north and west < east"

@@ -255,7 +255,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     id: "access_services",
     group: "land",
     label: "Why it's valuable: access to services (2020 data)",
-    minzoom: 8,
+    minzoom: 0,
     maxzoom: 20,
     sourceCaption: "Scottish Government · 2020",
     classes: cividisLegendClasses(),
@@ -267,7 +267,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     id: "flood",
     group: "land",
     label: "Flood risk (SEPA)",
-    minzoom: 8,
+    minzoom: 0,
     maxzoom: 20,
     sourceCaption: FLOOD_EXTENT_CREDIT,
     classes: FLOOD_RISK_CLASSES,
@@ -307,7 +307,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     id: "contaminated_land",
     group: "land",
     label: "Contaminated land",
-    minzoom: 12,
+    minzoom: 0,
     maxzoom: 20,
     sourceCaption: "Improvement Service · contaminated land",
     classes: [{ label: "Land on a council's contaminated land register", color: "#4d4d4d" }],
@@ -410,7 +410,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     id: "deprivation",
     group: "places",
     label: "Local deprivation by topic, 2020",
-    minzoom: 8,
+    minzoom: 0,
     maxzoom: 20,
     sourceCaption: "Scottish Government · 2020",
     classes: DEPRIVATION_CLASSES,
@@ -421,7 +421,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     id: "conservation",
     group: "places",
     label: "Conservation areas",
-    minzoom: 8,
+    minzoom: 0,
     maxzoom: 20,
     sourceCaption: "Historic Environment Scotland · open data",
     classes: [{ label: "Protected for their character", color: "#8a3b8f" }],
@@ -432,7 +432,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     id: "listed",
     group: "places",
     label: "Listed buildings",
-    minzoom: 14,
+    minzoom: 0,
     maxzoom: 20,
     sourceCaption: "Historic Environment Scotland · open data",
     classes: LISTED_CLASSES,
@@ -443,7 +443,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     id: "stops",
     group: "places",
     label: "Bus and train stops",
-    minzoom: 14,
+    minzoom: 0,
     maxzoom: 20,
     sourceCaption: "Department for Transport · open data",
     classes: STOP_CLASSES,
@@ -454,7 +454,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     id: "green_belt",
     group: "places",
     label: "Green belt",
-    minzoom: 8,
+    minzoom: 0,
     maxzoom: 20,
     sourceCaption: "Improvement Service · green belt",
     classes: [{ label: "Land kept open around towns", color: "#2e7d32" }],
@@ -464,7 +464,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     id: "school_catchments",
     group: "places",
     label: "School catchments",
-    minzoom: 10,
+    minzoom: 0,
     maxzoom: 20,
     sourceCaption: "Improvement Service · council data, years vary",
     classes: [{ label: "Area a school serves", color: "#5b6b7a" }],
@@ -706,4 +706,49 @@ export function checkEstimateChips(
     }
   }
   return errors;
+}
+
+const LAYERS_ADD_EVERY_ZOOM_IDS = new Set([
+  "access_services",
+  "flood",
+  "contaminated_land",
+  "deprivation",
+  "conservation",
+  "listed",
+  "stops",
+  "green_belt",
+  "school_catchments",
+]);
+
+export function assertMapRegistryEveryZoom(...args: unknown[]): void {
+  const entries = args.length === 0 ? MAP_LAYER_REGISTRY : args[0];
+  if (!Array.isArray(entries) || entries.length === 0) {
+    throw new Error("EVERY-ZOOM: registry entries must be a non-empty array");
+  }
+  for (const entry of entries) {
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+      throw new Error("EVERY-ZOOM: registry entry must be an object");
+    }
+    const rec = entry as Record<string, unknown>;
+    const id = rec.id;
+    if (typeof id !== "string" || id.trim() === "") {
+      throw new Error("EVERY-ZOOM: registry entry id must be a non-empty string");
+    }
+    const minzoom = rec.minzoom;
+    if (
+      typeof minzoom !== "number" ||
+      Number.isNaN(minzoom) ||
+      !Number.isInteger(minzoom) ||
+      minzoom < 0
+    ) {
+      throw new Error(
+        `EVERY-ZOOM: registry '${id}': minzoom must be a non-negative integer`,
+      );
+    }
+    if (LAYERS_ADD_EVERY_ZOOM_IDS.has(id) && minzoom !== 0) {
+      throw new Error(
+        `EVERY-ZOOM: registry '${id}': minzoom must be 0, got ${minzoom}`,
+      );
+    }
+  }
 }

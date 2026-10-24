@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse, Response
 
@@ -78,6 +80,26 @@ def _scotland_bounds_check(lat: float, lng: float) -> None:
     if lat < 54.5 or lat > 61.0 or lng < -8.5 or lng > -0.5:
         raise HTTPException(status_code=400, detail="Coordinates appear to be outside Scotland.")
 
+def _scotland_bbox_check(south: float, west: float, north: float, east: float) -> None:
+    for v in (south, west, north, east):
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(float(v)):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid bbox: require south < north and west < east",
+            )
+    if south >= north or west >= east:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid bbox: require south < north and west < east",
+        )
+    if north < 54.5 or south > 61.0 or east < -8.5 or west > -0.5:
+        raise HTTPException(
+            status_code=400,
+            detail="Coordinates appear to be outside Scotland.",
+        )
+
+
+
 
 @router.get("/layers/open/vdl")
 def layer_open_vdl(
@@ -94,7 +116,7 @@ def layer_open_vdl(
     FeatureServer is unavailable — never invents sites. An empty
     data_zones list with meta.ok=true means no zoned sites in view.
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     payload = public_vdl_response(
         vdl_bbox(south, west, north, east, max_features=max_features)
     )
@@ -152,7 +174,7 @@ def layer_open_public_land(
     holdings. An empty FeatureCollection with meta.ok=true means no holdings
     in view (coverage gaps stay visible, not guessed).
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     payload = public_land_bbox(south, west, north, east, max_features=max_features)
     meta = payload.get("meta") or {}
     if meta.get("ok") is False:
@@ -218,7 +240,7 @@ def layer_open_repd_onshore_wind(
     **503** when unloaded. Empty FeatureCollection with meta.ok=true means no
     sites in view.
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     payload = repd_onshore_wind_bbox(
         south, west, north, east, max_features=max_features
     )
@@ -251,7 +273,7 @@ def layer_open_ces_aquaculture(
     Served from PostGIS after `python -m etl.ingest_ces_aquaculture`.
     **503** when unloaded.
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     payload = ces_aquaculture_bbox(
         south, west, north, east, max_features=max_features
     )
@@ -283,7 +305,7 @@ def layer_open_data_zones(
     when the upstream SG StatisticalUnits service is unavailable. An empty
     FeatureCollection with meta.ok=true means no zones in view.
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     payload = data_zones_bbox(south, west, north, east, max_features=max_features)
     meta = payload.get("meta") or {}
     if meta.get("ok") is False:
@@ -306,7 +328,7 @@ def _builtup_bbox(
     east: float,
     max_features: int,
 ) -> JSONResponse:
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     if south >= north or west >= east:
         raise HTTPException(
             status_code=400,
@@ -399,7 +421,7 @@ def layer_open_hla(
     """
     if not layer_hls_enabled():
         raise HTTPException(status_code=404, detail="Not Found")
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     payload = hla_bbox(south, west, north, east, max_features=max_features)
     meta = payload.get("meta") or {}
     if meta.get("ok") is False:
@@ -428,7 +450,7 @@ def layer_open_flood(
     """
     if not layer_sepa_flood_extent_enabled():
         raise HTTPException(status_code=404, detail="Not Found")
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     payload = flood_bbox(south, west, north, east, max_features=max_features)
     meta = payload.get("meta") or {}
     if meta.get("ok") is False:
@@ -480,7 +502,7 @@ def layer_open_flood_dz(
             detail="kind must be river, coastal, or surface",
         )
     west, south, east, north = _parse_flood_dz_bbox(bbox)
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     payload = flood_dz_bbox(west, south, east, north, kind=kind_norm)
     meta = payload.get("meta") or {}
     if meta.get("ok") is False:
@@ -501,7 +523,7 @@ def layer_open_hydro(
     Resource site inventory only — **no money figures**. Served from PostGIS
     after `python -m etl.ingest_hydro_sites`. **503** when unloaded.
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     payload = hydro_bbox(south, west, north, east, max_features=max_features)
     meta = payload.get("meta") or {}
     if meta.get("ok") is False:
@@ -530,7 +552,7 @@ def layer_open_sepa_car(
     `python -m etl.ingest_sepa_car`. This route serves **PostGIS only —
     never proxies MapServer**. **No money figures**. **503** until loaded.
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     payload = sepa_car_bbox(south, west, north, east, max_features=max_features)
     meta = payload.get("meta") or {}
     if meta.get("ok") is False:
@@ -564,7 +586,7 @@ def layer_open_ldp(
     """
     if not layer_ldp_enabled():
         raise HTTPException(status_code=404, detail="Not Found")
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     payload = ldp_bbox(south, west, north, east, max_features=max_features)
     meta = payload.get("meta") or {}
     if meta.get("ok") is False:
@@ -595,7 +617,7 @@ def layer_open_sssi(
     body has no features and ``meta.hidden_below_zoom`` is set. A repeat view
     at z6, z7, or z8 is served from memory.
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     try:
         payload = sssi_bbox(
             south, west, north, east, max_features=max_features, zoom=z
@@ -621,7 +643,7 @@ def layer_open_naturescot_designations(
     body has no features and ``meta.hidden_below_zoom`` is set. A repeat view
     at z6, z7, or z8 is served from memory.
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     try:
         payload = naturescot_designations_bbox(
             south, west, north, east, max_features=max_features, zoom=z
@@ -660,7 +682,7 @@ def layer_open_community_ownership(
     invents holdings. An empty FeatureCollection with meta.ok=true means no
     assets in view.
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     if south >= north or west >= east:
         raise HTTPException(
             status_code=400,
@@ -689,7 +711,7 @@ def layer_open_nfi(
     woodland. An empty FeatureCollection with meta.ok=true means no polygons
     in view. Annual Ground Rent breakdown row 1 land-use overlay — no rent.
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     try:
         payload = query_nfi_bbox(south, west, north, east, max_features=max_features)
     except WoodlandUnavailable as exc:
@@ -718,7 +740,7 @@ def layer_open_native_woodland(
     survey polygons. An empty FeatureCollection with meta.ok=true means none
     in view. Annual Ground Rent breakdown row 1 land-use overlay — no rent.
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     try:
         payload = query_native_woodland_bbox(
             south, west, north, east, max_features=max_features
@@ -749,7 +771,7 @@ def layer_open_repd(
     table is missing or empty — never invents sites. Empty FeatureCollection
     with meta.ok=true means no sites in view. Annual Ground Rent breakdown row 3 — no money figures.
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     payload = repd_bbox(south, west, north, east, max_features=max_features)
     meta = payload.get("meta") or {}
     if meta.get("ok") is False:
@@ -778,7 +800,7 @@ def layer_open_crown_estate_leases(
     Offshore wind / wave / tidal / CCS only. **503** when missing/empty —
     never invents leases. Annual Ground Rent breakdown row 4 — no money figures.
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     payload = crown_estate_leases_bbox(
         south, west, north, east, max_features=max_features
     )
@@ -813,7 +835,7 @@ def layer_open_lca(
     meta.ok=true means no polygons in view. Constraint: changes best use, adds no value —
     changes best use only.
     """
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     if south >= north or west >= east:
         raise HTTPException(
             status_code=400,
@@ -912,7 +934,7 @@ def layers_add_viewport(
         raise HTTPException(status_code=404, detail="Not Found")
     if layer_id not in VIEWPORT_PAINT_LAYER_IDS:
         raise HTTPException(status_code=404, detail="Not Found")
-    _scotland_bounds_check((south + north) / 2.0, (west + east) / 2.0)
+    _scotland_bbox_check(south, west, north, east)
     return JSONResponse({"type": "FeatureCollection", "features": []})
 
 

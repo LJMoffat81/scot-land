@@ -61,7 +61,7 @@ export const LAYERS_ADD_PAINT: readonly LayersAddPaintSpec[] = [
     catalogLayerId: "access_services",
     kind: "fill",
     color: "#3b528b",
-    minzoom: 8,
+    minzoom: 0,
     attribution: LAYERS_ADD_CREDITS["C-SG"],
   },
   {
@@ -69,7 +69,7 @@ export const LAYERS_ADD_PAINT: readonly LayersAddPaintSpec[] = [
     catalogLayerId: catalogId("flood"),
     kind: "fill",
     color: "#2b6cb0",
-    minzoom: 8,
+    minzoom: 0,
     attribution: LAYERS_ADD_CREDITS["C-SEPA"],
   },
   {
@@ -77,7 +77,7 @@ export const LAYERS_ADD_PAINT: readonly LayersAddPaintSpec[] = [
     catalogLayerId: catalogId("contaminated_land"),
     kind: "fill",
     color: "#4d4d4d",
-    minzoom: 12,
+    minzoom: 0,
     attribution: LAYERS_ADD_CREDITS["C-CL"],
   },
   {
@@ -85,7 +85,7 @@ export const LAYERS_ADD_PAINT: readonly LayersAddPaintSpec[] = [
     catalogLayerId: catalogId("deprivation"),
     kind: "fill",
     color: "#6b4c9a",
-    minzoom: 8,
+    minzoom: 0,
     attribution: LAYERS_ADD_CREDITS["C-SG"],
   },
   {
@@ -93,7 +93,7 @@ export const LAYERS_ADD_PAINT: readonly LayersAddPaintSpec[] = [
     catalogLayerId: catalogId("conservation"),
     kind: "fill",
     color: "#8a3b8f",
-    minzoom: 8,
+    minzoom: 0,
     attribution: LAYERS_ADD_CREDITS["C-HES"],
   },
   {
@@ -101,7 +101,7 @@ export const LAYERS_ADD_PAINT: readonly LayersAddPaintSpec[] = [
     catalogLayerId: catalogId("listed"),
     kind: "circle",
     color: "#6b2d5b",
-    minzoom: 14,
+    minzoom: 0,
     attribution: LAYERS_ADD_CREDITS["C-HES"],
   },
   {
@@ -109,7 +109,7 @@ export const LAYERS_ADD_PAINT: readonly LayersAddPaintSpec[] = [
     catalogLayerId: catalogId("stops"),
     kind: "circle",
     color: "#1f4e79",
-    minzoom: 14,
+    minzoom: 0,
     attribution: LAYERS_ADD_CREDITS["C-OGL"],
   },
   {
@@ -117,7 +117,7 @@ export const LAYERS_ADD_PAINT: readonly LayersAddPaintSpec[] = [
     catalogLayerId: catalogId("green_belt"),
     kind: "fill",
     color: "#2e7d32",
-    minzoom: 8,
+    minzoom: 0,
     attribution: LAYERS_ADD_CREDITS["C-GB"],
   },
   {
@@ -125,7 +125,7 @@ export const LAYERS_ADD_PAINT: readonly LayersAddPaintSpec[] = [
     catalogLayerId: catalogId("school_catchments"),
     kind: "fill",
     color: "#5b6b7a",
-    minzoom: 10,
+    minzoom: 0,
     attribution: LAYERS_ADD_CREDITS["C-SC"],
   },
 ];
@@ -267,4 +267,40 @@ export async function syncLayersAddPaint(
     );
   }
   await Promise.all(jobs);
+}
+
+export function assertLayersAddPaintEveryZoom(...args: unknown[]): void {
+  const specs = args.length === 0 ? LAYERS_ADD_PAINT : args[0];
+  if (!Array.isArray(specs) || specs.length === 0) {
+    throw new Error(
+      "EVERY-ZOOM: layersAddPaint specs must be a non-empty array",
+    );
+  }
+  for (const spec of specs) {
+    if (typeof spec !== "object" || spec === null || Array.isArray(spec)) {
+      throw new Error("EVERY-ZOOM: layersAddPaint spec must be an object");
+    }
+    const rec = spec as Record<string, unknown>;
+    const displayId = rec.displayId;
+    if (typeof displayId !== "string" || displayId.trim() === "") {
+      throw new Error(
+        "EVERY-ZOOM: layersAddPaint displayId must be a non-empty string",
+      );
+    }
+    const minzoom = rec.minzoom;
+    if (
+      typeof minzoom !== "number" ||
+      Number.isNaN(minzoom) ||
+      !Number.isInteger(minzoom)
+    ) {
+      throw new Error(
+        `EVERY-ZOOM: layersAddPaint '${displayId}': minzoom must be an integer`,
+      );
+    }
+    if (minzoom !== 0) {
+      throw new Error(
+        `EVERY-ZOOM: layersAddPaint '${displayId}': minzoom must be 0, got ${minzoom}`,
+      );
+    }
+  }
 }

@@ -249,7 +249,7 @@ for (const viewport of [
       expect(sources.filter((id) => /parcel|w3w/i.test(id))).toEqual([]);
 
       await openLayers(page);
-      // access_services minzoom 8 — at default ~5.7 should gate
+      // ARCH-5b: access_services minzoom 0 — at default ~5.7 no zoom gate
       const landToggle = page.getByTestId("layers-group-toggle-land");
       if ((await landToggle.getAttribute("aria-expanded")) !== "true") {
         await landToggle.click();
@@ -257,7 +257,11 @@ for (const viewport of [
       await page.getByTestId("layer-toggle-access_services").click();
       await expect(
         page.getByTestId("layer-zoom-gate-access_services"),
-      ).toHaveText("Zoom in to see this layer");
+      ).toHaveCount(0);
+      await page.getByTestId("layer-toggle-grid3").click();
+      await expect(page.getByTestId("layer-zoom-gate-grid3")).toHaveText(
+        "Zoom in to see the grid",
+      );
       assertConsoleClean(gate);
     });
 

@@ -44,6 +44,7 @@ def _tracked_files() -> list[Path]:
         BACKEND / "layers" / "registry" / "loader.py",
         BACKEND / "etl" / "extent_sources.py",
         BACKEND / "etl" / "extent_geom.py",
+        BACKEND / "etl" / "refresh_registry.py",
     ]
     for path in extra:
         if path.is_file() and path not in paths:
@@ -447,6 +448,8 @@ def test_p9_no_blanket_except():
         # SRC-A P9 add-only
         BACKEND / "etl" / "extent_sources.py",
         BACKEND / "etl" / "extent_geom.py",
+        # ARCH-6 P9
+        BACKEND / "etl" / "refresh_registry.py",
     ]
     changed = set(_files_changed_vs_main())
     ctx = BACKEND / "spatial" / "context_tiles.py"

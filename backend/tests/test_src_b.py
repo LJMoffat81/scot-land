@@ -855,6 +855,7 @@ def test_r28_f3_scotland_bbox_check_mobile_overlap_and_refusals():
     invalid_pairs = [
         (56.0, -5.0, 55.0, -3.0),  # south >= north
         (55.0, -3.0, 56.0, -5.0),  # west >= east
+        (55.0, -1.0, 57.0, -8.0),  # west > east (inverted lon)
     ]
     for south, west, north, east in invalid_pairs:
         with pytest.raises(HTTPException) as exc:

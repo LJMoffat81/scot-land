@@ -1,0 +1,36 @@
+# SRC-C CREDIT-1 — required credit phrases by locator.
+# Locator kinds: registry:<id> | sources:<dotted.key> | ts_regex:<file>::<regex with 1 group>
+# Checked by backend/layers/credit_check.py (sorted locator order).
+
+registry:dz2022:
+  - Ordnance Survey
+
+registry:scotland-extent:
+  - UK Hydrographic Office
+  - OS data
+
+registry:councils:
+  - OS data
+
+registry:oil-fields:
+  - North Sea Transition Authority
+
+registry:platforms:
+  - North Sea Transition Authority
+
+registry:pipelines:
+  - North Sea Transition Authority
+
+sources:community_ownership.attribution:
+  - Royal Mail
+  - National Statistics
+  - OS data
+
+'ts_regex:frontend/lib/inspireAttribution.ts::return \(\s*"(© Crown copyright\. Reproduced with the permission of Registers of Scotland\. )"':
+  - Registers of Scotland
+
+'ts_regex:frontend/components/ScotlandMap.tsx::const DATA_ZONE_BOUNDARIES_2022_CREDIT =\s*"([^"]*)"':
+  - Ordnance Survey
+
+'ts_regex:frontend/lib/mapLayerRegistry.ts::id: "councils",.*?sourceCaption: "([^"]*)"':
+  - OS

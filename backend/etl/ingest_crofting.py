@@ -174,6 +174,10 @@ def load_parishes(conn, path: Path) -> int:
 
 
 def load_holdings(conn, path: Path) -> int:
+    """Load holdings CSV into croft_holdings.
+
+    CroftName not stored (SRC-C PII-1; may be a personal name).
+    """
     rows = _read_csv(path)
     payload = []
     for r in rows:
@@ -183,7 +187,7 @@ def load_holdings(conn, path: Path) -> int:
         payload.append(
             (
                 hid,
-                (r.get("CroftName") or "").strip() or None,
+                None,  # croft_name: CroftName not stored (SRC-C PII-1)
                 (r.get("StatusA") or "").strip() or None,
                 (r.get("StatusB") or "").strip() or None,
                 (r.get("StatusC") or "").strip() or None,

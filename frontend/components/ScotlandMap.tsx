@@ -78,6 +78,7 @@ import {
   type TileLegendItem,
   type MeasureValuesPayload,
 } from "../lib/tileLayerFactory";
+import { asOfFromVersion } from "../lib/tileAsOf";
 import { SEARCH_HINT_SR } from "../lib/siteNav";
 import {
   isLegendLayerOff,
@@ -380,7 +381,7 @@ const HLA_FILL = "#7b5ea7";
 const DATA_ZONE_MIN_ZOOM = POP_DENSITY_COLOURS_MIN_ZOOM;
 /** Site-watch PR B pin — also set on the tile-dz2022 MapLibre source. */
 const DATA_ZONE_BOUNDARIES_2022_CREDIT =
-  "Scottish Government Data Zone boundaries 2022 (OGL). Outlines only — not a rent.";
+  "Copyright Scottish Government, contains Ordnance Survey data © Crown copyright and database right 2026. Outlines only — not a rent.";
 
 const NFI_MIN_ZOOM = 7;
 const NATIVE_WOODLAND_MIN_ZOOM = 8;
@@ -765,6 +766,8 @@ export default function ScotlandMap() {
   const [tileLegends, setTileLegends] = useState<
     Record<string, TileLegendItem[]>
   >({});
+  /** SRC-C C3 — drawer layer id → "D Mon YYYY" from manifest version. */
+  const [tileAsOf, setTileAsOf] = useState<Record<string, string>>({});
   const showDataZonesRef = useRef(false);
   showDataZonesRef.current = showDataZones;
   const identifyAbortRef = useRef<AbortController | null>(null);
@@ -3954,6 +3957,15 @@ export default function ScotlandMap() {
         }
         tileLegendsRef.current = legends;
         setTileLegends(legends);
+        // SRC-C C3: reuse strip-legend manifestKey mapping (data_zones / oil).
+        const asOf: Record<string, string> = {};
+        const dzAsOf = asOfFromVersion(manifest.tilesets.dz2022?.version);
+        if (dzAsOf) asOf.data_zones = dzAsOf;
+        const oilAsOf = asOfFromVersion(
+          manifest.tilesets["oil-fields"]?.version,
+        );
+        if (oilAsOf) asOf["9"] = oilAsOf;
+        setTileAsOf(asOf);
 
         const dzEntry = manifest.tilesets.dz2022;
         if (dzEntry) {
@@ -5691,6 +5703,7 @@ export default function ScotlandMap() {
             floodKind={floodKind}
             onFloodKindChange={setFloodKind}
             onEnabledChange={onMapLayersChange}
+            tileAsOf={tileAsOf}
           />
         </MapPanelSlot>
       ) : null}

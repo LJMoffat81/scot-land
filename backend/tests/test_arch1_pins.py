@@ -215,6 +215,22 @@ _SRC_B_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# SRC-C 63ab45e1 — literal P6 allow-list (§6 + W-1 site-watch pin bookkeeping).
+_SRC_C_FRONTEND_ALLOW = frozenset(
+    [
+        # SRC-C 63ab45e1
+        "frontend/lib/mapLayerRegistry.ts",
+        # SRC-C 63ab45e1
+        "frontend/lib/tileAsOf.ts",
+        # SRC-C 63ab45e1
+        "frontend/components/MapLayersDrawer.tsx",
+        # SRC-C 63ab45e1
+        "frontend/e2e/ci/src-c.spec.ts",
+        # SRC-C bookkeeping: retarget site-watch pin to locked W-1 credit
+        "frontend/scripts/test-site-watch-pr-b.mjs",
+    ]
+)
+
 # SEA-EXTENT-2 13b4bc11 — literal frontend allow-list (§3 P6); unioned with prior sets.
 _SEA_EXTENT_2_FRONTEND_ALLOW = frozenset(
     [
@@ -257,6 +273,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 _ARCH2B_R3A_FRONTEND_ALLOW
                 | _ARCH2B_R3B_FRONTEND_ALLOW
                 | _SRC_B_FRONTEND_ALLOW
+                | _SRC_C_FRONTEND_ALLOW
                 | _SEA_EXTENT_2_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")

@@ -68,6 +68,11 @@ export type MapLayersDrawerProps = {
   onClose?: () => void;
   className?: string;
   title?: string;
+  /**
+   * SRC-C C3 — per drawer-layer-id as-of date strings (e.g. "1 Oct 2026"),
+   * already parsed from the tile manifest version.
+   */
+  tileAsOf?: Record<string, string>;
 };
 
 function asUnavailableSet(
@@ -120,6 +125,7 @@ export default function MapLayersDrawer({
   onClose,
   className,
   title = "Map layers",
+  tileAsOf,
 }: MapLayersDrawerProps) {
   const unavailable = asUnavailableSet(unavailableIds);
   const groups = mapDrawerLayersByGroup({
@@ -231,6 +237,7 @@ export default function MapLayersDrawer({
                   floodKind={floodKind}
                   onFloodKindChange={onFloodKindChange}
                   onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
+                  asOfDate={tileAsOf?.[layer.id]}
                 />
               ))}
               {placeholdersFor(key, layers).map((row) => (
@@ -270,6 +277,7 @@ export default function MapLayersDrawer({
                   on={Boolean(enabled[layer.id])}
                   mapZoom={mapZoom}
                   onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
+                  asOfDate={tileAsOf?.[layer.id]}
                 />
                 {densityKey ? (
                   <li
@@ -411,6 +419,7 @@ function DrawerLayerRow({
   mapZoom,
   floodKind,
   onFloodKindChange,
+  asOfDate,
 }: {
   layer: MapDrawerLayer;
   on: boolean;
@@ -418,6 +427,7 @@ function DrawerLayerRow({
   mapZoom?: number;
   floodKind?: "river" | "coastal" | "surface";
   onFloodKindChange?: (kind: "river" | "coastal" | "surface") => void;
+  asOfDate?: string;
 }) {
   const registry = getMapLayer(layer.id);
   const legend: InlineLegendView | null =
@@ -554,6 +564,11 @@ function DrawerLayerRow({
             data-testid={`layer-source-caption-${layer.id}`}
           >
             {legend.sourceCaption}
+            {asOfDate ? (
+              <span data-testid={`layer-asof-${layer.id}`}>
+                {` · Data as of ${asOfDate}`}
+              </span>
+            ) : null}
           </p>
         </div>
       ) : null}

@@ -12,8 +12,10 @@ import {
 import {
   buildInlineLegendFromRegistry,
   getMapLayer,
+  manifestLegendsForDrawerLayer,
   type InlineLegendView,
   type MapLayerGroupKey,
+  type MapLayerLegendClass,
 } from "@/lib/mapLayerRegistry";
 import {
   mapDrawerLayersByGroup,
@@ -73,6 +75,12 @@ export type MapLayersDrawerProps = {
    * already parsed from the tile manifest version.
    */
   tileAsOf?: Record<string, string>;
+  /**
+   * ARCH-5a — tileset id → legend classes from the tile manifest.
+   */
+  tileLegends?: Readonly<
+    Record<string, readonly { label: string; color: string }[]>
+  >;
 };
 
 function asUnavailableSet(
@@ -126,6 +134,7 @@ export default function MapLayersDrawer({
   className,
   title = "Map layers",
   tileAsOf,
+  tileLegends,
 }: MapLayersDrawerProps) {
   const unavailable = asUnavailableSet(unavailableIds);
   const groups = mapDrawerLayersByGroup({
@@ -238,6 +247,10 @@ export default function MapLayersDrawer({
                   onFloodKindChange={onFloodKindChange}
                   onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
                   asOfDate={tileAsOf?.[layer.id]}
+                  manifestClasses={manifestLegendsForDrawerLayer(
+                    layer.id,
+                    tileLegends,
+                  )}
                 />
               ))}
               {placeholdersFor(key, layers).map((row) => (
@@ -278,6 +291,10 @@ export default function MapLayersDrawer({
                   mapZoom={mapZoom}
                   onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
                   asOfDate={tileAsOf?.[layer.id]}
+                  manifestClasses={manifestLegendsForDrawerLayer(
+                    layer.id,
+                    tileLegends,
+                  )}
                 />
                 {densityKey ? (
                   <li
@@ -420,6 +437,7 @@ function DrawerLayerRow({
   floodKind,
   onFloodKindChange,
   asOfDate,
+  manifestClasses,
 }: {
   layer: MapDrawerLayer;
   on: boolean;
@@ -428,11 +446,12 @@ function DrawerLayerRow({
   floodKind?: "river" | "coastal" | "surface";
   onFloodKindChange?: (kind: "river" | "coastal" | "surface") => void;
   asOfDate?: string;
+  manifestClasses?: readonly MapLayerLegendClass[] | null;
 }) {
   const registry = getMapLayer(layer.id);
   const legend: InlineLegendView | null =
     on && registry
-      ? buildInlineLegendFromRegistry(registry, { mapZoom })
+      ? buildInlineLegendFromRegistry(registry, { mapZoom, manifestClasses })
       : null;
   const badge = legend ? chipLabel(legend.chip) : null;
 

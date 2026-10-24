@@ -20,6 +20,18 @@ const MONTHS_EN_GB = [
   "Dec",
 ] as const;
 
+const DEFAULT_DRAWER_TILESET_MAPPING: Readonly<
+  Record<string, readonly string[]>
+> = {
+  councils: ["councils"],
+  data_zones: ["dz2022"],
+  "9": ["oil-fields", "platforms", "pipelines"],
+};
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
 /**
  * Return e.g. "1 Oct 2026" (en-GB, UTC) for a valid calendar date version.
  * Returns null for any other value (wrong type, bad shape, impossible date).
@@ -46,4 +58,48 @@ export function asOfFromVersion(v: unknown): string | null {
     return null;
   }
   return `${day} ${MONTHS_EN_GB[month - 1]} ${year}`;
+}
+
+/**
+ * ARCH-5a — drawer layer id → first valid as-of date from mapped tileset versions.
+ */
+export function asOfMapForDrawerLayers(
+  tilesets: unknown,
+  mapping: Readonly<Record<string, readonly string[]>> = DEFAULT_DRAWER_TILESET_MAPPING,
+): Record<string, string> {
+  if (tilesets === undefined || tilesets === null) {
+    return {};
+  }
+  if (!isPlainObject(tilesets)) {
+    throw new Error("REGISTRY-ASOF: tilesets must be an object");
+  }
+  if (!isPlainObject(mapping)) {
+    throw new Error("REGISTRY-ASOF: mapping must be an object");
+  }
+
+  const out: Record<string, string> = {};
+  for (const drawerId of Object.keys(mapping)) {
+    const keys = mapping[drawerId];
+    if (
+      !Array.isArray(keys) ||
+      !keys.every((k) => typeof k === "string" && k.trim() !== "")
+    ) {
+      throw new Error(
+        `REGISTRY-ASOF: ${drawerId}: keys must be an array of strings`,
+      );
+    }
+    for (const key of keys) {
+      const entry = tilesets[key];
+      if (entry === undefined || entry === null) continue;
+      if (!isPlainObject(entry)) {
+        throw new Error(
+          `REGISTRY-ASOF: ${drawerId}: tileset '${key}' must be an object`,
+        );
+      }
+      if (out[drawerId]) continue;
+      const date = asOfFromVersion(entry.version);
+      if (date) out[drawerId] = date;
+    }
+  }
+  return out;
 }

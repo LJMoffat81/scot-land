@@ -27,6 +27,8 @@ export type MapCreditLineProps = {
   esriAttribution: string | null;
   /** Active layer toggle ids (same set as main's attribution line). */
   activeLayerIds?: readonly string[];
+  /** ARCH-5a — tileset id → attribution from the tile manifest. */
+  tileCredits?: Readonly<Record<string, string>>;
 };
 
 /**
@@ -40,6 +42,7 @@ export type MapCreditLineProps = {
 export default function MapCreditLine({
   esriAttribution,
   activeLayerIds = [],
+  tileCredits,
 }: MapCreditLineProps) {
   const [narrow, setNarrow] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -87,7 +90,7 @@ export default function MapCreditLine({
     }
   };
 
-  const pieces = buildMapAttributionPieces(activeLayerIds);
+  const pieces = buildMapAttributionPieces(activeLayerIds, tileCredits);
   const piecesJoin = pieces.map((p) => p.text).join(" · ");
   const layerPieces = pieces.filter((p) => p.id !== "basemap");
   const shortNames = layerPieces

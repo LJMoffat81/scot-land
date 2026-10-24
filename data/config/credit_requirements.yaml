@@ -34,3 +34,6 @@ sources:community_ownership.attribution:
 
 'ts_regex:frontend/lib/mapLayerRegistry.ts::id: "councils",.*?sourceCaption: "([^"]*)"':
   - OS
+
+'ts_regex:frontend/lib/mapAttributionLine.ts::export const NSTA_ATTRIBUTION =\s*"([^"]*)"':
+  - North Sea Transition Authority

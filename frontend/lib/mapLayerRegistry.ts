@@ -482,6 +482,76 @@ export type InlineLegendView = {
 
 export const LAYER_ZOOM_HINT = "Zoom in to see this layer";
 
+/** Drawer layer id → tileset keys whose manifest legends feed the inline key. */
+export const REGISTRY_TILESETS_BY_DRAWER_ID: Readonly<
+  Record<string, readonly string[]>
+> = {
+  councils: ["councils"],
+  data_zones: ["dz2022"],
+  "9": ["oil-fields", "platforms", "pipelines"],
+};
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+const LEGEND_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+/**
+ * Collect legend classes from a tile manifest for a drawer layer id.
+ * Returns null when tileLegends is absent or no classes are found.
+ */
+export function manifestLegendsForDrawerLayer(
+  drawerId: unknown,
+  tileLegends?: unknown,
+): MapLayerLegendClass[] | null {
+  if (typeof drawerId !== "string" || drawerId.trim() === "") {
+    throw new Error("REGISTRY-LEGEND: drawerId must be a non-empty string");
+  }
+  if (tileLegends === undefined || tileLegends === null) {
+    return null;
+  }
+  if (!isPlainObject(tileLegends)) {
+    throw new Error(
+      `REGISTRY-LEGEND: ${drawerId}: tileLegends must be an object`,
+    );
+  }
+  const keys = REGISTRY_TILESETS_BY_DRAWER_ID[drawerId];
+  if (!keys) return null;
+
+  const out: MapLayerLegendClass[] = [];
+  for (const key of keys) {
+    const items = tileLegends[key];
+    if (items === undefined || items === null) continue;
+    if (!Array.isArray(items)) {
+      throw new Error(
+        `REGISTRY-LEGEND: ${drawerId}: tileset '${key}' legend must be an array`,
+      );
+    }
+    for (const item of items) {
+      if (!isPlainObject(item)) {
+        throw new Error(
+          `REGISTRY-LEGEND: ${drawerId}: tileset '${key}' legend item must be an object`,
+        );
+      }
+      const label = item.label;
+      if (typeof label !== "string" || label.trim() === "") {
+        throw new Error(
+          `REGISTRY-LEGEND: ${drawerId}: tileset '${key}' legend item label must be a non-empty string`,
+        );
+      }
+      const color = item.color;
+      if (typeof color !== "string" || !LEGEND_COLOR_RE.test(color)) {
+        throw new Error(
+          `REGISTRY-LEGEND: ${drawerId}: tileset '${key}' legend item color must be #RRGGBB`,
+        );
+      }
+      out.push({ label, color });
+    }
+  }
+  return out.length > 0 ? out : null;
+}
+
 /**
  * Build an inline legend from the registry (addendum §3.5 / A5).
  * GBP-LIVE £ class labels are supplied by the caller when ready; pre-£ uses
@@ -493,20 +563,36 @@ export function buildInlineLegendFromRegistry(
     mapZoom?: number;
     /** Optional override class labels (e.g. £ ranges when GBP-LIVE is on). */
     classLabels?: readonly string[];
+    /** Manifest legend classes when the tile manifest supplies them. */
+    manifestClasses?: readonly MapLayerLegendClass[] | null;
   } = {},
 ): InlineLegendView {
-  const { mapZoom, classLabels } = opts;
+  const { mapZoom, classLabels, manifestClasses } = opts;
+  if (
+    manifestClasses !== undefined &&
+    manifestClasses !== null &&
+    !Array.isArray(manifestClasses)
+  ) {
+    throw new Error(
+      `REGISTRY-LEGEND: ${entry.id}: manifestClasses must be an array`,
+    );
+  }
   const zoomGated =
     typeof mapZoom === "number" &&
     (mapZoom < entry.minzoom || mapZoom > entry.maxzoom);
 
+  const baseClasses =
+    manifestClasses && manifestClasses.length > 0
+      ? manifestClasses
+      : entry.classes;
+
   const classes =
-    classLabels && classLabels.length === entry.classes.length
-      ? entry.classes.map((row, i) => ({
+    classLabels && classLabels.length === baseClasses.length
+      ? baseClasses.map((row, i) => ({
           ...row,
           label: classLabels[i] ?? row.label,
         }))
-      : entry.classes;
+      : [...baseClasses];
 
   const hasRampEnds =
     classes.some((c) => c.label === "Lower") &&

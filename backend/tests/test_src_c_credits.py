@@ -29,7 +29,7 @@ def _write(path: Path, text: str) -> Path:
 
 def test_real_requirements_pass():
     reqs = load_requirements(REQUIREMENTS)
-    assert len(reqs) == 10
+    assert len(reqs) == 11
     check(reqs, REPO_ROOT)
 
 
@@ -140,6 +140,14 @@ def test_n8bcd_sources_value_must_be_string(tmp_path, value, typename):
         check(reqs, tmp_path)
 
 
+def test_n9_0_ts_regex_missing_double_colon(tmp_path):
+    reqs = {"ts_regex:no_delim.ts": ["x"]}
+    with pytest.raises(
+        CreditError, match=r"^CREDIT: ts_regex:no_delim\.ts: invalid locator$"
+    ):
+        check(reqs, tmp_path)
+
+
 def test_n9_ts_regex_file_not_found(tmp_path):
     reqs = {"ts_regex:nofile.ts::(x)": ["x"]}
     with pytest.raises(
@@ -219,10 +227,12 @@ def test_n13_main_returns_codes(tmp_path):
 
 def test_n17_croft_name_not_stored(tmp_path, monkeypatch):
     """C4: load_holdings writes NULL croft_name even when CroftName is present."""
-    url = os.getenv("WEALTH_TEST_DATABASE_URL") or os.getenv("DATABASE_URL") or ""
-    if not url:
-        pytest.skip("WEALTH_TEST_DATABASE_URL / DATABASE_URL not set")
-
+    url = (
+        os.getenv("WEALTH_TEST_DATABASE_URL")
+        or os.getenv("DATABASE_URL")
+        or os.getenv("ARCH1_TEST_DSN")
+        or "postgresql://wealth_ci:ci-throwaway-only@127.0.0.1:5432/wealth_it"
+    )
     monkeypatch.setenv("DATABASE_URL", url)
 
     from etl.ingest_crofting import ensure_tables, load_holdings

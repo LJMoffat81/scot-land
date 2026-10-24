@@ -46,6 +46,7 @@ import {
 } from "../lib/api";
 import {
   CONTEXT_LAYERS,
+  TILE_BASE_OUTLINE_ID,
   TILE_LAYER_IDS,
   TILE_LAYER_IDS_ORDERED,
 } from "../lib/contextLayers";
@@ -703,6 +704,8 @@ export default function ScotlandMap() {
   } | null>(null);
   /** LAYERS-ADD-2 credit ids from ?layers= even when not yet a registry switch (R4 NRS). */
   const [creditExtraIds, setCreditExtraIds] = useState<string[]>([]);
+  /** SEA-EXTENT-2: permanent outline built from tile manifest (credit only when true). */
+  const [outlineBuilt, setOutlineBuilt] = useState(false);
   useEffect(() => {
     const raw = new URLSearchParams(window.location.search).get("layers");
     if (!raw) {
@@ -3866,6 +3869,7 @@ export default function ScotlandMap() {
     if (!map) return;
     let cancelled = false;
     const ac = new AbortController();
+    setOutlineBuilt(false);
     const isFetchAbort = (err: unknown): boolean =>
       (typeof err === "object" &&
         err !== null &&
@@ -3981,18 +3985,29 @@ export default function ScotlandMap() {
             spec as Parameters<Map["addSource"]>[1],
           );
         }
+        let outlineAdded = false;
+        const outlinePrefix = `tile-${TILE_BASE_OUTLINE_ID}-`;
         for (const layer of built.layers) {
           const id = typeof layer.id === "string" ? layer.id : "";
           if (!id || hasMapLayer(map, id)) continue;
+          const isOutline = id.startsWith(outlinePrefix);
           const layout = {
             ...((layer.layout as Record<string, unknown> | undefined) ?? {}),
-            visibility: "none",
+            visibility: isOutline ? "visible" : "none",
           };
-          map.addLayer({
-            ...(layer as Parameters<Map["addLayer"]>[0]),
-            layout,
-          } as Parameters<Map["addLayer"]>[0]);
+          const beforeId = isOutline
+            ? councilOverlayBeforeId(map)
+            : undefined;
+          map.addLayer(
+            {
+              ...(layer as Parameters<Map["addLayer"]>[0]),
+              layout,
+            } as Parameters<Map["addLayer"]>[0],
+            beforeId,
+          );
+          if (isOutline) outlineAdded = true;
         }
+        if (!cancelled) setOutlineBuilt(outlineAdded);
         syncTileVisibility();
 
         if (dzEntry?.version) {
@@ -4024,6 +4039,7 @@ export default function ScotlandMap() {
       cancelled = true;
       ac.abort();
       map.off("sourcedata", onSourceData);
+      setOutlineBuilt(false);
     };
   }, [mapReady]);
 
@@ -5582,11 +5598,11 @@ export default function ScotlandMap() {
 
       <MapCreditLine
         esriAttribution={mapStyle === "aerial" ? esriAttribution : null}
-        activeLayerIds={
-          creditExtraIds.length > 0
-            ? [...activeLayerIds, ...creditExtraIds]
-            : activeLayerIds
-        }
+        activeLayerIds={[
+          ...(outlineBuilt ? [TILE_BASE_OUTLINE_ID] : []),
+          ...activeLayerIds,
+          ...creditExtraIds,
+        ]}
       />
       </div>{/* map-stage — panel stays outside so inert modal does not block close */}
 

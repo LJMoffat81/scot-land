@@ -215,6 +215,24 @@ _SRC_B_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# SEA-EXTENT-2 13b4bc11 — literal frontend allow-list (§3 P6); unioned with prior sets.
+_SEA_EXTENT_2_FRONTEND_ALLOW = frozenset(
+    [
+        # SEA-EXTENT-2 13b4bc11
+        "frontend/lib/contextLayers.ts",
+        # SEA-EXTENT-2 13b4bc11
+        "frontend/lib/mapAttributionLine.ts",
+        # SEA-EXTENT-2 13b4bc11
+        "frontend/components/ScotlandMap.tsx",
+        # SEA-EXTENT-2 13b4bc11
+        "frontend/e2e/ci/sea-extent-2.spec.ts",
+        # SEA-EXTENT-2 13b4bc11
+        "frontend/e2e/fixtures/sea-extent-2/scotland-extent.mvt",
+        # SEA-EXTENT-2 13b4bc11
+        "frontend/e2e/fixtures/sea-extent-2/make_fixture.py",
+    ]
+)
+
 
 def _assert_main_py_only_arch2a_tiles_registration() -> None:
     """HEAD main.py must equal origin/main plus exactly the ARCH-2a tiles line."""
@@ -239,6 +257,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 _ARCH2B_R3A_FRONTEND_ALLOW
                 | _ARCH2B_R3B_FRONTEND_ALLOW
                 | _SRC_B_FRONTEND_ALLOW
+                | _SEA_EXTENT_2_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

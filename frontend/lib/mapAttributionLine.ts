@@ -11,6 +11,10 @@ import { getMapLayer } from "./mapLayerRegistry";
 export const OPENFREEMAP_ATTRIBUTION =
   "© OpenFreeMap © OpenStreetMap";
 
+/** Scotland land-and-waters outline — registry attribution, one line (SEA-EXTENT-2). */
+export const SCOTLAND_EXTENT_CREDIT =
+  "Contains public sector information, licensed under the Open Government Licence v3.0, from UK Hydrographic Office. Contains OS data © Crown copyright and database right 2026.";
+
 /** Vacant-land credit when that layer is on. Zone totals only. */
 export const VDL_ZONE_TOTALS_ATTRIBUTION =
   "Totals from the Scottish Vacant and Derelict Land Survey, grouped by Data Zone. Zones with one or two sites show no area.";
@@ -41,6 +45,9 @@ export function buildMapAttributionPieces(
     enabledIds.map((id) => getMapLayer(id)?.id ?? id).filter(Boolean),
   );
 
+  if (on.has("scotland-extent")) {
+    pieces.push({ id: "scotland-extent", text: SCOTLAND_EXTENT_CREDIT });
+  }
   if (on.has("data_zones")) {
     pieces.push({ id: "data_zones", text: dzAttributionText() });
   }
@@ -86,6 +93,8 @@ export function shortLayerSourceName(
 ): string | null {
   if (piece.id === "basemap") return null;
   switch (piece.id) {
+    case "scotland-extent":
+      return "Scotland outline: UKHO / OS";
     case "data_zones":
       return "Data zones: Scottish Government";
     case "vdl":

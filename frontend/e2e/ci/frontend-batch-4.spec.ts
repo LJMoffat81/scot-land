@@ -316,6 +316,7 @@ for (const viewport of VIEWPORTS) {
       expect(dockBox).toBeTruthy();
       expect(boxesOverlap(keyBox!, searchBox!)).toBe(false);
       expect(boxesOverlap(keyBox!, dockBox!)).toBe(false);
+      await key.scrollIntoViewIfNeeded();
       const topEl = await page.evaluate(() => {
         const keyEl = document.querySelector(
           '[data-testid="map-layer-pop-density-key"]',
@@ -323,8 +324,8 @@ for (const viewport of VIEWPORTS) {
         if (!keyEl) return null;
         const r = keyEl.getBoundingClientRect();
         const el = document.elementFromPoint(
-          r.left + r.width / 2,
-          r.top + r.height / 2,
+          r.left + Math.min(r.width / 2, 24),
+          r.top + Math.min(r.height / 2, 24),
         );
         return el?.closest('[data-testid="map-layer-pop-density-key"]') != null;
       });

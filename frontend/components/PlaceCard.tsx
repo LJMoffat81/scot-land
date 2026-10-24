@@ -543,7 +543,9 @@ export function PlaceCard({
               )}
               hidden
               aria-hidden="true"
-            />
+            >
+              {formatDerivedFromSlot(card?.derived_from ?? ["dz2022"])}
+            </div>
           </header>
 
           {/* 7 Why */}

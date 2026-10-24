@@ -294,6 +294,7 @@ async function runE5c1(page: Page, mobile: boolean) {
 
   const derived = page.getByTestId("place-card-derived-from");
   await expect(derived).toBeHidden();
+  await expect(derived).toHaveAttribute("hidden", "");
   await expect(derived).toHaveAttribute("data-derived-from", "dz2022");
 
   await jumpToZoom(page, 5);

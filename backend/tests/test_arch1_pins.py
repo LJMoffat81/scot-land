@@ -334,6 +334,27 @@ _ARCH5B_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# ARCH-5c — literal P6 allow-list (§4); unioned with prior sets.
+
+_ARCH5C_FRONTEND_ALLOW = frozenset(
+    [
+        # ARCH-5c 64d9b0d3
+        "frontend/app/globals.css",
+        # ARCH-5c 64d9b0d3
+        "frontend/components/PlaceCard.tsx",
+        # ARCH-5c 64d9b0d3
+        "frontend/components/PlaceCardStub.tsx",
+        # ARCH-5c 64d9b0d3
+        "frontend/components/ScotlandMap.tsx",
+        # ARCH-5c 64d9b0d3
+        "frontend/lib/levelLadder.ts",
+        # ARCH-5c 64d9b0d3
+        "frontend/lib/placeCard.ts",
+        # ARCH-5c 64d9b0d3
+        "frontend/e2e/ci/arch5c.spec.ts",
+    ]
+)
+
 
 def _assert_main_py_only_arch2a_tiles_registration() -> None:
     """HEAD main.py must equal origin/main plus exactly the ARCH-2a tiles line."""
@@ -360,10 +381,11 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _SRC_B_FRONTEND_ALLOW
                 | _SRC_C_FRONTEND_ALLOW
                 | _SEA_EXTENT_2_FRONTEND_ALLOW
-                |                 _ARCH5A_FRONTEND_ALLOW
+                | _ARCH5A_FRONTEND_ALLOW
                 | _LAYERS_CARD_1_FRONTEND_ALLOW
                 | _SRC_B_SETTLEMENTS_FRONTEND_ALLOW
                 | _ARCH5B_FRONTEND_ALLOW
+                | _ARCH5C_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

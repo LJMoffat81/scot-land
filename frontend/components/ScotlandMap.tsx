@@ -5492,6 +5492,7 @@ export default function ScotlandMap() {
               gridSquareLine={
                 grid3Square ? grid3Row6Text(grid3Square.ref) : null
               }
+              mapZoom={mapZoom}
             />
           ) : null}
         </MapPanelSlot>

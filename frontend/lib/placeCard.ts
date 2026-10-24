@@ -276,6 +276,8 @@ export type PlaceCardPayload = {
   postcode?: string | null;
   council_code?: string | null;
   council_name?: string | null;
+  /** ARCH-5c lineage slot — layer ids this card figure was derived from. */
+  derived_from?: readonly string[] | null;
   data_zone?: PlaceDataZone | null;
   /** Top-level Data Zone code from identify (same as data_zone.code when present). */
   dz_code?: string | null;

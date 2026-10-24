@@ -31,6 +31,8 @@ export type PlaceStub = {
   fromAddressSearch?: boolean;
   /** GRID-BASE-1 row-6 grid square line (or null/empty when none). */
   gridSquareLine?: string | null;
+  /** ARCH-5c — optional zoom hint when stub is used without a map parent. */
+  mapZoom?: number;
 };
 
 type PlaceCardStubProps = {
@@ -42,6 +44,8 @@ type PlaceCardStubProps = {
   onShowScotland?: () => void;
   /** GRID-BASE-1 row-6 override (falls back to place.gridSquareLine). */
   gridSquareLine?: string | null;
+  /** ARCH-5c — live map zoom forwarded to PlaceCard data-level. */
+  mapZoom?: number;
 };
 
 /** Map HUD place card — UX-10 skeleton; thin wrapper over PlaceCard. */
@@ -52,6 +56,7 @@ export default function PlaceCardStub({
   onClose,
   onShowScotland,
   gridSquareLine = null,
+  mapZoom,
 }: PlaceCardStubProps) {
   const row6 = gridSquareLine ?? place.gridSquareLine ?? null;
   if (place.noMatch) {
@@ -74,6 +79,7 @@ export default function PlaceCardStub({
         noMatch
         fromAddressSearch={Boolean(place.fromAddressSearch)}
         gridSquareLine={row6}
+        mapZoom={mapZoom}
       />
     );
   }
@@ -131,6 +137,7 @@ export default function PlaceCardStub({
       fromAddressSearch={Boolean(place.fromAddressSearch)}
       dwellings={place.dwellings ?? merged.dwellings ?? null}
       gridSquareLine={row6}
+      mapZoom={mapZoom}
     />
   );
 }

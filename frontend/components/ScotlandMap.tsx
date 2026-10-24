@@ -78,7 +78,7 @@ import {
   type TileLegendItem,
   type MeasureValuesPayload,
 } from "../lib/tileLayerFactory";
-import { asOfFromVersion } from "../lib/tileAsOf";
+import { asOfMapForDrawerLayers } from "../lib/tileAsOf";
 import { SEARCH_HINT_SR } from "../lib/siteNav";
 import {
   isLegendLayerOff,
@@ -108,6 +108,7 @@ import { councilOverlayBeforeId } from "../lib/mapLayerOrder";
 import {
   getMapLayer,
   defaultOnLayerIds,
+  manifestLegendsForDrawerLayer,
 } from "../lib/mapLayerRegistry";
 import {
   isScotlandViewCenter,
@@ -768,6 +769,8 @@ export default function ScotlandMap() {
   >({});
   /** SRC-C C3 — drawer layer id → "D Mon YYYY" from manifest version. */
   const [tileAsOf, setTileAsOf] = useState<Record<string, string>>({});
+  /** ARCH-5a — tileset id → attribution from the tile manifest. */
+  const [tileCredits, setTileCredits] = useState<Record<string, string>>({});
   const showDataZonesRef = useRef(false);
   showDataZonesRef.current = showDataZones;
   const identifyAbortRef = useRef<AbortController | null>(null);
@@ -1073,23 +1076,13 @@ export default function ScotlandMap() {
     return null;
   })();
   const stripLayer = stripLayerId ? getMapLayer(stripLayerId) : undefined;
-  // Prefer ARCH-2b manifest legend colours when available (data zones / oil).
+  // Prefer ARCH-2b / ARCH-5a manifest legend colours when available.
   const stripLegendClasses = (() => {
-    if (!stripLayer) return undefined;
-    const manifestKey =
-      stripLayerId === "data_zones"
-        ? "dz2022"
-        : stripLayerId === "9"
-          ? "oil-fields"
-          : null;
-    const fromManifest = manifestKey ? tileLegends[manifestKey] : undefined;
-    if (fromManifest && fromManifest.length > 0) {
-      return fromManifest.map((item) => ({
-        label: item.label,
-        color: item.color,
-      }));
-    }
-    return stripLayer.classes;
+    if (!stripLayer || !stripLayerId) return undefined;
+    return (
+      manifestLegendsForDrawerLayer(stripLayerId, tileLegends) ??
+      stripLayer.classes
+    );
   })();
 
   const gbpLiveBootstrapped = useRef(false);
@@ -3951,21 +3944,16 @@ export default function ScotlandMap() {
         }
         const built = buildTileLayers(manifest, TILE_LAYER_IDS_ORDERED);
         const legends: Record<string, TileLegendItem[]> = {};
+        const credits: Record<string, string> = {};
         for (const id of TILE_LAYER_IDS_ORDERED) {
           const entry = manifest.tilesets[id];
           if (entry?.legend?.length) legends[id] = entry.legend;
+          if (entry?.attribution) credits[id] = entry.attribution;
         }
         tileLegendsRef.current = legends;
         setTileLegends(legends);
-        // SRC-C C3: reuse strip-legend manifestKey mapping (data_zones / oil).
-        const asOf: Record<string, string> = {};
-        const dzAsOf = asOfFromVersion(manifest.tilesets.dz2022?.version);
-        if (dzAsOf) asOf.data_zones = dzAsOf;
-        const oilAsOf = asOfFromVersion(
-          manifest.tilesets["oil-fields"]?.version,
-        );
-        if (oilAsOf) asOf["9"] = oilAsOf;
-        setTileAsOf(asOf);
+        setTileCredits(credits);
+        setTileAsOf(asOfMapForDrawerLayers(manifest.tilesets));
 
         const dzEntry = manifest.tilesets.dz2022;
         if (dzEntry) {
@@ -5615,6 +5603,7 @@ export default function ScotlandMap() {
           ...activeLayerIds,
           ...creditExtraIds,
         ]}
+        tileCredits={tileCredits}
       />
       </div>{/* map-stage — panel stays outside so inert modal does not block close */}
 
@@ -5704,6 +5693,7 @@ export default function ScotlandMap() {
             onFloodKindChange={setFloodKind}
             onEnabledChange={onMapLayersChange}
             tileAsOf={tileAsOf}
+            tileLegends={tileLegends}
           />
         </MapPanelSlot>
       ) : null}

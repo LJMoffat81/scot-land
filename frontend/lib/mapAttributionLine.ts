@@ -19,6 +19,10 @@ export const SCOTLAND_EXTENT_CREDIT =
 export const VDL_ZONE_TOTALS_ATTRIBUTION =
   "Totals from the Scottish Vacant and Derelict Land Survey, grouped by Data Zone. Zones with one or two sites show no area.";
 
+/** NSTA oil/gas tilesets — registry attribution (oil-fields / platforms / pipelines). */
+export const NSTA_ATTRIBUTION =
+  "Contains information provided by the North Sea Transition Authority and/or other third parties.";
+
 /** RoS credit when any RoS-backed layer is on (parcels removed; keep for future). */
 export const ROS_LAYER_IDS = new Set<string>([
   "boundaries",
@@ -26,10 +30,49 @@ export const ROS_LAYER_IDS = new Set<string>([
   "crofting",
 ]);
 
+const OIL_GAS_TILESET_KEYS = [
+  "oil-fields",
+  "platforms",
+  "pipelines",
+] as const;
+
 export type AttributionPiece = {
   id: string;
   text: string;
 };
+
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/**
+ * Resolve a tileset credit from the manifest map, falling back when absent.
+ */
+export function resolveTileCredit(
+  key: string,
+  fallback: string,
+  tileCredits?: unknown,
+): string {
+  if (typeof key !== "string" || key.trim() === "") {
+    throw new Error("REGISTRY-CREDIT: key must be a non-empty string");
+  }
+  if (tileCredits === undefined || tileCredits === null) {
+    return fallback;
+  }
+  if (!isPlainObject(tileCredits)) {
+    throw new Error("REGISTRY-CREDIT: tileCredits must be an object");
+  }
+  const val = tileCredits[key];
+  if (val === undefined || val === null) {
+    return fallback;
+  }
+  if (typeof val !== "string" || val.trim() === "") {
+    throw new Error(
+      `REGISTRY-CREDIT: ${key}: credit must be a non-empty string`,
+    );
+  }
+  return val.trim();
+}
 
 /**
  * Build credit pieces for the active toggle ids.
@@ -37,7 +80,16 @@ export type AttributionPiece = {
  */
 export function buildMapAttributionPieces(
   enabledIds: readonly string[],
+  tileCredits?: Readonly<Record<string, string>> | null,
 ): AttributionPiece[] {
+  if (
+    tileCredits !== undefined &&
+    tileCredits !== null &&
+    !isPlainObject(tileCredits)
+  ) {
+    throw new Error("REGISTRY-CREDIT: tileCredits must be an object");
+  }
+
   const pieces: AttributionPiece[] = [
     { id: "basemap", text: OPENFREEMAP_ATTRIBUTION },
   ];
@@ -46,10 +98,20 @@ export function buildMapAttributionPieces(
   );
 
   if (on.has("scotland-extent")) {
-    pieces.push({ id: "scotland-extent", text: SCOTLAND_EXTENT_CREDIT });
+    pieces.push({
+      id: "scotland-extent",
+      text: resolveTileCredit(
+        "scotland-extent",
+        SCOTLAND_EXTENT_CREDIT,
+        tileCredits,
+      ),
+    });
   }
   if (on.has("data_zones")) {
-    pieces.push({ id: "data_zones", text: dzAttributionText() });
+    pieces.push({
+      id: "data_zones",
+      text: resolveTileCredit("dz2022", dzAttributionText(), tileCredits),
+    });
   }
   if (on.has("vdl")) {
     pieces.push({ id: "vdl", text: VDL_ZONE_TOTALS_ATTRIBUTION });
@@ -66,6 +128,20 @@ export function buildMapAttributionPieces(
     pieces.push({ id: "ros", text: inspireRosOsAttribution() });
   }
 
+  if (on.has("9")) {
+    let text = NSTA_ATTRIBUTION;
+    if (tileCredits) {
+      for (const key of OIL_GAS_TILESET_KEYS) {
+        const val = tileCredits[key];
+        if (val !== undefined && val !== null) {
+          text = resolveTileCredit(key, NSTA_ATTRIBUTION, tileCredits);
+          break;
+        }
+      }
+    }
+    pieces.push({ id: "9", text });
+  }
+
   for (const id of on) {
     const credit = layersAdd2Credit(id);
     if (!credit) continue;
@@ -77,8 +153,9 @@ export function buildMapAttributionPieces(
 
 export function formatAttributionLine(
   enabledIds: readonly string[],
+  tileCredits?: Readonly<Record<string, string>> | null,
 ): string {
-  return buildMapAttributionPieces(enabledIds)
+  return buildMapAttributionPieces(enabledIds, tileCredits)
     .map((p) => p.text)
     .join(" · ");
 }
@@ -101,6 +178,8 @@ export function shortLayerSourceName(
       return "Vacant land: SVDLS";
     case "ros":
       return "Boundaries: RoS / OS";
+    case "9":
+      return "Oil and gas: NSTA";
     case "nrs_dz_pop_hh":
       return "Population and households: NRS";
     case "epc_domestic":

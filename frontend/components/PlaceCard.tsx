@@ -6,6 +6,11 @@ import {
   gbpLiveFromCard,
   type SurfaceRentDisplay,
 } from "../lib/gbpLive";
+import {
+  SCOTLAND_CRUMB_LABEL,
+  formatDerivedFromSlot,
+  levelFromZoom,
+} from "../lib/levelLadder";
 import { PLACE_CARD_ESTIMATE_LINE } from "../lib/siteNav";
 import {
   PLACE_CARD_AGR_LABEL,
@@ -66,6 +71,8 @@ export type PlaceCardProps = {
    * Empty / omitted keeps the Addendum A4 slot hidden.
    */
   gridSquareLine?: string | null;
+  /** ARCH-5c — live map zoom for data-level ladder stamp. */
+  mapZoom?: number;
 };
 
 /** Visitor-safe CSS tone — never emit the raw API class string `shadow` in HTML. */
@@ -177,8 +184,13 @@ export function PlaceCard({
   dwellings = null,
   noMatch = false,
   gridSquareLine = null,
+  mapZoom,
 }: PlaceCardProps) {
   const card = data ? sanitizePlaceCard(data) : null;
+  const activeLevel =
+    typeof mapZoom === "number"
+      ? levelFromZoom(Math.min(22, Math.max(0, mapZoom)))
+      : "dz2022";
   const seaMiss = Boolean(
     noMatch === false &&
       card &&
@@ -271,6 +283,7 @@ export function PlaceCard({
       aria-labelledby={showTitleForAria ? titleId : undefined}
       aria-label={showTitleForAria ? undefined : "Place card"}
       data-testid="place-card"
+      data-level={activeLevel}
       data-unit={unitEffective}
       data-fully-estimated={card?.fully_estimated ? "true" : "false"}
     >
@@ -394,10 +407,29 @@ export function PlaceCard({
             >
               {placeName}
             </h2>
-            {/* 2 Council */}
+            {/* 2 Council — ARCH-5c Scotland › council breadcrumb */}
             {councilLine ? (
-              <p className="place-card-council" data-testid="place-card-council">
-                {councilLine}
+              <p className="place-card-council">
+                {onShowScotland ? (
+                  <span
+                    className="place-card-breadcrumb"
+                    data-testid="place-card-breadcrumb"
+                  >
+                    <button
+                      type="button"
+                      className="place-card-crumb-scotland"
+                      data-testid="place-card-crumb-scotland"
+                      aria-label="Zoom to Scotland"
+                      onClick={onShowScotland}
+                    >
+                      {SCOTLAND_CRUMB_LABEL}
+                    </button>
+                    <span className="place-card-crumb-sep" aria-hidden="true">
+                      {" › "}
+                    </span>
+                  </span>
+                ) : null}
+                <span data-testid="place-card-council">{councilLine}</span>
               </p>
             ) : null}
             {/* 3 Scope (rows 1–5 for too-few too) */}
@@ -504,6 +536,14 @@ export function PlaceCard({
                 aria-hidden="true"
               />
             )}
+            <div
+              data-testid="place-card-derived-from"
+              data-derived-from={formatDerivedFromSlot(
+                card?.derived_from ?? ["dz2022"],
+              )}
+              hidden
+              aria-hidden="true"
+            />
           </header>
 
           {/* 7 Why */}

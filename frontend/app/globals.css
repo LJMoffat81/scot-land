@@ -362,6 +362,22 @@ input {
   color: var(--slrg-muted);
 }
 
+.place-card-crumb-scotland {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: -10px 0;
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  font: inherit;
+  color: var(--slrg-navy);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .place-card-figure {
   margin: 0.35rem 0 0;
   font-size: 1rem;

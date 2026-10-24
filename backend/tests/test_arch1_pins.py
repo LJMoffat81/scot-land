@@ -215,6 +215,20 @@ _SRC_B_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# SRC-C 0219d6d5 — literal P6 allow-list (§6); unioned with prior sets.
+_SRC_C_FRONTEND_ALLOW = frozenset(
+    [
+        # SRC-C 0219d6d5
+        "frontend/lib/mapLayerRegistry.ts",
+        # SRC-C 0219d6d5
+        "frontend/lib/tileAsOf.ts",
+        # SRC-C 0219d6d5
+        "frontend/components/MapLayersDrawer.tsx",
+        # SRC-C 0219d6d5
+        "frontend/e2e/ci/src-c.spec.ts",
+    ]
+)
+
 # SEA-EXTENT-2 13b4bc11 — literal frontend allow-list (§3 P6); unioned with prior sets.
 _SEA_EXTENT_2_FRONTEND_ALLOW = frozenset(
     [
@@ -257,6 +271,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 _ARCH2B_R3A_FRONTEND_ALLOW
                 | _ARCH2B_R3B_FRONTEND_ALLOW
                 | _SRC_B_FRONTEND_ALLOW
+                | _SRC_C_FRONTEND_ALLOW
                 | _SEA_EXTENT_2_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")

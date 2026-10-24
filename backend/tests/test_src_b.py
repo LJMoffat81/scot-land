@@ -480,6 +480,50 @@ def test_b6_land_clip_10m_poke(tiny_extent, monkeypatch, tmp_path):
     assert receipt["after"] == 1
 
 
+def test_b6s_200m_poke_clipped(tiny_extent, monkeypatch, tmp_path):
+    """SRC-C O2 / N18: 200 m north poke is clipped; ST_YMax <= 10000.5."""
+    reg = tmp_path / "reg"
+    reg.mkdir()
+    _write(reg, _land_entry(), name="src-b-land")
+    mapping = load_registry(reg)
+    monkeypatch.setattr("etl.run_layer.registry", lambda: mapping)
+
+    poke = {
+        "type": "FeatureCollection",
+        "crs": {
+            "type": "name",
+            "properties": {"name": "urn:ogc:def:crs:EPSG::27700"},
+        },
+        "features": [
+            {
+                "type": "Feature",
+                "id": "poke200",
+                "properties": {"name": "poke200"},
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [4000, 9900],
+                            [5000, 9900],
+                            [5000, 10200],
+                            [4000, 10200],
+                            [4000, 9900],
+                        ]
+                    ],
+                },
+            }
+        ],
+    }
+    path = tmp_path / "poke200.geojson"
+    path.write_text(json.dumps(poke), encoding="utf-8")
+    receipt = run_layer("src-b-land", from_file=path, conn=tiny_extent)
+    assert receipt["outside"] == 0
+    with tiny_extent.cursor() as cur:
+        cur.execute('SELECT ST_YMax(geom) FROM layers."src-b-land"')
+        ymax = float(cur.fetchone()[0])
+    assert ymax <= 10000.5
+
+
 def test_b6_mutation_clip_disabled_fails(tiny_extent, monkeypatch, tmp_path):
     """Mutation: with the clip disabled, check_outside must fail."""
     reg = tmp_path / "reg"

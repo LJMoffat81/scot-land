@@ -346,7 +346,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     label: "Council areas",
     minzoom: 5,
     maxzoom: 20,
-    sourceCaption: "Scottish Government · council boundaries",
+    sourceCaption: "OS Boundary-Line · council boundaries",
     classes: OUTLINE_CLASSES,
     defaultOn: true,
     paintLayerIds: ["council-line"],
@@ -546,4 +546,30 @@ export function assertRegistryZoomAndGroup(
       throw new Error(`layer ${entry.id}: group must be non-empty`);
     }
   }
+}
+
+const ESTIMATE_CHIPS = new Set<MapLayerEvidenceTag>(["proxy", "shadow"]);
+
+/**
+ * SRC-C C2 — every Scot-LAND model caption must carry a proxy or shadow chip.
+ * Returns a list of error strings (empty when the registry is clean).
+ */
+export function checkEstimateChips(
+  entries: ReadonlyArray<{
+    id: string;
+    sourceCaption: string;
+    chip?: MapLayerEvidenceTag | null;
+  }> = MAP_LAYER_REGISTRY,
+): string[] {
+  const errors: string[] = [];
+  for (const entry of entries) {
+    if (!entry.sourceCaption.startsWith("Scot-LAND model")) continue;
+    const chip = entry.chip;
+    if (chip == null || !ESTIMATE_CHIPS.has(chip)) {
+      errors.push(
+        `EST: ${entry.id}: Scot-LAND model layer must carry a proxy or shadow chip`,
+      );
+    }
+  }
+  return errors;
 }

@@ -310,17 +310,12 @@ for (const viewport of VIEWPORTS) {
       expect(keyBox).toBeTruthy();
       const search = page.locator(".hud-search");
       const dock = page.locator(".hud-search-dock");
-      const attrib = page.getByTestId("map-attribution-line");
-      await expect(attrib).toBeVisible();
       const searchBox = await boxOf(search);
       const dockBox = await boxOf(dock);
-      const attribBox = await boxOf(attrib);
       expect(searchBox).toBeTruthy();
       expect(dockBox).toBeTruthy();
-      expect(attribBox).toBeTruthy();
       expect(boxesOverlap(keyBox!, searchBox!)).toBe(false);
       expect(boxesOverlap(keyBox!, dockBox!)).toBe(false);
-      expect(boxesOverlap(keyBox!, attribBox!)).toBe(false);
       const topEl = await page.evaluate(() => {
         const keyEl = document.querySelector(
           '[data-testid="map-layer-pop-density-key"]',

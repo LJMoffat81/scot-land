@@ -262,7 +262,7 @@ for (const viewport of [
         page.getByTestId("layer-inline-legend-access_services"),
       ).toBeVisible();
 
-      await page.getByTestId("layers-panel-close").click();
+      await page.getByTestId("map-panel-slot-close").click();
       await expect(page.getByTestId("layers-panel")).toHaveCount(0);
       await expect(page.getByTestId("map-key-chip")).toHaveCount(0);
       await expect(page.getByTestId("legend-strip")).toHaveCount(0);

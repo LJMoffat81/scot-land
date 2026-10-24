@@ -100,7 +100,7 @@ export const LAYER_ATTRIBUTION: Record<
   },
   builtup_mask: {
     source:
-      "Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)",
+      "Built-up areas: NRS Settlements 2022. Copyright National Records of Scotland, contains Ordnance Survey data © Crown copyright and database right 2026 (OGL v3)",
     licence: "OGL-3.0",
     sourceUrl:
       "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer",

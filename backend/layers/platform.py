@@ -226,10 +226,11 @@ def platform_catalog() -> dict[str, Any]:
                 "id": "builtup_mask",
                 "group": "spatial",
                 "status": "live",
-                "label": "Built-up display mask",
-                "description": "This is our own estimate of built-up land, not an official boundary. We start with National Records of Scotland's 2022 settlement boundaries, add a 50 m area around each OS Open UPRN address point outside them, then cut the result to each 2022 Data Zone. It only decides which parts of the map are coloured. It is not used in any land value.",
+                "label": "Built-up areas (NRS Settlements 2022)",
+                "description": "These are National Records of Scotland's official 2022 settlement boundaries, for places of 500 or more people. Smaller villages and hamlets are not shown. We only trim them to the coastline. They only decide which parts of the map are coloured. They are not used in any land value.",
                 "developer_note": (
-                    "UX10-2: PostGIS map_builtup_mask + dz2022_masked. Vector tiles at "
+                    "UX10-2 / SRC-B-SETTLEMENTS: PostGIS layers.\"settlements-2022\". "
+                    "Vector tiles at "
                     "/layers/open/builtup-mask/tiles/{z}/{x}/{y} and "
                     "/layers/open/dz2022-masked/tiles/{z}/{x}/{y}; bbox GeoJSON siblings. "
                     "503 when unloaded. Faint full Data Zone outlines stay clickable. "
@@ -242,7 +243,7 @@ def platform_catalog() -> dict[str, Any]:
                     "https://www.nationalarchives.gov.uk/doc/"
                     "open-government-licence/version/3/"
                 ),
-                "attribution": "Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)",
+                "attribution": "Built-up areas: NRS Settlements 2022. Copyright National Records of Scotland, contains Ordnance Survey data © Crown copyright and database right 2026 (OGL v3)",
                 "minzoom": 10,
                 "source_url": (
                     "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer"

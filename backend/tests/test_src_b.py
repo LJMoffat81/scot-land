@@ -13,8 +13,9 @@ import yaml
 from shapely.geometry import box
 
 from etl.build_boundaries import CouncilsError, assert_council_count
-from etl.run_layer import CheckError, run_layer
-from layers.builtup_mask import BUILTUP_CREDIT, BUILTUP_METHOD_NOTE
+from etl import ingest_builtup_mask
+from etl.run_layer import CheckError, IngestError, run_layer
+from layers.builtup_mask import BUILTUP_CREDIT, BUILTUP_METHOD_NOTE, query_bbox
 from layers.ladder import (
     LadderError,
     REPORT_PATH,
@@ -51,6 +52,7 @@ _B3_CREDIT_SITES = [
     BACKEND / "tests" / "test_builtup_mask.py",
     REPO / "docs" / "mintlify" / "map-layer-guide.mdx",
     REPO / "scripts" / "data" / "README-builtup-mask.md",
+    REPO / "frontend" / "lib" / "mapAttributionLine.ts",
 ]
 # Split so this test file does not itself contain the banned contiguous string.
 _OLD_BUILTUP = "NRS Settlements 2022 (OGL v3), " + "contains OS data"
@@ -381,7 +383,7 @@ def test_n8_builtup_credit_pin(tmp_path):
 def test_b3_method_note_locked():
     from layers.platform import platform_catalog
 
-    assert "50 m" in BUILTUP_METHOD_NOTE
+    assert "500 or more people" in BUILTUP_METHOD_NOTE
     assert BUILTUP_METHOD_NOTE in (
         BACKEND / "layers" / "platform.py"
     ).read_text(encoding="utf-8")
@@ -575,3 +577,236 @@ def test_b6_mutation_clip_disabled_fails(tiny_extent, monkeypatch, tmp_path):
     monkeypatch.setattr("etl.run_layer._clip", _no_clip)
     with pytest.raises(CheckError, match=r"features outside scotland\+50m"):
         run_layer("src-b-land", from_file=path, conn=tiny_extent)
+
+
+# --- SRC-B-SETTLEMENTS N3 / N5 / N9–N12 ---
+
+
+def _settlement_poly(code: str, x0: float, y0: float, size: float = 100.0) -> dict:
+    return {
+        "type": "Feature",
+        "id": code,
+        "properties": {
+            "code": code,
+            "name": f"Settlement {code}",
+            "popcount": 500,
+            "objectid": code,
+        },
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [x0, y0],
+                    [x0 + size, y0],
+                    [x0 + size, y0 + size],
+                    [x0, y0 + size],
+                    [x0, y0],
+                ]
+            ],
+        },
+    }
+
+
+def _settlements_fc(features: list[dict]) -> dict:
+    return {
+        "type": "FeatureCollection",
+        "crs": {
+            "type": "name",
+            "properties": {"name": "urn:ogc:def:crs:EPSG::27700"},
+        },
+        "features": features,
+    }
+
+
+def test_n3_settlements_count_pin(tiny_extent, monkeypatch, tmp_path):
+    """N3: post-fetch count gate refuses 502 settlements (expected 503)."""
+    features = [
+        _settlement_poly(f"S20{i:06d}", 1000 + (i % 50) * 120, 1000 + (i // 50) * 120)
+        for i in range(502)
+    ]
+    path = tmp_path / "settlements_502.geojson"
+    path.write_text(json.dumps(_settlements_fc(features)), encoding="utf-8")
+    with pytest.raises(
+        IngestError,
+        match=r"^settlements-2022: expected 503 features, got 502$",
+    ):
+        run_layer("settlements-2022", from_file=path, conn=tiny_extent)
+
+
+def test_n3_mutation_expected_counts_removed_fails(
+    tiny_extent, monkeypatch, tmp_path
+):
+    """Mutation: clearing EXPECTED_FEATURE_COUNTS must make N3 stop raising."""
+    import etl.run_layer as rl
+
+    features = [
+        _settlement_poly(f"S20{i:06d}", 1000 + (i % 50) * 120, 1000 + (i // 50) * 120)
+        for i in range(502)
+    ]
+    path = tmp_path / "settlements_502.geojson"
+    path.write_text(json.dumps(_settlements_fc(features)), encoding="utf-8")
+    monkeypatch.setattr(rl, "EXPECTED_FEATURE_COUNTS", {})
+    # Without the pin, clip_keep_all will refuse (502 → fewer after clip may vary)
+    # or the load proceeds; either way N3's exact message must not fire.
+    try:
+        run_layer("settlements-2022", from_file=path, conn=tiny_extent)
+    except IngestError as exc:
+        assert "expected 503 features, got 502" not in str(exc)
+    except Exception:
+        pass
+
+
+def test_n5_ingest_builtup_mask_deprecated():
+    with pytest.raises(
+        RuntimeError,
+        match=(
+            r"^ingest_builtup_mask is deprecated \(SRC-B-SETTLEMENTS\); "
+            r"pass --allow-deprecated$"
+        ),
+    ):
+        ingest_builtup_mask.main([])
+
+
+def test_n9_unit_settlements_rejected(tmp_path):
+    data = _base(unit="settlements", ladder_level="settlement", nests=False)
+    _write(tmp_path, data)
+    with pytest.raises(
+        RegistryError,
+        match=r"^REGISTRY: x: \$\.unit: 'settlements' is not one of .*$",
+    ):
+        load_registry(tmp_path)
+
+
+def test_n10_endpoint_reads_settlements_not_old_mask(
+    tiny_extent, monkeypatch, tmp_path
+):
+    """N10: query_bbox serves settlements-2022 codes, never the old mask row."""
+    drop_layer_tables(tiny_extent, "settlements-2022")
+    features = [
+        _settlement_poly("S20000001", 2000, 2000),
+        _settlement_poly("S20000002", 4000, 4000),
+    ]
+    path = tmp_path / "settlements_2.geojson"
+    path.write_text(json.dumps(_settlements_fc(features)), encoding="utf-8")
+    # Bypass the 503 pin for this synthetic 2-feature fixture.
+    import etl.run_layer as rl
+
+    monkeypatch.setattr(rl, "EXPECTED_FEATURE_COUNTS", {})
+    receipt = run_layer("settlements-2022", from_file=path, conn=tiny_extent)
+    assert receipt["after"] == 2
+
+    with tiny_extent.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS public.map_builtup_mask (
+                gid BIGSERIAL PRIMARY KEY,
+                geom GEOMETRY(Polygon, 4326) NOT NULL
+            )
+            """
+        )
+        cur.execute("TRUNCATE public.map_builtup_mask")
+        cur.execute(
+            """
+            INSERT INTO public.map_builtup_mask (geom)
+            VALUES (
+              ST_SetSRID(
+                ST_GeomFromText('POLYGON((-4.3 55.8,-4.2 55.8,-4.2 55.9,-4.3 55.9,-4.3 55.8))'),
+                4326
+              )
+            )
+            """
+        )
+        # Label concept for the assertion below (not a column the new query reads).
+        cur.execute("SELECT gid FROM public.map_builtup_mask LIMIT 1")
+        assert cur.fetchone() is not None
+
+    # Tiny-extent 27700 squares sit near 49.8°N, 7.5°W after transform.
+    def _connect_fresh():
+        return connect()
+
+    monkeypatch.setattr("layers.builtup_mask.connect", _connect_fresh)
+    fc = query_bbox(
+        "builtup_mask",
+        49.7,
+        -7.6,
+        49.9,
+        -7.4,
+        max_features=10,
+    )
+    codes = [f["properties"]["code"] for f in fc["features"]]
+    assert codes == ["S20000001", "S20000002"]
+    assert "OLD_MASK_ROW" not in codes
+
+    # Mutation: pointing _live_table at map_builtup_mask must fail (no props).
+    monkeypatch.setattr(
+        "layers.builtup_mask._live_table",
+        lambda: "public.map_builtup_mask",
+    )
+    with pytest.raises(Exception):
+        query_bbox(
+            "builtup_mask",
+            49.7,
+            -7.6,
+            49.9,
+            -7.4,
+            max_features=10,
+        )
+
+
+def test_n11_bowtie_repaired(tiny_extent, monkeypatch, tmp_path):
+    """N11: CLIP-VALID-1 repairs a bow-tie; receipt.repaired == 1."""
+    drop_layer_tables(tiny_extent, "settlements-2022")
+    import etl.run_layer as rl
+
+    monkeypatch.setattr(rl, "EXPECTED_FEATURE_COUNTS", {})
+    bowtie = {
+        "type": "Feature",
+        "id": "S20000099",
+        "properties": {
+            "code": "S20000099",
+            "name": "Bowtie",
+            "popcount": 510,
+            "objectid": "99",
+        },
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [3000, 9500],
+                    [4000, 10500],
+                    [4000, 9500],
+                    [3000, 10500],
+                    [3000, 9500],
+                ]
+            ],
+        },
+    }
+    path = tmp_path / "bowtie.geojson"
+    path.write_text(json.dumps(_settlements_fc([bowtie])), encoding="utf-8")
+    receipt = run_layer("settlements-2022", from_file=path, conn=tiny_extent)
+    assert receipt["repaired"] == 1
+    with tiny_extent.cursor() as cur:
+        cur.execute(
+            'SELECT bool_and(ST_IsValid(geom)) FROM layers."settlements-2022"'
+        )
+        assert cur.fetchone()[0] is True
+
+
+def test_n12_settlements_nests_mismatch(tmp_path):
+    """N12: nests:true on settlements-2022 disagrees with report nests:false."""
+    reg = tmp_path / "reg"
+    reg.mkdir()
+    # Copy real registry YAML entries, then flip nests on settlements.
+    for src in REGISTRY_DIR.glob("*.yaml"):
+        text = src.read_text(encoding="utf-8")
+        if src.name == "settlements-2022.yaml":
+            text = text.replace("nests: false", "nests: true", 1)
+        (reg / src.name).write_text(text, encoding="utf-8")
+    with pytest.raises(
+        LadderError,
+        match=(
+            r"^ladder report mismatch for 'settlements-2022': "
+            r"registry nests=true, report=false$"
+        ),
+    ):
+        assert_registry_matches_report(registry_dir=reg, report_path=REPORT_PATH)

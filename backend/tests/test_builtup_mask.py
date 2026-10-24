@@ -14,7 +14,7 @@ from layers.builtup_mask import (
 from layers.platform import platform_catalog
 
 # Pin: exact BUILTUP_CREDIT text must appear in this file (SRC-B N8 / §2a).
-_BUILTUP_CREDIT_PIN = "Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)"
+_BUILTUP_CREDIT_PIN = "Built-up areas: NRS Settlements 2022. Copyright National Records of Scotland, contains Ordnance Survey data © Crown copyright and database right 2026 (OGL v3)"
 
 GLASGOW_BBOX = {
     "south": 55.84,
@@ -93,7 +93,7 @@ def test_catalog_lists_builtup_mask_live_with_nrs_os_attribution():
     assert VISITOR_ATTRIBUTION == BUILTUP_CREDIT
     assert row["attribution"] == BUILTUP_CREDIT
     assert "NRS Settlements 2022" in row["attribution"]
-    assert "OS data" in row["attribution"]
+    assert "Ordnance Survey data" in row["attribution"]
     assert "£" not in json.dumps(row)
 
 

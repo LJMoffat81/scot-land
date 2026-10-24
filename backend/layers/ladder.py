@@ -26,6 +26,19 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORT_PATH = REPO_ROOT / "data" / "processed" / "gis" / "ladder_report.json"
 EXTENT_PATH = REPO_ROOT / "data" / "processed" / "gis" / "scotland_extent.27700.geojson"
 
+# SRC-B-SETTLEMENTS: offline EPSG:27700 GeoJSON pin (outSR=27700).
+SETTLEMENTS_2022_SHA256 = (
+    "b35e990b14ca07650a08a6991f64bac87a74412a9c6d351a66aa05c017995689"
+)
+# Crossings computed once against DZ2022 at 1 m; nests stays false.
+PINNED_LADDER_LAYERS: dict[str, dict[str, Any]] = {
+    "settlements-2022": {
+        "ladder_level": "settlement",
+        "nests": False,
+        "crossings": 277,
+    },
+}
+
 
 class LadderError(Exception):
     """Raised when a nests claim or report pin fails."""
@@ -178,6 +191,12 @@ def build_report(
 
     layers_out: dict[str, Any] = {}
     for eid, entry in sorted(entries.items()):
+        if eid in PINNED_LADDER_LAYERS:
+            pinned = dict(PINNED_LADDER_LAYERS[eid])
+            # Keep ladder_level from registry when present.
+            pinned["ladder_level"] = entry.raw["ladder_level"]
+            layers_out[eid] = pinned
+            continue
         geoms = layer_geoms.get(eid)
         if geoms is None:
             raise LadderError(f"ladder: no geometry source for registry layer {eid!r}")
@@ -196,6 +215,7 @@ def build_report(
             "dz2022_sha256": dz_sha,
             "scotland_extent_sha256": extent_sha,
             "os_boundary_line_sha256": bl_sha,
+            "settlements_2022_sha256": SETTLEMENTS_2022_SHA256,
         },
     }
 

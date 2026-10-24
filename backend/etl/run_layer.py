@@ -39,6 +39,9 @@ CLIP_ZONES: dict[str, tuple[str, ...]] = {
     "land+sea": ("land", "inshore_0_12nm", "offshore_12_200nm"),
 }
 
+EXPECTED_SETTLEMENTS_2022 = 503
+EXPECTED_FEATURE_COUNTS = {"settlements-2022": EXPECTED_SETTLEMENTS_2022}
+
 _GEOM_DIM: dict[str, int] = {
     "point": 1,
     "line": 2,
@@ -498,6 +501,11 @@ def run_layer(
         )
         fetch_s = time.monotonic() - fetch_t0
         features = list(collection.get("features") or [])
+        expected_n = EXPECTED_FEATURE_COUNTS.get(layer_id)
+        if expected_n is not None and len(features) != expected_n:
+            raise IngestError(
+                f"{layer_id}: expected {expected_n} features, got {len(features)}"
+            )
         as_of = _as_of_today()
         method = str((entry.raw.get("lineage") or {}).get("method") or "source")
         version = _dataset_version(layer_id, as_of, raw_body)

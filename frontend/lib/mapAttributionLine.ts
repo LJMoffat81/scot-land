@@ -19,6 +19,10 @@ export const SCOTLAND_EXTENT_CREDIT =
 export const VDL_ZONE_TOTALS_ATTRIBUTION =
   "Totals from the Scottish Vacant and Derelict Land Survey, grouped by Data Zone. Zones with one or two sites show no area.";
 
+/** Built-up areas — NRS Settlements 2022 (SRC-B-SETTLEMENTS §3). */
+export const BUILTUP_CREDIT_TEXT =
+  "Built-up areas: NRS Settlements 2022. Copyright National Records of Scotland, contains Ordnance Survey data © Crown copyright and database right 2026 (OGL v3)";
+
 /** NSTA oil/gas tilesets — registry attribution (oil-fields / platforms / pipelines). */
 export const NSTA_ATTRIBUTION =
   "Contains information provided by the North Sea Transition Authority and/or other third parties.";
@@ -113,6 +117,9 @@ export function buildMapAttributionPieces(
       text: resolveTileCredit("dz2022", dzAttributionText(), tileCredits),
     });
   }
+  if (on.has("builtup_mask")) {
+    pieces.push({ id: "builtup_mask", text: BUILTUP_CREDIT_TEXT });
+  }
   if (on.has("vdl")) {
     pieces.push({ id: "vdl", text: VDL_ZONE_TOTALS_ATTRIBUTION });
   }
@@ -174,6 +181,8 @@ export function shortLayerSourceName(
       return "Scotland outline: UKHO / OS";
     case "data_zones":
       return "Data zones: Scottish Government";
+    case "builtup_mask":
+      return "Built-up areas: NRS";
     case "vdl":
       return "Vacant land: SVDLS";
     case "ros":

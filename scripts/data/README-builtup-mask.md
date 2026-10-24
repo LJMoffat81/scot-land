@@ -15,7 +15,7 @@ spine; **100%** UPRN coverage per `scripts/data/builtup-mask/qa_builtup_mask.jso
 
 ## Visitor attribution
 
-`Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)`
+`Built-up areas: NRS Settlements 2022. Copyright National Records of Scotland, contains Ordnance Survey data © Crown copyright and database right 2026 (OGL v3)`
 
 ## Where the large files live
 

@@ -15,11 +15,17 @@
       "ladder_level": "scotland",
       "nests": false,
       "crossings": 13
+    },
+    "settlements-2022": {
+      "ladder_level": "settlement",
+      "nests": false,
+      "crossings": 277
     }
   },
   "inputs": {
     "dz2022_sha256": "421c648480c7d51e32934de9f1b9f6cbbf86c6d8d382aab30a7bb4d2049ef0ec",
     "scotland_extent_sha256": "9896f99f19068c3cb6ccb43276784e7093064f47b1de7a2dcd34b9b38fb8a1b9",
-    "os_boundary_line_sha256": "151b027b621ac4cdac3f7a6635cd26dd65fb3b5bf1cb8eb392cc00e1687e3bd4"
+    "os_boundary_line_sha256": "151b027b621ac4cdac3f7a6635cd26dd65fb3b5bf1cb8eb392cc00e1687e3bd4",
+    "settlements_2022_sha256": "b35e990b14ca07650a08a6991f64bac87a74412a9c6d351a66aa05c017995689"
   }
 }

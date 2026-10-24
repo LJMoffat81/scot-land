@@ -1,4 +1,6 @@
-"""Ingest UX10-2 built-up display mask into PostGIS.
+"""Deprecated by SRC-B-SETTLEMENTS; tables kept pending Laurie.
+
+Ingest UX10-2 built-up display mask into PostGIS.
 
 DISPLAY ONLY — never changes any figure. Loads delivery GeoJSON (EPSG:4326):
   map_builtup_mask.4326.geojson  → table map_builtup_mask (one Polygon row per part)
@@ -12,9 +14,9 @@ Large blobs stay out of git. Resolve paths from, in order:
 Usage:
   export DATABASE_URL=postgresql://...
   export BUILTUP_MASK_DIR=/path/to/mask-ux10-2
-  python -m etl.ingest_builtup_mask --replace
+  python -m etl.ingest_builtup_mask --allow-deprecated --replace
   # or CI fixture:
-  python -m etl.ingest_builtup_mask --fixture --replace
+  python -m etl.ingest_builtup_mask --allow-deprecated --fixture --replace
 """
 
 from __future__ import annotations
@@ -41,7 +43,7 @@ FIXTURE_DIR = REPO_ROOT / "backend" / "tests" / "fixtures" / "builtup_mask"
 DEFAULT_DIR = DATA_DIR / "external" / "builtup"
 EXPECTED_DZ = 7392
 CODE_RE = re.compile(r"^S01[0-9]{6}$")
-VISITOR_ATTRIBUTION = "Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)"
+VISITOR_ATTRIBUTION = "Built-up areas: NRS Settlements 2022. Copyright National Records of Scotland, contains Ordnance Survey data © Crown copyright and database right 2026 (OGL v3)"
 
 
 def ensure_tables(conn) -> None:
@@ -201,8 +203,13 @@ def write_stamp(path: Path, mask_parts: int, dz_rows: int) -> Path | None:
     )
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--allow-deprecated",
+        action="store_true",
+        help="Acknowledge SRC-B-SETTLEMENTS deprecation and run anyway",
+    )
     parser.add_argument(
         "--dir",
         type=Path,
@@ -242,7 +249,11 @@ def main() -> None:
         default=None,
         help="Optional qa_builtup_mask.json to verify when --assert-full-qa",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    if not args.allow_deprecated:
+        raise RuntimeError(
+            "ingest_builtup_mask is deprecated (SRC-B-SETTLEMENTS); pass --allow-deprecated"
+        )
 
     if not (os.getenv("DATABASE_URL") or "").strip() and not (
         os.getenv("PGHOST", "").strip() and os.getenv("PGDATABASE", "").strip()

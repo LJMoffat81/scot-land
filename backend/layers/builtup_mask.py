@@ -1,12 +1,13 @@
-"""UX10-2 built-up display mask from local PostGIS.
+"""UX10-2 / SRC-B-SETTLEMENTS built-up display layer from local PostGIS.
 
-Display only: never changes any figure. Tables ``map_builtup_mask`` (national
-built-up extent parts) and ``dz2022_masked`` (DZ2022 ∩ mask, one row per zone
-with addresses). Served as zoom-simplified viewport GeoJSON for MapLibre
+Display only: never changes any figure. Both MaskKinds read the live
+``run_layer`` table for registry entry ``settlements-2022`` (official NRS
+Settlements 2022). Old tables ``map_builtup_mask`` and ``dz2022_masked`` stay
+in the DB unread. Served as zoom-simplified viewport GeoJSON for MapLibre
 vector layers (same contract as Data Zones / NRS places — not national raw
 GeoJSON).
 
-Attribution (visitor): Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)
+Attribution (visitor): Built-up areas: NRS Settlements 2022. Copyright National Records of Scotland, contains Ordnance Survey data © Crown copyright and database right 2026 (OGL v3)
 """
 
 from __future__ import annotations
@@ -19,7 +20,9 @@ from typing import Any, Literal
 import yaml
 from psycopg2 import extras
 
+from etl.run_layer import _table
 from georgist.db import DatabaseUnavailable, connect
+from layers.registry.loader import registry
 
 logger = logging.getLogger(__name__)
 
@@ -28,20 +31,38 @@ SOURCES_PATH = REPO_ROOT / "data" / "config" / "sources.yaml"
 
 MaskKind = Literal["builtup_mask", "dz2022_masked"]
 
-TABLES: dict[MaskKind, str] = {
+SETTLEMENTS_LAYER_ID = "settlements-2022"
+
+# MVT layer names stay unchanged for the frontend contract (S2).
+MVT_LAYER_NAMES: dict[MaskKind, str] = {
     "builtup_mask": "map_builtup_mask",
     "dz2022_masked": "dz2022_masked",
 }
 MAX_FEATURES = 400
 EXPECTED_DZ2022_MASKED = 7392
 
-BUILTUP_CREDIT = "Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)"
-BUILTUP_METHOD_NOTE = "This is our own estimate of built-up land, not an official boundary. We start with National Records of Scotland's 2022 settlement boundaries, add a 50 m area around each OS Open UPRN address point outside them, then cut the result to each 2022 Data Zone. It only decides which parts of the map are coloured. It is not used in any land value."
+BUILTUP_CREDIT = "Built-up areas: NRS Settlements 2022. Copyright National Records of Scotland, contains Ordnance Survey data © Crown copyright and database right 2026 (OGL v3)"
+BUILTUP_METHOD_NOTE = "These are National Records of Scotland's official 2022 settlement boundaries, for places of 500 or more people. Smaller villages and hamlets are not shown. We only trim them to the coastline. They only decide which parts of the map are coloured. They are not used in any land value."
 VISITOR_ATTRIBUTION = BUILTUP_CREDIT
 
 
 class LayerUnavailable(Exception):
     """Raised when built-up mask tables are not loaded or PostGIS is unreachable."""
+
+
+def _live_table() -> str:
+    """Resolve the live settlements-2022 table via registry + run_layer._table."""
+    lid = SETTLEMENTS_LAYER_ID
+    entries = registry()
+    if lid not in entries:
+        raise LayerUnavailable(
+            f"Built-up mask registry entry {lid!r} is missing."
+        )
+    return _table("layers", lid)
+
+
+def _live_regclass() -> str:
+    return 'layers."settlements-2022"'
 
 
 @lru_cache(maxsize=1)
@@ -58,7 +79,7 @@ def source_meta(kind: MaskKind = "builtup_mask") -> dict[str, Any]:
     return {
         "source": layer.get("name")
         or block.get("name")
-        or "Built-up display mask (our estimate from NRS Settlements 2022 and OS Open UPRN)",
+        or "Built-up areas (NRS Settlements 2022)",
         "licence": block.get("licence") or "OGL-3.0",
         "attribution": block.get("attribution") or BUILTUP_CREDIT,
         "source_url": block.get("source_url")
@@ -71,21 +92,25 @@ def source_meta(kind: MaskKind = "builtup_mask") -> dict[str, Any]:
 
 
 def is_loaded(kind: MaskKind = "builtup_mask") -> bool:
-    table = TABLES[kind]
+    del kind  # both kinds share the settlements-2022 table
     try:
         conn = connect()
     except DatabaseUnavailable as exc:
-        logger.info("built-up mask %s PostGIS unavailable: %s", kind, exc)
+        logger.info("built-up mask PostGIS unavailable: %s", exc)
         return False
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT to_regclass(%s) IS NOT NULL", (f"public.{table}",))
+            cur.execute(
+                "SELECT to_regclass(%s) IS NOT NULL",
+                (_live_regclass(),),
+            )
             if not cur.fetchone()[0]:
                 return False
+            table = _live_table()
             cur.execute(f"SELECT 1 FROM {table} LIMIT 1")
             return cur.fetchone() is not None
     except Exception as exc:
-        logger.info("built-up mask %s load check failed: %s", kind, exc)
+        logger.info("built-up mask load check failed: %s", exc)
         return False
     finally:
         conn.close()
@@ -93,16 +118,17 @@ def is_loaded(kind: MaskKind = "builtup_mask") -> bool:
 
 def require_loaded(kind: MaskKind) -> None:
     if not is_loaded(kind):
-        table = TABLES[kind]
         raise LayerUnavailable(
-            f"Built-up mask {kind} is not available: {table} is missing or empty. "
-            "Ingest with python -m etl.ingest_builtup_mask before publishing this layer."
+            f"Built-up mask {kind} is not available: "
+            f'{_live_regclass()} is missing or empty. '
+            "Ingest with python -m etl.run_layer settlements-2022 before "
+            "publishing this layer."
         )
 
 
 def count_rows(kind: MaskKind) -> int:
     require_loaded(kind)
-    table = TABLES[kind]
+    table = _live_table()
     try:
         conn = connect()
     except DatabaseUnavailable as exc:
@@ -123,37 +149,34 @@ def query_bbox(
     east: float,
     max_features: int = MAX_FEATURES,
 ) -> dict[str, Any]:
-    """Viewport mask polygons as GeoJSON (WGS84) for MapLibre vector layers."""
+    """Viewport settlement polygons as GeoJSON (WGS84) for MapLibre vector layers."""
     require_loaded(kind)
-    table = TABLES[kind]
+    table = _live_table()
     cap = max(1, min(int(max_features), MAX_FEATURES))
     meta = source_meta(kind)
-    if kind == "dz2022_masked":
-        sql = f"""
-            SELECT
-                code,
-                ST_AsGeoJSON(
-                    ST_SimplifyPreserveTopology(geom, 0.00005), 6
-                )::json AS geometry
-            FROM {table}
-            WHERE geom && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
-              AND ST_Intersects(geom, ST_MakeEnvelope(%s, %s, %s, %s, 4326))
-            ORDER BY code
-            LIMIT %s
-        """
-    else:
-        sql = f"""
-            SELECT
-                gid,
-                ST_AsGeoJSON(
-                    ST_SimplifyPreserveTopology(geom, 0.00005), 6
-                )::json AS geometry
-            FROM {table}
-            WHERE geom && ST_MakeEnvelope(%s, %s, %s, %s, 4326)
-              AND ST_Intersects(geom, ST_MakeEnvelope(%s, %s, %s, %s, 4326))
-            ORDER BY gid
-            LIMIT %s
-        """
+    sql = f"""
+        SELECT
+            COALESCE(props ->> 'code', feature_id) AS code,
+            props ->> 'name' AS name,
+            CASE
+                WHEN props ->> 'popcount' ~ '^-?[0-9]+$'
+                THEN (props ->> 'popcount')::integer
+                ELSE NULL
+            END AS popcount,
+            ST_AsGeoJSON(
+                ST_SimplifyPreserveTopology(ST_Transform(geom, 4326), 0.00005), 6
+            )::json AS geometry
+        FROM {table}
+        WHERE geom && ST_Transform(
+                ST_MakeEnvelope(%s, %s, %s, %s, 4326), 27700
+              )
+          AND ST_Intersects(
+                geom,
+                ST_Transform(ST_MakeEnvelope(%s, %s, %s, %s, 4326), 27700)
+              )
+        ORDER BY code
+        LIMIT %s
+    """
     try:
         conn = connect()
     except DatabaseUnavailable as exc:
@@ -180,11 +203,10 @@ def query_bbox(
             "source": meta["source"],
             "licence": meta["licence"],
             "display_only": True,
+            "code": row.get("code"),
+            "name": row.get("name"),
+            "popcount": row.get("popcount"),
         }
-        if kind == "dz2022_masked":
-            props["code"] = row.get("code")
-        else:
-            props["gid"] = row.get("gid")
         features.append(
             {
                 "type": "Feature",
@@ -208,49 +230,34 @@ def query_bbox(
 def query_mvt(kind: MaskKind, z: int, x: int, y: int) -> bytes:
     """Mapbox Vector Tile for one XYZ tile (Web Mercator). Empty bytes if none."""
     require_loaded(kind)
-    table = TABLES[kind]
-    if kind == "dz2022_masked":
-        sql = f"""
-            WITH bounds AS (
-                SELECT ST_TileEnvelope(%s, %s, %s) AS geom
-            )
-            SELECT COALESCE(ST_AsMVT(tile, %s, 4096, 'geom'), ''::bytea)
-            FROM (
-                SELECT
-                    d.code,
-                    ST_AsMVTGeom(
-                        ST_Transform(d.geom, 3857),
-                        bounds.geom,
-                        4096,
-                        64,
-                        true
-                    ) AS geom
-                FROM {table} d, bounds
-                WHERE ST_Transform(d.geom, 3857) && bounds.geom
-            ) AS tile
-        """
-        params = (z, x, y, "dz2022_masked")
-    else:
-        sql = f"""
-            WITH bounds AS (
-                SELECT ST_TileEnvelope(%s, %s, %s) AS geom
-            )
-            SELECT COALESCE(ST_AsMVT(tile, %s, 4096, 'geom'), ''::bytea)
-            FROM (
-                SELECT
-                    d.gid,
-                    ST_AsMVTGeom(
-                        ST_Transform(d.geom, 3857),
-                        bounds.geom,
-                        4096,
-                        64,
-                        true
-                    ) AS geom
-                FROM {table} d, bounds
-                WHERE ST_Transform(d.geom, 3857) && bounds.geom
-            ) AS tile
-        """
-        params = (z, x, y, "map_builtup_mask")
+    table = _live_table()
+    mvt_name = MVT_LAYER_NAMES[kind]
+    sql = f"""
+        WITH bounds AS (
+            SELECT ST_TileEnvelope(%s, %s, %s) AS geom
+        )
+        SELECT COALESCE(ST_AsMVT(tile, %s, 4096, 'geom'), ''::bytea)
+        FROM (
+            SELECT
+                COALESCE(d.props ->> 'code', d.feature_id) AS code,
+                d.props ->> 'name' AS name,
+                CASE
+                    WHEN d.props ->> 'popcount' ~ '^-?[0-9]+$'
+                    THEN (d.props ->> 'popcount')::integer
+                    ELSE NULL
+                END AS popcount,
+                ST_AsMVTGeom(
+                    ST_Transform(d.geom, 3857),
+                    bounds.geom,
+                    4096,
+                    64,
+                    true
+                ) AS geom
+            FROM {table} d, bounds
+            WHERE ST_Transform(d.geom, 3857) && bounds.geom
+        ) AS tile
+    """
+    params = (z, x, y, mvt_name)
     try:
         conn = connect()
     except DatabaseUnavailable as exc:

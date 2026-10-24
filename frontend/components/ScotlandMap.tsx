@@ -714,6 +714,7 @@ export default function ScotlandMap() {
    * Neutral shading when GBP-LIVE off; AGR bands when on + layer 1.
    */
   const [showBuiltupMask, setShowBuiltupMask] = useState(true);
+  const [builtupMaskVisible, setBuiltupMaskVisible] = useState(false);
   /** Ledger / registry toggles (paint where the rent class / constraint applies). */
   const [ledgerEnabled, setLedgerEnabled] = useState<LedgerToggleState>({});
   /** Annual Ground Rent layer (registry id `1`). */
@@ -2506,7 +2507,7 @@ export default function ScotlandMap() {
         type: "geojson",
         data: emptyCollection,
         attribution:
-          "Built-up areas: our estimate from NRS Settlements 2022 and OS Open UPRN. Contains NRS and OS data © Crown copyright and database right 2026 (OGL v3)",
+          "Built-up areas: NRS Settlements 2022. Copyright National Records of Scotland, contains Ordnance Survey data © Crown copyright and database right 2026 (OGL v3)",
       });
       map.addLayer({
         id: "dz2022-masked-fill",
@@ -3949,6 +3950,7 @@ export default function ScotlandMap() {
     if (!map) return;
 
     const setVis = (vis: "visible" | "none") => {
+      setBuiltupMaskVisible(vis === "visible");
       if (!hasMapLayer(map, "dz2022-masked-fill")) return;
       map.setLayoutProperty("dz2022-masked-fill", "visibility", vis);
       map.setLayoutProperty("dz2022-masked-line", "visibility", vis);
@@ -3998,12 +4000,22 @@ export default function ScotlandMap() {
       timer = setTimeout(loadMasked, 700);
     };
 
+    const onZoom = () => {
+      if (map.getZoom() < DATA_ZONE_MIN_ZOOM) {
+        setVis("none");
+      } else {
+        onMove();
+      }
+    };
+
     loadMasked();
     map.on("moveend", onMove);
+    map.on("zoomend", onZoom);
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
       map.off("moveend", onMove);
+      map.off("zoomend", onZoom);
     };
   }, [mapReady, showBuiltupMask]);
 
@@ -5434,6 +5446,7 @@ export default function ScotlandMap() {
         esriAttribution={mapStyle === "aerial" ? esriAttribution : null}
         activeLayerIds={[
           ...(outlineBuilt ? [TILE_BASE_OUTLINE_ID] : []),
+          ...(builtupMaskVisible ? ["builtup_mask"] : []),
           ...activeLayerIds,
           ...creditExtraIds,
         ]}

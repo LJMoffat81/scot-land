@@ -302,6 +302,20 @@ _LAYERS_CARD_1_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# SRC-B-SETTLEMENTS 827f8433 — literal P6 allow-list; unioned after LAYERS-CARD-1.
+_SRC_B_SETTLEMENTS_FRONTEND_ALLOW = frozenset(
+    [
+        # SRC-B-SETTLEMENTS 827f8433
+        "frontend/components/ScotlandMap.tsx",
+        # SRC-B-SETTLEMENTS 827f8433
+        "frontend/lib/layerCatalog.ts",
+        # SRC-B-SETTLEMENTS 827f8433
+        "frontend/lib/mapAttributionLine.ts",
+        # SRC-B-SETTLEMENTS 827f8433
+        "frontend/e2e/ci/frontend-batch-2-r6.spec.ts",
+    ]
+)
+
 
 def _assert_main_py_only_arch2a_tiles_registration() -> None:
     """HEAD main.py must equal origin/main plus exactly the ARCH-2a tiles line."""
@@ -330,6 +344,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _SEA_EXTENT_2_FRONTEND_ALLOW
                 | _ARCH5A_FRONTEND_ALLOW
                 | _LAYERS_CARD_1_FRONTEND_ALLOW
+                | _SRC_B_SETTLEMENTS_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

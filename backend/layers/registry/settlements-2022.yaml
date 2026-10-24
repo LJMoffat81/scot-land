@@ -1,0 +1,27 @@
+id: settlements-2022
+title: "Settlements (NRS Census 2022)"
+geography: scotland
+clip: land
+clip_keep_all: true
+unit: settlement
+ladder_level: settlement
+nests: false
+licence: OGL-3.0
+attribution: >-
+  Copyright National Records of Scotland, contains Ordnance Survey data ©
+  Crown copyright and database right 2026.
+source:
+  type: arcgis
+  url: >-
+    https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer/8/query
+  where: "1=1"
+  out_fields: "code,name,popcount"
+  page_size: 1000
+geometry: polygon
+refresh: {cron: "0 5 1 * *", max_mb: 50, max_s: 600}
+serve: {mode: pmtiles, simplify_m: 10, precision_dp: 6, max_mb: 15}
+zoom: {min: 0, max: 12, low_zoom: simplify}
+style: {fill: {fill-color: "#1a4a6e", fill-opacity: 0.12}}
+legend:
+  - {label: "Settlements (NRS Census 2022)", color: "#1a4a6e"}
+lineage: {derived_from: [], method: source, roll_up_to: [council, scotland]}

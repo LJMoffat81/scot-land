@@ -1,0 +1,18 @@
+{
+  "id": "settlements-2022",
+  "before": 503,
+  "after": 503,
+  "outside": 0,
+  "repaired": 1,
+  "repaired_ids": [
+    "10"
+  ],
+  "fetch_s": 3.065,
+  "clip_s": 0.751,
+  "total_s": 4.647,
+  "extent_sha256": "9896f99f19068c3cb6ccb43276784e7093064f47b1de7a2dcd34b9b38fb8a1b9",
+  "url": "https://maps.gov.scot/server/rest/services/NRS/Census2022/MapServer/8/query?where=1%3D1&outFields=code%2Cname%2Cpopcount&f=geojson&outSR=4326&resultRecordCount=1000&resultOffset=0",
+  "as_of": "2026-10-24",
+  "dataset_version": "settlements-2022@2026-10-24-00e01d6e",
+  "method": "source"
+}

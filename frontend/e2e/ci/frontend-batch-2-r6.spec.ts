@@ -15,6 +15,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { attachConsoleGate, assertConsoleClean, CI_TINY_PNG, DUMMY_ESRI_KEY, EMPTY_GLYPH_PBF, injectEsriBasemapKey, openLayers, openMap, openPlaceViaCoords, registerOpenFreeMapFontStub, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 import {
+  BUILTUP_CREDIT_TEXT,
   buildMapAttributionPieces,
   shortLayerSourceName,
   VDL_ZONE_TOTALS_ATTRIBUTION,
@@ -195,12 +196,23 @@ for (const viewport of VIEWPORTS) {
       await openMap(page, "/?layers=data_zones,vdl&z=12&c=-4.25,55.86");
       await waitForMap(page);
 
-      const expected = buildMapAttributionPieces(["data_zones", "vdl"])
+      const expected = buildMapAttributionPieces([
+        "data_zones",
+        "builtup_mask",
+        "vdl",
+      ])
         .map((p) => p.text)
         .join(" · ");
       const line = page.getByTestId("map-attribution-line");
       await expect(line).toBeVisible();
       await expect(page.getByTestId("map-credit-line")).toBeVisible();
+      await expect
+        .poll(
+          async () =>
+            ((await line.textContent()) ?? "").replace(/\s+/g, " ").trim(),
+          { timeout: 15_000 },
+        )
+        .toBe(expected);
       const text = ((await line.textContent()) ?? "").replace(/\s+/g, " ").trim();
       expect(text).toBe(expected);
       assertConsoleClean(gate);
@@ -377,3 +389,88 @@ test("R5 MC11 scan self-test", async () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test("R6 builtup short name", () => {
+  expect(
+    shortLayerSourceName({
+      id: "builtup_mask",
+      text: BUILTUP_CREDIT_TEXT,
+    }),
+  ).toBe("Built-up areas: NRS");
+  expect(
+    buildMapAttributionPieces(["builtup_mask"]).map((p) => p.id),
+  ).toEqual(["basemap", "builtup_mask"]);
+});
+
+const E1_VIEWPORTS = [
+  { width: 390, height: 844 },
+  { width: 1440, height: 900 },
+] as const;
+
+for (const viewport of E1_VIEWPORTS) {
+  test.describe(`SRC-B-SETTLEMENTS E1 ${viewport.width}x${viewport.height}`, () => {
+    test.use({ viewport });
+
+    test("builtup short name at zoom 12; long credit in sheet/line", async ({
+      page,
+    }) => {
+      test.setTimeout(180_000);
+      const gate = attachConsoleGate(page);
+      await stubMapCardsBackend(page);
+      await openMap(page, "/?z=6&c=-4.25,55.86");
+      await waitForMap(page);
+      await expect
+        .poll(
+          async () => page.locator("#map").getAttribute("data-framed"),
+          { timeout: 30_000 },
+        )
+        .toBe("1");
+
+      const credit = page.getByTestId("map-credit-line");
+      await expect(credit).toBeVisible();
+      expect(await credit.innerText()).not.toContain("Built-up areas: NRS");
+
+      await page.evaluate(async () => {
+        const map = (
+          window as unknown as {
+            __map?: {
+              jumpTo(opts: {
+                center: [number, number];
+                zoom: number;
+              }): void;
+              once(event: string, cb: () => void): void;
+            };
+          }
+        ).__map;
+        if (!map) throw new Error("window.__map missing");
+        await new Promise<void>((resolve) => {
+          map.once("idle", () => resolve());
+          map.jumpTo({ center: [-4.25, 55.86], zoom: 12 });
+        });
+      });
+
+      await expect
+        .poll(
+          async () =>
+            page.getByTestId("map-credit-short-names").innerText(),
+          { timeout: 15_000 },
+        )
+        .toContain("Built-up areas: NRS");
+
+      if (viewport.width <= 900) {
+        await expect(page.locator(".map-credit-long-pieces")).toBeHidden();
+        const visible = await credit.innerText();
+        expect(visible).not.toContain(BUILTUP_CREDIT_TEXT);
+        await page.getByTestId("map-credit-info").click();
+        await expect(page.getByTestId("map-credit-sheet")).toContainText(
+          BUILTUP_CREDIT_TEXT,
+        );
+      } else {
+        await expect(page.getByTestId("map-attribution-line")).toContainText(
+          BUILTUP_CREDIT_TEXT,
+        );
+      }
+      assertConsoleClean(gate);
+    });
+  });
+}

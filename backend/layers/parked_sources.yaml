@@ -1,0 +1,53 @@
+# ARCH-4b — Parked non-official, contractor-hosted, or derived layer sources.
+# Validated by backend/layers/parked_check.py against layer-source-audit-2026-10-23.md.
+# Park reason enum: contractor-host | derived-geometry | licence-unverified | proxy-host-pending-gis
+
+parked_sources:
+  sea-12nm:
+    kind: context_raster
+    audit_verdict: NOT-OFFICIAL
+    park_reason: contractor-host
+    summary: "Atkins GeoServer NMPi WMS copy of UKHO 12nm limit; replaced by official UKHO + SI 1999/1126 scotland-extent."
+    official_replacement: "UKHO Maritime Limits & Boundaries via scotland-extent"
+  marine-regions:
+    kind: context_raster
+    audit_verdict: NOT-OFFICIAL
+    park_reason: contractor-host
+    summary: "Atkins GeoServer NMPi WMS host for Scottish Marine Regions; parked until Marine Directorate own service is confirmed by GIS."
+    official_replacement: "Marine Directorate own WFS/WMS on spatialdata.gov.scot (pending GIS)"
+  scottish-zone:
+    kind: context_raster
+    audit_verdict: NOT-OFFICIAL
+    park_reason: contractor-host
+    summary: "Atkins GeoServer NMPi WMS copy of UK EEZ; replaced by official UKHO + SI 1999/1126 scotland-extent."
+    official_replacement: "UKHO EEZ + SI 1999/1126 via scotland-extent"
+  harbours:
+    kind: context_raster
+    audit_verdict: NOT-OFFICIAL
+    park_reason: contractor-host
+    summary: "Atkins GeoServer NMPi WMS indicative port limits; parked until official Transport Scotland / Marine Directorate harbour orders source is confirmed by GIS."
+    official_replacement: "Transport Scotland / Marine Directorate harbour orders (pending GIS)"
+  wind-plan:
+    kind: context_raster
+    audit_verdict: NOT-OFFICIAL
+    park_reason: contractor-host
+    summary: "Atkins GeoServer NMPi WMS Sectoral Marine Plan 2020 options; parked until Marine Directorate own service is confirmed by GIS."
+    official_replacement: "SG Marine Directorate Sectoral Marine Plan service (pending GIS)"
+  community_ownership:
+    kind: postgis_overlay
+    audit_verdict: NOT-OFFICIAL
+    park_reason: derived-geometry
+    summary: "Points derived via postcodes.io centroids rather than official asset boundary polygons; kept out of backend/layers/registry."
+    official_replacement: "SG Community Ownership official asset polygons if published (or ONSPD direct)"
+  public_land:
+    kind: postgis_overlay
+    audit_verdict: NOT-OFFICIAL
+    park_reason: licence-unverified
+    summary: "ArcGIS dashboard FeatureServer with unverified/non-open licence; hidden from public map and kept out of backend/layers/registry."
+    official_replacement: "SG Public Sector Land register with verified OGL v3 licence (pending GIS)"
+  map_builtup_mask:
+    kind: postgis_overlay
+    audit_verdict: NOT-OFFICIAL
+    park_reason: derived-geometry
+    summary: "In-house UX10-2 50 m UPRN buffer mask superseded by official NRS Settlements 2022 registry layer (settlements-2022)."
+    official_replacement: "settlements-2022 (NRS Census 2022 Settlements)"

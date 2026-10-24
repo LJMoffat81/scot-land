@@ -6,13 +6,14 @@ import MapRangeLegend from "@/components/MapRangeLegend";
 import {
   aimStatusPanelTag,
   layersPanelAimRows,
-  type AimGroupId,
   type AimRow,
 } from "@/lib/aimToCover";
 import {
   buildInlineLegendFromRegistry,
   getMapLayer,
   manifestLegendsForDrawerLayer,
+  MAP_LAYER_GROUP_NOTES,
+  TENURE_LABEL,
   type InlineLegendView,
   type MapLayerGroupKey,
   type MapLayerLegendClass,
@@ -26,16 +27,19 @@ import { popDensityLegendProps } from "@/lib/popDensityLegend";
 const LAND_HEADER = "LAND";
 const LAND_SUBTITLE = "Everything nature provides and no one made";
 const PLACES_HEADER = "PLACES AND BOUNDARIES";
-const SERVICES_OF_NATURE_NOTE = "Estimates only. Never taxed.";
 
-const LAND_SUBGROUP_LABEL: Record<AimGroupId, string> = {
+type LandSubgroupKey = "land" | "tenure" | "resources" | "nature";
+
+const LAND_SUBGROUP_LABEL: Record<LandSubgroupKey, string> = {
   land: "Sites",
+  tenure: TENURE_LABEL,
   resources: "Natural resources",
   nature: "Services of nature",
 };
 
-const LAND_SUBGROUP_ORDER: readonly AimGroupId[] = [
+const LAND_SUBGROUP_ORDER: readonly LandSubgroupKey[] = [
   "land",
+  "tenure",
   "resources",
   "nature",
 ];
@@ -235,7 +239,7 @@ export default function MapLayersDrawer({
               subgroup
               expanded={openGroups.has(key)}
               onToggle={() => toggleGroup(key)}
-              note={key === "nature" ? SERVICES_OF_NATURE_NOTE : undefined}
+              note={MAP_LAYER_GROUP_NOTES[key]}
             >
               {layers.map((layer) => (
                 <DrawerLayerRow
@@ -277,6 +281,7 @@ export default function MapLayersDrawer({
           header
           expanded={openGroups.has("places")}
           onToggle={() => toggleGroup("places")}
+          note={MAP_LAYER_GROUP_NOTES.places}
         >
           {placesLayers.map((layer) => {
             const densityKey =
@@ -330,9 +335,10 @@ export default function MapLayersDrawer({
 }
 
 function placeholdersFor(
-  groupKey: AimGroupId,
+  groupKey: LandSubgroupKey,
   layers: readonly MapDrawerLayer[],
 ): readonly AimRow[] {
+  if (groupKey === "tenure") return [];
   const liveLabels = new Set(layers.map((layer) => layer.label));
   return layersPanelAimRows(groupKey).filter((row) => !liveLabels.has(row.name));
 }
@@ -384,7 +390,14 @@ function LayersAccordion({
         <span aria-hidden="true">{expanded ? "▾" : "▸"}</span>
       </button>
       {note ? (
-        <p className="layer-meta layers-nav-note" data-testid="layers-nature-note">
+        <p
+          className="layer-meta layers-nav-note"
+          data-testid={
+            groupKey === "nature"
+              ? "layers-nature-note"
+              : `layers-group-note-${groupKey}`
+          }
+        >
           {note}
         </p>
       ) : null}

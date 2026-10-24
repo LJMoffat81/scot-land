@@ -41,7 +41,7 @@ for (const viewport of [
       await openLayers(page);
 
       // Expand every group so all switches exist in the DOM.
-      for (const key of ["land", "resources", "nature", "places"]) {
+      for (const key of ["land", "tenure", "resources", "nature", "places"]) {
         await ensureLayersGroupOpen(page, key);
       }
 

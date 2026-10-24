@@ -171,7 +171,8 @@ test.describe("UX-04 a11y names and landmarks at 1280", () => {
       "utf8",
     );
     expect(scotlandMap).toContain('aria-label", "Close popup"');
-    expect(scotlandMap).toContain('data-testid="legend-strip"');
+    expect(scotlandMap).not.toContain('data-testid="legend-strip"');
+    expect(scotlandMap).not.toContain('data-testid="map-key-chip"');
     expect(scotlandMap).not.toContain('aria-label="Map legend"');
     expect(scotlandMap).not.toContain('aria-label="Land rent"');
 

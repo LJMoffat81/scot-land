@@ -13,6 +13,7 @@ registerOpenFreeMapFontStub();
 const HEADER_ORDER = [
   "LAND",
   "Sites",
+  "Who holds the land",
   "Natural resources",
   "Services of nature",
   "PLACES AND BOUNDARIES",
@@ -81,7 +82,7 @@ for (const viewport of [
 
       await openMap(page);
       await openLayers(page);
-      for (const key of ["land", "resources", "nature", "places"] as const) {
+      for (const key of ["land", "tenure", "resources", "nature", "places"] as const) {
         await ensureLayersGroupOpen(page, key);
       }
 
@@ -93,7 +94,7 @@ for (const viewport of [
         .allInnerTexts();
       expect(order.map((line) => line.trim())).toEqual([...HEADER_ORDER]);
       await expect(page.getByTestId("layers-nav-header")).toHaveCount(2);
-      await expect(page.getByTestId("layers-nav-subgroup")).toHaveCount(3);
+      await expect(page.getByTestId("layers-nav-subgroup")).toHaveCount(4);
       await expect(page.getByTestId("layers-nav-land-subtitle")).toHaveText(
         "Everything nature provides and no one made",
       );

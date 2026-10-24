@@ -19,7 +19,7 @@ import {
   SUGGEST_LAYER_COPY,
   SUGGEST_LAYER_HREF,
 } from "../../components/SuggestLayerSection";
-import { assertConsoleClean, attachConsoleGate, CI_TINY_PNG, DUMMY_ESRI_KEY, EMPTY_GLYPH_PBF, injectEsriBasemapKey, openMap, registerOpenFreeMapFontStub, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
+import { assertConsoleClean, attachConsoleGate, CI_TINY_PNG, DUMMY_ESRI_KEY, EMPTY_GLYPH_PBF, injectEsriBasemapKey, openLayers, openMap, registerOpenFreeMapFontStub, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();
 
@@ -435,15 +435,13 @@ for (const viewport of VIEWPORTS) {
       const fillOpacity = await paintOpacity(page, "council-fill");
       expect(fillOpacity).toBe(0.55);
 
-      // FRONTEND-BATCH-4: legend lives in the key chip; expand so bands/no-data are visible.
-      const chip = page.getByTestId("map-key-chip");
-      await expect(chip).toBeVisible({ timeout: 30_000 });
-      if ((await chip.getAttribute("aria-expanded")) === "false") {
-        await chip.click();
-      }
-      await expect(chip).toHaveAttribute("aria-expanded", "true");
+      // KEY-IN-LAYERS-ONLY-1: density key lives only inside Layers drawer.
+      await expect(page.getByTestId("map-key-chip")).toHaveCount(0);
+      await openLayers(page);
+      const densityKey = page.getByTestId("map-layer-pop-density-key");
+      await expect(densityKey).toBeVisible({ timeout: 30_000 });
 
-      const colourSwatches = page.locator(
+      const colourSwatches = densityKey.locator(
         ".map-range-legend-list > li:not([data-testid='map-range-legend-no-data']) .map-range-legend-swatch",
       );
       await expect(colourSwatches.first()).toBeVisible({ timeout: 30_000 });
@@ -468,7 +466,7 @@ for (const viewport of VIEWPORTS) {
         expect(stopColors).toContain(color);
       }
 
-      const nodata = page.locator(".map-range-legend-swatch-nodata");
+      const nodata = densityKey.locator(".map-range-legend-swatch-nodata");
       await expect(nodata).toBeVisible();
       const nodataOpacity = await nodata.evaluate(
         (el) => getComputedStyle(el).opacity,

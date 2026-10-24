@@ -38,6 +38,7 @@ for (const entry of MAP_LAYER_REGISTRY) {
 }
 
 assert.equal(mapLayerGroupLabel("land"), RENT_GROUP_NAME.land);
+assert.equal(mapLayerGroupLabel("tenure"), "Who holds the land");
 assert.equal(mapLayerGroupLabel("resources"), RENT_GROUP_NAME.resources);
 assert.equal(mapLayerGroupLabel("nature"), RENT_GROUP_NAME.nature);
 assert.equal(mapLayerGroupLabel("places"), "Places and boundaries");
@@ -162,9 +163,10 @@ assert.ok(
   MAP_LAYER_REGISTRY.every((e) => e.defaultOn !== true || e.id === "councils"),
 );
 
-// Four accordion groups; every live id maps to one of them.
+// Five accordion groups; every live id maps to one of them.
 assert.deepEqual([...MAP_LAYER_GROUP_ORDER], [
   "land",
+  "tenure",
   "resources",
   "nature",
   "places",

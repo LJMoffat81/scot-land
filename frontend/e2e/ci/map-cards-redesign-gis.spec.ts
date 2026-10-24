@@ -50,10 +50,8 @@ for (const viewport of [
       await expect(page.getByTestId("layer-inline-legend-access_services")).toBeVisible();
       await page.getByTestId("map-panel-slot-close").click();
       await expect(page.getByTestId("map-panel-slot")).toHaveCount(0);
-      await expect(page.getByTestId("legend-strip")).toBeVisible();
-      await expect(page.getByTestId("legend-strip")).toContainText(
-        /access to services/i,
-      );
+      await expect(page.getByTestId("legend-strip")).toHaveCount(0);
+      await expect(page.getByTestId("map-key-chip")).toHaveCount(0);
       assertConsoleClean(gate);
     });
 

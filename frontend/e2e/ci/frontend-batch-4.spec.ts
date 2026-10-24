@@ -19,7 +19,7 @@ import {
   SEARCH_HINT_SR,
 } from "../../lib/siteNav";
 import { TRY_AGAIN } from "../../lib/api";
-import { assertConsoleClean, attachConsoleGate, boxesOverlap, openLayers, openMap, openPlaceViaCoords, registerOpenFreeMapFontStub, stubMapCardsBackend, type ConsoleGate } from "./_mapCardsHelpers";
+import { assertConsoleClean, attachConsoleGate, boxesOverlap, ensureLayersGroupOpen, openLayers, openMap, openPlaceViaCoords, registerOpenFreeMapFontStub, stubMapCardsBackend, type ConsoleGate } from "./_mapCardsHelpers";
 
 registerOpenFreeMapFontStub();
 
@@ -147,19 +147,14 @@ async function openDensityMap(page: Page, gate: ConsoleGate) {
   await openMap(page, "/");
   await getMap(page);
   await jumpToZoom(page, 6);
-  await expect(page.getByTestId("map-key-chip")).toBeVisible({
+  await expect(page.getByTestId("map-key-chip")).toHaveCount(0);
+  await expect(page.getByTestId("legend-strip")).toHaveCount(0);
+  await openLayers(page);
+  await ensureLayersGroupOpen(page, "places");
+  await expect(page.getByTestId("map-layer-pop-density-key")).toBeVisible({
     timeout: 45_000,
   });
   assertConsoleClean(gate);
-}
-
-async function ensureChipExpanded(page: Page) {
-  const chip = page.getByTestId("map-key-chip");
-  await expect(chip).toBeVisible();
-  if ((await chip.getAttribute("aria-expanded")) === "false") {
-    await chip.click();
-  }
-  await expect(chip).toHaveAttribute("aria-expanded", "true");
 }
 
 function boxOf(el: { boundingBox(): Promise<Box | null> }) {
@@ -257,7 +252,6 @@ for (const viewport of VIEWPORTS) {
       test.setTimeout(120_000);
       const gate = attachConsoleGate(page);
       await openDensityMap(page, gate);
-      await openLayers(page);
       const key = page.getByTestId("map-layer-pop-density-key");
       await expect(key).toBeVisible();
       const councils = page.getByTestId("map-layer-councils");
@@ -294,9 +288,10 @@ for (const viewport of VIEWPORTS) {
       test.setTimeout(120_000);
       const gate = attachConsoleGate(page);
       await openDensityMap(page, gate);
-      await ensureChipExpanded(page);
+      await expect(page.getByTestId("map-key-chip")).toHaveCount(0);
+      await expect(page.getByTestId("legend-strip")).toHaveCount(0);
       const source = page
-        .getByTestId("map-key-chip")
+        .getByTestId("map-layer-pop-density-key")
         .getByTestId("map-range-legend-source");
       await expect(source).toBeVisible();
       await expect(source).toHaveText(POP_DENSITY_LEGEND_SOURCE);
@@ -307,35 +302,32 @@ for (const viewport of VIEWPORTS) {
       test.setTimeout(120_000);
       const gate = attachConsoleGate(page);
       await openDensityMap(page, gate);
-      const chip = page.getByTestId("map-key-chip");
-      await expect(chip).toBeVisible();
-      const chipBox = await boxOf(chip);
-      expect(chipBox).toBeTruthy();
+      await expect(page.getByTestId("map-key-chip")).toHaveCount(0);
+      await expect(page.getByTestId("legend-strip")).toHaveCount(0);
+      const key = page.getByTestId("map-layer-pop-density-key");
+      await expect(key).toBeVisible();
+      const keyBox = await boxOf(key);
+      expect(keyBox).toBeTruthy();
       const search = page.locator(".hud-search");
       const dock = page.locator(".hud-search-dock");
-      const attrib = page.getByTestId("map-attribution-line");
-      await expect(attrib).toBeVisible();
       const searchBox = await boxOf(search);
       const dockBox = await boxOf(dock);
-      const attribBox = await boxOf(attrib);
       expect(searchBox).toBeTruthy();
       expect(dockBox).toBeTruthy();
-      expect(attribBox).toBeTruthy();
-      expect(boxesOverlap(chipBox!, searchBox!)).toBe(false);
-      expect(boxesOverlap(chipBox!, dockBox!)).toBe(false);
-      expect(boxesOverlap(chipBox!, attribBox!)).toBe(false);
-      expect(chipBox!.y + chipBox!.height).toBeLessThanOrEqual(attribBox!.y + 0.5);
+      expect(boxesOverlap(keyBox!, searchBox!)).toBe(false);
+      expect(boxesOverlap(keyBox!, dockBox!)).toBe(false);
+      await key.scrollIntoViewIfNeeded();
       const topEl = await page.evaluate(() => {
-        const chipEl = document.querySelector(
-          '[data-testid="map-key-chip"]',
+        const keyEl = document.querySelector(
+          '[data-testid="map-layer-pop-density-key"]',
         ) as HTMLElement | null;
-        if (!chipEl) return null;
-        const r = chipEl.getBoundingClientRect();
+        if (!keyEl) return null;
+        const r = keyEl.getBoundingClientRect();
         const el = document.elementFromPoint(
-          r.left + r.width / 2,
-          r.top + r.height / 2,
+          r.left + Math.min(r.width / 2, 24),
+          r.top + Math.min(r.height / 2, 24),
         );
-        return el?.closest('[data-testid="map-key-chip"]') != null;
+        return el?.closest('[data-testid="map-layer-pop-density-key"]') != null;
       });
       expect(topEl).toBe(true);
       assertConsoleClean(gate);
@@ -345,9 +337,8 @@ for (const viewport of VIEWPORTS) {
       test.setTimeout(120_000);
       const gate = attachConsoleGate(page);
       await openDensityMap(page, gate);
-      await ensureChipExpanded(page);
-      await assertLegendBands(page, page.getByTestId("map-key-chip"));
-      await openLayers(page);
+      await expect(page.getByTestId("map-key-chip")).toHaveCount(0);
+      await expect(page.getByTestId("legend-strip")).toHaveCount(0);
       await assertLegendBands(
         page,
         page.getByTestId("map-layer-pop-density-key"),
@@ -359,22 +350,15 @@ for (const viewport of VIEWPORTS) {
       test.setTimeout(120_000);
       const gate = attachConsoleGate(page);
       await openDensityMap(page, gate);
-      const chip = page.getByTestId("map-key-chip");
-      await expect(chip).toBeVisible();
-      if (viewport.width === 390) {
-        await expect(chip).toHaveAttribute("aria-expanded", "false");
-        await chip.click();
-        await expect(chip).toHaveAttribute("aria-expanded", "true");
-        await expect(
-          chip.getByTestId("map-range-legend-bands"),
-        ).toBeVisible();
-      } else {
-        await expect(chip).toHaveAttribute("aria-expanded", "true");
-      }
-      const chipBox = await boxOf(chip);
+      await expect(page.getByTestId("map-key-chip")).toHaveCount(0);
+      await expect(page.getByTestId("legend-strip")).toHaveCount(0);
+      const key = page.getByTestId("map-layer-pop-density-key");
+      await expect(key).toBeVisible();
+      await expect(key.getByTestId("map-range-legend-bands")).toBeVisible();
+      const keyBox = await boxOf(key);
       const searchBox = await boxOf(page.locator(".hud-search"));
-      expect(chipBox && searchBox).toBeTruthy();
-      expect(boxesOverlap(chipBox!, searchBox!)).toBe(false);
+      expect(keyBox && searchBox).toBeTruthy();
+      expect(boxesOverlap(keyBox!, searchBox!)).toBe(false);
       assertConsoleClean(gate);
     });
 

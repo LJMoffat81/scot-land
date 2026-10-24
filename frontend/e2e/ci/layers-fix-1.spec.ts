@@ -206,7 +206,7 @@ test.describe("LAYERS-FIX-1", () => {
     await openMap(page);
     await waitForMap(page);
     await openLayers(page);
-    for (const key of ["land", "resources", "nature", "places"]) {
+    for (const key of ["land", "tenure", "resources", "nature", "places"]) {
       await ensureLayersGroupOpen(page, key);
     }
 

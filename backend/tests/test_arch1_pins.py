@@ -377,6 +377,9 @@ _MAP_VISION_1B_FRONTEND_ALLOW = frozenset(
         "frontend/lib/mapUrlState.ts",
         "frontend/e2e/ci/map-cards-redesign-wording.spec.ts",
         "frontend/e2e/ci/map-vision-1b.spec.ts",
+        # Default-ON data_zones bookkeeping (toggle + credit fallthrough)
+        "frontend/e2e/ci/basemap-err-1.spec.ts",
+        "frontend/e2e/ci/frontend-batch-2-r6.spec.ts",
     ]
 )
 

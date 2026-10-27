@@ -3449,10 +3449,12 @@ export default function ScotlandMap() {
     const lineVis = showCouncils ? "visible" : "none";
     map.setLayoutProperty("council-line", "visibility", lineVis);
 
-    // Fill at overview zooms (z5–7): AGR on, or default people/km² view when AGR off.
-    const defaultViewOn = !showAgr && contextDataLoaded;
-    const fillOn =
-      showCouncils && zoom >= 5 && zoom < 8 && (showAgr || defaultViewOn);
+    // Fill at overview zooms (z5–7):
+    // - AGR on → council-fill paints without needing the councils outline toggle
+    //   (MAP-VISION-1b: councils default OFF).
+    // - AGR off → people/km² fill only when councils are explicitly on.
+    const densityViewOn = !showAgr && showCouncils && contextDataLoaded;
+    const fillOn = zoom >= 5 && zoom < 8 && (showAgr || densityViewOn);
     map.setLayoutProperty(
       "council-fill",
       "visibility",

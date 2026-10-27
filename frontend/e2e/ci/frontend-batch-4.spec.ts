@@ -144,7 +144,7 @@ async function jumpToZoom(page: Page, zoom: number): Promise<void> {
 async function openDensityMap(page: Page, gate: ConsoleGate) {
   await stubMapCardsBackend(page, { gbpLive: false });
   await stubCouncilsOk(page);
-  await openMap(page, "/");
+  await openMap(page, "/?layers=councils");
   await getMap(page);
   await jumpToZoom(page, 6);
   await expect(page.getByTestId("map-key-chip")).toHaveCount(0);

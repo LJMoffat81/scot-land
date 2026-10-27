@@ -5,6 +5,7 @@ clip: land+sea
 unit: dz2022
 ladder_level: dz2022
 nests: true
+default_on: true
 licence: OGL-3.0
 attribution: >-
   Copyright Scottish Government, contains Ordnance Survey data © Crown copyright
@@ -42,16 +43,16 @@ style:
         - - linear
         - - feature-state
           - v
+        - 0
+        - "#eff3ff"
         - 10
-        - "#c6dbef"
+        - "#bdd7e7"
         - 100
         - "#6baed6"
         - 500
-        - "#2171b5"
+        - "#3182bd"
         - 1500
         - "#08519c"
-        - 3000
-        - "#08306b"
     fill-opacity:
       - interpolate
       - - linear
@@ -76,11 +77,11 @@ style:
       - 9.5
       - 0.6
 legend:
-  - {label: "10", color: "#c6dbef"}
-  - {label: "100", color: "#6baed6"}
-  - {label: "500", color: "#2171b5"}
-  - {label: "1500", color: "#08519c"}
-  - {label: "3000", color: "#08306b"}
+  - {label: "Up to 10 people per km²", color: "#eff3ff"}
+  - {label: "10–100 people per km²", color: "#bdd7e7"}
+  - {label: "100–500 people per km²", color: "#6baed6"}
+  - {label: "500–1,500 people per km²", color: "#3182bd"}
+  - {label: "1,500–3,000+ people per km²", color: "#08519c"}
   - {label: "No value", color: "#d9d9d9"}
 lineage:
   derived_from: []

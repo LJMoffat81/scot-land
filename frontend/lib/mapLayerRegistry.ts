@@ -208,12 +208,22 @@ export const FLOOD_EXTENT_LEGEND =
 export const FLOOD_EXTENT_CREDIT =
   "©SEPA 2025; this SEPA product is licensed under the Open Government Licence version 3.0.";
 
+/** MAP-VISION-1b W-1b-1 — self-explanatory dz2022 population-density key. */
+export const DZ2022_DENSITY_CLASSES: readonly MapLayerLegendClass[] = [
+  { label: "Up to 10 people per km²", color: "#eff3ff" },
+  { label: "10–100 people per km²", color: "#bdd7e7" },
+  { label: "100–500 people per km²", color: "#6baed6" },
+  { label: "500–1,500 people per km²", color: "#3182bd" },
+  { label: "1,500–3,000+ people per km²", color: "#08519c" },
+  { label: "No value", color: "#d9d9d9" },
+];
+
 const FLOOD_RISK_CLASSES: MapLayerLegendClass[] = [
-  { label: "0", color: "#f7fbff" },
-  { label: "1–10", color: "#c6dbef" },
-  { label: "11–25", color: "#6baed6" },
-  { label: "26–50", color: "#2171b5" },
-  { label: "Over 50", color: "#08306b" },
+  { label: "0%", color: "#f7fbff" },
+  { label: "1–10%", color: "#c6dbef" },
+  { label: "11–25%", color: "#6baed6" },
+  { label: "26–50%", color: "#2171b5" },
+  { label: "Over 50%", color: "#08306b" },
 ];
 
 const LISTED_CLASSES: MapLayerLegendClass[] = [
@@ -391,7 +401,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     maxzoom: 20,
     sourceCaption: "OS Boundary-Line · council boundaries",
     classes: OUTLINE_CLASSES,
-    defaultOn: true,
+    defaultOn: false,
     paintLayerIds: ["council-line"],
   },
   {
@@ -399,11 +409,11 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     aliases: ["dz2022"],
     group: "places",
     label: "Area boundaries",
-    minzoom: 10,
+    minzoom: 0,
     maxzoom: 20,
     sourceCaption: `Scottish Government · ${DZ2022_EXTRACTION_YEAR}`,
-    classes: OUTLINE_CLASSES,
-    defaultOn: false,
+    classes: DZ2022_DENSITY_CLASSES,
+    defaultOn: true,
     paintLayerIds: ["data-zones-line"],
   },
   {
@@ -712,6 +722,7 @@ const LAYERS_ADD_EVERY_ZOOM_IDS = new Set([
   "access_services",
   "flood",
   "contaminated_land",
+  "data_zones",
   "deprivation",
   "conservation",
   "listed",
@@ -719,6 +730,48 @@ const LAYERS_ADD_EVERY_ZOOM_IDS = new Set([
   "green_belt",
   "school_catchments",
 ]);
+
+const BARE_NUMERIC_LEGEND_RE = /^\d+([.,]\d+)?$/;
+
+/**
+ * MAP-VISION-1b MV-1b-DZ-KEY — reject legend labels that are bare numbers.
+ */
+export function assertNoBareNumericLegendLabels(...args: unknown[]): void {
+  const entries = args.length === 0 ? MAP_LAYER_REGISTRY : args[0];
+  if (!Array.isArray(entries) || entries.length === 0) {
+    throw new Error("REGISTRY-LEGEND: entries must be a non-empty array");
+  }
+  for (const entry of entries) {
+    if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+      throw new Error("REGISTRY-LEGEND: entry must be an object");
+    }
+    const rec = entry as Record<string, unknown>;
+    const id = rec.id;
+    if (typeof id !== "string" || id.trim() === "") {
+      throw new Error("REGISTRY-LEGEND: entry id must be a non-empty string");
+    }
+    const classes = rec.classes;
+    if (!Array.isArray(classes)) {
+      throw new Error(`REGISTRY-LEGEND: '${id}': classes must be an array`);
+    }
+    for (const item of classes) {
+      if (typeof item !== "object" || item === null || Array.isArray(item)) {
+        throw new Error(`REGISTRY-LEGEND: '${id}': legend item must be an object`);
+      }
+      const label = (item as Record<string, unknown>).label;
+      if (typeof label !== "string" || label.trim() === "") {
+        throw new Error(
+          `REGISTRY-LEGEND: '${id}': legend label must be a non-empty string`,
+        );
+      }
+      if (BARE_NUMERIC_LEGEND_RE.test(label.trim())) {
+        throw new Error(
+          `REGISTRY-LEGEND: '${id}': bare numeric legend label '${label.trim()}'`,
+        );
+      }
+    }
+  }
+}
 
 export function assertMapRegistryEveryZoom(...args: unknown[]): void {
   const entries = args.length === 0 ? MAP_LAYER_REGISTRY : args[0];

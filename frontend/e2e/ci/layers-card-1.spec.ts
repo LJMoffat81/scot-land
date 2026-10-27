@@ -64,7 +64,7 @@ test("NLC-1 five-group order, crofting in tenure, defaultOn councils", () => {
     .find((g) => g.key === "nature")
     ?.layers.map((l) => l.id);
   expect(natureIds ?? []).not.toContain("crofting");
-  expect(defaultOnLayerIds()).toEqual(["councils"]);
+  expect(defaultOnLayerIds()).toEqual(["data_zones"]);
 });
 
 test("NLC-2a mapLayerGroupNote rejects non-string / empty group", () => {

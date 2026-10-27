@@ -1,8 +1,14 @@
 /**
- * MAP-CARDS URL contract (E1 + addendum A2).
+ * MAP-CARDS + MAP-VISION-1b URL contract (E1 + addendum A2 + MV-28/MV-29).
  * Unknown params are ignored for behaviour but kept on rewrite.
  */
 
+import type { MapBasemapId } from "./mapBasemap";
+import {
+  DEFAULT_PUBLIC_CONTEXT_METRIC_ID,
+  PUBLIC_CONTEXT_METRIC_IDS,
+  type MetricId,
+} from "./mapColourRamps";
 import {
   defaultOnLayerIds,
   resolveMapLayerId,
@@ -13,6 +19,12 @@ export type MapPanelUrl = "place" | "layers" | null;
 export type MapUrlState = {
   place: string | null;
   layers: string[];
+  /** MV-28 alias for active layers (`?l=` or `?layers=`). */
+  l: string[];
+  /** MV-28 basemap (`?b=light|aerial`, default `"light"`). */
+  b: MapBasemapId;
+  /** MV-28 main measure (`?m=pop_density|simd|house_price|land_share`). */
+  m: MetricId;
   z: number | null;
   /** View centre [lng, lat] from `c` or lat/lon. */
   center: { lng: number; lat: number } | null;
@@ -24,6 +36,9 @@ export type MapUrlState = {
 const KNOWN = new Set([
   "place",
   "layers",
+  "l",
+  "b",
+  "m",
   "z",
   "c",
   "lat",
@@ -63,6 +78,47 @@ export function isScotlandViewCenter(lng: number, lat: number): boolean {
 /** SW-060 — five decimal places is about one metre, inside a 5 m reopen. */
 export function formatMapCenterParam(lng: number, lat: number): string {
   return `${lng.toFixed(5)},${lat.toFixed(5)}`;
+}
+
+/** MV-28 strict validator for basemap parameter (`light` | `aerial`, `simple` alias -> `light`). */
+export function validateBasemapParam(raw: unknown): MapBasemapId {
+  if (typeof raw !== "string" || !raw.trim()) {
+    throw new Error("MAP-URL: basemap must be 'light' or 'aerial'");
+  }
+  const v = raw.trim().toLowerCase();
+  if (v === "light" || v === "simple") return "light";
+  if (v === "aerial") return "aerial";
+  throw new Error(`MAP-URL: invalid basemap '${raw.trim()}'`);
+}
+
+export function parseBasemapParam(raw: string | null): MapBasemapId {
+  if (!raw || !raw.trim()) return "light";
+  try {
+    return validateBasemapParam(raw);
+  } catch {
+    return "light";
+  }
+}
+
+/** MV-28 strict validator for main measure parameter (`pop_density` | `simd` | `house_price` | `land_share`). */
+export function validateMeasureParam(raw: unknown): MetricId {
+  if (typeof raw !== "string" || !raw.trim()) {
+    throw new Error("MAP-URL: measure must be a non-empty string");
+  }
+  const v = raw.trim() as MetricId;
+  if (!PUBLIC_CONTEXT_METRIC_IDS.includes(v)) {
+    throw new Error(`MAP-URL: invalid measure '${raw.trim()}'`);
+  }
+  return v;
+}
+
+export function parseMeasureParam(raw: string | null): MetricId {
+  if (!raw || !raw.trim()) return DEFAULT_PUBLIC_CONTEXT_METRIC_ID;
+  try {
+    return validateMeasureParam(raw);
+  } catch {
+    return DEFAULT_PUBLIC_CONTEXT_METRIC_ID;
+  }
 }
 
 function parseFinitePair(
@@ -122,6 +178,10 @@ export function readMapUrlState(
   const zRaw = params.get("z");
   const zNum = zRaw != null ? Number(zRaw) : NaN;
 
+  const layers = parseLayerIdsParam(params.get("l") ?? params.get("layers"));
+  const b = parseBasemapParam(params.get("b"));
+  const m = parseMeasureParam(params.get("m"));
+
   const unknown: Record<string, string> = {};
   params.forEach((value, key) => {
     if (!KNOWN.has(key)) unknown[key] = value;
@@ -129,7 +189,10 @@ export function readMapUrlState(
 
   return {
     place: params.get("place"),
-    layers: parseLayerIdsParam(params.get("layers")),
+    layers,
+    l: layers,
+    b,
+    m,
     z: Number.isFinite(zNum) ? zNum : null,
     center: parseCenter(params),
     panel,
@@ -140,6 +203,9 @@ export function readMapUrlState(
 export type WriteMapUrlOpts = {
   place?: string | null;
   layers?: readonly string[] | null;
+  l?: readonly string[] | null;
+  b?: MapBasemapId | null;
+  m?: MetricId | null;
   z?: number | null;
   center?: { lng: number; lat: number } | null;
   panel?: MapPanelUrl;
@@ -153,7 +219,7 @@ export type WriteMapUrlOpts = {
 };
 
 /**
- * Build a search string preserving unknown params (A2).
+ * Build a search string preserving unknown params (A2 + MV-28).
  * Known contract keys are rewritten from opts; omitted opts keep prior values
  * when `href` is provided.
  */
@@ -165,7 +231,17 @@ export function writeMapUrlSearch(opts: WriteMapUrlOpts): string {
   const next = new URLSearchParams();
 
   const place = opts.place !== undefined ? opts.place : prev.place;
-  const layers = opts.layers !== undefined ? opts.layers : prev.layers;
+  const layers =
+    opts.l !== undefined
+      ? opts.l
+      : opts.layers !== undefined
+        ? opts.layers
+        : prev.layers;
+  const b = opts.b !== undefined ? (opts.b ?? "light") : prev.b;
+  const m =
+    opts.m !== undefined
+      ? (opts.m ?? DEFAULT_PUBLIC_CONTEXT_METRIC_ID)
+      : prev.m;
   const z = opts.z !== undefined ? opts.z : prev.z;
   const center = opts.center !== undefined ? opts.center : prev.center;
   const panel = opts.panel !== undefined ? opts.panel : prev.panel;
@@ -173,6 +249,12 @@ export function writeMapUrlSearch(opts: WriteMapUrlOpts): string {
 
   if (place) next.set("place", place);
   if (layers && layers.length) next.set("layers", layers.join(","));
+  if (b === "aerial" || (opts.b === "light" && base.searchParams.has("b"))) {
+    if (b === "aerial") next.set("b", "aerial");
+  }
+  if (m && m !== DEFAULT_PUBLIC_CONTEXT_METRIC_ID) {
+    next.set("m", m);
+  }
   if (z != null && Number.isFinite(z)) next.set("z", String(Math.round(z * 100) / 100));
   // Never persist a centre outside Scotland (null island included).
   if (center && isScotlandViewCenter(center.lng, center.lat)) {
@@ -186,6 +268,23 @@ export function writeMapUrlSearch(opts: WriteMapUrlOpts): string {
 
   const qs = next.toString();
   return qs ? `?${qs}` : "";
+}
+
+/**
+ * MV-29: Build a normalized shareable URL string from `href`.
+ */
+export function buildShareableMapUrl(href: unknown): string {
+  if (typeof href !== "string" || !href.trim()) {
+    throw new Error("MAP-URL: href must be a valid URL string");
+  }
+  let parsed: URL;
+  try {
+    parsed = new URL(href.trim());
+  } catch {
+    throw new Error("MAP-URL: href must be a valid URL string");
+  }
+  const search = writeMapUrlSearch({ href: parsed.toString() });
+  return `${parsed.origin}${parsed.pathname}${search}`;
 }
 
 export function replaceMapUrl(opts: WriteMapUrlOpts): void {

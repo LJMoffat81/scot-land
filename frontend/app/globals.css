@@ -360,6 +360,28 @@ input {
   font-size: 0.9rem;
   line-height: 1.35;
   color: var(--slrg-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.place-card-share {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0 0.35rem;
+  margin: -10px 0 -10px auto;
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--slrg-navy);
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .place-card-crumb-scotland {

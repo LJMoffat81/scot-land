@@ -105,6 +105,15 @@ import {
   mapErrorLogLine,
   type MapBasemapId,
 } from "../lib/mapBasemap";
+import {
+  DEFAULT_3D_BEARING,
+  SCOTLAND_SKY_SPEC,
+  VIEW_3D_TOGGLE_ARIA_LABEL_2D,
+  VIEW_3D_TOGGLE_ARIA_LABEL_3D,
+  defaultOpeningPitch,
+  is3dPitchActive,
+  nextTogglePitch,
+} from "../lib/default3dView";
 import { councilOverlayBeforeId } from "../lib/mapLayerOrder";
 import { defaultOnLayerIds } from "../lib/mapLayerRegistry";
 import {
@@ -902,6 +911,8 @@ export default function ScotlandMap() {
   }, []);
   const showBasemapSwitcher = esriKeyConfigured && !aerialUnavailable;
   const [mapZoom, setMapZoom] = useState(5.7);
+  const [mapPitch, setMapPitch] = useState(0);
+  const [mapBearing, setMapBearing] = useState(0);
   const [isNarrowPanel, setIsNarrowPanel] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -962,6 +973,8 @@ export default function ScotlandMap() {
     lng: number;
     lat: number;
     zoom: number;
+    pitch: number;
+    bearing: number;
     width: number;
     height: number;
   } | null>(null);
@@ -2259,6 +2272,8 @@ export default function ScotlandMap() {
         lng: c.lng,
         lat: c.lat,
         zoom: map.getZoom(),
+        pitch: map.getPitch(),
+        bearing: map.getBearing(),
         width: box.clientWidth,
         height: box.clientHeight,
       };
@@ -2390,6 +2405,8 @@ export default function ScotlandMap() {
       container.dataset.lng = center.lng.toFixed(5);
       container.dataset.lat = center.lat.toFixed(5);
       container.dataset.zoom = map.getZoom().toFixed(3);
+      container.dataset.pitch = map.getPitch().toFixed(1);
+      container.dataset.bearing = map.getBearing().toFixed(1);
     };
     map.on("moveend", syncCameraDataset);
     map.on("zoomend", syncCameraDataset);
@@ -2400,7 +2417,11 @@ export default function ScotlandMap() {
         map.jumpTo({
           center: [cam.lng, cam.lat],
           zoom: cam.zoom,
+          pitch: cam.pitch,
+          bearing: cam.bearing,
         });
+        setMapPitch(map.getPitch());
+        setMapBearing(map.getBearing());
         syncCameraDataset();
         return;
       }
@@ -2416,19 +2437,29 @@ export default function ScotlandMap() {
         if (container.dataset.viewSource === "url") return;
         if (map.getZoom() > 8) return;
       }
+      const urlState = readMapUrlState(window.location.search);
+      const targetPitch =
+        urlState.p != null
+          ? urlState.p
+          : defaultOpeningPitch(window.innerWidth, prefersReducedMotion());
+      const targetBearing =
+        urlState.br != null ? urlState.br : DEFAULT_3D_BEARING;
       // Apply a Scotland `c` before the national fitBounds. #169 returned
       // early whenever zoom was already > 8, so a bad or not-yet-applied
       // camera never reached fitBounds. Missing / out-of-Scotland `c`
       // (including 0,0) is not a view — still fit Scotland on the first frame.
       if (!framed) {
-        const urlState = readMapUrlState(window.location.search);
         if (urlState.center) {
           container.dataset.framed = "1";
           container.dataset.viewSource = "url";
           map.jumpTo({
             center: [urlState.center.lng, urlState.center.lat],
             zoom: urlState.z ?? map.getZoom(),
+            pitch: urlState.p ?? 0,
+            bearing: urlState.br ?? 0,
           });
+          setMapPitch(map.getPitch());
+          setMapBearing(map.getBearing());
           syncCameraDataset();
           return;
         }
@@ -2447,8 +2478,12 @@ export default function ScotlandMap() {
             : { top: 96, bottom: 36, left: 24, right: 28 },
           animate: false,
           maxZoom: 7.4,
+          pitch: targetPitch,
+          bearing: targetBearing,
         },
       );
+      setMapPitch(map.getPitch());
+      setMapBearing(map.getBearing());
       syncCameraDataset();
     };
 
@@ -2472,6 +2507,11 @@ export default function ScotlandMap() {
     resizeObserver.observe(container);
 
     map.on("load", () => {
+      try {
+        map.setSky(SCOTLAND_SKY_SPEC);
+      } catch {
+        /* sky optional on non-standard styles */
+      }
       frameScotland();
 
       // Hatched grey pattern for missing choropleth values (honest no-data).
@@ -5072,10 +5112,16 @@ export default function ScotlandMap() {
     if (!map) return;
     const syncZoom = () => {
       setMapZoom(map.getZoom());
+      setMapPitch(map.getPitch());
+      setMapBearing(map.getBearing());
     };
     const sync = () => {
       const zoom = map.getZoom();
+      const pitch = map.getPitch();
+      const bearing = map.getBearing();
       setMapZoom(zoom);
+      setMapPitch(pitch);
+      setMapBearing(bearing);
       if (map.isMoving()) return;
       // Do not write c= until the initial view (Scotland frame or a shared
       // link inside Scotland) has been applied. A mount-time rewrite used to
@@ -5083,9 +5129,16 @@ export default function ScotlandMap() {
       if (map.getContainer().dataset.framed !== "1") return;
       // data_zones stays off until the user toggles it (no auto-on at zoom 10).
       const center = map.getCenter();
+      const hasUrlPitch =
+        typeof window !== "undefined" &&
+        (new URLSearchParams(window.location.search).has("p") ||
+          new URLSearchParams(window.location.search).has("pitch") ||
+          new URLSearchParams(window.location.search).has("br") ||
+          new URLSearchParams(window.location.search).has("bearing"));
       replaceMapUrl({
         z: zoom,
         center: { lng: center.lng, lat: center.lat },
+        ...(hasUrlPitch ? { p: pitch, br: bearing } : {}),
       });
     };
     sync();
@@ -5327,12 +5380,33 @@ export default function ScotlandMap() {
         lng: c.lng,
         lat: c.lat,
         zoom: map.getZoom(),
+        pitch: map.getPitch(),
+        bearing: map.getBearing(),
         width: box.clientWidth,
         height: box.clientHeight,
       };
     }
     setMapStyle(next);
     replaceMapUrl({ b: next });
+  };
+
+  const is3dOn = is3dPitchActive(mapPitch);
+  const toggle3dView = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
+    const next = nextTogglePitch(map.getPitch(), vw);
+    replaceMapUrl({ p: next.pitch, br: next.bearing });
+    if (prefersReducedMotion()) {
+      map.jumpTo({ pitch: next.pitch, bearing: next.bearing });
+    } else {
+      map.easeTo({ pitch: next.pitch, bearing: next.bearing, duration: 400 });
+    }
+    setMapPitch(next.pitch);
+    setMapBearing(next.bearing);
+    const container = map.getContainer();
+    container.dataset.pitch = next.pitch.toFixed(1);
+    container.dataset.bearing = next.bearing.toFixed(1);
   };
 
   const placeTitle =
@@ -5381,6 +5455,34 @@ export default function ScotlandMap() {
             {grid3Tooltip.ref}
           </div>
         ) : null}
+      </div>
+
+      <div
+        className={
+          showBasemapSwitcher
+            ? "view-3d-toggle-wrap has-basemap-switcher"
+            : "view-3d-toggle-wrap"
+        }
+      >
+        <button
+          type="button"
+          className={
+            is3dOn ? "view-3d-toggle is-3d" : "view-3d-toggle is-2d"
+          }
+          data-testid="view-3d-toggle"
+          aria-pressed={is3dOn}
+          aria-label={
+            is3dOn ? VIEW_3D_TOGGLE_ARIA_LABEL_2D : VIEW_3D_TOGGLE_ARIA_LABEL_3D
+          }
+          title={
+            is3dOn ? VIEW_3D_TOGGLE_ARIA_LABEL_2D : VIEW_3D_TOGGLE_ARIA_LABEL_3D
+          }
+          onClick={toggle3dView}
+        >
+          <span className="view-3d-toggle-face" aria-hidden="true">
+            {is3dOn ? "2D" : "3D"}
+          </span>
+        </button>
       </div>
 
       {showBasemapSwitcher ? (

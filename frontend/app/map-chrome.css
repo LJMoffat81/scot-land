@@ -1904,3 +1904,99 @@ button.basemap-switcher[aria-pressed="true"] {
   min-height: 48px !important;
   box-sizing: border-box;
 }
+
+
+/* —— DEFAULT-3D-VIEW: circular 2D/3D toggle above basemap switcher —— */
+.view-3d-toggle-wrap {
+  position: absolute;
+  z-index: 3;
+  right: 0.65rem;
+  bottom: calc(var(--zoom-bottom, 10px) + 98px + var(--ctrl-gap, 8px));
+  width: var(--ctrl-h, 48px);
+  height: var(--ctrl-h, 48px);
+  pointer-events: none;
+}
+
+.view-3d-toggle-wrap.has-basemap-switcher {
+  bottom: calc(
+    var(--zoom-bottom, 10px) + 98px + var(--ctrl-gap, 8px) + 48px + var(--ctrl-gap, 8px)
+  );
+}
+
+.view-3d-toggle-wrap > button.view-3d-toggle {
+  box-sizing: border-box;
+  width: var(--ctrl-h, 48px);
+  height: var(--ctrl-h, 48px);
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border-radius: var(--ctrl-radius, 24px);
+  border: var(--ctrl-border, 1px solid #6b7684);
+  background: var(--ctrl-bg, #fff);
+  color: var(--ctrl-fg, #0b1e3a);
+  box-shadow: var(--ctrl-shadow, 0 2px 8px rgba(11, 30, 58, 0.16));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.view-3d-toggle-wrap > button.view-3d-toggle.is-3d {
+  background: var(--ctrl-accent, #1d4f91);
+  border-color: var(--ctrl-accent, #1d4f91);
+  color: #ffffff;
+  box-shadow:
+    0 0 0 2px var(--ctrl-accent, #1d4f91),
+    var(--ctrl-shadow, 0 2px 8px rgba(11, 30, 58, 0.16));
+}
+
+.view-3d-toggle-wrap > button.view-3d-toggle:focus-visible {
+  outline: 3px solid #ffdd00;
+  outline-offset: 0;
+  box-shadow: 0 0 0 5px #0b1e3a;
+}
+
+@media (max-width: 900px) {
+  .view-3d-toggle-wrap {
+    right: 0.55rem;
+  }
+}
+
+@media (max-width: 899px) {
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .view-3d-toggle-wrap,
+  .app-shell.map-narrow.tools-open:has(.map-panel-slot--full) .view-3d-toggle-wrap {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .view-3d-toggle-wrap {
+    bottom: calc(
+      196px + env(safe-area-inset-bottom, 0px) + 0.5rem + 98px + var(--ctrl-gap, 8px)
+    );
+  }
+
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .view-3d-toggle-wrap.has-basemap-switcher {
+    bottom: calc(
+      196px + env(safe-area-inset-bottom, 0px) + 0.5rem + 98px + var(--ctrl-gap, 8px) + 48px + var(--ctrl-gap, 8px)
+    );
+  }
+
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .view-3d-toggle-wrap {
+    bottom: auto;
+    top: calc(var(--hud-height, 9.5rem) + 2px);
+  }
+
+  .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .view-3d-toggle-wrap.has-basemap-switcher {
+    bottom: auto;
+    top: calc(
+      var(--hud-height, 9.5rem) + 2px + 48px + var(--ctrl-gap, 8px) + 98px + var(--ctrl-gap, 8px)
+    );
+  }
+}

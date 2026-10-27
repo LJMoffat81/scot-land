@@ -143,6 +143,12 @@ export const PLACE_CARD_SHOW_SCOTLAND_LABEL = "Show me Scotland";
 /** Never show "No data" when a code is known (AGENTS.md). */
 export const PLACE_CARD_NAME_NOT_LOADED = "name not loaded yet";
 
+/** MAP-VISION-1b W-1b-2 — Place Card share button labels (verbatim). */
+export const PLACE_CARD_SHARE_LABEL = "Share";
+export const PLACE_CARD_SHARE_COPIED_LABEL = "Copied";
+export const PLACE_CARD_SHARE_ARIA_LABEL = "Copy link to this place";
+export const PLACE_CARD_SHARE_COPIED_ARIA_LABEL = "Link copied";
+
 /** FP1 class → visitor chip (never "market price"). */
 export const PLACE_CARD_CLASS_CHIP = Object.freeze({
   market: "Market",

@@ -397,7 +397,11 @@ test.describe("SEA-EXTENT-2 e2e", () => {
         timeout: 20_000,
       })
       .toBe(0);
-    await expect(page.getByTestId("map-credit-short-names")).toHaveCount(0);
+    // MAP-VISION-1b: data_zones default ON may show its short name; outline must not.
+    const shortNames = page.getByTestId("map-credit-short-names");
+    if ((await shortNames.count()) > 0) {
+      await expect(shortNames).not.toContainText("Scotland outline");
+    }
     await expect(page.getByText(SHORT_OUTLINE)).toHaveCount(0);
     await expect(page.getByText("One layer did not load.")).toHaveCount(0);
     assertConsoleClean(gate);

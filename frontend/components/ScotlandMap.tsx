@@ -669,8 +669,8 @@ export default function ScotlandMap() {
   const [scenario, setScenario] = useState<ScenarioId>("full_agr");
   // Public shell: never paint council-area AGR £ / rent £/m² (internal-only until calibration).
   const choropleth: MetricId | "off" = "off";
-  /** Council boundary lines — registry defaultOn. */
-  const [showCouncils, setShowCouncils] = useState(true);
+  /** Council boundary lines — registry defaultOff (MAP-VISION-1b). */
+  const [showCouncils, setShowCouncils] = useState(false);
   /** FRONTEND-BATCH-1: /layers/councils loaded with at least one numeric pop density. */
   const [contextDataLoaded, setContextDataLoaded] = useState(false);
   /** GRID-BASE-1 — open 3 m BNG grid (default off; boot from ?layers=grid3). */
@@ -693,8 +693,16 @@ export default function ScotlandMap() {
   const [creditExtraIds, setCreditExtraIds] = useState<string[]>([]);
   /** SEA-EXTENT-2: permanent outline built from tile manifest (credit only when true). */
   const [outlineBuilt, setOutlineBuilt] = useState(false);
+  /** MAP-VISION-1b: dz2022 tileset present in manifest (credit gate). */
+  const [dzBuilt, setDzBuilt] = useState(false);
+  /**
+   * MAP-VISION-1b: true when ?layers=/?l= or a visitor toggle explicitly
+   * names data_zones (credit gate when the empty CI manifest has no dz2022).
+   */
+  const dzExplicitRef = useRef(false);
   useEffect(() => {
-    const raw = new URLSearchParams(window.location.search).get("layers");
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("l") ?? params.get("layers");
     if (!raw) {
       setCreditExtraIds([]);
       return;
@@ -714,8 +722,8 @@ export default function ScotlandMap() {
   const [showHla, setShowHla] = useState(false);
   // SG 2024 public/Crown dashboard: licence unverified/not open — never paint
   const showPublicLand = false;
-  /** Neighbourhood lines — starts OFF; never auto-on at zoom. */
-  const [showDataZones, setShowDataZones] = useState(false);
+  /** Data Zones — default ON (MAP-VISION-1b MV-1b-DEFAULT-OPEN). */
+  const [showDataZones, setShowDataZones] = useState(true);
   /** MAP-VISION-1a MV-06: hovered Data Zone code for outline (desktop). */
   const [hoveredDzCode, setHoveredDzCode] = useState<string | null>(null);
   /**
@@ -759,7 +767,7 @@ export default function ScotlandMap() {
   const [tileAsOf, setTileAsOf] = useState<Record<string, string>>({});
   /** ARCH-5a — tileset id → attribution from the tile manifest. */
   const [tileCredits, setTileCredits] = useState<Record<string, string>>({});
-  const showDataZonesRef = useRef(false);
+  const showDataZonesRef = useRef(true);
   showDataZonesRef.current = showDataZones;
   const identifyAbortRef = useRef<AbortController | null>(null);
   const identifyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -786,7 +794,9 @@ export default function ScotlandMap() {
       setShowCouncils(Boolean(sanitized.councils));
     }
     if ("data_zones" in sanitized) {
-      setShowDataZones(Boolean(sanitized.data_zones));
+      const on = Boolean(sanitized.data_zones);
+      if (on) dzExplicitRef.current = true;
+      setShowDataZones(on);
     }
     if ("vdl" in sanitized) setShowVdl(Boolean(sanitized.vdl));
     if (GRID3_LAYER_ID in sanitized) {
@@ -871,7 +881,12 @@ export default function ScotlandMap() {
   panelKindRef.current = panelKind;
   const desktopLayersOpenRef = useRef(desktopLayersOpen);
   desktopLayersOpenRef.current = desktopLayersOpen;
-  const [mapStyle, setMapStyle] = useState<MapBasemapId>(DEFAULT_MAP_BASEMAP);
+  const [mapStyle, setMapStyle] = useState<MapBasemapId>(() => {
+    if (typeof window === "undefined") return DEFAULT_MAP_BASEMAP;
+    const boot = readMapUrlState(window.location.search);
+    if (boot.b === "aerial" && isEsriBasemapKeyConfigured()) return "aerial";
+    return DEFAULT_MAP_BASEMAP;
+  });
   const [basemapNotice, setBasemapNotice] = useState(false);
   const [aerialNotice, setAerialNotice] = useState(false);
   const [aerialUnavailable, setAerialUnavailable] = useState(false);
@@ -1009,12 +1024,17 @@ export default function ScotlandMap() {
     // Capture entry search before any await — the layers URL sync effect may
     // rewrite `?layers=` while gbp-live is in flight (§3.10 / 36b / 36c).
     const searchAtLoad = window.location.search;
-    const layersFromUrlAtLoad = new URLSearchParams(searchAtLoad).has("layers");
+    const bootParams = new URLSearchParams(searchAtLoad);
+    const layersFromUrlAtLoad =
+      bootParams.has("layers") || bootParams.has("l");
     const bootAtLoad = readMapUrlState(searchAtLoad);
 
     const applyIds = (ids: string[]) => {
       setShowCouncils(ids.includes("councils"));
       setShowDataZones(ids.includes("data_zones"));
+      if (ids.includes("data_zones") && layersFromUrlAtLoad) {
+        dzExplicitRef.current = true;
+      }
       setShowVdl(ids.includes("vdl"));
       setShowHla(ids.includes("hla"));
       setShowGrid3(ids.includes(GRID3_LAYER_ID));
@@ -1044,6 +1064,12 @@ export default function ScotlandMap() {
     // wipe visitor toggles (legend-strip / inline legend e2e race).
     if (!gbpLiveBootstrapped.current) {
       gbpLiveBootstrapped.current = true;
+      if (
+        bootAtLoad.b === "aerial" &&
+        isEsriBasemapKeyConfigured()
+      ) {
+        setMapStyle("aerial");
+      }
       if (layersFromUrlAtLoad) {
         applyIds(bootAtLoad.layers);
       } else {
@@ -3423,10 +3449,12 @@ export default function ScotlandMap() {
     const lineVis = showCouncils ? "visible" : "none";
     map.setLayoutProperty("council-line", "visibility", lineVis);
 
-    // Fill at overview zooms (z5–7): AGR on, or default people/km² view when AGR off.
-    const defaultViewOn = !showAgr && contextDataLoaded;
-    const fillOn =
-      showCouncils && zoom >= 5 && zoom < 8 && (showAgr || defaultViewOn);
+    // Fill at overview zooms (z5–7):
+    // - AGR on → council-fill paints without needing the councils outline toggle
+    //   (MAP-VISION-1b: councils default OFF).
+    // - AGR off → people/km² fill only when councils are explicitly on.
+    const densityViewOn = !showAgr && showCouncils && contextDataLoaded;
+    const fillOn = zoom >= 5 && zoom < 8 && (showAgr || densityViewOn);
     map.setLayoutProperty(
       "council-fill",
       "visibility",
@@ -3957,6 +3985,9 @@ export default function ScotlandMap() {
         if (dzEntry) {
           tileDzVersionRef.current = dzEntry.version;
           tileDzSourceLayerRef.current = dzEntry.source_layer || "dz2022";
+          if (!cancelled) setDzBuilt(true);
+        } else if (!cancelled) {
+          setDzBuilt(false);
         }
 
         // MapLibre workers cannot resolve same-origin relative tile URLs
@@ -5301,6 +5332,7 @@ export default function ScotlandMap() {
       };
     }
     setMapStyle(next);
+    replaceMapUrl({ b: next });
   };
 
   const placeTitle =
@@ -5600,7 +5632,12 @@ export default function ScotlandMap() {
         activeLayerIds={[
           ...(outlineBuilt ? [TILE_BASE_OUTLINE_ID] : []),
           ...(builtupMaskVisible ? ["builtup_mask"] : []),
-          ...activeLayerIds,
+          ...activeLayerIds.filter(
+            (id) =>
+              id !== "data_zones" ||
+              dzBuilt ||
+              dzExplicitRef.current,
+          ),
           ...creditExtraIds,
         ]}
         tileCredits={tileCredits}

@@ -344,7 +344,7 @@ async function openShowthruMap(page: Page) {
   await routeEsriFixture(page, style);
   await stubMapCardsBackend(page, { gbpLive: false });
   await stubCouncilsOk(page);
-  await openMap(page, "/");
+  await openMap(page, "/?layers=councils");
   await getMap(page);
   await jumpToZoom(page, 6);
   await expect

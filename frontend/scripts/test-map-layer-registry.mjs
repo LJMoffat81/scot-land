@@ -80,7 +80,7 @@ assert.equal(
 
 assert.equal(resolveMapLayerId("agr"), "1");
 assert.equal(resolveMapLayerId("1"), "1");
-assert.deepEqual(defaultOnLayerIds(), ["councils"]);
+assert.deepEqual(defaultOnLayerIds(), ["data_zones"]);
 
 const removed = [
   "1a",
@@ -160,7 +160,7 @@ assert.equal(
   "land",
 );
 assert.ok(
-  MAP_LAYER_REGISTRY.every((e) => e.defaultOn !== true || e.id === "councils"),
+  MAP_LAYER_REGISTRY.every((e) => e.defaultOn !== true || e.id === "data_zones"),
 );
 
 // Five accordion groups; every live id maps to one of them.

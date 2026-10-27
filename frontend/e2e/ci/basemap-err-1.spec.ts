@@ -118,6 +118,10 @@ test.describe("BASEMAP-ERR-1", () => {
     await ensureLayersGroupOpen(page, "places");
     const zones = page.getByTestId("layer-toggle-data_zones");
     await expect(zones).toBeVisible();
+    // MAP-VISION-1b: data_zones default ON — exercise off→on while the notice shows.
+    await expect(zones).toHaveAttribute("aria-checked", "true");
+    await zones.click();
+    await expect(zones).toHaveAttribute("aria-checked", "false");
     await zones.click();
     await expect(zones).toHaveAttribute("aria-checked", "true");
 

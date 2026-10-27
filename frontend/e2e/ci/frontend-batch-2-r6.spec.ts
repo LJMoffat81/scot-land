@@ -350,7 +350,11 @@ for (const viewport of VIEWPORTS) {
         })
         .toBe(true);
       await expect(line).toContainText(NRS_PIECE);
-      const expected = buildMapAttributionPieces(["nrs_dz_pop_hh"])
+      // MAP-VISION-1b: layers=nrs falls through to defaultOn data_zones credit.
+      const expected = buildMapAttributionPieces([
+        "data_zones",
+        "nrs_dz_pop_hh",
+      ])
         .map((p) => p.text)
         .join(" · ");
       const text = ((await line.textContent()) ?? "").replace(/\s+/g, " ").trim();

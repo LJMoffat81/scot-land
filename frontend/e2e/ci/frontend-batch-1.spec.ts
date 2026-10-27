@@ -266,7 +266,7 @@ async function waitFillVisible(page: Page) {
 async function openDefaultMap(page: Page, gate: ConsoleGate) {
   await stubMapCardsBackend(page, { gbpLive: false });
   await stubCouncilsOk(page);
-  await openMap(page, "/");
+  await openMap(page, "/?layers=councils");
   await getMap(page);
   await jumpToZoom(page, 6);
   await waitFillVisible(page);
@@ -338,7 +338,7 @@ for (const viewport of [
       });
       await stubMapCardsBackend(page, { gbpLive: false });
       await stubLayersCouncils(page, { detail: "unavailable" }, 503);
-      await openMap(page, "/");
+      await openMap(page, "/?layers=councils");
       await getMap(page);
       await jumpToZoom(page, 6);
       await expect
@@ -354,7 +354,7 @@ for (const viewport of [
       const gate = attachConsoleGate(page);
       await stubMapCardsBackend(page, { gbpLive: false });
       await stubLayersCouncils(page, {});
-      await openMap(page, "/");
+      await openMap(page, "/?layers=councils");
       await getMap(page);
       await jumpToZoom(page, 6);
       await expect
@@ -372,7 +372,7 @@ for (const viewport of [
       const gate = attachConsoleGate(page);
       await stubMapCardsBackend(page, { gbpLive: false });
       await stubLayersCouncils(page, { type: "Feature" });
-      await openMap(page, "/");
+      await openMap(page, "/?layers=councils");
       await getMap(page);
       await jumpToZoom(page, 6);
       await expect

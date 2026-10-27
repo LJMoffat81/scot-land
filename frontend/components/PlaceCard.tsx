@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
   GBP_LIVE_ESTIMATE_UNAVAILABLE,
   GBP_LIVE_UNIT_WORDING,
@@ -11,6 +12,7 @@ import {
   formatDerivedFromSlot,
   levelFromZoom,
 } from "../lib/levelLadder";
+import { buildShareableMapUrl } from "../lib/mapUrlState";
 import { PLACE_CARD_ESTIMATE_LINE } from "../lib/siteNav";
 import {
   PLACE_CARD_AGR_LABEL,
@@ -32,6 +34,10 @@ import {
   PLACE_CARD_SEA_TITLE,
   PLACE_CARD_SEE_ROADMAP_HREF,
   PLACE_CARD_SEE_ROADMAP_LABEL,
+  PLACE_CARD_SHARE_ARIA_LABEL,
+  PLACE_CARD_SHARE_COPIED_ARIA_LABEL,
+  PLACE_CARD_SHARE_COPIED_LABEL,
+  PLACE_CARD_SHARE_LABEL,
   PLACE_CARD_SHOW_SCOTLAND_LABEL,
   PLACE_CARD_TOO_FEW_HOMES,
   PLACE_CARD_TRY_AGAIN_LABEL,
@@ -186,6 +192,18 @@ export function PlaceCard({
   gridSquareLine = null,
   mapZoom,
 }: PlaceCardProps) {
+  const [shareCopied, setShareCopied] = useState(false);
+  const shareCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  useEffect(() => {
+    return () => {
+      if (shareCopiedTimerRef.current != null) {
+        clearTimeout(shareCopiedTimerRef.current);
+      }
+    };
+  }, []);
+
   const card = data ? sanitizePlaceCard(data) : null;
   const activeLevel =
     typeof mapZoom === "number"
@@ -197,6 +215,23 @@ export function PlaceCard({
       (card.card_state === "sea" || isPlaceCardSeaMiss(card.data_zone)),
   );
   const isNoMatch = Boolean(noMatch || card?.card_state === "no_match");
+
+  const onShareClick = () => {
+    const href =
+      typeof window !== "undefined" ? window.location.href : "";
+    void navigator.clipboard
+      .writeText(buildShareableMapUrl(href))
+      .then(() => {
+        setShareCopied(true);
+        if (shareCopiedTimerRef.current != null) {
+          clearTimeout(shareCopiedTimerRef.current);
+        }
+        shareCopiedTimerRef.current = setTimeout(() => {
+          setShareCopied(false);
+          shareCopiedTimerRef.current = null;
+        }, 2000);
+      });
+  };
 
   const dwellingCount =
     typeof dwellings === "number" && Number.isFinite(dwellings)
@@ -430,6 +465,21 @@ export function PlaceCard({
                   </span>
                 ) : null}
                 <span data-testid="place-card-council">{councilLine}</span>
+                <button
+                  type="button"
+                  className="place-card-share"
+                  data-testid="place-card-share"
+                  aria-label={
+                    shareCopied
+                      ? PLACE_CARD_SHARE_COPIED_ARIA_LABEL
+                      : PLACE_CARD_SHARE_ARIA_LABEL
+                  }
+                  onClick={onShareClick}
+                >
+                  {shareCopied
+                    ? PLACE_CARD_SHARE_COPIED_LABEL
+                    : PLACE_CARD_SHARE_LABEL}
+                </button>
               </p>
             ) : null}
             {/* 3 Scope (rows 1–5 for too-few too) */}

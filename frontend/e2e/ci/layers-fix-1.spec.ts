@@ -10,12 +10,51 @@ registerOpenFreeMapFontStub();
 // Playwright CI cwd is frontend/; avoid import.meta (not an ESM module here).
 const ARCH2B = join(process.cwd(), "e2e", "fixtures", "arch2b");
 const OIL_MVT = readFileSync(join(ARCH2B, "oil-fields.mvt"));
+const DZ_MVT = readFileSync(join(ARCH2B, "dz2022.mvt"));
 const TILE_VERSION = "2026-10-22.d28ecc72";
 
 function oilTileManifest() {
   return JSON.stringify({
     schema: 1,
     tilesets: {
+      // MAP-VISION-1b: data_zones is default ON @ minzoom 0 — stub must paint.
+      dz2022: {
+        layer: "dz2022",
+        version: TILE_VERSION,
+        minzoom: 0,
+        maxzoom: 14,
+        geometry: "polygon",
+        source_layer: "dz2022",
+        measure: "pop_density",
+        attribution: "Synthetic DZ attribution",
+        style: {
+          fill: {
+            "fill-color": "#6baed6",
+            "fill-opacity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              4.5,
+              0,
+              5,
+              0.55,
+              14,
+              0.55,
+              15,
+              0.4,
+            ],
+          },
+          line: {
+            "line-color": "#0b1e3a",
+            "line-width": 1.05,
+            "line-opacity": 0.6,
+          },
+        },
+        legend: [
+          { label: "Up to 10 people per km²", color: "#eff3ff" },
+          { label: "No value", color: "#d9d9d9" },
+        ],
+      },
       "oil-fields": {
         layer: "oil-fields",
         version: TILE_VERSION,
@@ -167,6 +206,28 @@ async function stubOverviewShapes(page: Page) {
       body: OIL_MVT,
     });
   });
+  await page.route("**/backend/v1/tiles/dz2022/**/*.mvt", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/vnd.mapbox-vector-tile",
+      body: DZ_MVT,
+    });
+  });
+  await page.route(
+    "**/backend/v1/tiles/dz2022/**/values/pop_density.json",
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          layer: "dz2022",
+          version: TILE_VERSION,
+          measure: "pop_density",
+          values: { S01013482: 225.1 },
+        }),
+      });
+    },
+  );
   await page.route("**/layers/open/crown-estate-leases**", async (route) => {
     await route.fulfill({
       status: 200,

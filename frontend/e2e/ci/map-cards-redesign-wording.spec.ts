@@ -108,11 +108,11 @@ for (const viewport of [
       ).toHaveCount(0);
       await expect(page.getByTestId("layer-toggle-councils")).toHaveAttribute(
         "aria-checked",
-        "true",
+        "false",
       );
       await expect(page.getByTestId("layer-toggle-data_zones")).toHaveAttribute(
         "aria-checked",
-        "false",
+        "true",
       );
       // No parcel / plot switch
       await expect(page.getByTestId("layer-toggle-boundaries")).toHaveCount(0);
@@ -174,6 +174,10 @@ for (const viewport of [
         "false",
       );
       await expect(page.getByTestId("layer-toggle-councils")).toHaveAttribute(
+        "aria-checked",
+        "false",
+      );
+      await expect(page.getByTestId("layer-toggle-data_zones")).toHaveAttribute(
         "aria-checked",
         "true",
       );

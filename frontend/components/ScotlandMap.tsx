@@ -77,6 +77,13 @@ import {
   type MeasureValuesPayload,
 } from "../lib/tileLayerFactory";
 import { asOfMapForDrawerLayers } from "../lib/tileAsOf";
+import {
+  buildDzFillOpacityExpression,
+  buildSelectedZonePaint,
+  hasSupportingOverlayActive,
+  prefersReducedMotion,
+  resolveSupportingStrokeStyle,
+} from "../lib/mapVisionTokens";
 import { SEARCH_HINT_SR } from "../lib/siteNav";
 import { isEsriBasemapKeyConfigured } from "../lib/esriBasemapKey.mjs";
 import {
@@ -709,6 +716,8 @@ export default function ScotlandMap() {
   const showPublicLand = false;
   /** Neighbourhood lines — starts OFF; never auto-on at zoom. */
   const [showDataZones, setShowDataZones] = useState(false);
+  /** MAP-VISION-1a MV-06: hovered Data Zone code for outline (desktop). */
+  const [hoveredDzCode, setHoveredDzCode] = useState<string | null>(null);
   /**
    * Built-up mask is always-on background style (not a Layers switch).
    * Neutral shading when GBP-LIVE off; AGR bands when on + layer 1.
@@ -986,6 +995,14 @@ export default function ScotlandMap() {
     ledgerEnabled,
     contextOn,
   });
+  const selectedDzCode = placeStub?.dataZoneCode?.trim() || null;
+  const selectedDzCodeRef = useRef(selectedDzCode);
+  selectedDzCodeRef.current = selectedDzCode;
+  const hoveredDzCodeRef = useRef(hoveredDzCode);
+  hoveredDzCodeRef.current = hoveredDzCode;
+  const supportingOverlayActive = hasSupportingOverlayActive(activeLayerIds);
+  const supportingOverlayActiveRef = useRef(supportingOverlayActive);
+  supportingOverlayActiveRef.current = supportingOverlayActive;
   const gbpLiveBootstrapped = useRef(false);
   useEffect(() => {
     let cancelled = false;
@@ -1175,8 +1192,8 @@ export default function ScotlandMap() {
       const z = map.getZoom();
       const targetZoom =
         z < 6.5 ? 7 : Math.min(Math.max(z, 15), MAP_MAX_ZOOM);
-      map.flyTo({
-        center: [payload.square.lng, payload.square.lat],
+      const cameraOpts = {
+        center: [payload.square.lng, payload.square.lat] as [number, number],
         zoom: Math.min(targetZoom, MAP_MAX_ZOOM),
         essential: true,
         padding: mapPanelPadding({
@@ -1184,7 +1201,13 @@ export default function ScotlandMap() {
           detent: "half",
           collapsed: false,
         }),
-      });
+      };
+      // MV-20: jumpTo when prefers-reduced-motion
+      if (prefersReducedMotion()) {
+        map.jumpTo(cameraOpts);
+      } else {
+        map.flyTo(cameraOpts);
+      }
     }
 
     if (payload.what3words) {
@@ -1286,7 +1309,8 @@ export default function ScotlandMap() {
           padding: narrow
             ? { top: 132, bottom: 72, left: 12, right: 16 }
             : { top: 96, bottom: 36, left: 24, right: 28 },
-          animate: true,
+          // MV-20: skip animated fitBounds when prefers-reduced-motion
+          animate: !prefersReducedMotion(),
           maxZoom: 7.4,
         },
       );
@@ -1337,8 +1361,8 @@ export default function ScotlandMap() {
           // Desktop Layers stays in the right column. Mobile closes the sheet.
           const layersHoldingFly =
             desktopLayersOpenRef.current && !isNarrowPanelRef.current;
-          map.flyTo({
-            center: [lng, lat],
+          const cameraOpts = {
+            center: [lng, lat] as [number, number],
             zoom: Math.max(map.getZoom(), 15),
             essential: true,
             // GIS 12 — centre in the uncovered map (right of 380px desktop panel).
@@ -1347,7 +1371,13 @@ export default function ScotlandMap() {
               detent: opts.fromAddressSearch ? "half" : "peek",
               collapsed: Boolean(opts.keepCollapsed),
             }),
-          });
+          };
+          // MV-20: jumpTo when prefers-reduced-motion
+          if (prefersReducedMotion()) {
+            map.jumpTo(cameraOpts);
+          } else {
+            map.flyTo(cameraOpts);
+          }
         }
       }
       setError(null);
@@ -2681,6 +2711,7 @@ export default function ScotlandMap() {
         attribution:
           "Contains public sector information, licensed under the Open Government Licence v3.0, from Crown Estate Scotland. Seabed leases, shown for context. Not a rent or a title.",
       });
+      const crownStroke = resolveSupportingStrokeStyle("crown-leases");
       map.addLayer({
         id: "crown-leases-fill",
         type: "fill",
@@ -2688,7 +2719,8 @@ export default function ScotlandMap() {
         layout: { visibility: "none" },
         paint: {
           "fill-color": CES_LEASE_FILL,
-          "fill-opacity": 0.38,
+          // MV-04: outline-only — keep fill layer for hit-testing
+          "fill-opacity": 0,
         },
       });
       map.addLayer({
@@ -2696,7 +2728,12 @@ export default function ScotlandMap() {
         type: "line",
         source: "crown-leases-overlay",
         layout: { visibility: "none" },
-        paint: { "line-color": "#0b3d5c", "line-width": 1.0, "line-opacity": 0.85 },
+        paint: {
+          "line-color": crownStroke.color,
+          "line-width": crownStroke.lineWidth,
+          "line-opacity": 0.85,
+          "line-dasharray": [...crownStroke.dasharray],
+        },
       });
 
       map.addSource("designations-overlay", {
@@ -2705,19 +2742,26 @@ export default function ScotlandMap() {
         attribution:
           "Contains NatureScot data licensed under the Open Government Licence v3.0.",
       });
+      const designationsStroke = resolveSupportingStrokeStyle("designations");
       map.addLayer({
         id: "designations-fill",
         type: "fill",
         source: "designations-overlay",
         layout: { visibility: "none" },
-        paint: { "fill-color": "#15803d", "fill-opacity": 0.35 },
+        // MV-04: outline-only — keep fill layer for hit-testing
+        paint: { "fill-color": "#15803d", "fill-opacity": 0 },
       });
       map.addLayer({
         id: "designations-line",
         type: "line",
         source: "designations-overlay",
         layout: { visibility: "none" },
-        paint: { "line-color": "#14532d", "line-width": 1.1, "line-opacity": 0.9 },
+        paint: {
+          "line-color": designationsStroke.color,
+          "line-width": designationsStroke.lineWidth,
+          "line-opacity": 0.9,
+          "line-dasharray": [...designationsStroke.dasharray],
+        },
       });
 
       map.addSource("hla-overlay", {
@@ -2852,12 +2896,14 @@ export default function ScotlandMap() {
           data: emptyCollection,
         });
         if (layer.kind === "fill") {
+          // MV-04 / MV-11: supporting polygon overlays are outline-only
+          const stroke = resolveSupportingStrokeStyle(layer.id);
           map.addLayer({
             id: `${layer.id}-fill`,
             type: "fill",
             source: `${layer.id}-src`,
             layout: { visibility: "none" },
-            paint: { "fill-color": layer.color, "fill-opacity": 0.28 },
+            paint: { "fill-color": layer.color, "fill-opacity": 0 },
           });
           map.addLayer({
             id: `${layer.id}-line`,
@@ -2865,9 +2911,10 @@ export default function ScotlandMap() {
             source: `${layer.id}-src`,
             layout: { visibility: "none" },
             paint: {
-              "line-color": layer.color,
-              "line-width": 1.6,
+              "line-color": stroke.color,
+              "line-width": stroke.lineWidth,
               "line-opacity": 0.95,
+              "line-dasharray": [...stroke.dasharray],
             },
           });
         } else if (layer.kind === "line") {
@@ -2936,6 +2983,7 @@ export default function ScotlandMap() {
           : raw?.code;
       const name = raw?.name;
       if (!code || !event.lngLat) return;
+      setHoveredDzCode(code);
       const label = name
         ? `${escapeHtml(name)} (${escapeHtml(code)})`
         : escapeHtml(code);
@@ -2959,6 +3007,7 @@ export default function ScotlandMap() {
     });
     map.on("mouseleave", "tile-dz2022-fill", () => {
       map.getCanvas().style.cursor = "";
+      setHoveredDzCode(null);
       dzHoverPopupRef.current?.remove();
     });
 
@@ -3752,11 +3801,54 @@ export default function ScotlandMap() {
     const map = mapRef.current;
     if (!map) return;
     const vis = showDataZones ? "visible" : "none";
-    for (const id of ["tile-dz2022-fill", "tile-dz2022-line"]) {
+    for (const id of [
+      "tile-dz2022-fill",
+      "tile-dz2022-line",
+      "tile-dz2022-hover-line",
+      "tile-dz2022-selected-halo",
+      "tile-dz2022-selected-line",
+    ]) {
       if (hasMapLayer(map, id)) map.setLayoutProperty(id, "visibility", vis);
     }
-    if (!showDataZones) dzHoverPopupRef.current?.remove();
+    if (!showDataZones) {
+      setHoveredDzCode(null);
+      dzHoverPopupRef.current?.remove();
+    }
   }, [mapReady, showDataZones]);
+
+  // MV-05: dim DZ fill when any supporting overlay is active
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map || !hasMapLayer(map, "tile-dz2022-fill")) return;
+    map.setPaintProperty(
+      "tile-dz2022-fill",
+      "fill-opacity",
+      buildDzFillOpacityExpression(supportingOverlayActive) as ExpressionSpecification,
+    );
+  }, [mapReady, supportingOverlayActive]);
+
+  // MV-06: sync selected / hover Data Zone outline + halo paint
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const paint = buildSelectedZonePaint(selectedDzCode, hoveredDzCode);
+    const apply = (
+      id: string,
+      filter: unknown[],
+      paintProps: Record<string, unknown>,
+    ) => {
+      if (!hasMapLayer(map, id)) return;
+      map.setFilter(id, filter as ExpressionSpecification);
+      for (const [key, value] of Object.entries(paintProps)) {
+        map.setPaintProperty(id, key, value);
+      }
+    };
+    apply("tile-dz2022-hover-line", paint.hoverFilter, paint.hoverPaint);
+    apply("tile-dz2022-selected-halo", paint.haloFilter, paint.haloPaint);
+    apply("tile-dz2022-selected-line", paint.outlineFilter, paint.outlinePaint);
+  }, [mapReady, selectedDzCode, hoveredDzCode]);
 
   // ARCH-2b: fetch tile manifest once per mapReady; add vector sources/layers.
   useEffect(() => {
@@ -3776,7 +3868,13 @@ export default function ScotlandMap() {
 
     const syncTileVisibility = () => {
       const dzVis = showDataZonesRef.current ? "visible" : "none";
-      for (const id of ["tile-dz2022-fill", "tile-dz2022-line"]) {
+      for (const id of [
+        "tile-dz2022-fill",
+        "tile-dz2022-line",
+        "tile-dz2022-hover-line",
+        "tile-dz2022-selected-halo",
+        "tile-dz2022-selected-line",
+      ]) {
         if (hasMapLayer(map, id)) map.setLayoutProperty(id, "visibility", dzVis);
       }
       const on = contextOnRef.current;
@@ -3908,6 +4006,61 @@ export default function ScotlandMap() {
           if (isOutline) outlineAdded = true;
         }
         if (!cancelled) setOutlineBuilt(outlineAdded);
+
+        // MV-06: selected / hover Data Zone outline + halo on tile-dz2022
+        if (dzEntry && map.getSource("tile-dz2022")) {
+          const sourceLayer = dzEntry.source_layer || "dz2022";
+          const dzVis = showDataZonesRef.current ? "visible" : "none";
+          // Apply current selection/hover so deep-link place cards that resolve
+          // before this manifest effect finishes are not stuck on null paint.
+          const initialPaint = buildSelectedZonePaint(
+            selectedDzCodeRef.current,
+            hoveredDzCodeRef.current,
+          );
+          const chrome: Array<{
+            id: string;
+            filter: unknown[];
+            paint: Record<string, unknown>;
+          }> = [
+            {
+              id: "tile-dz2022-hover-line",
+              filter: initialPaint.hoverFilter,
+              paint: initialPaint.hoverPaint,
+            },
+            {
+              id: "tile-dz2022-selected-halo",
+              filter: initialPaint.haloFilter,
+              paint: initialPaint.haloPaint,
+            },
+            {
+              id: "tile-dz2022-selected-line",
+              filter: initialPaint.outlineFilter,
+              paint: initialPaint.outlinePaint,
+            },
+          ];
+          for (const layer of chrome) {
+            if (hasMapLayer(map, layer.id)) continue;
+            map.addLayer({
+              id: layer.id,
+              type: "line",
+              source: "tile-dz2022",
+              "source-layer": sourceLayer,
+              layout: { visibility: dzVis },
+              filter: layer.filter as ExpressionSpecification,
+              paint: layer.paint,
+            } as Parameters<Map["addLayer"]>[0]);
+          }
+          if (hasMapLayer(map, "tile-dz2022-fill")) {
+            map.setPaintProperty(
+              "tile-dz2022-fill",
+              "fill-opacity",
+              buildDzFillOpacityExpression(
+                supportingOverlayActiveRef.current,
+              ) as ExpressionSpecification,
+            );
+          }
+        }
+
         syncTileVisibility();
 
         if (dzEntry?.version) {

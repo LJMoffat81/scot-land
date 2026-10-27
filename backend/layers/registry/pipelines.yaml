@@ -23,6 +23,7 @@ style:
     line-color: "#5c4a32"
     line-width: 1.4
     line-opacity: 0.9
+    line-dasharray: [6, 2, 1.5, 2]
 legend:
   - {label: "Pipelines", color: "#5c4a32"}
 lineage: {derived_from: [], method: source, roll_up_to: []}

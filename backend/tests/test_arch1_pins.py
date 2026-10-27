@@ -363,6 +363,15 @@ _ARCH6_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+_MAP_VISION_1A_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/lib/mapVisionTokens.ts",
+        "frontend/e2e/ci/map-vision-1a.spec.ts",
+        # §2.3 ScotlandMap wiring (MV-04/05/06/11/20) — pin bookkeeping
+        "frontend/components/ScotlandMap.tsx",
+    ]
+)
+
 
 def _assert_main_py_only_arch2a_tiles_registration() -> None:
     """HEAD main.py must equal origin/main plus exactly the ARCH-2a tiles line."""
@@ -395,6 +404,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _ARCH5B_FRONTEND_ALLOW
                 | _ARCH5C_FRONTEND_ALLOW
                 | _ARCH6_FRONTEND_ALLOW
+                | _MAP_VISION_1A_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

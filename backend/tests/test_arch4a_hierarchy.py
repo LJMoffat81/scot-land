@@ -42,7 +42,7 @@ _CW_HEADER = "dz2011,dz2022,weight,method"
 def _dsn() -> str:
     dsn = os.environ.get("ARCH1_TEST_DSN", "").strip()
     if not dsn:
-        pytest.skip("ARCH1_TEST_DSN not set")
+        raise RuntimeError("ARCH1_TEST_DSN not set")
     return dsn
 
 

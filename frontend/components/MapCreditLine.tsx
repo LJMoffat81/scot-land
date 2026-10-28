@@ -116,10 +116,11 @@ export default function MapCreditLine({
     ) : null;
 
   /**
-   * Full pieces join for R1. On narrow, long layer strings are display:none so
-   * innerText omits them (no repeat) while textContent still matches piecesJoin.
+   * Full pieces join for R1. Long layer licence strings are hidden on the
+   * bar at all widths so innerText shows only short layer names (no repeat)
+   * while textContent and the ⓘ sheet hold the full legal text.
    */
-  const attributionSpan = narrow ? (
+  const attributionSpan = (
     <span className="map-attribution-line" data-testid="map-attribution-line">
       {OPENFREEMAP_ATTRIBUTION}
       {layerLongJoin ? (
@@ -128,10 +129,6 @@ export default function MapCreditLine({
           {layerLongJoin}
         </span>
       ) : null}
-    </span>
-  ) : (
-    <span className="map-attribution-line" data-testid="map-attribution-line">
-      {piecesJoin}
     </span>
   );
 
@@ -233,6 +230,8 @@ export default function MapCreditLine({
         {" · "}
         {sourcesLink}
       </span>
+      {infoButton}
+      {sheet}
     </div>
   );
 }

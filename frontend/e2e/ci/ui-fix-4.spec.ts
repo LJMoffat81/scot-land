@@ -371,12 +371,15 @@ test.describe("UI-FIX-4 1280", () => {
         credit: pick('[data-testid="map-credit-line"]'),
       };
     });
-    for (const key of ["zoom", "aerial", "credit"] as const) {
+    expect(before.credit && after.credit, "credit").toBeTruthy();
+    expect(Math.abs(before.credit!.x - after.credit!.x), "credit x").toBeLessThanOrEqual(4);
+    expect(Math.abs(before.credit!.y - after.credit!.y), "credit y").toBeLessThanOrEqual(4);
+    for (const key of ["zoom", "aerial"] as const) {
       const a = before[key];
       const b = after[key];
       expect(a, key).toBeTruthy();
       expect(b, key).toBeTruthy();
-      expect(Math.abs(a!.x - b!.x), `${key} x`).toBeLessThanOrEqual(4);
+      expect(b!.x + a!.width, `${key} shifts left of layers-column`).toBeLessThanOrEqual(colBox!.x);
       expect(Math.abs(a!.y - b!.y), `${key} y`).toBeLessThanOrEqual(4);
     }
 

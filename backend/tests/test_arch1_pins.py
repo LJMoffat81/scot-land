@@ -393,6 +393,24 @@ _DEFAULT_3D_VIEW_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+_UX_POLISH_28OCT_1_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/app/map-chrome.css",
+        "frontend/components/MapCreditLine.tsx",
+        "frontend/components/ScotlandMap.tsx",
+        "frontend/lib/api.ts",
+        "frontend/lib/mapColourRamps.ts",
+        "frontend/lib/siteNav.ts",
+        "frontend/scripts/test-site-rewrite-pr2.mjs",
+        "frontend/e2e/ci/frontend-batch-4.spec.ts",
+        "frontend/e2e/ci/mapref-fix.spec.ts",
+        "frontend/e2e/ci/post-share-1.spec.ts",
+        "frontend/e2e/ci/squares-shell-search.spec.ts",
+        "frontend/e2e/ci/ui-fix-4.spec.ts",
+        "frontend/e2e/ci/ux-polish-28oct-1.spec.ts",
+    ]
+)
+
 
 def _assert_main_py_only_arch2a_tiles_registration() -> None:
     """HEAD main.py must equal origin/main plus exactly the ARCH-2a tiles line."""
@@ -428,6 +446,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _MAP_VISION_1A_FRONTEND_ALLOW
                 | _MAP_VISION_1B_FRONTEND_ALLOW
                 | _DEFAULT_3D_VIEW_FRONTEND_ALLOW
+                | _UX_POLISH_28OCT_1_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

@@ -33,8 +33,7 @@ export const POP_DENSITY_LEGEND_TITLE =
  * Default-view (council fill) people/km² legend title.
  * Single source for map chip, Layers key row, and e2e (FRONTEND-BATCH-4).
  */
-export const POP_DENSITY_RANGE_LEGEND_TITLE =
-  "People per square kilometre (people/km²)";
+export const POP_DENSITY_RANGE_LEGEND_TITLE = "People per km²";
 
 /** One-line blurb under the density title (SW-022). */
 export const POP_DENSITY_LEGEND_BLURB =

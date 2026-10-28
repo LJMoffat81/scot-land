@@ -587,26 +587,33 @@ button.basemap-switcher[aria-pressed="true"] {
   position: absolute;
   z-index: 5;
   left: 0.5rem;
-  right: 4.5rem;
+  right: auto;
   bottom: 0.35rem;
-  max-width: calc(100% - 5rem);
+  max-width: calc(100% - var(--ctrl-h, 48px) - 1.5rem);
   margin: 0;
-  padding: 0.15rem 0.35rem;
+  padding: 2px 0.35rem;
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.82);
   color: rgba(11, 30, 58, 0.85);
   font-size: 12px;
   line-height: 1.25;
   pointer-events: auto;
-  /* Wrap to at most 2 lines at 12px (r6 narrow rule). */
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.25rem;
+  overflow: visible;
+}
+
+.map-credit-line-text {
+  flex: 1 1 auto;
+  min-width: 0;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
-}
-
-.map-credit-line-text {
-  display: inline;
+  font-size: 12px;
+  line-height: 1.25;
 }
 
 .map-credit-line a {
@@ -637,12 +644,14 @@ button.basemap-switcher[aria-pressed="true"] {
 }
 
 .map-credit-line--narrow {
+  box-sizing: border-box;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.15rem;
-  max-width: calc(100% - 1rem);
-  right: 0.5rem;
+  gap: 0.25rem;
+  right: calc(var(--ctrl-h, 48px) + 1rem);
+  max-width: calc(100% - var(--ctrl-h, 48px) - 1.5rem);
+  max-height: 48px;
   -webkit-line-clamp: unset;
   overflow: visible;
 }
@@ -687,7 +696,7 @@ button.basemap-switcher[aria-pressed="true"] {
   min-width: 44px;
   min-height: 44px;
   padding: 0.35rem 0.45rem;
-  margin: -0.35rem 0;
+  margin: -14.5px 0;
   vertical-align: middle;
 }
 
@@ -699,17 +708,23 @@ button.basemap-switcher[aria-pressed="true"] {
     max-width: calc(100% - 380px - 6rem);
   }
 
-  /* Layers sits in the right column, so the line stays left of that column. */
+  /* Layers sits in the right column, and controls shift left of it; keep credit left of both. */
   .app-shell.tools-open:not(.place-open) .map-credit-line {
     left: 0.5rem;
-    right: calc(380px + 1.5rem);
-    max-width: calc(100% - 380px - 2.5rem);
+    right: auto;
+    max-width: calc(100% - 380px - var(--ctrl-h, 48px) - 2.5rem);
   }
 
   .app-shell.tools-open.place-open .map-credit-line {
     left: calc(380px + 1.5rem);
-    right: calc(380px + 1.5rem);
-    max-width: calc(100% - 760px - 3rem);
+    right: auto;
+    max-width: calc(100% - 760px - var(--ctrl-h, 48px) - 3.5rem);
+  }
+
+  .app-shell.tools-open .view-3d-toggle-wrap,
+  .app-shell.tools-open .basemap-switcher-wrap,
+  .app-shell.tools-open .map-stage .maplibregl-ctrl-bottom-right {
+    right: calc(380px + 1.4rem);
   }
 }
 
@@ -944,14 +959,11 @@ button.basemap-switcher[aria-pressed="true"] {
     );
   }
 
-  /* UI-FIX-4: Layers in the right column must not slide Detailed, zoom,
-     or attribution out of their corner. */
-  .map-cards-shell.tools-open .basemap-switcher {
-    right: 0.65rem;
-  }
-
+  /* LAYERS-DRAWER-CONTROLS-SHIFT-1: shift right-hand controls left of the 380px Layers drawer. */
+  .map-cards-shell.tools-open .view-3d-toggle-wrap,
+  .map-cards-shell.tools-open .basemap-switcher-wrap,
   .map-cards-shell.tools-open .map-stage .maplibregl-ctrl-bottom-right {
-    right: 0.65rem;
+    right: calc(380px + 1.4rem);
   }
 
   /* UI-TWEAKS-1 T1: shell clips; .layer-panel is the only scroller. */
@@ -1191,36 +1203,47 @@ button.basemap-switcher[aria-pressed="true"] {
 
   .map-cards-shell .map-panel-slot--full ~ .basemap-switcher-wrap,
   .map-panel-slot--full ~ .basemap-switcher,
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .basemap-switcher-wrap,
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .basemap-switcher,
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .maplibregl-ctrl-bottom-right,
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .hud-layers-btn,
-  .app-shell.map-narrow.tools-open:has(.map-panel-slot--full) .basemap-switcher-wrap,
-  .app-shell.map-narrow.tools-open:has(.map-panel-slot--full) .basemap-switcher,
-  .app-shell.map-narrow.tools-open:has(.map-panel-slot--full) .maplibregl-ctrl-bottom-right {
+  .app-shell.panel-open:has(.map-panel-slot--full) .basemap-switcher-wrap,
+  .app-shell.panel-open:has(.map-panel-slot--full) .basemap-switcher,
+  .app-shell.panel-open:has(.map-panel-slot--full) .maplibregl-ctrl-bottom-right,
+  .app-shell.panel-open:has(.map-panel-slot--full) .hud-layers-btn,
+  .app-shell.tools-open:has(.map-panel-slot--full) .basemap-switcher-wrap,
+  .app-shell.tools-open:has(.map-panel-slot--full) .basemap-switcher,
+  .app-shell.tools-open:has(.map-panel-slot--full) .maplibregl-ctrl-bottom-right {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
   }
 
   /* §3.2 — at peek/half, lift basemap + zoom above the sheet (not under it).
-   * Basemap stacks above zoom+/- (48×48) + compact (i); same clearance as rest. */
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .maplibregl-ctrl-bottom-right {
+   * Standard top-to-bottom column order: 2D/3D -> Basemap -> Zoom +/-. */
+  .app-shell.panel-open:has(.map-panel-slot--peek) .maplibregl-ctrl-bottom-right,
+  .app-shell.tools-open:has(.map-panel-slot--peek) .maplibregl-ctrl-bottom-right {
     bottom: calc(196px + env(safe-area-inset-bottom, 0px) + 0.5rem) !important;
   }
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .basemap-switcher-wrap {
+  .app-shell.panel-open:has(.map-panel-slot--peek) .basemap-switcher-wrap,
+  .app-shell.tools-open:has(.map-panel-slot--peek) .basemap-switcher-wrap {
     bottom: calc(
       196px + env(safe-area-inset-bottom, 0px) + 0.5rem + 98px + var(--ctrl-gap, 8px)
     );
   }
 
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .maplibregl-ctrl-bottom-right {
-    bottom: auto !important;
+  .app-shell.panel-open:has(.map-panel-slot--half) .basemap-switcher-wrap,
+  .app-shell.tools-open:has(.map-panel-slot--half) .basemap-switcher-wrap {
+    bottom: auto;
     top: calc(var(--hud-height, 9.5rem) + 2px + 48px + var(--ctrl-gap, 8px));
   }
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .basemap-switcher-wrap {
-    bottom: auto;
-    top: calc(var(--hud-height, 9.5rem) + 2px);
+  .app-shell.panel-open:has(.map-panel-slot--half) .maplibregl-ctrl-bottom-right,
+  .app-shell.tools-open:has(.map-panel-slot--half) .maplibregl-ctrl-bottom-right {
+    bottom: auto !important;
+    top: calc(
+      var(--hud-height, 9.5rem) + 2px + 48px + var(--ctrl-gap, 8px) + 48px + var(--ctrl-gap, 8px)
+    );
+  }
+  .app-shell.panel-open:has(.map-panel-slot--half):not(:has(.basemap-switcher-wrap)) .maplibregl-ctrl-bottom-right,
+  .app-shell.tools-open:has(.map-panel-slot--half):not(:has(.basemap-switcher-wrap)) .maplibregl-ctrl-bottom-right {
+    bottom: auto !important;
+    top: calc(var(--hud-height, 9.5rem) + 2px + 48px + var(--ctrl-gap, 8px));
   }
 }
 
@@ -1969,34 +1992,32 @@ button.basemap-switcher[aria-pressed="true"] {
 }
 
 @media (max-width: 899px) {
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--full) .view-3d-toggle-wrap,
-  .app-shell.map-narrow.tools-open:has(.map-panel-slot--full) .view-3d-toggle-wrap {
+  .app-shell.panel-open:has(.map-panel-slot--full) .view-3d-toggle-wrap,
+  .app-shell.tools-open:has(.map-panel-slot--full) .view-3d-toggle-wrap {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
   }
 
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .view-3d-toggle-wrap {
+  .app-shell.panel-open:has(.map-panel-slot--peek) .view-3d-toggle-wrap,
+  .app-shell.tools-open:has(.map-panel-slot--peek) .view-3d-toggle-wrap {
     bottom: calc(
       196px + env(safe-area-inset-bottom, 0px) + 0.5rem + 98px + var(--ctrl-gap, 8px)
     );
   }
 
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--peek) .view-3d-toggle-wrap.has-basemap-switcher {
+  .app-shell.panel-open:has(.map-panel-slot--peek) .view-3d-toggle-wrap.has-basemap-switcher,
+  .app-shell.tools-open:has(.map-panel-slot--peek) .view-3d-toggle-wrap.has-basemap-switcher {
     bottom: calc(
       196px + env(safe-area-inset-bottom, 0px) + 0.5rem + 98px + var(--ctrl-gap, 8px) + 48px + var(--ctrl-gap, 8px)
     );
   }
 
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .view-3d-toggle-wrap {
+  .app-shell.panel-open:has(.map-panel-slot--half) .view-3d-toggle-wrap,
+  .app-shell.tools-open:has(.map-panel-slot--half) .view-3d-toggle-wrap,
+  .app-shell.panel-open:has(.map-panel-slot--half) .view-3d-toggle-wrap.has-basemap-switcher,
+  .app-shell.tools-open:has(.map-panel-slot--half) .view-3d-toggle-wrap.has-basemap-switcher {
     bottom: auto;
     top: calc(var(--hud-height, 9.5rem) + 2px);
-  }
-
-  .app-shell.map-narrow.panel-open:has(.map-panel-slot--half) .view-3d-toggle-wrap.has-basemap-switcher {
-    bottom: auto;
-    top: calc(
-      var(--hud-height, 9.5rem) + 2px + 48px + var(--ctrl-gap, 8px) + 98px + var(--ctrl-gap, 8px)
-    );
   }
 }

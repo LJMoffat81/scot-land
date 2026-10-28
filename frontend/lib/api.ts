@@ -282,7 +282,7 @@ export function fetchCapabilities(): Promise<ApiCapabilities> {
 
 /** Postcode-only search (postcodes.io) when the legacy place search is not mounted. */
 export const POSTCODES_ONLY =
-  "Search finds full UK postcodes only (e.g. G2 1DU). Or click the map.";
+  "Search finds full UK postcodes only (e.g. G2 1DU). Or tap or click the map.";
 
 export function looksLikeFullPostcode(text: string): boolean {
   return /^[A-Z]{1,2}[0-9][A-Z0-9]?\s*[0-9][A-Z]{2}$/.test(text.trim().toUpperCase().replace(/\s+/g, " "));

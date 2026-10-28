@@ -220,7 +220,7 @@ for (const viewport of [
       await expect(card).not.toContainText(/map reference/i);
       await expect(page.locator("#place-query")).toHaveAttribute(
         "placeholder",
-        /postcode or place/i,
+        "Search a postcode, e.g. G2 1DU",
       );
 
       await openLayers(page);

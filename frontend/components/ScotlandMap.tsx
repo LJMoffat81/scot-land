@@ -890,12 +890,7 @@ export default function ScotlandMap() {
   panelKindRef.current = panelKind;
   const desktopLayersOpenRef = useRef(desktopLayersOpen);
   desktopLayersOpenRef.current = desktopLayersOpen;
-  const [mapStyle, setMapStyle] = useState<MapBasemapId>(() => {
-    if (typeof window === "undefined") return DEFAULT_MAP_BASEMAP;
-    const boot = readMapUrlState(window.location.search);
-    if (boot.b === "aerial" && isEsriBasemapKeyConfigured()) return "aerial";
-    return DEFAULT_MAP_BASEMAP;
-  });
+  const [mapStyle, setMapStyle] = useState<MapBasemapId>(DEFAULT_MAP_BASEMAP);
   const [basemapNotice, setBasemapNotice] = useState(false);
   const [aerialNotice, setAerialNotice] = useState(false);
   const [aerialUnavailable, setAerialUnavailable] = useState(false);
@@ -2227,6 +2222,15 @@ export default function ScotlandMap() {
   useEffect(() => {
     const container = mapContainer.current;
     if (!container || mapRef.current) return;
+    if (
+      mapStyle === "light" &&
+      !aerialUnavailable &&
+      readMapUrlState(window.location.search).b === "aerial" &&
+      isEsriBasemapKeyConfigured()
+    ) {
+      setMapStyle("aerial");
+      return;
+    }
 
     const bootStyle = basemapStyleUrl(mapStyle);
     const bootAerial = mapStyle === "aerial";
@@ -5592,7 +5596,7 @@ export default function ScotlandMap() {
         >
         <div className={loading || suggesting ? "hud-search loading" : "hud-search"}>
           <label className="sr-only" htmlFor="place-query">
-            Search a postcode or place
+            Search a postcode, e.g. G2 1DU
           </label>
           <input
             id="place-query"
@@ -5606,8 +5610,8 @@ export default function ScotlandMap() {
             }
             value={query}
             autoComplete="off"
-            placeholder="Search a postcode or place"
-            title="Search a postcode or place"
+            placeholder="Search a postcode, e.g. G2 1DU"
+            title="Search a postcode, e.g. G2 1DU"
             onFocus={() => {
               setSearchFocused(true);
               setSearchNoMatch(false);

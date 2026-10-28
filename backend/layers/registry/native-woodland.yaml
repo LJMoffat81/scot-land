@@ -1,0 +1,28 @@
+id: native-woodland
+title: Native Woodland Survey of Scotland
+geography: scotland
+clip: land
+clip_keep_all: false
+unit: none
+licence: OGL-3.0
+vintage: "NWSS national survey"
+attribution: >-
+  Native Woodland Survey of Scotland. © Scottish Forestry / Forestry
+  Commission. Contains Ordnance Survey data © Crown copyright and database
+  right 2026. Licensed under the Open Government Licence v3.0.
+source:
+  type: postgis_table
+  table: native_woodland
+  id_field: feature_id
+  where: "TRUE"
+geometry: polygon
+refresh: {cron: "0 5 1 1 *", max_mb: 300, max_s: 600}
+serve: {mode: pmtiles, simplify_m: 10, precision_dp: 6, max_mb: 15}
+zoom: {min: 0, max: 14, low_zoom: coalesce}
+style:
+  fill: {fill-color: "#009E73", fill-opacity: 0}
+  line: {line-color: "#009E73", line-width: 1.2, line-opacity: 0.85, line-dasharray: [2, 1.5]}
+legend:
+  - {label: "Native Woodland Survey of Scotland", color: "#009E73"}
+lineage: {derived_from: [], method: source, roll_up_to: [dz2022, council, scotland]}
+keep_fields: [woodland_type, canopy_pct, native_pct, dom_habitat, hectares, maturity]

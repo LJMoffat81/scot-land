@@ -1,0 +1,27 @@
+id: ces-aquaculture
+title: Crown Estate Scotland aquaculture seabed leases
+geography: scotland
+clip: land+sea
+clip_keep_all: false
+unit: none
+licence: OGL-3.0
+vintage: "2026"
+attribution: >-
+  Contains public sector information, licensed under the Open Government
+  Licence v3.0, from Crown Estate Scotland.
+source:
+  type: postgis_table
+  table: ces_aquaculture_leases
+  id_field: id
+  where: "publication_status = 'ok'"
+geometry: polygon
+refresh: {cron: "0 4 * * 1", max_mb: 100, max_s: 600}
+serve: {mode: pmtiles, simplify_m: 10, precision_dp: 6, max_mb: 15}
+zoom: {min: 0, max: 14, low_zoom: simplify}
+style:
+  fill: {fill-color: "#0072B2", fill-opacity: 0}
+  line: {line-color: "#0072B2", line-width: 1.6, line-opacity: 0.95, line-dasharray: [3, 2]}
+legend:
+  - {label: "Aquaculture seabed leases", color: "#0072B2"}
+lineage: {derived_from: [], method: source, roll_up_to: []}
+keep_fields: [site_id, lease_description, property_classification]

@@ -1,0 +1,25 @@
+id: repd-onshore-wind
+title: REPD onshore wind sites (Scotland)
+geography: scotland
+clip: land
+unit: point
+licence: OGL-3.0
+vintage: "REPD Q2 2026 (2026-07)"
+attribution: >-
+  Contains public sector information licensed under the Open Government
+  Licence v3.0. Renewable Energy Planning Database © DESNZ / Crown copyright.
+source:
+  type: postgis_table
+  table: repd_onshore_wind
+  id_field: ref_id
+  where: "publication_status = 'ok'"
+geometry: point
+refresh: {cron: "0 5 1 */3 *", max_mb: 50, max_s: 600}
+serve: {mode: pmtiles, simplify_m: 0, precision_dp: 6, max_mb: 15}
+zoom: {min: 0, max: 14, low_zoom: cluster}
+style:
+  circle: {circle-color: "#009E73", circle-radius: 5, circle-stroke-width: 1, circle-stroke-color: "#ffffff", circle-opacity: 0.85}
+legend:
+  - {label: "Onshore wind sites (DESNZ REPD)", color: "#009E73"}
+lineage: {derived_from: [], method: source, roll_up_to: [dz2022, council, scotland]}
+keep_fields: [site_name, technology_type, development_status_short, installed_capacity_mw, planning_authority]

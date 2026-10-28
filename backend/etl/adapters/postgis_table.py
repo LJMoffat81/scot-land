@@ -69,8 +69,50 @@ def fetch_postgis_table(
         SELECT
           {id_field}::text AS feature_id,
           {props} AS props,
-          ST_AsBinary(ST_Multi(geom)) AS wkb,
-          ST_AsGeoJSON(ST_Multi(geom)) AS geojson
+          ST_AsBinary(
+            CASE
+              WHEN GeometryType(geom) IN ('POINT', 'LINESTRING') THEN
+                CASE
+                  WHEN ST_SRID(geom) = 27700 THEN geom
+                  ELSE ST_Transform(
+                    ST_SetSRID(geom, CASE WHEN ST_SRID(geom) = 0 THEN 4326 ELSE ST_SRID(geom) END),
+                    27700
+                  )
+                END
+              ELSE
+                ST_Multi(
+                  CASE
+                    WHEN ST_SRID(geom) = 27700 THEN geom
+                    ELSE ST_Transform(
+                      ST_SetSRID(geom, CASE WHEN ST_SRID(geom) = 0 THEN 4326 ELSE ST_SRID(geom) END),
+                      27700
+                    )
+                  END
+                )
+            END
+          ) AS wkb,
+          ST_AsGeoJSON(
+            CASE
+              WHEN GeometryType(geom) IN ('POINT', 'LINESTRING') THEN
+                CASE
+                  WHEN ST_SRID(geom) = 27700 THEN geom
+                  ELSE ST_Transform(
+                    ST_SetSRID(geom, CASE WHEN ST_SRID(geom) = 0 THEN 4326 ELSE ST_SRID(geom) END),
+                    27700
+                  )
+                END
+              ELSE
+                ST_Multi(
+                  CASE
+                    WHEN ST_SRID(geom) = 27700 THEN geom
+                    ELSE ST_Transform(
+                      ST_SetSRID(geom, CASE WHEN ST_SRID(geom) = 0 THEN 4326 ELSE ST_SRID(geom) END),
+                      27700
+                    )
+                  END
+                )
+            END
+          ) AS geojson
         FROM {table}
         WHERE {where}
         ORDER BY {id_field}::text

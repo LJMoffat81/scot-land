@@ -44,6 +44,28 @@ _REQUIRED_PARKED_IDS = frozenset(
     }
 )
 _FORBIDDEN_HOSTS = ("atkinsgeospatial.com", "postcodes.io", "martinjc")
+BATCH_A_EXCLUDED_REGISTRY_IDS = frozenset(
+    {
+        "hla",
+        "housing_land_supply",
+        "housing-land-supply",
+        "ldp",
+        "ldp_allocations",
+        "ldp-allocations",
+        "lca",
+        "lca_agriculture",
+        "lca-agriculture",
+        "crofting",
+        "croft_holdings",
+        "croft-holdings",
+        "common_grazings",
+        "common-grazings",
+        "glasgow_ward_18",
+        "glasgow-ward-18",
+        "sepa_frm_maps",
+        "sepa-frm-maps",
+    }
+)
 
 
 class ParkedGuardError(Exception):
@@ -171,6 +193,10 @@ def check_parked_guards(
                 )
 
     for lid, entry in sorted(reg.items()):
+        if lid in BATCH_A_EXCLUDED_REGISTRY_IDS:
+            raise ParkedGuardError(
+                f"PARKED: excluded Batch A source {lid!r} must not appear in registry"
+            )
         raw = entry.raw if isinstance(entry, LayerEntry) else entry
         if not isinstance(raw, dict):
             raise ParkedGuardError(f"PARKED: registry {lid}: entry must be a mapping")

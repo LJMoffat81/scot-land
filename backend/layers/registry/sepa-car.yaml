@@ -1,0 +1,25 @@
+id: sepa-car
+title: SEPA CAR water environment licences
+geography: scotland
+clip: land+sea
+unit: point
+licence: OGL-3.0
+vintage: "2026"
+attribution: >-
+  Contains public sector information licensed under the Open Government
+  Licence v3.0. © Scottish Environment Protection Agency.
+source:
+  type: postgis_table
+  table: sepa_car_licences
+  id_field: authorisation_no
+  where: "geom IS NOT NULL AND publication_status = 'ok'"
+geometry: point
+refresh: {cron: "0 5 1 * *", max_mb: 100, max_s: 600}
+serve: {mode: pmtiles, simplify_m: 0, precision_dp: 6, max_mb: 15}
+zoom: {min: 0, max: 14, low_zoom: cluster}
+style:
+  circle: {circle-color: "#0072B2", circle-radius: 4, circle-stroke-width: 1, circle-stroke-color: "#ffffff", circle-opacity: 0.85}
+legend:
+  - {label: "SEPA CAR water environment licences", color: "#0072B2"}
+lineage: {derived_from: [], method: source, roll_up_to: [dz2022, council, scotland]}
+keep_fields: [car_layer, authorisation_description, authorisation_level, authorisation_status, regulatory_area, authorisation_activity, category]

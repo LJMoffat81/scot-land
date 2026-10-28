@@ -1,0 +1,28 @@
+id: nfi
+title: National Forest Inventory woodland (Scotland)
+geography: scotland
+clip: land
+clip_keep_all: false
+unit: none
+licence: OGL-3.0
+vintage: "NFI Scotland 2025"
+attribution: >-
+  © Forestry Commission copyright. Contains Ordnance Survey data © Crown
+  copyright and database right 2026. Licensed under the Open Government
+  Licence v3.0.
+source:
+  type: postgis_table
+  table: nfi_woodland
+  id_field: feature_id
+  where: "TRUE"
+geometry: polygon
+refresh: {cron: "0 5 1 1 *", max_mb: 300, max_s: 600}
+serve: {mode: pmtiles, simplify_m: 10, precision_dp: 6, max_mb: 15}
+zoom: {min: 0, max: 14, low_zoom: coalesce}
+style:
+  fill: {fill-color: "#009E73", fill-opacity: 0}
+  line: {line-color: "#009E73", line-width: 1.2, line-opacity: 0.85, line-dasharray: [3, 1.5]}
+legend:
+  - {label: "National Forest Inventory woodland", color: "#009E73"}
+lineage: {derived_from: [], method: source, roll_up_to: [dz2022, council, scotland]}
+keep_fields: [category, ift_ioa, area_ha]

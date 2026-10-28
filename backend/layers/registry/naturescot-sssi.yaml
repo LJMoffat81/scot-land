@@ -1,0 +1,27 @@
+id: naturescot-sssi
+title: NatureScot Sites of Special Scientific Interest
+geography: scotland
+clip: land+sea
+clip_keep_all: false
+unit: none
+licence: OGL-3.0
+vintage: "2026"
+attribution: >-
+  Contains NatureScot information licensed under the Open Government Licence
+  v3.0. Contains OS data © Crown copyright and database right 2026.
+source:
+  type: postgis_table
+  table: naturescot_sssi
+  id_field: pa_code
+  where: "TRUE"
+geometry: polygon
+refresh: {cron: "0 5 1 * *", max_mb: 200, max_s: 600}
+serve: {mode: pmtiles, simplify_m: 10, precision_dp: 6, max_mb: 15}
+zoom: {min: 0, max: 14, low_zoom: simplify}
+style:
+  fill: {fill-color: "#009E73", fill-opacity: 0}
+  line: {line-color: "#009E73", line-width: 1.6, line-opacity: 0.9, line-dasharray: [4, 1.5, 1, 1.5]}
+legend:
+  - {label: "Sites of Special Scientific Interest", color: "#009E73"}
+lineage: {derived_from: [], method: source, roll_up_to: []}
+keep_fields: [name, status, site_type, site_ha, european_code]

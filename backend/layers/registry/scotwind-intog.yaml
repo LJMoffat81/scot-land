@@ -1,0 +1,27 @@
+id: scotwind-intog
+title: Crown Estate Scotland ScotWind and INTOG option areas
+geography: scotland
+clip: sea
+clip_keep_all: false
+unit: none
+licence: OGL-3.0
+vintage: "2026"
+attribution: >-
+  Contains information from the Crown Estate Scotland licensed under the
+  Open Government Licence v3.0.
+source:
+  type: postgis_table
+  table: ces_scotwind_intog
+  id_field: id
+  where: "publication_status = 'ok'"
+geometry: polygon
+refresh: {cron: "0 4 * * 1", max_mb: 100, max_s: 600}
+serve: {mode: pmtiles, simplify_m: 10, precision_dp: 6, max_mb: 15}
+zoom: {min: 0, max: 14, low_zoom: simplify}
+style:
+  fill: {fill-color: "#56B4E9", fill-opacity: 0}
+  line: {line-color: "#56B4E9", line-width: 1.6, line-opacity: 0.95, line-dasharray: [5, 2]}
+legend:
+  - {label: "ScotWind and INTOG option areas", color: "#56B4E9"}
+lineage: {derived_from: [], method: source, roll_up_to: []}
+keep_fields: [leasing_round, award_id, technology, category, innovation_category, capacity_mw, area_km2]

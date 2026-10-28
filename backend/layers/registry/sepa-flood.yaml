@@ -1,0 +1,27 @@
+id: sepa-flood
+title: SEPA Flood Maps v3.0 medium-likelihood extents
+geography: scotland
+clip: land+sea
+clip_keep_all: false
+unit: none
+licence: OGL-3.0
+vintage: "Flood Maps v3.0 (rev 2025-02-25)"
+attribution: >-
+  © SEPA 2025; this SEPA product is licensed under the Open Government
+  Licence v3.0.
+source:
+  type: postgis_table
+  table: sepa_flood
+  id_field: object_id
+  where: "TRUE"
+geometry: polygon
+refresh: {cron: "0 5 1 1 *", max_mb: 300, max_s: 600}
+serve: {mode: pmtiles, simplify_m: 10, precision_dp: 6, max_mb: 15}
+zoom: {min: 0, max: 14, low_zoom: simplify}
+style:
+  fill: {fill-color: "#0072B2", fill-opacity: 0}
+  line: {line-color: "#0072B2", line-width: 1.4, line-opacity: 0.85, line-dasharray: [3, 2]}
+legend:
+  - {label: "Medium-likelihood flood extent (SEPA v3.0)", color: "#0072B2"}
+lineage: {derived_from: [], method: source, roll_up_to: [dz2022, council, scotland]}
+keep_fields: [layer_id, source, probability, scenario, map_type, version]

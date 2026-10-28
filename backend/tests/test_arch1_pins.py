@@ -494,6 +494,7 @@ def test_p9_no_blanket_except():
         # ARCH-4a P9
         BACKEND / "etl" / "load_unit_hierarchy.py",
         BACKEND / "layers" / "parked_check.py",
+        BACKEND / "georgist" / "v14_check4_route.py",
     ]
     changed = set(_files_changed_vs_main())
     ctx = BACKEND / "spatial" / "context_tiles.py"

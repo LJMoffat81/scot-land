@@ -22,6 +22,8 @@ from georgist import surface_rent as sr
 from georgist import surface_v14 as v14
 from georgist.surface_paths import REPO_ROOT
 from georgist.check3_record import validate_check3_record
+from georgist.v14_check4_route import assert_non_gbp_report, score_check4_non_gbp
+from scripts.build_v14_check_inputs import load_check4_f8
 from georgist.surface_v14_checks import score_both
 from georgist.v14_hedonic import PriceYearError, refuse_2024_price_file
 from georgist.v14_score_report import (
@@ -109,6 +111,8 @@ def _extended(args: argparse.Namespace) -> bool:
         or args.allow_rerun_for_fidelity_bug
         or args.record_sha8s
         or args.merge_map
+        or getattr(args, "check4_f8", None)
+        or getattr(args, "check4_summary_out", None)
     )
 
 
@@ -172,6 +176,7 @@ def _input_paths(args: argparse.Namespace) -> dict[str, Path]:
         ("builder_output", getattr(args, "builder_output", None)),
         ("primary_estimates", getattr(args, "primary_estimates", None)),
         ("fitted_per_zone", getattr(args, "fitted_per_zone", None)),
+        ("check4_f8", getattr(args, "check4_f8", None)),
     ):
         if value is not None:
             paths[name] = value
@@ -195,7 +200,7 @@ def _frozen_mapping(args: argparse.Namespace) -> dict[str, Path | None]:
         "hedonic_coefs_2021_22": getattr(args, "hedonic_coefs", None),
         "code_sha8_block": getattr(args, "sha8_block", None),
         "check3_plot_passes": getattr(args, "check3_plot_passes", None),
-        "check4_rent_route": getattr(args, "check4_rent_route", None),
+        "check4_rent_route": getattr(args, "check4_rent_route", None) or getattr(args, "check4_f8", None),
         "ur6": getattr(args, "ur6", None),
         "dz2022_keys": getattr(args, "dz2022_keys", None),
     }
@@ -247,6 +252,44 @@ def _validate_frozen_check3(args: argparse.Namespace) -> None:
     validate_check3_record(path, year=year, step=step)
 
 
+def _validate_frozen_check4(args: argparse.Namespace) -> None:
+    """Refuse conflicting check-4 flags and validate --check4-f8 before scoring."""
+    rent_route = getattr(args, "check4_rent_route", None)
+    f8_route = getattr(args, "check4_f8", None)
+    if rent_route is not None and f8_route is not None:
+        raise HoldoutLockError(
+            "V14_SCORE: REFUSED: check4 route: expected one of --check4-rent-route or --check4-f8, got both"
+        )
+    if f8_route is not None:
+        load_check4_f8(f8_route)
+
+
+def _write_check4_summary(check_inputs_path: Path, summary_out: Path) -> dict:
+    """Score Check 4 for both estimators and write a strictly non-GBP summary JSON."""
+    refuse_2024_price_file(check_inputs_path.name)
+    payload = json.loads(check_inputs_path.read_text(encoding="utf-8"))
+    if "primary_zones" not in payload or "secondary_zones" not in payload:
+        raise ReportAbort("check4 summary needs primary_zones and secondary_zones")
+    prim = score_check4_non_gbp(payload["primary_zones"])
+    sec = score_check4_non_gbp(payload["secondary_zones"])
+    pub = v14.apply_no_switch_publication(
+        primary_gating_pass=bool(prim["pass"]),
+        secondary_gating_pass=bool(sec["pass"]),
+    )
+    summary = {
+        "kind": "v15_check4_score_summary_v1",
+        "status": "scored",
+        "gbp_display": False,
+        "primary": prim,
+        "secondary": sec,
+        "publication": pub["outcome"],
+    }
+    assert_non_gbp_report(summary)
+    summary_out.parent.mkdir(parents=True, exist_ok=True)
+    summary_out.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return summary
+
+
 def _extended_main(args: argparse.Namespace) -> int:
     score_dir = args.out.parent
     inputs_sha = _inputs_sha256(args)
@@ -254,6 +297,7 @@ def _extended_main(args: argparse.Namespace) -> int:
     commit = require_commit_sha(git_commit())
     try:
         _validate_frozen_check3(args)
+        _validate_frozen_check4(args)
         if (args.holdout_2023 or args.score_2024) and args.lock_path is None:
             raise HoldoutLockError("--lock-path is required")
         if args.holdout_2023:
@@ -350,6 +394,10 @@ def _extended_main(args: argparse.Namespace) -> int:
                 "publication": score_2024_scores["publication"]["outcome"],
                 "hbu_in_checks": score_2024_scores["checks_include_hbu"],
             }
+        if getattr(args, "check4_summary_out", None) is not None:
+            if args.check_inputs is None:
+                raise ReportAbort("check4 summary needs check inputs")
+            report["check4_summary"] = _write_check4_summary(args.check_inputs, args.check4_summary_out)
         write_report(args.out, report)
         if args.holdout_2023:
             write_holdout_lock(
@@ -400,6 +448,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--sha8-block", type=Path, help="Code sha8 block in the frozen set.")
     p.add_argument("--check3-plot-passes", type=Path)
     p.add_argument("--check4-rent-route", type=Path)
+    p.add_argument("--check4-f8", type=Path)
+    p.add_argument("--check4-summary-out", type=Path)
     p.add_argument("--ur6", type=Path)
     p.add_argument("--dz2022-keys", type=Path)
     p.add_argument("--builder-output", type=Path, help="Year file. Recorded, not locked.")

@@ -18,9 +18,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import sys
 from pathlib import Path
-from typing import Mapping
+from typing import Any, Mapping
 
 from georgist.check3_record import Check3RecordError, validate_check3_record
 
@@ -51,6 +52,16 @@ SOURCE_FIELDS = {
         }
     ),
     "check4_rent_route": frozenset({"residual_land", "capitalised_land"}),
+    "check4_f8": frozenset(
+        {
+            "capitalised_land",
+            "capitalised_land_unadjusted",
+            "capitalised_property",
+            "capitalised_property_unadjusted",
+            "drc",
+            "plus4_applied",
+        }
+    ),
     "dz2022_keys": frozenset({"dz2022", "share_low", "share_central", "share_high"}),
     "ur6": frozenset({"ur6"}),
 }
@@ -240,8 +251,81 @@ def _screen_mode_row(row: dict, source: str, row_number: int, mode: int) -> None
             )
 
 
+
+def _validate_f8_capitalised(zone: str, row: Mapping[str, Any]) -> float:
+    if "capitalised_land" not in row:
+        raise CheckInputError(
+            f"V14_CHECK_INPUTS: ERROR: check4_f8 {zone}: expected capitalised_land, got absent"
+        )
+    raw = row["capitalised_land"]
+    if raw is None or isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        tname = "None" if raw is None else type(raw).__name__
+        raise CheckInputError(
+            f"V14_CHECK_INPUTS: ERROR: check4_f8 {zone}: expected positive number, got {tname}"
+        )
+    val = float(raw)
+    if not math.isfinite(val):
+        raise CheckInputError(
+            f"V14_CHECK_INPUTS: ERROR: check4_f8 {zone}: expected positive number, got non-finite"
+        )
+    drc_val = row.get("drc")
+    has_drc = isinstance(drc_val, (int, float)) and not isinstance(drc_val, bool) and float(drc_val) > 0.0
+    if not has_drc and val <= 0.0:
+        raise CheckInputError(
+            f"V14_CHECK_INPUTS: ERROR: check4_f8 {zone}: expected positive number, got out of range"
+        )
+    cap_prop = row.get("capitalised_property")
+    if cap_prop is not None:
+        if isinstance(cap_prop, bool) or not isinstance(cap_prop, (int, float)) or not math.isfinite(float(cap_prop)) or float(cap_prop) <= 0.0:
+            raise CheckInputError(
+                f"V14_CHECK_INPUTS: ERROR: check4_f8 {zone}: expected positive number, got out of range"
+            )
+    return val
+
+
+def load_check4_f8(path: Path) -> dict[str, dict]:
+    if not path.is_file():
+        raise CheckInputError(f"B6: ERROR: file: expected {path}, got absent")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise CheckInputError(
+            "V14_CHECK4: ERROR: check4_f8: expected JSON object, got invalid"
+        ) from exc
+    if not isinstance(payload, dict) or not isinstance(payload.get("zones"), list) or not payload["zones"]:
+        raise CheckInputError(
+            "V14_CHECK4: ERROR: check4_f8: expected JSON object, got invalid"
+        )
+    out: dict[str, dict] = {}
+    for row in payload["zones"]:
+        if not isinstance(row, dict) or "zone" not in row:
+            raise CheckInputError(
+                "V14_CHECK4: ERROR: check4_f8: expected JSON object, got invalid"
+            )
+        z = row["zone"]
+        if type(z) is not str or not z.strip():
+            tname = "None" if z is None else type(z).__name__
+            raise CheckInputError(
+                f"V14_CHECK4: ERROR: check4_f8 zone: expected str, got {tname}"
+            )
+        code = z.strip()
+        if code in out:
+            raise CheckInputError(
+                f"V14_CHECK4: ERROR: check4_f8 {code}: expected one row, got duplicate"
+            )
+        cap_val = _validate_f8_capitalised(code, row)
+        out[code] = {"capitalised_land": cap_val}
+        if "drc" in row:
+            out[code]["drc"] = row["drc"]
+        if "capitalised_property" in row:
+            out[code]["capitalised_property"] = row["capitalised_property"]
+    return out
+
+
 def load_source(path: Path, source: str, mode: int | None = None) -> dict[str, dict]:
     """One source, restricted to the fields that source is allowed to carry."""
+    if source == "check4_f8":
+        return load_check4_f8(path)
     if mode is not None and not path.is_file():
         raise CheckInputError(f"B6: ERROR: file: expected {path}, got absent")
     if source == "check3_plot_passes" and path.is_file():
@@ -275,12 +359,119 @@ def load_source(path: Path, source: str, mode: int | None = None) -> dict[str, d
     return zones
 
 
+
+def _build_f8_check_inputs(
+    tables: dict[str, dict[str, dict]],
+    pins: Mapping[str, str] | None = None,
+    mode: int | None = None,
+) -> dict:
+    for src_name, tbl in tables.items():
+        if not isinstance(tbl, dict):
+            continue
+        for k in tbl:
+            if type(k) is not str or not k.strip():
+                tname = "None" if k is None else type(k).__name__
+                raise CheckInputError(
+                    f"V14_CHECK4: ERROR: {src_name} zone: expected str, got {tname}"
+                )
+    base = set(tables["builder_output"])
+    check3_not_run = isinstance(tables["check3_plot_passes"], Check3NotRun)
+    for code in sorted(base):
+        if code not in tables["check4_f8"]:
+            raise CheckInputError(
+                f"V14_CHECK_INPUTS: ERROR: check4_f8 {code}: expected capitalised_land, got absent"
+            )
+        _validate_f8_capitalised(code, tables["check4_f8"][code])
+        for label, src_key in (("primary", "primary_estimates"), ("secondary", "fitted_hedonic")):
+            if code not in tables[src_key]:
+                raise CheckInputError(
+                    f"V14_CHECK_INPUTS: ERROR: check4 {label} {code}: expected residual_land, got absent"
+                )
+            est = tables[src_key][code]
+            b_row = tables["builder_output"][code]
+            is_zeroed = bool(
+                est.get("unavailable")
+                or est.get("model_failure")
+                or est.get("no_cell")
+                or b_row.get("unavailable")
+                or b_row.get("model_failure")
+            )
+            if "land_per_home" not in est and not is_zeroed:
+                raise CheckInputError(
+                    f"V14_CHECK_INPUTS: ERROR: check4 {label} {code}: expected residual_land, got absent"
+                )
+            if "land_per_home" in est and not is_zeroed:
+                lph = est["land_per_home"]
+                if lph is None or isinstance(lph, bool) or not isinstance(lph, (int, float)) or not math.isfinite(float(lph)):
+                    raise CheckInputError(
+                        f"V14_CHECK_INPUTS: ERROR: check4 {label} {code}: expected residual_land, got absent"
+                    )
+    for name in ("builder_output", "primary_estimates", "fitted_hedonic", "check3_plot_passes", "check4_f8", "dz2022_keys", "ur6"):
+        if check3_not_run and name == "check3_plot_passes":
+            continue
+        if set(tables[name]) != base:
+            raise CheckInputError(f"{name} zones do not match the builder output")
+
+    primary: list[dict] = []
+    secondary: list[dict] = []
+    missing: list[str] = []
+    required_fields = REQUIRED_ZONE_FIELDS
+    if check3_not_run:
+        required_fields = tuple(field for field in REQUIRED_ZONE_FIELDS if field != "pass_at")
+
+    for code in sorted(base):
+        shared: dict = {"zone": code}
+        for name in ("builder_output", "check3_plot_passes", "dz2022_keys", "ur6"):
+            if check3_not_run and name == "check3_plot_passes":
+                continue
+            shared.update(tables[name][code])
+        cap_land = _validate_f8_capitalised(code, tables["check4_f8"][code])
+        for label, src_key in (("primary", "primary_estimates"), ("secondary", "fitted_hedonic")):
+            est = dict(tables[src_key][code])
+            no_cell = bool(est.pop("no_cell", False))
+            zone = dict(shared)
+            zone.update(est)
+            if no_cell and "share" not in zone:
+                zone["share"] = 0.0
+            if no_cell and "land_per_home" not in zone:
+                zone["land_per_home"] = 0.0
+            if no_cell:
+                zone["unavailable"] = True
+            is_unavail = bool(zone.get("unavailable") or zone.get("model_failure") or no_cell)
+            res_land = 0.0 if is_unavail else float(zone["land_per_home"])
+            zone["residual_land"] = res_land
+            zone["capitalised_land"] = cap_land
+            unknown = sorted(key for key in zone if key not in ALLOWED_ZONE_FIELDS)
+            if unknown:
+                raise CheckInputError(f"field not in the frozen text: {', '.join(unknown)}")
+            absent = [field for field in required_fields if field not in zone]
+            if absent:
+                missing.append(f"{label} {code}: {', '.join(absent)}")
+                continue
+            if mode == 2024:
+                zone["year"] = 2024
+            if label == "primary":
+                primary.append(zone)
+            else:
+                secondary.append(zone)
+    if missing:
+        raise CheckInputError("missing fields: " + "; ".join(missing))
+    built: dict = {"primary_zones": primary, "secondary_zones": secondary}
+    if pins:
+        pin_keys = (*SOURCES, "check4_f8")
+        built["pins"] = {name: pins[name] for name in pin_keys if name in pins}
+    return built
+
+
 def build_v14_check_inputs(
     tables: dict[str, dict[str, dict]],
     pins: Mapping[str, str] | None = None,
     mode: int | None = None,
 ) -> dict:
     """Join pinned sources into ``primary_zones`` and ``secondary_zones``."""
+    f8_sources = (set(SOURCES) - {"check4_rent_route"}) | {"check4_f8"}
+    if set(tables) == f8_sources:
+        return _build_f8_check_inputs(tables, pins=pins, mode=mode)
     if set(tables) != set(SOURCES):
         raise CheckInputError("tables do not match the source list")
     base = set(tables["builder_output"])
@@ -445,19 +636,41 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--pin", action="append", default=[], help="name=sha256, one per source.")
     for name in SOURCES:
         parser.add_argument(f"--{name.replace('_', '-')}", type=Path, default=None, dest=name)
+    parser.add_argument("--check4-f8", type=Path, default=None, dest="check4_f8")
     args = parser.parse_args(argv)
     paths = {name: getattr(args, name) for name in SOURCES}
+    f8_path: Path | None = getattr(args, "check4_f8", None)
     try:
         mode = require_year(args.year)
-        if mode == 2024:
-            for name in SOURCES:
-                source_path = paths[name]
-                if source_path is None or not source_path.is_file():
-                    shown = "absent" if source_path is None else source_path
-                    raise CheckInputError(f"B6: ERROR: file: expected {shown}, got absent")
-        pins = _parse_pins(list(args.pin))
-        assert_pinned(paths, pins)
-        tables = read_s2_s3(paths, mode)
+        if f8_path is not None and mode == 2023:
+            active_sources = tuple("check4_f8" if s == "check4_rent_route" else s for s in SOURCES)
+            f8_paths = {s: (f8_path if s == "check4_f8" else paths[s]) for s in active_sources}
+            pins = _parse_pins(list(args.pin))
+            for s in active_sources:
+                pth = f8_paths.get(s)
+                if pth is not None and not pth.is_file():
+                    raise CheckInputError(f"B6: ERROR: file: expected {pth}, got absent")
+            missing_f8 = [s for s in active_sources if f8_paths.get(s) is None or not pins.get(s)]
+            if missing_f8:
+                raise CheckInputError(f"inputs without a pinned sha: {', '.join(missing_f8)}")
+            for s in active_sources:
+                pth = f8_paths[s]
+                assert pth is not None
+                dig = sha256_file(pth)
+                if dig != pins[s]:
+                    raise CheckInputError(f"{s} sha256 {dig} != {pins[s]}")
+            ordered_f8 = ("check3_plot_passes", *(s for s in active_sources if s != "check3_plot_passes"))
+            tables = {s: load_source(f8_paths[s], s, mode=mode) for s in ordered_f8}
+        else:
+            if mode == 2024:
+                for name in SOURCES:
+                    source_path = paths[name]
+                    if source_path is None or not source_path.is_file():
+                        shown = "absent" if source_path is None else source_path
+                        raise CheckInputError(f"B6: ERROR: file: expected {shown}, got absent")
+            pins = _parse_pins(list(args.pin))
+            assert_pinned(paths, pins)
+            tables = read_s2_s3(paths, mode)
         if mode == 2024:
             if args.hedonic_coefs is None:
                 raise CheckInputError("B6: ERROR: file: expected hedonic_coefs, got absent")

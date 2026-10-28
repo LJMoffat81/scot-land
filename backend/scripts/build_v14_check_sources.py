@@ -25,6 +25,12 @@ from pathlib import Path
 
 from georgist import surface_v13 as v13
 from georgist.check3_record import not_run_record
+from georgist.v14_check4_route import (
+    PIN_TABLE as F8_PIN_TABLE,
+    SURFACE_YAML,
+    Check4RouteError,
+    capitalised_by_zone,
+)
 from georgist.v14_real_headers import header_refusal, read_header_fields
 
 PIN_TABLE = {
@@ -429,6 +435,130 @@ def save_check4(
     return payload
 
 
+
+def _load_drc_json(path: Path | None) -> dict[str, float] | None:
+    if path is None:
+        return None
+    if not path.is_file():
+        raise Check4RouteError(f"V14_CHECK4: ERROR: drc file: expected {path}, got absent")
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise Check4RouteError("V14_CHECK4: ERROR: drc: expected JSON object, got invalid") from exc
+    if not isinstance(raw, dict):
+        raise Check4RouteError("V14_CHECK4: ERROR: drc: expected JSON object, got invalid")
+    return {str(k): v for k, v in raw.items() if k != "label"}
+
+
+def _zones_from_primary_or_drc(
+    primary_path: Path | None,
+    drc_map: dict[str, float] | None,
+    ur6_path: Path | None,
+) -> list[str]:
+    if primary_path is not None:
+        if not primary_path.is_file():
+            raise Check4RouteError(
+                f"V14_CHECK4: ERROR: primary_estimates file: expected {primary_path}, got absent"
+            )
+        try:
+            raw = json.loads(primary_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as exc:
+            raise Check4RouteError(
+                "V14_CHECK4: ERROR: primary_estimates: expected JSON object, got invalid"
+            ) from exc
+        rows = raw.get("zones") if isinstance(raw, dict) else raw
+        if not isinstance(rows, list) or not rows:
+            raise Check4RouteError("V14_CHECK4: ERROR: zones: expected zones, got absent")
+        out: list[str] = []
+        for r in rows:
+            if not isinstance(r, dict) or "zone" not in r:
+                raise Check4RouteError("V14_CHECK4: ERROR: zones: expected zones, got absent")
+            z = r["zone"]
+            if not isinstance(z, str) or isinstance(z, bool):
+                raise Check4RouteError(
+                    f"V14_CHECK4: ERROR: primary_estimates zone: expected str, got {type(z).__name__}"
+                )
+            out.append(z)
+        return out
+    if drc_map is not None and len(drc_map) > 0:
+        return sorted(drc_map.keys())
+    if ur6_path is not None and ur6_path.is_file():
+        return [r["code"] for r in load_ur6_rows(ur6_path)]
+    raise Check4RouteError("V14_CHECK4: ERROR: zones: expected zones, got absent")
+
+
+def build_check4_f8(
+    zones: list[str],
+    *,
+    brma_rents: Path,
+    brma_share: Path,
+    bedroom_bands: Path,
+    crosswalk: Path,
+    ur6: Path,
+    drc_map: dict[str, float] | None = None,
+    pins: dict[str, str] | None = None,
+    surface_yaml: Path = SURFACE_YAML,
+) -> dict:
+    res = capitalised_by_zone(
+        zones,
+        brma_rents_path=brma_rents,
+        brma_share_path=brma_share,
+        bedroom_bands_path=bedroom_bands,
+        crosswalk_path=crosswalk,
+        ur6_path=ur6,
+        drc_map=drc_map,
+        pins=F8_PIN_TABLE if pins is None else pins,
+        surface_yaml=surface_yaml,
+    )
+    out_rows = []
+    for zone in sorted(res["zones"]):
+        zrow = res["zones"][zone]
+        item = {
+            "zone": zone,
+            "capitalised_land": zrow["capitalised_land"],
+            "capitalised_land_unadjusted": zrow["capitalised_land_unadjusted"],
+            "capitalised_property": zrow["capitalised_property"],
+            "capitalised_property_unadjusted": zrow["capitalised_property_unadjusted"],
+            "drc": zrow["drc"],
+            "plus4_applied": zrow["plus4_applied"],
+        }
+        out_rows.append(item)
+    return {
+        "label": "SYNTHETIC",
+        "route": "f8_land_rent" if drc_map is not None else "f8_literal",
+        "disclosure": res["disclosure"],
+        "zones": out_rows,
+    }
+
+
+def save_check4_f8(
+    dest: Path,
+    *,
+    zones: list[str],
+    brma_rents: Path,
+    brma_share: Path,
+    bedroom_bands: Path,
+    crosswalk: Path,
+    ur6: Path,
+    drc_map: dict[str, float] | None = None,
+    pins: dict[str, str] | None = None,
+    surface_yaml: Path = SURFACE_YAML,
+) -> dict:
+    payload = build_check4_f8(
+        zones,
+        brma_rents=brma_rents,
+        brma_share=brma_share,
+        bedroom_bands=bedroom_bands,
+        crosswalk=crosswalk,
+        ur6=ur6,
+        drc_map=drc_map,
+        pins=pins,
+        surface_yaml=surface_yaml,
+    )
+    write_output(dest, payload)
+    return payload
+
+
 def save_dz2022(
     crosswalk: Path,
     primary: Path,
@@ -454,6 +584,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--check3-out", type=Path)
     parser.add_argument("--rent-table", type=Path)
     parser.add_argument("--check4-out", type=Path)
+    parser.add_argument("--check4-f8-out", type=Path)
+    parser.add_argument("--brma-rents", type=Path)
+    parser.add_argument("--brma-share", type=Path)
+    parser.add_argument("--bedroom-bands", type=Path)
+    parser.add_argument("--drc", type=Path)
     parser.add_argument("--crosswalk", type=Path)
     parser.add_argument("--primary-estimates", type=Path)
     parser.add_argument("--dz2022-out", type=Path)
@@ -466,6 +601,14 @@ def main(argv: list[str] | None = None) -> int:
     not_run = None
     run_check3 = args.check3_out is not None or (args.year == "2023" and args.plot_bands is not None)
     try:
+        if (
+            args.year == "2023"
+            and not args.no_price
+            and (args.rent_table is not None or args.check4_out is not None)
+        ):
+            raise CheckSourceError(
+                "B5_CHECK4: REFUSED: rent_table route: expected F8 route for 2023, got v13 pooled table"
+            )
         if run_check3:
             paths = {"plot_bands": args.plot_bands, "gis_house_plot": args.gis_house_plot}
             try:
@@ -481,6 +624,19 @@ def main(argv: list[str] | None = None) -> int:
                         write_output(args.check3_out, not_run_record())
                 else:
                     raise
+        if args.check4_f8_out is not None:
+            drc_map = _load_drc_json(args.drc)
+            zones = _zones_from_primary_or_drc(args.primary_estimates, drc_map, args.ur6)
+            save_check4_f8(
+                args.check4_f8_out,
+                zones=zones,
+                brma_rents=args.brma_rents,
+                brma_share=args.brma_share,
+                bedroom_bands=args.bedroom_bands,
+                crosswalk=args.crosswalk,
+                ur6=args.ur6,
+                drc_map=drc_map,
+            )
         if args.check4_out is not None:
             save_check4(args.rent_table, args.check4_out, excluded_breakdown=breakdown)
         if args.dz2022_out is not None:
@@ -490,7 +646,7 @@ def main(argv: list[str] | None = None) -> int:
             save_ur6(args.ur6, args.ur6_out)
         if not_run is not None:
             sys.stdout.write(not_run + "\n")
-    except CheckSourceError as exc:
+    except (CheckSourceError, Check4RouteError) as exc:
         sys.stderr.write(str(exc) + "\n")
         return 1
     return 0

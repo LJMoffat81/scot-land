@@ -3,6 +3,10 @@
  * Unknown params are ignored for behaviour but kept on rewrite.
  */
 
+import {
+  validateBearingParam,
+  validatePitchParam,
+} from "./default3dView";
 import type { MapBasemapId } from "./mapBasemap";
 import {
   DEFAULT_PUBLIC_CONTEXT_METRIC_ID,
@@ -26,6 +30,12 @@ export type MapUrlState = {
   /** MV-28 main measure (`?m=pop_density|simd|house_price|land_share`). */
   m: MetricId;
   z: number | null;
+  /** DEFAULT-3D-VIEW pitch in degrees [0, 60] from `p` or `pitch`. */
+  p: number | null;
+  pitch: number | null;
+  /** DEFAULT-3D-VIEW bearing in degrees [-180, 180] from `br` or `bearing`. */
+  br: number | null;
+  bearing: number | null;
   /** View centre [lng, lat] from `c` or lat/lon. */
   center: { lng: number; lat: number } | null;
   panel: MapPanelUrl;
@@ -39,6 +49,10 @@ const KNOWN = new Set([
   "l",
   "b",
   "m",
+  "p",
+  "pitch",
+  "br",
+  "bearing",
   "z",
   "c",
   "lat",
@@ -121,6 +135,24 @@ export function parseMeasureParam(raw: string | null): MetricId {
   }
 }
 
+export function parsePitchParam(raw: string | null): number | null {
+  if (raw == null || !raw.trim()) return null;
+  try {
+    return validatePitchParam(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function parseBearingParam(raw: string | null): number | null {
+  if (raw == null || !raw.trim()) return null;
+  try {
+    return validateBearingParam(raw);
+  } catch {
+    return null;
+  }
+}
+
 function parseFinitePair(
   lngRaw: string,
   latRaw: string,
@@ -177,6 +209,8 @@ export function readMapUrlState(
 
   const zRaw = params.get("z");
   const zNum = zRaw != null ? Number(zRaw) : NaN;
+  const p = parsePitchParam(params.get("p") ?? params.get("pitch"));
+  const br = parseBearingParam(params.get("br") ?? params.get("bearing"));
 
   const layers = parseLayerIdsParam(params.get("l") ?? params.get("layers"));
   const b = parseBasemapParam(params.get("b"));
@@ -194,6 +228,10 @@ export function readMapUrlState(
     b,
     m,
     z: Number.isFinite(zNum) ? zNum : null,
+    p,
+    pitch: p,
+    br,
+    bearing: br,
     center: parseCenter(params),
     panel,
     unknown,
@@ -207,6 +245,10 @@ export type WriteMapUrlOpts = {
   b?: MapBasemapId | null;
   m?: MetricId | null;
   z?: number | null;
+  p?: number | null;
+  pitch?: number | null;
+  br?: number | null;
+  bearing?: number | null;
   center?: { lng: number; lat: number } | null;
   panel?: MapPanelUrl;
   /** Extra unknown keys to keep (merged with current URL unknowns). */
@@ -243,6 +285,18 @@ export function writeMapUrlSearch(opts: WriteMapUrlOpts): string {
       ? (opts.m ?? DEFAULT_PUBLIC_CONTEXT_METRIC_ID)
       : prev.m;
   const z = opts.z !== undefined ? opts.z : prev.z;
+  const pRaw =
+    opts.p !== undefined
+      ? opts.p
+      : opts.pitch !== undefined
+        ? opts.pitch
+        : prev.p;
+  const brRaw =
+    opts.br !== undefined
+      ? opts.br
+      : opts.bearing !== undefined
+        ? opts.bearing
+        : prev.br;
   const center = opts.center !== undefined ? opts.center : prev.center;
   const panel = opts.panel !== undefined ? opts.panel : prev.panel;
   const unknown = { ...prev.unknown, ...(opts.unknown ?? {}) };
@@ -256,6 +310,28 @@ export function writeMapUrlSearch(opts: WriteMapUrlOpts): string {
     next.set("m", m);
   }
   if (z != null && Number.isFinite(z)) next.set("z", String(Math.round(z * 100) / 100));
+  if (pRaw != null && Number.isFinite(pRaw) && pRaw >= 0 && pRaw <= 60) {
+    const pRound = Math.round(pRaw * 10) / 10;
+    if (
+      pRound > 0 ||
+      opts.p !== undefined ||
+      opts.pitch !== undefined ||
+      base.searchParams.has("p") ||
+      base.searchParams.has("pitch")
+    ) {
+      next.set("p", String(pRound));
+    }
+  }
+  if (brRaw != null && Number.isFinite(brRaw) && brRaw >= -180 && brRaw <= 180) {
+    const brRound = Math.round(brRaw * 10) / 10;
+    if (
+      brRound !== 0 ||
+      base.searchParams.has("br") ||
+      base.searchParams.has("bearing")
+    ) {
+      next.set("br", String(Object.is(brRound, -0) ? 0 : brRound));
+    }
+  }
   // Never persist a centre outside Scotland (null island included).
   if (center && isScotlandViewCenter(center.lng, center.lat)) {
     next.set("c", formatMapCenterParam(center.lng, center.lat));

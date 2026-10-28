@@ -641,3 +641,258 @@ def capitalised_by_zone(
             "addendum5_deduction": ADDENDUM5_DEDUCTION_DISCLOSURE,
         },
     }
+ADDENDUM5_DOC = "AM2_addendum5_check4_land_route_r5.md"
+ADDENDUM5_SHA256 = "62ca5c561246b4990c575f8a1ce4e8c0c4f220b5cbbfbf64f8fbdf9c75b19c56"
+ADDENDUM5_SIGNATURES_DOC = "AM2_addendum5_r5_signatures.md"
+ADDENDUM5_SIGNATURES_SHA256 = "6e331f2c224b0f319e01dc0130a191ccd3aa7c96ee17ac9da0950badd61058da"
+FORBIDDEN_REPORT_SUBSTRINGS = ("\u00a3", "_gbp", "GBP", "Pounds")
+FORBIDDEN_MONEY_KEYS = frozenset(
+    {
+        "residual_median",
+        "class_residual_medians",
+        "residual_land",
+        "capitalised_land",
+        "capitalised_property",
+        "drc_per_home",
+        "land_per_home",
+        "expected_monthly_rent",
+        "price",
+    }
+)
+
+
+def _median_sorted(values: Sequence[float]) -> float:
+    ordered = sorted(float(v) for v in values)
+    n = len(ordered)
+    mid = n // 2
+    return ordered[mid] if n % 2 else 0.5 * (ordered[mid - 1] + ordered[mid])
+
+
+def assert_non_gbp_report(payload: Mapping[str, Any]) -> None:
+    """Refuse any Check 4 score report carrying money keys or currency tokens."""
+    def _walk(obj: Any) -> None:
+        if isinstance(obj, Mapping):
+            for k, v in obj.items():
+                ks = str(k)
+                if ks in FORBIDDEN_MONEY_KEYS or ks.lower().endswith("_gbp"):
+                    raise Check4RouteError(
+                        f"V14_CHECK4: REFUSED: report key {ks}: expected non-GBP summary key, got money key"
+                    )
+                for tok in FORBIDDEN_REPORT_SUBSTRINGS:
+                    if tok in ks:
+                        raise Check4RouteError(
+                            "V14_CHECK4: REFUSED: report key: expected non-GBP summary key, got currency token"
+                        )
+                _walk(v)
+        elif isinstance(obj, (list, tuple)):
+            for item in obj:
+                _walk(item)
+        elif isinstance(obj, str):
+            for tok in FORBIDDEN_REPORT_SUBSTRINGS:
+                if tok in obj:
+                    raise Check4RouteError(
+                        "V14_CHECK4: REFUSED: report text: expected non-GBP text, got currency token"
+                    )
+
+    _walk(payload)
+
+
+def score_check4_non_gbp(
+    zones: Sequence[Mapping[str, Any]],
+    *,
+    national_max_abs: float = 0.25,
+    class_max_abs: float = 0.40,
+) -> dict[str, Any]:
+    """Score Check 4 for one estimator and strip all money-level medians."""
+    from georgist import surface_v14 as v14
+
+    if not isinstance(zones, (list, tuple)) or len(zones) == 0:
+        raise Check4RouteError("V14_CHECK4: ERROR: score zones: expected zones, got absent")
+
+    residual_list: list[float] = []
+    cap_list: list[float] = []
+    class_res: dict[int, list[float]] = {}
+    class_cap: dict[int, list[float]] = {}
+    n_unavail = 0
+    n_pos_res = 0
+    n_pos_cap = 0
+
+    for z in zones:
+        if not isinstance(z, Mapping) or "ur6" not in z or "residual_land" not in z or "capitalised_land" not in z:
+            raise Check4RouteError("V14_CHECK4: ERROR: score zone: expected ur6/residual_land/capitalised_land, got absent")
+        unavail = bool(z.get("unavailable") or z.get("model_failure"))
+        if unavail:
+            n_unavail += 1
+        r_val = 0.0 if unavail else float(z["residual_land"])
+        c_val = float(z["capitalised_land"])
+        if not math.isfinite(r_val) or not math.isfinite(c_val):
+            raise Check4RouteError("V14_CHECK4: ERROR: score zone: expected finite number, got non-finite")
+        if r_val > 0.0:
+            n_pos_res += 1
+        if c_val > 0.0:
+            n_pos_cap += 1
+        ur6_k = int(z["ur6"])
+        residual_list.append(r_val)
+        cap_list.append(c_val)
+        class_res.setdefault(ur6_k, []).append(r_val)
+        class_cap.setdefault(ur6_k, []).append(c_val)
+
+    raw = v14.check_4_from_routes(
+        residual_list,
+        cap_list,
+        class_residual=class_res,
+        class_capitalised=class_cap,
+        national_max_abs=national_max_abs,
+        class_max_abs=class_max_abs,
+    )
+    all_gaps = [v13.two_route_relative_gap(r, c) for r, c in zip(residual_list, cap_list)]
+    all_finite = all(math.isfinite(g) for g in all_gaps)
+    nat_gap = round(_median_sorted(all_gaps), 6) if all_finite and all_gaps else None
+    res_med_pos = bool(raw.get("residual_median") is not None and float(raw["residual_median"]) > 0.0)
+    class_res_pos = {
+        str(k): bool(float(v) > 0.0)
+        for k, v in sorted((raw.get("class_residual_medians") or {}).items())
+    }
+
+    by_ur6: dict[str, dict[str, Any]] = {}
+    for k in sorted(class_res):
+        rs = class_res[k]
+        cs = class_cap[k]
+        gs = [v13.two_route_relative_gap(r, c) for r, c in zip(rs, cs)]
+        k_finite = all(math.isfinite(g) for g in gs)
+        rmed_pos = bool(_median_sorted(rs) > 0.0) if rs else False
+        gmed = round(_median_sorted(gs), 6) if k_finite and gs else None
+        within = bool(rmed_pos and gmed is not None and abs(gmed) <= float(class_max_abs))
+        by_ur6[str(k)] = {
+            "n": len(rs),
+            "residual_median_positive": rmed_pos,
+            "median_relative_gap": gmed,
+            "within_class_band": within,
+        }
+
+    out = {
+        "check": "4",
+        "status": str(raw["status"]),
+        "pass": bool(raw["pass"]),
+        "reason": raw.get("reason"),
+        "national_max_abs": float(national_max_abs),
+        "class_max_abs": float(class_max_abs),
+        "n_zones": len(zones),
+        "n_unavailable": n_unavail,
+        "n_positive_residual": n_pos_res,
+        "n_positive_capitalised": n_pos_cap,
+        "residual_median_positive": res_med_pos,
+        "class_residual_median_positive": class_res_pos,
+        "national_median_gap": nat_gap,
+        "national_within_band": bool(
+            res_med_pos
+            and all(class_res_pos.values())
+            and nat_gap is not None
+            and abs(nat_gap) <= float(national_max_abs)
+        ),
+        "by_ur6": by_ur6,
+    }
+    assert_non_gbp_report(out)
+    return out
+
+
+def build_v15_check4_score_report(
+    *,
+    primary_zones: Sequence[Mapping[str, Any]],
+    secondary_zones: Sequence[Mapping[str, Any]],
+    pins: Mapping[str, str],
+    year: int = 2023,
+    lookup_zones: int = 6976,
+    not_scored_zones: int = 730,
+    secondary_scored_zones: int = 5826,
+    secondary_no_cell_zones: int = 420,
+    brma_count: int = 18,
+    bands_per_brma: int = 4,
+    plus4_applied_zones: int = 1101,
+    cancellation_zones_checked: int = 6246,
+    cancellation_max_rel_err: float = 0.0,
+) -> dict[str, Any]:
+    """Assemble the committed non-GBP v1.5 Check 4 score report artifact."""
+    from georgist import surface_v14 as v14
+
+    if type(year) is not int or year not in (2023, 2024):
+        raise Check4RouteError(f"V14_CHECK4: REFUSED: year: expected 2023 or 2024, got {year!r}")
+    if (
+        isinstance(cancellation_max_rel_err, bool)
+        or not isinstance(cancellation_max_rel_err, (int, float))
+        or not math.isfinite(float(cancellation_max_rel_err))
+        or float(cancellation_max_rel_err) < 0.0
+        or float(cancellation_max_rel_err) > CANCELLATION_TOL
+    ):
+        raise Check4RouteError(
+            "V14_CHECK4: REFUSED: cancellation identity: expected rel_err <= 1e-12, got out of range"
+        )
+    if len(primary_zones) != len(secondary_zones):
+        raise Check4RouteError("V14_CHECK4: ERROR: score zones: expected matching primary and secondary counts, got mismatch")
+    if int(lookup_zones) - int(not_scored_zones) != len(primary_zones):
+        raise Check4RouteError("V14_CHECK4: ERROR: coverage: expected lookup minus not_scored == priced_zones, got mismatch")
+    if int(secondary_scored_zones) + int(secondary_no_cell_zones) != len(secondary_zones):
+        raise Check4RouteError("V14_CHECK4: ERROR: coverage: expected secondary_scored + no_cell == priced_zones, got mismatch")
+
+    prim_score = score_check4_non_gbp(primary_zones)
+    sec_score = score_check4_non_gbp(secondary_zones)
+    publication = v14.apply_no_switch_publication(
+        primary_gating_pass=bool(prim_score["pass"]),
+        secondary_gating_pass=bool(sec_score["pass"]),
+    )
+
+    pos_cap = prim_score["n_positive_capitalised"]
+    non_pos_cap = len(primary_zones) - pos_cap
+
+    report = {
+        "kind": "v15_check4_score_report_v1",
+        "publish_level": "internal",
+        "methods_alignment": "v1.5",
+        "pr": "v15_check4_score",
+        "gbp_display": False,
+        "year": year,
+        "status": "scored",
+        "previous_v14_status": "NOT_RUN",
+        "method_authority": {
+            "addendum": ADDENDUM5_DOC,
+            "addendum_sha256": ADDENDUM5_SHA256,
+            "signatures": ADDENDUM5_SIGNATURES_DOC,
+            "signatures_sha256": ADDENDUM5_SIGNATURES_SHA256,
+        },
+        "pins": {str(k): str(v) for k, v in sorted(pins.items())},
+        "thresholds": {
+            "national_max_abs_gap": 0.25,
+            "class_max_abs_gap": 0.40,
+            "capitalisation_yield": 0.045,
+            "plus4_factor_ur6_5_6": 1.15,
+            "plus4_classes": [5, 6],
+        },
+        "coverage": {
+            "lookup_zones": int(lookup_zones),
+            "not_scored_zones": int(not_scored_zones),
+            "priced_zones": len(primary_zones),
+            "secondary_scored_zones": int(secondary_scored_zones),
+            "secondary_no_cell_zones": int(secondary_no_cell_zones),
+            "brma_count": int(brma_count),
+            "bands_per_brma": int(bands_per_brma),
+            "plus4_applied_zones": int(plus4_applied_zones),
+            "positive_capitalised_land_zones": int(pos_cap),
+            "non_positive_capitalised_land_zones": int(non_pos_cap),
+        },
+        "cancellation_identity": {
+            "formula": "(P_z - drc_z) - (capitalised_property_z - drc_z) == P_z - capitalised_property_z",
+            "tolerance": CANCELLATION_TOL,
+            "zones_checked": int(cancellation_zones_checked),
+            "all_within_tolerance": True,
+            "pass": True,
+        },
+        "primary": prim_score,
+        "secondary": sec_score,
+        "publication": publication,
+        "disclosures": {
+            "brma_name_map": BRMA_NAME_DISCLOSURE,
+            "addendum5_deduction": ADDENDUM5_DEDUCTION_DISCLOSURE,
+        },
+    }
+    assert_non_gbp_report(report)
+    return report

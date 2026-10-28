@@ -1,0 +1,191 @@
+{
+  "cancellation_identity": {
+    "all_within_tolerance": true,
+    "formula": "(P_z - drc_z) - (capitalised_property_z - drc_z) == P_z - capitalised_property_z",
+    "pass": true,
+    "tolerance": 1e-12,
+    "zones_checked": 6246
+  },
+  "coverage": {
+    "bands_per_brma": 4,
+    "brma_count": 18,
+    "lookup_zones": 6976,
+    "non_positive_capitalised_land_zones": 542,
+    "not_scored_zones": 730,
+    "plus4_applied_zones": 1101,
+    "positive_capitalised_land_zones": 5704,
+    "priced_zones": 6246,
+    "secondary_no_cell_zones": 420,
+    "secondary_scored_zones": 5826
+  },
+  "disclosures": {
+    "addendum5_deduction": "AM2_addendum5_r5 (62ca5c56): capitalised_land = 12 * expected_rent / 0.045 - drc; for residual estimator (price - drc), building term cancels to 1e-12.",
+    "brma_name_map": "BRMA name corrected: dz_brma_share 'Ayrshire' (S33000003) matched to rent file 'Ayrshires'; no other name mapped."
+  },
+  "gbp_display": false,
+  "kind": "v15_check4_score_report_v1",
+  "method_authority": {
+    "addendum": "AM2_addendum5_check4_land_route_r5.md",
+    "addendum_sha256": "62ca5c561246b4990c575f8a1ce4e8c0c4f220b5cbbfbf64f8fbdf9c75b19c56",
+    "signatures": "AM2_addendum5_r5_signatures.md",
+    "signatures_sha256": "6e331f2c224b0f319e01dc0130a191ccd3aa7c96ee17ac9da0950badd61058da"
+  },
+  "methods_alignment": "v1.5",
+  "pins": {
+    "bedroom_bands": "6d15b887bf7bea4b96488e5374a7ea75f9e2beaa3f2544f275072de674cfa603",
+    "brma_rents": "14f2368b47ec4e9fdc30fc8fa2985511ce37b87307c13a20c38587fa61aae88a",
+    "brma_share": "abb626a3305f91264b45f679abc348e0f8335adb671d69781ad8e1cda95b2f11",
+    "crosswalk": "7690bcbebf9968ca9b02cf898832aa9be8fca56f3eb9af70b20e25b5d23e13e4",
+    "drc_json": "0a939b46a6f5e4dc51c1d2218218d91eabba78c302c7010bd395354324cf0175",
+    "merge_map": "581b0aa1647c5af7ce5b9617e35fcfa73982bc8712a42eb63242243ee6a95947",
+    "not_scored_2023": "6062e2d8b4ce558880e610ee60597dd6ca70853b05903e587d377fe34427e65c",
+    "primary_estimates_2023": "f5fed5d759e6e2d71a8b3f11277086c08388d21424874d5c4d1c51c202b33bda",
+    "ur6": "1f32a81532912334e3cd071e2f12f523e66068d14c73e5db4ae51add239b1a92"
+  },
+  "pr": "v15_check4_score",
+  "previous_v14_status": "NOT_RUN",
+  "primary": {
+    "by_ur6": {
+      "1": {
+        "median_relative_gap": -0.801167,
+        "n": 2196,
+        "residual_median_positive": true,
+        "within_class_band": false
+      },
+      "2": {
+        "median_relative_gap": -1.0,
+        "n": 2213,
+        "residual_median_positive": false,
+        "within_class_band": false
+      },
+      "3": {
+        "median_relative_gap": -1.0,
+        "n": 557,
+        "residual_median_positive": true,
+        "within_class_band": false
+      },
+      "4": {
+        "median_relative_gap": -1.0,
+        "n": 179,
+        "residual_median_positive": false,
+        "within_class_band": false
+      },
+      "5": {
+        "median_relative_gap": -1.0,
+        "n": 735,
+        "residual_median_positive": true,
+        "within_class_band": false
+      },
+      "6": {
+        "median_relative_gap": -1.0,
+        "n": 366,
+        "residual_median_positive": false,
+        "within_class_band": false
+      }
+    },
+    "check": "4",
+    "class_max_abs": 0.4,
+    "class_residual_median_positive": {
+      "1": true,
+      "2": false,
+      "3": true,
+      "4": false,
+      "5": true,
+      "6": false
+    },
+    "n_positive_capitalised": 5704,
+    "n_positive_residual": 3369,
+    "n_unavailable": 2877,
+    "n_zones": 6246,
+    "national_max_abs": 0.25,
+    "national_median_gap": -0.989691,
+    "national_within_band": false,
+    "pass": false,
+    "reason": "residual_route_median_non_positive_ur6_6",
+    "residual_median_positive": true,
+    "status": "fail"
+  },
+  "publication": {
+    "never_blend": true,
+    "never_switch_to_passing": true,
+    "outcome": "both_fail_publish_neither",
+    "publish_as_range": false,
+    "publish_primary": false,
+    "publish_secondary": false,
+    "rule": "Never switch to whichever passes. Primary passes + secondary passes \u2192 publish range spanning both (never a blend). Primary passes + secondary fails \u2192 publish primary; report secondary failures. Primary fails + secondary passes \u2192 report both; publish neither as official. Both fail \u2192 publish neither; report both."
+  },
+  "publish_level": "internal",
+  "secondary": {
+    "by_ur6": {
+      "1": {
+        "median_relative_gap": -1.0,
+        "n": 2196,
+        "residual_median_positive": false,
+        "within_class_band": false
+      },
+      "2": {
+        "median_relative_gap": -0.915903,
+        "n": 2213,
+        "residual_median_positive": true,
+        "within_class_band": false
+      },
+      "3": {
+        "median_relative_gap": -0.895693,
+        "n": 557,
+        "residual_median_positive": true,
+        "within_class_band": false
+      },
+      "4": {
+        "median_relative_gap": -0.592648,
+        "n": 179,
+        "residual_median_positive": true,
+        "within_class_band": false
+      },
+      "5": {
+        "median_relative_gap": -0.898067,
+        "n": 735,
+        "residual_median_positive": true,
+        "within_class_band": false
+      },
+      "6": {
+        "median_relative_gap": -0.805459,
+        "n": 366,
+        "residual_median_positive": true,
+        "within_class_band": false
+      }
+    },
+    "check": "4",
+    "class_max_abs": 0.4,
+    "class_residual_median_positive": {
+      "1": false,
+      "2": true,
+      "3": true,
+      "4": true,
+      "5": true,
+      "6": true
+    },
+    "n_positive_capitalised": 5704,
+    "n_positive_residual": 4243,
+    "n_unavailable": 2003,
+    "n_zones": 6246,
+    "national_max_abs": 0.25,
+    "national_median_gap": -0.935754,
+    "national_within_band": false,
+    "pass": false,
+    "reason": "residual_route_median_non_positive_ur6_1",
+    "residual_median_positive": true,
+    "status": "fail"
+  },
+  "status": "scored",
+  "thresholds": {
+    "capitalisation_yield": 0.045,
+    "class_max_abs_gap": 0.4,
+    "national_max_abs_gap": 0.25,
+    "plus4_classes": [
+      5,
+      6
+    ],
+    "plus4_factor_ur6_5_6": 1.15
+  },
+  "year": 2023
+}

@@ -58,6 +58,7 @@ RECORDED_FILES = (
     "backend/scripts/fit_v14_hedonic.py",
     "backend/scripts/build_v14_primary_2023.py",
     "backend/scripts/build_v14_check_sources.py",
+    "backend/georgist/v14_check4_route.py",
 )
 # PR 3 writers are recorded once they exist. They are not hashed while absent.
 # PR 3b records the fit CLI and the check-source writer on every run.

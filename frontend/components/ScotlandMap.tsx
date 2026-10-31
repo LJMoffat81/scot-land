@@ -5533,13 +5533,13 @@ export default function ScotlandMap() {
                   strokeLinecap="round"
                 />
               </svg>
-              <span
-                className="basemap-switcher-label"
-                data-testid="basemap-switcher-label"
-                aria-hidden
-              >
-                {BASEMAP_SWITCHER_VISIBLE_LABEL}
-              </span>
+            </span>
+            <span
+              className="basemap-switcher-label"
+              data-testid="basemap-switcher-label"
+              aria-hidden
+            >
+              {BASEMAP_SWITCHER_VISIBLE_LABEL}
             </span>
           </button>
           <span

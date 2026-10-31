@@ -363,7 +363,8 @@ for (const viewport of VIEWPORTS) {
       expect(text).toBe(expected);
 
       const inner = await page.getByTestId("map-credit-line").innerText();
-      expect(inner).toContain(NRS_SHORT);
+      expect(inner).not.toContain(NRS_SHORT);
+      expect(await readCreditShortNames(page)).toContain(NRS_SHORT);
       if (viewport.width <= 900) {
         expect(inner).not.toContain(
           "Contains National Records of Scotland data licensed",

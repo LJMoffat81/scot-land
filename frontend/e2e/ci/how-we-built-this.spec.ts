@@ -210,6 +210,7 @@ for (const width of [1280, 390] as const) {
       ).toBeVisible();
       await section.getByRole("link", { name: "the team and our checks" }).click();
       await expect(page).toHaveURL(/\/how-we-built-this$/);
+      await openNavIfMobile(page);
       await expect(
         page.getByTestId("site-nav").getByRole("link", {
           name: "How it works",

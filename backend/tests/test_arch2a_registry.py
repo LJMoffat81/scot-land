@@ -212,7 +212,35 @@ def test_r2_14_keep_fields_non_string(tmp_path):
 def test_r2_15_committed_tiled_entries():
     entries = load_registry(REGISTRY)
     tiled = sorted(eid for eid, e in entries.items() if "tiles" in e.raw)
-    assert tiled == ["dz2022", "oil-fields", "pipelines", "platforms", "scotland-extent"]
+    pmtiles = sorted(
+        eid
+        for eid, e in entries.items()
+        if (e.raw.get("serve") or {}).get("mode") == "pmtiles"
+    )
+    expected = [
+        "ces-aquaculture",
+        "councils",
+        "crown-estate-leases",
+        "dz2022",
+        "hydro-sites",
+        "native-woodland",
+        "naturescot-designations",
+        "naturescot-sssi",
+        "nfi",
+        "oil-fields",
+        "pipelines",
+        "platforms",
+        "repd",
+        "repd-onshore-wind",
+        "scotland-extent",
+        "scotwind-intog",
+        "sepa-car",
+        "sepa-flood",
+        "settlements-2022",
+    ]
+    assert tiled == expected
+    assert pmtiles == expected
+    assert tiled == pmtiles
     assert entries["oil-fields"].raw["keep_fields"] == [
         "FIELDNAME",
         "FIELDTYPE",

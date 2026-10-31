@@ -291,6 +291,34 @@
       "then": {
         "required": ["clip_keep_all"]
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "serve": {
+            "properties": { "mode": { "const": "pmtiles" } },
+            "required": ["mode"]
+          }
+        },
+        "required": ["serve"]
+      },
+      "then": {
+        "required": ["tiles"]
+      }
+    },
+    {
+      "if": {
+        "required": ["tiles"]
+      },
+      "then": {
+        "properties": {
+          "serve": {
+            "properties": { "mode": { "const": "pmtiles" } },
+            "required": ["mode"]
+          }
+        },
+        "required": ["serve"]
+      }
     }
   ]
 }

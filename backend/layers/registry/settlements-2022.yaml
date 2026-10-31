@@ -25,3 +25,8 @@ style: {fill: {fill-color: "#1a4a6e", fill-opacity: 0.12}}
 legend:
   - {label: "Settlements (NRS Census 2022)", color: "#1a4a6e"}
 lineage: {derived_from: [], method: source, roll_up_to: [council, scotland]}
+tiles:
+  budget:
+    total_mb: 15
+    tile_kb: 500
+    z0_7_mb: 2

@@ -25,3 +25,8 @@ legend:
   - {label: "Aquaculture seabed leases", color: "#0072B2"}
 lineage: {derived_from: [], method: source, roll_up_to: []}
 keep_fields: [site_id, lease_description, property_classification]
+tiles:
+  budget:
+    total_mb: 15
+    tile_kb: 500
+    z0_7_mb: 2

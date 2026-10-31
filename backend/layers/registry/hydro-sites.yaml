@@ -23,3 +23,8 @@ legend:
   - {label: "Hydropower sites (SEPA CAR)", color: "#56B4E9"}
 lineage: {derived_from: [], method: source, roll_up_to: [dz2022, council, scotland]}
 keep_fields: [auth_id, site_name, licence_start_date]
+tiles:
+  budget:
+    total_mb: 15
+    tile_kb: 500
+    z0_7_mb: 2

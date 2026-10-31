@@ -23,3 +23,8 @@ legend:
   - {label: "Onshore wind sites (DESNZ REPD)", color: "#009E73"}
 lineage: {derived_from: [], method: source, roll_up_to: [dz2022, council, scotland]}
 keep_fields: [site_name, technology_type, development_status_short, installed_capacity_mw, planning_authority]
+tiles:
+  budget:
+    total_mb: 15
+    tile_kb: 500
+    z0_7_mb: 2

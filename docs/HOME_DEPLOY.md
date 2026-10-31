@@ -215,16 +215,21 @@ $env:SCOT_LAND_TILES_DIR = "C:\path\to\scot-land-tiles"   # or ../scot-land-tile
 New-Item -ItemType Directory -Force -Path $env:SCOT_LAND_TILES_DIR | Out-Null
 ```
 
-Build all registry tilesets (one-off container, tiles volume read-write):
+Build all registry tilesets (one-off container). The live/canary `api`
+service keeps its `:ro` mount at `/app/tiles`, and `compose run` inherits that
+volume, so the one-off must bind a separate read-write path and point
+`TILES_DIR` at it. Source tables must already be loaded
+(`python -m etl.ingest_*` → `python -m etl.run_layer <id>`); otherwise
+`tiles.build` fails closed with `TILES: <id>: layer not built`.
 
 ```powershell
 docker compose -f docker-compose.home.yml run --rm --no-deps `
-  -v "${env:SCOT_LAND_TILES_DIR}:/app/tiles" `
-  -e TILES_DIR=/app/tiles `
+  -v "${env:SCOT_LAND_TILES_DIR}:/app/tiles-rw" `
+  -e TILES_DIR=/app/tiles-rw `
   api python -m tiles.build --all
 ```
 
-The live/canary `api` services mount the same path read-only as `/app/tiles`
+The live/canary `api` services mount the same host path read-only as `/app/tiles`
 with `TILES_DIR=/app/tiles`. Clients use:
 
 - `GET /v1/tiles/manifest.json` (short cache)

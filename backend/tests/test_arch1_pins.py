@@ -487,6 +487,9 @@ _CARD_CLARITY_31OCT_1B_FRONTEND_ALLOW = frozenset(
         "frontend/e2e/ci/layers-perf-2.spec.ts",
         "frontend/e2e/ci/layers-perf-3.spec.ts",
         "frontend/e2e/ci/sepa-flood-dz.spec.ts",
+        # Test-only bookkeeping: disclaimer now sits under the answer
+        # (CARD-CLARITY-31OCT-1B); empty-pad check retargets to after how link.
+        "frontend/e2e/ci/ui-fix-3.spec.ts",
     ]
 )
 

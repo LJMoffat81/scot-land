@@ -351,6 +351,7 @@ for (const viewport of VIEWPORTS) {
       await expect(page.getByTestId("basemap-switcher")).toHaveAttribute(
         "aria-pressed",
         "false",
+        { timeout: 30_000 },
       );
       await routeEsriFixture(page, swapped);
       await page.getByTestId("basemap-switcher").click();

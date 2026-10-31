@@ -239,7 +239,8 @@ def test_t8_pmtiles_postgis_tables_have_ingest_and_ddl() -> None:
 
 def test_t9_home_deploy_tiles_rw_mount() -> None:
     text = HOME_DEPLOY.read_text(encoding="utf-8")
-    assert "£" not in text
+    pound = "\u00a3"  # do not embed the glyph (P7)
+    assert pound not in text
     # Scope to the tiles.build --all one-off block.
     marker = "api python -m tiles.build --all"
     assert marker in text

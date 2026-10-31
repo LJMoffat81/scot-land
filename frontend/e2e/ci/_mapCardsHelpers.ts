@@ -676,3 +676,21 @@ export function countMatches(text: string, re: RegExp): number {
   const copy = new RegExp(re.source, flags);
   return (text.match(copy) || []).length;
 }
+
+/**
+ * CARD-CLARITY-31OCT-1A — short layer credit names live in the ⓘ sheet only.
+ * Opens the sheet, reads `map-credit-short-names`, Escape-closes.
+ */
+export async function readCreditShortNames(page: Page): Promise<string> {
+  await page.getByTestId("map-credit-info").click();
+  const sheet = page.getByTestId("map-credit-sheet");
+  await expect(sheet).toBeVisible();
+  const short = page.getByTestId("map-credit-short-names");
+  const text =
+    (await short.count()) > 0
+      ? ((await short.innerText()) ?? "").replace(/\s+/g, " ").trim()
+      : "";
+  await page.keyboard.press("Escape");
+  await expect(sheet).toHaveCount(0);
+  return text;
+}

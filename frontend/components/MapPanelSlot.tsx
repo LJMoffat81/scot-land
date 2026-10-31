@@ -12,6 +12,9 @@ import {
 export type PanelSlotKind = "closed" | "place" | "layers";
 export type PanelDetent = "peek" | "half" | "full";
 
+/** Collapsed place-panel tab aria-label (CARD-CLARITY-31OCT-1A). */
+export const PANEL_TAB_SHOW_PLACE_DETAILS = "Show place details";
+
 export type MapPanelSlotProps = {
   kind: PanelSlotKind;
   /** Mobile bottom-sheet detent (ignored on desktop layout via CSS). */
@@ -217,8 +220,8 @@ export default function MapPanelSlot({
             data-testid="panel-collapse-tab"
             aria-label={
               placeName
-                ? `Reopen place card for ${placeName}`
-                : "Reopen place card"
+                ? `${PANEL_TAB_SHOW_PLACE_DETAILS} for ${placeName}`
+                : PANEL_TAB_SHOW_PLACE_DETAILS
             }
             onClick={() => onCollapsedChange(false)}
           >

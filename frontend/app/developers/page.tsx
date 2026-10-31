@@ -51,7 +51,7 @@ function DevelopersPageInner() {
   return (
     <main className="downloads-page developers-page" data-testid="developers-page">
       <SiteNav current="developers" />
-      <h1>Downloads &amp; API</h1>
+      <h1>Get the data</h1>
       <ResearchBanner />
       <p>
         Use Scot-LAND&apos;s open data in your own work. The map and the files

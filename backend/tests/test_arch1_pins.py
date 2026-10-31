@@ -411,6 +411,45 @@ _UX_POLISH_28OCT_1_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# CARD-CLARITY-31OCT-1A — literal P6 allow-list; unioned with prior sets.
+_CARD_CLARITY_31OCT_1A_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/app/developers/glossary/page.tsx",
+        "frontend/app/developers/layout.tsx",
+        "frontend/app/developers/page.tsx",
+        "frontend/app/downloads/layout.tsx",
+        "frontend/app/how-we-built-this/page.tsx",
+        "frontend/app/map-chrome.css",
+        "frontend/components/MapCreditLine.tsx",
+        "frontend/components/MapPanelSlot.tsx",
+        "frontend/components/MethodologyContent.tsx",
+        "frontend/components/ScotlandMap.tsx",
+        "frontend/components/SiteNav.tsx",
+        "frontend/lib/bng.ts",
+        "frontend/lib/mapBasemap.ts",
+        "frontend/lib/siteNav.ts",
+        "frontend/e2e/ci/_mapCardsHelpers.ts",
+        "frontend/e2e/ci/card-clarity-31oct-1a.spec.ts",
+        "frontend/e2e/ci/arch5a.spec.ts",
+        "frontend/e2e/ci/frontend-batch-2-r6.spec.ts",
+        "frontend/e2e/ci/frontend-batch-2.spec.ts",
+        "frontend/e2e/ci/frontend-batch-4.spec.ts",
+        "frontend/e2e/ci/grid-base.spec.ts",
+        "frontend/e2e/ci/how-we-built-this.spec.ts",
+        "frontend/e2e/ci/mapref-fix.spec.ts",
+        "frontend/e2e/ci/post-share-1.spec.ts",
+        "frontend/e2e/ci/sea-extent-2.spec.ts",
+        "frontend/e2e/ci/site-nav-banner.spec.ts",
+        "frontend/e2e/ci/squares-shell-search.spec.ts",
+        "frontend/e2e/ci/ui-batch-4.spec.ts",
+        "frontend/e2e/ci/ux-polish-28oct-1.spec.ts",
+        "frontend/scripts/test-site-rewrite-pr1.mjs",
+        # Test-only bookkeeping: SEARCH_PLACEHOLDER wiring (frozen 1A Files
+        # omitted this path; required so unit script stays green).
+        "frontend/scripts/test-site-rewrite-pr2.mjs",
+    ]
+)
+
 
 def _assert_main_py_only_arch2a_tiles_registration() -> None:
     """HEAD main.py must equal origin/main plus exactly the ARCH-2a tiles line."""
@@ -447,6 +486,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _MAP_VISION_1B_FRONTEND_ALLOW
                 | _DEFAULT_3D_VIEW_FRONTEND_ALLOW
                 | _UX_POLISH_28OCT_1_FRONTEND_ALLOW
+                | _CARD_CLARITY_31OCT_1A_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

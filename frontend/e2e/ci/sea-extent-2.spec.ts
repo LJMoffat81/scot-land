@@ -11,6 +11,7 @@ import {
   ensureLayersGroupOpen,
   openLayers,
   openMap,
+  readCreditShortNames,
   registerOpenFreeMapFontStub,
   stubMapCardsBackend,
   waitForMap,
@@ -397,11 +398,11 @@ test.describe("SEA-EXTENT-2 e2e", () => {
         timeout: 20_000,
       })
       .toBe(0);
-    // MAP-VISION-1b: data_zones default ON may show its short name; outline must not.
-    const shortNames = page.getByTestId("map-credit-short-names");
-    if ((await shortNames.count()) > 0) {
-      await expect(shortNames).not.toContainText("Scotland outline");
-    }
+    // CARD-CLARITY-31OCT-1A: short names are sheet-only; outline must not appear.
+    const bar = await page.getByTestId("map-credit-line").innerText();
+    expect(bar).not.toContain("Scotland outline");
+    const shortInSheet = await readCreditShortNames(page);
+    expect(shortInSheet).not.toContain("Scotland outline");
     await expect(page.getByText(SHORT_OUTLINE)).toHaveCount(0);
     await expect(page.getByText("One layer did not load.")).toHaveCount(0);
     assertConsoleClean(gate);
@@ -431,14 +432,15 @@ for (const viewport of [
           timeout: 30_000,
         })
         .toBe(true);
-      await expect(page.getByTestId("map-credit-short-names")).toContainText(
-        SHORT_OUTLINE,
-      );
+      const barText = await page.getByTestId("map-credit-line").innerText();
+      expect(barText).not.toContain(SHORT_OUTLINE);
+      expect(await readCreditShortNames(page)).toContain(SHORT_OUTLINE);
 
       if (viewport.width <= 900) {
         const visible = await page.getByTestId("map-credit-line").innerText();
         expect(visible).not.toContain("UK Hydrographic Office");
         expect(visible).not.toContain(SCOTLAND_EXTENT_CREDIT);
+        expect(visible).not.toContain(SHORT_OUTLINE);
         await page.getByTestId("map-credit-info").click();
         const sheet = page.getByTestId("map-credit-sheet");
         await expect(sheet).toBeVisible();

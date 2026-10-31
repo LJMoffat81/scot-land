@@ -11,7 +11,8 @@ const ROUTES: Array<{ path: string; current: string }> = [
   { path: "/about", current: "About" },
   { path: "/methodology", current: "How it works" },
   { path: "/data", current: "Data & sources" },
-  { path: "/developers", current: "Downloads & API" },
+  { path: "/developers", current: "Get the data" },
+  { path: "/how-we-built-this", current: "How it works" },
 ];
 
 /** Collect console errors / pageerror for every test (data-page.spec.ts pattern). */
@@ -154,15 +155,20 @@ test.describe("site nav + research banner (rewrite PR1)", () => {
       for (const label of [
         "Map",
         "About",
-        "How we built this",
         "How it works",
         "Data & sources",
-        "Downloads & API",
+        "Get the data",
       ]) {
         await expect(
           nav.getByRole("link", { name: label, exact: true }),
         ).toBeVisible();
       }
+      await expect(
+        nav.getByRole("link", { name: "How we built this", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        nav.getByRole("link", { name: "Downloads & API", exact: true }),
+      ).toHaveCount(0);
       if (route.path === "/") {
         // MAP-HINTS-OFF-1: research banner removed from the map.
         await expect(page.getByTestId("research-banner")).toHaveCount(0);
@@ -518,7 +524,12 @@ test.describe("site-watch PR A — map footer + mobile banner", () => {
     await expect(page.getByTestId("map-footer-line")).toHaveCount(0);
     await expect(page.locator(".map-footer")).toHaveCount(0);
     const line = page.getByTestId("map-credit-line-text");
-    await expect(line).toHaveText("© OpenFreeMap © OpenStreetMap · Sources");
+    await expect(line).toHaveText(
+      "© OpenFreeMap © OpenStreetMap · Sources (1)",
+    );
+    await expect(line).not.toHaveText(
+      "© OpenFreeMap © OpenStreetMap · Sources",
+    );
     await expect(
       page.getByTestId("map-all-sources"),
     ).toHaveAttribute("href", "/data#licences");
@@ -546,7 +557,9 @@ test.describe("site-watch PR A — map footer + mobile banner", () => {
     await page.locator(".maplibregl-canvas").waitFor();
     await expect(page.locator(".maplibregl-ctrl-attrib")).toHaveCount(0);
     const credit = await openMapCreditText(page);
-    await expect(credit).toHaveText("© OpenFreeMap © OpenStreetMap · Sources");
+    await expect(credit).toHaveText(
+      "© OpenFreeMap © OpenStreetMap · Sources (1)",
+    );
     await page.getByTestId("map-all-sources").click();
     await expect(page).toHaveURL(/\/data#licences/);
     const footer = page.getByTestId("content-page-footer");

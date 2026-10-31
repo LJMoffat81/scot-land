@@ -272,7 +272,10 @@ test.describe("GRID-BASE-1", () => {
     );
     await expect(page.getByTestId("grid3-tooltip")).toBeVisible();
     await expect(page.getByTestId("grid3-tooltip")).toHaveText(
-      /[A-Z]{2} \d{5} \d{5}/,
+      /3 m grid square: [A-Z]{2} \d{5} \d{5}/,
+    );
+    await expect(page.getByTestId("grid3-tooltip")).not.toHaveText(
+      /^[A-Z]{2} \d{5} \d{5}$/,
     );
 
     // G5 / G15 — z≥19 click fills row 6
@@ -283,7 +286,8 @@ test.describe("GRID-BASE-1", () => {
     });
     const row6 = page.getByTestId("place-card-row6-slot");
     await expect(row6).toBeVisible();
-    await expect(row6).toContainText(/Grid square [A-Z]{2} \d{5} \d{5}/);
+    await expect(row6).toContainText(/3 m grid square: [A-Z]{2} \d{5} \d{5}/);
+    await expect(row6).not.toContainText(/Grid square [A-Z]{2}/);
     await expect(row6).toContainText("a map grid, not a property");
 
     // G6 — cannot zoom past 20
@@ -342,6 +346,7 @@ test.describe("GRID-BASE-1", () => {
     });
     const row6 = page.getByTestId("place-card-row6-slot");
     const text = (await row6.textContent())?.trim() ?? "";
+    expect(text).not.toMatch(/3 m grid square:/);
     expect(text).not.toMatch(/Grid square/);
     assertConsoleClean(gate);
   });

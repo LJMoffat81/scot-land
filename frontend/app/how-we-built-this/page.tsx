@@ -52,7 +52,7 @@ const REVIEWERS = [
 export default function HowWeBuiltThisPage() {
   return (
     <main className="methodology-page" data-testid="how-we-built-page">
-      <SiteNav current="built" />
+      <SiteNav current="how" />
       <h1>How we built this</h1>
       <ResearchBanner />
       <div data-testid="how-we-built-copy">

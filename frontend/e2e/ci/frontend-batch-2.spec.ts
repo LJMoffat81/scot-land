@@ -26,7 +26,7 @@ const VIEWPORTS = [
   { width: 390, height: 844 },
 ] as const;
 
-const SIMPLE_CREDIT = "© OpenFreeMap © OpenStreetMap · Sources";
+const SIMPLE_CREDIT = "© OpenFreeMap © OpenStreetMap · Sources (1)";
 
 const FIXTURE_A =
   "Source: Esri, Vantor, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community; Sources: Esri, TomTom, Garmin, FAO, NOAA, USGS, © OpenStreetMap contributors, and the GIS User Community";
@@ -309,7 +309,7 @@ for (const viewport of VIEWPORTS) {
       );
 
       const expectedAerial =
-        `Powered by Esri | ${FIXTURE_A} · © OpenFreeMap © OpenStreetMap · Sources`;
+        `Powered by Esri | ${FIXTURE_A} · © OpenFreeMap © OpenStreetMap · Sources (2)`;
       await expect
         .poll(async () => creditTextContent(page), { timeout: 30_000 })
         .toBe(expectedAerial);

@@ -388,6 +388,10 @@ for (const viewport of VIEWPORTS) {
       expect(visibleHint).toBe(false);
       await expect(page.locator("#place-query")).toHaveAttribute(
         "placeholder",
+        "Search a postcode, or tap the map",
+      );
+      await expect(page.locator("#place-query")).not.toHaveAttribute(
+        "placeholder",
         "Search a postcode, e.g. G2 1DU",
       );
       assertConsoleClean(gate);

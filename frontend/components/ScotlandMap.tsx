@@ -84,7 +84,7 @@ import {
   prefersReducedMotion,
   resolveSupportingStrokeStyle,
 } from "../lib/mapVisionTokens";
-import { SEARCH_HINT_SR } from "../lib/siteNav";
+import { SEARCH_HINT_SR, SEARCH_PLACEHOLDER } from "../lib/siteNav";
 import { isEsriBasemapKeyConfigured } from "../lib/esriBasemapKey.mjs";
 import {
   NO_DATA_HATCH_IMAGE,
@@ -96,6 +96,7 @@ import {
   AERIAL_UNAVAILABLE_NOTICE,
   BASEMAP_LOAD_NOTICE,
   BASEMAP_STYLE_TIMEOUT_MS,
+  BASEMAP_SWITCHER_VISIBLE_LABEL,
   DEFAULT_MAP_BASEMAP,
   MAP_MAX_ZOOM,
   basemapStyleUrl,
@@ -122,7 +123,7 @@ import {
   readMapUrlState,
   replaceMapUrl,
 } from "../lib/mapUrlState";
-import { grid3Row6Text } from "../lib/bng";
+import { grid3GridSquareLabel, grid3Row6Text } from "../lib/bng";
 import { isEmptyDataZoneAt } from "../lib/dataZoneAt";
 import {
   GRID3_HOVER_ZOOM,
@@ -5456,7 +5457,7 @@ export default function ScotlandMap() {
               top: grid3Tooltip.y + 12,
             }}
           >
-            {grid3Tooltip.ref}
+            {grid3GridSquareLabel(grid3Tooltip.ref)}
           </div>
         ) : null}
       </div>
@@ -5510,8 +5511,8 @@ export default function ScotlandMap() {
             <span className="basemap-switcher-face" aria-hidden="true">
               <svg
                 className="basemap-switcher-globe"
-                width="22"
-                height="22"
+                width="18"
+                height="18"
                 viewBox="0 0 22 22"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
@@ -5532,6 +5533,13 @@ export default function ScotlandMap() {
                   strokeLinecap="round"
                 />
               </svg>
+              <span
+                className="basemap-switcher-label"
+                data-testid="basemap-switcher-label"
+                aria-hidden
+              >
+                {BASEMAP_SWITCHER_VISIBLE_LABEL}
+              </span>
             </span>
           </button>
           <span
@@ -5596,7 +5604,7 @@ export default function ScotlandMap() {
         >
         <div className={loading || suggesting ? "hud-search loading" : "hud-search"}>
           <label className="sr-only" htmlFor="place-query">
-            Search a postcode, e.g. G2 1DU
+            {SEARCH_PLACEHOLDER}
           </label>
           <input
             id="place-query"
@@ -5610,8 +5618,8 @@ export default function ScotlandMap() {
             }
             value={query}
             autoComplete="off"
-            placeholder="Search a postcode, e.g. G2 1DU"
-            title="Search a postcode, e.g. G2 1DU"
+            placeholder={SEARCH_PLACEHOLDER}
+            title={SEARCH_PLACEHOLDER}
             onFocus={() => {
               setSearchFocused(true);
               setSearchNoMatch(false);

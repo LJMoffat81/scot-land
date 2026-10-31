@@ -201,14 +201,21 @@ for (const width of [1280, 390] as const) {
       await assertPageCopy(page);
     });
 
-    test("nav reaches the page", async ({ page }) => {
-      await page.goto("/about");
-      await openNavIfMobile(page);
-      const nav = page.getByTestId("site-nav");
-      await nav
-        .getByRole("link", { name: "How we built this", exact: true })
-        .click();
+    test("How it works section reaches the page", async ({ page }) => {
+      await page.goto("/methodology");
+      const section = page.getByTestId("methodology-how-we-built");
+      await expect(section).toBeVisible();
+      await expect(
+        section.getByRole("heading", { name: "How we built this", exact: true }),
+      ).toBeVisible();
+      await section.getByRole("link", { name: "the team and our checks" }).click();
       await expect(page).toHaveURL(/\/how-we-built-this$/);
+      await expect(
+        page.getByTestId("site-nav").getByRole("link", {
+          name: "How it works",
+          exact: true,
+        }),
+      ).toHaveAttribute("aria-current", "page");
       await assertPageCopy(page);
     });
 

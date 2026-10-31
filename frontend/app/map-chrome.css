@@ -546,12 +546,27 @@ button.basemap-switcher {
 
 button.basemap-switcher .basemap-switcher-face {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   width: 100%;
   height: 100%;
   border-radius: inherit;
   overflow: hidden;
+}
+
+button.basemap-switcher .basemap-switcher-globe {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+button.basemap-switcher .basemap-switcher-label {
+  font-size: 0.625rem;
+  line-height: 1;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 button.basemap-switcher[aria-pressed="true"] {

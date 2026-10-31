@@ -21,7 +21,7 @@ from typing import Any, Callable
 
 from etl.run_layer import LayerPipelineError, run_layer
 from layers.registry.loader import REGISTRY_DIR, LayerEntry, RegistryError, load_registry
-from tiles.build import TilesError, build_tileset
+from tiles.build import TilesError, build_tileset, is_tiled
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 RECEIPT_DIR = REPO_ROOT / "data" / "processed" / "layers"
@@ -272,7 +272,7 @@ def run_weekly_refresh(
     runner: Callable[[str], dict[str, Any]] = run_layer,
     tile_builder: Callable[[str], dict[str, Any]] = build_tileset,
 ) -> dict[str, Any]:
-    """Run ``run_layer`` (and ``build_tileset`` where ``tiles`` is configured) in order."""
+    """Run ``run_layer`` (and ``build_tileset`` where ``serve.mode`` is pmtiles) in order."""
     reg = entries if entries is not None else load_registry(REGISTRY_DIR)
     ordered = validate_refresh_schedules(reg)
     refreshed: list[str] = []
@@ -294,7 +294,7 @@ def run_weekly_refresh(
             clip_keep_all=bool(raw_entry.get("clip_keep_all")),
         )
         refreshed.append(lid)
-        if "tiles" in raw_entry:
+        if is_tiled(raw_entry):
             try:
                 tile_builder(lid)
             except (TilesError, RuntimeError) as exc:

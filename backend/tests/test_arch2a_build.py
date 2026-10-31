@@ -449,63 +449,39 @@ def test_b20_aggregate_refused(conn, tiles_env, monkeypatch):
 
 
 def test_b21_cli_subprocess(conn, tiles_env, monkeypatch, tmp_path):
-    # Seed the four committed tiled layers with tiny synthetic geoms.
+    # Seed every committed ungated pmtiles layer with one synthetic feature.
+    from layers.registry.loader import REGISTRY_DIR, load_registry
+
     as_of = "2026-10-22"
-    specs = {
-        "dz2022": {
-            "feats": [
-                {
-                    "id": "S01013482",
-                    "properties": {"name": "A"},
-                    "geometry": square(1000, 1000, 500),
-                }
-            ],
-            "keep": ["name"],
-        },
-        "oil-fields": {
-            "feats": [
-                {
-                    "id": "1",
-                    "properties": {
-                        "FIELDNAME": "F",
-                        "FIELDTYPE": "OIL",
-                        "STATUS": "PRODUCING",
-                    },
-                    "geometry": square(12000, 1000, 500),
-                }
-            ],
-            "keep": ["FIELDNAME", "FIELDTYPE", "STATUS"],
-        },
-        "platforms": {
-            "feats": [
-                {
-                    "id": "1",
-                    "properties": {"NAME": "P", "INF_TYPE": "PLATFORM"},
-                    "geometry": {"type": "Point", "coordinates": [15000, 2000]},
-                }
-            ],
-            "keep": ["NAME", "INF_TYPE"],
-        },
-        "pipelines": {
-            "feats": line_features(),
-            "keep": ["PIPE_NAME", "FLUID", "DESCRIPTIO"],
-        },
-        "scotland-extent": {
-            "feats": [
-                {
-                    "id": "scotland",
-                    "properties": {},
-                    "geometry": square(2000, 2000, 800),
-                }
-            ],
-            "keep": [],
-        },
-    }
-    for layer_id, spec in specs.items():
+    entries = load_registry(REGISTRY_DIR)
+    expected = sorted(
+        eid
+        for eid, entry in entries.items()
+        if (entry.raw.get("serve") or {}).get("mode") == "pmtiles"
+        and not entry.raw.get("gated_by")
+    )
+    assert len(expected) == 19
+
+    for idx, layer_id in enumerate(expected):
+        raw = entries[layer_id].raw
+        keep = list(raw.get("keep_fields") or [])
+        props = {field: f"v{idx}" for field in keep}
+        geom_kind = raw.get("geometry")
+        x0 = 1000.0 + (idx % 10) * 800.0
+        y0 = 1000.0 + (idx // 10) * 800.0
+        if geom_kind == "point":
+            geometry = {"type": "Point", "coordinates": [x0, y0]}
+        elif geom_kind == "line":
+            geometry = {
+                "type": "LineString",
+                "coordinates": [[x0, y0], [x0 + 500.0, y0]],
+            }
+        else:
+            geometry = square(x0, y0, 400.0)
         seed_layer_table(
             conn,
             layer_id,
-            spec["feats"],
+            [{"id": f"{layer_id}-1", "properties": props, "geometry": geometry}],
             dataset_version=f"{layer_id}@{as_of}-abcd1234",
             as_of=as_of,
         )
@@ -538,13 +514,7 @@ def test_b21_cli_subprocess(conn, tiles_env, monkeypatch, tmp_path):
     manifest = json.loads(
         (tiles_env["dir"] / "manifest.json").read_text(encoding="utf-8")
     )
-    assert sorted(manifest["tilesets"]) == [
-        "dz2022",
-        "oil-fields",
-        "pipelines",
-        "platforms",
-        "scotland-extent",
-    ]
+    assert sorted(manifest["tilesets"]) == expected
     # build_all returns sorted ids; rebuild via import to assert order
     ids = build_all(conn=conn, storage_path=tiles_env["storage"])
-    assert ids == ["dz2022", "oil-fields", "pipelines", "platforms", "scotland-extent"]
+    assert ids == expected

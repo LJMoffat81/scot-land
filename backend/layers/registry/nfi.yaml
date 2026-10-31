@@ -26,3 +26,8 @@ legend:
   - {label: "National Forest Inventory woodland", color: "#009E73"}
 lineage: {derived_from: [], method: source, roll_up_to: [dz2022, council, scotland]}
 keep_fields: [category, ift_ioa, area_ha]
+tiles:
+  budget:
+    total_mb: 15
+    tile_kb: 500
+    z0_7_mb: 2

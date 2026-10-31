@@ -54,6 +54,7 @@ def _valid_entry(
     if clip_keep_all:
         raw["clip_keep_all"] = True
     if tiles:
+        raw["serve"] = {"mode": "pmtiles"}
         raw["tiles"] = {"minzoom": 0, "maxzoom": 10}
     if gated_by:
         raw["gated_by"] = gated_by

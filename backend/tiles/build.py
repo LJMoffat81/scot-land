@@ -35,6 +35,12 @@ class TilesError(Exception):
     """Tile build failure (``TILES:`` prefix)."""
 
 
+def is_tiled(raw: dict[str, Any] | None) -> bool:
+    """True when registry ``serve.mode`` is ``pmtiles`` (the one tiling predicate)."""
+    serve = (raw or {}).get("serve")
+    return isinstance(serve, dict) and serve.get("mode") == "pmtiles"
+
+
 def _dsn() -> str:
     dsn = (
         os.environ.get("ARCH1_TEST_DSN")
@@ -190,6 +196,8 @@ def build_tileset(
         raise TilesError(f"TILES: unknown layer {layer_id}")
     entry = entries[layer_id]
     raw = entry.raw
+    if not is_tiled(raw):
+        raise TilesError(f"TILES: {layer_id}: serve.mode is not pmtiles")
     if "tiles" not in raw:
         raise TilesError(f"TILES: {layer_id}: no tiles block")
     gated = raw.get("gated_by")
@@ -359,10 +367,12 @@ def build_tileset(
 
 
 def build_all(*, conn=None, storage_path: Path | None = None) -> list[str]:
-    """Build every registry entry that has a ``tiles`` block, sorted by id."""
+    """Build every ungated registry entry with ``serve.mode`` pmtiles, sorted by id."""
     entries = registry()
     ids = sorted(
-        eid for eid, entry in entries.items() if "tiles" in entry.raw
+        eid
+        for eid, entry in entries.items()
+        if is_tiled(entry.raw) and not entry.raw.get("gated_by")
     )
     for layer_id in ids:
         build_tileset(layer_id, conn=conn, storage_path=storage_path)
@@ -375,7 +385,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--all",
         action="store_true",
-        help="Build every registry entry with a tiles block",
+        help="Build every ungated registry entry with serve.mode pmtiles",
     )
     args = parser.parse_args(argv)
     try:

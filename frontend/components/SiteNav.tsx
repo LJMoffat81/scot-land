@@ -38,7 +38,7 @@ export function SiteBrand() {
 }
 
 /**
- * Site-wide nav: Map · About · How we built this · How it works · Data & sources · Downloads & API.
+ * Site-wide nav: Map · About · How it works · Data & sources · Get the data.
  * Mobile (≤600px): hamburger menu with backdrop (SW-011).
  */
 export default function SiteNav({

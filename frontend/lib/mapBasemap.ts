@@ -47,6 +47,9 @@ export function basemapLabel(id: MapBasemapId): "Simple" | "Aerial" {
   return id === "aerial" ? "Aerial" : "Simple";
 }
 
+/** Visible text under the globe on the basemap switcher (CARD-CLARITY-31OCT-1A). */
+export const BASEMAP_SWITCHER_VISIBLE_LABEL = "Aerial";
+
 /** Shown when the Simple basemap style or its tiles do not load. */
 export const BASEMAP_LOAD_NOTICE =
   "The background map didn't load. The land layers still work. Try reloading the page.";

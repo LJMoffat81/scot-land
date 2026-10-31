@@ -60,7 +60,11 @@ function readSrc(relPath) {
   const map = readSrc("components/ScotlandMap.tsx");
   assert.match(
     map,
-    /placeholder="Search a postcode, e.g. G2 1DU"/,
+    /placeholder=\{SEARCH_PLACEHOLDER\}/,
+  );
+  assert.doesNotMatch(
+    map,
+    /Search a postcode, e\.g\. G2 1DU/,
   );
   assert.doesNotMatch(
     map,

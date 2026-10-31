@@ -104,6 +104,14 @@ export default function MethodologyContent() {
         </p>
       </section>
 
+      <section id="how-we-built-this" data-testid="methodology-how-we-built">
+        <h2>How we built this</h2>
+        <p>
+          More on{" "}
+          <a href="/how-we-built-this">the team and our checks</a>.
+        </p>
+      </section>
+
       <section id="credits">
         <h2>Credits</h2>
         <ul>

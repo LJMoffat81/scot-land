@@ -158,7 +158,15 @@ export function grid3CornersWgs(
   ];
 }
 
+/** Prefix for 3 m grid hover notice and place-card row 6 (CARD-CLARITY-31OCT-1A). */
+export const GRID3_SQUARE_PREFIX = "3 m grid square:";
+
+/** Hover / notice label for a 3 m grid square reference. */
+export function grid3GridSquareLabel(ref: string): string {
+  return `${GRID3_SQUARE_PREFIX} ${ref}`;
+}
+
 /** Card / row-6 copy for a selected square. */
 export function grid3Row6Text(ref: string): string {
-  return `Grid square ${ref} (a map grid, not a property)`;
+  return `${grid3GridSquareLabel(ref)} (a map grid, not a property)`;
 }

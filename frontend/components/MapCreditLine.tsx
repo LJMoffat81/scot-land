@@ -15,12 +15,21 @@ import {
 } from "@/lib/mapAttributionLine";
 
 export const MAP_CREDIT_SIMPLE =
-  "© OpenFreeMap © OpenStreetMap · Sources";
+  "© OpenFreeMap © OpenStreetMap · Sources (1)";
 
 export const MAP_CREDIT_SOURCES_HREF = "/data#licences";
 
 /** Accessible name for the ⓘ control (Wording & UX). */
 export const MAP_CREDIT_INFO_LABEL = "Map credits";
+
+/**
+ * Visible "Sources (n)" label. Falls back to plain "Sources" when n is not a
+ * positive integer (CARD-CLARITY-31OCT-1A).
+ */
+export function mapCreditSourcesText(n: number): string {
+  if (!Number.isInteger(n) || n < 1) return "Sources";
+  return `Sources (${n})`;
+}
 
 export type MapCreditLineProps = {
   /** Distinct Esri source attributions joined with "; ", or null on Simple. */
@@ -32,12 +41,12 @@ export type MapCreditLineProps = {
 };
 
 /**
- * One map credit line (MAP-FOOTER-1 / O1 / FRONTEND-BATCH-2 r6).
+ * One map credit line (MAP-FOOTER-1 / O1 / FRONTEND-BATCH-2 r6 /
+ * CARD-CLARITY-31OCT-1A).
  *
- * Visible order: Esri (Aerial) → short layer names → © OpenFreeMap © OpenStreetMap · Sources.
- * `map-attribution-line` always holds the full `buildMapAttributionPieces` join (R1).
- * On ≤900px, long layer licence strings use display:none so they do not repeat on the
- * visible line (they remain in the ⓘ sheet and in textContent for R1).
+ * Visible order: Esri (Aerial) → © OpenFreeMap © OpenStreetMap · Sources (N).
+ * Short layer names live in the ⓘ sheet only. `map-attribution-line` always
+ * holds the full `buildMapAttributionPieces` join (R1).
  */
 export default function MapCreditLine({
   esriAttribution,
@@ -97,10 +106,12 @@ export default function MapCreditLine({
     .map((p) => shortLayerSourceName(p))
     .filter((s): s is string => Boolean(s));
   const layerLongJoin = layerPieces.map((p) => p.text).join(" · ");
+  const sourceCount = pieces.length + (esriAttribution ? 1 : 0);
+  const sourcesLabel = mapCreditSourcesText(sourceCount);
 
   const sourcesLink = (
     <a href={MAP_CREDIT_SOURCES_HREF} data-testid="map-all-sources">
-      Sources
+      {sourcesLabel}
     </a>
   );
 
@@ -117,8 +128,9 @@ export default function MapCreditLine({
 
   /**
    * Full pieces join for R1. Long layer licence strings are hidden on the
-   * bar at all widths so innerText shows only short layer names (no repeat)
-   * while textContent and the ⓘ sheet hold the full legal text.
+   * bar at all widths so innerText shows only OSM + Sources (N) (no short
+   * names, no long repeat) while textContent and the ⓘ sheet hold the full
+   * legal text. Short names are sheet-only (CARD-CLARITY-31OCT-1A).
    */
   const attributionSpan = (
     <span className="map-attribution-line" data-testid="map-attribution-line">
@@ -157,9 +169,10 @@ export default function MapCreditLine({
   const sheetBody = (
     <span className="map-credit-sheet-text">
       {esriFullPrefix}
+      {shortNamesSpan}
       {piecesJoin}
       {" · "}
-      <a href={MAP_CREDIT_SOURCES_HREF}>Sources</a>
+      <a href={MAP_CREDIT_SOURCES_HREF}>{sourcesLabel}</a>
     </span>
   );
 
@@ -210,7 +223,6 @@ export default function MapCreditLine({
       >
         <span className="map-credit-line-text" data-testid="map-credit-line-text">
           {esriNarrowPrefix}
-          {shortNamesSpan}
           {attributionSpan}
           {" · "}
           {sourcesLink}
@@ -225,7 +237,6 @@ export default function MapCreditLine({
     <div className="map-credit-line" data-testid="map-credit-line">
       <span className="map-credit-line-text" data-testid="map-credit-line-text">
         {esriFullPrefix}
-        {shortNamesSpan}
         {attributionSpan}
         {" · "}
         {sourcesLink}

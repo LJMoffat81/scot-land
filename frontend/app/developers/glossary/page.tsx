@@ -20,7 +20,7 @@ export default function DevelopersGlossaryPage() {
       <ResearchBanner />
       <p className="downloads-note">
         Words used in our method and in the data for developers. Overview:{" "}
-        <a href="/developers">Downloads &amp; API</a>.
+        <a href="/developers">Get the data</a>.
       </p>
       <div
         className="developers-glossary-list"

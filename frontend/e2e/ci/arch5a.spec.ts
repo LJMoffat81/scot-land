@@ -10,6 +10,7 @@ import {
   ensureLayersGroupOpen,
   openLayers,
   openMap,
+  readCreditShortNames,
   registerOpenFreeMapFontStub,
   stubMapCardsBackend,
   waitForMap,
@@ -312,9 +313,10 @@ test("E5a-1 oil legend, as-of, and NSTA credit from manifest", async ({
   await expect(page.getByTestId("layer-asof-9")).toHaveText(
     " · Data as of 15 Oct 2026",
   );
-  await expect(page.getByTestId("map-credit-short-names")).toContainText(
+  expect(await page.getByTestId("map-credit-line").innerText()).not.toContain(
     "Oil and gas: NSTA",
   );
+  expect(await readCreditShortNames(page)).toContain("Oil and gas: NSTA");
   await expect(page.getByTestId("map-attribution-line")).toContainText(
     "SYNTH NSTA MANIFEST CREDIT",
   );

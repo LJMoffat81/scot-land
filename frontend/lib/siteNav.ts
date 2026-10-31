@@ -3,10 +3,9 @@
 export const SITE_NAV_ITEMS = [
   { id: "map", href: "/", label: "Map" },
   { id: "about", href: "/about", label: "About" },
-  { id: "built", href: "/how-we-built-this", label: "How we built this" },
   { id: "how", href: "/methodology", label: "How it works" },
   { id: "data", href: "/data", label: "Data & sources" },
-  { id: "developers", href: "/developers", label: "Downloads & API" },
+  { id: "developers", href: "/developers", label: "Get the data" },
 ] as const;
 
 export type SiteNavId = (typeof SITE_NAV_ITEMS)[number]["id"];
@@ -26,10 +25,12 @@ export const RESEARCH_BANNER_TEXT = `${RESEARCH_BANNER_LEAD} ${RESEARCH_BANNER_B
 export const PLACE_CARD_ESTIMATE_LINE =
   "Research estimate, not a bill or an official valuation.";
 
+/** Map search placeholder / label / title (CARD-CLARITY-31OCT-1A). */
+export const SEARCH_PLACEHOLDER = "Search a postcode, or tap the map";
+
 /** Screen-reader hint for the map search input (visible hint removed). */
 export const SEARCH_HINT_SR =
   "Type a postcode or place name, or tap the map.";
-
 /** SW-016 collapsed strip (≤768px) — exact one-line copy including expand cue. */
 export const RESEARCH_BANNER_STRIP_COLLAPSED =
   "Research estimate. Not a bill or an official valuation. More";

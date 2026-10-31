@@ -201,21 +201,33 @@ for (const width of [1280, 390] as const) {
       await assertPageCopy(page);
     });
 
-    test("nav reaches the page", async ({ page }) => {
-      await page.goto("/about");
-      await openNavIfMobile(page);
-      const nav = page.getByTestId("site-nav");
-      await nav
-        .getByRole("link", { name: "How we built this", exact: true })
-        .click();
+    test("How it works section reaches the page", async ({ page }) => {
+      await page.goto("/methodology");
+      const section = page.getByTestId("methodology-how-we-built");
+      await expect(section).toBeVisible();
+      await expect(
+        section.getByRole("heading", { name: "How we built this", exact: true }),
+      ).toBeVisible();
+      await section.getByRole("link", { name: "the team and our checks" }).click();
       await expect(page).toHaveURL(/\/how-we-built-this$/);
+      // current="how" marks How it works even when the mobile panel is closed
+      // (links sit in a hidden panel until the hamburger opens).
+      await expect(
+        page.locator(
+          '[data-testid="site-nav"] a[href="/methodology"][aria-current="page"]',
+        ),
+      ).toHaveCount(1);
+      await expect(
+        page.locator(
+          '[data-testid="site-nav"] a[href="/how-we-built-this"][aria-current="page"]',
+        ),
+      ).toHaveCount(0);
       await assertPageCopy(page);
     });
 
     test("/about link reaches the page", async ({ page }) => {
       await page.goto("/about");
-      // The nav also says "How we built this". The About link is the one
-      // in the page copy, beside Back to map.
+      // About page copy still links here; top nav no longer lists this page.
       await page
         .getByTestId("mission-page")
         .locator("p.meta + p")

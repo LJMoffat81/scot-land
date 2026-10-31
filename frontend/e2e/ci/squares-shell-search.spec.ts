@@ -33,7 +33,14 @@ test.describe("squares shell", () => {
     await expect(page.locator("#map")).toBeVisible();
     const search = page.locator("#place-query");
     await expect(search).toBeVisible();
-    await expect(search).toHaveAttribute("placeholder", "Search a postcode, e.g. G2 1DU");
+    await expect(search).toHaveAttribute(
+      "placeholder",
+      "Search a postcode, or tap the map",
+    );
+    await expect(search).not.toHaveAttribute(
+      "placeholder",
+      "Search a postcode, e.g. G2 1DU",
+    );
     await expect(search).not.toHaveAttribute("placeholder", /map reference/i);
 
     await page.route("**/platform/place**", async (route) => {

@@ -13,7 +13,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { attachConsoleGate, assertConsoleClean, CI_TINY_PNG, DUMMY_ESRI_KEY, EMPTY_GLYPH_PBF, injectEsriBasemapKey, openLayers, openMap, openPlaceViaCoords, registerOpenFreeMapFontStub, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
+import { attachConsoleGate, assertConsoleClean, CI_TINY_PNG, DUMMY_ESRI_KEY, EMPTY_GLYPH_PBF, injectEsriBasemapKey, openLayers, openMap, openPlaceViaCoords, readCreditShortNames, registerOpenFreeMapFontStub, stubMapCardsBackend, waitForMap } from "./_mapCardsHelpers";
 import {
   BUILTUP_CREDIT_TEXT,
   buildMapAttributionPieces,
@@ -141,7 +141,8 @@ async function routeEsriFixture(page: Page) {
 }
 
 /**
- * Visible credit order (Aerial + layer short name): Esri → short → OSM → Sources.
+ * Visible credit order (Aerial): Esri → OSM → Sources (N).
+ * Short layer names live in the ⓘ sheet only (CARD-CLARITY-31OCT-1A).
  * Uses innerText so hidden long pieces do not participate. Each index check can fail.
  * "Sources" uses lastIndexOf so Esri {A}'s "Sources: Esri, …" does not false-match.
  */
@@ -150,17 +151,15 @@ async function assertAerialVdlCreditOrder(page: Page) {
   await expect(credit).toBeVisible();
   const visible = ((await credit.innerText()) ?? "").replace(/\s+/g, " ").trim();
   const esri = visible.indexOf("Powered by Esri");
-  const short = visible.indexOf(VDL_SHORT);
   const osm = visible.indexOf(OSM_CREDIT);
   const sources = visible.lastIndexOf("Sources");
   expect(esri, `missing Powered by Esri in ${JSON.stringify(visible)}`).toBeGreaterThanOrEqual(0);
-  expect(short, `missing short ${JSON.stringify(VDL_SHORT)} in ${JSON.stringify(visible)}`).toBeGreaterThanOrEqual(0);
   expect(osm, `missing OSM credit in ${JSON.stringify(visible)}`).toBeGreaterThanOrEqual(0);
   expect(sources, `missing Sources in ${JSON.stringify(visible)}`).toBeGreaterThanOrEqual(0);
-  expect(short, `short must follow Esri`).toBeGreaterThan(esri);
-  expect(osm, `OSM must follow short`).toBeGreaterThan(short);
+  expect(osm, `OSM must follow Esri`).toBeGreaterThan(esri);
   expect(sources, `Sources must follow OSM`).toBeGreaterThan(osm);
-  await expect(page.getByTestId("map-all-sources")).toHaveText("Sources");
+  expect(visible, `short name must leave the bar`).not.toContain(VDL_SHORT);
+  await expect(page.getByTestId("map-all-sources")).toHaveText(/Sources \(\d+\)/);
 }
 
 async function enableAerialWithVdl(page: Page) {
@@ -232,8 +231,9 @@ for (const viewport of VIEWPORTS) {
       expect(inner).toContain("© OpenFreeMap");
       expect(inner).toContain("© OpenStreetMap");
       expect(inner).toContain("Sources");
-      // Short layer source name visible without a click (can fail).
-      expect(inner).toContain(VDL_SHORT);
+      // Short layer source name is sheet-only (CARD-CLARITY-31OCT-1A).
+      expect(inner).not.toContain(VDL_SHORT);
+      expect(await readCreditShortNames(page)).toContain(VDL_SHORT);
       // Long licence text must not repeat on the visible narrow line.
       expect(inner).not.toContain(LONG_VDL_MARKER);
       expect(VDL_ZONE_TOTALS_ATTRIBUTION).toContain(LONG_VDL_MARKER);
@@ -249,23 +249,25 @@ for (const viewport of VIEWPORTS) {
       await assertAerialVdlCreditOrder(page);
       const aerialInner = await page.getByTestId("map-credit-line").innerText();
       expect(aerialInner).not.toContain(LONG_VDL_MARKER);
+      expect(aerialInner).not.toContain(VDL_SHORT);
+      expect(await readCreditShortNames(page)).toContain(VDL_SHORT);
       assertConsoleClean(gate);
     });
 
-    test("R2b Aerial+vdl credit order (Esri → short → OSM → Sources)", async ({
+    test("R2b Aerial+vdl credit order (Esri → OSM → Sources (N); short in sheet)", async ({
       page,
     }) => {
       test.setTimeout(180_000);
       const gate = attachConsoleGate(page);
       await enableAerialWithVdl(page);
       await assertAerialVdlCreditOrder(page);
-      // Short name must stay visible without opening ⓘ (can fail).
-      await expect(page.getByTestId("map-credit-short-names")).toContainText(
-        VDL_SHORT,
-      );
+      // Short name is in the ⓘ sheet only (can fail if it returns to the bar).
+      await expect(page.getByTestId("map-credit-short-names")).toHaveCount(0);
+      expect(await readCreditShortNames(page)).toContain(VDL_SHORT);
       if (viewport.width <= 900) {
         const visible = await page.getByTestId("map-credit-line").innerText();
         expect(visible).not.toContain(LONG_VDL_MARKER);
+        expect(visible).not.toContain(VDL_SHORT);
         await expect(
           page.getByRole("button", { name: "Map credits" }),
         ).toHaveAttribute("aria-label", "Map credits");
@@ -361,7 +363,8 @@ for (const viewport of VIEWPORTS) {
       expect(text).toBe(expected);
 
       const inner = await page.getByTestId("map-credit-line").innerText();
-      expect(inner).toContain(NRS_SHORT);
+      expect(inner).not.toContain(NRS_SHORT);
+      expect(await readCreditShortNames(page)).toContain(NRS_SHORT);
       if (viewport.width <= 900) {
         expect(inner).not.toContain(
           "Contains National Records of Scotland data licensed",
@@ -454,12 +457,9 @@ for (const viewport of E1_VIEWPORTS) {
       });
 
       await expect
-        .poll(
-          async () =>
-            page.getByTestId("map-credit-short-names").innerText(),
-          { timeout: 15_000 },
-        )
+        .poll(async () => readCreditShortNames(page), { timeout: 15_000 })
         .toContain("Built-up areas: NRS");
+      expect(await credit.innerText()).not.toContain("Built-up areas: NRS");
 
       if (viewport.width <= 900) {
         await expect(page.locator(".map-credit-long-pieces")).toBeHidden();
@@ -469,6 +469,7 @@ for (const viewport of E1_VIEWPORTS) {
         await expect(page.getByTestId("map-credit-sheet")).toContainText(
           BUILTUP_CREDIT_TEXT,
         );
+        await page.keyboard.press("Escape");
       } else {
         await expect(page.getByTestId("map-attribution-line")).toContainText(
           BUILTUP_CREDIT_TEXT,

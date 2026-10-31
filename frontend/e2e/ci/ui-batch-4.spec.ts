@@ -164,7 +164,10 @@ test.describe("UI-BATCH-4 mobile style label", () => {
     await expect(toggle).toHaveAttribute("aria-pressed", "false");
     await expect(toggle).not.toContainText("Detailed");
     await expect(toggle).not.toContainText("Simple");
-    await expect(toggle).not.toContainText("Aerial");
+    await expect(page.getByTestId("basemap-switcher-label")).toHaveText(
+      "Aerial",
+    );
+    await expect(toggle).toContainText("Aerial");
     await expect(page.getByTestId("basemap-toggle-narrow")).toHaveCount(0);
     const box = await toggle.boundingBox();
     expect(box).toBeTruthy();

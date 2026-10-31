@@ -7,7 +7,7 @@
  * 3. MOBILE-CONTROLS-ORDER-HALF-1: mobile Place Card half-sheet keeps top-to-bottom order (2D/3D -> Basemap -> Zoom +/-).
  * 4. COUNCIL-DENSITY-KEY-TITLE-1: POP_DENSITY_RANGE_LEGEND_TITLE === "People per km²".
  * 5. WORDING-POLISH-BATCH-1 / SEARCH-PLACEHOLDER-1:
- *    - Search placeholder: "Search a postcode, e.g. G2 1DU"
+ *    - Search placeholder: "Search a postcode, or tap the map"
  *    - POSTCODES_ONLY: "Search finds full UK postcodes only (e.g. G2 1DU). Or tap or click the map."
  *    - PLACE_CARD_ESTIMATE_LINE: "Research estimate, not a bill or an official valuation."
  * 6. r30 note: direct load of /?b=aerial produces zero React #418 hydration warnings.
@@ -179,14 +179,20 @@ test.describe("E-UX-28OCT-1 desktop 1280x800", () => {
 
     await expect(page.locator("#place-query")).toHaveAttribute(
       "placeholder",
+      "Search a postcode, or tap the map",
+    );
+    await expect(page.locator("#place-query")).not.toHaveAttribute(
+      "placeholder",
       "Search a postcode, e.g. G2 1DU",
     );
 
-    // Pick 1: Desktop credit bar has short name + ⓘ button, without repeating long OGL sentence inline.
+    // Pick 1 superseded (CARD-CLARITY-31OCT-1A): short names are sheet-only;
+    // bar shows Sources (N) without short name; ⓘ still opens long licence text.
     const credit = page.getByTestId("map-credit-line");
     await expect(credit).toBeVisible();
     const visibleCredit = await credit.innerText();
-    expect(visibleCredit).toContain("Vacant land: SVDLS");
+    expect(visibleCredit).not.toContain("Vacant land: SVDLS");
+    expect(visibleCredit).toMatch(/Sources \(\d+\)/);
     expect(visibleCredit).not.toContain("Scottish Vacant and Derelict Land Survey");
 
     const infoBtn = page.getByTestId("map-credit-info");
@@ -199,6 +205,7 @@ test.describe("E-UX-28OCT-1 desktop 1280x800", () => {
     await infoBtn.click();
     const sheet = page.getByTestId("map-credit-sheet");
     await expect(sheet).toBeVisible();
+    await expect(sheet).toContainText("Vacant land: SVDLS");
     await expect(sheet).toContainText("Scottish Vacant and Derelict Land Survey");
     await page.getByTestId("map-credit-sheet-close").click();
     await expect(sheet).toHaveCount(0);

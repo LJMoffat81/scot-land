@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Downloads & API | Scot-LAND",
+  title: "Get the data | Scot-LAND",
   description:
-    "Redirects to Downloads & API. Research estimate — land rent figures are not published yet.",
+    "Redirects to Get the data. Research estimate — land rent figures are not published yet.",
 };
 
 export default function DownloadsLayout({

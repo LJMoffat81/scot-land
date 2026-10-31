@@ -66,7 +66,7 @@ const E5B_ROWS = [
   { id: "access_services", group: "land", fill: "access_services-add-fill" },
   {
     id: "contaminated_land",
-    group: "land",
+    group: "limits",
     fill: "contaminated_land-add-fill",
   },
   { id: "green_belt", group: "places", fill: "green_belt-add-fill" },

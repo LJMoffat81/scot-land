@@ -127,7 +127,7 @@ async function stubMapBackend(page: Page) {
         layers: [
           {
             id: "data_zones",
-            label: "Area boundaries",
+            label: "Local areas (data zones)",
             description: "The small areas we report on",
             licence: "OGL v3.0",
             licence_url: "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
@@ -253,6 +253,9 @@ for (const viewport of [
 
       await openLayers(page);
       await expect(page.getByTestId("layers-panel")).toContainText(
+        "Local areas (data zones)",
+      );
+      await expect(page.getByTestId("layers-panel")).not.toContainText(
         "Area boundaries",
       );
       await assertNoNeighbourhood(page);

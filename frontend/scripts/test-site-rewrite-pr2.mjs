@@ -120,11 +120,12 @@ function readSrc(relPath) {
   assert.match(glossary, /Open Government Licence/);
 }
 
-// --- Limits on use explainer (footer; Limits group removed from Layers) ---
+// --- Limits on use (display-only groupKey="limits"; explainer paragraph gone) ---
 {
   const drawer = readSrc("components/MapLayersDrawer.tsx");
-  assert.match(drawer, /Limits on use/);
-  assert.match(drawer, /map-layers-limits-explainer/);
+  assert.match(drawer, /LIMITS_ON_USE_LABEL/);
+  assert.match(drawer, /groupKey="limits"/);
+  assert.doesNotMatch(drawer, /map-layers-limits-explainer/);
 }
 
 // --- Item 9 jargon sweep (public pages, excludes /developers*) ---

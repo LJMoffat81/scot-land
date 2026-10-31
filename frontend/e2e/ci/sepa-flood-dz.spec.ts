@@ -73,7 +73,7 @@ for (const width of [1280, 390] as const) {
       await stubMapCardsBackend(page);
       await openMap(page);
       await openLayers(page);
-      await ensureLayersGroupOpen(page, "land");
+      await ensureLayersGroupOpen(page, "limits");
       await expect(page.getByTestId("layer-toggle-flood")).toHaveCount(0);
       await expect(page.getByTestId("layers-panel")).not.toContainText(/£/);
       assertConsoleClean(gate);
@@ -90,7 +90,7 @@ for (const width of [1280, 390] as const) {
         .toBe("1");
       await ensureMapZoomAtLeast(page, 11);
       await openLayers(page);
-      await ensureLayersGroupOpen(page, "land");
+      await ensureLayersGroupOpen(page, "limits");
       const toggle = page.getByTestId("layer-toggle-flood");
       await expect(toggle).toBeVisible();
       await expect(toggle).toContainText("Flood risk (SEPA)");

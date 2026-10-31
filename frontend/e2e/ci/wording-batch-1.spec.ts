@@ -210,9 +210,11 @@ test.describe("WORDING-BATCH-1 place card + MAP-CARDS (1280)", () => {
       0,
     );
     await expect(card.getByTestId("place-card-figure-why")).toHaveCount(0);
-    await expect(card.getByTestId("place-card-parts").locator("summary")).toHaveText(
-      "More about this area ▾",
+    await expect(card.getByTestId("place-card-parts")).toHaveCount(0);
+    await expect(card.getByText("More about this area", { exact: false })).toHaveCount(
+      0,
     );
+    await expect(card.getByTestId("place-card-methodology-link")).toBeVisible();
 
     await expect(page.getByRole("button", { name: "Show legend" })).toHaveCount(0);
     await expect(page.getByTestId("map-legend-panel")).toHaveCount(0);
@@ -241,9 +243,11 @@ test.describe("WORDING-BATCH-1 place card (390)", () => {
     await expect(card).not.toContainText(/map reference/i);
     await expect(card.getByTestId("place-card-figure")).toContainText(PRE_POUND);
     await expect(card.getByTestId("place-card-figure-why")).toHaveCount(0);
-    await expect(card.getByTestId("place-card-parts").locator("summary")).toHaveText(
-      "More about this area ▾",
+    await expect(card.getByTestId("place-card-parts")).toHaveCount(0);
+    await expect(card.getByText("More about this area", { exact: false })).toHaveCount(
+      0,
     );
+    await expect(card.getByTestId("place-card-methodology-link")).toBeVisible();
     await expect(card).not.toContainText(/£\d/);
     await expect(card).not.toContainText(BANNED);
     assertConsoleClean(gate);

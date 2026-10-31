@@ -450,6 +450,46 @@ _CARD_CLARITY_31OCT_1A_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# CARD-CLARITY-31OCT-1B — literal P6 allow-list; unioned with prior sets.
+_CARD_CLARITY_31OCT_1B_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/app/map-chrome.css",
+        "frontend/components/MapLayersDrawer.tsx",
+        "frontend/components/PlaceCard.tsx",
+        "frontend/components/PlaceCardStub.tsx",
+        "frontend/components/ScotlandMap.tsx",
+        "frontend/lib/aimToCover.ts",
+        "frontend/lib/layersAddRegistry.ts",
+        "frontend/lib/mapLayerRegistry.ts",
+        "frontend/lib/placeNearby.ts",
+        "frontend/e2e/ci/_mapCardsHelpers.ts",
+        "frontend/e2e/ci/card-clarity-31oct-1b.spec.ts",
+        "frontend/e2e/ci/dz-hierarchy.spec.ts",
+        "frontend/e2e/ci/layers-card-1.spec.ts",
+        "frontend/e2e/ci/layers-nav-1.spec.ts",
+        "frontend/e2e/ci/map-cards-redesign-wording.spec.ts",
+        "frontend/e2e/ci/peek-reach-1.spec.ts",
+        "frontend/e2e/ci/roadmap-aim-cover.spec.ts",
+        "frontend/e2e/ci/ui-tweaks-2.spec.ts",
+        "frontend/e2e/ci/ux10-1-place-card.spec.ts",
+        "frontend/e2e/ci/word-area-1.spec.ts",
+        "frontend/e2e/ci/wording-batch-1.spec.ts",
+        "frontend/scripts/test-map-layer-registry.mjs",
+        "frontend/scripts/test-site-rewrite-pr2.mjs",
+        "frontend/scripts/test-site-watch-pr-b.mjs",
+        # Test-only bookkeeping: Limits regroup moves contaminated_land /
+        # designations / flood drawer accordion keys to "limits"
+        # (registry group keys unchanged).
+        "frontend/e2e/ci/arch5b.spec.ts",
+        "frontend/e2e/ci/layers-add.spec.ts",
+        "frontend/e2e/ci/layers-fix-1.spec.ts",
+        "frontend/e2e/ci/layers-perf-1.spec.ts",
+        "frontend/e2e/ci/layers-perf-2.spec.ts",
+        "frontend/e2e/ci/layers-perf-3.spec.ts",
+        "frontend/e2e/ci/sepa-flood-dz.spec.ts",
+    ]
+)
+
 
 def _assert_main_py_only_arch2a_tiles_registration() -> None:
     """HEAD main.py must equal origin/main plus exactly the ARCH-2a tiles line."""
@@ -487,6 +527,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _DEFAULT_3D_VIEW_FRONTEND_ALLOW
                 | _UX_POLISH_28OCT_1_FRONTEND_ALLOW
                 | _CARD_CLARITY_31OCT_1A_FRONTEND_ALLOW
+                | _CARD_CLARITY_31OCT_1B_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

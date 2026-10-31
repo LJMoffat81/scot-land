@@ -1835,6 +1835,8 @@ button.basemap-switcher[aria-pressed="true"] {
   .map-panel-slot--peek .place-card-agr-scope,
   .map-panel-slot--peek .place-card-pre-pound,
   .map-panel-slot--peek .place-card-fact,
+  .map-panel-slot--peek .place-card-facts,
+  .map-panel-slot--peek .place-card-how,
   .map-panel-slot--peek .place-card-row6,
   .map-panel-slot--peek .place-card-parts {
     display: none !important;

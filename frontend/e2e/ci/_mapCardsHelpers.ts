@@ -489,8 +489,9 @@ export async function openLayers(page: Page) {
   await expect(page.getByTestId("layers-panel")).toBeVisible({
     timeout: 15_000,
   });
-  // Belt-and-braces: land + places hold the toggles most specs assert on.
+  // Belt-and-braces: land + places + limits hold the toggles most specs assert on.
   await ensureLayersGroupOpen(page, "land");
+  await ensureLayersGroupOpen(page, "limits");
   await ensureLayersGroupOpen(page, "places");
 }
 

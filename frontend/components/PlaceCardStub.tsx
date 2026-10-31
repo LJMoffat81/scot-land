@@ -46,6 +46,8 @@ type PlaceCardStubProps = {
   gridSquareLine?: string | null;
   /** ARCH-5c — live map zoom forwarded to PlaceCard data-level. */
   mapZoom?: number;
+  /** SEPA flood Data Zone table has rows — unlocks the flood nearby fact. */
+  floodLoaded?: boolean;
 };
 
 /** Map HUD place card — UX-10 skeleton; thin wrapper over PlaceCard. */
@@ -57,6 +59,7 @@ export default function PlaceCardStub({
   onShowScotland,
   gridSquareLine = null,
   mapZoom,
+  floodLoaded = false,
 }: PlaceCardStubProps) {
   const row6 = gridSquareLine ?? place.gridSquareLine ?? null;
   if (place.noMatch) {
@@ -80,6 +83,7 @@ export default function PlaceCardStub({
         fromAddressSearch={Boolean(place.fromAddressSearch)}
         gridSquareLine={row6}
         mapZoom={mapZoom}
+        floodLoaded={floodLoaded}
       />
     );
   }
@@ -138,6 +142,7 @@ export default function PlaceCardStub({
       dwellings={place.dwellings ?? merged.dwellings ?? null}
       gridSquareLine={row6}
       mapZoom={mapZoom}
+      floodLoaded={floodLoaded}
     />
   );
 }

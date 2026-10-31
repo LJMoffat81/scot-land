@@ -39,7 +39,8 @@ assert.doesNotMatch(
   "map attribution must not default to 2011",
 );
 const layerRegistry = read(join(frontendRoot, "lib/mapLayerRegistry.ts"));
-assert.match(layerRegistry, /Area boundaries/);
+assert.match(layerRegistry, /Local areas \(data zones\)/);
+assert.doesNotMatch(layerRegistry, /Area boundaries/);
 assert.doesNotMatch(layerRegistry, /neighbo(u)?rhood/i);
 assert.match(layerRegistry, /DZ2022_EXTRACTION_YEAR/);
 const dzAttr = read(join(frontendRoot, "lib/dzAttribution.mjs"));

@@ -9,14 +9,13 @@ registerOpenFreeMapFontStub();
  * Search opens at half. Handle taps cycle peek → half → full → peek.
  * A 250px drag down from half snaps to peek. A 60px drag stays put.
  * Peek keeps the place name, the Annual Ground Rent line, and the
- * disclaimer visible. "More about this area" stays hidden.
+ * disclaimer visible. Empty fold and facts stay hidden in peek.
  * Widths: 390 and 360. Console/pageerror gate.
  */
 
 const POSTCODE = "EH1 1YZ";
 const PLACE_NAME = "Old Town, Princes Street and Leith Street";
 const AGR_LINE = "Annual Ground Rent";
-const MORE_ABOUT = "More about this area";
 const DRAG_DOWN_PX = 250;
 const SHORT_DRAG_PX = 60;
 
@@ -171,9 +170,16 @@ async function assertPeekContent(page: Page) {
   await expect(agr).toBeVisible();
   await expect(agr).toHaveText(AGR_LINE);
   await expect(page.getByTestId("place-card-footer")).toBeVisible();
-  const more = page.getByText(MORE_ABOUT, { exact: false });
-  await expect(more).toHaveCount(1);
-  await expect(more).toBeHidden();
+  await expect(page.getByTestId("place-card-parts")).toHaveCount(0);
+  await expect(page.getByText("More about this area", { exact: false })).toHaveCount(
+    0,
+  );
+  const facts = page.getByTestId("place-card-facts");
+  if ((await facts.count()) > 0) {
+    await expect(facts).toBeHidden();
+  }
+  const how = page.getByTestId("place-card-how-we-work");
+  await expect(how).toBeHidden();
 }
 
 for (const viewport of VIEWPORTS) {

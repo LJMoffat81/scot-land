@@ -83,7 +83,7 @@ export const AIM_TO_COVER: readonly AimGroup[] = [
       },
       {
         id: "monopoly-and-other-artificial-privileges",
-        name: "Monopoly and other artificial privileges",
+        name: "Monopolies and other special privileges",
         plain:
           "Excess return from barriers to entry or a legal privilege.",
         status: "Later",

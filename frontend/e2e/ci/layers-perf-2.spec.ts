@@ -131,7 +131,7 @@ test.describe("LAYERS-PERF-2", () => {
     await openMap(page);
     await waitForMap(page);
     await openLayers(page);
-    await ensureLayersGroupOpen(page, "nature");
+    await ensureLayersGroupOpen(page, "limits");
     await jump(page, 6);
     const toggle = page.getByTestId("layer-toggle-designations");
     await toggle.click();

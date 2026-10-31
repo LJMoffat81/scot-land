@@ -145,6 +145,10 @@ assert.equal(
 );
 assert.equal(
   MAP_LAYER_REGISTRY.find((e) => e.id === "data_zones")?.label,
+  "Local areas (data zones)",
+);
+assert.notEqual(
+  MAP_LAYER_REGISTRY.find((e) => e.id === "data_zones")?.label,
   "Area boundaries",
 );
 assert.equal(

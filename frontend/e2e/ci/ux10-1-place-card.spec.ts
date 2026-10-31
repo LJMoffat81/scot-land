@@ -200,13 +200,11 @@ async function assertSkeletonCopy(page: Page) {
   await expect(page.getByTestId("place-card-map-reference")).toHaveCount(0);
   await expect(page.getByTestId("place-card-outline-status")).toHaveCount(0);
 
-  const parts = page.getByTestId("place-card-parts");
-  await expect(parts).toBeVisible();
-  await expect(parts.locator("summary")).toHaveText("More about this area ▾");
-  await parts.locator("summary").click();
-  await expect(page.getByTestId("place-card-how-homes-only")).toHaveText(
-    HOW_HOMES,
+  await expect(page.getByTestId("place-card-parts")).toHaveCount(0);
+  await expect(page.getByText("More about this area", { exact: false })).toHaveCount(
+    0,
   );
+  await expect(page.getByTestId("place-card-how-homes-only")).toHaveCount(0);
   await expect(page.getByTestId("place-card-methodology-link")).toHaveText(
     HOW_LINK,
   );
@@ -217,6 +215,8 @@ async function assertSkeletonCopy(page: Page) {
   await expect(page.getByTestId("place-card-footer")).toHaveText(
     EXPERIMENTAL_FOOTER,
   );
+  // HOW_HOMES stays locked for when a live figure restores the fold.
+  expect(HOW_HOMES.length).toBeGreaterThan(0);
   await expect(card).not.toContainText("£");
   await expect(card).not.toContainText(/Land Value Tax|\bLVT\b/);
   const cardHtml = await card.innerHTML();

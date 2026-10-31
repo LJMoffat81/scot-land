@@ -212,7 +212,8 @@ test.describe("LAYERS-ADD-1 paint", () => {
     await openLayers(page);
 
     for (const row of PRESENT_IS_ROWS) {
-      const group = row.toggle === "contaminated_land" ? "land" : "places";
+      const group =
+        row.toggle === "contaminated_land" ? "limits" : "places";
       await ensureLayersGroupOpen(page, group);
       const toggle = page.getByTestId(`layer-toggle-${row.toggle}`);
       await expect(toggle).toBeVisible();

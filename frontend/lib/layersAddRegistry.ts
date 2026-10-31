@@ -62,7 +62,7 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
     id: "dz2022",
     layerId: "dz2022_boundaries",
     group: "places",
-    label: "Area boundaries",
+    label: "Local areas (data zones)",
     family: "context",
     minzoom: 0,
     maxzoom: 20,

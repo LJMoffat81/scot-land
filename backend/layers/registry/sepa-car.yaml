@@ -16,13 +16,16 @@ source:
 geometry: point
 refresh: {cron: "0 5 1 * *", max_mb: 100, max_s: 600}
 serve: {mode: pmtiles, simplify_m: 0, precision_dp: 6, max_mb: 15}
-zoom: {min: 0, max: 14, low_zoom: cluster}
+# max 12: point cluster profile (cluster maxzoom 11); z13-14 add bytes not detail.
+zoom: {min: 0, max: 12, low_zoom: cluster}
 style:
   circle: {circle-color: "#0072B2", circle-radius: 4, circle-stroke-width: 1, circle-stroke-color: "#ffffff", circle-opacity: 0.85}
 legend:
   - {label: "SEPA CAR water environment licences", color: "#0072B2"}
 lineage: {derived_from: [], method: source, roll_up_to: [dz2022, council, scotland]}
-keep_fields: [car_layer, authorisation_description, authorisation_level, authorisation_status, regulatory_area, authorisation_activity, category]
+# authorisation_description dropped (BATCHA-TILES-FIX-2B): free text with holder
+# site addresses / postcodes; ~60% of tile bytes; no frontend reads it.
+keep_fields: [car_layer, authorisation_level, authorisation_status, regulatory_area, authorisation_activity, category]
 tiles:
   budget:
     total_mb: 15

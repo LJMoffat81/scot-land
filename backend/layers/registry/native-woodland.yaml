@@ -18,16 +18,21 @@ source:
 geometry: polygon
 refresh: {cron: "0 5 1 1 *", max_mb: 300, max_s: 600}
 serve: {mode: pmtiles, simplify_m: 10, precision_dp: 6, max_mb: 15}
-zoom: {min: 0, max: 14, low_zoom: coalesce}
+# max 11: data is simplified to serve.simplify_m 10 m; z11 quantises to ~2.7 m
+# (half-grid 1.35 m <= simplify_m/5), so z12-14 add bytes, not detail.
+zoom: {min: 0, max: 11, low_zoom: coalesce}
 style:
   fill: {fill-color: "#009E73", fill-opacity: 0}
   line: {line-color: "#009E73", line-width: 1.2, line-opacity: 0.85, line-dasharray: [2, 1.5]}
 legend:
   - {label: "Native Woodland Survey of Scotland", color: "#009E73"}
 lineage: {derived_from: [], method: source, roll_up_to: [dz2022, council, scotland]}
-keep_fields: [woodland_type, canopy_pct, native_pct, dom_habitat, hectares, maturity]
+# woodland_type only (BATCHA-TILES-FIX-2B): other attributes unused by frontend;
+# full official NWSS (~95,814 polygons) measured 17.46 MB after simplify/z11.
+keep_fields: [woodland_type]
+# Per-layer budget: measured 17.46 MB total / 2.09 MB z0-7; budget = measured + ~25%.
 tiles:
   budget:
-    total_mb: 15
+    total_mb: 22
     tile_kb: 500
-    z0_7_mb: 2
+    z0_7_mb: 2.7

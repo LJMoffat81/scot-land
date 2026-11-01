@@ -17,7 +17,9 @@ source:
 geometry: polygon
 refresh: {cron: "0 5 1 * *", max_mb: 200, max_s: 600}
 serve: {mode: pmtiles, simplify_m: 10, precision_dp: 6, max_mb: 15}
-zoom: {min: 0, max: 14, low_zoom: simplify}
+# max 11: data is simplified to serve.simplify_m 10 m; z11 quantises to ~2.7 m
+# (half-grid 1.35 m <= simplify_m/5), so z12-14 add bytes, not detail.
+zoom: {min: 0, max: 11, low_zoom: simplify}
 style:
   fill: {fill-color: "#009E73", fill-opacity: 0}
   line: {line-color: "#009E73", line-width: 1.6, line-opacity: 0.9, line-dasharray: [4, 1.5, 1, 1.5]}

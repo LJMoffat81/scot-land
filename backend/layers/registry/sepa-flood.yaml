@@ -16,17 +16,28 @@ source:
   where: "TRUE"
 geometry: polygon
 refresh: {cron: "0 5 1 1 *", max_mb: 300, max_s: 600}
-serve: {mode: pmtiles, simplify_m: 10, precision_dp: 6, max_mb: 15}
-zoom: {min: 0, max: 14, low_zoom: simplify}
+serve: {mode: pmtiles, simplify_m: 10, precision_dp: 6, max_mb: 15, display_note: "Features smaller than one tile pixel may not render; analysis uses the full SEPA data in PostGIS."}
+# max 11: data is simplified to serve.simplify_m 10 m; z11 quantises to ~2.7 m
+# (half-grid 1.35 m <= simplify_m/5), so z12-14 add bytes, not detail.
+zoom: {min: 0, max: 11, low_zoom: coalesce}
 style:
   fill: {fill-color: "#0072B2", fill-opacity: 0}
   line: {line-color: "#0072B2", line-width: 1.4, line-opacity: 0.85, line-dasharray: [3, 2]}
 legend:
   - {label: "Medium-likelihood flood extent (SEPA v3.0)", color: "#0072B2"}
 lineage: {derived_from: [], method: source, roll_up_to: [dz2022, council, scotland]}
-keep_fields: [layer_id, source, probability, scenario, map_type, version]
+keep_fields: [source]
+# Per-layer budget (BATCHA-TILES-FIX-2 §2.4): after simplify_m 10, z11, coalesce and
+# source-only, the full official v3.0 extent (47,109 polygons) built through
+# tiles.build at 16.64 MB total, 1.37 MB z0-7; budget = measured + ~25%.
+# GIS GO (b), 1 Nov 2026: keep every polygon at z11 (no tippecanoe tiny-polygon
+# dropping); this layer only.
 tiles:
+  no_tiny_polygon_reduction: true
+  # GIS GO (1): real build 18.79 MB, z0-7 2.482 MB, max tile 375,638 B,
+  # 16 of 47,109 sub-pixel polygons absent at z11 (each logged with id + area).
+  max_culled: 16
   budget:
-    total_mb: 15
-    tile_kb: 500
-    z0_7_mb: 2
+    total_mb: 23.5
+    tile_kb: 459
+    z0_7_mb: 3.0

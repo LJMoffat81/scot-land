@@ -97,3 +97,35 @@ def test_s9r_real_check4_score_matches_committed_report() -> None:
 
     live_primary = score_check4_non_gbp(prim_zones)
     assert live_primary == committed["primary"]
+
+
+@pytest.mark.real
+def test_s10r_am3_reporting_keeps_2023_gate_fields_byte_identical() -> None:
+    """AM-3 item 5: with AM-3 reporting on, the 2023 primary gate fields are byte-identical to the committed report."""
+    committed = json.loads(_require_real(COMMITTED_REPORT).read_text(encoding="utf-8"))
+    prim_rows = json.loads(_require_real(PRIMARY_REAL, committed["pins"]["primary_estimates_2023"]).read_text(encoding="utf-8"))["zones"]
+    ur6_map: dict[str, int] = {}
+    with _require_real(UR6_REAL, PIN_TABLE["ur6"]).open(encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            ur6_map[row["code"].strip()] = int(row["ur6_class"])
+    drc_map = json.loads(_require_real(DRC_REAL, committed["pins"]["drc_json"]).read_text(encoding="utf-8"))
+    f8 = build_check4_f8(
+        [r["zone"] for r in prim_rows], brma_rents=BRMA_RENTS_REAL, brma_share=BRMA_SHARE_REAL,
+        bedroom_bands=BEDROOM_BANDS_REAL, crosswalk=CROSSWALK_REAL, ur6=UR6_REAL, drc_map=drc_map,
+    )
+    cap_map = {r["zone"]: r for r in f8["zones"]}
+    zones = []
+    for r in prim_rows:
+        unavail = bool(r.get("unavailable") or r.get("model_failure"))
+        zones.append({
+            "zone": r["zone"], "ur6": ur6_map[r["zone"]], "unavailable": unavail,
+            "model_failure": bool(r.get("model_failure", False)),
+            "residual_land": 0.0 if unavail else float(r["land_per_home"]),
+            "capitalised_land": float(cap_map[r["zone"]]["capitalised_land"]),
+        })
+    live = score_check4_non_gbp(zones, am3_reporting=True)
+    gate = {k: live[k] for k in committed["primary"]}
+    assert json.dumps(gate, sort_keys=True) == json.dumps(committed["primary"], sort_keys=True)
+    assert live["failing_classes"] == [2, 4, 6]
+    split = live["unavailable_split"]
+    assert split["negative_residual"] + split["model_failure"] + split["no_cell"] == committed["primary"]["n_unavailable"]

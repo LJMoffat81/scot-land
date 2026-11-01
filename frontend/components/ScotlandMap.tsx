@@ -5401,6 +5401,10 @@ export default function ScotlandMap() {
     if (!map) return;
     const vw = typeof window !== "undefined" ? window.innerWidth : 1280;
     const next = nextTogglePitch(map.getPitch(), vw);
+    // E3D-FIX-1: end any in-flight camera move first. Its moveend runs the
+    // URL sync with the old pitch; it must fire before (not after) the
+    // toggle writes the new p=/br=.
+    map.stop();
     replaceMapUrl({ p: next.pitch, br: next.bearing });
     if (prefersReducedMotion()) {
       map.jumpTo({ pitch: next.pitch, bearing: next.bearing });

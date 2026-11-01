@@ -263,7 +263,7 @@ for (const vp of [
           { timeout: 10_000 },
         )
         .toBeCloseTo(0, 0);
-      expect(page.url()).toContain("p=0");
+      await expect(page).toHaveURL(/[?&]p=0(&|$)/, { timeout: 10_000 });
 
       // Click toggle again -> returns to 3D tilted view
       await toggle.click();
@@ -281,7 +281,17 @@ for (const vp of [
           { timeout: 10_000 },
         )
         .toBeCloseTo(vp.expectedPitch, 0);
-      expect(page.url()).toContain(`p=${vp.expectedPitch}`);
+      // E3D-FIX-1: URL sync runs on moveend, after getPitch() reaches the
+      // target; wait for it. Exact match: p=55 (390) / p=60 (1280) only.
+      await expect(page).toHaveURL(
+        new RegExp(`[?&]p=${vp.expectedPitch}(&|$)`),
+        { timeout: 10_000 },
+      );
+      // Settled camera and URL must agree after the 400 ms ease ends.
+      await page.waitForTimeout(600);
+      expect(new URL(page.url()).searchParams.get("p")).toBe(
+        String(vp.expectedPitch),
+      );
 
       assertConsoleClean(gate);
     });

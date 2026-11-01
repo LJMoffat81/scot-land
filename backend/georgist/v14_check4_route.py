@@ -645,6 +645,12 @@ ADDENDUM5_DOC = "AM2_addendum5_check4_land_route_r5.md"
 ADDENDUM5_SHA256 = "62ca5c561246b4990c575f8a1ce4e8c0c4f220b5cbbfbf64f8fbdf9c75b19c56"
 ADDENDUM5_SIGNATURES_DOC = "AM2_addendum5_r5_signatures.md"
 ADDENDUM5_SIGNATURES_SHA256 = "6e331f2c224b0f319e01dc0130a191ccd3aa7c96ee17ac9da0950badd61058da"
+AM3_DOC = "AM3_check4_land_route_2024.md"
+AM3_SHA256 = "8bbcdfbe02d202bdc62e647d5e8ba2ba24058ff57925a114df4893334a3e13d9"
+AM3_SIGNATURES_DOC = "AM3_check4_land_route_2024_signatures_r2.md"
+AM3_SIGNATURES_SHA256 = "7b916b37f13164bf1e9f52a5502a5f879d4c4bb41033f0c549016db06c04f8ec"
+AM3_2024_INPUTS = ("rents", "drc", "prices")
+AM3_ZONE_FLAGS = ("unavailable", "model_failure", "no_cell")
 FORBIDDEN_REPORT_SUBSTRINGS = ("\u00a3", "_gbp", "GBP", "Pounds")
 FORBIDDEN_MONEY_KEYS = frozenset(
     {
@@ -702,8 +708,13 @@ def score_check4_non_gbp(
     *,
     national_max_abs: float = 0.25,
     class_max_abs: float = 0.40,
+    am3_reporting: bool = False,
 ) -> dict[str, Any]:
-    """Score Check 4 for one estimator and strip all money-level medians."""
+    """Score Check 4 for one estimator and strip all money-level medians.
+
+    ``am3_reporting`` (AM-3 M7) adds reporting-only keys after the gate is computed;
+    with it off the output is byte-identical to the v1.5 (#280) shape.
+    """
     from georgist import surface_v14 as v14
 
     if not isinstance(zones, (list, tuple)) or len(zones) == 0:
@@ -792,8 +803,174 @@ def score_check4_non_gbp(
         ),
         "by_ur6": by_ur6,
     }
+    if am3_reporting:
+        out.update(_am3_reporting_fields(zones, class_res_pos))
     assert_non_gbp_report(out)
     return out
+
+
+def _am3_flag(z: Mapping[str, Any], name: str) -> bool:
+    if name not in z:
+        return False
+    val = z[name]
+    if not isinstance(val, bool):
+        raise Check4RouteError(
+            f"V14_CHECK4: ERROR: score zone flag {name}: expected bool, got {type(val).__name__}"
+        )
+    return val
+
+
+def _am3_unavailable_kind(z: Mapping[str, Any]) -> str | None:
+    """Classify one zone under AM-3 M7. Precedence: model_failure > no_cell > negative_residual.
+
+    Only zones that the gate zero-fills (``unavailable or model_failure``) are classified,
+    so the three counts always sum to ``n_unavailable``.
+    """
+    unavailable, model_failure, no_cell = (_am3_flag(z, f) for f in AM3_ZONE_FLAGS)
+    if not (unavailable or model_failure):
+        return None
+    if model_failure:
+        return "model_failure"
+    if no_cell:
+        return "no_cell"
+    return "negative_residual"
+
+
+def _am3_reporting_fields(
+    zones: Sequence[Mapping[str, Any]],
+    class_res_pos: Mapping[str, bool],
+) -> dict[str, Any]:
+    kinds = ("negative_residual", "model_failure", "no_cell")
+    split = {k: 0 for k in kinds}
+    by_class: dict[str, dict[str, int]] = {}
+    no_cell_not_zero_filled = 0
+    for z in zones:
+        kind = _am3_unavailable_kind(z)
+        cls = by_class.setdefault(str(int(z["ur6"])), {k: 0 for k in kinds})
+        if kind is None:
+            if _am3_flag(z, "no_cell"):
+                no_cell_not_zero_filled += 1
+            continue
+        split[kind] += 1
+        cls[kind] += 1
+    return {
+        "failing_classes": sorted(int(k) for k, ok in class_res_pos.items() if not ok),
+        "unavailable_split": {**split, "zero_filled": sum(split.values())},
+        "unavailable_split_by_ur6": {k: by_class[k] for k in sorted(by_class, key=int)},
+        "no_cell_not_zero_filled": no_cell_not_zero_filled,
+    }
+
+
+_AM3_SUMMARY_KEYS = ("status", "pass", "reason", "n_zones", "national_median_gap", "national_within_band")
+
+
+def _am3_summary(zones: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    if not zones:
+        return {"gating": False, "status": "not_computable", "detail": "no zones after exclusion"}
+    scored = score_check4_non_gbp(list(zones))
+    out: dict[str, Any] = {"gating": False}
+    out.update({k: scored[k] for k in _AM3_SUMMARY_KEYS})
+    out["by_ur6_median_relative_gap"] = {k: v["median_relative_gap"] for k, v in scored["by_ur6"].items()}
+    return out
+
+
+def check4_sensitivities(zones: Sequence[Mapping[str, Any]], *, estimator: str) -> dict[str, Any]:
+    """AM-3 M6 sensitivities S1-S4. Reported beside the gate; never gating; no money levels.
+
+    Works on shallow copies so no input zone is mutated (the gate result cannot move).
+    """
+    if estimator not in ("primary", "secondary"):
+        raise Check4RouteError(
+            f"V14_CHECK4: ERROR: sensitivity estimator: expected primary or secondary, got {estimator!r}"
+        )
+    zs = [dict(z) for z in zones]
+    s1 = _am3_summary([z for z in zs if _am3_unavailable_kind(z) is None])
+    if all("capitalised_land_no_plus4" in z for z in zs):
+        s2 = _am3_summary([{**z, "capitalised_land": z["capitalised_land_no_plus4"]} for z in zs])
+    else:
+        s2 = {"gating": False, "status": "not_computable", "detail": "input absent: capitalised_land_no_plus4"}
+    if estimator == "secondary":
+        s3 = _am3_summary([z for z in zs if not _am3_flag(z, "no_cell")])
+    else:
+        s3 = {"gating": False, "status": "not_applicable", "detail": "secondary only"}
+    if all("drc_gt_price" in z and "drc_gt_capitalised_property" in z for z in zs):
+        s4_by: dict[str, dict[str, int]] = {}
+        for z in zs:
+            row = s4_by.setdefault(str(int(z["ur6"])), {"drc_gt_price": 0, "drc_gt_capitalised_property": 0})
+            for key in ("drc_gt_price", "drc_gt_capitalised_property"):
+                if _am3_flag(z, key):
+                    row[key] += 1
+        s4: dict[str, Any] = {"gating": False, "status": "reported", "by_ur6": {k: s4_by[k] for k in sorted(s4_by, key=int)}}
+    else:
+        s4 = {"gating": False, "status": "not_computable", "detail": "input absent: drc_gt_price/drc_gt_capitalised_property"}
+    out = {
+        "gating": False,
+        "S1_exclude_zero_filled": s1,
+        "S2_no_plus4_uplift": s2,
+        "S3_secondary_no_cell_excluded": s3,
+        "S4_drc_exceeds_counts": s4,
+    }
+    assert_non_gbp_report(out)
+    return out
+
+
+def check_2024_inputs(
+    inputs: Mapping[str, Path] | None,
+    pins: Mapping[str, str] | None,
+) -> dict[str, str] | None:
+    """AM-3 M5: return a NOT_RUN reason for the first missing/unpinned/altered 2024 input, else None.
+
+    Checks are in the fixed order rents, drc, prices; file presence before pin before hash.
+    """
+    inputs = inputs or {}
+    pins = pins or {}
+    for name in AM3_2024_INPUTS:
+        path = inputs.get(name)
+        if not isinstance(path, Path) or not path.is_file():
+            return {"input": name, "detail": "file absent"}
+        pin = pins.get(name)
+        if not isinstance(pin, str) or not _FULL_SHA_RE.fullmatch(pin):
+            return {"input": name, "detail": "pin absent"}
+        if sha256_file(path) != pin:
+            return {"input": name, "detail": "pin mismatch"}
+    return None
+
+
+def _not_run_report(*, missing: Mapping[str, str], pins: Mapping[str, str]) -> dict[str, Any]:
+    from georgist import surface_v14 as v14
+
+    reason = f"source unavailable: {missing['input']}"
+    est = {"check": "4", "status": "NOT_RUN", "pass": False, "reason": reason, "detail": missing["detail"]}
+    report = {
+        "kind": "v15_check4_score_report_v1",
+        "publish_level": "internal",
+        "methods_alignment": "v1.5",
+        "pr": "v15_check4_score",
+        "gbp_display": False,
+        "year": 2024,
+        "status": "NOT_RUN",
+        "reason": reason,
+        "method_authority": _am3_authority(),
+        "pins": {str(k): str(v) for k, v in sorted(pins.items())},
+        "primary": dict(est),
+        "secondary": dict(est),
+        "publication": v14.apply_no_switch_publication(primary_gating_pass=False, secondary_gating_pass=False),
+    }
+    assert_non_gbp_report(report)
+    return report
+
+
+def _am3_authority() -> dict[str, str]:
+    return {
+        "addendum": ADDENDUM5_DOC,
+        "addendum_sha256": ADDENDUM5_SHA256,
+        "signatures": ADDENDUM5_SIGNATURES_DOC,
+        "signatures_sha256": ADDENDUM5_SIGNATURES_SHA256,
+        "am3": AM3_DOC,
+        "am3_sha256": AM3_SHA256,
+        "am3_signatures": AM3_SIGNATURES_DOC,
+        "am3_signatures_sha256": AM3_SIGNATURES_SHA256,
+    }
 
 
 def build_v15_check4_score_report(
@@ -811,12 +988,24 @@ def build_v15_check4_score_report(
     plus4_applied_zones: int = 1101,
     cancellation_zones_checked: int = 6246,
     cancellation_max_rel_err: float = 0.0,
+    inputs_2024: Mapping[str, Path] | None = None,
+    pins_2024: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Assemble the committed non-GBP v1.5 Check 4 score report artifact."""
+    """Assemble the committed non-GBP v1.5 Check 4 score report artifact.
+
+    Year 2024 (AM-3): input pins are verified before any zone is scored; a missing or
+    altered pin returns a NOT_RUN report that can never pass. AM-3 reporting fields and
+    S1-S4 sensitivities are written for 2024 only; 2023 output is unchanged.
+    """
     from georgist import surface_v14 as v14
 
     if type(year) is not int or year not in (2023, 2024):
         raise Check4RouteError(f"V14_CHECK4: REFUSED: year: expected 2023 or 2024, got {year!r}")
+    if year == 2024:
+        missing = check_2024_inputs(inputs_2024, pins_2024)
+        if missing is not None:
+            return _not_run_report(missing=missing, pins=pins)
+    am3 = year == 2024
     if (
         isinstance(cancellation_max_rel_err, bool)
         or not isinstance(cancellation_max_rel_err, (int, float))
@@ -834,8 +1023,8 @@ def build_v15_check4_score_report(
     if int(secondary_scored_zones) + int(secondary_no_cell_zones) != len(secondary_zones):
         raise Check4RouteError("V14_CHECK4: ERROR: coverage: expected secondary_scored + no_cell == priced_zones, got mismatch")
 
-    prim_score = score_check4_non_gbp(primary_zones)
-    sec_score = score_check4_non_gbp(secondary_zones)
+    prim_score = score_check4_non_gbp(primary_zones, am3_reporting=am3)
+    sec_score = score_check4_non_gbp(secondary_zones, am3_reporting=am3)
     publication = v14.apply_no_switch_publication(
         primary_gating_pass=bool(prim_score["pass"]),
         secondary_gating_pass=bool(sec_score["pass"]),
@@ -853,7 +1042,7 @@ def build_v15_check4_score_report(
         "year": year,
         "status": "scored",
         "previous_v14_status": "NOT_RUN",
-        "method_authority": {
+        "method_authority": _am3_authority() if am3 else {
             "addendum": ADDENDUM5_DOC,
             "addendum_sha256": ADDENDUM5_SHA256,
             "signatures": ADDENDUM5_SIGNATURES_DOC,
@@ -894,5 +1083,12 @@ def build_v15_check4_score_report(
             "addendum5_deduction": ADDENDUM5_DEDUCTION_DISCLOSURE,
         },
     }
+    if am3:
+        report["pins_2024"] = {k: str((pins_2024 or {})[k]) for k in AM3_2024_INPUTS}
+        report["sensitivities"] = {
+            "gating": False,
+            "primary": check4_sensitivities(primary_zones, estimator="primary"),
+            "secondary": check4_sensitivities(secondary_zones, estimator="secondary"),
+        }
     assert_non_gbp_report(report)
     return report

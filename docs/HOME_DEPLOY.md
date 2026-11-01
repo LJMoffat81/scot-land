@@ -239,7 +239,7 @@ Refusal strings (fail closed; do not ignore):
 Ingest order on the home PC (after redeploying compose with the state mount):
 
 1. `python -m etl.ingest_ces_aquaculture` (fills `ces_aquaculture_leases`; empty table is refused before clip).
-2. Woodland: `python -m etl.ingest_woodland_layers --from-wfs --replace --check-counts` for both NFI and native woodland. **Never** use `--fixture` on the PC.
+2. Woodland (never `--fixture` on the PC): `python -m etl.ingest_woodland_layers --layer nfi --from-wfs --replace --check-counts` and the same with `--layer native_woodland`.
 3. `python -m etl.run_layer councils` — councils needs **no** prior ingest; Boundary-Line downloads into `LAYER_CACHE_DIR`.
 4. `python -m etl.run_layer ces-aquaculture`
 5. `python -m etl.run_layer nfi`

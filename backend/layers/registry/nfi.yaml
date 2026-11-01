@@ -20,16 +20,21 @@ geometry: polygon
 # 2,019 B WKB ⇒ ~400 MiB full set. 600 ≈ 1.5× headroom (this layer only).
 refresh: {cron: "0 5 1 1 *", max_mb: 600, max_s: 600}
 serve: {mode: pmtiles, simplify_m: 10, precision_dp: 6, max_mb: 15}
-zoom: {min: 0, max: 14, low_zoom: coalesce}
+# max 11: data is simplified to serve.simplify_m 10 m; z11 quantises to ~2.7 m
+# (half-grid 1.35 m <= simplify_m/5), so z12-14 add bytes, not detail.
+zoom: {min: 0, max: 11, low_zoom: coalesce}
 style:
   fill: {fill-color: "#009E73", fill-opacity: 0}
   line: {line-color: "#009E73", line-width: 1.2, line-opacity: 0.85, line-dasharray: [3, 1.5]}
 legend:
   - {label: "National Forest Inventory woodland", color: "#009E73"}
 lineage: {derived_from: [], method: source, roll_up_to: [dz2022, council, scotland]}
-keep_fields: [category, ift_ioa, area_ha]
+# category only (BATCHA-TILES-FIX-2B): other attributes unused by frontend;
+# full official NFI measured 34.14 MB after simplify/z11.
+keep_fields: [category]
+# Per-layer budget: measured 34.14 MB total / 2.97 MB z0-7; budget = measured + ~25%.
 tiles:
   budget:
-    total_mb: 15
+    total_mb: 43
     tile_kb: 500
-    z0_7_mb: 2
+    z0_7_mb: 3.7

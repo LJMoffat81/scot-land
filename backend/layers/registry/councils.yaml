@@ -27,7 +27,8 @@ refresh:
   max_s: 600
 serve:
   mode: pmtiles
-  simplify_m: 25
+  # 0 (GIS, BATCHA-TILES-FIX-2B): shared council/zone edges must stay coincident.
+  simplify_m: 0
   precision_dp: 6
   max_mb: 15
 zoom:

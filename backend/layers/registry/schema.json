@@ -178,6 +178,7 @@
           "enum": ["geojson", "pmtiles", "raster"]
         },
         "simplify_m": { "type": "number", "minimum": 0 },
+        "display_note": { "type": "string", "minLength": 1, "maxLength": 200 },
         "precision_dp": {
           "type": "integer",
           "minimum": 4,
@@ -284,6 +285,13 @@
       "additionalProperties": false,
       "required": ["budget"],
       "properties": {
+        "no_tiny_polygon_reduction": {
+          "type": "boolean"
+        },
+        "max_culled": {
+          "type": "integer",
+          "minimum": 0
+        },
         "budget": {
           "type": "object",
           "additionalProperties": false,

@@ -9,6 +9,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import logging
 import json
 import os
 import re
@@ -24,7 +25,7 @@ import psycopg2
 import psycopg2.extras
 
 from layers.registry.loader import RegistryError, registry
-from tiles.measure import measure_pmtiles
+from tiles.measure import distinct_ids_at_zoom, measure_pmtiles
 from tiles.profiles import ProfileError, tippecanoe_flags
 from tiles.storage import LocalStorage, StorageError, load_storage
 
@@ -102,6 +103,70 @@ def _load_manifest(path: Path) -> dict[str, Any]:
     return data
 
 
+logger = logging.getLogger(__name__)
+
+SIMPLIFY_NOTE = (
+    "Display geometry simplified to {n} m; official boundaries unsimplified for analysis"
+)
+
+
+def display_simplification(raw: dict[str, Any]) -> dict[str, Any] | None:
+    """Manifest disclosure for any layer whose ``serve.simplify_m`` > 0 (GIS condition 5/7)."""
+    n = float((raw.get("serve") or {}).get("simplify_m") or 0)
+    if n <= 0:
+        return None
+    label = f"{n:g}"
+    note = SIMPLIFY_NOTE.format(n=label)
+    extra = (raw.get("serve") or {}).get("display_note")
+    if extra:
+        note = f"{note}. {extra}"
+    return {"simplify_m": n, "note": note}
+
+
+def report_culled(
+    conn: Any,
+    layer_id: str,
+    *,
+    present_ids: set[str],
+    n_features: int,
+    zoom: int,
+    max_culled: int | None,
+) -> int:
+    """Log every feature absent at ``zoom`` (id + area) and enforce ``tiles.max_culled``.
+
+    Culled = distinct table ``feature_id`` values with no presence in any
+    tile at ``zoom`` (row count minus tile ids would miscount duplicate ids).
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            f"SELECT feature_id, sum(ST_Area(geom)) FROM layers.{_q_ident(layer_id)} "
+            "WHERE NOT (feature_id = ANY(%s)) GROUP BY feature_id ORDER BY feature_id",
+            (sorted(present_ids),),
+        )
+        rows = cur.fetchall()
+    culled = len(rows)
+    if culled == 0:
+        return 0
+    logger.warning(
+        "TILES: %s: %d of %d features absent at z%d (tippecanoe low-zoom culling)",
+        layer_id, culled, n_features, zoom,
+    )
+    for fid, area in rows:
+        logger.warning("TILES: %s: culled z%d id=%s area_m2=%.1f", layer_id, zoom, fid, area)
+    if max_culled is not None and culled > max_culled:
+        raise TilesError(
+            f"TILES: {layer_id}: {culled} features culled at z{zoom} > tiles.max_culled {max_culled}"
+        )
+    return culled
+
+
+def export_simplify_m(raw: dict[str, Any]) -> float:
+    """Tile-export tolerance in metres: ``serve.simplify_m`` for lines/polygons, 0 for points."""
+    if str(raw.get("geometry") or "polygon") == "point":
+        return 0.0
+    return float((raw.get("serve") or {}).get("simplify_m") or 0)
+
+
 def _export_geojsonseq(
     conn,
     layer_id: str,
@@ -109,8 +174,13 @@ def _export_geojsonseq(
     keep_fields: list[str],
     precision_dp: int,
     dest: Path,
+    simplify_m: float = 0.0,
 ) -> int:
     """Stream GeoJSONSeq (EPSG:4326) with feature_id + keep_fields only."""
+    if simplify_m < 0:
+        raise TilesError(
+            f"TILES: {layer_id}: serve.simplify_m must be >= 0"
+        )
     table = f"layers.{_q_ident(layer_id)}"
     field_exprs: list[str] = ["feature_id"]
     for field in keep_fields:
@@ -118,7 +188,15 @@ def _export_geojsonseq(
         safe = field.replace("'", "''")
         field_exprs.append(f"props ->> '{safe}' AS {_q_ident(field)}")
     select_cols = ", ".join(field_exprs)
-    geom_expr = f"ST_AsGeoJSON(ST_Transform(geom, 4326), {int(precision_dp)})"
+    if simplify_m > 0:
+        geom_27700 = (
+            f"ST_SimplifyPreserveTopology(geom, {float(simplify_m):.10g})"
+        )
+    else:
+        geom_27700 = "geom"
+    geom_expr = (
+        f"ST_AsGeoJSON(ST_Transform({geom_27700}, 4326), {int(precision_dp)})"
+    )
     sql = f"SELECT {select_cols}, {geom_expr} AS geojson FROM {table}"
     count = 0
     # Unnamed cursor: named (server-side) cursors cannot run with autocommit.
@@ -151,6 +229,7 @@ def _run_tippecanoe(
     zoom_max: int,
     low_zoom: str,
     keep_fields: list[str],
+    no_tiny_polygon_reduction: bool = False,
 ) -> None:
     tippecanoe = shutil.which("tippecanoe")
     if not tippecanoe:
@@ -161,6 +240,9 @@ def _run_tippecanoe(
         )
     except ProfileError as exc:
         raise TilesError(f"TILES: {layer_id}: {exc}") from exc
+    if no_tiny_polygon_reduction:
+        # Per-layer opt-in only (tiles.no_tiny_polygon_reduction); never global.
+        profile = [*profile, "--no-tiny-polygon-reduction"]
 
     cmd = [
         tippecanoe,
@@ -217,6 +299,7 @@ def build_tileset(
     zoom_max = int(zoom.get("max") or 14)
     low_zoom = low_zoom_override or str(zoom.get("low_zoom") or "simplify")
     precision_dp = int((raw.get("serve") or {}).get("precision_dp") or 6)
+    simplify_m = export_simplify_m(raw)
     attribution = str(raw.get("attribution") or "")
     check_keep_all = force_keep_all_check or (low_zoom == "keep_all")
 
@@ -293,13 +376,19 @@ def build_tileset(
         # mkstemp creates empty files; tippecanoe needs a clean -o path sometimes
         tmp_pmtiles.unlink(missing_ok=True)
 
-        _export_geojsonseq(
+        exported = _export_geojsonseq(
             connection,
             layer_id,
             keep_fields=keep_fields,
             precision_dp=precision_dp,
             dest=tmp_geo,
+            simplify_m=simplify_m,
         )
+        if exported != n_features:
+            raise TilesError(
+                f"TILES: {layer_id}: export kept {exported} of {n_features} features "
+                f"(simplify_m {simplify_m:g})"
+            )
         _run_tippecanoe(
             layer_id=layer_id,
             geojsonseq=tmp_geo,
@@ -307,6 +396,9 @@ def build_tileset(
             zoom_max=zoom_max,
             low_zoom=low_zoom,
             keep_fields=keep_fields,
+            no_tiny_polygon_reduction=bool(
+                (raw.get("tiles") or {}).get("no_tiny_polygon_reduction", False)
+            ),
         )
 
         try:
@@ -322,6 +414,14 @@ def build_tileset(
         except RuntimeError as exc:
             raise TilesError(f"TILES: {layer_id}: {exc}") from exc
 
+        report_culled(
+            connection,
+            layer_id,
+            present_ids=distinct_ids_at_zoom(tmp_pmtiles, layer_id=layer_id, zoom=zoom_max),
+            n_features=n_features,
+            zoom=zoom_max,
+            max_culled=(raw.get("tiles") or {}).get("max_culled"),
+        )
         # Publish only after checks pass (D4).
         final_path = storage.publish(tmp_pmtiles, layer_id, version)
         tmp_pmtiles = None  # owned by publish
@@ -350,6 +450,9 @@ def build_tileset(
             "measure": raw.get("measure"),
             "source_layer": layer_id,
         }
+        disclosure = display_simplification(raw)
+        if disclosure is not None:
+            entry_payload["display_simplification"] = disclosure
         if measurements.distinct_z5 is not None:
             entry_payload["distinct_z5"] = measurements.distinct_z5
         manifest.setdefault("tilesets", {})[layer_id] = entry_payload

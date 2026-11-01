@@ -25,6 +25,7 @@ import psycopg2.extras
 
 from etl.adapters.arcgis import fetch_arcgis
 from etl.adapters.geojson_file import fetch_geojson_file
+from etl.adapters.os_boundary_line import fetch_os_boundary_line
 from etl.adapters.postgis_table import fetch_postgis_table
 from etl.build_scotland_extent import ExtentError
 from layers.registry.loader import LayerEntry, RegistryError, registry
@@ -32,6 +33,33 @@ from layers.registry.loader import LayerEntry, RegistryError, registry
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SQL_DIR = Path(__file__).resolve().parent / "sql"
 RECEIPT_DIR = REPO_ROOT / "data" / "processed" / "layers"
+CACHE_DIR = REPO_ROOT / "data" / "cache"
+
+
+def _receipt_dir() -> Path:
+    env = (os.environ.get("LAYER_RECEIPT_DIR") or "").strip()
+    return Path(env) if env else RECEIPT_DIR
+
+
+def _cache_dir() -> Path:
+    env = (os.environ.get("LAYER_CACHE_DIR") or "").strip()
+    return Path(env) if env else CACHE_DIR
+
+
+def _preflight_receipt_dir(layer_id: str) -> Path:
+    """Refuse before any staging/swap when the receipt dir is not writable."""
+    path = _receipt_dir()
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe = path / ".write_probe"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+    except OSError as exc:
+        raise IngestError(
+            f"INGEST: {layer_id}: receipt dir not writable: {path} "
+            f"(set LAYER_RECEIPT_DIR to a read-write path)"
+        ) from exc
+    return path
 
 CLIP_ZONES: dict[str, tuple[str, ...]] = {
     "land": ("land",),
@@ -402,8 +430,9 @@ def _drop_scratch(conn, new_name: str) -> None:
 
 
 def _write_receipt(layer_id: str, payload: dict[str, Any]) -> Path:
-    RECEIPT_DIR.mkdir(parents=True, exist_ok=True)
-    path = RECEIPT_DIR / f"{layer_id}.receipt.json"
+    receipt_dir = _receipt_dir()
+    receipt_dir.mkdir(parents=True, exist_ok=True)
+    path = receipt_dir / f"{layer_id}.receipt.json"
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return path
 
@@ -440,7 +469,26 @@ def _fetch_entry(
                 token=token,
             )
         if src_type == "geojson_file":
+            url_s = str(source["url"])
+            if url_s.startswith("https://") or url_s.startswith("http://"):
+                raise IngestError(
+                    f"INGEST: {layer_id} geojson_file reads local files only; "
+                    "source.url is remote (use --from-file or a fetching source type)"
+                )
             return fetch_geojson_file(source["url"], max_mb=max_mb)
+        if src_type == "os_boundary_line":
+            return fetch_os_boundary_line(
+                source["url"],
+                sha256=str(source["sha256"]),
+                layer=str(source["layer"]),
+                code_field=str(source["code_field"]),
+                name_field=str(source["name_field"]),
+                code_prefix=str(source["code_prefix"]),
+                expected_count=int(source["expected_count"]),
+                download_max_mb=float(source["download_max_mb"]),
+                cache_dir=_cache_dir(),
+                max_mb=max_mb,
+            )
         if src_type == "postgis_table":
             if conn is None:
                 raise IngestError(
@@ -485,6 +533,8 @@ def run_layer(
         raise RegistryError(f"REGISTRY: unknown layer {layer_id}")
     entry = entries[layer_id]
 
+    _preflight_receipt_dir(layer_id)
+
     owns_conn = conn is None
     connection = conn or psycopg2.connect(_dsn())
     connection.autocommit = True
@@ -501,6 +551,10 @@ def run_layer(
         )
         fetch_s = time.monotonic() - fetch_t0
         features = list(collection.get("features") or [])
+        if len(features) == 0:
+            raise IngestError(
+                f"INGEST: {layer_id}: source returned 0 features ({redacted_url})"
+            )
         expected_n = EXPECTED_FEATURE_COUNTS.get(layer_id)
         if expected_n is not None and len(features) != expected_n:
             raise IngestError(

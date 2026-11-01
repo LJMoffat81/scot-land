@@ -206,6 +206,47 @@ stay open. Identity rules stay in the Cloudflare account — not in git.
   upstream already sent `no-store` / `private`, or a longer `max-age` (kept,
   with `ETag`). The tunnel template does not rewrite these headers.
 
+### Layer ingest state
+
+`./data` stays read-only in home compose. Layer receipts and the OS
+Boundary-Line download cache need a writable sibling folder:
+
+```powershell
+$env:SCOT_LAND_STATE_DIR = "C:\path\to\scot-land-state"   # or ../scot-land-state
+New-Item -ItemType Directory -Force -Path $env:SCOT_LAND_STATE_DIR | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $env:SCOT_LAND_STATE_DIR "receipts") | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $env:SCOT_LAND_STATE_DIR "cache") | Out-Null
+```
+
+| Host / env | Container path | Role |
+|------------|----------------|------|
+| `./data` (`:ro`) | `/app/data` | Committed processed data (unchanged) |
+| `SCOT_LAND_STATE_DIR` | `/app/state` | Writable state root |
+| `LAYER_RECEIPT_DIR=/app/state/receipts` | receipts | `etl.run_layer` receipt JSON |
+| `LAYER_CACHE_DIR=/app/state/cache` | cache | Boundary-Line zip cache |
+
+Refusal strings (fail closed; do not ignore):
+
+- `INGEST: councils Boundary-Line sha256 mismatch: expected <pin>, got <actual>`
+- `INGEST: councils expected 32 features with Census_Code S12*, got <n>`
+- `INGEST: councils budget exceeded: download_mb`
+- `INGEST: councils Boundary-Line layer district_borough_unitary srs_id <n> != 27700`
+- `INGEST: <id> geojson_file reads local files only; source.url is remote (use --from-file or a fetching source type)`
+- `INGEST: <id>: source returned 0 features (postgis://<table>)`
+- `INGEST: <id>: receipt dir not writable: <path> (set LAYER_RECEIPT_DIR to a read-write path)`
+- `TILES: --all: built <n>, failed <m>: <ids>` (exit 2)
+
+Ingest order on the home PC (after redeploying compose with the state mount):
+
+1. `python -m etl.ingest_ces_aquaculture` (fills `ces_aquaculture_leases`; empty table is refused before clip).
+2. Woodland: `python -m etl.ingest_woodland_layers --from-wfs --replace --check-counts` for both NFI and native woodland. **Never** use `--fixture` on the PC.
+3. `python -m etl.run_layer councils` — councils needs **no** prior ingest; Boundary-Line downloads into `LAYER_CACHE_DIR`.
+4. `python -m etl.run_layer ces-aquaculture`
+5. `python -m etl.run_layer nfi`
+6. `python -m etl.run_layer native-woodland`
+
+Hold the tiles rebuild until BATCHA-TILES-FIX-2B (tile budgets / simplify) lands.
+
 ### ARCH-2a tiles (PMTiles → `/v1/tiles` MVT)
 
 Host directory (gitignored machine state; default sibling of the repo):
@@ -221,6 +262,9 @@ volume, so the one-off must bind a separate read-write path and point
 `TILES_DIR` at it. Source tables must already be loaded
 (`python -m etl.ingest_*` → `python -m etl.run_layer <id>`); otherwise
 `tiles.build` fails closed with `TILES: <id>: layer not built`.
+`tiles.build --all` continues past unloaded layers, prints each
+`TILES: <id>: …` error to stderr, then exits 2 with
+`TILES: --all: built <n>, failed <m>: <ids>`.
 
 ```powershell
 docker compose -f docker-compose.home.yml run --rm --no-deps `

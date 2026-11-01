@@ -50,6 +50,8 @@ services:
       - ./data:/app/data:ro
       # Machine-local datasets that are not in the repo (e.g. Data Zone boundaries), read-only.
       - ${SCOT_LAND_LOCAL_DIR:-../scot-land-local}:/app/local:ro
+      # Writable layer receipts + Boundary-Line cache (./data stays read-only).
+      - ${SCOT_LAND_STATE_DIR:-../scot-land-state}:/app/state
       # Raw open-data downloads for the etl.ingest_* loaders (gitignored data/external/<source>/).
       # Separate writable host folder per source; the rest of ./data stays read-only.
       # First run: create the empty mountpoints data/external/{nrs,crofting,sepa,naturescot,woodland,spatialhub}
@@ -71,6 +73,8 @@ services:
       PORT: "8000"
       DATA_DIR: /app/data
       TILES_DIR: /app/tiles
+      LAYER_RECEIPT_DIR: /app/state/receipts
+      LAYER_CACHE_DIR: /app/state/cache
       DATABASE_URL: postgresql://${POSTGRES_USER:-scotland}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-scotland_wealth}
     depends_on:
       db:

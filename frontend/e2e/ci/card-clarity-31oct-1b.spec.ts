@@ -255,7 +255,7 @@ for (const viewport of [
       await expect(card.getByTestId("place-card-footer")).toHaveCount(1);
       await expect(card.getByTestId("place-card-estimate-line")).toHaveCount(0);
       await expect(card).not.toContainText(/neighbou?rhood/i);
-      await expect(card).not.toContainText("£");
+      await expect(card).not.toContainText("\u00a3");
       assertConsoleClean(gate);
     });
   });

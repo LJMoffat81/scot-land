@@ -35,6 +35,10 @@ class TilesError(Exception):
     """Tile build failure (``TILES:`` prefix)."""
 
 
+class BuildAllError(TilesError):
+    """``tiles.build --all`` finished with one or more per-layer failures."""
+
+
 def is_tiled(raw: dict[str, Any] | None) -> bool:
     """True when registry ``serve.mode`` is ``pmtiles`` (the one tiling predicate)."""
     serve = (raw or {}).get("serve")
@@ -367,16 +371,32 @@ def build_tileset(
 
 
 def build_all(*, conn=None, storage_path: Path | None = None) -> list[str]:
-    """Build every ungated registry entry with ``serve.mode`` pmtiles, sorted by id."""
+    """Build every ungated registry entry with ``serve.mode`` pmtiles, sorted by id.
+
+    Continues past per-layer ``TilesError`` failures, printing each to stderr.
+    Raises ``BuildAllError`` when any layer failed.
+    """
     entries = registry()
     ids = sorted(
         eid
         for eid, entry in entries.items()
         if is_tiled(entry.raw) and not entry.raw.get("gated_by")
     )
+    built: list[str] = []
+    failed: list[str] = []
     for layer_id in ids:
-        build_tileset(layer_id, conn=conn, storage_path=storage_path)
-    return ids
+        try:
+            build_tileset(layer_id, conn=conn, storage_path=storage_path)
+            built.append(layer_id)
+        except TilesError as exc:
+            print(str(exc), file=sys.stderr)
+            failed.append(layer_id)
+    if failed:
+        raise BuildAllError(
+            f"TILES: --all: built {len(built)}, failed {len(failed)}: "
+            f"{', '.join(failed)}"
+        )
+    return built
 
 
 def main(argv: list[str] | None = None) -> int:

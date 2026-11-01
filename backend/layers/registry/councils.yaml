@@ -10,9 +10,16 @@ default_on: false
 licence: OGL-3.0
 attribution: Contains OS data © Crown copyright and database right 2026.
 source:
-  type: geojson_file
+  type: os_boundary_line
   url: >-
     https://api.os.uk/downloads/v1/products/BoundaryLine/downloads?area=GB&format=GeoPackage&redirect
+  sha256: 151b027b621ac4cdac3f7a6635cd26dd65fb3b5bf1cb8eb392cc00e1687e3bd4
+  layer: district_borough_unitary
+  code_field: Census_Code
+  name_field: Name
+  code_prefix: S12
+  expected_count: 32
+  download_max_mb: 900
 geometry: polygon
 refresh:
   cron: "0 5 1 1 *"

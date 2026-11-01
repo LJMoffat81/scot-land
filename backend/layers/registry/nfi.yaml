@@ -16,7 +16,9 @@ source:
   id_field: feature_id
   where: "TRUE"
 geometry: polygon
-refresh: {cron: "0 5 1 1 *", max_mb: 300, max_s: 600}
+# Official NFI Scotland 2025 ≈ 207,640 polygons; a 9,000-feature sample averages
+# 2,019 B WKB ⇒ ~400 MiB full set. 600 ≈ 1.5× headroom (this layer only).
+refresh: {cron: "0 5 1 1 *", max_mb: 600, max_s: 600}
 serve: {mode: pmtiles, simplify_m: 10, precision_dp: 6, max_mb: 15}
 zoom: {min: 0, max: 14, low_zoom: coalesce}
 style:

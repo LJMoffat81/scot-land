@@ -72,7 +72,13 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["arcgis", "wfs", "geojson_file", "postgis_table"]
+          "enum": [
+            "arcgis",
+            "wfs",
+            "geojson_file",
+            "postgis_table",
+            "os_boundary_line"
+          ]
         },
         "url": {
           "type": "string",
@@ -92,7 +98,17 @@
         "token_env": {
           "type": "string",
           "pattern": "^[A-Z_]+$"
-        }
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "layer": { "type": "string", "minLength": 1 },
+        "code_field": { "type": "string", "minLength": 1 },
+        "name_field": { "type": "string", "minLength": 1 },
+        "code_prefix": { "type": "string", "minLength": 1 },
+        "expected_count": { "type": "integer", "minimum": 1 },
+        "download_max_mb": { "type": "number", "minimum": 0 }
       },
       "allOf": [
         {
@@ -105,6 +121,35 @@
           },
           "else": {
             "required": ["url"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "os_boundary_line" } },
+            "required": ["type"]
+          },
+          "then": {
+            "required": [
+              "url",
+              "sha256",
+              "layer",
+              "code_field",
+              "name_field",
+              "code_prefix",
+              "expected_count",
+              "download_max_mb"
+            ]
+          },
+          "else": {
+            "properties": {
+              "sha256": false,
+              "layer": false,
+              "code_field": false,
+              "name_field": false,
+              "code_prefix": false,
+              "expected_count": false,
+              "download_max_mb": false
+            }
           }
         }
       ]

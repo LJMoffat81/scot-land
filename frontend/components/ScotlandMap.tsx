@@ -897,6 +897,8 @@ export default function ScotlandMap() {
   const [aerialUnavailable, setAerialUnavailable] = useState(false);
   const [esriAttribution, setEsriAttribution] = useState<string | null>(null);
   const aerialFailArmedRef = useRef(false);
+  /** Set when the visitor clicks Simple/Aerial — blocks stale ?b=aerial remount bounce. */
+  const basemapUserSelectedRef = useRef(false);
   // Build-time key for SSR/hydration; E2E inject applies after mount.
   const buildTimeEsriKey = (
     process.env.NEXT_PUBLIC_ESRI_BASEMAP_API_KEY ?? ""
@@ -2226,6 +2228,7 @@ export default function ScotlandMap() {
     if (
       mapStyle === "light" &&
       !aerialUnavailable &&
+      !basemapUserSelectedRef.current &&
       readMapUrlState(window.location.search).b === "aerial" &&
       isEsriBasemapKeyConfigured()
     ) {
@@ -5377,8 +5380,14 @@ export default function ScotlandMap() {
 
   const selectBasemap = (next: MapBasemapId) => {
     if (next === mapStyle) return;
+    // Explicit visitor choice — do not rehydrate aerial from a stale ?b= on remount.
+    basemapUserSelectedRef.current = true;
     const map = mapRef.current;
     if (map) {
+      // Same race class as E3D-FIX-1 / T-M4: an in-flight easeTo moveend runs
+      // URL sync and can rewrite b=aerial AFTER we clear it, so the remount
+      // effect bounces Simple → Aerial and aria-pressed stays true.
+      map.stop();
       const c = map.getCenter();
       const box = map.getContainer();
       cameraPreserveRef.current = {
@@ -5391,8 +5400,9 @@ export default function ScotlandMap() {
         height: box.clientHeight,
       };
     }
-    setMapStyle(next);
+    // Write b= before setState so the remount effect never sees aerial in the URL.
     replaceMapUrl({ b: next });
+    setMapStyle(next);
   };
 
   const is3dOn = is3dPitchActive(mapPitch);

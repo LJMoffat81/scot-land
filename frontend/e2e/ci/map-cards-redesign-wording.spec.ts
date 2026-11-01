@@ -36,13 +36,11 @@ for (const viewport of [
         "not an official valuation",
       );
 
-      // (d) under homes only ≤1 — open fold then count
-      const parts = page.getByTestId("place-card-parts");
-      if (!(await parts.getAttribute("open"))) {
-        await parts.locator("summary").click();
-      }
+      // (d) under homes only ≤1 — fold hidden while money figures are off
+      await expect(page.getByTestId("place-card-parts")).toHaveCount(0);
       const withFold = await visibleMapText(page);
       expect(countMatches(withFold, /under homes only/i)).toBeLessThanOrEqual(1);
+      await expect(page.getByTestId("place-card-methodology-link")).toBeVisible();
 
       // (e) research banner hidden or collapsed while card open
       const banner = page.getByTestId("research-banner");
@@ -205,7 +203,7 @@ test.describe("MAP-CARDS default view gbp-live on (1280)", () => {
     await page.goto("/?layers=access_services&place=S01014567&lat=55.86&lng=-4.25");
     await page.locator(".maplibregl-canvas").waitFor({ timeout: 60_000 });
     await openLayers(page);
-    await ensureLayersGroupOpen(page, "nature");
+    await ensureLayersGroupOpen(page, "limits");
     await ensureLayersGroupOpen(page, "land");
     await expect(page.getByTestId("layer-toggle-access_services")).toHaveAttribute(
       "aria-checked",

@@ -21,7 +21,7 @@ const AIM_ROWS: ReadonlyArray<readonly [string, string, string]> = [
   ["Land (Annual Ground Rent)", "Licences and franchises", "Later"],
   [
     "Land (Annual Ground Rent)",
-    "Monopoly and other artificial privileges",
+    "Monopolies and other special privileges",
     "Later",
   ],
   ["Natural resource rents", "Minerals and aggregates", "Not started"],

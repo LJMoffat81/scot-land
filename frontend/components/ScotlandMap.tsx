@@ -5797,6 +5797,7 @@ export default function ScotlandMap() {
                 grid3Square ? grid3Row6Text(grid3Square.ref) : null
               }
               mapZoom={mapZoom}
+              floodLoaded={floodDzLoaded}
             />
           ) : null}
         </MapPanelSlot>

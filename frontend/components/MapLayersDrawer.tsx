@@ -4,11 +4,6 @@ import { Fragment, useEffect, useState, type ReactNode } from "react";
 import ConfidenceTag from "@/components/ConfidenceTag";
 import MapRangeLegend from "@/components/MapRangeLegend";
 import {
-  aimStatusPanelTag,
-  layersPanelAimRows,
-  type AimRow,
-} from "@/lib/aimToCover";
-import {
   buildInlineLegendFromRegistry,
   getMapLayer,
   manifestLegendsForDrawerLayer,
@@ -28,13 +23,32 @@ const LAND_HEADER = "LAND";
 const LAND_SUBTITLE = "Everything nature provides and no one made";
 const PLACES_HEADER = "PLACES AND BOUNDARIES";
 
+/** Display-only Limits group — registry `group` keys stay unchanged. */
+export const LIMITS_ON_USE_LAYER_IDS = [
+  "flood",
+  "contaminated_land",
+  "designations",
+  "crofting",
+] as const;
+
+export const LIMITS_ON_USE_LABEL = "Limits on use";
+
+export const LIMITS_ON_USE_NOTE =
+  "These can limit what land is used for. They add no value and are not a rent.";
+
+const LIMITS_ON_USE_ID_SET: ReadonlySet<string> = new Set(
+  LIMITS_ON_USE_LAYER_IDS,
+);
+
 type LandSubgroupKey = "land" | "tenure" | "resources" | "nature";
+
+type DrawerGroupKey = MapLayerGroupKey | "limits";
 
 const LAND_SUBGROUP_LABEL: Record<LandSubgroupKey, string> = {
   land: "Sites",
   tenure: TENURE_LABEL,
   resources: "Natural resources",
-  nature: "Services of nature",
+  nature: "Nature",
 };
 
 const LAND_SUBGROUP_ORDER: readonly LandSubgroupKey[] = [
@@ -106,18 +120,48 @@ function chipLabel(
 
 function initialOpenGroups(
   groups: ReadonlyArray<{
-    key: MapLayerGroupKey;
+    key: DrawerGroupKey;
     layers: ReadonlyArray<{ id: string }>;
   }>,
   enabled: MapLayerToggleState,
-): Set<MapLayerGroupKey> {
-  const open = new Set<MapLayerGroupKey>();
+): Set<DrawerGroupKey> {
+  const open = new Set<DrawerGroupKey>();
   for (const { key, layers } of groups) {
     if (layers.some((layer) => Boolean(enabled[layer.id]))) {
       open.add(key);
     }
   }
   return open;
+}
+
+function layersForLandSubgroup(
+  groups: ReadonlyArray<{
+    key: MapLayerGroupKey;
+    layers: ReadonlyArray<MapDrawerLayer>;
+  }>,
+  key: LandSubgroupKey,
+): MapDrawerLayer[] {
+  const group = groups.find((entry) => entry.key === key);
+  return (group?.layers ?? []).filter(
+    (layer) => !LIMITS_ON_USE_ID_SET.has(layer.id),
+  );
+}
+
+function limitsOnUseLayers(
+  groups: ReadonlyArray<{
+    key: MapLayerGroupKey;
+    layers: ReadonlyArray<MapDrawerLayer>;
+  }>,
+): MapDrawerLayer[] {
+  const byId = new Map<string, MapDrawerLayer>();
+  for (const { layers } of groups) {
+    for (const layer of layers) {
+      if (LIMITS_ON_USE_ID_SET.has(layer.id)) byId.set(layer.id, layer);
+    }
+  }
+  return LIMITS_ON_USE_LAYER_IDS.map((id) => byId.get(id)).filter(
+    (layer): layer is MapDrawerLayer => Boolean(layer),
+  );
 }
 
 /**
@@ -150,21 +194,41 @@ export default function MapLayersDrawer({
     }),
   );
 
-  const [openGroups, setOpenGroups] = useState<Set<MapLayerGroupKey>>(() =>
-    initialOpenGroups(groups, enabled),
+  const limitsLayers = limitsOnUseLayers(groups);
+  const landSubgroups = LAND_SUBGROUP_ORDER.map((key) => ({
+    key,
+    layers: layersForLandSubgroup(groups, key),
+  })).filter((entry) => entry.layers.length > 0);
+
+  const drawerGroupsForOpen: ReadonlyArray<{
+    key: DrawerGroupKey;
+    layers: ReadonlyArray<{ id: string }>;
+  }> = [
+    ...landSubgroups,
+    ...(limitsLayers.length > 0
+      ? [{ key: "limits" as const, layers: limitsLayers }]
+      : []),
+    {
+      key: "places",
+      layers: groups.find((entry) => entry.key === "places")?.layers ?? [],
+    },
+  ];
+
+  const [openGroups, setOpenGroups] = useState<Set<DrawerGroupKey>>(() =>
+    initialOpenGroups(drawerGroupsForOpen, enabled),
   );
 
   // Stable serialization — groups is rebuilt each render; only reopen when an
   // enabled layer appears (GBP-LIVE / default boot). §3.4: group with an
   // active layer starts open.
-  const enabledGroupKeys = groups
+  const enabledGroupKeys = drawerGroupsForOpen
     .filter(({ layers }) => layers.some((layer) => Boolean(enabled[layer.id])))
     .map(({ key }) => key)
     .join(",");
 
   useEffect(() => {
     if (!enabledGroupKeys) return;
-    const keys = enabledGroupKeys.split(",") as MapLayerGroupKey[];
+    const keys = enabledGroupKeys.split(",") as DrawerGroupKey[];
     setOpenGroups((prev) => {
       const next = new Set(prev);
       let changed = false;
@@ -185,7 +249,7 @@ export default function MapLayersDrawer({
     onEnabledChange?.({ ...enabled, [id]: on });
   };
 
-  const toggleGroup = (key: MapLayerGroupKey) => {
+  const toggleGroup = (key: DrawerGroupKey) => {
     setOpenGroups((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -228,50 +292,61 @@ export default function MapLayersDrawer({
         <p className="layers-nav-subtitle" data-testid="layers-nav-land-subtitle">
           {LAND_SUBTITLE}
         </p>
-        {LAND_SUBGROUP_ORDER.map((key) => {
-          const group = groups.find((entry) => entry.key === key);
-          const layers = group?.layers ?? [];
-          return (
-            <LayersAccordion
-              key={key}
-              groupKey={key}
-              label={LAND_SUBGROUP_LABEL[key]}
-              subgroup
-              expanded={openGroups.has(key)}
-              onToggle={() => toggleGroup(key)}
-              note={MAP_LAYER_GROUP_NOTES[key]}
-            >
-              {layers.map((layer) => (
-                <DrawerLayerRow
-                  key={layer.id}
-                  layer={layer}
-                  on={Boolean(enabled[layer.id])}
-                  mapZoom={mapZoom}
-                  floodKind={floodKind}
-                  onFloodKindChange={onFloodKindChange}
-                  onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
-                  asOfDate={tileAsOf?.[layer.id]}
-                  manifestClasses={manifestLegendsForDrawerLayer(
-                    layer.id,
-                    tileLegends,
-                  )}
-                />
-              ))}
-              {placeholdersFor(key, layers).map((row) => (
-                <AimPlaceholder key={row.id} row={row} />
-              ))}
-            </LayersAccordion>
-          );
-        })}
-        <p
-          className="layer-meta layers-limits-explainer"
-          data-testid="map-layers-limits-explainer"
-        >
-          <strong>Limits on use</strong>
-          {" — "}
-          Protected nature sites, flood risk and crofting change best use and
-          add no value. They are not a rent.
-        </p>
+        {landSubgroups.map(({ key, layers }) => (
+          <LayersAccordion
+            key={key}
+            groupKey={key}
+            label={LAND_SUBGROUP_LABEL[key]}
+            subgroup
+            expanded={openGroups.has(key)}
+            onToggle={() => toggleGroup(key)}
+            note={MAP_LAYER_GROUP_NOTES[key]}
+          >
+            {layers.map((layer) => (
+              <DrawerLayerRow
+                key={layer.id}
+                layer={layer}
+                on={Boolean(enabled[layer.id])}
+                mapZoom={mapZoom}
+                floodKind={floodKind}
+                onFloodKindChange={onFloodKindChange}
+                onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
+                asOfDate={tileAsOf?.[layer.id]}
+                manifestClasses={manifestLegendsForDrawerLayer(
+                  layer.id,
+                  tileLegends,
+                )}
+              />
+            ))}
+          </LayersAccordion>
+        ))}
+        {limitsLayers.length > 0 ? (
+          <LayersAccordion
+            groupKey="limits"
+            label={LIMITS_ON_USE_LABEL}
+            subgroup
+            expanded={openGroups.has("limits")}
+            onToggle={() => toggleGroup("limits")}
+            note={LIMITS_ON_USE_NOTE}
+          >
+            {limitsLayers.map((layer) => (
+              <DrawerLayerRow
+                key={layer.id}
+                layer={layer}
+                on={Boolean(enabled[layer.id])}
+                mapZoom={mapZoom}
+                floodKind={floodKind}
+                onFloodKindChange={onFloodKindChange}
+                onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
+                asOfDate={tileAsOf?.[layer.id]}
+                manifestClasses={manifestLegendsForDrawerLayer(
+                  layer.id,
+                  tileLegends,
+                )}
+              />
+            ))}
+          </LayersAccordion>
+        ) : null}
       </section>
 
       <section data-testid="layers-nav-places">
@@ -334,15 +409,6 @@ export default function MapLayersDrawer({
   );
 }
 
-function placeholdersFor(
-  groupKey: LandSubgroupKey,
-  layers: readonly MapDrawerLayer[],
-): readonly AimRow[] {
-  if (groupKey === "tenure") return [];
-  const liveLabels = new Set(layers.map((layer) => layer.label));
-  return layersPanelAimRows(groupKey).filter((row) => !liveLabels.has(row.name));
-}
-
 function LayersAccordion({
   groupKey,
   label,
@@ -353,7 +419,7 @@ function LayersAccordion({
   note,
   children,
 }: {
-  groupKey: MapLayerGroupKey;
+  groupKey: DrawerGroupKey;
   label: string;
   expanded: boolean;
   onToggle: () => void;
@@ -403,36 +469,6 @@ function LayersAccordion({
       ) : null}
       {expanded ? <ul className="layers-panel-list">{children}</ul> : null}
     </section>
-  );
-}
-
-function AimPlaceholder({ row }: { row: AimRow }) {
-  const tag = aimStatusPanelTag(row.status);
-  return (
-    <li
-      className="layers-panel-row layers-aim-placeholder"
-      data-testid={`layers-aim-${row.id}`}
-      data-aim-name={row.name}
-    >
-      {/* The row itself is not a switch. aria-disabled stays off the link so the roadmap target can be opened. */}
-      <div
-        className="layers-aim-disabled"
-        aria-disabled="true"
-        aria-label={`${row.name}, ${tag}`}
-      >
-        <span className="layers-aim-name">{row.name}</span>
-        <span className="layers-aim-tag" data-testid={`layers-aim-tag-${row.id}`}>
-          {tag}
-        </span>
-      </div>
-      <a
-        className="layers-aim-link"
-        href={`/roadmap#${row.id}`}
-        data-testid={`layers-aim-link-${row.id}`}
-      >
-        Roadmap
-      </a>
-    </li>
   );
 }
 

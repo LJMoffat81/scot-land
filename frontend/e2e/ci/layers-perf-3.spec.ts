@@ -190,7 +190,7 @@ test.describe("LAYERS-PERF-3", () => {
     // zoom ≥6 before the chip assert (test timing, not a product bug).
     await waitZoomAtLeast(page, 6);
     await openLayers(page);
-    await ensureLayersGroupOpen(page, "nature");
+    await ensureLayersGroupOpen(page, "limits");
     await page.getByTestId("layer-toggle-designations").click();
 
     const chip = page.getByTestId("simplified-outlines-chip");
@@ -238,7 +238,7 @@ test.describe("LAYERS-PERF-3", () => {
     await jump(page, 6);
     await waitZoomAtLeast(page, 6);
     await openLayers(page);
-    await ensureLayersGroupOpen(page, "nature");
+    await ensureLayersGroupOpen(page, "limits");
     await page.getByTestId("layer-toggle-designations").click();
     await ensureLayersGroupOpen(page, "resources");
     await page.getByTestId("layer-toggle-9").click();

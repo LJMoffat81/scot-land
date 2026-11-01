@@ -291,9 +291,29 @@ for (const viewport of [
           audit.yellowRule.height,
           `${audit.yellowRule.selector} yellow rule height`,
         ).toBe(0);
+        // CARD-CLARITY-31OCT-1B: disclaimer sits under the answer; fact + how
+        // follow. Guard against empty pad after the last content, not after
+        // the disclaimer itself.
+        const answer = page.getByTestId("place-card-figure");
+        const footer = page.getByTestId("place-card-footer");
+        const how = page.getByTestId("place-card-how-we-work");
+        const answerBox = await answer.boundingBox();
+        const footerBox = await footer.boundingBox();
+        const howBox = await how.boundingBox();
+        const cardBox = await page.getByTestId("place-card").boundingBox();
+        expect(answerBox, `answer box for ${query}`).toBeTruthy();
+        expect(footerBox, `footer box for ${query}`).toBeTruthy();
+        expect(howBox, `how link box for ${query}`).toBeTruthy();
+        expect(cardBox, `card box for ${query}`).toBeTruthy();
+        expect(answerBox!.y + answerBox!.height).toBeLessThanOrEqual(
+          footerBox!.y + 1,
+        );
+        expect(footerBox!.y + footerBox!.height).toBeLessThanOrEqual(
+          howBox!.y + 1,
+        );
         expect(
-          audit.tail,
-          `empty block below disclaimer (.hud-place / ${YELLOW_RULE}) h=${audit.tail}`,
+          cardBox!.y + cardBox!.height - (howBox!.y + howBox!.height),
+          `empty pad after how link for ${query}`,
         ).toBeLessThanOrEqual(8);
       });
     }

@@ -7,7 +7,7 @@ registerOpenFreeMapFontStub();
 
 /**
  * DZ-HIERARCHY — Intermediate Zone title, council second line;
- * MAP-CARDS §5 "More about this area ▾" fold (no DZ2011 / IZ codes on card).
+ * no empty "More about" fold while money figures are off (CARD-CLARITY-31OCT-1B).
  * Widths: 390 and 1280. Console/pageerror gate.
  */
 
@@ -15,7 +15,6 @@ const IZ_NAME = "Old Town, Princes Street and Leith Street";
 const IZ_CODE = "S02002727";
 const COUNCIL = "City of Edinburgh";
 const DZ2011_CODE = "S01008677";
-const MORE_ABOUT = "More about this area ▾";
 const HOW_LINK = "How we work this out →";
 
 const HEALTH_OK = {
@@ -204,7 +203,7 @@ async function assertNoZoneCodesOnCard(card: ReturnType<Page["getByTestId"]>) {
 test.describe("DZ-HIERARCHY place card desktop 1280", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test("EH1 1YZ IZ title; More about fold + methodology; no zone codes", async ({
+  test("EH1 1YZ IZ title; no empty fold; methodology link; no zone codes", async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -218,11 +217,10 @@ test.describe("DZ-HIERARCHY place card desktop 1280", () => {
       "Edinburgh Old Town",
     );
 
-    // MAP-CARDS §5: parts fold summary is exact; methodology under the fold.
-    const parts = page.getByTestId("place-card-parts");
-    await expect(parts).toBeVisible();
-    await expect(parts.locator("summary")).toHaveText(MORE_ABOUT);
-    await parts.locator("summary").click();
+    await expect(page.getByTestId("place-card-parts")).toHaveCount(0);
+    await expect(page.getByText("More about this area", { exact: false })).toHaveCount(
+      0,
+    );
     const howLink = page.getByTestId("place-card-methodology-link");
     await expect(howLink).toBeVisible();
     await expect(howLink).toHaveText(HOW_LINK);
@@ -261,7 +259,7 @@ test.describe("DZ-HIERARCHY place card desktop 1280", () => {
 test.describe("DZ-HIERARCHY place card mobile 390", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("EH1 1YZ IZ title; More about closed; methodology under fold; answer above fold", async ({
+  test("EH1 1YZ IZ title; no empty fold; methodology at half; answer above how", async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -272,33 +270,23 @@ test.describe("DZ-HIERARCHY place card mobile 390", () => {
     await expect(page.getByTestId("place-card-place")).toHaveText(IZ_NAME);
     await expect(page.getByTestId("place-card-council")).toHaveText(COUNCIL);
 
-    const parts = page.getByTestId("place-card-parts");
-    await expect(parts).toBeVisible();
-    await expect(parts.locator("summary")).toHaveText(MORE_ABOUT);
-    await expect
-      .poll(async () => parts.evaluate((el) => (el as HTMLDetailsElement).open))
-      .toBe(false);
-    await expect(page.getByTestId("place-card-methodology-link")).toBeHidden();
-
-    // Answer row sits above the closed fold; value rows live inside it.
-    const figure = page.getByTestId("place-card-figure");
-    await expect(figure).toBeVisible();
-    const figureBox = await figure.boundingBox();
-    const partsBox = await parts.boundingBox();
-    expect(figureBox).toBeTruthy();
-    expect(partsBox).toBeTruthy();
-    expect(figureBox!.y + figureBox!.height).toBeLessThanOrEqual(
-      partsBox!.y + 1,
+    await expect(page.getByTestId("place-card-parts")).toHaveCount(0);
+    await expect(page.getByText("More about this area", { exact: false })).toHaveCount(
+      0,
     );
 
-    await parts.locator("summary").click();
-    await expect(parts).toHaveAttribute("open", "");
-    await expect(page.getByTestId("place-card-value-rows")).toBeVisible();
-    await expect(page.getByTestId("place-card-agr-surface")).toBeVisible();
+    const figure = page.getByTestId("place-card-figure");
+    await expect(figure).toBeVisible();
     const howLink = page.getByTestId("place-card-methodology-link");
     await expect(howLink).toBeVisible();
     await expect(howLink).toHaveText(HOW_LINK);
     await expect(howLink).toHaveAttribute("href", "/methodology");
+    const figureBox = await figure.boundingBox();
+    const howBox = await howLink.boundingBox();
+    expect(figureBox).toBeTruthy();
+    expect(howBox).toBeTruthy();
+    expect(figureBox!.y + figureBox!.height).toBeLessThanOrEqual(howBox!.y + 1);
+
     await assertNoZoneCodesOnCard(card);
 
     await expect(card).not.toContainText(/\bunknown\b/i);

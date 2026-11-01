@@ -52,6 +52,10 @@ import {
   type PlaceRentTag,
   type PlaceUnitKind,
 } from "../lib/placeCard";
+import {
+  placeNearbyFacts,
+  type NearbyFact,
+} from "../lib/placeNearby";
 
 export type PlaceCardProps = {
   data: PlaceCardPayload | null;
@@ -79,6 +83,8 @@ export type PlaceCardProps = {
   gridSquareLine?: string | null;
   /** ARCH-5c — live map zoom for data-level ladder stamp. */
   mapZoom?: number;
+  /** SEPA flood Data Zone table has rows — unlocks the flood nearby fact. */
+  floodLoaded?: boolean;
 };
 
 /** Visitor-safe CSS tone — never emit the raw API class string `shadow` in HTML. */
@@ -174,6 +180,301 @@ function FoldPartRow({
   );
 }
 
+function PlaceFactsBlock({
+  dataZoneName,
+  nearby,
+}: {
+  dataZoneName: string | null;
+  nearby: readonly NearbyFact[];
+}) {
+  return (
+    <section
+      className="place-card-facts"
+      data-testid="place-card-facts"
+      aria-label="About this place"
+    >
+      <h3 className="place-card-facts-heading">About this place</h3>
+      {dataZoneName ? (
+        <p
+          className="place-card-local-area"
+          data-testid="place-card-local-area"
+        >
+          {`Local area (data zone): ${dataZoneName}`}
+        </p>
+      ) : null}
+      {nearby.length > 0 ? (
+        <>
+          <h4 className="place-card-nearby-heading">{"What's nearby"}</h4>
+          <ul className="place-card-nearby-list" data-testid="place-card-nearby">
+            {nearby.map((fact) => (
+              <li
+                key={fact.id}
+                className="place-card-nearby-item"
+                data-testid={`place-card-nearby-${fact.id}`}
+                data-layer-id={fact.id}
+              >
+                {fact.text}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+function HowWeWorkLink() {
+  return (
+    <div className="place-card-how" data-testid="place-card-how-we-work">
+      <a
+        href="/methodology"
+        className="place-card-how-link"
+        data-testid="place-card-methodology-link"
+      >
+        {PLACE_CARD_HOW_WE_WORK_LABEL}
+      </a>
+    </div>
+  );
+}
+
+function PlaceCardBody({
+  card,
+  titleId,
+  placeName,
+  councilLine,
+  onShowScotland,
+  shareCopied,
+  onShareClick,
+  tooFew,
+  liveRangeOk,
+  liveUnavailable,
+  liveAnswerRange,
+  surfaceDisplay,
+  answerChipTag,
+  valueRows,
+  gridSquareLine,
+  floodLoaded,
+}: {
+  card: PlaceCardPayload;
+  titleId: string;
+  placeName: string;
+  councilLine: string | null;
+  onShowScotland?: () => void;
+  shareCopied: boolean;
+  onShareClick: () => void;
+  tooFew: boolean;
+  liveRangeOk: boolean;
+  liveUnavailable: boolean;
+  liveAnswerRange: string | null;
+  surfaceDisplay: SurfaceRentDisplay | null;
+  answerChipTag: PlaceRentTag;
+  valueRows: PlaceAgrRow[];
+  gridSquareLine: string | null;
+  floodLoaded: boolean;
+}) {
+  const dataZoneName = card.data_zone?.name?.trim() || null;
+  const nearby = placeNearbyFacts(card.constraints, { floodLoaded });
+  const showPartsFold = liveRangeOk;
+  const moneyOn = liveRangeOk;
+  const facts = (
+    <PlaceFactsBlock dataZoneName={dataZoneName} nearby={nearby} />
+  );
+  const disclaimer = moneyOn ? (
+    <p
+      className="place-card-estimate-line layer-meta"
+      data-testid="place-card-estimate-line"
+    >
+      {PLACE_CARD_ESTIMATE_LINE}
+    </p>
+  ) : (
+    <p
+      className="place-card-experimental-footer"
+      data-testid="place-card-footer"
+    >
+      {PLACE_CARD_EXPERIMENTAL_FOOTER}
+    </p>
+  );
+
+  return (
+    <div className="place-card-body">
+      <header className="place-card-header" data-testid="place-card-header">
+        <h2
+          className="place-card-title"
+          id={titleId}
+          data-testid="place-card-place"
+        >
+          {placeName}
+        </h2>
+        {councilLine ? (
+          <p className="place-card-council">
+            {onShowScotland ? (
+              <span
+                className="place-card-breadcrumb"
+                data-testid="place-card-breadcrumb"
+              >
+                <button
+                  type="button"
+                  className="place-card-crumb-scotland"
+                  data-testid="place-card-crumb-scotland"
+                  aria-label="Zoom to Scotland"
+                  onClick={onShowScotland}
+                >
+                  {SCOTLAND_CRUMB_LABEL}
+                </button>
+                <span className="place-card-crumb-sep" aria-hidden="true">
+                  {" › "}
+                </span>
+              </span>
+            ) : null}
+            <span data-testid="place-card-council">{councilLine}</span>
+            <button
+              type="button"
+              className="place-card-share"
+              data-testid="place-card-share"
+              aria-label={
+                shareCopied
+                  ? PLACE_CARD_SHARE_COPIED_ARIA_LABEL
+                  : PLACE_CARD_SHARE_ARIA_LABEL
+              }
+              onClick={onShareClick}
+            >
+              {shareCopied
+                ? PLACE_CARD_SHARE_COPIED_LABEL
+                : PLACE_CARD_SHARE_LABEL}
+            </button>
+          </p>
+        ) : null}
+        <p
+          className="place-card-typical"
+          data-testid="place-card-typical-home"
+        >
+          {PLACE_CARD_TYPICAL_HOME}
+        </p>
+        {!moneyOn ? facts : null}
+        <section
+          className="place-card-agr-heading"
+          aria-label={`${PLACE_CARD_AGR_LABEL}. ${PLACE_CARD_AGR_SUBTITLE}. ${PLACE_CARD_AGR_SCOPE_NOTE}`}
+          data-testid="place-card-agr-heading"
+        >
+          <h3
+            className="place-card-section place-card-agr-label"
+            data-testid="place-card-agr-label"
+          >
+            {PLACE_CARD_AGR_LABEL}
+          </h3>
+          <p
+            className="place-card-agr-subtitle"
+            data-testid="place-card-agr-subtitle"
+            aria-label={PLACE_CARD_AGR_SUBTITLE}
+          >
+            {PLACE_CARD_AGR_SUBTITLE}
+          </p>
+          <p
+            className="place-card-agr-scope"
+            data-testid="place-card-agr-scope"
+            aria-label={PLACE_CARD_AGR_SCOPE_NOTE}
+          >
+            {PLACE_CARD_AGR_SCOPE_NOTE}
+          </p>
+        </section>
+        <div className="place-card-answer" data-testid="place-card-figure">
+          {tooFew ? (
+            <p
+              className="place-card-too-few"
+              data-testid="place-card-too-few"
+            >
+              {PLACE_CARD_TOO_FEW_HOMES}
+            </p>
+          ) : liveRangeOk ? (
+            <>
+              <p className="place-card-figure-range-line">
+                <span data-testid="place-card-figure-range">
+                  {liveAnswerRange}
+                </span>{" "}
+                <ClassChip tag={answerChipTag} />
+              </p>
+              <p
+                className="place-card-figure-unit"
+                data-testid="place-card-figure-unit"
+              >
+                {GBP_LIVE_UNIT_WORDING}
+              </p>
+            </>
+          ) : liveUnavailable ? (
+            <p
+              className="place-card-under-review"
+              data-testid="place-card-under-review"
+            >
+              {surfaceDisplay?.label?.trim() || GBP_LIVE_ESTIMATE_UNAVAILABLE}
+            </p>
+          ) : (
+            <>
+              <span
+                className="place-card-status-pill"
+                data-testid="place-card-figure-status"
+              >
+                {PLACE_CARD_FIGURE_STATUS}
+              </span>
+              <p className="place-card-pre-pound">{PLACE_CARD_PRE_POUND}</p>
+            </>
+          )}
+        </div>
+        {disclaimer}
+        {moneyOn ? facts : null}
+        {gridSquareLine ? (
+          <p className="place-card-row6" data-testid="place-card-row6-slot">
+            {gridSquareLine}
+          </p>
+        ) : (
+          <div data-testid="place-card-row6-slot" hidden aria-hidden="true" />
+        )}
+        <div
+          data-testid="place-card-derived-from"
+          data-derived-from={formatDerivedFromSlot(
+            card.derived_from ?? ["dz2022"],
+          )}
+          hidden
+          aria-hidden="true"
+        >
+          {formatDerivedFromSlot(card.derived_from ?? ["dz2022"])}
+        </div>
+      </header>
+
+      <p className="place-card-fact" data-testid="place-card-fact">
+        {PLACE_CARD_FACT_LINE}
+      </p>
+
+      {showPartsFold ? (
+        <details className="place-card-parts" data-testid="place-card-parts">
+          <summary className="place-card-parts-summary">
+            {PLACE_CARD_PARTS_SUMMARY}
+          </summary>
+          <ul className="place-agr-list" data-testid="place-card-value-rows">
+            {valueRows.map((row) => (
+              <FoldPartRow
+                key={row.id}
+                row={row}
+                liveRange={
+                  row.id === "surface" && liveRangeOk ? liveAnswerRange : null
+                }
+              />
+            ))}
+          </ul>
+          <p
+            className="place-card-how-homes"
+            data-testid="place-card-how-homes-only"
+          >
+            {PLACE_CARD_HOW_WE_WORK_HOMES}
+          </p>
+          <HowWeWorkLink />
+        </details>
+      ) : (
+        <HowWeWorkLink />
+      )}
+    </div>
+  );
+}
+
 /**
  * MAP-CARDS §5 place card — answer-first Annual Ground Rent; no map reference;
  * no land outline; status pill once; fold for parts.
@@ -191,6 +492,7 @@ export function PlaceCard({
   noMatch = false,
   gridSquareLine = null,
   mapZoom,
+  floodLoaded = false,
 }: PlaceCardProps) {
   const [shareCopied, setShareCopied] = useState(false);
   const shareCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -429,226 +731,24 @@ export function PlaceCard({
       ) : null}
 
       {!isLoading && !error && card && !seaMiss && !isNoMatch ? (
-        <div className="place-card-body">
-          <header
-            className="place-card-header"
-            data-testid="place-card-header"
-          >
-            {/* 1 Title */}
-            <h2
-              className="place-card-title"
-              id={titleId}
-              data-testid="place-card-place"
-            >
-              {placeName}
-            </h2>
-            {/* 2 Council — ARCH-5c Scotland › council breadcrumb */}
-            {councilLine ? (
-              <p className="place-card-council">
-                {onShowScotland ? (
-                  <span
-                    className="place-card-breadcrumb"
-                    data-testid="place-card-breadcrumb"
-                  >
-                    <button
-                      type="button"
-                      className="place-card-crumb-scotland"
-                      data-testid="place-card-crumb-scotland"
-                      aria-label="Zoom to Scotland"
-                      onClick={onShowScotland}
-                    >
-                      {SCOTLAND_CRUMB_LABEL}
-                    </button>
-                    <span className="place-card-crumb-sep" aria-hidden="true">
-                      {" › "}
-                    </span>
-                  </span>
-                ) : null}
-                <span data-testid="place-card-council">{councilLine}</span>
-                <button
-                  type="button"
-                  className="place-card-share"
-                  data-testid="place-card-share"
-                  aria-label={
-                    shareCopied
-                      ? PLACE_CARD_SHARE_COPIED_ARIA_LABEL
-                      : PLACE_CARD_SHARE_ARIA_LABEL
-                  }
-                  onClick={onShareClick}
-                >
-                  {shareCopied
-                    ? PLACE_CARD_SHARE_COPIED_LABEL
-                    : PLACE_CARD_SHARE_LABEL}
-                </button>
-              </p>
-            ) : null}
-            {/* 3 Scope (rows 1–5 for too-few too) */}
-            <p
-              className="place-card-typical"
-              data-testid="place-card-typical-home"
-            >
-              {PLACE_CARD_TYPICAL_HOME}
-            </p>
-            {/* 4 Label + 5 Subtitle */}
-            <section
-              className="place-card-agr-heading"
-              aria-label={`${PLACE_CARD_AGR_LABEL}. ${PLACE_CARD_AGR_SUBTITLE}. ${PLACE_CARD_AGR_SCOPE_NOTE}`}
-              data-testid="place-card-agr-heading"
-            >
-              <h3
-                className="place-card-section place-card-agr-label"
-                data-testid="place-card-agr-label"
-              >
-                {PLACE_CARD_AGR_LABEL}
-              </h3>
-              <p
-                className="place-card-agr-subtitle"
-                data-testid="place-card-agr-subtitle"
-                aria-label={PLACE_CARD_AGR_SUBTITLE}
-              >
-                {PLACE_CARD_AGR_SUBTITLE}
-              </p>
-              <p
-                className="place-card-agr-scope"
-                data-testid="place-card-agr-scope"
-                aria-label={PLACE_CARD_AGR_SCOPE_NOTE}
-              >
-                {PLACE_CARD_AGR_SCOPE_NOTE}
-              </p>
-            </section>
-            {/* 6 Answer (+ addendum A4 hidden slot) */}
-            <div
-              className="place-card-answer"
-              data-testid="place-card-figure"
-            >
-              {tooFew ? (
-                <p
-                  className="place-card-too-few"
-                  data-testid="place-card-too-few"
-                >
-                  {PLACE_CARD_TOO_FEW_HOMES}
-                </p>
-              ) : liveRangeOk ? (
-                <>
-                  <p className="place-card-figure-range-line">
-                    <span data-testid="place-card-figure-range">
-                      {liveAnswerRange}
-                    </span>{" "}
-                    <ClassChip tag={answerChipTag} />
-                  </p>
-                  <p
-                    className="place-card-figure-unit"
-                    data-testid="place-card-figure-unit"
-                  >
-                    {GBP_LIVE_UNIT_WORDING}
-                  </p>
-                </>
-              ) : liveUnavailable ? (
-                <p
-                  className="place-card-under-review"
-                  data-testid="place-card-under-review"
-                >
-                  {surfaceDisplay?.label?.trim() ||
-                    GBP_LIVE_ESTIMATE_UNAVAILABLE}
-                </p>
-              ) : (
-                <>
-                  <span
-                    className="place-card-status-pill"
-                    data-testid="place-card-figure-status"
-                  >
-                    {PLACE_CARD_FIGURE_STATUS}
-                  </span>
-                  <p className="place-card-pre-pound">{PLACE_CARD_PRE_POUND}</p>
-                </>
-              )}
-            </div>
-            {liveRangeOk ? (
-              <p
-                className="place-card-estimate-line layer-meta"
-                data-testid="place-card-estimate-line"
-              >
-                {PLACE_CARD_ESTIMATE_LINE}
-              </p>
-            ) : null}
-            {/* Addendum A4 / GRID-BASE-1 row-6 */}
-            {gridSquareLine ? (
-              <p
-                className="place-card-row6"
-                data-testid="place-card-row6-slot"
-              >
-                {gridSquareLine}
-              </p>
-            ) : (
-              <div
-                data-testid="place-card-row6-slot"
-                hidden
-                aria-hidden="true"
-              />
-            )}
-            <div
-              data-testid="place-card-derived-from"
-              data-derived-from={formatDerivedFromSlot(
-                card?.derived_from ?? ["dz2022"],
-              )}
-              hidden
-              aria-hidden="true"
-            >
-              {formatDerivedFromSlot(card?.derived_from ?? ["dz2022"])}
-            </div>
-          </header>
-
-          {/* 7 Why */}
-          <p className="place-card-fact" data-testid="place-card-fact">
-            {PLACE_CARD_FACT_LINE}
-          </p>
-
-          {/* 8 Fold */}
-          <details
-            className="place-card-parts"
-            data-testid="place-card-parts"
-          >
-            <summary className="place-card-parts-summary">
-              {PLACE_CARD_PARTS_SUMMARY}
-            </summary>
-            <ul
-              className="place-agr-list"
-              data-testid="place-card-value-rows"
-            >
-              {valueRows.map((row) => (
-                <FoldPartRow
-                  key={row.id}
-                  row={row}
-                  liveRange={
-                    row.id === "surface" && liveRangeOk ? liveAnswerRange : null
-                  }
-                />
-              ))}
-            </ul>
-            <p
-              className="place-card-how-homes"
-              data-testid="place-card-how-homes-only"
-            >
-              {PLACE_CARD_HOW_WE_WORK_HOMES}
-            </p>
-            <div className="place-card-how" data-testid="place-card-how-we-work">
-              <a
-                href="/methodology"
-                className="place-card-how-link"
-                data-testid="place-card-methodology-link"
-              >
-                {PLACE_CARD_HOW_WE_WORK_LABEL}
-              </a>
-            </div>
-          </details>
-
-          <p
-            className="place-card-experimental-footer"
-            data-testid="place-card-footer"
-          >
-            {PLACE_CARD_EXPERIMENTAL_FOOTER}
-          </p>
-        </div>
+        <PlaceCardBody
+          card={card}
+          titleId={titleId}
+          placeName={placeName}
+          councilLine={councilLine}
+          onShowScotland={onShowScotland}
+          shareCopied={shareCopied}
+          onShareClick={onShareClick}
+          tooFew={tooFew}
+          liveRangeOk={liveRangeOk}
+          liveUnavailable={liveUnavailable}
+          liveAnswerRange={liveAnswerRange}
+          surfaceDisplay={surfaceDisplay}
+          answerChipTag={answerChipTag}
+          valueRows={valueRows}
+          gridSquareLine={gridSquareLine}
+          floodLoaded={floodLoaded}
+        />
       ) : null}
 
       {!isLoading && !error && !card && !isNoMatch ? (

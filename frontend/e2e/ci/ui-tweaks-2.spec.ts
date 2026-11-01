@@ -8,8 +8,8 @@ registerOpenFreeMapFontStub();
  * UI-TWEAKS-2 — mobile peek never covers the disclaimer.
  * 390×844 and 360×740. EH1 1YZ, IV27 4HN, Inverness.
  * Peek shows the place name, the Annual Ground Rent line, and the
- * disclaimer, each visible and unobscured. "More about this area" is
- * hidden in peek and visible in half. Asserts can fail.
+ * disclaimer, each visible and unobscured. Empty fold stays absent;
+ * "How we work this out →" is reachable at half (CARD-CLARITY-31OCT-1B).
  */
 
 const PLACES = ["EH1 1YZ", "Inverness", "IV27 4HN"] as const;
@@ -241,13 +241,13 @@ async function assertUnobscured(
 async function assertHalfShowsFold(page: Page) {
   const slot = page.getByTestId("map-panel-slot");
   await expect(slot).toHaveAttribute("data-detent", "half");
-  const parts = page.getByTestId("place-card-parts");
-  await expect(parts).toHaveCount(1);
-  await expect(parts).toBeVisible();
-  const summary = parts.locator("summary");
-  await expect(summary).toBeVisible();
-  await expect(summary).toContainText("More about this area");
-  await summary.evaluate((el) => {
+  await expect(page.getByTestId("place-card-parts")).toHaveCount(0);
+  await expect(page.getByText("More about this area", { exact: false })).toHaveCount(
+    0,
+  );
+  const how = page.getByTestId("place-card-methodology-link");
+  await expect(how).toBeVisible();
+  await how.evaluate((el) => {
     const scroller = el.closest(".map-panel-slot-scroll");
     if (!(scroller instanceof HTMLElement)) {
       el.scrollIntoView({ block: "center", inline: "nearest" });
@@ -257,11 +257,11 @@ async function assertHalfShowsFold(page: Page) {
     const top = el.getBoundingClientRect().top;
     scroller.scrollTop += top - scrollerTop;
   });
-  const mb = await summary.boundingBox();
-  expect(mb, "More about this area box").toBeTruthy();
+  const mb = await how.boundingBox();
+  expect(mb, "How we work this out box").toBeTruthy();
   expect(mb!.width).toBeGreaterThan(0);
   expect(mb!.height).toBeGreaterThan(0);
-  const hit = await summary.evaluate((el) => {
+  const hit = await how.evaluate((el) => {
     const r = el.getBoundingClientRect();
     const x = r.left + r.width / 2;
     const y = r.top + r.height / 2;
@@ -309,16 +309,16 @@ async function assertPeekClear(page: Page, place: string) {
   await assertUnobscured(page, agr, agrBox);
   await assertUnobscured(page, disclaimer, disclaimerBox);
 
-  const parts = page.getByTestId("place-card-parts");
-  await expect(parts).toHaveCount(1);
-  await expect(parts).toBeHidden();
-  const summary = parts.locator("summary");
-  await expect(summary).toHaveCount(1);
-  await expect(summary).toContainText("More about this area");
-  await expect(summary).toBeHidden();
-  expect(await summary.boundingBox()).toBeNull();
-  const folded = await parts.evaluate((el) => getComputedStyle(el).display);
-  expect(folded).toBe("none");
+  await expect(page.getByTestId("place-card-parts")).toHaveCount(0);
+  await expect(page.getByText("More about this area", { exact: false })).toHaveCount(
+    0,
+  );
+  const how = page.getByTestId("place-card-how-we-work");
+  await expect(how).toBeHidden();
+  const facts = page.getByTestId("place-card-facts");
+  if ((await facts.count()) > 0) {
+    await expect(facts).toBeHidden();
+  }
 }
 
 const VIEWPORTS = [

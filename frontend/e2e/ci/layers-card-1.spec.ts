@@ -207,7 +207,7 @@ for (const viewport of [
   test.describe(`ELC-1 LAYERS-CARD-1 (${viewport.width})`, () => {
     test.use({ viewport });
 
-    test("five group notes, crofting in tenure, no floating keys", async ({
+    test("live group notes; crofting in limits; empty tenure/nature gone", async ({
       page,
     }) => {
       test.setTimeout(180_000);
@@ -220,42 +220,34 @@ for (const viewport of [
       await expect(page.getByTestId("legend-strip")).toHaveCount(0);
 
       await openLayers(page);
-      for (const key of [
-        "land",
-        "tenure",
-        "resources",
-        "nature",
-        "places",
-      ] as const) {
+      for (const key of ["land", "resources", "limits", "places"] as const) {
         await ensureLayersGroupOpen(page, key);
       }
 
       await expect(page.getByTestId("layers-group-note-land")).toHaveText(
         GROUP_NOTES.land,
       );
-      await expect(page.getByTestId("layers-group-note-tenure")).toHaveText(
-        GROUP_NOTES.tenure,
-      );
+      await expect(page.getByTestId("layers-group-note-tenure")).toHaveCount(0);
       await expect(page.getByTestId("layers-group-note-resources")).toHaveText(
         GROUP_NOTES.resources,
       );
-      await expect(page.getByTestId("layers-nature-note")).toHaveText(
-        GROUP_NOTES.nature,
-      );
+      await expect(page.getByTestId("layers-nature-note")).toHaveCount(0);
       await expect(page.getByTestId("layers-group-note-places")).toHaveText(
         GROUP_NOTES.places,
       );
 
       await expect(
         page
-          .getByTestId("layers-group-tenure")
+          .getByTestId("layers-group-limits")
           .getByTestId("layer-toggle-crofting"),
       ).toBeVisible();
       await expect(
         page
-          .getByTestId("layers-group-nature")
-          .getByTestId("layer-toggle-crofting"),
-      ).toHaveCount(0);
+          .getByTestId("layers-group-limits")
+          .getByTestId("layer-toggle-designations"),
+      ).toBeVisible();
+      await expect(page.getByTestId("layers-group-tenure")).toHaveCount(0);
+      await expect(page.getByTestId("layers-group-nature")).toHaveCount(0);
 
       await page.getByTestId("layer-toggle-access_services").click();
       await expect(

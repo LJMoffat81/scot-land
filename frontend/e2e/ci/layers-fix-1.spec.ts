@@ -426,7 +426,7 @@ test.describe("LAYERS-FIX-1", () => {
     await openMap(page);
     await waitForMap(page);
     await openLayers(page);
-    await ensureLayersGroupOpen(page, "nature");
+    await ensureLayersGroupOpen(page, "limits");
     await page.evaluate(() => {
       const map = (
         window as unknown as {

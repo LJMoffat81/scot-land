@@ -36,3 +36,8 @@ tiles:
     total_mb: 22
     tile_kb: 500
     z0_7_mb: 2.7
+
+# M1 admission test (charter v2 §4), tagged 1 Nov 2026.
+policy_question: [Q6]
+shows: natural_capital
+value_layer: false

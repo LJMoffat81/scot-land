@@ -95,3 +95,9 @@ tiles:
     tile_kb: 500
     z0_7_mb: 4
 clip_keep_all: true
+
+# M1 admission test (charter v2 §4), tagged 1 Nov 2026.
+policy_question: []
+shows: context
+value_layer: false
+admission_gaps: [vintage]

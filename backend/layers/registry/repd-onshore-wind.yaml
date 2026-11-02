@@ -28,3 +28,8 @@ tiles:
     total_mb: 15
     tile_kb: 500
     z0_7_mb: 2
+
+# M1 admission test (charter v2 §4), tagged 1 Nov 2026.
+policy_question: [Q5]
+shows: commons_rent
+value_layer: false

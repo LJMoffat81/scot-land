@@ -3,6 +3,9 @@ import { test, expect } from "./_fixtures";
 import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, ensureLayersGroupOpen } from "./_mapCardsHelpers";
 import { type Page, type Route } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { GRID3_LABEL, GRID3_MIN_ZOOM } from "../../lib/grid3Map";
+import * as grid3Map from "../../lib/grid3Map";
+import { MAP_LAYER_REGISTRY } from "../../lib/mapLayerRegistry";
 
 registerOpenFreeMapFontStub();
 
@@ -202,12 +205,12 @@ test.describe("GRID-BASE-1", () => {
     await expect(toggle).toBeVisible();
     await expect(toggle).toHaveAttribute("role", "switch");
     await expect(toggle).toHaveAttribute("aria-checked", "false");
-    await expect(toggle).toHaveAttribute("aria-label", "3 m grid");
+    await expect(toggle).toHaveAttribute("aria-label", "3 m grid square");
     await expect(page.getByTestId("layer-desc-grid3")).toHaveText(
       "Shows when you zoom right in",
     );
     await expect(page.getByTestId("layers-group-land")).toContainText(
-      "3 m grid",
+      "3 m grid square",
     );
 
     await toggle.click();
@@ -390,11 +393,150 @@ test.describe("GRID-BASE-1", () => {
       ).__SCOT_LAND_MAP__;
       const ids = map.getStyle().layers.map((l) => l.id);
       return {
-        gridFill: ids.indexOf("grid3-highlight-fill"),
+        gridFill: ids.indexOf("grid3-highlight-line"),
         selected: ids.indexOf("selected-square-outline"),
       };
     });
     expect(order.gridFill).toBeGreaterThanOrEqual(0);
     expect(order.selected).toBeGreaterThan(order.gridFill);
+  });
+});
+
+/**
+ * VIEWS-1a-ii — outline-only 3 m grid (Laurie 2 Nov 2026). Estimates stop at
+ * Data Zone level: no grid layer is filled or shaded, no grid feature carries
+ * a value, and the grid never shows a figure, a pound sign or the Estimate badge.
+ */
+const GRID_SOURCES = ["grid3-lines", "grid3-highlight", "zone-outline"];
+
+async function gridStyleLayers(page: Page) {
+  return page.evaluate((sources) => {
+    const map = (
+      window as unknown as {
+        __SCOT_LAND_MAP__: {
+          getStyle: () => {
+            layers: Array<{
+              id: string;
+              type: string;
+              source?: string;
+              paint?: Record<string, unknown>;
+              layout?: Record<string, unknown>;
+            }>;
+          };
+        };
+      }
+    ).__SCOT_LAND_MAP__;
+    return map
+      .getStyle()
+      .layers.filter(
+        (l) => (l.source && sources.includes(l.source)) || /^grid3|selected-square/.test(l.id),
+      )
+      .map((l) => ({
+        id: l.id,
+        type: l.type,
+        paintKeys: Object.keys(l.paint ?? {}),
+        visibility: String(l.layout?.visibility ?? "visible"),
+      }));
+  }, GRID_SOURCES);
+}
+
+async function sourceProps(page: Page, id: string) {
+  return page.evaluate((sourceId) => {
+    const map = (
+      window as unknown as {
+        __SCOT_LAND_MAP__: { getSource: (i: string) => unknown };
+      }
+    ).__SCOT_LAND_MAP__;
+    const src = map.getSource(sourceId) as {
+      _data?: GeoJSON.FeatureCollection;
+      serialize?: () => { data?: GeoJSON.FeatureCollection };
+    } | null;
+    const fc = src?._data?.features ? src._data : src?.serialize?.().data;
+    return (fc?.features ?? []).map((f) => f.properties ?? {});
+  }, id);
+}
+
+test.describe("VIEWS-1a-ii outline-only grid", () => {
+  test.beforeEach(async ({ page }) => {
+    await stubMapBackend(page);
+  });
+
+  test("O1 — label, zoom gate and paint layers are locked", () => {
+    expect(GRID3_LABEL).toBe("3 m grid square");
+    expect(GRID3_MIN_ZOOM).toBe(17);
+    const entry = MAP_LAYER_REGISTRY.find((e) => e.id === "grid3");
+    expect(entry).toBeTruthy();
+    expect(entry!.label).toBe("3 m grid square");
+    expect(entry!.minzoom).toBe(17);
+    expect(entry!.classes).toEqual([{ label: "3 m grid square", color: "#0b2340" }]);
+    expect(entry!.paintLayerIds).toEqual(["grid3-lines-layer"]);
+    expect(entry!.chip ?? null).toBeNull();
+    const exported = Object.keys(grid3Map);
+    expect(exported.filter((k) => /FILL/.test(k))).toEqual([]);
+  });
+
+  test("O2 O3 O4 — no fill at any zoom; absent below z17; no values, pound sign or Estimate", async ({
+    page,
+  }) => {
+    const gate = attachConsoleGate(page);
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto("/?layers=grid3&lat=55.9533&lng=-3.1883");
+    await waitMap(page);
+
+    // O3 — below the threshold: no lines, lines layers hidden.
+    await setZoom(page, 16.5, [-3.1883, 55.9533]);
+    expect(await sourceFeatureCount(page, "grid3-lines")).toBe(0);
+    for (const l of await gridStyleLayers(page)) {
+      if (l.id.startsWith("grid3-lines")) expect(l.visibility).toBe("none");
+    }
+
+    for (const z of [16.5, 17.2, 18.2, 19.2, 20]) {
+      await setZoom(page, z, [-3.1883, 55.9533]);
+      if (z >= 17) await waitGridLines(page, 1);
+      await page.mouse.move(640, 400);
+      await page.waitForTimeout(120);
+      const layers = await gridStyleLayers(page);
+      // O2 — grid layers exist and every one is a plain line layer.
+      expect(layers.map((l) => l.id)).toEqual(
+        expect.arrayContaining(["grid3-lines-layer", "grid3-highlight-line"]),
+      );
+      for (const l of layers) {
+        expect(l.type, `${l.id} at z${z}`).toBe("line");
+        expect(l.paintKeys.filter((k) => !k.startsWith("line-")), l.id).toEqual([]);
+      }
+      expect(layers.map((l) => l.id)).not.toContain("grid3-highlight-fill");
+      expect(layers.map((l) => l.id)).not.toContain("selected-square-fill");
+      // O4 — no value on any grid feature.
+      const lineProps = await sourceProps(page, "grid3-lines");
+      if (z >= 17) expect(lineProps.length).toBeGreaterThan(0);
+      for (const props of lineProps) {
+        for (const k of Object.keys(props)) expect(["kind", "e", "n"]).toContain(k);
+      }
+      const hlProps = await sourceProps(page, "grid3-highlight");
+      if (z >= 18) expect(hlProps.length).toBe(1);
+      for (const props of hlProps) {
+        expect(Object.keys(props).sort()).toEqual(["key", "ref", "transform"]);
+      }
+    }
+
+    await setZoom(page, 19.2, [-3.1883, 55.9533]);
+    await page.mouse.move(640, 400);
+    await expect(page.getByTestId("grid3-tooltip")).toHaveText(
+      /^3 m grid square: [A-Z]{2} \d{5} \d{5}$/,
+    );
+    await page.mouse.click(640, 400);
+    const row6 = page.getByTestId("place-card-row6-slot");
+    await expect(row6).toContainText(/3 m grid square: [A-Z]{2} \d{5} \d{5}/);
+    const row6Text = (await row6.innerText()).trim();
+    expect(row6Text).toMatch(
+      /^3 m grid square: [A-Z]{2} \d{5} \d{5} \(a map grid, not a property\)$/,
+    );
+    const body = await page.locator("body").innerText();
+    const pound = "\u00a3"; // no glyph in source (backend P7 pin)
+    expect(body).not.toContain(pound);
+    expect(row6Text.toLowerCase()).not.toContain("estimate");
+    await expect(row6.getByTestId("place-card-estimate-line")).toHaveCount(0);
+    await expect(page.getByTestId("map-view-estimate")).toHaveCount(0);
+    assertConsoleClean(gate);
   });
 });

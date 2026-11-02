@@ -6,12 +6,9 @@ import type { Map as MaplibreMap } from "maplibre-gl";
 
 import {
   EMPTY_FC,
-  GRID3_HIGHLIGHT_FILL,
-  GRID3_HIGHLIGHT_FILL_OPACITY,
   GRID3_HIGHLIGHT_HALO_WIDTH,
   GRID3_HIGHLIGHT_OUTLINE,
   GRID3_HIGHLIGHT_OUTLINE_WIDTH,
-  GRID3_LAYER_HIGHLIGHT_FILL,
   GRID3_LAYER_HIGHLIGHT_HALO,
   GRID3_LAYER_HIGHLIGHT_LINE,
   GRID3_LAYER_LINES,
@@ -56,15 +53,6 @@ function ensureZoneOutlineSlot(map: MaplibreMap): void {
   if (!map.getSource(ZONE_OUTLINE_SOURCE)) {
     map.addSource(ZONE_OUTLINE_SOURCE, { type: "geojson", data: EMPTY_FC });
   }
-  if (!hasLayer(map, "selected-square-fill")) {
-    map.addLayer({
-      id: "selected-square-fill",
-      type: "fill",
-      source: ZONE_OUTLINE_SOURCE,
-      layout: { visibility: "none" },
-      paint: { "fill-color": "#1d4f91", "fill-opacity": 0.12 },
-    });
-  }
   if (!hasLayer(map, "selected-square-outline")) {
     map.addLayer({
       id: "selected-square-outline",
@@ -93,8 +81,8 @@ export function ensureGrid3Layers(map: MaplibreMap): void {
 
   const beforeId = hasLayer(map, "selected-parcel-fill")
     ? "selected-parcel-fill"
-    : hasLayer(map, "selected-square-fill")
-      ? "selected-square-fill"
+    : hasLayer(map, "selected-square-outline")
+      ? "selected-square-outline"
       : undefined;
 
   if (!hasLayer(map, GRID3_LAYER_LINES_HALO)) {
@@ -124,21 +112,6 @@ export function ensureGrid3Layers(map: MaplibreMap): void {
           "line-color": GRID3_LINE_COLOR,
           "line-width": GRID3_LINE_WIDTH,
           "line-opacity": GRID3_LINE_OPACITY,
-        },
-      },
-      beforeId,
-    );
-  }
-  if (!hasLayer(map, GRID3_LAYER_HIGHLIGHT_FILL)) {
-    map.addLayer(
-      {
-        id: GRID3_LAYER_HIGHLIGHT_FILL,
-        type: "fill",
-        source: GRID3_SOURCE_HIGHLIGHT,
-        layout: { visibility: "none" },
-        paint: {
-          "fill-color": GRID3_HIGHLIGHT_FILL,
-          "fill-opacity": GRID3_HIGHLIGHT_FILL_OPACITY,
         },
       },
       beforeId,
@@ -182,7 +155,6 @@ export function ensureGrid3Layers(map: MaplibreMap): void {
   for (const id of [
     "selected-parcel-fill",
     "selected-parcel-outline",
-    "selected-square-fill",
     "selected-square-outline",
   ]) {
     if (hasLayer(map, id)) {
@@ -241,8 +213,7 @@ export function setGrid3Visibility(
   }
   // Halo only when imagery paint enables it separately.
   for (const id of [
-    GRID3_LAYER_HIGHLIGHT_FILL,
-    GRID3_LAYER_HIGHLIGHT_HALO,
+      GRID3_LAYER_HIGHLIGHT_HALO,
     GRID3_LAYER_HIGHLIGHT_LINE,
   ]) {
     if (hasLayer(map, id)) map.setLayoutProperty(id, "visibility", hiVis);

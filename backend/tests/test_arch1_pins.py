@@ -522,6 +522,17 @@ _VIEWS_1A_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# VIEWS-1a-ii — outline-only 3 m grid (Laurie 2 Nov 2026).
+_VIEWS_1A_II_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/components/ScotlandMap.tsx",
+        "frontend/lib/grid3Map.ts",
+        "frontend/lib/grid3Runtime.ts",
+        "frontend/lib/mapLayerRegistry.ts",
+        "frontend/e2e/ci/grid-base.spec.ts",
+    ]
+)
+
 
 def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
@@ -546,6 +557,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _CARD_CLARITY_31OCT_1A_FRONTEND_ALLOW
                 | _CARD_CLARITY_31OCT_1B_FRONTEND_ALLOW
                 | _VIEWS_1A_FRONTEND_ALLOW
+                | _VIEWS_1A_II_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

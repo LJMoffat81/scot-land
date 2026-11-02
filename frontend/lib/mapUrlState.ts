@@ -17,6 +17,7 @@ import {
   defaultOnLayerIds,
   resolveMapLayerId,
 } from "./mapLayerRegistry";
+import { parseViewParam } from "./mapViews";
 
 export type MapPanelUrl = "place" | "layers" | null;
 
@@ -39,6 +40,8 @@ export type MapUrlState = {
   /** View centre [lng, lat] from `c` or lat/lon. */
   center: { lng: number; lat: number } | null;
   panel: MapPanelUrl;
+  /** VIEWS-1a story view slug (`?view=`); null when blank or unknown. */
+  view: string | null;
   /** Params not in the known contract — preserved on rewrite. */
   unknown: Record<string, string>;
 };
@@ -59,6 +62,7 @@ const KNOWN = new Set([
   "lng",
   "lon",
   "panel",
+  "view",
   // legacy aliases still read/cleared by the shell
   "words",
   "vacant",
@@ -234,6 +238,7 @@ export function readMapUrlState(
     bearing: br,
     center: parseCenter(params),
     panel,
+    view: parseViewParam(params.getAll("view"))?.id ?? null,
     unknown,
   };
 }
@@ -251,6 +256,8 @@ export type WriteMapUrlOpts = {
   bearing?: number | null;
   center?: { lng: number; lat: number } | null;
   panel?: MapPanelUrl;
+  /** VIEWS-1a view slug; null clears it. */
+  view?: string | null;
   /** Extra unknown keys to keep (merged with current URL unknowns). */
   unknown?: Record<string, string>;
   /**
@@ -299,6 +306,10 @@ export function writeMapUrlSearch(opts: WriteMapUrlOpts): string {
         : prev.br;
   const center = opts.center !== undefined ? opts.center : prev.center;
   const panel = opts.panel !== undefined ? opts.panel : prev.panel;
+  const view =
+    opts.view !== undefined
+      ? (parseViewParam(opts.view)?.id ?? null)
+      : prev.view;
   const unknown = { ...prev.unknown, ...(opts.unknown ?? {}) };
 
   if (place) next.set("place", place);
@@ -337,6 +348,7 @@ export function writeMapUrlSearch(opts: WriteMapUrlOpts): string {
     next.set("c", formatMapCenterParam(center.lng, center.lat));
   }
   if (panel) next.set("panel", panel);
+  if (view) next.set("view", view);
 
   for (const [key, value] of Object.entries(unknown)) {
     if (!next.has(key)) next.set(key, value);

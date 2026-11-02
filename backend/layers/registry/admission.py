@@ -6,6 +6,7 @@ Every failure raises ``AdmissionError`` with an ``ADMISSION:`` message.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Mapping
 
 from layers.registry.loader import LayerEntry, RegistryError
@@ -18,6 +19,11 @@ SUMMING_METHODS = frozenset({"sum", "area_weighted", "pop_weighted"})
 # committed layer now declares its vintage.
 GRANDFATHERED_GAPS: frozenset[str] = frozenset()
 _REQUIRED = ("policy_question", "shows", "value_layer")
+# VIEWS-1a: Scot-LAND estimates stop at Data Zone. No 3 m grid, cell or
+# squares layer may be tiled for the public map (matched on id and table).
+SUB_DZ_GRID_RE = re.compile(
+    r"(^|[-_])(grid3|grid[-_]3m|cell[-_]grid|cells|squares?|3m)([-_]|$)", re.I
+)
 
 
 class AdmissionError(RegistryError):
@@ -33,6 +39,14 @@ def _gaps(raw: Mapping[str, Any]) -> set[str]:
 
 
 def _check_entry(entry_id: str, raw: Mapping[str, Any]) -> None:
+    source = raw.get("source")
+    table = source.get("table") if isinstance(source, Mapping) else None
+    for field, value in (("id", entry_id), ("source.table", table)):
+        if isinstance(value, str) and SUB_DZ_GRID_RE.search(value):
+            raise AdmissionError(
+                f"ADMISSION: {entry_id}: $.{field}: Scot-LAND estimates stop at Data Zone; "
+                "no 3 m grid or cell tiles"
+            )
     for key in _REQUIRED:
         if key not in raw:
             raise AdmissionError(f"ADMISSION: {entry_id}: $.{key}: required")

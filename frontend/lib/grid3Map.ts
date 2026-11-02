@@ -45,7 +45,7 @@ export const GRID3_LINE_OPACITY_IMAGERY = 0.35;
 export const GRID3_LINE_HALO_COLOR = "#0b2340";
 
 /**
- * VIEWS-1a-ii — the grid is outline-only (Laurie 2 Nov 2026). No fill or
+ * VIEWS-1a-ii — the grid is outline-only (2 Nov 2026). No fill or
  * shading on any grid layer, and no value on any grid feature: estimates
  * stop at Data Zone level.
  */

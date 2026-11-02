@@ -3717,7 +3717,6 @@ export default function ScotlandMap() {
       }
       src?.setData(mod.buildGrid3Highlight(square.easting, square.northing));
       for (const id of [
-        mod.GRID3_LAYER_HIGHLIGHT_FILL,
         mod.GRID3_LAYER_HIGHLIGHT_HALO,
         mod.GRID3_LAYER_HIGHLIGHT_LINE,
       ]) {
@@ -3795,7 +3794,6 @@ export default function ScotlandMap() {
           | undefined;
         src?.setData(gm.buildGrid3Highlight(square.easting, square.northing));
         for (const id of [
-          gm.GRID3_LAYER_HIGHLIGHT_FILL,
           gm.GRID3_LAYER_HIGHLIGHT_HALO,
           gm.GRID3_LAYER_HIGHLIGHT_LINE,
         ]) {

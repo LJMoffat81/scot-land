@@ -31,7 +31,6 @@ export const GRID3_SOURCE_LINES = "grid3-lines";
 export const GRID3_SOURCE_HIGHLIGHT = "grid3-highlight";
 export const GRID3_LAYER_LINES = "grid3-lines-layer";
 export const GRID3_LAYER_LINES_HALO = "grid3-lines-halo";
-export const GRID3_LAYER_HIGHLIGHT_FILL = "grid3-highlight-fill";
 export const GRID3_LAYER_HIGHLIGHT_LINE = "grid3-highlight-line";
 export const GRID3_LAYER_HIGHLIGHT_HALO = "grid3-highlight-halo";
 
@@ -45,16 +44,18 @@ export const GRID3_LINE_COLOR_IMAGERY = "#ffffff";
 export const GRID3_LINE_OPACITY_IMAGERY = 0.35;
 export const GRID3_LINE_HALO_COLOR = "#0b2340";
 
-/** Highlight matches selected-zone style cues. */
-export const GRID3_HIGHLIGHT_FILL = "#1d4f91";
-export const GRID3_HIGHLIGHT_FILL_OPACITY = 0.18;
+/**
+ * VIEWS-1a-ii — the grid is outline-only (Laurie 2 Nov 2026). No fill or
+ * shading on any grid layer, and no value on any grid feature: estimates
+ * stop at Data Zone level.
+ */
 export const GRID3_HIGHLIGHT_OUTLINE = "#0b2340";
 export const GRID3_HIGHLIGHT_OUTLINE_WIDTH = 2;
 export const GRID3_HIGHLIGHT_HALO_WIDTH = 2;
 
 export const GRID3_ZOOM_HINT = "Zoom in to see the grid";
 export const GRID3_SUBLINE = "Shows when you zoom right in";
-export const GRID3_LABEL = "3 m grid";
+export const GRID3_LABEL = "3 m grid square";
 
 export const EMPTY_FC: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",

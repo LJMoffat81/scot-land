@@ -302,12 +302,12 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
   {
     id: "grid3",
     group: "land",
-    label: "3 m grid",
+    label: "3 m grid square",
     minzoom: 17,
     maxzoom: 20,
     // Device-drawn overlay — not an OS/SG data product; no Ordnance Survey credit.
     sourceCaption: "Scot-LAND · device-drawn",
-    classes: [{ label: "3 m grid", color: "#0b2340" }],
+    classes: [{ label: "3 m grid square", color: "#0b2340" }],
     defaultOn: false,
     subline: "Shows when you zoom right in",
     zoomHint: "Zoom in to see the grid",

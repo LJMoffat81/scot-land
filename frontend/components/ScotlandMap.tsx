@@ -116,7 +116,12 @@ import {
   nextTogglePitch,
 } from "../lib/default3dView";
 import { councilOverlayBeforeId } from "../lib/mapLayerOrder";
-import { defaultOnLayerIds } from "../lib/mapLayerRegistry";
+import { defaultOnLayerIds, MAP_LAYER_REGISTRY } from "../lib/mapLayerRegistry";
+import {
+  parseViewParam,
+  viewLayerIds,
+  viewMatchesLayers,
+} from "../lib/mapViews";
 import {
   isScotlandViewCenter,
   pushMapUrl,
@@ -744,6 +749,8 @@ export default function ScotlandMap() {
   const [builtupMaskVisible, setBuiltupMaskVisible] = useState(false);
   /** Ledger / registry toggles (paint where the rent class / constraint applies). */
   const [ledgerEnabled, setLedgerEnabled] = useState<LedgerToggleState>({});
+  /** VIEWS-1a — active story view (`?view=`); cleared when layers diverge. */
+  const [activeViewId, setActiveViewId] = useState<string | null>(null);
   /** Annual Ground Rent layer (registry id `1`). */
   const showAgr = Boolean(ledgerEnabled["1"]);
   /** Crofting constraint — OGL lists only; no national polygon paint. */
@@ -1034,9 +1041,11 @@ export default function ScotlandMap() {
     // rewrite `?layers=` while gbp-live is in flight (§3.10 / 36b / 36c).
     const searchAtLoad = window.location.search;
     const bootParams = new URLSearchParams(searchAtLoad);
-    const layersFromUrlAtLoad =
-      bootParams.has("layers") || bootParams.has("l");
     const bootAtLoad = readMapUrlState(searchAtLoad);
+    // VIEWS-1a — a valid ?view= wins over ?layers=; blank/unknown falls back.
+    const bootView = parseViewParam(bootAtLoad.view);
+    const layersFromUrlAtLoad =
+      bootParams.has("layers") || bootParams.has("l") || bootView !== null;
 
     const applyIds = (ids: string[]) => {
       setShowCouncils(ids.includes("councils"));
@@ -1079,7 +1088,10 @@ export default function ScotlandMap() {
       ) {
         setMapStyle("aerial");
       }
-      if (layersFromUrlAtLoad) {
+      if (bootView) {
+        applyIds(viewLayerIds(bootView));
+        setActiveViewId(bootView.id);
+      } else if (layersFromUrlAtLoad) {
         applyIds(bootAtLoad.layers);
       } else {
         applyIds(
@@ -3854,10 +3866,35 @@ export default function ScotlandMap() {
     };
   }, [mapReady]);
 
+  /** VIEWS-1a — pick a view: its layers on, every other switch off. */
+  const selectView = (id: string | null) => {
+    const view = parseViewParam(id);
+    setActiveViewId(view?.id ?? null);
+    if (!view) return;
+    const ids = viewLayerIds(view);
+    const next: LedgerToggleState = {};
+    for (const entry of MAP_LAYER_REGISTRY) next[entry.id] = ids.includes(entry.id);
+    onMapLayersChange(next);
+    setContextOn((cur) => ({
+      ...cur,
+      flood: ids.includes("flood"),
+      "oil-fields": ids.includes("9"),
+    }));
+  };
+
+  const activeView = parseViewParam(activeViewId);
+  const viewInUrl =
+    activeView && viewMatchesLayers(activeView, activeLayerIds)
+      ? activeView.id
+      : null;
+
   useEffect(() => {
-    replaceMapUrl({ layers: activeLayerIds });
+    if (activeViewId && !viewInUrl) setActiveViewId(null);
+    replaceMapUrl({ layers: activeLayerIds, view: viewInUrl });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    viewInUrl,
+    activeViewId,
     showVdl,
     showCommunityOwnership,
     showCouncils,
@@ -5851,6 +5888,8 @@ export default function ScotlandMap() {
             onEnabledChange={onMapLayersChange}
             tileAsOf={tileAsOf}
             tileLegends={tileLegends}
+            activeViewId={viewInUrl}
+            onSelectView={selectView}
           />
         </MapPanelSlot>
       ) : null}

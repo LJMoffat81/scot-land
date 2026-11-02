@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import ConfidenceTag from "@/components/ConfidenceTag";
 import MapRangeLegend from "@/components/MapRangeLegend";
 import {
@@ -18,6 +18,21 @@ import {
   type MapDrawerLayer,
 } from "@/lib/mapLayerGroups";
 import { popDensityLegendProps } from "@/lib/popDensityLegend";
+import {
+  ALL_LAYERS_HEADING,
+  availableViews,
+  VIEW_CLOSE_LABEL,
+  VIEW_DOES_NOT_SHOW_PREFIX,
+  VIEW_ESTIMATE_BADGE,
+  VIEW_SHARE_COPIED_LABEL,
+  VIEW_SHARE_LABEL,
+  viewHref,
+  viewIsEstimate,
+  viewLayerIds,
+  VIEWS_HEADING,
+  VIEWS_INTRO,
+  type MapViewPreset,
+} from "@/lib/mapViews";
 
 const LAND_HEADER = "LAND";
 const LAND_SUBTITLE = "Everything nature provides and no one made";
@@ -99,6 +114,10 @@ export type MapLayersDrawerProps = {
   tileLegends?: Readonly<
     Record<string, readonly { label: string; color: string }[]>
   >;
+  /** VIEWS-1a — active story view slug, or null. */
+  activeViewId?: string | null;
+  /** VIEWS-1a — pick a view (sets its layers) or null to clear it. */
+  onSelectView?: (id: string | null) => void;
 };
 
 function asUnavailableSet(
@@ -183,8 +202,12 @@ export default function MapLayersDrawer({
   title = "Map layers",
   tileAsOf,
   tileLegends,
+  activeViewId = null,
+  onSelectView,
 }: MapLayersDrawerProps) {
   const unavailable = asUnavailableSet(unavailableIds);
+  const views = availableViews(unavailable);
+  const activeView = views.find((v) => v.id === activeViewId) ?? null;
   const groups = mapDrawerLayersByGroup({
     spatialHubPresent,
     floodLoaded: floodDzLoaded,
@@ -280,6 +303,45 @@ export default function MapLayersDrawer({
           </button>
         ) : null}
       </div>
+
+      {views.length > 0 ? (
+        <section className="map-views" data-testid="map-views" aria-label={VIEWS_HEADING}>
+          <p className="layers-nav-header" data-testid="map-views-heading">
+            {VIEWS_HEADING}
+          </p>
+          <p className="layer-meta" data-testid="map-views-intro">
+            {VIEWS_INTRO}
+          </p>
+          <ul className="map-views-list">
+            {views.map((view) => (
+              <li key={view.id}>
+                <button
+                  type="button"
+                  className="map-view-button"
+                  data-testid={`map-view-${view.id}`}
+                  aria-pressed={activeView?.id === view.id}
+                  onClick={() => onSelectView?.(view.id)}
+                >
+                  {view.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {activeView ? (
+            <ViewDetail
+              view={activeView}
+              onClear={() => onSelectView?.(null)}
+            />
+          ) : null}
+        </section>
+      ) : null}
+
+      <p
+        className="layers-nav-header"
+        data-testid="layers-all-heading"
+      >
+        {ALL_LAYERS_HEADING}
+      </p>
 
       <p className="layer-meta" data-testid="map-layers-labels-link">
         <a href="/methodology#glossary-tags">What the labels mean</a>
@@ -405,6 +467,99 @@ export default function MapLayersDrawer({
           <a href="/data#licences">Sources and licences →</a>
         </p>
       </div>
+    </div>
+  );
+}
+
+function ViewDetail({
+  view,
+  onClear,
+}: {
+  view: MapViewPreset;
+  onClear: () => void;
+}) {
+  // Same pattern as the place card Share button: "Copied" for 2 s.
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (timerRef.current != null) clearTimeout(timerRef.current);
+    },
+    [],
+  );
+  const onShare = () => {
+    const url = `${window.location.origin}${viewHref(view)}`;
+    void navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      if (timerRef.current != null) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        setCopied(false);
+        timerRef.current = null;
+      }, 2000);
+    });
+  };
+  return (
+    <div className="map-view-detail" data-testid="map-view-detail" data-view={view.id}>
+      {viewIsEstimate(view) ? (
+        <p className="map-view-badge" data-testid="map-view-estimate">
+          {VIEW_ESTIMATE_BADGE}
+        </p>
+      ) : null}
+      <p className="map-view-finding" data-testid="map-view-finding">
+        {view.finding}
+      </p>
+      <div data-testid="map-view-key">
+        {viewLayerIds(view).map((id) => {
+          const entry = getMapLayer(id);
+          if (!entry) return null;
+          return (
+            <ul
+              key={id}
+              className="layer-legend"
+              aria-label={`${entry.label} key`}
+              data-testid={`map-view-key-${id}`}
+            >
+              {entry.classes.map((row) => (
+                <li key={`${id}-${row.label}-${row.color}`}>
+                  <span
+                    className={
+                      row.striped
+                        ? "layer-legend-swatch striped"
+                        : "layer-legend-swatch"
+                    }
+                    style={{ backgroundColor: row.color }}
+                  />
+                  <span>{row.label}</span>
+                </li>
+              ))}
+            </ul>
+          );
+        })}
+      </div>
+      <p className="layer-meta" data-testid="map-view-source">
+        {view.sourceLine}
+      </p>
+      <p className="layer-meta" data-testid="map-view-does-not-show">
+        {VIEW_DOES_NOT_SHOW_PREFIX}
+        {view.doesNotShow}
+      </p>
+      <button
+        type="button"
+        className="map-view-action"
+        data-testid="map-view-share"
+        data-href={viewHref(view)}
+        onClick={onShare}
+      >
+        {copied ? VIEW_SHARE_COPIED_LABEL : VIEW_SHARE_LABEL}
+      </button>
+      <button
+        type="button"
+        className="map-view-action"
+        data-testid="map-view-close"
+        onClick={onClear}
+      >
+        {VIEW_CLOSE_LABEL}
+      </button>
     </div>
   );
 }

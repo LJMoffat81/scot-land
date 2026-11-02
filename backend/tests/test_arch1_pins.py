@@ -509,6 +509,20 @@ def _assert_main_py_only_arch2a_tiles_registration() -> None:
         pytest.fail("P6: forbidden file changed: backend/api/main.py")
 
 
+_VIEWS_1A_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/app/map-chrome.css",
+        "frontend/components/MapLayersDrawer.tsx",
+        "frontend/components/ScotlandMap.tsx",
+        "frontend/lib/mapUrlState.ts",
+        "frontend/lib/mapViews.ts",
+        "frontend/package.json",
+        "frontend/scripts/test-map-views.mjs",
+        "frontend/e2e/ci/views-1a.spec.ts",
+    ]
+)
+
+
 def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
     for rel in changed:
@@ -531,6 +545,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _UX_POLISH_28OCT_1_FRONTEND_ALLOW
                 | _CARD_CLARITY_31OCT_1A_FRONTEND_ALLOW
                 | _CARD_CLARITY_31OCT_1B_FRONTEND_ALLOW
+                | _VIEWS_1A_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

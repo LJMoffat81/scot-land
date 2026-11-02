@@ -268,9 +268,14 @@ def test_a18_new_layer_cannot_declare_gaps(tmp_path):
     _fails(d, "ADMISSION: repd: $.admission_gaps: only pre-M1 layers may declare gaps")
 
 
-def test_a19_stale_gap_refused(tmp_path):
+def test_a19_stale_gap_refused(tmp_path, monkeypatch):
+    # M1-VINTAGES emptied GRANDFATHERED_GAPS; grandfather one id here so the
+    # stale-gap branch stays covered.
+    from layers.registry import admission
+
+    monkeypatch.setattr(admission, "GRANDFATHERED_GAPS", frozenset({"councils"}))
     d = _copy(tmp_path)
-    _edit(d, "councils", vintage="Boundary-Line 2026")
+    _edit(d, "councils", admission_gaps=["vintage"])
     _fails(d, "ADMISSION: councils: $.admission_gaps: stale gap 'vintage'")
 
 

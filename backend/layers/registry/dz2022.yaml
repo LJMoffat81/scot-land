@@ -7,6 +7,7 @@ ladder_level: dz2022
 nests: true
 default_on: true
 licence: OGL-3.0
+vintage: "ref 2022-03-20 (Census Day), published 2024-12-16"
 attribution: >-
   Copyright Scottish Government, contains Ordnance Survey data © Crown copyright
   and database right 2026.
@@ -100,4 +101,3 @@ clip_keep_all: true
 policy_question: []
 shows: context
 value_layer: false
-admission_gaps: [vintage]

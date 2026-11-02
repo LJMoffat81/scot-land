@@ -157,7 +157,11 @@ def registry() -> dict[str, LayerEntry]:
     """Cached registry loaded once from the package directory."""
     global _CACHE
     if _CACHE is None:
-        _CACHE = load_registry()
+        from layers.registry.admission import check_admission
+
+        entries = load_registry()
+        check_admission(entries)
+        _CACHE = entries
     return _CACHE
 
 

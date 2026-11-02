@@ -594,6 +594,8 @@ def test_p9_no_blanket_except():
         BACKEND / "etl" / "extent_geom.py",
         # ARCH-6 P9
         BACKEND / "etl" / "refresh_registry.py",
+        # M1 P9
+        BACKEND / "layers" / "registry" / "admission.py",
         # ARCH-4a P9
         BACKEND / "etl" / "load_unit_hierarchy.py",
         BACKEND / "layers" / "parked_check.py",

@@ -4,6 +4,7 @@ geography: scotland
 clip: sea
 unit: none
 licence: NSTA-OGL
+vintage: "NSTA infrastructure 2026-07-01"
 attribution: >-
   Contains information provided by the North Sea Transition Authority
   and/or other third parties.
@@ -39,4 +40,3 @@ policy_question: [Q5]
 shows: commons_rent
 value_layer: false
 non_commercial: true
-admission_gaps: [vintage]

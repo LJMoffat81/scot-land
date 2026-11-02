@@ -14,18 +14,9 @@ CONTEXT_CAP = 6
 NON_COMMERCIAL_LICENCES = frozenset({"NSTA-OGL"})
 SUMMING_METHODS = frozenset({"sum", "area_weighted", "pop_weighted"})
 # Layers on main before M1 that may carry ``admission_gaps``. Literal ids, no
-# globs; a new layer must pass the test in full.
-GRANDFATHERED_GAPS = frozenset(
-    {
-        "councils",
-        "dz2022",
-        "oil-fields",
-        "pipelines",
-        "platforms",
-        "scotland-extent",
-        "settlements-2022",
-    }
-)
+# globs; a new layer must pass the test in full. Emptied by M1-VINTAGES: every
+# committed layer now declares its vintage.
+GRANDFATHERED_GAPS: frozenset[str] = frozenset()
 _REQUIRED = ("policy_question", "shows", "value_layer")
 
 

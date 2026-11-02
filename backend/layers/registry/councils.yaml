@@ -8,6 +8,7 @@ ladder_level: council
 nests: false
 default_on: false
 licence: OGL-3.0
+vintage: "OS Boundary-Line 2026-10"
 attribution: Contains OS data © Crown copyright and database right 2026.
 source:
   type: os_boundary_line
@@ -56,4 +57,3 @@ tiles:
 policy_question: []
 shows: context
 value_layer: false
-admission_gaps: [vintage]

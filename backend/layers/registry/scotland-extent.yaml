@@ -7,6 +7,7 @@ unit: scotland
 ladder_level: scotland
 nests: false
 licence: OGL-3.0
+vintage: "UKHO limits (item modified 2026-05-28) + OS Boundary-Line 2026-10 + SI 1999/1126"
 attribution: >-
   Contains public sector information, licensed under the Open Government
   Licence v3.0, from UK Hydrographic Office. Contains OS data © Crown copyright
@@ -53,4 +54,3 @@ tiles:
 policy_question: []
 shows: context
 value_layer: false
-admission_gaps: [vintage]

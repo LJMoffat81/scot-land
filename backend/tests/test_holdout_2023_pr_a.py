@@ -210,7 +210,7 @@ ENTRY_POINTS = (
     "scripts/build_v14_b2.py", "scripts/build_v14_drc_components.py", "scripts/build_v14_drc.py",
     "scripts/build_v14_primary_2023.py", "scripts/fit_v14_hedonic.py",
     "scripts/build_v14_check_sources.py", "scripts/build_v14_check_inputs.py",
-    "scripts/rerun_v14_score.py",
+    "scripts/rerun_v14_score.py", "scripts/build_v14_zone_status_2023.py",
 )
 
 

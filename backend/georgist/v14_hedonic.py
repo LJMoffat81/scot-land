@@ -8,6 +8,7 @@ price file is read. Cluster bootstrap seed and replicate count are fixed.
 from __future__ import annotations
 
 import math
+import warnings
 from typing import Mapping, Sequence
 
 import numpy as np
@@ -505,6 +506,21 @@ def _fit_mixedlm(endog, exog, groups, exog_re):
         LikelihoodModel.fit = original
 
 
+# HOLDOUT-2023 ruling 3 (Econometrician, 2 Nov 2026): a fit whose random-effects
+# covariance is singular AND whose Hessian is not positive definite counts as
+# NOT_CONVERGED. No rescue, no retry. Either signal alone does not.
+RE_SINGULAR_MARK = "random effects covariance"
+HESSIAN_NON_PD_MARK = "hessian matrix at the estimated parameter values is not positive definite"
+DEGENERATE_REASON = "MixedLM degenerate: singular RE covariance and non-PD Hessian (ruling 3)"
+
+
+def degenerate_mixedlm(messages: Sequence[str]) -> bool:
+    lowered = [str(message).lower() for message in messages]
+    singular = any(RE_SINGULAR_MARK in text and "singular" in text for text in lowered)
+    non_pd = any(HESSIAN_NON_PD_MARK in text for text in lowered)
+    return singular and non_pd
+
+
 def _fit_s_c3(rows: Sequence[Mapping]) -> dict:
     """Partial pooling of the land slope. No second solver and no retune."""
     try:
@@ -519,9 +535,18 @@ def _fit_s_c3(rows: Sequence[Mapping]) -> dict:
                 reason="MixedLM needs two or more groups",
                 converged=False,
             )
-        result = _fit_mixedlm(y, exog, groups, area.reshape(-1, 1))
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = _fit_mixedlm(y, exog, groups, area.reshape(-1, 1))
     except Exception as exc:
         return _sensitivity_row("S-c3", status="ERROR", reason=str(exc), converged=False)
+    if degenerate_mixedlm([str(item.message) for item in caught]):
+        return _sensitivity_row(
+            "S-c3",
+            status="NOT_CONVERGED",
+            reason=DEGENERATE_REASON,
+            converged=False,
+        )
     converged = bool(getattr(result, "converged", False))
     if not converged:
         return _sensitivity_row(

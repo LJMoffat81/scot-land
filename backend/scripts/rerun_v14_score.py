@@ -135,7 +135,12 @@ def _score_holdout(path: Path, *, year: int) -> dict:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if "primary_zones" not in payload or "secondary_zones" not in payload:
         raise ReportAbort("holdout needs primary_zones and secondary_zones")
-    scored = score_both(payload["primary_zones"], payload["secondary_zones"], year=year)
+    scored = score_both(
+        payload["primary_zones"],
+        payload["secondary_zones"],
+        year=year,
+        secondary_not_run=payload.get("check4_secondary"),
+    )
     return _jsonable(scored)
 
 
@@ -144,7 +149,12 @@ def _check_summary(path: Path) -> dict:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if "primary_zones" not in payload or "secondary_zones" not in payload:
         return {"status": "pending_inputs"}
-    scored = score_both(payload["primary_zones"], payload["secondary_zones"], year=2024)
+    scored = score_both(
+        payload["primary_zones"],
+        payload["secondary_zones"],
+        year=2024,
+        secondary_not_run=payload.get("check4_secondary"),
+    )
     return {
         "status": "scored",
         "primary_gating_pass": scored["primary"]["gating_pass"],
@@ -271,7 +281,13 @@ def _write_check4_summary(check_inputs_path: Path, summary_out: Path) -> dict:
     if "primary_zones" not in payload or "secondary_zones" not in payload:
         raise ReportAbort("check4 summary needs primary_zones and secondary_zones")
     prim = score_check4_non_gbp(payload["primary_zones"])
-    sec = score_check4_non_gbp(payload["secondary_zones"])
+    sec_status = payload.get("check4_secondary")
+    if isinstance(sec_status, dict) and sec_status.get("status") == "NOT_RUN":
+        if payload["secondary_zones"]:
+            raise ReportAbort("check4 summary: secondary NOT_RUN: expected 0 secondary zones, got some")
+        sec = {"status": "NOT_RUN", "reason": str(sec_status.get("reason")), "pass": None}
+    else:
+        sec = score_check4_non_gbp(payload["secondary_zones"])
     pub = v14.apply_no_switch_publication(
         primary_gating_pass=bool(prim["pass"]),
         secondary_gating_pass=bool(sec["pass"]),
@@ -382,6 +398,13 @@ def _extended_main(args: argparse.Namespace) -> int:
                 "publication": holdout_scores["publication"]["outcome"],
                 "hbu_in_checks": holdout_scores["checks_include_hbu"],
             }
+            if "secondary_status" in holdout_scores:
+                report["checks"]["secondary_status"] = holdout_scores["secondary_status"]
+                report["checks"]["scope"] = "internal_diagnostic_only"
+                report["checks"]["gbp_display"] = False
+                report["checks"]["effective_publication"] = holdout_scores["effective_publication"]
+                if report["checks"]["effective_publication"].get("gbp_display") is not False:
+                    raise ReportAbort("CHECK4-S-NOTRUN: gbp_display: expected false, got other")
         elif args.check_inputs and not args.score_2024:
             report["checks"] = _check_summary(args.check_inputs)
         if args.score_2024:

@@ -549,14 +549,21 @@ def score_both(
     check3_status: str | None = None,
     check3_detail: str | None = None,
     check3_upstream: str | None = None,
+    secondary_not_run: Mapping | None = None,
 ) -> dict:
     """Both estimators, the agreement test, the HBU line, and the no-switch rule.
 
     ``year`` is the entry-point constant (2023 or 2024). It is not read from
-    the zone rows.
+    the zone rows. ``secondary_not_run`` is the check-inputs ``check4_secondary``
+    NOT_RUN record (CHECK4-S-NOTRUN): the secondary is never scored, every
+    secondary check and agreement is NOT_RUN, and the primary is unchanged.
     """
+    not_run = _secondary_not_run_reason(secondary_not_run, secondary)
     primary_score = score_estimator(primary)
-    secondary_score = score_estimator(secondary)
+    if not_run is None:
+        secondary_score = score_estimator(secondary)
+    else:
+        secondary_score = _not_run_estimator(primary_score, not_run)
     gated = apply_year_gate(
         primary_score,
         secondary_score,
@@ -568,8 +575,8 @@ def score_both(
     scored = {
         "primary": gated["primary"],
         "secondary": gated["secondary"],
-        "agreement": agreement(primary, secondary),
-        "hbu": hbu_line(primary) + hbu_line(secondary),
+        "agreement": agreement(primary, secondary) if not_run is None else _not_run_item("agreement", not_run),
+        "hbu": hbu_line(primary) + (hbu_line(secondary) if not_run is None else []),
         "hbu_status": HBU_NOT_RUN,
         "hbu_gates": False,
         "publication": gated["publication"],
@@ -578,4 +585,43 @@ def score_both(
     }
     if "diagnostics (non-gating)" in gated:
         scored["diagnostics (non-gating)"] = gated["diagnostics (non-gating)"]
+    if not_run is not None:
+        scored["secondary_status"] = {"status": "NOT_RUN", "reason": not_run}
+        scored["effective_publication"] = dict(EFFECTIVE_PUBLICATION_S_NOT_RUN)
     return scored
+
+
+EFFECTIVE_PUBLICATION_S_NOT_RUN = {
+    "status": "internal_diagnostic_only",
+    "reason": "secondary NOT_RUN (S NOT_CONVERGED); AM-3 M5 precedent: NOT_RUN = NOT PASSED",
+    "governs": True,
+    "gbp_display": False,
+}
+
+
+def _secondary_not_run_reason(record: Mapping | None, secondary: Sequence[Mapping]) -> str | None:
+    if record is None:
+        return None
+    if not isinstance(record, Mapping) or record.get("status") != "NOT_RUN":
+        raise ValueError("CHECK4-S-NOTRUN: secondary status: expected NOT_RUN record, got other")
+    reason = record.get("reason")
+    if reason != "S NOT_CONVERGED":
+        raise ValueError(f"CHECK4-S-NOTRUN: secondary reason: expected 'S NOT_CONVERGED', got {reason!r}")
+    if len(secondary) != 0:
+        raise ValueError(f"CHECK4-S-NOTRUN: secondary NOT_RUN: expected 0 secondary zones, got {len(secondary)}")
+    return reason
+
+
+def _not_run_item(name: str, reason: str) -> dict:
+    return {"check": name, "status": "NOT_RUN", "reason": reason, "pass": None}
+
+
+def _not_run_estimator(primary_score: Mapping, reason: str) -> dict:
+    """Secondary block with the primary's check names only; no values, never PASS."""
+    return {
+        "gating": {name: _not_run_item(name, reason) for name in primary_score["gating"]},
+        "information": {name: _not_run_item(name, reason) for name in primary_score["information"]},
+        "hbu_excluded_from_checks": True,
+        "status": "NOT_RUN",
+        "reason": reason,
+    }

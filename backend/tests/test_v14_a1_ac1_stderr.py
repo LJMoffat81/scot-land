@@ -7,6 +7,9 @@ from pathlib import Path
 
 import pytest
 
+from georgist.v14_fit_joins import JOIN_PINS, _sha256
+from v14_dryrun.join_fixture import join_argv, write_join_files
+
 from georgist.v14_b2 import PIN_TABLE as B2_PINS
 from georgist.v14_d7_chain import (
     D7_FILTER2_OUTPUT_SHA256,
@@ -195,7 +198,11 @@ def test_s2_synthetic_end_to_end_withheld(
 
     monkeypatch.setattr("scripts.build_v14_b2.fit_headline", fit_from_adapted)
 
-    argv = _main_argv(out)
+    joins = write_join_files(tmp_path, ["Z1"])
+    monkeypatch.setitem(JOIN_PINS, "merge_map", _sha256(joins["merge_map"]))
+    monkeypatch.setitem(JOIN_PINS, "iz_lookup", _sha256(joins["iz_lookup"]))
+    monkeypatch.setitem(JOIN_PINS, "no_cell", _sha256(joins["no_cell_list"]))
+    argv = _main_argv(out) + join_argv(joins)
     # Point --house-sales at the synthetic file.
     argv[argv.index("--house-sales") + 1] = str(sales)
     rc = main(argv)

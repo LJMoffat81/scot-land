@@ -13,6 +13,9 @@ from pathlib import Path
 
 import pytest
 
+from georgist.v14_fit_joins import JOIN_PINS, _sha256
+from v14_dryrun.join_fixture import join_argv, write_join_files
+
 from georgist.v14_b2 import (
     B2Error,
     HOUSE_SALES_HEADERS,
@@ -119,6 +122,10 @@ def _fit_spy(monkeypatch: pytest.MonkeyPatch) -> dict:
 
 
 def _stub_build(monkeypatch: pytest.MonkeyPatch, sales: Path) -> Namespace:
+    joins = write_join_files(sales.parent, [ZONE, "ZB", "Z1"])
+    monkeypatch.setitem(JOIN_PINS, "merge_map", _sha256(joins["merge_map"]))
+    monkeypatch.setitem(JOIN_PINS, "iz_lookup", _sha256(joins["iz_lookup"]))
+    monkeypatch.setitem(JOIN_PINS, "no_cell", _sha256(joins["no_cell_list"]))
     monkeypatch.setattr("scripts.build_v14_b2.assert_house_sales_pin", lambda _p: None)
     monkeypatch.setattr(
         "scripts.build_v14_b2.adapt_plot_split",
@@ -169,6 +176,7 @@ def _stub_build(monkeypatch: pytest.MonkeyPatch, sales: Path) -> Namespace:
         filter1_output=Path("x"),
         filter2_script=Path("x"),
         filter2_output=Path("x"),
+        **joins,
     )
 
 
@@ -196,6 +204,13 @@ def _main_argv(out: Path, sales: Path) -> list[str]:
         "x",
         "--filter2-output",
         "x",
+        *join_argv(
+            {
+                "merge_map": sales.parent / "merge_map.SYNTHETIC.csv",
+                "iz_lookup": sales.parent / "iz_lookup.SYNTHETIC.csv",
+                "no_cell_list": sales.parent / "no_cell.SYNTHETIC.txt",
+            }
+        ),
     ]
 
 

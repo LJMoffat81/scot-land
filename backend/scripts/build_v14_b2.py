@@ -29,6 +29,7 @@ from georgist.v14_b2 import (
     adapt_plot_split,
     adapt_sold_tfa,
 )
+from georgist.v14_fit_joins import JoinError, join_fit_rows, read_iz_lookup, read_merge_map, read_no_cell
 from georgist.v14_d7_chain import (
     D7ChainResult,
     run_d7_chain,
@@ -135,6 +136,18 @@ def build(args: argparse.Namespace) -> dict:
     floors = adapt_sold_tfa(args.filter2_output)
     fit_rows = _fit_rows(sales, floors)
     assert_fit_years(fit_rows)
+    for name in ("merge_map", "iz_lookup", "no_cell_list"):
+        if getattr(args, name, None) is None:
+            raise B2Error(f"B2_FIT_ROWS: REFUSED: {name}: expected path, got absent")
+    try:
+        fit_rows, no_cell_fit = join_fit_rows(
+            fit_rows,
+            read_merge_map(args.merge_map),
+            read_iz_lookup(args.iz_lookup),
+            read_no_cell(args.no_cell_list),
+        )
+    except JoinError as exc:
+        raise B2Error(str(exc)) from None
     fitted = fit_headline(fit_rows, d7_sha256=chain.d7_sha256)
     s_x2 = "NOT_RUN"
     if isinstance(fitted, dict):
@@ -153,6 +166,7 @@ def build(args: argparse.Namespace) -> dict:
         "fit_rows": fit_rows,
         "fit": {"s_x2": s_x2},
         "am2": _am2_payload(am2, sales),
+        "no_cell_fit": {"count": len(no_cell_fit), "zones": no_cell_fit},
     }
 
 
@@ -169,6 +183,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--filter1-output", type=Path, required=True)
     parser.add_argument("--filter2-script", type=Path, required=True)
     parser.add_argument("--filter2-output", type=Path, required=True)
+    parser.add_argument("--merge-map", type=Path)
+    parser.add_argument("--iz-lookup", type=Path)
+    parser.add_argument("--no-cell-list", type=Path)
     parser.add_argument("--no-price", action="store_true", help="Do not open house sales or fit.")
     args = parser.parse_args(argv)
     if args.no_price:

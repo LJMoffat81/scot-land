@@ -24,6 +24,7 @@ from georgist.v14_primary_inputs import (
     remaining_factor_at_age,
     v14_depreciation,
     zone_drc_v14,
+    zone_drc_v14_corners,
 )
 
 
@@ -103,10 +104,50 @@ def drc_map_from_components(components: list[dict], cfg: dict | None = None) -> 
     return out
 
 
+CORNER_FILE_NOTE = (
+    "HOLDOUT-2023 PR-B1. drc_low is the HIGH land corner (P_H); drc_high is P_L; "
+    "drc_central equals --drc-json. Internal pipeline file, never published."
+)
+
+
+def drc_corners_from_components(components: list[dict], cfg: dict | None = None) -> dict[str, dict[str, float]]:
+    """low/central/high DRC per zone. Refuses unless low <= central <= high."""
+    loaded = cfg if cfg is not None else sr.load_config()
+    defaults = sc.agr_aligned_defaults(loaded)
+    band = sr.rebuild_band(loaded, sr.rebuild_price_base_year(loaded))
+    out: dict[str, dict[str, float]] = {}
+    for row in components:
+        code = str(row["dz2011"])
+        corners = zone_drc_v14_corners(
+            code=code,
+            epc_row=row.get("epc_row"),
+            nrs2017_row=row.get("nrs2017_row"),
+            estate_row=row.get("estate_row"),
+            cfg=loaded,
+            band=band,
+            valuation_year=2025,
+            defaults=defaults,
+        )
+        low, central, high = (float(corners[name].drc_gbp) for name in ("low", "central", "high"))
+        if not low <= central <= high:
+            raise DepreciationMethodError(
+                f"B1_DRC_CORNERS: REFUSED: order zone {code}: expected low<=central<=high, got other"
+            )
+        out[code] = {"drc_low": low, "drc_central": central, "drc_high": high}
+    return out
+
+
+def write_corners_json(path: Path, rows: dict[str, dict[str, float]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {"note": CORNER_FILE_NOTE, "zones": rows}
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--drc-json", type=Path, required=True)
     parser.add_argument("--components", type=Path, default=None)
+    parser.add_argument("--corners-out", type=Path, default=None)
     args = parser.parse_args(argv)
     try:
         factors = remaining_factors()
@@ -116,7 +157,17 @@ def main(argv: list[str] | None = None) -> int:
             raise DepreciationMethodError("pass --components")
         components = json.loads(args.components.read_text(encoding="utf-8"))
         payload = drc_map_from_components(list(components))
+        corners = None
+        if args.corners_out is not None:
+            corners = drc_corners_from_components(list(components))
+            for code, central in payload.items():
+                if corners[code]["drc_central"] != central:
+                    raise DepreciationMethodError(
+                        f"B1_DRC_CORNERS: REFUSED: central zone {code}: expected equal to --drc-json, got different"
+                    )
         write_drc_json(args.drc_json, payload)
+        if corners is not None:
+            write_corners_json(args.corners_out, corners)
     except (DepreciationMethodError, FileNotFoundError, ValueError, KeyError) as exc:
         sys.stderr.write(str(exc) + "\n")
         return 1

@@ -12,6 +12,7 @@ from georgist.v14_b2 import PIN_TABLE as B2_PINS
 from georgist.v14_d7_chain import PIN_TABLE as D7_PINS
 from georgist.v14_d7_chain import execute_filter1, execute_filter2, sha256_file
 from scripts.build_v14_b2 import B2Error, build
+from v14_dryrun.join_fixture import pin_join_files, restore_join_pins, write_join_files
 from v14_dryrun.dryrun import FILTERS, _sales_rows, _sold_rows, _write, run
 
 
@@ -82,6 +83,8 @@ def test_b2_floors_and_fit_rows_drop_source_2024(
     script2 = FILTERS / "filter2_keep_2019_2023.py"
     saved_d7 = dict(D7_PINS)
     saved_b2 = dict(B2_PINS)
+    joins = write_join_files(tmp_path, ("Z1", "Z2", "Z3", "Z4"))
+    saved_joins = pin_join_files(joins)
     fitted_years: list[int] = []
     real_fit = build.__globals__["fit_headline"]
 
@@ -112,6 +115,7 @@ def test_b2_floors_and_fit_rows_drop_source_2024(
                 filter1_output=out1,
                 filter2_script=script2,
                 filter2_output=out2,
+                **joins,
             )
         )
     finally:
@@ -119,6 +123,7 @@ def test_b2_floors_and_fit_rows_drop_source_2024(
         D7_PINS.update(saved_d7)
         B2_PINS.clear()
         B2_PINS.update(saved_b2)
+        restore_join_pins(saved_joins)
     floor_years = {int(row["year"]) for row in payload["sold_tfa"]}
     fit_years = {int(row["year"]) for row in payload["fit_rows"]}
     assert 2024 not in floor_years
@@ -178,6 +183,8 @@ def test_fit_rows_use_filter2_when_source_differs(
     script2 = FILTERS / "filter2_keep_2019_2023.py"
     saved_d7 = dict(D7_PINS)
     saved_b2 = dict(B2_PINS)
+    joins = write_join_files(tmp_path, ("Z1", "Z2", "Z3", "Z4"))
+    saved_joins = pin_join_files(joins)
 
     def write_filter2(_script: Path, _source: Path, dest: Path) -> None:
         dest.write_text(filtered_text, encoding="utf-8")
@@ -206,6 +213,7 @@ def test_fit_rows_use_filter2_when_source_differs(
                 filter1_output=out1,
                 filter2_script=script2,
                 filter2_output=out2,
+                **joins,
             )
         )
     finally:
@@ -213,6 +221,7 @@ def test_fit_rows_use_filter2_when_source_differs(
         D7_PINS.update(saved_d7)
         B2_PINS.clear()
         B2_PINS.update(saved_b2)
+        restore_join_pins(saved_joins)
     assert payload["fit_rows"]
     assert {row["f_m2"] for row in payload["fit_rows"]} == {"222"}
     assert all(int(row["year"]) < 2024 for row in payload["fit_rows"])

@@ -21,6 +21,7 @@ from georgist.v14_d7_chain import PIN_TABLE as D7_PINS
 from georgist.v14_d7_chain import execute_filter1, execute_filter2, sha256_file
 from georgist.v14_score_report import PIN_TABLE as MERGE_PINS
 from georgist.v14_score_report import code_text_disagreements
+from v14_dryrun.join_fixture import join_argv, pin_join_files, restore_join_pins, write_join_files
 from scripts.build_v14_b2 import main as b2_main
 from scripts.build_v14_check_inputs import main as b6_main
 from scripts.build_v14_check_sources import (
@@ -229,6 +230,8 @@ def run(root: Path) -> dict:
     script2 = FILTERS / "filter2_keep_2019_2023.py"
     saved_d7 = dict(D7_PINS)
     saved_b2 = dict(B2_PINS)
+    joins = write_join_files(root, ("Z1", "Z2", "Z3", "Z4"))
+    saved_joins = pin_join_files(joins)
     try:
         execute_filter1(script1, sold, out1)
         execute_filter2(script2, out1, out2)
@@ -255,6 +258,7 @@ def run(root: Path) -> dict:
                 str(access),
                 "--bedrooms",
                 str(bedrooms),
+                *join_argv(joins),
                 "--filter1-script",
                 str(script1),
                 "--filter1-output",
@@ -529,6 +533,7 @@ def run(root: Path) -> dict:
         D7_PINS.update(saved_d7)
         B2_PINS.clear()
         B2_PINS.update(saved_b2)
+        restore_join_pins(saved_joins)
 
 
 def main() -> int:

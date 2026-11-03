@@ -123,6 +123,46 @@ def depreciated_replacement_cost(
     return float(rebuild_cost) * remaining
 
 
+CORNER_NAMES = ("low", "central", "high")
+
+
+def _assert_drc_identity(result: sr.RebuildResult) -> None:
+    if not result.rebuild_new_gbp:
+        return
+    expected = result.rebuild_new_gbp * result.remaining_factor
+    message = (
+        "DRC is not rebuild cost times remaining factor: "
+        f"drc={result.drc_gbp!r} expected={expected!r} rel_tol=1e-12"
+    )
+    if not (math.isfinite(result.drc_gbp) and math.isfinite(expected)):
+        raise DepreciationMethodError(message)
+    if not math.isclose(result.drc_gbp, expected, rel_tol=DRC_REL_TOL, abs_tol=0.0):
+        raise DepreciationMethodError(message)
+
+
+def zone_drc_v14_corners(**kwargs) -> dict[str, sr.RebuildResult]:
+    """HOLDOUT-2023 PR-B1: the three v1.4 DRC corners from one zone_cost_rebuilds call.
+
+    Same config handling as ``zone_drc_v14``. Each corner passes the DRC identity
+    check. Low DRC is the HIGH land corner (P_H); high DRC is P_L.
+    """
+    cfg = kwargs.get("cfg")
+    if cfg is None:
+        raise DepreciationMethodError("zone cost rebuild needs a config")
+    cfg_v14 = dict(cfg)
+    cfg_v14["depreciation"] = v14_depreciation(cfg)
+    kwargs = dict(kwargs)
+    kwargs["cfg"] = cfg_v14
+    rebuilds = sc.zone_cost_rebuilds(**kwargs)
+    missing = [name for name in CORNER_NAMES if name not in rebuilds]
+    if missing:
+        raise DepreciationMethodError(f"DRC corners: expected low,central,high, got missing {','.join(missing)}")
+    out = {name: rebuilds[name] for name in CORNER_NAMES}
+    for result in out.values():
+        _assert_drc_identity(result)
+    return out
+
+
 def zone_drc_v14(**kwargs) -> sr.RebuildResult:
     """One zone through ``surface_costs.zone_cost_rebuilds`` with v1.4 depreciation.
 

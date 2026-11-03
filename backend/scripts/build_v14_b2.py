@@ -63,6 +63,17 @@ def _fit_rows(sales: list[dict], floors: list[dict]) -> list[dict]:
     return built
 
 
+def fit_window_gaps(sales: list[dict], floors: list[dict]) -> list[dict]:
+    """Ruling 2: fit-year sales rows with no sold-TFA floor. Disclosed only, never imputed."""
+    floor_keys = {(str(row["zone"]), int(row["year"])) for row in floors}
+    gaps = []
+    for sale in sales:
+        year = int(sale["year"])
+        if year in FIT_YEARS and (str(sale["zone"]), year) not in floor_keys:
+            gaps.append({"zone": str(sale["zone"]), "year": year, "missing": "sold_tfa_mean (f_m2)"})
+    return sorted(gaps, key=lambda item: (item["zone"], item["year"]))
+
+
 def assert_fit_years(rows: list[dict]) -> None:
     """Refuse any fit row whose year is outside FIT_YEARS. Reads only year."""
     for row in rows:
@@ -136,6 +147,16 @@ def build(args: argparse.Namespace) -> dict:
     floors = adapt_sold_tfa(args.filter2_output)
     fit_rows = _fit_rows(sales, floors)
     assert_fit_years(fit_rows)
+    gaps = fit_window_gaps(sales, floors)
+    complete = sum(1 for sale in sales if int(sale["year"]) in FIT_YEARS)
+    disclosure = [
+        f"B2_FIT_ROWS: DISCLOSE: zone {gap['zone']} year {gap['year']}: missing {gap['missing']}"
+        for gap in gaps
+    ]
+    disclosure.append(
+        f"B2_FIT_ROWS: RECONCILE: complete fit-window zone-years {complete} = "
+        f"fit rows {len(fit_rows)} + no sold-TFA floor {len(gaps)}"
+    )
     for name in ("merge_map", "iz_lookup", "no_cell_list"):
         if getattr(args, name, None) is None:
             raise B2Error(f"B2_FIT_ROWS: REFUSED: {name}: expected path, got absent")
@@ -167,6 +188,8 @@ def build(args: argparse.Namespace) -> dict:
         "fit": {"s_x2": s_x2},
         "am2": _am2_payload(am2, sales),
         "no_cell_fit": {"count": len(no_cell_fit), "zones": no_cell_fit},
+        "fit_window_gaps": gaps,
+        "fit_window_disclosure": disclosure,
     }
 
 
@@ -206,6 +229,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(_jsonable(payload), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    for line in payload.get("fit_window_disclosure", []):
+        sys.stdout.write(line + "\n")
     sys.stdout.write(f"wrote {args.out}\n")
     return 0
 

@@ -990,6 +990,7 @@ def build_v15_check4_score_report(
     cancellation_max_rel_err: float = 0.0,
     inputs_2024: Mapping[str, Path] | None = None,
     pins_2024: Mapping[str, str] | None = None,
+    check4_secondary: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Assemble the committed non-GBP v1.5 Check 4 score report artifact.
 
@@ -1016,15 +1017,26 @@ def build_v15_check4_score_report(
         raise Check4RouteError(
             "V14_CHECK4: REFUSED: cancellation identity: expected rel_err <= 1e-12, got out of range"
         )
-    if len(primary_zones) != len(secondary_zones):
-        raise Check4RouteError("V14_CHECK4: ERROR: score zones: expected matching primary and secondary counts, got mismatch")
+    sec_not_run = check4_secondary is not None and check4_secondary.get("status") == "NOT_RUN"
+    if sec_not_run:
+        if len(secondary_zones) != 0:
+            raise Check4RouteError(
+                "V14_CHECK4: ERROR: secondary NOT_RUN: expected 0 secondary zones, got "
+                f"{len(secondary_zones)}"
+            )
+    else:
+        if len(primary_zones) != len(secondary_zones):
+            raise Check4RouteError("V14_CHECK4: ERROR: score zones: expected matching primary and secondary counts, got mismatch")
     if int(lookup_zones) - int(not_scored_zones) != len(primary_zones):
         raise Check4RouteError("V14_CHECK4: ERROR: coverage: expected lookup minus not_scored == priced_zones, got mismatch")
-    if int(secondary_scored_zones) + int(secondary_no_cell_zones) != len(secondary_zones):
+    if not sec_not_run and int(secondary_scored_zones) + int(secondary_no_cell_zones) != len(secondary_zones):
         raise Check4RouteError("V14_CHECK4: ERROR: coverage: expected secondary_scored + no_cell == priced_zones, got mismatch")
 
     prim_score = score_check4_non_gbp(primary_zones, am3_reporting=am3)
-    sec_score = score_check4_non_gbp(secondary_zones, am3_reporting=am3)
+    if sec_not_run:
+        sec_score = {"status": "NOT_RUN", "reason": str(check4_secondary.get("reason")), "pass": None}
+    else:
+        sec_score = score_check4_non_gbp(secondary_zones, am3_reporting=am3)
     publication = v14.apply_no_switch_publication(
         primary_gating_pass=bool(prim_score["pass"]),
         secondary_gating_pass=bool(sec_score["pass"]),
@@ -1088,7 +1100,11 @@ def build_v15_check4_score_report(
         report["sensitivities"] = {
             "gating": False,
             "primary": check4_sensitivities(primary_zones, estimator="primary"),
-            "secondary": check4_sensitivities(secondary_zones, estimator="secondary"),
+            "secondary": (
+                {"status": "NOT_RUN", "reason": sec_score["reason"]}
+                if sec_not_run
+                else check4_sensitivities(secondary_zones, estimator="secondary")
+            ),
         }
     assert_non_gbp_report(report)
     return report

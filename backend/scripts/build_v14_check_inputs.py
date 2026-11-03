@@ -360,10 +360,51 @@ def load_source(path: Path, source: str, mode: int | None = None) -> dict[str, d
 
 
 
+STATUS_S_VALUES = frozenset({"estimated", "unavailable", "model_failure", "no_cell", "not_scored"})
+CHECK4_SECONDARY_NOT_RUN_REASON = "S NOT_CONVERGED"
+
+
+def load_status_s(path: Path) -> dict[str, str]:
+    """zone -> status_S from zone_status_2023.json. Reads status codes only, never values."""
+    if not path.is_file():
+        raise CheckInputError(f"B6: ERROR: file: expected {path}, got absent")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    rows = payload.get("zones") if isinstance(payload, dict) else None
+    if not isinstance(rows, list):
+        raise CheckInputError("V14_CHECK_INPUTS: ERROR: zone_status zones: expected list, got absent")
+    out: dict[str, str] = {}
+    for row in rows:
+        status = row.get("status_S")
+        if status not in STATUS_S_VALUES:
+            raise CheckInputError(
+                f"V14_CHECK_INPUTS: ERROR: zone_status {row.get('zone')}: expected status_S, got {status!r}"
+            )
+        out[str(row["zone"])] = status
+    return out
+
+
+def _check4_secondary_status(base: set[str], status_s: Mapping[str, str]) -> tuple[set[str], dict | None]:
+    """Estimated S zones, and the NOT_RUN record when there are none. Counts only."""
+    absent = sorted(code for code in base if code not in status_s)
+    if absent:
+        raise CheckInputError(
+            f"V14_CHECK_INPUTS: ERROR: zone_status {absent[0]}: expected status_S, got absent"
+        )
+    estimated = {code for code in base if status_s[code] == "estimated"}
+    if estimated:
+        return estimated, None
+    if not any(status_s[code] == "model_failure" for code in base):
+        raise CheckInputError(
+            "V14_CHECK_INPUTS: ERROR: check4 secondary: expected estimated or model_failure zones, got none"
+        )
+    return estimated, {"status": "NOT_RUN", "reason": CHECK4_SECONDARY_NOT_RUN_REASON}
+
+
 def _build_f8_check_inputs(
     tables: dict[str, dict[str, dict]],
     pins: Mapping[str, str] | None = None,
     mode: int | None = None,
+    status_s: Mapping[str, str] | None = None,
 ) -> dict:
     for src_name, tbl in tables.items():
         if not isinstance(tbl, dict):
@@ -376,6 +417,10 @@ def _build_f8_check_inputs(
                 )
     base = set(tables["builder_output"])
     check3_not_run = isinstance(tables["check3_plot_passes"], Check3NotRun)
+    secondary_status: dict | None = None
+    secondary_set = base
+    if status_s is not None:
+        secondary_set, secondary_status = _check4_secondary_status(base, status_s)
     for code in sorted(base):
         if code not in tables["check4_f8"]:
             raise CheckInputError(
@@ -383,6 +428,8 @@ def _build_f8_check_inputs(
             )
         _validate_f8_capitalised(code, tables["check4_f8"][code])
         for label, src_key in (("primary", "primary_estimates"), ("secondary", "fitted_hedonic")):
+            if label == "secondary" and code not in secondary_set:
+                continue
             if code not in tables[src_key]:
                 raise CheckInputError(
                     f"V14_CHECK_INPUTS: ERROR: check4 {label} {code}: expected residual_land, got absent"
@@ -409,6 +456,10 @@ def _build_f8_check_inputs(
     for name in ("builder_output", "primary_estimates", "fitted_hedonic", "check3_plot_passes", "check4_f8", "dz2022_keys", "ur6"):
         if check3_not_run and name == "check3_plot_passes":
             continue
+        if status_s is not None and name == "fitted_hedonic":
+            # CHECK4-S-NOTRUN: the one deliberate guard change (equals builder -> contains estimated).
+            # Containment is enforced per zone above ("check4 secondary Z: expected residual_land").
+            continue
         if set(tables[name]) != base:
             raise CheckInputError(f"{name} zones do not match the builder output")
 
@@ -427,6 +478,8 @@ def _build_f8_check_inputs(
             shared.update(tables[name][code])
         cap_land = _validate_f8_capitalised(code, tables["check4_f8"][code])
         for label, src_key in (("primary", "primary_estimates"), ("secondary", "fitted_hedonic")):
+            if label == "secondary" and code not in secondary_set:
+                continue
             est = dict(tables[src_key][code])
             no_cell = bool(est.pop("no_cell", False))
             zone = dict(shared)
@@ -457,8 +510,10 @@ def _build_f8_check_inputs(
     if missing:
         raise CheckInputError("missing fields: " + "; ".join(missing))
     built: dict = {"primary_zones": primary, "secondary_zones": secondary}
+    if secondary_status is not None:
+        built["check4_secondary"] = secondary_status
     if pins:
-        pin_keys = (*SOURCES, "check4_f8")
+        pin_keys = (*SOURCES, "check4_f8", "zone_status_2023")
         built["pins"] = {name: pins[name] for name in pin_keys if name in pins}
     return built
 
@@ -467,11 +522,14 @@ def build_v14_check_inputs(
     tables: dict[str, dict[str, dict]],
     pins: Mapping[str, str] | None = None,
     mode: int | None = None,
+    status_s: Mapping[str, str] | None = None,
 ) -> dict:
     """Join pinned sources into ``primary_zones`` and ``secondary_zones``."""
     f8_sources = (set(SOURCES) - {"check4_rent_route"}) | {"check4_f8"}
     if set(tables) == f8_sources:
-        return _build_f8_check_inputs(tables, pins=pins, mode=mode)
+        return _build_f8_check_inputs(tables, pins=pins, mode=mode, status_s=status_s)
+    if status_s is not None:
+        raise CheckInputError("V14_CHECK_INPUTS: ERROR: zone_status: expected F8 route, got rent route")
     if set(tables) != set(SOURCES):
         raise CheckInputError("tables do not match the source list")
     base = set(tables["builder_output"])
@@ -552,9 +610,10 @@ def join_sources(
     tables: dict[str, dict[str, dict]],
     pins: Mapping[str, str],
     mode: int | None = None,
+    status_s: Mapping[str, str] | None = None,
 ) -> dict:
     """Join spy. A refused year never calls this."""
-    return build_v14_check_inputs(tables, pins, mode=mode)
+    return build_v14_check_inputs(tables, pins, mode=mode, status_s=status_s)
 
 
 def _locked_coefficient_sha(lock_path: Path) -> str:
@@ -637,11 +696,22 @@ def main(argv: list[str] | None = None) -> int:
     for name in SOURCES:
         parser.add_argument(f"--{name.replace('_', '-')}", type=Path, default=None, dest=name)
     parser.add_argument("--check4-f8", type=Path, default=None, dest="check4_f8")
+    parser.add_argument(
+        "--zone-status-2023",
+        type=Path,
+        default=None,
+        dest="zone_status_2023",
+        help="zone_status_2023.json (status_S). 2023 F8 route only; needs --pin zone_status_2023=sha256.",
+    )
     args = parser.parse_args(argv)
     paths = {name: getattr(args, name) for name in SOURCES}
     f8_path: Path | None = getattr(args, "check4_f8", None)
+    zs_path: Path | None = getattr(args, "zone_status_2023", None)
+    status_s: dict[str, str] | None = None
     try:
         mode = require_year(args.year)
+        if zs_path is not None and (f8_path is None or mode != 2023):
+            raise CheckInputError("V14_CHECK_INPUTS: ERROR: zone_status: expected 2023 F8 route, got other")
         if f8_path is not None and mode == 2023:
             active_sources = tuple("check4_f8" if s == "check4_rent_route" else s for s in SOURCES)
             f8_paths = {s: (f8_path if s == "check4_f8" else paths[s]) for s in active_sources}
@@ -659,8 +729,18 @@ def main(argv: list[str] | None = None) -> int:
                 dig = sha256_file(pth)
                 if dig != pins[s]:
                     raise CheckInputError(f"{s} sha256 {dig} != {pins[s]}")
+            if zs_path is not None:
+                if not pins.get("zone_status_2023"):
+                    raise CheckInputError("inputs without a pinned sha: zone_status_2023")
+                if not zs_path.is_file():
+                    raise CheckInputError(f"B6: ERROR: file: expected {zs_path}, got absent")
+                zs_dig = sha256_file(zs_path)
+                if zs_dig != pins["zone_status_2023"]:
+                    raise CheckInputError(f"zone_status_2023 sha256 {zs_dig} != {pins['zone_status_2023']}")
             ordered_f8 = ("check3_plot_passes", *(s for s in active_sources if s != "check3_plot_passes"))
             tables = {s: load_source(f8_paths[s], s, mode=mode) for s in ordered_f8}
+            if zs_path is not None:
+                status_s = load_status_s(zs_path)
         else:
             if mode == 2024:
                 for name in SOURCES:
@@ -678,7 +758,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise CheckInputError("B6: ERROR: file: expected lock, got absent")
             fit = assert_frozen_coefficients(args.hedonic_coefs, args.lock)
             apply_2024_coefficients(fit, tables)
-        payload = join_sources(tables, pins, mode=mode)
+        payload = join_sources(tables, pins, mode=mode, status_s=status_s)
     except (CheckInputError, Check3RecordError, OSError, json.JSONDecodeError) as exc:
         sys.stderr.write(str(exc) + "\n")
         return 1

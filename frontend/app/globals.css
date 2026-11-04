@@ -1196,6 +1196,12 @@ input {
   word-spacing: 0.25em;
 }
 
+/* SEARCH-HINT-SPACING: the wide gap is for typed postcodes only; the hint
+   text keeps normal spacing. */
+.hud-search input::placeholder {
+  word-spacing: normal;
+}
+
 .hud-search input:focus,
 .hud-search input:focus-visible {
   outline: none;

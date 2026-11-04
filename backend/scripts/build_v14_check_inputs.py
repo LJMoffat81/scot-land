@@ -360,6 +360,46 @@ def load_source(path: Path, source: str, mode: int | None = None) -> dict[str, d
 
 
 
+DZ2011_KEYS_PATH = Path(__file__).resolve().parents[2] / "data" / "reference" / "v14" / "dz2011_keys.json"
+DZ2011_KEYS_SHA256 = "2611c9e701d9affef34680be2a0d9bbc14468ddbc5241f353819f9ee59849874"
+DZ2011_KEY_COUNT = 6976
+
+
+def load_dz2011_keys(path: Path = DZ2011_KEYS_PATH) -> list[str]:
+    """The pinned DZ2011 key list (SG Data Zone Boundaries 2011, OGL v3). Codes only."""
+    if not path.is_file():
+        raise CheckInputError(f"B6: ERROR: file: expected {path}, got absent")
+    got = hashlib.sha256(path.read_bytes()).hexdigest()
+    if got != DZ2011_KEYS_SHA256:
+        raise CheckInputError(f"V14_CHECK_INPUTS: REFUSED: dz2011_keys sha256: expected {DZ2011_KEYS_SHA256}, got {got}")
+    keys = json.loads(path.read_text(encoding="utf-8"))
+    if (
+        not isinstance(keys, list)
+        or not all(isinstance(key, str) and key.strip() == key and len(key) == 9 for key in keys)
+        or keys != sorted(set(keys))
+        or len(keys) != DZ2011_KEY_COUNT
+    ):
+        raise CheckInputError(
+            f"V14_CHECK_INPUTS: REFUSED: dz2011_keys: expected {DZ2011_KEY_COUNT} sorted unique codes, got other"
+        )
+    return list(keys)
+
+
+def dz2011_restrict(tables: dict[str, dict[str, dict]], keys: set[str]) -> dict[str, dict[str, dict]]:
+    """Builder zones an exact subset of the DZ2011 keys; ur6 == keys, then restricted to the builder zones."""
+    base = set(tables["builder_output"])
+    outside = sorted(code for code in base if code not in keys)
+    if outside:
+        raise CheckInputError(
+            f"V14_CHECK_INPUTS: REFUSED: builder_output zone {outside[0]!r}: expected DZ2011 key, got other"
+        )
+    if set(tables["ur6"]) != keys:
+        raise CheckInputError("V14_CHECK_INPUTS: REFUSED: ur6 zones: expected the DZ2011 key set, got mismatch")
+    restricted = dict(tables)
+    restricted["ur6"] = {code: tables["ur6"][code] for code in sorted(base)}
+    return restricted
+
+
 STATUS_S_VALUES = frozenset({"estimated", "unavailable", "model_failure", "no_cell", "not_scored"})
 CHECK4_SECONDARY_NOT_RUN_REASON = "S NOT_CONVERGED"
 
@@ -523,9 +563,14 @@ def build_v14_check_inputs(
     pins: Mapping[str, str] | None = None,
     mode: int | None = None,
     status_s: Mapping[str, str] | None = None,
+    dz2011_keys: list[str] | None = None,
 ) -> dict:
     """Join pinned sources into ``primary_zones`` and ``secondary_zones``."""
     f8_sources = (set(SOURCES) - {"check4_rent_route"}) | {"check4_f8"}
+    if dz2011_keys is not None:
+        if mode != 2024 or set(tables) != set(SOURCES) or status_s is not None:
+            raise CheckInputError("V14_CHECK_INPUTS: ERROR: dz2011_keys: expected 2024 rent route, got other")
+        tables = dz2011_restrict(tables, set(dz2011_keys))
     if set(tables) == f8_sources:
         return _build_f8_check_inputs(tables, pins=pins, mode=mode, status_s=status_s)
     if status_s is not None:
@@ -573,8 +618,10 @@ def build_v14_check_inputs(
     if missing:
         raise CheckInputError("missing fields: " + "; ".join(missing))
     built: dict = {"primary_zones": primary, "secondary_zones": secondary}
+    if dz2011_keys is not None:
+        built["dz2011_keys_sha256"] = DZ2011_KEYS_SHA256
     if pins:
-        built["pins"] = {name: pins[name] for name in SOURCES if name in pins}
+        built["pins"] = {name: pins[name] for name in (*SOURCES, "dz2011_keys") if name in pins}
     return built
 
 
@@ -611,9 +658,10 @@ def join_sources(
     pins: Mapping[str, str],
     mode: int | None = None,
     status_s: Mapping[str, str] | None = None,
+    dz2011_keys: list[str] | None = None,
 ) -> dict:
     """Join spy. A refused year never calls this."""
-    return build_v14_check_inputs(tables, pins, mode=mode, status_s=status_s)
+    return build_v14_check_inputs(tables, pins, mode=mode, status_s=status_s, dz2011_keys=dz2011_keys)
 
 
 def _locked_coefficient_sha(lock_path: Path) -> str:
@@ -703,13 +751,31 @@ def main(argv: list[str] | None = None) -> int:
         dest="zone_status_2023",
         help="zone_status_2023.json (status_S). 2023 F8 route only; needs --pin zone_status_2023=sha256.",
     )
+    parser.add_argument(
+        "--dz2011-keys",
+        type=Path,
+        default=None,
+        dest="dz2011_keys",
+        help="Pinned DZ2011 key list (2024 rent route). Needs --pin dz2011_keys=sha256.",
+    )
     args = parser.parse_args(argv)
     paths = {name: getattr(args, name) for name in SOURCES}
+    keys_path: Path | None = getattr(args, "dz2011_keys", None)
+    dz2011_keys: list[str] | None = None
     f8_path: Path | None = getattr(args, "check4_f8", None)
     zs_path: Path | None = getattr(args, "zone_status_2023", None)
     status_s: dict[str, str] | None = None
     try:
         mode = require_year(args.year)
+        if keys_path is not None:
+            if mode != 2024 or f8_path is not None or zs_path is not None:
+                raise CheckInputError("V14_CHECK_INPUTS: ERROR: dz2011_keys: expected 2024 rent route, got other")
+            key_pin = _parse_pins(list(args.pin)).get("dz2011_keys")
+            if not key_pin:
+                raise CheckInputError("inputs without a pinned sha: dz2011_keys")
+            if key_pin != DZ2011_KEYS_SHA256:
+                raise CheckInputError(f"dz2011_keys pin {key_pin} != {DZ2011_KEYS_SHA256}")
+            dz2011_keys = load_dz2011_keys(keys_path)
         if zs_path is not None and (f8_path is None or mode != 2023):
             raise CheckInputError("V14_CHECK_INPUTS: ERROR: zone_status: expected 2023 F8 route, got other")
         if f8_path is not None and mode == 2023:
@@ -758,7 +824,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise CheckInputError("B6: ERROR: file: expected lock, got absent")
             fit = assert_frozen_coefficients(args.hedonic_coefs, args.lock)
             apply_2024_coefficients(fit, tables)
-        payload = join_sources(tables, pins, mode=mode, status_s=status_s)
+        payload = join_sources(tables, pins, mode=mode, status_s=status_s, dz2011_keys=dz2011_keys)
     except (CheckInputError, Check3RecordError, OSError, json.JSONDecodeError) as exc:
         sys.stderr.write(str(exc) + "\n")
         return 1

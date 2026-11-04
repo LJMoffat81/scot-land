@@ -129,6 +129,7 @@ import {
   replaceMapUrl,
 } from "../lib/mapUrlState";
 import { grid3GridSquareLabel, grid3Row6Text } from "../lib/bng";
+import { SCOTLAND_FIT_BOUNDS, fitBoundsPitched } from "../lib/pitchedFit";
 import { isEmptyDataZoneAt } from "../lib/dataZoneAt";
 import {
   GRID3_HOVER_ZOOM,
@@ -2484,21 +2485,22 @@ export default function ScotlandMap() {
       const narrow = window.innerWidth <= 900;
       container.dataset.framed = "1";
       container.dataset.viewSource = "scotland";
-      map.fitBounds(
-        [
-          [-8.05, 54.48],
-          [-0.55, 60.88],
-        ],
-        {
-          padding: narrow
-            ? { top: 132, bottom: 72, left: 12, right: 16 }
-            : { top: 96, bottom: 36, left: 24, right: 28 },
-          animate: false,
-          maxZoom: 7.4,
-          pitch: targetPitch,
-          bearing: targetBearing,
-        },
-      );
+      // OPENING-3D-FRAMING: on the first frame, set the resting map padding
+      // the panel-padding effect applies next, so it cannot shift the fit.
+      if (!framed) map.setPadding(mapPanelPadding());
+      // OPENING-3D-FRAMING: fit Scotland with the tilt applied (flat
+      // cameraForBounds ignores pitch). Pitch/bearing stay DEFAULT-3D-VIEW.
+      fitBoundsPitched(map, SCOTLAND_FIT_BOUNDS, {
+        padding: narrow
+          ? { top: 132, bottom: 72, left: 12, right: 16 }
+          : { top: 96, bottom: 36, left: 24, right: 28 },
+        maxZoom: 7.4,
+        // Never open below the z5 band where the default layers (minzoom 5)
+        // draw; on a phone the tilted fit would otherwise land at ~z4.9.
+        minZoom: 5,
+        pitch: targetPitch,
+        bearing: targetBearing,
+      });
       setMapPitch(map.getPitch());
       setMapBearing(map.getBearing());
       syncCameraDataset();
@@ -5590,33 +5592,6 @@ export default function ScotlandMap() {
           </span>
         </div>
       ) : null}
-      {aerialNotice ? (
-        <div
-          className="basemap-notice"
-          role="status"
-          data-testid="aerial-unavailable-notice"
-        >
-          <p>{AERIAL_UNAVAILABLE_NOTICE}</p>
-        </div>
-      ) : null}
-      {basemapNotice ? (
-        <div
-          className="basemap-notice"
-          role="status"
-          data-testid="basemap-notice"
-        >
-          <p>{BASEMAP_LOAD_NOTICE}</p>
-          <button type="button" onClick={() => window.location.reload()}>
-            Reload
-          </button>
-        </div>
-      ) : null}
-      {layerNotice ? (
-        <div className="basemap-notice" role="status" data-testid="layer-notice">
-          <p>{layerNotice}</p>
-        </div>
-      ) : null}
-
       <header className="hud-top" ref={headerRef}>
         <div className="hud-brand">
           <SiteBrand />
@@ -5767,18 +5742,48 @@ export default function ScotlandMap() {
         <SiteNav current="map" variant="map" />
       </header>
 
-      {apiOk === false && (
-        <div className="hud-banner">
-          <span>{TRY_AGAIN}</span>
-          <button
-            type="button"
-            className="api-retry"
-            onClick={() => void pingApi().then((s) => setApiOk(s.ok))}
+      {/* NOTICE-STACK: one column below the header and search row, so a
+          notice never covers Retry and nothing covers the search box. */}
+      <div className="map-notices" data-testid="map-notices">
+        {apiOk === false && (
+          <div className="hud-banner">
+            <span>{TRY_AGAIN}</span>
+            <button
+              type="button"
+              className="api-retry"
+              onClick={() => void pingApi().then((s) => setApiOk(s.ok))}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {aerialNotice ? (
+          <div
+            className="basemap-notice"
+            role="status"
+            data-testid="aerial-unavailable-notice"
           >
-            Retry
-          </button>
-        </div>
-      )}
+            <p>{AERIAL_UNAVAILABLE_NOTICE}</p>
+          </div>
+        ) : null}
+        {basemapNotice ? (
+          <div
+            className="basemap-notice"
+            role="status"
+            data-testid="basemap-notice"
+          >
+            <p>{BASEMAP_LOAD_NOTICE}</p>
+            <button type="button" onClick={() => window.location.reload()}>
+              Reload
+            </button>
+          </div>
+        ) : null}
+        {layerNotice ? (
+          <div className="basemap-notice" role="status" data-testid="layer-notice">
+            <p>{layerNotice}</p>
+          </div>
+        ) : null}
+      </div>
 
       <MapCreditLine
         esriAttribution={mapStyle === "aerial" ? esriAttribution : null}

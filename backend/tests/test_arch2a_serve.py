@@ -332,6 +332,32 @@ def test_v11_publication_rules_and_check_router():
     assert len(tiles_keys) == 3
 
 
+# P-T5 named exceptions (exact path, no prefixes). Ruling 2 Nov 2026, renamed 4 Nov:
+# DZ-HEATMAP PR-A only (status layer). Any other new public route still fails P-T5.
+P_T5_NAMED_EXCEPTIONS = frozenset({"platform/dz-status"})
+
+
+def _p_t5_key_allowed(key: str) -> bool:
+    """A new PUBLIC_ROUTE_RULES key (without leading /) P-T5 accepts."""
+    return key.startswith("v1/tiles/") or key in P_T5_NAMED_EXCEPTIONS
+
+
+def test_p_t5_named_exceptions_exact():
+    assert P_T5_NAMED_EXCEPTIONS == frozenset({"platform/dz-status"})
+
+
+@pytest.mark.parametrize("key,allowed", [
+    ("platform/dz-status", True),
+    ("v1/tiles/{layer_id}/{version}/{z}/{x}/{y}.pbf", True),
+    ("platform/dz-status-extra", False),
+    ("platform/dz-statu", False),
+    ("platform/other", False),
+    ("layers/open/new-layer", False),
+])
+def test_p_t5_key_allowed(key, allowed):
+    assert _p_t5_key_allowed(key) is allowed
+
+
 def test_p_t5_publication_rules_diff_only_v1_tiles():
     """P-T5: vs main, publication_rules.py only adds /v1/tiles/ keys."""
     proc = subprocess.run(
@@ -393,12 +419,18 @@ def test_p_t5_publication_rules_diff_only_v1_tiles():
             pass
         # Any other added code line that looks like a new PUBLIC_ROUTE_RULES key.
         key_match = re.match(r'\s*"/([^"]+)":\s*LayerRule', body)
-        if key_match and not key_match.group(1).startswith("v1/tiles/"):
+        if (
+            key_match
+            and not _p_t5_key_allowed(key_match.group(1))
+        ):
             pytest.fail(
                 "P-T5: publication_rules change outside /v1/tiles declarations"
             )
         key_match = re.match(r"\s*'/([^']+)':\s*LayerRule", body)
-        if key_match and not key_match.group(1).startswith("v1/tiles/"):
+        if (
+            key_match
+            and not _p_t5_key_allowed(key_match.group(1))
+        ):
             pytest.fail(
                 "P-T5: publication_rules change outside /v1/tiles declarations"
             )
@@ -410,6 +442,21 @@ def test_p_t5_publication_rules_diff_only_v1_tiles():
         ln for ln in diff.splitlines()
         if ln.startswith("+") and "/v1/tiles/" in ln
     ]
+    if not key_lines:
+        # A branch whose only new key is a named exception: the /v1/tiles
+        # additions are already on main, so count them against the 2a base
+        # (same diff main itself is checked against).
+        base = subprocess.run(
+            ["git", "diff", "91a4e36e", "--", "backend/georgist/publication_rules.py"],
+            cwd=str(REPO),
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout
+        key_lines = [
+            ln for ln in base.splitlines()
+            if ln.startswith("+") and "/v1/tiles/" in ln
+        ]
     if len(key_lines) < 1:
         pytest.fail(
             "P-T5: publication_rules change outside /v1/tiles declarations"

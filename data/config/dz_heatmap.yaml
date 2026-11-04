@@ -1,0 +1,42 @@
+# DZ-HEATMAP PR-A — Data Zone status-category layer (no value layer, no pound sign).
+# DEFAULT OFF. Served only when ALL hold: enabled is true; gbp_display (surface.yaml) is false;
+# the status file is valid and covers exactly the pinned key set for its vintage; the
+# estimate_year gate record (rerun_v14_score report) exists and is PASS; the locked run's
+# lock (write_holdout_lock JSON) ties that report and lists the status file sha256.
+# estimate_year 2023 is never served. Turning on is a separate one-line PR.
+dz_heatmap:
+  enabled: false
+  layer_id: dz_status
+  data_zone_vintage: DZ2011
+  estimate_year: 2024
+  status_path: data/processed/dz_heatmap/dz_status_2024.json
+  gate_record_path: data/processed/dz_heatmap/score_2024_report.json
+  lock_path: data/processed/dz_heatmap/holdout_2023.lock
+  key_title: "Estimate status"
+  categories:
+    - id: estimated
+      label: "Estimate available"
+    - id: unavailable
+      label: "No estimate: data not available"
+    - id: model_failure
+      label: "No estimate: our method doesn't work well here"
+    - id: no_cell
+      label: "No estimate: too few similar sales"
+    - id: not_scored
+      label: "No estimate: outside the areas we estimate"
+  vintages:
+    DZ2011:
+      keys_path: data/reference/v14/dz2011_keys.json
+      keys_sha256: 2611c9e701d9affef34680be2a0d9bbc14468ddbc5241f353819f9ee59849874
+      url: "https://maps.gov.scot/ATOM/shapefiles/SG_DataZoneBdry_2011.zip"
+      credit: "Scottish Government, Data Zone Boundaries 2011, Open Government Licence v3.0"
+      vintage_note: "Uses 2011 local areas (data zones)"
+    DZ2022:
+      # No pinned DZ2022 key set in the repo yet: DZ2022 refuses until one is pinned.
+      keys_path: null
+      keys_sha256: null
+      url: null
+      credit: "Scottish Government, Data Zone Boundaries 2022, Open Government Licence v3.0"
+      vintage_note: null
+  licence: "Open Government Licence v3.0"
+  attribution: "Contains public sector information licensed under the Open Government Licence v3.0. Contains Scottish Government and Ordnance Survey data © Crown copyright and database right 2026."

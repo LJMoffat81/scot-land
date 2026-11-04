@@ -357,6 +357,15 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
         "none",
         note="GBP-LIVE-V1 settings flag (default OFF); no geometry payload",
     ),
+    "/platform/dz-status": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note=(
+            "DZ-HEATMAP PR-A status category per Data Zone; no values, "
+            "no pound sign; 404 unless dz_heatmap on and gbp_display off"
+        ),
+    ),
     "/platform/gaps": LayerRule("zone", "zone", "none", note="register gap catalogue"),
     "/api/catalog.json": LayerRule("zone", "zone", "none", note="open-data catalogue"),
     "/api/ledger.json": LayerRule(

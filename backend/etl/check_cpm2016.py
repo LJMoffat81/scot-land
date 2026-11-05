@@ -2,7 +2,8 @@
 
 ``check_cpm2016_raw`` runs from ``run_layer.PRECONDITIONS`` before fetch.
 ``check_cpm2016_clipped`` runs at the start of ``tiles.build`` so a direct
-tile command cannot skip ``run_layer``.
+tile command cannot skip ``run_layer``. Includes existing outside-land+50 m
+via ``etl.run_layer._check`` (AMENDMENT-2).
 
 National pin ``GPKG_FEATURE_COUNT`` stays ``None`` until Laurie's PC; fixture
 tests monkeypatch it to the stub count (8) before calling ``run_layer``.
@@ -11,6 +12,7 @@ Never use WFS ``439700`` as that pin. Never assert post-clip count == raw pin.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from etl.check_dz2011_boundaries import PrecheckError
@@ -150,3 +152,17 @@ def check_cpm2016_clipped(conn) -> None:
                 "both present",
                 sorted(present),
             )
+
+    # Existing outside-land+50 m check only (sql/check_outside.sql). Not a clip.
+    # Lazy import avoids circular import with run_layer.PRECONDITIONS.
+    from etl.run_layer import CheckError, _check
+
+    try:
+        outside = _check(conn, LAYER_ID, LAYER_ID)
+    except CheckError as exc:
+        msg = str(exc)
+        match = re.search(r": (\d+) features outside", msg)
+        n: Any = int(match.group(1)) if match else msg
+        raise PrecheckError(f"{PREFIX}outside: expected 0, got {n}") from exc
+    if outside != 0:
+        raise PrecheckError(f"{PREFIX}outside: expected 0, got {outside}")

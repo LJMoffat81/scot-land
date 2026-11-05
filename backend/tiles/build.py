@@ -26,6 +26,12 @@ import psycopg2.extras
 
 from etl.check_cpm2016 import check_cpm2016_clipped
 from etl.check_dz2011_boundaries import PrecheckError
+from etl.cpm2016_provenance import (
+    Cpm2016TileGateError,
+    assert_fixture_output_confined,
+    assert_production_tile_gate,
+    fixture_tiles_allowed,
+)
 from layers.registry.loader import RegistryError, registry
 from tiles.measure import distinct_ids_at_zoom, measure_pmtiles
 from tiles.profiles import ProfileError, tippecanoe_flags
@@ -380,8 +386,16 @@ def build_tileset(
     try:
         if layer_id == "carbon-peatland":
             try:
+                if fixture_tiles_allowed():
+                    assert_fixture_output_confined(tiles_dir)
+                else:
+                    assert_production_tile_gate(connection)
+                # Clipped checks (SRID / domain / NULL / classes / outside)
+                # always run — fixture mode must not skip them.
                 check_cpm2016_clipped(connection)
             except PrecheckError as exc:
+                raise TilesError(f"TILES: carbon-peatland: {exc}") from exc
+            except Cpm2016TileGateError as exc:
                 raise TilesError(f"TILES: carbon-peatland: {exc}") from exc
 
         table_name = layer_id

@@ -30,6 +30,7 @@ from shapely import wkb as shapely_wkb
 from shapely.geometry import MultiPolygon, mapping, shape
 
 from etl.adapters.os_boundary_line import gpkg_blob_to_wkb
+from etl import cpm2016_provenance as prov
 from georgist.cpm2016_rules import (
     ALLOWED_IMPORTANCE,
     CRS,
@@ -263,14 +264,18 @@ def load_fixture(
         raise _refuse(f"table {TABLE}: expected empty for non-replace load")
     before = _row_count(conn)
     before_max = _max_feature_id(conn)
+    # Invalidate any national provenance before raw replacement (AMENDMENT-2).
+    prov.invalidate_national_provenance()
     try:
-        return _insert_features(conn, features)
+        n = _insert_features(conn, features)
     except Exception:
         # Guaranteed by DELETE+INSERT in one autocommit connection only if we
         # validate first; re-raise after callers can still compare counts on
         # refusal paths that never call insert.
         _ = (before, before_max)
         raise
+    prov.write_fixture_provenance(conn, rows=n)
+    return n
 
 
 def _open_gpkg_connection(source: Path) -> tuple[sqlite3.Connection, Path | None]:
@@ -437,7 +442,21 @@ def load_national(
 
     if not replace and before > 0:
         raise _refuse(f"table {TABLE}: expected empty for non-replace load")
-    return _insert_features(conn, features)
+    # Replacement started: drop any prior national receipt (AMENDMENT-2).
+    prov.invalidate_national_provenance()
+    try:
+        n = _insert_features(conn, features)
+    except Exception:
+        # Do not write a national receipt; prior national stays invalid.
+        raise
+    prov.write_national_provenance(
+        conn,
+        rows=n,
+        gpkg_sha256=GPKG_SHA256,
+        gpkg_layer=GPKG_LAYER,
+        gpkg_feature_count=GPKG_FEATURE_COUNT,
+    )
+    return n
 
 
 def main(argv: list[str] | None = None) -> None:

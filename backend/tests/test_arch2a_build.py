@@ -452,6 +452,9 @@ def test_b21_cli_subprocess(conn, tiles_env, monkeypatch, tmp_path):
     # Seed every committed ungated pmtiles layer with one synthetic feature.
     from layers.registry.loader import REGISTRY_DIR, load_registry
 
+    # M6b AMENDMENT-2: clipped outside check needs scotland+50 m extent present.
+    _helpers.load_tiny_extent(conn, monkeypatch, tmp_path)
+
     as_of = "2026-10-22"
     entries = load_registry(REGISTRY_DIR)
     expected = sorted(
@@ -512,6 +515,18 @@ def test_b21_cli_subprocess(conn, tiles_env, monkeypatch, tmp_path):
     env["ARCH1_TEST_DSN"] = require_dsn()
     env["TILES_DIR"] = str(tiles_env["dir"])
     env["PYTHONPATH"] = str(Path(__file__).resolve().parents[1])
+    # M6b AMENDMENT-2: carbon-peatland production gate; CI --all uses fixture mode
+    # confined to the test tiles root (never the production publisher root).
+    prod_root = tmp_path / "production_tiles"
+    prod_root.mkdir(exist_ok=True)
+    receipt_dir = tmp_path / "receipts"
+    receipt_dir.mkdir(exist_ok=True)
+    env["CPM2016_ALLOW_FIXTURE_TILES"] = "1"
+    env["CPM2016_PRODUCTION_TILES_ROOT"] = str(prod_root)
+    env["LAYER_RECEIPT_DIR"] = str(receipt_dir)
+    monkeypatch.setenv("CPM2016_ALLOW_FIXTURE_TILES", "1")
+    monkeypatch.setenv("CPM2016_PRODUCTION_TILES_ROOT", str(prod_root))
+    monkeypatch.setenv("LAYER_RECEIPT_DIR", str(receipt_dir))
 
     bad = subprocess.run(
         [str(PYTHON), "-m", "tiles.build", "nope"],

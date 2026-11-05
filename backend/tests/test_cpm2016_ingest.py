@@ -477,6 +477,12 @@ def test_r9_direct_tile_refuses_when_clipped_checks_fail(
             encoding="utf-8",
         )
         monkeypatch.setenv("TILES_DIR", str(tiles_root))
+        # Fixture mode skips pin gate so R9 still exercises clipped checker.
+        monkeypatch.setenv("CPM2016_ALLOW_FIXTURE_TILES", "1")
+        monkeypatch.setenv(
+            "CPM2016_PRODUCTION_TILES_ROOT", str(tmp_path / "prod_tiles")
+        )
+        (tmp_path / "prod_tiles").mkdir()
         monkeypatch.setattr(
             tiles_build,
             "_run_tippecanoe",

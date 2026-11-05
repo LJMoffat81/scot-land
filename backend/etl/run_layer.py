@@ -621,6 +621,10 @@ def run_layer(
             "method": method,
         }
         _write_receipt(layer_id, receipt)
+        if layer_id == "carbon-peatland":
+            from etl import cpm2016_provenance as cpm_prov
+
+            cpm_prov.bind_clipped_receipt(receipt)
         return receipt
     except (
         RegistryError,

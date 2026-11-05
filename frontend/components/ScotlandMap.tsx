@@ -707,6 +707,7 @@ export default function ScotlandMap() {
   const [suggesting, setSuggesting] = useState(false);
   const [activeSuggest, setActiveSuggest] = useState(-1);
   const suggestGen = useRef(0);
+  const searchSubmitOwns = useRef(false);
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suggestAbort = useRef<AbortController | null>(null);
   const [addressLine, setAddressLine] = useState<string | null>(null);
@@ -1972,6 +1973,7 @@ export default function ScotlandMap() {
   const searchPostcode = async (q: string) => {
     const generation = ++lookupGen.current;
     suggestGen.current += 1;
+    searchSubmitOwns.current = true;
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
     clearSuggestions();
     setError(null);
@@ -2018,6 +2020,7 @@ export default function ScotlandMap() {
     if (coords) {
       const generation = ++lookupGen.current;
       suggestGen.current += 1;
+      searchSubmitOwns.current = true;
       if (suggestTimer.current) clearTimeout(suggestTimer.current);
       clearSuggestions();
       setLoading(true);
@@ -2041,6 +2044,7 @@ export default function ScotlandMap() {
     }
     const generation = ++lookupGen.current;
     suggestGen.current += 1;
+    searchSubmitOwns.current = true;
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
     setLoading(true);
     setError(null);
@@ -2113,6 +2117,7 @@ export default function ScotlandMap() {
   const chooseSuggestion = async (item: Suggestion) => {
     const generation = ++lookupGen.current;
     suggestGen.current += 1;
+    searchSubmitOwns.current = true;
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
     clearSuggestions();
     // SW-051: if the pick is the same postcode the user typed, keep their spacing.
@@ -2207,6 +2212,7 @@ export default function ScotlandMap() {
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
     const text = value.trim();
     if (text.length < 3) {
+      searchSubmitOwns.current = false;
       suggestGen.current += 1;
       clearSuggestions();
       return;
@@ -2214,6 +2220,7 @@ export default function ScotlandMap() {
     // Drop stale in-flight work while waiting for the new debounce window.
     suggestAbort.current?.abort();
     suggestAbort.current = null;
+    searchSubmitOwns.current = false;
     suggestGen.current += 1;
     // Pending "Looking…" for the debounce + fetch window (cleared on results /
     // empty / error / blur / Escape). Clear prior rows so the note can show.
@@ -5590,17 +5597,22 @@ export default function ScotlandMap() {
     if (next === mapStyle) return;
     const map = mapRef.current;
     if (map) {
-      const c = map.getCenter();
-      const box = map.getContainer();
-      cameraPreserveRef.current = {
-        lng: c.lng,
-        lat: c.lat,
-        zoom: map.getZoom(),
-        pitch: map.getPitch(),
-        bearing: map.getBearing(),
-        width: box.clientWidth,
-        height: box.clientHeight,
-      };
+      try {
+        const c = map.getCenter();
+        const box = map.getContainer();
+        cameraPreserveRef.current = {
+          lng: c.lng,
+          lat: c.lat,
+          zoom: map.getZoom(),
+          pitch: map.getPitch(),
+          bearing: map.getBearing(),
+          width: box.clientWidth,
+          height: box.clientHeight,
+        };
+      } catch {
+        // Mid-remount / style-not-loaded: keep the last preserved camera
+        // rather than aborting the toggle.
+      }
     }
     setMapStyle(next);
     replaceMapUrl({ b: next });
@@ -5820,6 +5832,9 @@ export default function ScotlandMap() {
             onBlur={() => {
               setSearchFocused(false);
               window.setTimeout(() => {
+                // Search submit owns the Try again note. loadSuggestions also
+                // bumps suggestGen (debounce), and must not cancel this clear.
+                if (searchSubmitOwns.current) return;
                 suggestGen.current += 1;
                 clearSuggestions();
               }, 180);
@@ -5879,6 +5894,7 @@ export default function ScotlandMap() {
             className="hud-search-go"
             disabled={!query.trim()}
             aria-label="Search"
+            onMouseDown={(event) => event.preventDefault()}
             onClick={() => void runSearch()}
           >
             {loading ? "…" : "Search"}

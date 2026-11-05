@@ -972,9 +972,8 @@ def assert_2024_allowed(
 
 # Must match georgist.dz_heatmap.STATUS_IDS (PR-A locked labels).
 DZ_STATUS_IDS = ("estimated", "unavailable", "model_failure", "no_cell", "not_scored")
-DZ_STATUS_FILE_KEYS = frozenset({"estimate_year", "data_zone_vintage", "zones"})
-DZ_STATUS_ZONE_KEYS = frozenset({"zone", "status"})
-DZ_STATUS_FLAG_ORDER = ("no_cell", "model_failure", "unavailable")
+# P emits only these three; PR-A keeps all five STATUS_IDS for contract parity.
+DZ_STATUS_P_IDS = ("estimated", "unavailable", "not_scored")
 DZ2011_KEYS_REL = Path("data") / "reference" / "v14" / "dz2011_keys.json"
 DZ2011_KEYS_SHA256 = (
     "2611c9e701d9affef34680be2a0d9bbc14468ddbc5241f353819f9ee59849874"
@@ -1012,17 +1011,24 @@ def load_dz2011_keys(
 
 
 def classify_scored_zone(row: Mapping) -> str:
-    """Primary-zone flags → PR-A status. Precedence: no_cell > model_failure > unavailable > estimated."""
-    for flag in DZ_STATUS_FLAG_ORDER:
-        value = row.get(flag)
-        if value is True:
-            return flag
-        if value is not None and not isinstance(value, bool):
-            raise HoldoutLockError(
-                f"DZ-STATUS-EMIT: REFUSED: zone {row.get('zone')}: "
-                f"expected bool flag {flag}, got {type(value).__name__}"
-            )
-    return "estimated"
+    """Primary (P) status for a scored zone. Pre-registered P contract
+    (build_v14_zone_status_2023): unavailable flag exactly True -> unavailable,
+    exactly False -> estimated. Missing or non-bool refuses (never fails open).
+    model_failure / no_cell are S-side statuses and are never read here."""
+    code = row.get("zone")
+    if "unavailable" not in row:
+        raise HoldoutLockError(
+            f"DZ-STATUS-EMIT: REFUSED: zone {code}: expected bool flag unavailable, got absent"
+        )
+    value = row["unavailable"]
+    if value is True:
+        return "unavailable"
+    if value is False:
+        return "estimated"
+    raise HoldoutLockError(
+        f"DZ-STATUS-EMIT: REFUSED: zone {code}: "
+        f"expected bool flag unavailable, got {type(value).__name__}"
+    )
 
 
 def build_dz_status_map(
@@ -1054,20 +1060,10 @@ def build_dz_status_map(
         raise HoldoutLockError(
             f"DZ-STATUS-EMIT: REFUSED: coverage: extra zone {extras[0]} ({len(extras)} extra)"
         )
-    not_scored = set(keys) - set(scored)
-    out = {code: "not_scored" for code in not_scored}
+    # scored ⊆ keys (checked above), so scored ∪ not_scored == keys and the
+    # two sets are disjoint by construction. emit_dz_status re-checks coverage.
+    out = {code: "not_scored" for code in set(keys) - set(scored)}
     out.update(scored)
-    if set(out) != set(keys):
-        missing = sorted(set(keys) - set(out))
-        raise HoldoutLockError(
-            f"DZ-STATUS-EMIT: REFUSED: coverage: missing zone {missing[0]} ({len(missing)} missing)"
-        )
-    n_scored = sum(1 for status in out.values() if status != "not_scored")
-    n_not = sum(1 for status in out.values() if status == "not_scored")
-    if n_scored + n_not != len(keys) or n_scored != len(scored) or n_not != len(not_scored):
-        raise HoldoutLockError(
-            "DZ-STATUS-EMIT: REFUSED: coverage: scored + not_scored do not cover keys exactly"
-        )
     return out
 
 
@@ -1114,20 +1110,16 @@ def emit_dz_status(
             raise HoldoutLockError(
                 f"DZ-STATUS-EMIT: REFUSED: zone {code}: expected status enum, got {status!r}"
             )
+        if status not in DZ_STATUS_P_IDS:
+            raise HoldoutLockError(
+                f"DZ-STATUS-EMIT: REFUSED: zone {code}: expected P status, got {status}"
+            )
         rows.append({"zone": code, "status": status})
     payload = {
         "estimate_year": int(estimate_year),
         "data_zone_vintage": data_zone_vintage,
         "zones": rows,
     }
-    if set(payload) != DZ_STATUS_FILE_KEYS:
-        raise HoldoutLockError(
-            "DZ-STATUS-EMIT: REFUSED: status file keys do not match contract"
-        )
-    if any(set(row) != DZ_STATUS_ZONE_KEYS for row in rows):
-        raise HoldoutLockError(
-            "DZ-STATUS-EMIT: REFUSED: status file zone row keys do not match contract"
-        )
     body = json.dumps(payload, sort_keys=True) + "\n"
     if DZ_STATUS_POUND in body or "gbp" in body.lower():
         raise HoldoutLockError(

@@ -151,6 +151,10 @@ def test_dz_status_out_no_longer_refuses_lock_outputs_stub(
         "scripts.rerun_v14_score.load_dz2011_keys",
         lambda path=None, expected_sha=None: load_dz2011_keys(keys_path, expected_sha=digest),
     )
+    payload = json.loads(paths["checks"].read_text(encoding="utf-8"))
+    for row in payload["primary_zones"]:
+        row["unavailable"] = False
+    paths["checks"].write_text(json.dumps(payload), encoding="utf-8")
     calls, spy = _score_stub()
     monkeypatch.setattr("scripts.rerun_v14_score._score_holdout", spy)
     out = tmp_path / "score" / "report.json"

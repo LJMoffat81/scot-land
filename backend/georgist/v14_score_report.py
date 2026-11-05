@@ -970,12 +970,170 @@ def assert_2024_allowed(
 
 
 
-def emit_dz_status(path: Path, *args, **kwargs) -> None:
-    """HOOK for DZ-STATUS-EMIT. This PR has no converter; always refuses.
-    Must never write a half-format status file."""
+# Must match georgist.dz_heatmap.STATUS_IDS (PR-A locked labels).
+DZ_STATUS_IDS = ("estimated", "unavailable", "model_failure", "no_cell", "not_scored")
+# P emits only these three; PR-A keeps all five STATUS_IDS for contract parity.
+DZ_STATUS_P_IDS = ("estimated", "unavailable", "not_scored")
+DZ2011_KEYS_REL = Path("data") / "reference" / "v14" / "dz2011_keys.json"
+DZ2011_KEYS_SHA256 = (
+    "2611c9e701d9affef34680be2a0d9bbc14468ddbc5241f353819f9ee59849874"
+)
+DZ_STATUS_EMIT_YEAR = 2024
+DZ_STATUS_EMIT_VINTAGE = "DZ2011"
+DZ_STATUS_POUND = "\u00a3"
+
+
+def load_dz2011_keys(
+    path: Path | None = None, *, expected_sha: str | None = DZ2011_KEYS_SHA256
+) -> frozenset[str]:
+    """Pinned DZ2011 key set (sha 2611c9e7…). Synthetic tests pass their own path+sha."""
+    target = Path(path) if path is not None else REPO_ROOT / DZ2011_KEYS_REL
+    if not target.is_file():
+        raise HoldoutLockError(
+            "DZ-STATUS-EMIT: REFUSED: keys file: expected file, got absent"
+        )
+    raw = target.read_bytes()
+    digest = hashlib.sha256(raw).hexdigest()
+    if expected_sha is not None and digest != expected_sha:
+        raise HoldoutLockError(
+            f"DZ-STATUS-EMIT: REFUSED: keys sha256: expected {expected_sha}, got {digest}"
+        )
+    payload = json.loads(raw.decode("utf-8"))
+    if not isinstance(payload, list) or not payload or len(set(payload)) != len(payload):
+        raise HoldoutLockError(
+            "DZ-STATUS-EMIT: REFUSED: keys: expected unique list, got other"
+        )
+    if not all(isinstance(code, str) for code in payload):
+        raise HoldoutLockError(
+            "DZ-STATUS-EMIT: REFUSED: keys: expected string codes, got other"
+        )
+    return frozenset(payload)
+
+
+def classify_scored_zone(row: Mapping) -> str:
+    """Primary (P) status for a scored zone. Pre-registered P contract
+    (build_v14_zone_status_2023): unavailable flag exactly True -> unavailable,
+    exactly False -> estimated. Missing or non-bool refuses (never fails open).
+    model_failure / no_cell are S-side statuses and are never read here."""
+    code = row.get("zone")
+    if "unavailable" not in row:
+        raise HoldoutLockError(
+            f"DZ-STATUS-EMIT: REFUSED: zone {code}: expected bool flag unavailable, got absent"
+        )
+    value = row["unavailable"]
+    if value is True:
+        return "unavailable"
+    if value is False:
+        return "estimated"
     raise HoldoutLockError(
-        "LOCK-OUTPUTS: REFUSED: --dz-status-out: DZ-STATUS-EMIT not in this PR"
+        f"DZ-STATUS-EMIT: REFUSED: zone {code}: "
+        f"expected bool flag unavailable, got {type(value).__name__}"
     )
+
+
+def build_dz_status_map(
+    keys: frozenset[str], primary_zones: Sequence[Mapping]
+) -> dict[str, str]:
+    """Partition the pinned key set into scored statuses and not_scored.
+
+    Parked coverage check: scored ∪ not_scored == keys and scored ∩ not_scored == ∅.
+    Zones in primary_zones are the scored population; every other key is not_scored.
+    """
+    if not isinstance(primary_zones, (list, tuple)):
+        raise HoldoutLockError(
+            "DZ-STATUS-EMIT: REFUSED: check inputs: expected primary_zones, got absent"
+        )
+    scored: dict[str, str] = {}
+    for row in primary_zones:
+        if not isinstance(row, Mapping) or "zone" not in row:
+            raise HoldoutLockError(
+                "DZ-STATUS-EMIT: REFUSED: primary zone: expected zone key, got absent"
+            )
+        code = str(row["zone"])
+        if code in scored:
+            raise HoldoutLockError(
+                f"DZ-STATUS-EMIT: REFUSED: zone {code}: expected unique, got duplicate"
+            )
+        scored[code] = classify_scored_zone(row)
+    extras = sorted(set(scored) - set(keys))
+    if extras:
+        raise HoldoutLockError(
+            f"DZ-STATUS-EMIT: REFUSED: coverage: extra zone {extras[0]} ({len(extras)} extra)"
+        )
+    # scored ⊆ keys (checked above), so scored ∪ not_scored == keys and the
+    # two sets are disjoint by construction. emit_dz_status re-checks coverage.
+    out = {code: "not_scored" for code in set(keys) - set(scored)}
+    out.update(scored)
+    return out
+
+
+def emit_dz_status(
+    path: Path,
+    *,
+    estimate_year: int,
+    data_zone_vintage: str,
+    statuses: Mapping[str, str],
+    keys: frozenset[str],
+) -> Path:
+    """Write the PR-A status file (status codes only; no pound / value / band / rank).
+
+    Atomic create: refuses if the path already exists. Never emits for 2023.
+    """
+    path = Path(path)
+    if estimate_year != DZ_STATUS_EMIT_YEAR:
+        raise HoldoutLockError(
+            f"DZ-STATUS-EMIT: REFUSED: estimate_year: expected {DZ_STATUS_EMIT_YEAR}, got {estimate_year}"
+        )
+    if data_zone_vintage != DZ_STATUS_EMIT_VINTAGE:
+        raise HoldoutLockError(
+            f"DZ-STATUS-EMIT: REFUSED: data_zone_vintage: expected {DZ_STATUS_EMIT_VINTAGE}, "
+            f"got {data_zone_vintage}"
+        )
+    if path.is_file():
+        raise HoldoutLockError(
+            "DZ-STATUS-EMIT: REFUSED: status out: expected absent, got present"
+        )
+    if set(statuses) != set(keys):
+        missing = sorted(set(keys) - set(statuses))
+        extra = sorted(set(statuses) - set(keys))
+        if missing:
+            raise HoldoutLockError(
+                f"DZ-STATUS-EMIT: REFUSED: coverage: missing zone {missing[0]} ({len(missing)} missing)"
+            )
+        raise HoldoutLockError(
+            f"DZ-STATUS-EMIT: REFUSED: coverage: extra zone {extra[0]} ({len(extra)} extra)"
+        )
+    rows: list[dict[str, str]] = []
+    for code in sorted(keys):
+        status = statuses[code]
+        if status not in DZ_STATUS_IDS:
+            raise HoldoutLockError(
+                f"DZ-STATUS-EMIT: REFUSED: zone {code}: expected status enum, got {status!r}"
+            )
+        if status not in DZ_STATUS_P_IDS:
+            raise HoldoutLockError(
+                f"DZ-STATUS-EMIT: REFUSED: zone {code}: expected P status, got {status}"
+            )
+        rows.append({"zone": code, "status": status})
+    payload = {
+        "estimate_year": int(estimate_year),
+        "data_zone_vintage": data_zone_vintage,
+        "zones": rows,
+    }
+    body = json.dumps(payload, sort_keys=True) + "\n"
+    if DZ_STATUS_POUND in body or "gbp" in body.lower():
+        raise HoldoutLockError(
+            "DZ-STATUS-EMIT: REFUSED: status file contains a pound sign"
+        )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.tmp")
+    try:
+        temporary.write_text(body, encoding="utf-8")
+        os.replace(temporary, path)
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+    return path
 
 def mark_score_2024(lock_path: Path) -> None:
     """Record that the 2024 entry point has been entered. The write is atomic."""

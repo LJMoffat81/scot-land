@@ -69,6 +69,18 @@ function boxesOverlap(a: Box, b: Box): boolean {
 
 async function assertMinHit(locator: Locator, label: string) {
   await expect(locator, label).toBeVisible();
+  await locator.scrollIntoViewIfNeeded();
+  await expect
+    .poll(
+      async () => {
+        const box = await locator.boundingBox();
+        return (
+          box != null && box.width >= MIN_HIT && box.height >= MIN_HIT
+        );
+      },
+      { message: `${label} box ≥${MIN_HIT}×${MIN_HIT}` },
+    )
+    .toBe(true);
   const box = await locator.boundingBox();
   expect(box, `${label} box`).toBeTruthy();
   expect(box!.width, `${label} width`).toBeGreaterThanOrEqual(MIN_HIT);
@@ -228,6 +240,7 @@ test.describe("UI-FIX-1 + SW-056 @ 390x844", () => {
       timeout: 30_000,
     });
     const after = page.locator("a.download-card-action");
+    await expect(after.first()).toBeVisible({ timeout: 30_000 });
     const m = await after.count();
     expect(m).toBeGreaterThanOrEqual(1);
     for (let i = 0; i < m; i += 1) {

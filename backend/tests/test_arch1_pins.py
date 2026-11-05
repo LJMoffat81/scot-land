@@ -590,6 +590,16 @@ _M5_WHO_HOLDS_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# E2E-FLAKE-1 — stabilize three flaky e2e tests.
+_E2E_FLAKE_1_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/components/ScotlandMap.tsx",
+        "frontend/e2e/ci/frontend-batch-4.spec.ts",
+        "frontend/e2e/ci/ui-fix-1.spec.ts",
+        "frontend/e2e/ci/basemap-switcher.spec.ts",
+    ]
+)
+
 
 def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
@@ -619,6 +629,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _DZ_HEATMAP_B_FRONTEND_ALLOW
                 | _M4_STORY_VIEWS_FRONTEND_ALLOW
                 | _M5_WHO_HOLDS_FRONTEND_ALLOW
+                | _E2E_FLAKE_1_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

@@ -555,6 +555,7 @@ for (const viewport of VIEWPORTS) {
         timeout: 45_000,
       });
       await page.getByTestId("place-card-close").click();
+      await expect(page.getByTestId("place-card")).toHaveCount(0);
 
       await page.locator("#place-query").fill("ZZZQQQ999");
       await page.locator("#place-query").press("Enter");
@@ -582,10 +583,9 @@ for (const viewport of VIEWPORTS) {
         if (go instanceof HTMLElement) go.click();
       });
       await place404;
-      await expect(
-        page.locator(".search-suggest-note", { hasText: TRY_AGAIN }),
-      ).toBeVisible({ timeout: 20_000 });
-      await expect(page.getByText(TRY_AGAIN, { exact: true }).first()).toBeVisible();
+      const note = page.locator(".search-suggest-note");
+      await expect(note).toBeVisible({ timeout: 20_000 });
+      await expect(note).toHaveText(TRY_AGAIN);
       assertConsoleClean(gate);
     });
 

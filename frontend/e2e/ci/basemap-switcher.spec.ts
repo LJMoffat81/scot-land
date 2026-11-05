@@ -237,17 +237,37 @@ function boxesOverlap(
   );
 }
 
+async function waitForBasemapSettled(page: Page) {
+  await expect(page.locator(".maplibregl-canvas")).toBeVisible();
+  await expect
+    .poll(async () => {
+      return page.evaluate(() => {
+        const map = (
+          window as unknown as {
+            __map?: { loaded?: () => boolean; isStyleLoaded?: () => boolean };
+          }
+        ).__map;
+        if (!map) return false;
+        const loaded = typeof map.loaded === "function" ? map.loaded() : true;
+        const styleLoaded =
+          typeof map.isStyleLoaded === "function" ? map.isStyleLoaded() : true;
+        return Boolean(loaded && styleLoaded);
+      });
+    })
+    .toBe(true);
+}
+
 async function assertNoBoxOverlap(a: Locator, b: Locator, label: string) {
   await expect(a, label).toBeVisible();
   await expect(b, label).toBeVisible();
-  const boxA = await a.boundingBox();
-  const boxB = await b.boundingBox();
-  expect(boxA, `${label}: missing A`).toBeTruthy();
-  expect(boxB, `${label}: missing B`).toBeTruthy();
-  expect(
-    boxesOverlap(boxA!, boxB!),
-    `${label}: overlap A=${JSON.stringify(boxA)} B=${JSON.stringify(boxB)}`,
-  ).toBe(false);
+  await expect
+    .poll(async () => {
+      const boxA = await a.boundingBox();
+      const boxB = await b.boundingBox();
+      if (!boxA || !boxB) return "missing";
+      return boxesOverlap(boxA, boxB) ? "overlap" : "clear";
+    }, { message: label })
+    .toBe("clear");
 }
 
 async function runBasemapChecks(page: Page) {
@@ -283,16 +303,19 @@ async function runBasemapChecks(page: Page) {
   const zoomIn = page.locator(".maplibregl-ctrl-zoom-in");
   const zoomOut = page.locator(".maplibregl-ctrl-zoom-out");
 
+  await waitForBasemapSettled(page);
   await switcher.click();
   await expect(switcher).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByRole("tooltip")).toHaveText(
-    "Simple map",
-  );
+  await waitForBasemapSettled(page);
+  await switcher.hover();
+  await expect(page.getByRole("tooltip")).toBeVisible();
+  await expect(page.getByRole("tooltip")).toHaveText("Simple map");
   await switcher.click();
   await expect(switcher).toHaveAttribute("aria-pressed", "false");
-  await expect(page.getByRole("tooltip")).toHaveText(
-    "Aerial map",
-  );
+  await waitForBasemapSettled(page);
+  await switcher.hover();
+  await expect(page.getByRole("tooltip")).toBeVisible();
+  await expect(page.getByRole("tooltip")).toHaveText("Aerial map");
 
   await assertNoBoxOverlap(switcher, zoomIn, "basemap vs zoom-in");
   await assertNoBoxOverlap(switcher, zoomOut, "basemap vs zoom-out");

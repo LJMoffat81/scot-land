@@ -115,6 +115,27 @@ t("T1", () => {
           "Five councils sent no 2025 return, so their latest figures are shown: 2022 for Orkney Islands, and 2024 for Clackmannanshire, Falkirk, Inverclyde and West Lothian.",
         ],
       },
+      {
+        id: "carbon-and-land",
+        title: "Carbon and land",
+        surface: "councils",
+        overlays: [],
+        finding:
+          "An official map shows where carbon-rich soils, deep peat and priority peatland habitat are likely to occur.",
+        sourceLine:
+          "NatureScot, Carbon and Peatland 2016 (published June 2016); OS Boundary-Line, 2026",
+        doesNotShow: "named owners, a carbon price, or a map of legal title.",
+        question: "Q6",
+        takeaway:
+          "Scotland's peat soils hold a large store of carbon. The Scottish Land Commission has said more work is needed before any carbon land tax, and advised against one on its own.",
+        gaps: [
+          "Hectares of deep peat and priority peatland habitat by data zone: the official map exists, but this view does not count those hectares.",
+          "A painted map of the 2016 carbon and peatland classes: the official dataset is not loaded onto this map.",
+          "Who holds peatland: this view does not show owners.",
+          "Greenhouse gas emissions from peatland by council or data zone: official statistics are published as national totals.",
+          "Woodland carbon: this view covers peat and carbon-rich soils, not woodland.",
+        ],
+      },
     ],
   );
 });
@@ -237,7 +258,7 @@ t("T7", () => {
   assert.deepEqual(availableViews(new Set(), SYN).map((v) => v.id), ["syn-a", "syn-b"]);
   assert.deepEqual(availableViews(new Set(["4"]), SYN).map((v) => v.id), ["syn-a"]);
   assert.deepEqual(availableViews(new Set(["councils"]), SYN).map((v) => v.id), ["syn-b"]);
-  assert.deepEqual(availableViews(new Set(["access_services"])).map((v) => v.id), ["who-holds-scotland", "idle-land"]);
+  assert.deepEqual(availableViews(new Set(["access_services"])).map((v) => v.id), ["who-holds-scotland", "idle-land", "carbon-and-land"]);
   const fake = (id) => ({ ...getMapLayer(id), sourceCaption: id === "4" ? "Scot-LAND model · 2023" : "x" });
   assert.equal(viewIsEstimate(SYN_B, fake), true);
   assert.equal(viewIsEstimate(SYN_A, fake), false);
@@ -394,8 +415,34 @@ t("T13", () => {
     m2.takeaway.slice(m2First),
     /The Scottish Land Commission has asked whether tax could help bring such land back into use\./,
   );
+  const m6 = MAP_VIEW_PRESETS.find((v) => v.id === "carbon-and-land");
+  assert.ok(m6, "carbon-and-land missing");
+  assert.equal(m6.question, "Q6");
+  assert.equal(m6.surface, "councils");
+  assert.deepEqual(m6.overlays, []);
+  assert.deepEqual(views.viewExplainerRows(m6), [
+    { kind: "question", text: "Policy question: Carbon and land" },
+    {
+      kind: "takeaway",
+      heading: "What this could mean",
+      text: m6.takeaway,
+    },
+    { kind: "gaps", heading: "What we can't see", items: [...m6.gaps] },
+  ]);
+  const m6First = m6.takeaway.indexOf(".");
+  assert.ok(m6First > 0);
+  assert.equal(
+    m6.takeaway.slice(0, m6First + 1),
+    "Scotland's peat soils hold a large store of carbon.",
+  );
+  assert.match(
+    m6.takeaway.slice(m6First),
+    /The Scottish Land Commission has said more work is needed before any carbon land tax, and advised against one on its own\./,
+  );
+  assert.doesNotMatch(m6.takeaway, /\d/);
+  assert.doesNotMatch(m6.takeaway, /\u00a3/);
   for (const v of MAP_VIEW_PRESETS) {
-    if (v.id === "who-holds-scotland" || v.id === "idle-land") continue;
+    if (v.id === "who-holds-scotland" || v.id === "idle-land" || v.id === "carbon-and-land") continue;
     assert.equal(v.question, undefined, `${v.id} question`);
     assert.equal(v.takeaway, undefined, `${v.id} takeaway`);
     assert.equal(v.gaps, undefined, `${v.id} gaps`);
@@ -606,6 +653,62 @@ t("T18", () => {
   const question = views.viewExplainerRows(view).find((row) => row.kind === "question");
   assert.equal(question?.text, `${views.VIEW_QUESTION_PREFIX}${views.POLICY_QUESTIONS.Q2}`);
   assert.equal(question?.text, "Policy question: Vacant and derelict land");
+});
+
+// T19 M6 carbon-and-land: locked story strings, fact then reading, no banned phrase.
+t("T19", () => {
+  const view = MAP_VIEW_PRESETS.find((v) => v.id === "carbon-and-land");
+  assert.ok(view, "carbon-and-land missing");
+  assert.equal(view.title, "Carbon and land");
+  assert.equal(view.title, views.POLICY_QUESTIONS.Q6);
+  assert.equal(view.surface, "councils");
+  assert.deepEqual(view.overlays, []);
+  assert.equal(
+    view.finding,
+    "An official map shows where carbon-rich soils, deep peat and priority peatland habitat are likely to occur.",
+  );
+  assert.equal(view.sourceLine, views.CARBON_LAND_SOURCE_LINE);
+  assert.equal(view.doesNotShow, "named owners, a carbon price, or a map of legal title.");
+  assert.equal(
+    view.takeaway,
+    "Scotland's peat soils hold a large store of carbon. The Scottish Land Commission has said more work is needed before any carbon land tax, and advised against one on its own.",
+  );
+  const firstStop = view.takeaway.indexOf(".");
+  assert.ok(firstStop > 0);
+  assert.equal(
+    view.takeaway.slice(0, firstStop + 1),
+    "Scotland's peat soils hold a large store of carbon.",
+  );
+  assert.match(
+    view.takeaway.slice(firstStop),
+    /The Scottish Land Commission has said more work is needed before any carbon land tax, and advised against one on its own\./,
+  );
+  assert.deepEqual(view.gaps, [
+    "Hectares of deep peat and priority peatland habitat by data zone: the official map exists, but this view does not count those hectares.",
+    "A painted map of the 2016 carbon and peatland classes: the official dataset is not loaded onto this map.",
+    "Who holds peatland: this view does not show owners.",
+    "Greenhouse gas emissions from peatland by council or data zone: official statistics are published as national totals.",
+    "Woodland carbon: this view covers peat and carbon-rich soils, not woodland.",
+  ]);
+  const layer = reg.MAP_LAYER_REGISTRY.find((e) => e.id === "8");
+  assert.ok(layer, "layer 8 missing");
+  assert.equal(layer.coming, true);
+  const visible = [
+    view.title,
+    view.finding,
+    view.sourceLine,
+    view.doesNotShow,
+    view.takeaway,
+    ...(view.gaps ?? []),
+  ];
+  for (const text of visible) {
+    assert.equal(typeof text, "string");
+    assert.doesNotMatch(text, /natural capital/i, `banned phrase: ${text}`);
+    assert.doesNotMatch(text, /\u00a3/, `pound in: ${text}`);
+    assert.doesNotMatch(text, /Idle/, `Idle in: ${text}`);
+  }
+  assert.doesNotMatch(view.takeaway, /\d/);
+  assert.doesNotMatch(view.finding, /\d/);
 });
 
 console.log(`test-map-views: ${n} groups passed`);

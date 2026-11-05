@@ -43,7 +43,19 @@ import {
   looksLikeFullPostcode,
   parseCoordinates,
   visitorFacingError,
+  getApiBaseUrl,
 } from "../lib/api";
+import {
+  DZ_STATUS_DEFAULT_ON,
+  DZ_STATUS_FILL_ID,
+  DZ_STATUS_FILL_OPACITY,
+  DZ_STATUS_SOURCE_ID,
+  dzStatusFillColor,
+  dzStatusTiles,
+  type DzStatusTiles,
+  fetchDzStatus,
+  type DzStatusPayload,
+} from "../lib/dzStatusLayer";
 import {
   CONTEXT_LAYERS,
   TILE_BASE_OUTLINE_ID,
@@ -961,6 +973,15 @@ export default function ScotlandMap() {
   const [floodKind, setFloodKind] = useState<FloodKind>("river");
   /** Hidden until sepa_flood_dz has rows (LAYERS-FIX-1 while empty). */
   const [floodDzLoaded, setFloodDzLoaded] = useState(false);
+  /** DZ-HEATMAP PR-B: estimate-status switch (OFF by default). */
+  const [dzStatusOn, setDzStatusOn] = useState(DZ_STATUS_DEFAULT_ON);
+  /** dz2011 registry tile source from the manifest; null = switch hidden. */
+  const [dzStatusSource, setDzStatusSource] = useState<DzStatusTiles | null>(
+    null,
+  );
+  /** Validated /platform/dz-status payload; null = no fill, no key. */
+  const [dzStatusPayload, setDzStatusPayload] =
+    useState<DzStatusPayload | null>(null);
   const markTileUnavailable = useCallback((id: string) => {
     setTileUnavailableIds((prev) => {
       if (prev.has(id)) return prev;
@@ -4063,6 +4084,8 @@ export default function ScotlandMap() {
         setTileCredits(credits);
         setTileAsOf(asOfMapForDrawerLayers(manifest.tilesets));
 
+        setDzStatusSource(dzStatusTiles(manifest));
+
         const dzEntry = manifest.tilesets.dz2022;
         if (dzEntry) {
           tileDzVersionRef.current = dzEntry.version;
@@ -4208,6 +4231,57 @@ export default function ScotlandMap() {
       setOutlineBuilt(false);
     };
   }, [mapReady]);
+
+  // DZ-HEATMAP PR-B: estimate-status fill. Fetches only while the switch is on
+  // and the dz2011 tileset is built. Any failure → no fill, no key.
+  useEffect(() => {
+    if (!mapReady || !dzStatusOn || !dzStatusSource) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const ac = new AbortController();
+    let cancelled = false;
+    const remove = () => {
+      if (hasMapLayer(map, DZ_STATUS_FILL_ID)) map.removeLayer(DZ_STATUS_FILL_ID);
+      if (map.getSource(DZ_STATUS_SOURCE_ID)) map.removeSource(DZ_STATUS_SOURCE_ID);
+    };
+    void fetchDzStatus(getApiBaseUrl(), ac.signal).then((payload) => {
+      if (cancelled || mapRef.current !== map) return;
+      if (!payload) {
+        remove();
+        setDzStatusPayload(null);
+        return;
+      }
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const tiles = (dzStatusSource.source.tiles as string[]).map((t) =>
+        t.startsWith("/") && origin ? `${origin}${t}` : t,
+      );
+      if (!map.getSource(DZ_STATUS_SOURCE_ID)) {
+        map.addSource(DZ_STATUS_SOURCE_ID, {
+          ...dzStatusSource.source,
+          tiles,
+        } as Parameters<Map["addSource"]>[1]);
+      }
+      if (!hasMapLayer(map, DZ_STATUS_FILL_ID)) {
+        map.addLayer({
+          id: DZ_STATUS_FILL_ID,
+          type: "fill",
+          source: DZ_STATUS_SOURCE_ID,
+          "source-layer": dzStatusSource.sourceLayer,
+          paint: {
+            "fill-color": dzStatusFillColor(payload) as ExpressionSpecification,
+            "fill-opacity": DZ_STATUS_FILL_OPACITY,
+          },
+        } as Parameters<Map["addLayer"]>[0]);
+      }
+      setDzStatusPayload(payload);
+    });
+    return () => {
+      cancelled = true;
+      ac.abort();
+      remove();
+      setDzStatusPayload(null);
+    };
+  }, [mapReady, dzStatusOn, dzStatusSource]);
 
   // UX10-2 built-up mask (dz2022_masked) — display only; full DZ outlines stay clickable
   useEffect(() => {
@@ -5893,6 +5967,15 @@ export default function ScotlandMap() {
             tileLegends={tileLegends}
             activeViewId={viewInUrl}
             onSelectView={selectView}
+            dzStatus={
+              dzStatusSource
+                ? {
+                    on: dzStatusOn,
+                    onToggle: () => setDzStatusOn((v) => !v),
+                    showKey: dzStatusOn && dzStatusPayload !== null,
+                  }
+                : null
+            }
           />
         </MapPanelSlot>
       ) : null}

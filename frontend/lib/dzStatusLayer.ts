@@ -55,24 +55,29 @@ export type DzStatusId =
   | "no_cell"
   | "not_scored";
 
-/** Contract order, locked labels, fill colours (Okabe-Ito, colour-blind safe). */
+/**
+ * Contract order, locked labels, fill colours. Wording & UX locked condition:
+ * category 1 ("Estimate available") is cividis (LAND_WORTH_CIVIDIS[0]);
+ * categories 2-5 are distinguishable neutral greys, so no "No estimate" area
+ * reads as data or outshines an estimated one.
+ */
 export const DZ_STATUS_CATEGORIES: ReadonlyArray<{
   id: DzStatusId;
   label: string;
   color: string;
 }> = [
-  { id: "estimated", label: "Estimate available", color: "#0072b2" },
-  { id: "unavailable", label: "No estimate: data not available", color: "#999999" },
+  { id: "estimated", label: "Estimate available", color: "#00224e" },
+  { id: "unavailable", label: "No estimate: data not available", color: "#bdbdbd" },
   {
     id: "model_failure",
     label: "No estimate: our method doesn't work well here",
-    color: "#e69f00",
+    color: "#969696",
   },
-  { id: "no_cell", label: "No estimate: too few similar sales", color: "#cc79a7" },
+  { id: "no_cell", label: "No estimate: too few similar sales", color: "#737373" },
   {
     id: "not_scored",
     label: "No estimate: outside the areas we estimate",
-    color: "#f0e442",
+    color: "#d9d9d9",
   },
 ];
 

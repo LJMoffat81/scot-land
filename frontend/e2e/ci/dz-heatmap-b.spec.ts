@@ -30,6 +30,7 @@ import {
   dzStatusTiles,
   parseDzStatusPayload,
 } from "../../lib/dzStatusLayer";
+import { LAND_WORTH_CIVIDIS } from "../../lib/mapActiveLegend";
 import type { TileManifest } from "../../lib/tileLayerFactory";
 
 registerOpenFreeMapFontStub();
@@ -148,17 +149,33 @@ test.describe("DZ-HEATMAP PR-B contract", () => {
       "match",
       ["get", "feature_id"],
       [SYN_CODE],
-      "#0072b2",
+      "#00224e",
       ["S01000001"],
-      "#999999",
+      "#bdbdbd",
       ["S01000002"],
-      "#e69f00",
+      "#969696",
       ["S01000003"],
-      "#cc79a7",
+      "#737373",
       ["S01000004"],
-      "#f0e442",
+      "#d9d9d9",
       "rgba(0,0,0,0)",
     ]);
+  });
+
+  test("U-04b fill colours: category 1 cividis, categories 2-5 neutral greys", () => {
+    expect(DZ_STATUS_CATEGORIES.map((c) => [c.id, c.color])).toEqual([
+      ["estimated", "#00224e"],
+      ["unavailable", "#bdbdbd"],
+      ["model_failure", "#969696"],
+      ["no_cell", "#737373"],
+      ["not_scored", "#d9d9d9"],
+    ]);
+    expect(DZ_STATUS_CATEGORIES[0].color).toBe(LAND_WORTH_CIVIDIS[0]);
+    const greys = DZ_STATUS_CATEGORIES.slice(1).map((c) => c.color);
+    for (const g of greys) {
+      expect(g).toMatch(/^#([0-9a-f]{2})\1\1$/);
+    }
+    expect(new Set(greys).size).toBe(4);
   });
 
   test("U-05 no dz2011 tileset → no source", () => {
@@ -303,6 +320,16 @@ test.describe("DZ-HEATMAP PR-B map", () => {
       ...LOCKED_LABELS,
       PROPOSED_CREDIT,
       "Uses 2011 local areas (data zones)",
+    ]);
+    const swatches = await key
+      .locator(".layer-legend-swatch")
+      .evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundColor));
+    expect(swatches).toEqual([
+      "rgb(0, 34, 78)",
+      "rgb(189, 189, 189)",
+      "rgb(150, 150, 150)",
+      "rgb(115, 115, 115)",
+      "rgb(217, 217, 217)",
     ]);
     expect(hits.urls.filter((u) => u.includes("2023"))).toEqual([]);
     expect(hits.urls.filter((u) => u.includes("dz-status")).every((u) => new URL(u).search === "")).toBe(true);

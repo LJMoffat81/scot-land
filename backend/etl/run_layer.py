@@ -17,7 +17,7 @@ import re
 import time
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import httpx
 import psycopg2
@@ -27,6 +27,7 @@ from etl.adapters.arcgis import fetch_arcgis
 from etl.adapters.geojson_file import fetch_geojson_file
 from etl.adapters.os_boundary_line import fetch_os_boundary_line
 from etl.adapters.postgis_table import fetch_postgis_table
+from etl.check_dz2011_boundaries import PrecheckError, check_dz2011_rows
 from etl.build_scotland_extent import ExtentError
 from layers.registry.loader import LayerEntry, RegistryError, registry
 
@@ -69,6 +70,9 @@ CLIP_ZONES: dict[str, tuple[str, ...]] = {
 
 EXPECTED_SETTLEMENTS_2022 = 503
 EXPECTED_FEATURE_COUNTS = {"settlements-2022": EXPECTED_SETTLEMENTS_2022}
+
+# DZ-HEATMAP PR-B0: per-layer checks run before any fetch (fail closed).
+PRECONDITIONS: dict[str, Callable[[Any], None]] = {"dz2011": check_dz2011_rows}
 
 _GEOM_DIM: dict[str, int] = {
     "point": 1,
@@ -541,6 +545,12 @@ def run_layer(
     new_name = f"{layer_id}__new"
     started = time.monotonic()
     try:
+        precondition = PRECONDITIONS.get(layer_id)
+        if precondition is not None:
+            try:
+                precondition(connection)
+            except PrecheckError as exc:
+                raise IngestError(f"INGEST: {layer_id}: {exc}") from exc
         _ensure_helpers(connection)
         if not _extent_present(connection):
             raise ExtentError("CLIP: Scotland boundary missing")

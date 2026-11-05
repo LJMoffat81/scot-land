@@ -87,15 +87,45 @@ def _validate_entry(
         path = _format_path(list(exc.absolute_path))
         raise RegistryError(f"REGISTRY: {entry_id}: {path}: {exc.message}") from exc
     # After schema validation so existing R2 messages stay intact.
+    _check_serve_budget(entry_id, data)
     _check_ladder_fields(entry_id, data)
 
 
+# DZ-HEATMAP PR-B0: units that are tile sources only and never join the
+# level ladder (DZ2011 does not nest in DZ2022).
+OFF_LADDER_UNITS = ("dz2011",)
+
+
+def _check_serve_budget(entry_id: str, data: dict[str, Any]) -> None:
+    """pmtiles serve.max_mb above 15 MB must not exceed the tiles budget total."""
+    serve = data.get("serve") or {}
+    if serve.get("mode") != "pmtiles":
+        return
+    total_mb = data["tiles"]["budget"]["total_mb"]
+    max_mb = serve["max_mb"]
+    if max_mb > 15 and max_mb > total_mb:
+        raise RegistryError(
+            f"REGISTRY: {entry_id}: $.serve.max_mb: {max_mb} exceeds "
+            f"tiles.budget.total_mb {total_mb}"
+        )
+
+
 def _check_ladder_fields(entry_id: str, data: dict[str, Any]) -> None:
-    """Require ladder_level + nests for polygon entries whose unit is not point/none."""
+    """Require ladder_level + nests for polygon entries whose unit is not point/none.
+
+    Off-ladder units (``OFF_LADDER_UNITS``) must carry neither field.
+    """
     if data.get("geometry") != "polygon":
         return
     unit = data.get("unit")
     if unit in ("point", "none"):
+        return
+    if unit in OFF_LADDER_UNITS:
+        for key in ("ladder_level", "nests"):
+            if key in data:
+                raise RegistryError(
+                    f"REGISTRY: {entry_id}: $.{key}: not allowed for off-ladder unit '{unit}'"
+                )
         return
     for key in ("ladder_level", "nests"):
         if key not in data:

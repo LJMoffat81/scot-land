@@ -29,7 +29,7 @@ def _write(path: Path, text: str) -> Path:
 
 def test_real_requirements_pass():
     reqs = load_requirements(REQUIREMENTS)
-    assert len(reqs) == 11
+    assert len(reqs) == 12
     check(reqs, REPO_ROOT)
 
 

@@ -1,0 +1,54 @@
+id: dz2011
+title: Data Zones 2011
+geography: scotland
+clip: land+sea
+unit: dz2011
+default_on: false
+licence: OGL-3.0
+vintage: "Data Zones 2011 (Census 2011 geography, ref 2011-03-27); published 2014-11-06, revised 2021-10-04"
+attribution: >-
+  Copyright Scottish Government, contains Ordnance Survey data © Crown copyright
+  and database right 2026.
+source:
+  type: postgis_table
+  table: dz_boundaries
+  id_field: code
+  where: "vintage = 2011"
+geometry: polygon
+refresh:
+  cron: "0 5 1 * *"
+  max_mb: 300
+  max_s: 600
+serve:
+  mode: pmtiles
+  simplify_m: 0
+  precision_dp: 6
+  max_mb: 40
+zoom:
+  min: 0
+  max: 14
+  low_zoom: keep_all
+# DZ-HEATMAP PR-B0: tile source only for PR-B (estimate-status fill).
+# Not shown or toggleable: default_on false, no measure, not in the frontend
+# TILE_WANTED_IDS. One legend item only because the registry requires >= 1
+# (test_map_vision_1b); the frontend never renders it.
+style: {}
+legend:
+  - {label: "Data Zone 2011 boundary", color: "#0b1e3a"}
+lineage:
+  derived_from: []
+  method: source
+  roll_up_to: [scotland]
+keep_fields:
+  - name
+tiles:
+  budget:
+    total_mb: 60
+    tile_kb: 500
+    z0_7_mb: 4
+clip_keep_all: true
+
+# M1 admission test (charter v2 §4).
+policy_question: []
+shows: context
+value_layer: false

@@ -2,6 +2,10 @@
 # Locator kinds: registry:<id> | sources:<dotted.key> | ts_regex:<file>::<regex with 1 group>
 # Checked by backend/layers/credit_check.py (sorted locator order).
 
+registry:dz2011:
+  - Scottish Government
+  - Ordnance Survey
+
 registry:dz2022:
   - Ordnance Survey
 

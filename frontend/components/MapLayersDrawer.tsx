@@ -3,6 +3,8 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import ConfidenceTag from "@/components/ConfidenceTag";
 import MapRangeLegend from "@/components/MapRangeLegend";
+import DzStatusKey from "@/components/DzStatusKey";
+import { DZ_STATUS_KEY_TITLE, DZ_STATUS_LAYER_ID } from "@/lib/dzStatusLayer";
 import {
   buildInlineLegendFromRegistry,
   getMapLayer,
@@ -118,6 +120,11 @@ export type MapLayersDrawerProps = {
   activeViewId?: string | null;
   /** VIEWS-1a — pick a view (sets its layers) or null to clear it. */
   onSelectView?: (id: string | null) => void;
+  /**
+   * DZ-HEATMAP PR-B — estimate-status switch. Null/omitted hides the row
+   * (dz2011 tiles not built). showKey only for a validated payload.
+   */
+  dzStatus?: { on: boolean; onToggle: () => void; showKey: boolean } | null;
 };
 
 function asUnavailableSet(
@@ -204,6 +211,7 @@ export default function MapLayersDrawer({
   tileLegends,
   activeViewId = null,
   onSelectView,
+  dzStatus = null,
 }: MapLayersDrawerProps) {
   const unavailable = asUnavailableSet(unavailableIds);
   const views = availableViews(unavailable);
@@ -456,6 +464,35 @@ export default function MapLayersDrawer({
               </Fragment>
             );
           })}
+          {dzStatus ? (
+            <li
+              className="layers-panel-row"
+              data-testid={`map-layer-${DZ_STATUS_LAYER_ID}`}
+            >
+              <button
+                type="button"
+                role="switch"
+                className="layers-panel-switch"
+                data-testid={`layer-toggle-${DZ_STATUS_LAYER_ID}`}
+                aria-checked={dzStatus.on}
+                aria-label={DZ_STATUS_KEY_TITLE}
+                onClick={dzStatus.onToggle}
+              >
+                <span className="layers-panel-switch-label">
+                  {DZ_STATUS_KEY_TITLE}
+                </span>
+                <span
+                  className={
+                    dzStatus.on
+                      ? "layers-panel-switch-track on"
+                      : "layers-panel-switch-track"
+                  }
+                  aria-hidden="true"
+                />
+              </button>
+            </li>
+          ) : null}
+          {dzStatus?.showKey ? <DzStatusKey /> : null}
         </LayersAccordion>
       </section>
 

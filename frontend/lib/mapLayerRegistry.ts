@@ -7,20 +7,22 @@
 
 import { DZ2022_EXTRACTION_YEAR } from "./dz2022ExtractionYear.mjs";
 import { RENT_GROUP_NAME } from "./rentGroupNames.mjs";
+import { LAND_WORTH_CIVIDIS } from "./landWorthCividis.mjs";
 
-/** Colour-blind-safe cividis samples — keep in sync with mapActiveLegend. */
-const LAND_WORTH_CIVIDIS: readonly string[] = [
-  "#00224e",
-  "#123570",
-  "#3b496c",
-  "#575d6d",
-  "#707173",
-  "#8a8678",
-  "#a59c74",
-  "#c3b369",
-  "#e1cc55",
-  "#fee838",
-] as const;
+/** M5 who-holds legend colours: 4 evenly spaced cividis steps, lightest first. */
+function whoHoldsLegendClasses(): ReadonlyArray<{ label: string; color: string }> {
+  const last = LAND_WORTH_CIVIDIS.length - 1;
+  const labels = [
+    "Under 10 hectares",
+    "10 to 100 hectares",
+    "100 to 1,000 hectares",
+    "1,000 hectares or more",
+  ] as const;
+  return labels.map((label, i) => ({
+    label,
+    color: LAND_WORTH_CIVIDIS[last - Math.round((i * last) / (labels.length - 1))]!,
+  }));
+}
 
 /** Site-count bands. Site-type fills are not a public legend. */
 const VDL_LEGEND_SWATCHES: ReadonlyArray<{ label: string; color: string }> = [
@@ -392,6 +394,17 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     sourceCaption: "Crofting Commission · open lists",
     classes: [{ label: "Crofting areas", color: "#a16207" }],
     defaultOn: false,
+  },
+  {
+    id: "who_holds",
+    group: "tenure",
+    label: "Community-owned land",
+    minzoom: 5,
+    maxzoom: 20,
+    sourceCaption: "Scottish Government · 2024",
+    classes: whoHoldsLegendClasses(),
+    defaultOn: false,
+    paintLayerIds: ["who-holds-fill"],
   },
   {
     id: "councils",

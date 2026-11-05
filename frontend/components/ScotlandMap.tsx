@@ -57,6 +57,13 @@ import {
   type DzStatusPayload,
 } from "../lib/dzStatusLayer";
 import {
+  fetchWhoHolds,
+  WHO_HOLDS_FILL_ID,
+  WHO_HOLDS_FILL_OPACITY,
+  WHO_HOLDS_LAYER_ID,
+  whoHoldsFillColor,
+} from "../lib/whoHolds";
+import {
   CONTEXT_LAYERS,
   TILE_BASE_OUTLINE_ID,
   TILE_LAYER_IDS,
@@ -583,6 +590,7 @@ function activeRegistryLayerIds(opts: {
   if (opts.showCouncils) ids.push("councils");
   if (opts.showDataZones) ids.push("data_zones");
   if (opts.ledgerEnabled.access_services) ids.push("access_services");
+  if (opts.ledgerEnabled[WHO_HOLDS_LAYER_ID]) ids.push(WHO_HOLDS_LAYER_ID);
   if (opts.showGrid3) ids.push(GRID3_LAYER_ID);
   return ids;
 }
@@ -768,6 +776,8 @@ export default function ScotlandMap() {
   const showAgr = Boolean(ledgerEnabled["1"]);
   /** Crofting constraint — OGL lists only; no national polygon paint. */
   const showCroftingConstraint = Boolean(ledgerEnabled.crofting);
+  /** M5 — council-level community ownership fill (no named points). */
+  const showWhoHolds = Boolean(ledgerEnabled[WHO_HOLDS_LAYER_ID]);
   /** Ownership-context community ownership paint (URL ?community=1; not a LayersPanel toggle). */
   const [showCommunityOwnership, setShowCommunityOwnership] = useState(false);
   /** Woodland / LDP / aquaculture / LCA are not live registry switches — stay off. */
@@ -2588,6 +2598,16 @@ export default function ScotlandMap() {
           "fill-opacity": CHOROPLETH_FILL_OPACITY,
         },
       });
+      addCouncilLayer({
+        id: WHO_HOLDS_FILL_ID,
+        type: "fill",
+        source: "council-metrics",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": "#d9d9d9",
+          "fill-opacity": WHO_HOLDS_FILL_OPACITY,
+        },
+      });
       // Optional hatch overlay for polygons whose metric property is missing.
       addCouncilLayer({
         id: "council-nodata-hatch",
@@ -3533,14 +3553,14 @@ export default function ScotlandMap() {
     // - AGR on → council-fill paints without needing the councils outline toggle
     //   (MAP-VISION-1b: councils default OFF).
     // - AGR off → people/km² fill only when councils are explicitly on.
-    const densityViewOn = !showAgr && showCouncils && contextDataLoaded;
-    const fillOn = zoom >= 5 && zoom < 8 && (showAgr || densityViewOn);
+    const densityViewOn = !showAgr && showCouncils && contextDataLoaded && !showWhoHolds;
+    const fillOn = zoom >= 5 && zoom < 8 && (showAgr || densityViewOn) && !showWhoHolds;
     map.setLayoutProperty(
       "council-fill",
       "visibility",
       fillOn ? "visible" : "none",
     );
-  }, [mapReady, choropleth, showCouncils, showAgr, contextDataLoaded, mapZoom]);
+  }, [mapReady, choropleth, showCouncils, showAgr, showWhoHolds, contextDataLoaded, mapZoom]);
 
   // GRID-BASE-1 — device-drawn lines on moveend; lazy-load proj4 chunk (G9).
   useEffect(() => {
@@ -4752,6 +4772,36 @@ export default function ScotlandMap() {
       map.off("moveend", onMove);
     };
   }, [mapReady, showLdp]);
+
+  // M5 — council-level community ownership fill. Never turns on named points.
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map || !hasMapLayer(map, WHO_HOLDS_FILL_ID)) return;
+    if (!showWhoHolds) {
+      map.setLayoutProperty(WHO_HOLDS_FILL_ID, "visibility", "none");
+      return;
+    }
+    const ac = new AbortController();
+    let cancelled = false;
+    void fetchWhoHolds(getApiBaseUrl(), ac.signal).then((payload) => {
+      if (cancelled || mapRef.current !== map) return;
+      if (!payload) {
+        map.setLayoutProperty(WHO_HOLDS_FILL_ID, "visibility", "none");
+        return;
+      }
+      map.setPaintProperty(
+        WHO_HOLDS_FILL_ID,
+        "fill-color",
+        whoHoldsFillColor(payload) as ExpressionSpecification,
+      );
+      map.setLayoutProperty(WHO_HOLDS_FILL_ID, "visibility", "visible");
+    });
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+  }, [mapReady, showWhoHolds]);
 
   // Community ownership points (SG 2024 OGL postcode centroids; ownership-context)
   useEffect(() => {

@@ -3,6 +3,7 @@
  * Not a Playwright spec — imported by *.spec.ts only.
  */
 import { expect, test, type Page, type Route } from "@playwright/test";
+import { syntheticWhoHoldsPayload } from "../../lib/whoHolds";
 import {
   attachStrictConsoleGate,
   getStrictGateForPage,
@@ -131,6 +132,7 @@ export const LIVE_LAYER_IDS = [
   "9",
   "designations",
   "crofting",
+  "who_holds",
   "councils",
   "data_zones",
 ] as const;
@@ -285,6 +287,13 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ enabled: gbpLive }),
+    });
+  });
+  await page.route("**/platform/who-holds**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(syntheticWhoHoldsPayload()),
     });
   });
 

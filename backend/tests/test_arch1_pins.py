@@ -565,6 +565,28 @@ _M4_STORY_VIEWS_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# M5 Who holds Scotland (charter v2 Q4): council-level community ownership view.
+_M5_WHO_HOLDS_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/lib/mapViews.ts",
+        "frontend/lib/mapLayerRegistry.ts",
+        "frontend/lib/whoHolds.ts",
+        "frontend/lib/landWorthCividis.mjs",
+        "frontend/lib/mapActiveLegend.ts",
+        "frontend/lib/mapDrawerLicenceDisplay.ts",
+        "frontend/scripts/test-map-views.mjs",
+        "frontend/scripts/test-map-layer-registry.mjs",
+        "frontend/components/MapLayersDrawer.tsx",
+        "frontend/components/ScotlandMap.tsx",
+        "frontend/e2e/ci/m4-story-views.spec.ts",
+        "frontend/e2e/ci/m5-who-holds.spec.ts",
+        "frontend/e2e/ci/views-1a.spec.ts",
+        "frontend/e2e/ci/layers-card-1.spec.ts",
+        "frontend/e2e/ci/layers-nav-1.spec.ts",
+        "frontend/e2e/ci/_mapCardsHelpers.ts",
+    ]
+)
+
 
 def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
@@ -593,6 +615,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _UX_PICKS_4NOV_FRONTEND_ALLOW
                 | _DZ_HEATMAP_B_FRONTEND_ALLOW
                 | _M4_STORY_VIEWS_FRONTEND_ALLOW
+                | _M5_WHO_HOLDS_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

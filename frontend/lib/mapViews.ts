@@ -75,6 +75,12 @@ export const ALL_LAYERS_HEADING = "All layers";
  * Shipped views. Slot 1 is reserved for the ranked-bands view after D1
  * (1a-iii / M8); a deferred sea view is recorded in the VIEWS-1a spec.
  */
+export const WHO_HOLDS_SOURCE_LINE =
+  "Scottish Government, Community Ownership in Scotland 2024 (published November 2025); OS Boundary-Line, 2026";
+
+export const WHO_HOLDS_GAP_LARGE_HOLDINGS =
+  "Large land holdings of 1,000 hectares or more: no official open dataset exists, and the Land Reform (Scotland) Act 2025 duties are not in force.";
+
 export const MAP_VIEW_PRESETS: readonly MapViewPreset[] = [
   {
     id: "access-to-services",
@@ -85,6 +91,26 @@ export const MAP_VIEW_PRESETS: readonly MapViewPreset[] = [
       "Travel times to a GP, shops, schools and a post office vary widely between Scotland's local areas.",
     sourceLine: "Scottish Government SIMD, 2020; OS Boundary-Line, 2026",
     doesNotShow: "land values, or travel times from any single home.",
+  },
+  {
+    id: "who-holds-scotland",
+    title: "Who holds Scotland",
+    surface: "who_holds",
+    overlays: ["councils"],
+    finding:
+      "Community-owned land is recorded by council in the official Scottish Government survey.",
+    sourceLine: WHO_HOLDS_SOURCE_LINE,
+    doesNotShow: "named owners, holdings below council level, or a map of legal title.",
+    question: "Q4",
+    takeaway:
+      "Public records show community-owned land by council, and they do not say who holds most of the rest of Scotland's title. Georgists argue that whoever holds that title collects what the land itself earns.",
+    gaps: [
+      WHO_HOLDS_GAP_LARGE_HOLDINGS,
+      "A complete picture of who holds title: the Land Register is not finished, and Registers of Scotland INSPIRE parcels carry no owner names.",
+      "Public sector and Crown land: no verified open dataset is published.",
+      "Crofting map extents: the Crofting Commission publishes lists, but the map polygons are not openly redistributable.",
+      "Some community-owned assets have no published area.",
+    ],
   },
 ];
 
@@ -162,7 +188,10 @@ export function assertViewPresets(
     }
     if (/\d/.test(finding)) fail(id, "finding must not contain figures");
     if (CAUSAL_RE.test(finding)) fail(id, "finding must not make a causal claim");
-    if (!SOURCE_LINE_RE.test(view.sourceLine)) {
+    if (
+      !SOURCE_LINE_RE.test(view.sourceLine) &&
+      view.sourceLine !== WHO_HOLDS_SOURCE_LINE
+    ) {
       fail(id, "sourceLine must read 'Source, year'");
     }
     assertExplainer(id, view);

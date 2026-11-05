@@ -1,8 +1,9 @@
 /**
  * M4 story-view framework — explainer rows (policy question, "What this could mean",
- * "What we can't see"). M4 ships the framework only: no shipped view sets
- * them, so none of the three blocks may render. Rules are unit-tested on
- * synthetic presets in scripts/test-map-views.mjs (T10–T13). Auto-discovered.
+ * "What we can't see"). Framework-only views (no question/takeaway/gaps) must
+ * not render those blocks. M5 ships the first explainer view and is covered
+ * by frontend/e2e/ci/m5-who-holds.spec.ts. Rules are unit-tested on
+ * synthetic presets in scripts/test-map-views.mjs (T10–T14). Auto-discovered.
  */
 import { expect, test } from "./_fixtures";
 import {
@@ -21,7 +22,7 @@ registerOpenFreeMapFontStub();
 test.describe("M4 story views", () => {
   test.use({ viewport: { width: 1280, height: 800 } });
 
-  test("M4-E1 no shipped view renders an explainer block", async ({ page }) => {
+  test("M4-E1 framework-only views do not render an explainer block", async ({ page }) => {
     test.setTimeout(180_000);
     const gate = attachConsoleGate(page);
     expect(MAP_VIEW_PRESETS.length).toBeGreaterThan(0);
@@ -29,7 +30,11 @@ test.describe("M4 story views", () => {
     await openMap(page, "/");
     await waitForMap(page);
     await openLayers(page);
-    for (const v of MAP_VIEW_PRESETS) {
+    const frameworkOnly = MAP_VIEW_PRESETS.filter(
+      (v) => v.question === undefined && v.takeaway === undefined && v.gaps === undefined,
+    );
+    expect(frameworkOnly.length).toBeGreaterThan(0);
+    for (const v of frameworkOnly) {
       await page.getByTestId(`map-view-${v.id}`).click();
       await expect(page.getByTestId("map-view-detail")).toHaveAttribute("data-view", v.id);
       await expect(page.getByTestId("map-view-finding")).toHaveText(v.finding);

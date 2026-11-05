@@ -366,6 +366,15 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
             "no pound sign; 404 unless dz_heatmap on and gbp_display off"
         ),
     ),
+    "/platform/who-holds": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note=(
+            "M5 council-level SG community ownership 2024; official counts "
+            "and hectares only; no names, no geometry, no rent"
+        ),
+    ),
     "/platform/gaps": LayerRule("zone", "zone", "none", note="register gap catalogue"),
     "/api/catalog.json": LayerRule("zone", "zone", "none", note="open-data catalogue"),
     "/api/ledger.json": LayerRule(

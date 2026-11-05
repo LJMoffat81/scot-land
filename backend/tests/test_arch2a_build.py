@@ -478,10 +478,32 @@ def test_b21_cli_subprocess(conn, tiles_env, monkeypatch, tmp_path):
             }
         else:
             geometry = square(x0, y0, 400.0)
+        # M6b-tiles: clipped precheck needs integer IMPORTANCE and classes 1+2.
+        if layer_id == "carbon-peatland":
+            features = [
+                {
+                    "id": f"{layer_id}-1",
+                    "properties": {"importance": 1},
+                    "geometry": square(x0, y0, 400.0),
+                },
+                {
+                    "id": f"{layer_id}-2",
+                    "properties": {"importance": 2},
+                    "geometry": square(x0 + 500.0, y0, 400.0),
+                },
+            ]
+        else:
+            features = [
+                {
+                    "id": f"{layer_id}-1",
+                    "properties": props,
+                    "geometry": geometry,
+                }
+            ]
         seed_layer_table(
             conn,
             layer_id,
-            [{"id": f"{layer_id}-1", "properties": props, "geometry": geometry}],
+            features,
             dataset_version=f"{layer_id}@{as_of}-abcd1234",
             as_of=as_of,
         )

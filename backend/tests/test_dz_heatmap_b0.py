@@ -388,11 +388,13 @@ def test_b0_27_run_layer_dz2011_refuses_before_fetch(monkeypatch, tmp_path):
     assert conn.executed[0] == "SELECT count(*) FROM dz_boundaries WHERE vintage = 2011"
 
 
-def test_b0_28_preconditions_only_dz2011():
+def test_b0_28_preconditions_dz2011_and_carbon_peatland():
     import etl.run_layer as rl
+    from etl.check_cpm2016 import check_cpm2016_raw
 
-    assert set(rl.PRECONDITIONS) == {"dz2011"}
+    assert set(rl.PRECONDITIONS) == {"dz2011", "carbon-peatland"}
     assert rl.PRECONDITIONS["dz2011"] is check_dz2011_rows
+    assert rl.PRECONDITIONS["carbon-peatland"] is check_cpm2016_raw
 
 
 def test_b0_29_cli_source_ok(capsys):

@@ -36,8 +36,11 @@ def _status_doc(year: int = FIXTURE_YEAR) -> dict:
 def _cfg(status_path: Path, **over) -> dict:
     block = copy.deepcopy(SHIPPED)
     tmp = status_path.parent
-    block.update(enabled=True, estimate_year=FIXTURE_YEAR, status_path=str(status_path),
-                 gate_record_path=str(tmp / "report.json"), lock_path=str(tmp / "run.lock"))
+    year = over.get("estimate_year", FIXTURE_YEAR)
+    block.update(enabled=True, estimate_year=year, status_path=str(status_path),
+                 gate_record_path=str(tmp / "report.json"),
+                 lock_path=str(tmp / f"score_{year}.lock"),
+                 lock_sha256=None)
     block["vintages"]["DZ2011"]["keys_path"] = str(KEYS_FILE)
     for k in [k for k in over if k in dz.VINTAGE_KEYS]:
         block["vintages"]["DZ2011"][k] = over.pop(k)
@@ -51,8 +54,15 @@ def _report(year: int = FIXTURE_YEAR, primary=True, status="scored") -> dict:
 
 
 def _write_gate(env, report=None, lock_over=None, year: int = FIXTURE_YEAR):
-    """Gate record + write_holdout_lock-format lock tying it to the status file."""
-    rec, lock = env["tmp"] / "report.json", env["tmp"] / "run.lock"
+    """Gate record + write_holdout_lock-format lock tying it to the status file.
+
+    Lock filename follows the config estimate_year (path-match rule). The
+    ``year`` argument is the score_<year> key written into the lock payload.
+    """
+    rec = env["tmp"] / "report.json"
+    cur = yaml.safe_load(env["cfg"].read_text(encoding="utf-8"))["dz_heatmap"]
+    cfg_year = cur["estimate_year"]
+    lock = env["tmp"] / f"score_{cfg_year}.lock"
     rec.write_text(json.dumps(_report(year) if report is None else report), encoding="utf-8")
     payload = {
         "label": "seen, not out-of-sample", f"score_{year}": True,
@@ -60,7 +70,14 @@ def _write_gate(env, report=None, lock_over=None, year: int = FIXTURE_YEAR):
         dz.LOCK_OUTPUTS_KEY: {"dz_status.json": hashlib.sha256(env["status"].read_bytes()).hexdigest()},
     }
     payload.update(lock_over or {})
-    lock.write_text(json.dumps(payload), encoding="utf-8")
+    lock.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+    # Pin the lock bytes; keep estimate_year as already configured.
+    _write_cfg(
+        env,
+        estimate_year=cfg_year,
+        lock_path=str(lock),
+        lock_sha256=hashlib.sha256(lock.read_bytes()).hexdigest(),
+    )
 
 
 @pytest.fixture
@@ -110,6 +127,8 @@ def test_shipped_config_is_valid_and_pins_real_keys():
     cfg = dz.load_config(REPO / "data" / "config" / "dz_heatmap.yaml")
     assert cfg["estimate_year"] == 2024
     assert cfg["data_zone_vintage"] == "DZ2011"
+    assert cfg["lock_path"] == "data/processed/dz_heatmap/score_2024.lock"
+    assert cfg["lock_sha256"] is None  # switch-on PR sets the pin; null keeps serving refused
     v = cfg["vintages"]["DZ2011"]
     assert v["keys_path"] == "data/reference/v14/dz2011_keys.json"
     assert v["keys_sha256"] == hashlib.sha256(KEYS_FILE.read_bytes()).hexdigest()
@@ -231,7 +250,7 @@ def test_gate_record_not_locked_refuses(env):
 
 
 def test_lock_missing_refuses(env):
-    (env["tmp"] / "run.lock").unlink()
+    (env["tmp"] / f"score_{FIXTURE_YEAR}.lock").unlink()
     assert _reason(env) == "locked run lock missing"
 
 
@@ -508,3 +527,44 @@ def test_publication_rule_declares_no_values():
 def test_lock_two_score_years_refuses(env):
     _write_gate(env, lock_over={"score_7": True})
     assert _reason(env) == f"locked run lock is not for {FIXTURE_YEAR}"
+
+
+# ---------- LOCK-OUTPUTS consumer guards ----------
+
+def test_lock_pin_missing_refuses(env):
+    _write_cfg(env, lock_sha256=None)
+    assert _reason(env) == "dz_heatmap.lock_sha256 pin missing"
+
+
+def test_lock_edited_refuses_against_pin(env):
+    lock = env["tmp"] / f"score_{FIXTURE_YEAR}.lock"
+    pin = hashlib.sha256(lock.read_bytes()).hexdigest()
+    _write_cfg(env, lock_path=str(lock), lock_sha256=pin)
+    lock.write_bytes(lock.read_bytes() + b"\n")
+    assert _reason(env) == "locked run lock sha256 does not match pin"
+
+
+def test_lock_path_mismatch_refuses(env):
+    lock = env["tmp"] / f"score_{FIXTURE_YEAR}.lock"
+    pin = hashlib.sha256(lock.read_bytes()).hexdigest()
+    _write_cfg(env, lock_path=str(env["tmp"] / "holdout_2023.lock"), lock_sha256=pin)
+    assert _reason(env) == "locked run lock path does not match config"
+
+
+def test_outputs_sha256_missing_refuses(env):
+    lock = env["tmp"] / f"score_{FIXTURE_YEAR}.lock"
+    payload = json.loads(lock.read_text(encoding="utf-8"))
+    del payload[dz.LOCK_OUTPUTS_KEY]
+    lock.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+    _write_cfg(env, lock_path=str(lock),
+               lock_sha256=hashlib.sha256(lock.read_bytes()).hexdigest())
+    assert _reason(env) == "locked run lock outputs_sha256 missing"
+
+
+def test_tombstone_path_never_served(env):
+    """SYNTHETIC. Consumer serves only score_<year>.lock, never a tombstone."""
+    tomb = env["tmp"] / f"score_{FIXTURE_YEAR}.tombstone"
+    tomb.write_text('{"score_2024_started": true}\n', encoding="utf-8")
+    pin = hashlib.sha256(tomb.read_bytes()).hexdigest()
+    _write_cfg(env, lock_path=str(tomb), lock_sha256=pin)
+    assert _reason(env) == "locked run lock path does not match config"

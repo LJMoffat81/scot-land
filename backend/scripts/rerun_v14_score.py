@@ -7,7 +7,7 @@ Synthetic or precomputed share lists only in CI; no public £.
 Additive arguments (absent → output matches fe026b76):
 ``--check-inputs``, ``--secondary-estimator-json``, ``--holdout-2023``,
 ``--score-2024``, ``--allow-rerun-for-fidelity-bug``, ``--record-sha8s``,
-``--lock-path``.
+``--lock-path``, ``--score-lock-path``, ``--dz-status-out``.
 """
 
 from __future__ import annotations
@@ -39,7 +39,10 @@ from georgist.v14_score_report import (
     frozen_set_members,
     git_commit,
     input_years,
-    mark_score_2024,
+    emit_dz_status,
+    score_2024_lock_path,
+    score_2024_tombstone_path,
+    write_score_2024_tombstone,
     missing_lock_message,
     prepare_holdout_2023,
     read_year_files,
@@ -306,12 +309,27 @@ def _write_check4_summary(check_inputs_path: Path, summary_out: Path) -> dict:
     return summary
 
 
+def _run_outputs(args: argparse.Namespace, score_dir: Path) -> dict[str, Path]:
+    """Every file this run wrote. No DZ status file is produced by the run today."""
+    outputs = {"report": args.out}
+    table = score_dir / "code_text_disagreements.md"
+    if table.is_file():
+        outputs["code_text_disagreements"] = table
+    summary = getattr(args, "check4_summary_out", None)
+    if summary is not None:
+        outputs["check4_summary"] = summary
+    return outputs
+
+
 def _extended_main(args: argparse.Namespace) -> int:
     score_dir = args.out.parent
     inputs_sha = _inputs_sha256(args)
     reads = PriceColumnReadLog()
     commit = require_commit_sha(git_commit())
     try:
+        if getattr(args, "dz_status_out", None) is not None:
+            # No converter in this PR. Refuse before any output is written.
+            emit_dz_status(args.dz_status_out)
         _validate_frozen_check3(args)
         _validate_frozen_check4(args)
         if (args.holdout_2023 or args.score_2024) and args.lock_path is None:
@@ -354,7 +372,11 @@ def _extended_main(args: argparse.Namespace) -> int:
                 raise HoldoutLockError(
                     "SCORE_2024: REFUSED: lock frozen_set: expected present, got absent"
                 )
-            if locked.get("score_2024") is True:
+            score_lock = score_2024_lock_path(args.lock_path, getattr(args, "score_lock_path", None))
+            tombstone = score_2024_tombstone_path(
+                args.lock_path, getattr(args, "score_lock_path", None)
+            )
+            if score_lock.is_file() or tombstone.is_file():
                 raise HoldoutLockError("second 2024 run refused")
             if frozen_paths is None:
                 raise HoldoutLockError(
@@ -364,6 +386,7 @@ def _extended_main(args: argparse.Namespace) -> int:
             assert_frozen_set(locked["frozen_set"], frozen_set_members(frozen_paths))
             assert_2024_allowed(
                 lock_path=args.lock_path,
+                score_lock_path=score_lock,
                 inputs_sha256=None,
                 years=None,
             )
@@ -378,7 +401,10 @@ def _extended_main(args: argparse.Namespace) -> int:
                         f"SCORE_2024: REFUSED: input_years: expected [2024], got {rendered}\n"
                         "2024 run refused: input year is not 2024"
                     )
-            mark_score_2024(args.lock_path)
+            # Holdout lock is read-only. Tombstone first (O_EXCL); final lock after
+            # the report. Crash after tombstone still refuses a second run.
+            # Recovery is a logged, human-approved incident, never automatic.
+            write_score_2024_tombstone(tombstone)
             score_2024_scores = _score_holdout(args.check_inputs, year=2024)
         report = build_report(
             input_paths=input_paths,
@@ -423,6 +449,12 @@ def _extended_main(args: argparse.Namespace) -> int:
             report["check4_summary"] = _write_check4_summary(args.check_inputs, args.check4_summary_out)
         write_report(args.out, report)
         if args.holdout_2023:
+            # Fidelity-bug incident (human-approved): remove the prior lock so
+            # write_holdout_lock creates a fresh file. Never edits in place.
+            if args.allow_rerun_for_fidelity_bug and args.lock_path is not None:
+                prior = Path(args.lock_path)
+                if prior.is_file():
+                    prior.unlink()
             write_holdout_lock(
                 score_dir,
                 inputs_sha256=inputs_sha,
@@ -430,6 +462,17 @@ def _extended_main(args: argparse.Namespace) -> int:
                 report_sha256=sha256_file(args.out),
                 lock_path=args.lock_path,
                 frozen_set=frozen_set_members(frozen_paths),
+                outputs=_run_outputs(args, score_dir),
+            )
+        if args.score_2024:
+            write_holdout_lock(
+                score_dir,
+                inputs_sha256=inputs_sha,
+                commit=commit,
+                report_sha256=sha256_file(args.out),
+                lock_path=score_2024_lock_path(args.lock_path, getattr(args, "score_lock_path", None)),
+                outputs=_run_outputs(args, score_dir),
+                score_year=2024,
             )
     except Exception as exc:
         sys.stderr.write(str(exc) + "\n")
@@ -464,7 +507,17 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--lock-path",
         type=Path,
-        help="Lock file for --holdout-2023 and --score-2024. Required by both.",
+        help="Holdout lock. Written by --holdout-2023; read-only for --score-2024.",
+    )
+    p.add_argument(
+        "--score-lock-path",
+        type=Path,
+        help="Distinct 2024 lock path. Default: <holdout-dir>/score_2024.lock.",
+    )
+    p.add_argument(
+        "--dz-status-out",
+        type=Path,
+        help="DZ status file path. Refused until DZ-STATUS-EMIT lands.",
     )
     p.add_argument("--merge-map", type=Path, help="Pinned CA2019 x UR3 merge map. Abort on sha256 mismatch.")
     p.add_argument("--hedonic-coefs", type=Path, help="2021-22 hedonic coefficients in the frozen set.")

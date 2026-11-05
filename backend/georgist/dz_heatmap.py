@@ -35,11 +35,11 @@ NEVER_SERVED_YEAR = 2023
 CODE_RE = re.compile(r"S01\d{6}")
 CONFIG_KEYS = frozenset({
     "enabled", "layer_id", "data_zone_vintage", "estimate_year", "status_path",
-    "gate_record_path", "lock_path", "key_title", "categories", "vintages",
-    "licence", "attribution",
+    "gate_record_path", "lock_path", "lock_sha256", "key_title", "categories",
+    "vintages", "licence", "attribution",
 })
 VINTAGE_KEYS = frozenset({"keys_path", "keys_sha256", "url", "credit", "vintage_note"})
-# BLOCKER (pending ruling): write_holdout_lock has no output-sha field today.
+# Written by v14_score_report.write_holdout_lock at lock time (LOCK-OUTPUTS).
 LOCK_OUTPUTS_KEY = "outputs_sha256"
 FILE_KEYS = frozenset({"estimate_year", "data_zone_vintage", "zones"})
 ZONE_KEYS = frozenset({"zone", "status"})
@@ -111,6 +111,15 @@ def load_config(path: Path | None = None) -> dict[str, Any]:
     ]
     if any(POUND in t for t in texts):
         _refuse("dz_heatmap label contains a pound sign")
+    if block["lock_path"] is not None and not (
+        isinstance(block["lock_path"], str) and block["lock_path"].strip()
+    ):
+        _refuse("dz_heatmap.lock_path missing")
+    pin = block["lock_sha256"]
+    if pin is not None and not (
+        isinstance(pin, str) and re.fullmatch(r"[0-9a-f]{64}", pin)
+    ):
+        _refuse("dz_heatmap.lock_sha256 must be 64 lowercase hex or null")
     return dict(block)
 
 
@@ -226,11 +235,23 @@ def check_gate(cfg: Mapping[str, Any], status_path: Path, root: Path | None = No
         _refuse(f"gate record for {year} is NOT_RUN")
     if checks.get("primary_gating_pass") is not True:
         _refuse(f"gate record for {year} is not PASS")
-    lock = (root or ROOT) / cfg["lock_path"]
+    lock_rel = cfg["lock_path"]
+    if not isinstance(lock_rel, str) or not lock_rel.strip():
+        _refuse("dz_heatmap.lock_path missing")
+    pin = cfg["lock_sha256"]
+    if not isinstance(pin, str) or not re.fullmatch(r"[0-9a-f]{64}", pin):
+        _refuse("dz_heatmap.lock_sha256 pin missing")
+    # Per-year lock path: must be score_<estimate_year>.lock (never a tombstone; mark_score_2024 is not authority).
+    expected_name = f"score_{year}.lock"
+    if Path(lock_rel).name != expected_name:
+        _refuse("locked run lock path does not match config")
+    lock = (root or ROOT) / lock_rel
     try:
         locked = json.loads(lock.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         _refuse("locked run lock missing")
+    if _sha(lock) != pin:
+        _refuse("locked run lock sha256 does not match pin")
     lock_years = _score_years(locked, lambda v: v is True) if isinstance(locked, Mapping) else []
     if len(lock_years) != 1:
         _refuse(f"locked run lock is not for {year}")
@@ -247,7 +268,9 @@ def check_gate(cfg: Mapping[str, Any], status_path: Path, root: Path | None = No
     if locked.get("report_sha256") != _sha(record):
         _refuse("gate record sha256 does not match locked run lock")
     outputs = locked.get(LOCK_OUTPUTS_KEY)
-    if not isinstance(outputs, Mapping) or _sha(status_path) not in outputs.values():
+    if not isinstance(outputs, Mapping):
+        _refuse("locked run lock outputs_sha256 missing")
+    if _sha(status_path) not in outputs.values():
         _refuse("status file sha256 not in locked run lock")
 
 

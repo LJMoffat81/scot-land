@@ -901,7 +901,9 @@ def test_score_2024_different_check_inputs_scores_once(
     assert rc == 0, err
     assert calls["n"] == 1
     assert score_report.is_file()
-    assert json.loads(lock.read_text(encoding="utf-8"))["score_2024"] is True
+    assert "score_2024" not in json.loads(lock.read_text(encoding="utf-8"))
+    score_lock = lock.with_name("score_2024.lock")
+    assert json.loads(score_lock.read_text(encoding="utf-8"))["score_2024"] is True
     assert score_main(
         [
             "--out",

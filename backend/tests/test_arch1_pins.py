@@ -555,6 +555,16 @@ _DZ_HEATMAP_B_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# M4 story-view framework (charter v2 M4): explainer rows on view presets.
+_M4_STORY_VIEWS_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/lib/mapViews.ts",
+        "frontend/components/MapLayersDrawer.tsx",
+        "frontend/scripts/test-map-views.mjs",
+        "frontend/e2e/ci/m4-story-views.spec.ts",
+    ]
+)
+
 
 def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
@@ -582,6 +592,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _VIEWS_1A_II_FRONTEND_ALLOW
                 | _UX_PICKS_4NOV_FRONTEND_ALLOW
                 | _DZ_HEATMAP_B_FRONTEND_ALLOW
+                | _M4_STORY_VIEWS_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

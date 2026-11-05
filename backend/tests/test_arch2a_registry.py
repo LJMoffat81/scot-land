@@ -221,6 +221,7 @@ def test_r2_15_committed_tiled_entries():
         "ces-aquaculture",
         "councils",
         "crown-estate-leases",
+        "dz2011",
         "dz2022",
         "hydro-sites",
         "native-woodland",

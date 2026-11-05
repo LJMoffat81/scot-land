@@ -187,7 +187,7 @@
         "max_mb": {
           "type": "number",
           "minimum": 0,
-          "maximum": 15
+          "maximum": 60
         }
       }
     },
@@ -358,6 +358,24 @@
     }
   },
   "allOf": [
+    {
+      "if": {
+        "properties": {
+          "serve": {
+            "properties": { "mode": { "const": "pmtiles" } },
+            "required": ["mode"]
+          }
+        },
+        "required": ["serve"]
+      },
+      "else": {
+        "properties": {
+          "serve": {
+            "properties": { "max_mb": { "maximum": 15 } }
+          }
+        }
+      }
+    },
     {
       "if": {
         "properties": { "clip": { "const": "none" } },

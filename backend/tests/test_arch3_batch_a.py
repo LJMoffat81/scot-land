@@ -199,7 +199,7 @@ def conn():
 
 def test_arch3_12_batch_a_entries_registered_and_match_gis_signoff() -> None:
     entries = load_registry(REGISTRY_DIR)
-    assert len(entries) == 19
+    assert len(entries) == 20
     for lid, spec in sorted(BATCH_A_GO_SPECS.items()):
         assert lid in entries, f"missing Batch A registry entry {lid}"
         raw = entries[lid].raw

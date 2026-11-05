@@ -25,6 +25,7 @@ EXPECTED_TAGS = {
     "ces-aquaculture": (["Q5"], "value_capture"),
     "councils": ([], "context"),
     "crown-estate-leases": (["Q5"], "value_capture"),
+    "dz2011": ([], "context"),
     "dz2022": ([], "context"),
     "hydro-sites": (["Q5"], "commons_rent"),
     "native-woodland": (["Q6"], "natural_capital"),

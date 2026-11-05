@@ -29,6 +29,7 @@ import {
   VIEW_SHARE_COPIED_LABEL,
   VIEW_SHARE_LABEL,
   viewHref,
+  viewExplainerRows,
   viewIsEstimate,
   viewLayerIds,
   VIEWS_HEADING,
@@ -545,6 +546,33 @@ function ViewDetail({
       <p className="map-view-finding" data-testid="map-view-finding">
         {view.finding}
       </p>
+      {viewExplainerRows(view).map((row) => {
+        if (row.kind === "question") {
+          return (
+            <p key="question" className="layer-meta" data-testid="map-view-question">
+              {row.text}
+            </p>
+          );
+        }
+        if (row.kind === "takeaway") {
+          return (
+            <section key="takeaway" data-testid="map-view-takeaway" aria-label={row.heading}>
+              <p className="layers-nav-header">{row.heading}</p>
+              <p className="map-view-finding">{row.text}</p>
+            </section>
+          );
+        }
+        return (
+          <section key="gaps" data-testid="map-view-gaps" aria-label={row.heading}>
+            <p className="layers-nav-header">{row.heading}</p>
+            <ul className="map-view-gaps-list">
+              {row.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
       <div data-testid="map-view-key">
         {viewLayerIds(view).map((id) => {
           const entry = getMapLayer(id);

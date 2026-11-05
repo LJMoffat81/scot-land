@@ -220,4 +220,103 @@ t("T9", () => {
   }
 });
 
+// ---- M4 story-view framework: question, takeaway ("What this could mean"), gaps ----
+const SYN_Q = {
+  ...SYN_A,
+  id: "syn-q",
+  question: "Q4",
+  takeaway: "A synthetic fact holds. Georgists argue that a synthetic reading follows.",
+  gaps: ["Synthetic gap one.", "Synthetic gap two."],
+};
+
+// T10 exact M4 strings (Wording & UX locked) and policy-question titles.
+t("T10", () => {
+  assert.equal(views.VIEW_QUESTION_PREFIX, "Policy question: ");
+  assert.equal(views.VIEW_TAKEAWAY_HEADING, "What this could mean");
+  assert.equal(views.VIEW_GAPS_HEADING, "What we can't see");
+  assert.equal(views.MAX_VIEW_GAPS, 5);
+  assert.deepEqual(views.POLICY_QUESTIONS, {
+    Q1: "Where land value is concentrated",
+    Q2: "Vacant and derelict land",
+    Q3: "How public decisions raise land values",
+    Q4: "Who holds the land",
+    Q5: "Land held in common",
+    Q6: "Carbon and land",
+  });
+});
+
+// T11 every explainer rule fails with its exact message, one trigger at a time.
+t("T11", () => {
+  assertViewPresets([SYN_Q], MAP_LAYER_REGISTRY);
+  const bad = (patch, msg) => {
+    const v = { ...SYN_Q, ...patch };
+    for (const k of Object.keys(patch)) if (patch[k] === undefined) delete v[k];
+    assert.throws(() => assertViewPresets([v], MAP_LAYER_REGISTRY), {
+      message: `VIEWS: syn-q: ${msg}`,
+    });
+  };
+  bad({ question: "Q7" }, "question must be one of Q1 to Q6");
+  bad({ question: "q4" }, "question must be one of Q1 to Q6");
+  bad({ question: "toString" }, "question must be one of Q1 to Q6");
+  bad({ takeaway: "   " }, "takeaway must be non-empty");
+  bad({ takeaway: "Synthetic land costs \u00a3 here." }, "takeaway must not contain a pound sign");
+  bad({ takeaway: "Synthetic land is held by few owners in 2026." }, "takeaway must not contain figures");
+  bad({ takeaway: "Synthetic land is held by few owners" }, "takeaway must end in a full stop");
+  for (const word of ["Labour", "the SNP", "Scottish Greens", "Reform UK", "vote", "voting"]) {
+    bad({ takeaway: `Synthetic owners and ${word} differ.` }, "takeaway must not name a party or call for a vote");
+  }
+  bad({ takeaway: "Georgism says synthetic land is unearned." }, "takeaway must write Georgist claims as 'Georgists argue'");
+  bad({ takeaway: "Georgists claim synthetic land is unearned." }, "takeaway must write Georgist claims as 'Georgists argue'");
+  bad({ takeaway: "Georgists argue that a synthetic reading follows. A synthetic fact holds." }, "takeaway must put the fact sentence before the reading");
+  bad({ gaps: "Synthetic gap." }, "gaps must be an array");
+  bad({ gaps: [] }, "gaps must not be an empty list");
+  bad({ gaps: ["a.", "b.", "c.", "d.", "e.", "f."] }, "at most 5 gaps");
+  bad({ gaps: ["Synthetic gap.", " "] }, "each gap must be non-empty");
+  bad({ gaps: ["Synthetic \u00a3 gap."] }, "gaps must not contain a pound sign");
+  bad({ gaps: ["Synthetic gap.", " synthetic GAP. "] }, "a gap is listed twice");
+  bad({ question: undefined }, "a view with a takeaway or gaps must name its policy question");
+  bad({ question: undefined, gaps: undefined }, "a view with a takeaway or gaps must name its policy question");
+  bad({ question: undefined, takeaway: undefined }, "a view with a takeaway or gaps must name its policy question");
+  // Not over-broad: a question alone, five gaps, and ordinary words pass.
+  assertViewPresets([{ ...SYN_A, id: "syn-q", question: "Q1" }], MAP_LAYER_REGISTRY);
+  assertViewPresets([{ ...SYN_Q, gaps: ["a.", "b.", "c.", "d.", "e."] }], MAP_LAYER_REGISTRY);
+  assertViewPresets(
+    [{ ...SYN_Q, takeaway: "Synthetic labourers and devoted greens differ across the reformed alban areas." }],
+    MAP_LAYER_REGISTRY,
+  );
+});
+
+// T12 explainer rows: exact order and text; absent fields give no row.
+t("T12", () => {
+  assert.deepEqual(views.viewExplainerRows(SYN_Q), [
+    { kind: "question", text: "Policy question: Who holds the land" },
+    {
+      kind: "takeaway",
+      heading: "What this could mean",
+      text: "A synthetic fact holds. Georgists argue that a synthetic reading follows.",
+    },
+    { kind: "gaps", heading: "What we can't see", items: ["Synthetic gap one.", "Synthetic gap two."] },
+  ]);
+  assert.deepEqual(views.viewExplainerRows(SYN_A), []);
+  assert.deepEqual(views.viewExplainerRows({ ...SYN_A, question: "Q5" }), [
+    { kind: "question", text: "Policy question: Land held in common" },
+  ]);
+  // Takeaway sentence order: fact first, then the reading (Wording & UX lock).
+  const takeaway = SYN_Q.takeaway;
+  const firstStop = takeaway.indexOf(".");
+  assert.ok(firstStop > 0 && !/\bGeorgists argue\b/.test(takeaway.slice(0, firstStop)));
+  assert.match(takeaway.slice(firstStop), /\bGeorgists argue\b/);
+});
+
+// T13 M4 ships the framework only: no shipped view has a question, takeaway or gaps
+// (M5 adds the first), and no view adds a layer (context cap stays 6/6).
+t("T13", () => {
+  for (const v of MAP_VIEW_PRESETS) {
+    assert.equal(v.question, undefined, `${v.id} question`);
+    assert.equal(v.takeaway, undefined, `${v.id} takeaway`);
+    assert.equal(v.gaps, undefined, `${v.id} gaps`);
+    assert.deepEqual(views.viewExplainerRows(v), []);
+  }
+});
+
 console.log(`test-map-views: ${n} groups passed`);

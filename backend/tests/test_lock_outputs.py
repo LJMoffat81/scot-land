@@ -135,34 +135,47 @@ def test_2024_lock_written_holdout_byte_identical(
     assert paths["lock"].with_name("score_2024.tombstone").is_file()
 
 
-def test_dz_status_out_refuses(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+def test_dz_status_out_no_longer_refuses_lock_outputs_stub(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Bookkeeping: LOCK-OUTPUTS stub message is gone; success path is test_dz_status_emit."""
     paths = _layout(tmp_path)
     _holdout(paths, monkeypatch)
-    before = paths["lock"].read_bytes()
-    status_out = tmp_path / "dz_status.json"
+    codes = [f"Z{index}" for index in range(8)]
+    keys_path = tmp_path / "keys.json"
+    keys_path.write_text(json.dumps(codes) + "\n", encoding="utf-8")
+    digest = sha256_file(keys_path)
+    from georgist.v14_score_report import load_dz2011_keys
+
+    monkeypatch.setattr(
+        "scripts.rerun_v14_score.load_dz2011_keys",
+        lambda path=None, expected_sha=None: load_dz2011_keys(keys_path, expected_sha=digest),
+    )
     calls, spy = _score_stub()
     monkeypatch.setattr("scripts.rerun_v14_score._score_holdout", spy)
     out = tmp_path / "score" / "report.json"
+    status_out = tmp_path / "dz_status.json"
     argv = _args(paths, out, holdout=False, score=True) + ["--dz-status-out", str(status_out)]
-    assert score_main(argv) == 1
-    err = capsys.readouterr().err
-    assert (
-        err.strip()
-        == "LOCK-OUTPUTS: REFUSED: --dz-status-out: DZ-STATUS-EMIT not in this PR"
-    )
-    assert calls["n"] == 0
-    assert not status_out.exists()
-    assert paths["lock"].read_bytes() == before
-    assert not paths["lock"].with_name("score_2024.lock").exists()
+    assert score_main(argv) == 0
+    assert calls["n"] == 1
+    assert status_out.is_file()
+    locked = json.loads(paths["lock"].with_name("score_2024.lock").read_text(encoding="utf-8"))
+    assert locked["outputs_sha256"]["dz_status"] == sha256_file(status_out)
 
 
-def test_emit_dz_status_hook_refuses(tmp_path: Path) -> None:
+def test_emit_dz_status_requires_2024(tmp_path: Path) -> None:
+    """The old always-refuse stub is gone; year 2023 still refuses and writes nothing."""
+    keys = frozenset({"S01000001"})
     target = tmp_path / "half.json"
     with pytest.raises(HoldoutLockError) as exc:
-        emit_dz_status(target)
-    assert str(exc.value) == (
-        "LOCK-OUTPUTS: REFUSED: --dz-status-out: DZ-STATUS-EMIT not in this PR"
-    )
+        emit_dz_status(
+            target,
+            estimate_year=2023,
+            data_zone_vintage="DZ2011",
+            statuses={"S01000001": "not_scored"},
+            keys=keys,
+        )
+    assert str(exc.value) == "DZ-STATUS-EMIT: REFUSED: estimate_year: expected 2024, got 2023"
     assert not target.exists()
 
 

@@ -39,7 +39,9 @@ from georgist.v14_score_report import (
     frozen_set_members,
     git_commit,
     input_years,
+    build_dz_status_map,
     emit_dz_status,
+    load_dz2011_keys,
     score_2024_lock_path,
     score_2024_tombstone_path,
     write_score_2024_tombstone,
@@ -116,6 +118,7 @@ def _extended(args: argparse.Namespace) -> bool:
         or args.merge_map
         or getattr(args, "check4_f8", None)
         or getattr(args, "check4_summary_out", None)
+        or getattr(args, "dz_status_out", None)
     )
 
 
@@ -310,7 +313,7 @@ def _write_check4_summary(check_inputs_path: Path, summary_out: Path) -> dict:
 
 
 def _run_outputs(args: argparse.Namespace, score_dir: Path) -> dict[str, Path]:
-    """Every file this run wrote. No DZ status file is produced by the run today."""
+    """Every file this run wrote. Includes --dz-status-out when emitted."""
     outputs = {"report": args.out}
     table = score_dir / "code_text_disagreements.md"
     if table.is_file():
@@ -318,6 +321,9 @@ def _run_outputs(args: argparse.Namespace, score_dir: Path) -> dict[str, Path]:
     summary = getattr(args, "check4_summary_out", None)
     if summary is not None:
         outputs["check4_summary"] = summary
+    status_out = getattr(args, "dz_status_out", None)
+    if status_out is not None and Path(status_out).is_file():
+        outputs["dz_status"] = Path(status_out)
     return outputs
 
 
@@ -328,8 +334,15 @@ def _extended_main(args: argparse.Namespace) -> int:
     commit = require_commit_sha(git_commit())
     try:
         if getattr(args, "dz_status_out", None) is not None:
-            # No converter in this PR. Refuse before any output is written.
-            emit_dz_status(args.dz_status_out)
+            # Status file is 2024-only and tied to --score-2024. Never emit for 2023.
+            if args.holdout_2023:
+                raise HoldoutLockError(
+                    "DZ-STATUS-EMIT: REFUSED: --dz-status-out: 2023 is never emitted"
+                )
+            if not args.score_2024:
+                raise HoldoutLockError(
+                    "DZ-STATUS-EMIT: REFUSED: --dz-status-out: requires --score-2024"
+                )
         _validate_frozen_check3(args)
         _validate_frozen_check4(args)
         if (args.holdout_2023 or args.score_2024) and args.lock_path is None:
@@ -465,6 +478,22 @@ def _extended_main(args: argparse.Namespace) -> int:
                 outputs=_run_outputs(args, score_dir),
             )
         if args.score_2024:
+            if getattr(args, "dz_status_out", None) is not None:
+                if args.check_inputs is None:
+                    raise HoldoutLockError(
+                        "DZ-STATUS-EMIT: REFUSED: check inputs: expected primary_zones, got absent"
+                    )
+                check_payload = json.loads(args.check_inputs.read_text(encoding="utf-8"))
+                primary = check_payload.get("primary_zones")
+                keys = load_dz2011_keys()
+                statuses = build_dz_status_map(keys, primary)
+                emit_dz_status(
+                    args.dz_status_out,
+                    estimate_year=2024,
+                    data_zone_vintage="DZ2011",
+                    statuses=statuses,
+                    keys=keys,
+                )
             write_holdout_lock(
                 score_dir,
                 inputs_sha256=inputs_sha,
@@ -517,7 +546,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--dz-status-out",
         type=Path,
-        help="DZ status file path. Refused until DZ-STATUS-EMIT lands.",
+        help="DZ2011 status file for /platform/dz-status. 2024 --score-2024 only; sha goes into outputs_sha256.",
     )
     p.add_argument("--merge-map", type=Path, help="Pinned CA2019 x UR3 merge map. Abort on sha256 mismatch.")
     p.add_argument("--hedonic-coefs", type=Path, help="2021-22 hedonic coefficients in the frozen set.")

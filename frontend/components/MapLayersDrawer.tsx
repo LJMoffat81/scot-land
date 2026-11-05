@@ -31,6 +31,15 @@ import {
   type WhoHoldsPayload,
 } from "@/lib/whoHolds";
 import {
+  fetchIdleLand,
+  formatIdleLandHectares,
+  IDLE_LAND_COL_COUNCIL,
+  IDLE_LAND_COL_HECTARES,
+  IDLE_LAND_COL_SITES,
+  IDLE_LAND_TABLE_HEADING,
+  type IdleLandPayload,
+} from "@/lib/idleLand";
+import {
   ALL_LAYERS_HEADING,
   availableViews,
   VIEW_CLOSE_LABEL,
@@ -520,6 +529,43 @@ export default function MapLayersDrawer({
 }
 
 
+
+function IdleLandTable() {
+  const [payload, setPayload] = useState<IdleLandPayload | null>(null);
+  useEffect(() => {
+    const ac = new AbortController();
+    void fetchIdleLand(getApiBaseUrl(), ac.signal).then(setPayload);
+    return () => ac.abort();
+  }, []);
+  if (!payload) return null;
+  return (
+    <section
+      data-testid="map-view-idle-land-table"
+      aria-label={IDLE_LAND_TABLE_HEADING}
+    >
+      <p className="layers-nav-header">{IDLE_LAND_TABLE_HEADING}</p>
+      <table className="map-view-idle-land">
+        <thead>
+          <tr>
+            <th>{IDLE_LAND_COL_COUNCIL}</th>
+            <th>{IDLE_LAND_COL_SITES}</th>
+            <th>{IDLE_LAND_COL_HECTARES}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {payload.councils.map((row) => (
+            <tr key={row.code}>
+              <td>{row.name}</td>
+              <td>{row.site_count}</td>
+              <td>{formatIdleLandHectares(row.area_ha)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 function WhoHoldsTable() {
   const [payload, setPayload] = useState<WhoHoldsPayload | null>(null);
   useEffect(() => {
@@ -621,6 +667,7 @@ function ViewDetail({
         );
       })}
       {view.id === "who-holds-scotland" ? <WhoHoldsTable /> : null}
+      {view.id === "idle-land" ? <IdleLandTable /> : null}
       <div data-testid="map-view-key">
         {viewLayerIds(view).map((id) => {
           const entry = getMapLayer(id);

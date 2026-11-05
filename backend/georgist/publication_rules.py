@@ -375,6 +375,15 @@ PUBLIC_ROUTE_RULES: dict[str, LayerRule] = {
             "and hectares only; no names, no geometry, no rent"
         ),
     ),
+    "/platform/idle-land": LayerRule(
+        "zone",
+        "zone",
+        "none",
+        note=(
+            "M2 council-level SG Vacant and Derelict Land Survey 2025; official "
+            "counts and hectares only; no names, no geometry, no rent"
+        ),
+    ),
     "/platform/gaps": LayerRule("zone", "zone", "none", note="register gap catalogue"),
     "/api/catalog.json": LayerRule("zone", "zone", "none", note="open-data catalogue"),
     "/api/ledger.json": LayerRule(

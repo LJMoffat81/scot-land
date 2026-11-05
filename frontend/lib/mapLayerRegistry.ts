@@ -407,6 +407,17 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     paintLayerIds: ["who-holds-fill"],
   },
   {
+    id: "idle_land",
+    group: "land",
+    label: "Vacant and derelict land",
+    minzoom: 5,
+    maxzoom: 20,
+    sourceCaption: "Scottish Government · 2025",
+    classes: whoHoldsLegendClasses(),
+    defaultOn: false,
+    paintLayerIds: ["idle-land-fill"],
+  },
+  {
     id: "councils",
     group: "places",
     label: "Council areas",

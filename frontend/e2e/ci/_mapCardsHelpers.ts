@@ -4,6 +4,7 @@
  */
 import { expect, test, type Page, type Route } from "@playwright/test";
 import { syntheticWhoHoldsPayload } from "../../lib/whoHolds";
+import { syntheticIdleLandPayload } from "../../lib/idleLand";
 import {
   attachStrictConsoleGate,
   getStrictGateForPage,
@@ -133,6 +134,7 @@ export const LIVE_LAYER_IDS = [
   "designations",
   "crofting",
   "who_holds",
+  "idle_land",
   "councils",
   "data_zones",
 ] as const;
@@ -294,6 +296,13 @@ export async function stubMapCardsBackend(page: Page, opts: StubOpts = {}) {
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(syntheticWhoHoldsPayload()),
+    });
+  });
+  await page.route("**/platform/idle-land**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(syntheticIdleLandPayload()),
     });
   });
 

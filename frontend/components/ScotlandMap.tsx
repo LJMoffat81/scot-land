@@ -64,6 +64,13 @@ import {
   whoHoldsFillColor,
 } from "../lib/whoHolds";
 import {
+  fetchIdleLand,
+  IDLE_LAND_FILL_ID,
+  IDLE_LAND_FILL_OPACITY,
+  IDLE_LAND_LAYER_ID,
+  idleLandFillColor,
+} from "../lib/idleLand";
+import {
   CONTEXT_LAYERS,
   TILE_BASE_OUTLINE_ID,
   TILE_LAYER_IDS,
@@ -591,6 +598,7 @@ function activeRegistryLayerIds(opts: {
   if (opts.showDataZones) ids.push("data_zones");
   if (opts.ledgerEnabled.access_services) ids.push("access_services");
   if (opts.ledgerEnabled[WHO_HOLDS_LAYER_ID]) ids.push(WHO_HOLDS_LAYER_ID);
+  if (opts.ledgerEnabled[IDLE_LAND_LAYER_ID]) ids.push(IDLE_LAND_LAYER_ID);
   if (opts.showGrid3) ids.push(GRID3_LAYER_ID);
   return ids;
 }
@@ -778,6 +786,8 @@ export default function ScotlandMap() {
   const showCroftingConstraint = Boolean(ledgerEnabled.crofting);
   /** M5 — council-level community ownership fill (no named points). */
   const showWhoHolds = Boolean(ledgerEnabled[WHO_HOLDS_LAYER_ID]);
+  /** M2 — council-level vacant and derelict land fill (no named sites). */
+  const showIdleLand = Boolean(ledgerEnabled[IDLE_LAND_LAYER_ID]);
   /** Ownership-context community ownership paint (URL ?community=1; not a LayersPanel toggle). */
   const [showCommunityOwnership, setShowCommunityOwnership] = useState(false);
   /** Woodland / LDP / aquaculture / LCA are not live registry switches — stay off. */
@@ -2606,6 +2616,16 @@ export default function ScotlandMap() {
         paint: {
           "fill-color": "#d9d9d9",
           "fill-opacity": WHO_HOLDS_FILL_OPACITY,
+        },
+      });
+      addCouncilLayer({
+        id: IDLE_LAND_FILL_ID,
+        type: "fill",
+        source: "council-metrics",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": "#d9d9d9",
+          "fill-opacity": IDLE_LAND_FILL_OPACITY,
         },
       });
       // Optional hatch overlay for polygons whose metric property is missing.
@@ -4802,6 +4822,36 @@ export default function ScotlandMap() {
       ac.abort();
     };
   }, [mapReady, showWhoHolds]);
+
+  // M2 — council-level vacant and derelict land fill. Never turns on named sites.
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map || !hasMapLayer(map, IDLE_LAND_FILL_ID)) return;
+    if (!showIdleLand) {
+      map.setLayoutProperty(IDLE_LAND_FILL_ID, "visibility", "none");
+      return;
+    }
+    const ac = new AbortController();
+    let cancelled = false;
+    void fetchIdleLand(getApiBaseUrl(), ac.signal).then((payload) => {
+      if (cancelled || mapRef.current !== map) return;
+      if (!payload) {
+        map.setLayoutProperty(IDLE_LAND_FILL_ID, "visibility", "none");
+        return;
+      }
+      map.setPaintProperty(
+        IDLE_LAND_FILL_ID,
+        "fill-color",
+        idleLandFillColor(payload) as ExpressionSpecification,
+      );
+      map.setLayoutProperty(IDLE_LAND_FILL_ID, "visibility", "visible");
+    });
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+  }, [mapReady, showIdleLand]);
 
   // Community ownership points (SG 2024 OGL postcode centroids; ownership-context)
   useEffect(() => {

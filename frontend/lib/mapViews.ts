@@ -81,6 +81,9 @@ export const WHO_HOLDS_SOURCE_LINE =
 export const WHO_HOLDS_GAP_LARGE_HOLDINGS =
   "Large land holdings of 1,000 hectares or more: no official open dataset exists, and the Land Reform (Scotland) Act 2025 duties are not in force.";
 
+export const IDLE_LAND_SOURCE_LINE =
+  "Scottish Government, Scottish Vacant and Derelict Land Survey 2025 (published September 2026); OS Boundary-Line, 2026";
+
 export const MAP_VIEW_PRESETS: readonly MapViewPreset[] = [
   {
     id: "access-to-services",
@@ -110,6 +113,26 @@ export const MAP_VIEW_PRESETS: readonly MapViewPreset[] = [
       "Public sector and Crown land: no verified open dataset is published.",
       "Crofting map extents: the Crofting Commission publishes lists, but the map polygons are not openly redistributable.",
       "Some community-owned assets have no published area.",
+    ],
+  },
+  {
+    id: "idle-land",
+    title: "Vacant and derelict land",
+    surface: "idle_land",
+    overlays: ["councils"],
+    finding:
+      "Vacant and derelict land is recorded by council in the official Scottish Government survey.",
+    sourceLine: IDLE_LAND_SOURCE_LINE,
+    doesNotShow: "named owners, housing land supply, or a map of legal title.",
+    question: "Q2",
+    takeaway:
+      "This land is recorded as vacant or derelict in the official survey. The Scottish Land Commission has asked whether tax could help bring such land back into use.",
+    gaps: [
+      "Housing land supply: no public map until the Improvement Service confirms the records can be shared.",
+      "A site-by-site picture of who holds vacant or derelict land: this view does not show owners.",
+      "Years recorded derelict on the map: the survey records when each site was first identified, but this view does not colour long-term derelict land separately.",
+      "Loch Lomond and the Trossachs National Park: seven sites and seven hectares sit outside the 32 council totals.",
+      "Five councils sent no 2025 return, so their latest figures are shown: 2022 for Orkney Islands, and 2024 for Clackmannanshire, Falkirk, Inverclyde and West Lothian.",
     ],
   },
 ];
@@ -190,7 +213,8 @@ export function assertViewPresets(
     if (CAUSAL_RE.test(finding)) fail(id, "finding must not make a causal claim");
     if (
       !SOURCE_LINE_RE.test(view.sourceLine) &&
-      view.sourceLine !== WHO_HOLDS_SOURCE_LINE
+      view.sourceLine !== WHO_HOLDS_SOURCE_LINE &&
+      view.sourceLine !== IDLE_LAND_SOURCE_LINE
     ) {
       fail(id, "sourceLine must read 'Source, year'");
     }

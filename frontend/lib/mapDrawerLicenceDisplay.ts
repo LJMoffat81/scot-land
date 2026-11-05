@@ -33,6 +33,7 @@ const LICENCE_BY_ID: Record<string, DrawerLicenceDisplay> = {
   flood: { label: OGL_V3_LABEL, url: OGL_V3_URL },
   crofting: { label: OGL_V3_LABEL, url: OGL_V3_URL },
   who_holds: { label: OGL_V3_LABEL, url: OGL_V3_URL },
+  idle_land: { label: OGL_V3_LABEL, url: OGL_V3_URL },
   boundaries: { label: OGL_V3_LABEL, url: OGL_V3_URL },
   data_zones: { label: OGL_V3_LABEL, url: OGL_V3_URL },
   builtup_mask: { label: OGL_V3_LABEL, url: OGL_V3_URL },

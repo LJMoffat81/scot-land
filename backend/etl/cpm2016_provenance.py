@@ -19,7 +19,8 @@ from georgist import cpm2016_rules as rules
 
 LAYER_ID = "carbon-peatland"
 RAW_TABLE = "carbon_peatland"
-PROVENANCE_NAME = "carbon-peatland.cpm2016_provenance.json"
+# Subdir so etl.refresh_registry's top-level *.json receipt glob ignores it.
+PROVENANCE_REL = Path("cpm2016") / "carbon-peatland.provenance.json"
 RECEIPT_NAME = "carbon-peatland.receipt.json"
 TILE_PREFIX = "CPM2016-TILE: REFUSED: "
 INGEST_PREFIX = "CPM2016-INGEST: REFUSED: "
@@ -39,7 +40,7 @@ def _receipt_dir() -> Path:
 
 
 def provenance_path() -> Path:
-    return _receipt_dir() / PROVENANCE_NAME
+    return _receipt_dir() / PROVENANCE_REL
 
 
 def layer_receipt_path() -> Path:

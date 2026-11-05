@@ -1,0 +1,66 @@
+{
+  "type": "FeatureCollection",
+  "name": "cpm2016_extent_land",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::27700"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "zone": "land" },
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [259000, 669000],
+              [262000, 669000],
+              [262000, 671000],
+              [259000, 671000],
+              [259000, 669000]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "zone": "inshore_0_12nm" },
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [262000, 669000],
+              [263000, 669000],
+              [263000, 671000],
+              [262000, 671000],
+              [262000, 669000]
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "zone": "offshore_12_200nm" },
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [263000, 669000],
+              [264000, 669000],
+              [264000, 671000],
+              [263000, 671000],
+              [263000, 669000]
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

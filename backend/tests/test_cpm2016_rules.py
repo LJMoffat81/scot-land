@@ -22,6 +22,8 @@ from georgist.cpm2016_rules import (
     DISSOLVE_BY,
     FIELD,
     FORBIDDEN_USER_TOKENS,
+    GPKG_FEATURE_COUNT,
+    GPKG_LAYER,
     GPKG_SHA256,
     HA_LESS_THAN_ONE,
     KEEP_FIELDS,
@@ -69,6 +71,8 @@ def test_source_pin_is_gpkg_not_wms():
     assert AREA_DISCLOSURE == "planar British National Grid (EPSG:27700)"
     assert S71.endswith("(NatureScot).")
     assert GPKG_SHA256 is None  # pending first download on Laurie's PC
+    assert GPKG_LAYER is None
+    assert GPKG_FEATURE_COUNT is None
 
 
 def test_allowed_class_set():
@@ -196,12 +200,13 @@ def test_registry_yaml_matches_gis_and_rules():
     assert raw["zoom"]["max"] == ZOOM_MAX
     assert raw["zoom"]["low_zoom"] == LOW_ZOOM
     assert raw["tiles"]["no_tiny_polygon_reduction"] is True
+    assert raw["tiles"]["dissolve_by"] == DISSOLVE_BY
     assert raw["tiles"]["budget"]["total_mb"] == BUDGET_TOTAL_MB_PROVISIONAL
     assert raw["tiles"]["budget"]["tile_kb"] == BUDGET_TILE_KB
     assert raw["tiles"]["budget"]["z0_7_mb"] == BUDGET_Z0_7_MB_PROVISIONAL
     assert raw["style"]["fill"]["fill-opacity"] > 0
     assert raw["source"]["type"] == "postgis_table"
-    # Dissolve-before-tile is documented; keep_fields is importance only.
+    # Dissolve-before-tile is wired via tiles.dissolve_by; keep_fields is importance only.
     text = YAML_PATH.read_text(encoding="utf-8")
     assert "Dissolve by importance" in text
     assert DISSOLVE_BY == "importance"

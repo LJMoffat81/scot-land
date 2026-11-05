@@ -27,6 +27,7 @@ from etl.adapters.arcgis import fetch_arcgis
 from etl.adapters.geojson_file import fetch_geojson_file
 from etl.adapters.os_boundary_line import fetch_os_boundary_line
 from etl.adapters.postgis_table import fetch_postgis_table
+from etl.check_cpm2016 import check_cpm2016_raw
 from etl.check_dz2011_boundaries import PrecheckError, check_dz2011_rows
 from etl.build_scotland_extent import ExtentError
 from layers.registry.loader import LayerEntry, RegistryError, registry
@@ -71,8 +72,11 @@ CLIP_ZONES: dict[str, tuple[str, ...]] = {
 EXPECTED_SETTLEMENTS_2022 = 503
 EXPECTED_FEATURE_COUNTS = {"settlements-2022": EXPECTED_SETTLEMENTS_2022}
 
-# DZ-HEATMAP PR-B0: per-layer checks run before any fetch (fail closed).
-PRECONDITIONS: dict[str, Callable[[Any], None]] = {"dz2011": check_dz2011_rows}
+# DZ-HEATMAP PR-B0 / M6b: per-layer checks run before any fetch (fail closed).
+PRECONDITIONS: dict[str, Callable[[Any], None]] = {
+    "dz2011": check_dz2011_rows,
+    "carbon-peatland": check_cpm2016_raw,
+}
 
 _GEOM_DIM: dict[str, int] = {
     "point": 1,

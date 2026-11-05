@@ -44,6 +44,7 @@ keep_fields: [importance]
 # national build on Laurie's PC.
 tiles:
   no_tiny_polygon_reduction: true
+  dissolve_by: importance
   budget:
     total_mb: 50
     tile_kb: 500

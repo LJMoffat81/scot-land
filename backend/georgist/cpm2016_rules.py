@@ -36,6 +36,8 @@ S71 = (
 )
 # Pending first download on Laurie's PC. Must be set before any M6c results.
 GPKG_SHA256: str | None = None
+GPKG_LAYER: str | None = None
+GPKG_FEATURE_COUNT: int | None = None
 HA_LESS_THAN_ONE = "Less than 1"
 
 DISSOLVE_BY = "importance"

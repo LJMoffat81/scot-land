@@ -1,0 +1,60 @@
+{
+  "type": "FeatureCollection",
+  "name": "cpm2016_dissolve_stub",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::27700"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "IMPORTANCE": 1 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [260000, 670000],
+            [260100, 670000],
+            [260100, 670100],
+            [260000, 670100],
+            [260000, 670000]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "IMPORTANCE": 1 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [260200, 670000],
+            [260300, 670000],
+            [260300, 670100],
+            [260200, 670100],
+            [260200, 670000]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "IMPORTANCE": 2 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [260400, 670000],
+            [260500, 670000],
+            [260500, 670100],
+            [260400, 670100],
+            [260400, 670000]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -24,6 +24,8 @@ from typing import Any
 import psycopg2
 import psycopg2.extras
 
+from etl.check_cpm2016 import check_cpm2016_clipped
+from etl.check_dz2011_boundaries import PrecheckError
 from layers.registry.loader import RegistryError, registry
 from tiles.measure import distinct_ids_at_zoom, measure_pmtiles
 from tiles.profiles import ProfileError, tippecanoe_flags
@@ -175,13 +177,67 @@ def _export_geojsonseq(
     precision_dp: int,
     dest: Path,
     simplify_m: float = 0.0,
+    dissolve_by: str | None = None,
 ) -> int:
-    """Stream GeoJSONSeq (EPSG:4326) with feature_id + keep_fields only."""
+    """Stream GeoJSONSeq (EPSG:4326) with feature_id + keep_fields only.
+
+    When ``dissolve_by`` is set, dissolve is export-only on unsimplified
+    ``geom`` via locked ``ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_Union(geom)), 3))``,
+    then existing simplify in EPSG:27700, then transform 4326. Dissolved rows
+    carry the dissolve key only (no source ``feature_id``).
+    """
     if simplify_m < 0:
         raise TilesError(
             f"TILES: {layer_id}: serve.simplify_m must be >= 0"
         )
     table = f"layers.{_q_ident(layer_id)}"
+    if dissolve_by is not None:
+        if dissolve_by not in keep_fields:
+            raise TilesError(
+                f"TILES: {layer_id}: dissolve_by {dissolve_by!r} not in keep_fields"
+            )
+        safe = dissolve_by.replace("'", "''")
+        key_expr = f"(props ->> '{safe}')::int"
+        # Locked dissolve (GIS): union on unsimplified geom, drop empties,
+        # then existing simplify in 27700, then transform 4326.
+        dissolved = (
+            "ST_Multi(ST_CollectionExtract(ST_MakeValid(ST_Union(geom)), 3))"
+        )
+        if simplify_m > 0:
+            geom_27700 = (
+                f"ST_SimplifyPreserveTopology(dissolved_geom, {float(simplify_m):.10g})"
+            )
+        else:
+            geom_27700 = "dissolved_geom"
+        geom_expr = (
+            f"ST_AsGeoJSON(ST_Transform({geom_27700}, 4326), {int(precision_dp)})"
+        )
+        sql = (
+            f"SELECT {_q_ident(dissolve_by)}, {geom_expr} AS geojson FROM ("
+            f"  SELECT {key_expr} AS {_q_ident(dissolve_by)}, "
+            f"         {dissolved} AS dissolved_geom "
+            f"  FROM {table} "
+            f"  GROUP BY {key_expr}"
+            f") dissolved "
+            f"WHERE NOT ST_IsEmpty(dissolved_geom)"
+        )
+        count = 0
+        with dest.open("w", encoding="utf-8") as out, conn.cursor() as cur:
+            cur.execute(sql)
+            for key_value, geojson in cur:
+                if geojson is None:
+                    continue
+                props: dict[str, Any] = {dissolve_by: key_value}
+                feature = {
+                    "type": "Feature",
+                    "properties": props,
+                    "geometry": json.loads(geojson),
+                }
+                out.write(json.dumps(feature, separators=(",", ":")))
+                out.write("\n")
+                count += 1
+        return count
+
     field_exprs: list[str] = ["feature_id"]
     for field in keep_fields:
         # props keys are exact; quote as JSON path literal
@@ -206,7 +262,7 @@ def _export_geojsonseq(
             *values, geojson = row
             if geojson is None:
                 continue
-            props: dict[str, Any] = {"feature_id": values[0]}
+            props = {"feature_id": values[0]}
             for name, value in zip(keep_fields, values[1:]):
                 if value is not None:
                     props[name] = value
@@ -295,6 +351,13 @@ def build_tileset(
     z0_7_mb = float(budget["z0_7_mb"])
     total_mb = float(budget["total_mb"])
     keep_fields = list(raw.get("keep_fields") or [])
+    dissolve_by = (raw.get("tiles") or {}).get("dissolve_by")
+    if dissolve_by is not None:
+        dissolve_by = str(dissolve_by)
+        if dissolve_by not in keep_fields:
+            raise TilesError(
+                f"TILES: {layer_id}: dissolve_by {dissolve_by!r} not in keep_fields"
+            )
     zoom = raw.get("zoom") or {}
     zoom_max = int(zoom.get("max") or 14)
     low_zoom = low_zoom_override or str(zoom.get("low_zoom") or "simplify")
@@ -315,6 +378,12 @@ def build_tileset(
     tmp_geo: Path | None = None
     tmp_pmtiles: Path | None = None
     try:
+        if layer_id == "carbon-peatland":
+            try:
+                check_cpm2016_clipped(connection)
+            except PrecheckError as exc:
+                raise TilesError(f"TILES: carbon-peatland: {exc}") from exc
+
         table_name = layer_id
         with connection.cursor() as cur:
             cur.execute(
@@ -383,8 +452,14 @@ def build_tileset(
             precision_dp=precision_dp,
             dest=tmp_geo,
             simplify_m=simplify_m,
+            dissolve_by=dissolve_by,
         )
-        if exported != n_features:
+        if dissolve_by is not None:
+            if exported < 1:
+                raise TilesError(
+                    f"TILES: {layer_id}: dissolve_by {dissolve_by} exported 0 features"
+                )
+        elif exported != n_features:
             raise TilesError(
                 f"TILES: {layer_id}: export kept {exported} of {n_features} features "
                 f"(simplify_m {simplify_m:g})"

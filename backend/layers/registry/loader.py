@@ -89,6 +89,7 @@ def _validate_entry(
     # After schema validation so existing R2 messages stay intact.
     _check_serve_budget(entry_id, data)
     _check_ladder_fields(entry_id, data)
+    _check_dissolve_by(entry_id, data)
 
 
 # DZ-HEATMAP PR-B0: units that are tile sources only and never join the
@@ -107,6 +108,20 @@ def _check_serve_budget(entry_id: str, data: dict[str, Any]) -> None:
         raise RegistryError(
             f"REGISTRY: {entry_id}: $.serve.max_mb: {max_mb} exceeds "
             f"tiles.budget.total_mb {total_mb}"
+        )
+
+
+def _check_dissolve_by(entry_id: str, data: dict[str, Any]) -> None:
+    """If tiles.dissolve_by is set, it must appear in keep_fields."""
+    tiles = data.get("tiles") or {}
+    dissolve_by = tiles.get("dissolve_by")
+    if dissolve_by is None:
+        return
+    keep = data.get("keep_fields") or []
+    if dissolve_by not in keep:
+        raise RegistryError(
+            f"REGISTRY: {entry_id}: $.tiles.dissolve_by: {dissolve_by!r} "
+            f"must be listed in keep_fields"
         )
 
 

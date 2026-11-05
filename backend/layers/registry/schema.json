@@ -288,6 +288,10 @@
         "no_tiny_polygon_reduction": {
           "type": "boolean"
         },
+        "dissolve_by": {
+          "type": "string",
+          "minLength": 1
+        },
         "max_culled": {
           "type": "integer",
           "minimum": 0

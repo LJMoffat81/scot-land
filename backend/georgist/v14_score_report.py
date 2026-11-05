@@ -844,9 +844,30 @@ def write_holdout_lock(
     report_sha256: str | None = None,
     lock_path: Path | None = None,
     frozen_set: Mapping[str, str] | None = None,
+    outputs: Mapping[str, Path] | None = None,
+    score_year: int | None = None,
 ) -> Path:
+    """Write the lock once. ``outputs`` (name -> path) is hashed here, in the same
+    write, into ``outputs_sha256``. No other function adds that key to a lock.
+    ``score_year`` (e.g. 2024) records score_<year>: true in this same write.
+    Never edits an existing lock: refuses if the path already exists."""
     path = holdout_lock_path(score_dir, lock_path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_file():
+        raise HoldoutLockError(
+            "LOCK-OUTPUTS: REFUSED: lock: expected absent, got present"
+        )
+    outputs_sha256 = None
+    if outputs is not None:
+        if not outputs:
+            raise HoldoutLockError("LOCK-OUTPUTS: REFUSED: outputs: expected non-empty, got empty")
+        outputs_sha256 = {}
+        for name in sorted(outputs):
+            if not Path(outputs[name]).is_file():
+                raise HoldoutLockError(f"LOCK-OUTPUTS: REFUSED: output {name}: expected file, got absent")
+            outputs_sha256[name] = sha256_file(Path(outputs[name]))
+        if report_sha256 and report_sha256 not in outputs_sha256.values():
+            raise HoldoutLockError("LOCK-OUTPUTS: REFUSED: outputs: expected report, got absent")
     payload = {
         "inputs_sha256": inputs_sha256,
         "commit": require_commit_sha(commit),
@@ -858,7 +879,62 @@ def write_holdout_lock(
         payload["frozen_set_sha256"] = frozen_set_lock_hash(members)
     if report_sha256:
         payload["report_sha256"] = report_sha256
+    if outputs_sha256 is not None:
+        payload["outputs_sha256"] = outputs_sha256
+    if score_year is not None:
+        payload[f"score_{int(score_year)}"] = True
     path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+    return path
+
+
+def score_2024_lock_path(holdout_lock: Path, score_lock_path: Path | None = None) -> Path:
+    """Distinct per-year lock beside the holdout lock. Never the holdout path itself."""
+    if score_lock_path is not None:
+        path = Path(score_lock_path)
+    else:
+        path = Path(holdout_lock).with_name("score_2024.lock")
+    if path.resolve() == Path(holdout_lock).resolve():
+        raise HoldoutLockError(
+            "LOCK-OUTPUTS: REFUSED: score_2024 lock: expected distinct from holdout, got same path"
+        )
+    return path
+
+
+def score_2024_tombstone_path(
+    holdout_lock: Path, score_lock_path: Path | None = None
+) -> Path:
+    """Distinct score-once tombstone beside the final score_2024 lock.
+
+    Separate from the holdout lock and from the final lock. The heat-map
+    consumer never reads this file; only the final lock with outputs_sha256
+    is served. Crash recovery is a logged, human-approved incident, never
+    automatic.
+    """
+    score_lock = score_2024_lock_path(holdout_lock, score_lock_path)
+    path = score_lock.with_suffix(".tombstone")
+    resolved = path.resolve()
+    if resolved == Path(holdout_lock).resolve() or resolved == score_lock.resolve():
+        raise HoldoutLockError(
+            "LOCK-OUTPUTS: REFUSED: score_2024 tombstone: expected distinct, got same path"
+        )
+    return path
+
+
+def write_score_2024_tombstone(path: Path) -> Path:
+    """Atomically create the score-once tombstone with O_EXCL. Never overwrites."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = (json.dumps({"score_2024_started": True}, sort_keys=True) + "\n").encode(
+        "utf-8"
+    )
+    try:
+        fd = os.open(str(path), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
+    except FileExistsError as exc:
+        raise HoldoutLockError("second 2024 run refused") from exc
+    try:
+        os.write(fd, payload)
+    finally:
+        os.close(fd)
     return path
 
 
@@ -866,23 +942,40 @@ def assert_2024_allowed(
     score_dir: Path | None = None,
     *,
     lock_path: Path | None = None,
+    score_lock_path: Path | None = None,
     inputs_sha256: str | None = None,
     years: Sequence[int] | None = None,
 ) -> None:
-    """The 2024 entry point is score-once and refuses a bad lock or year."""
+    """The 2024 entry point is score-once. The holdout lock is read-only.
+
+    Second-run authority is the score_2024 lock OR the score_2024 tombstone
+    existing (never mark_score_2024). A crash after the tombstone still
+    refuses; recovery is a logged, human-approved incident, never automatic.
+    """
     if score_dir is None and lock_path is None:
         raise HoldoutLockError(missing_lock_message(Path("holdout_2023.lock")))
     path = holdout_lock_path(score_dir or Path("."), lock_path)
     if not path.is_file():
         raise HoldoutLockError(missing_lock_message(path))
     payload = json.loads(path.read_text(encoding="utf-8"))
-    if payload.get("score_2024") is True:
+    # Second-run authority: final lock or tombstone. Never the holdout file.
+    score_lock = score_2024_lock_path(path, score_lock_path)
+    tombstone = score_2024_tombstone_path(path, score_lock_path)
+    if score_lock.is_file() or tombstone.is_file():
         raise HoldoutLockError("second 2024 run refused")
     if inputs_sha256 is not None and payload.get("inputs_sha256") != inputs_sha256:
         raise HoldoutLockError("2024 run refused: inputs sha differs")
     if years is not None and (not years or any(int(year) != 2024 for year in years)):
         raise HoldoutLockError("2024 run refused: input year is not 2024")
 
+
+
+def emit_dz_status(path: Path, *args, **kwargs) -> None:
+    """HOOK for DZ-STATUS-EMIT. This PR has no converter; always refuses.
+    Must never write a half-format status file."""
+    raise HoldoutLockError(
+        "LOCK-OUTPUTS: REFUSED: --dz-status-out: DZ-STATUS-EMIT not in this PR"
+    )
 
 def mark_score_2024(lock_path: Path) -> None:
     """Record that the 2024 entry point has been entered. The write is atomic."""

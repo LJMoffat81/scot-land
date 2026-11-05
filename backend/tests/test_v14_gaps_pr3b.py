@@ -1162,7 +1162,12 @@ def test_b6_year_flag(
 def test_score_2024_crash_still_refuses_second_run(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """SYNTHETIC. A crash during scoring still blocks a second --score-2024 run."""
+    """SYNTHETIC. A crash during scoring still blocks a second --score-2024 run.
+
+    The tombstone is written (O_EXCL) before scoring; the final lock is not.
+    The holdout lock is untouched. Recovery is a logged, human-approved
+    incident, never automatic.
+    """
     files = _frozen_files(tmp_path)
     monkeypatch.setitem(MERGE_PINS, "merge_map", sha256_file(files["merge_map"]))
     members = frozen_set_members(files)
@@ -1181,6 +1186,7 @@ def test_score_2024_crash_still_refuses_second_run(
         + "\n",
         encoding="utf-8",
     )
+    before = lock.read_bytes()
     checks = tmp_path / "checks.json"
     checks.write_text('{"label": "SYNTHETIC", "primary_zones": [], "secondary_zones": []}\n', encoding="utf-8")
     year_file = tmp_path / "year.csv"
@@ -1206,10 +1212,14 @@ def test_score_2024_crash_still_refuses_second_run(
     ]
     assert score_main(command) == 1
     assert calls["n"] == 1
-    assert json.loads(lock.read_text(encoding="utf-8")).get("score_2024") is True
+    assert lock.read_bytes() == before
+    assert "score_2024" not in json.loads(before)
+    assert not lock.with_name("score_2024.lock").exists()
+    assert lock.with_name("score_2024.tombstone").is_file()
     assert score_main(command) == 1
     assert "second 2024 run refused" in capsys.readouterr().err
     assert calls["n"] == 1
+
 
 
 def test_mark_score_2024_removes_tmp_when_replace_fails(

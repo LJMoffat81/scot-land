@@ -3,6 +3,7 @@
 # the status file is valid and covers exactly the pinned key set for its vintage; the
 # estimate_year gate record (rerun_v14_score report) exists and is PASS; the locked run's
 # lock (write_holdout_lock JSON) ties that report and lists the status file sha256.
+# lock_sha256 pins the lock bytes; null until the switch-on PR.
 # estimate_year 2023 is never served. Turning on is a separate one-line PR.
 dz_heatmap:
   enabled: false
@@ -11,7 +12,8 @@ dz_heatmap:
   estimate_year: 2024
   status_path: data/processed/dz_heatmap/dz_status_2024.json
   gate_record_path: data/processed/dz_heatmap/score_2024_report.json
-  lock_path: data/processed/dz_heatmap/holdout_2023.lock
+  lock_path: data/processed/dz_heatmap/score_2024.lock
+  lock_sha256: null  # set in the switch-on PR; null keeps serving refused
   key_title: "Estimate status"
   categories:
     - id: estimated

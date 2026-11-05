@@ -498,6 +498,8 @@ def test_lock_path_is_shared_and_2024_refuses_closed(
             str(early),
             "--lock-path",
             str(year_lock),
+            "--score-lock-path",
+            str(tmp_path / "year_score_2024.lock"),
             *frozen_flags,
         ]
     ) == 1

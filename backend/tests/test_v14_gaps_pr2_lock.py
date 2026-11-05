@@ -366,7 +366,11 @@ def test_r4_year_b6_source_change_not_lock(
         lock_copy.write_bytes(original_lock)
         paths["lock"] = lock_copy
         out = tmp_path / f"score_{key}" / "report.json"
-        assert score_main(_args(paths, out, holdout=False, score=True)) == 0
+        score_lock = tmp_path / f"score_2024_{key}.lock"
+        assert score_main(
+            _args(paths, out, holdout=False, score=True)
+            + ["--score-lock-path", str(score_lock)]
+        ) == 0
         err = capsys.readouterr().err
         assert "SCORE_2024: REFUSED: frozen_set" not in err
         assert _hash(lock_copy) == baseline

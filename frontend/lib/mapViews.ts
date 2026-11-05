@@ -84,6 +84,9 @@ export const WHO_HOLDS_GAP_LARGE_HOLDINGS =
 export const IDLE_LAND_SOURCE_LINE =
   "Scottish Government, Scottish Vacant and Derelict Land Survey 2025 (published September 2026); OS Boundary-Line, 2026";
 
+export const CARBON_LAND_SOURCE_LINE =
+  "NatureScot, Carbon and Peatland 2016 (published June 2016); OS Boundary-Line, 2026";
+
 export const MAP_VIEW_PRESETS: readonly MapViewPreset[] = [
   {
     id: "access-to-services",
@@ -133,6 +136,26 @@ export const MAP_VIEW_PRESETS: readonly MapViewPreset[] = [
       "Years recorded derelict on the map: the survey records when each site was first identified, but this view does not colour long-term derelict land separately.",
       "Loch Lomond and the Trossachs National Park: seven sites and seven hectares sit outside the 32 council totals.",
       "Five councils sent no 2025 return, so their latest figures are shown: 2022 for Orkney Islands, and 2024 for Clackmannanshire, Falkirk, Inverclyde and West Lothian.",
+    ],
+  },
+  {
+    id: "carbon-and-land",
+    title: "Carbon and land",
+    surface: "councils",
+    overlays: [],
+    finding:
+      "An official map shows where carbon-rich soils, deep peat and priority peatland habitat are likely to occur.",
+    sourceLine: CARBON_LAND_SOURCE_LINE,
+    doesNotShow: "named owners, a carbon price, or a map of legal title.",
+    question: "Q6",
+    takeaway:
+      "Scotland's peat soils hold a large store of carbon. The Scottish Land Commission has said more work is needed before any carbon land tax, and advised against one on its own.",
+    gaps: [
+      "Hectares of deep peat and priority peatland habitat by data zone: the official map exists, but this view does not count those hectares.",
+      "A painted map of the 2016 carbon and peatland classes: the official dataset is not loaded onto this map.",
+      "Who holds peatland: this view does not show owners.",
+      "Greenhouse gas emissions from peatland by council or data zone: official statistics are published as national totals.",
+      "Woodland carbon: this view covers peat and carbon-rich soils, not woodland.",
     ],
   },
 ];
@@ -214,7 +237,8 @@ export function assertViewPresets(
     if (
       !SOURCE_LINE_RE.test(view.sourceLine) &&
       view.sourceLine !== WHO_HOLDS_SOURCE_LINE &&
-      view.sourceLine !== IDLE_LAND_SOURCE_LINE
+      view.sourceLine !== IDLE_LAND_SOURCE_LINE &&
+      view.sourceLine !== CARBON_LAND_SOURCE_LINE
     ) {
       fail(id, "sourceLine must read 'Source, year'");
     }

@@ -582,6 +582,7 @@ _M5_WHO_HOLDS_FRONTEND_ALLOW = frozenset(
         "frontend/e2e/ci/m4-story-views.spec.ts",
         "frontend/e2e/ci/m5-who-holds.spec.ts",
         "frontend/e2e/ci/m2-idle-land.spec.ts",
+        "frontend/e2e/ci/m6-carbon.spec.ts",
         "frontend/e2e/ci/views-1a.spec.ts",
         "frontend/e2e/ci/layers-card-1.spec.ts",
         "frontend/e2e/ci/layers-nav-1.spec.ts",

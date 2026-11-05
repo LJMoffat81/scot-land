@@ -383,7 +383,7 @@ def test_b16_registry_option_only_on_declaring_layers() -> None:
     """Honest scope: the keep_all and simplify profiles already pass
     --no-tiny-polygon-reduction (tiles/profiles.py); the registry option
     tiles.no_tiny_polygon_reduction only adds it for other profiles, and only
-    sepa-flood (coalesce) declares it."""
+    sepa-flood and carbon-peatland (coalesce) declare it."""
     from tiles.profiles import tippecanoe_flags
 
     for prof in ("keep_all", "simplify"):
@@ -395,7 +395,7 @@ def test_b16_registry_option_only_on_declaring_layers() -> None:
         for lid, e in load_registry(REGISTRY_DIR).items()
         if (e.raw.get("tiles") or {}).get("no_tiny_polygon_reduction")
     }
-    assert declared == {"sepa-flood"}
+    assert declared == {"carbon-peatland", "sepa-flood"}
     src = (REPO / "backend" / "tiles" / "build.py").read_text(encoding="utf-8")
     assert src.count('"--no-tiny-polygon-reduction"') == 1
     assert '(raw.get("tiles") or {}).get("no_tiny_polygon_reduction", False)' in src

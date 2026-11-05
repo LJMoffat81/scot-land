@@ -37,6 +37,7 @@ BATCH_A_IDS = (
 ARCH3_FIX_IDS = BATCH_A_IDS + ("councils", "settlements-2022")
 
 EXPECTED_UNGATED_PMTILES = [
+    "carbon-peatland",
     "ces-aquaculture",
     "councils",
     "crown-estate-leases",
@@ -89,7 +90,7 @@ def test_t1_build_all_selects_ungated_pmtiles(monkeypatch: pytest.MonkeyPatch) -
     ids = build_all()
     assert ids == EXPECTED_UNGATED_PMTILES
     assert built == EXPECTED_UNGATED_PMTILES
-    assert len(ids) == 20
+    assert len(ids) == 21
     for lid in ARCH3_FIX_IDS:
         assert lid in ids
 

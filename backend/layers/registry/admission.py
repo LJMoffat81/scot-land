@@ -12,7 +12,7 @@ from typing import Any, Mapping
 from layers.registry.loader import LayerEntry, RegistryError
 
 CONTEXT_CAP = 6
-NON_COMMERCIAL_LICENCES = frozenset({"NSTA-OGL"})
+NON_COMMERCIAL_LICENCES = frozenset({"NSTA-OGL", "NCGL"})
 SUMMING_METHODS = frozenset({"sum", "area_weighted", "pop_weighted"})
 # Layers on main before M1 that may carry ``admission_gaps``. Literal ids, no
 # globs; a new layer must pass the test in full. Emptied by M1-VINTAGES: every

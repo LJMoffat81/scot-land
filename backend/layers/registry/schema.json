@@ -62,7 +62,7 @@
     "default_on": { "type": "boolean" },
     "licence": {
       "type": "string",
-      "enum": ["OGL-3.0", "NSTA-OGL", "ODbL-1.0", "CC-BY-4.0"]
+      "enum": ["OGL-3.0", "NSTA-OGL", "ODbL-1.0", "CC-BY-4.0", "NCGL"]
     },
     "attribution": { "type": "string", "minLength": 1 },
     "source": {

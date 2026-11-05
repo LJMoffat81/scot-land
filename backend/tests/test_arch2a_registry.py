@@ -218,6 +218,7 @@ def test_r2_15_committed_tiled_entries():
         if (e.raw.get("serve") or {}).get("mode") == "pmtiles"
     )
     expected = [
+        "carbon-peatland",
         "ces-aquaculture",
         "councils",
         "crown-estate-leases",

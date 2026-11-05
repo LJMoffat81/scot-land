@@ -1,0 +1,55 @@
+id: carbon-peatland
+title: Carbon and peatland 2016
+geography: scotland
+clip: land
+clip_keep_all: false
+unit: none
+licence: NCGL
+non_commercial: true
+vintage: "Carbon and Peatland 2016 (published 2016-06-29)"
+attribution: >-
+  © SNH and JHI. Available under a Non-Commercial Government Licence.
+source:
+  type: postgis_table
+  table: carbon_peatland
+  id_field: feature_id
+  where: "TRUE"
+geometry: polygon
+# Zip is 226.5 MiB (HEAD 237,469,970 bytes). 300 covers the download; raise
+# to 600 like NFI if the loader meters uncompressed size on first ingest.
+refresh: {cron: "0 5 1 1 *", max_mb: 300, max_s: 600}
+serve: {mode: pmtiles, simplify_m: 10, precision_dp: 6, max_mb: 40}
+# max 11: data is simplified to serve.simplify_m 10 m; z11 quantises to ~2.7 m
+# (half-grid 1.35 m <= simplify_m/5), so z12-14 add bytes, not detail.
+# Dissolve by importance before tiling (WFS ~439,700 features; undissolved
+# may breach the 60 MB serve.max_mb cap). Frontend layer 8 overzooms to z20.
+zoom: {min: 0, max: 11, low_zoom: coalesce}
+style:
+  fill: {fill-color: "#c3b369", fill-opacity: 0.65}
+  line: {line-color: "#575d6d", line-width: 0.6, line-opacity: 0.4}
+legend:
+  # Short registry labels only. Full class keys S73–S81 live in
+  # M6B-PAINT-PARKED.md and must not appear in this tiles PR.
+  - {label: "Class 1", color: "#fee838"}
+  - {label: "Class 2", color: "#c3b369"}
+  - {label: "Class 3", color: "#a59c74"}
+  - {label: "Class 4", color: "#8a8678"}
+  - {label: "Class 5", color: "#707173"}
+  - {label: "Class 0", color: "#3b496c"}
+  - {label: "Class -1", color: "#123570"}
+  - {label: "Class -2", color: "#00224e"}
+lineage: {derived_from: [], method: source, roll_up_to: [dz2022, council, scotland]}
+keep_fields: [importance]
+# Provisional, post-dissolve. Replace with measured + ~25% after the first
+# national build on Laurie's PC.
+tiles:
+  no_tiny_polygon_reduction: true
+  budget:
+    total_mb: 50
+    tile_kb: 500
+    z0_7_mb: 5.0
+
+# M6b admission (charter v2 §4). NCGL exception; not a value layer.
+policy_question: [Q6]
+shows: natural_capital
+value_layer: false

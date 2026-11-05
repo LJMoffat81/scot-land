@@ -22,6 +22,7 @@ from layers.registry.loader import RegistryError, load_registry
 REGISTRY = Path(__file__).resolve().parents[1] / "layers" / "registry"
 
 EXPECTED_TAGS = {
+    "carbon-peatland": (["Q6"], "natural_capital"),
     "ces-aquaculture": (["Q5"], "value_capture"),
     "councils": ([], "context"),
     "crown-estate-leases": (["Q5"], "value_capture"),
@@ -159,6 +160,21 @@ def test_a8_ogl_cannot_claim_non_commercial(tmp_path):
     d = _copy(tmp_path)
     _edit(d, "repd", non_commercial=True)
     _fails(d, "ADMISSION: repd: $.non_commercial: licence OGL-3.0 is not non-commercial")
+
+
+@pytest.mark.parametrize("value", [_DROP, False])
+def test_a8b_ncgl_needs_non_commercial(tmp_path, value):
+    d = _copy(tmp_path)
+    _edit(d, "carbon-peatland", non_commercial=value)
+    _fails(
+        d,
+        "ADMISSION: carbon-peatland: $.non_commercial: must be true for licence NCGL",
+    )
+
+
+def test_a8c_ncgl_admitted_when_tagged(tmp_path):
+    d = _copy(tmp_path)
+    check_admission(load_registry(d))
 
 
 # --- A9-A11: value layers, net_of, overlaps_with ------------------------------

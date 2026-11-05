@@ -1,0 +1,5 @@
+b7feeef932bd6cc8917917bd67a2d244040d9672ac98f50bdee8f8d4ca9974c7  community_ownership_councils_2024.csv
+# source: Scottish Government, Community Ownership in Scotland 2024 Dataset (OGL v3.0)
+# https://www.gov.scot/publications/community-ownership-in-scotland-2024/documents/
+# fields: council code, asset count, area hectares only — no names, no postcodes
+# built by grouping official la_s_code and area_ha (no spatial join)

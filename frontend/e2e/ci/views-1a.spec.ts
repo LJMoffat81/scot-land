@@ -62,7 +62,7 @@ test.describe("VIEWS-1a", () => {
       "Choose a view to see one pattern on the map.",
     );
     await expect(page.getByTestId("layers-all-heading")).toHaveText("All layers");
-    await expect(page.locator('[data-testid^="map-view-"][aria-pressed]')).toHaveCount(1);
+    await expect(page.locator('[data-testid^="map-view-"][aria-pressed]')).toHaveCount(MAP_VIEW_PRESETS.length);
     await expect(page.getByTestId("map-view-access-to-services")).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByTestId("map-view-access-to-services")).toHaveText("Access to services");
     await expect(page.getByTestId("map-view-finding")).toHaveText(ACCESS_FINDING);

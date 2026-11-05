@@ -20,6 +20,16 @@ import {
   type MapDrawerLayer,
 } from "@/lib/mapLayerGroups";
 import { popDensityLegendProps } from "@/lib/popDensityLegend";
+import { getApiBaseUrl } from "@/lib/api";
+import {
+  fetchWhoHolds,
+  formatWhoHoldsHectares,
+  WHO_HOLDS_COL_ASSETS,
+  WHO_HOLDS_COL_COUNCIL,
+  WHO_HOLDS_COL_HECTARES,
+  WHO_HOLDS_TABLE_HEADING,
+  type WhoHoldsPayload,
+} from "@/lib/whoHolds";
 import {
   ALL_LAYERS_HEADING,
   availableViews,
@@ -509,6 +519,43 @@ export default function MapLayersDrawer({
   );
 }
 
+
+function WhoHoldsTable() {
+  const [payload, setPayload] = useState<WhoHoldsPayload | null>(null);
+  useEffect(() => {
+    const ac = new AbortController();
+    void fetchWhoHolds(getApiBaseUrl(), ac.signal).then(setPayload);
+    return () => ac.abort();
+  }, []);
+  if (!payload) return null;
+  return (
+    <section
+      data-testid="map-view-who-holds-table"
+      aria-label={WHO_HOLDS_TABLE_HEADING}
+    >
+      <p className="layers-nav-header">{WHO_HOLDS_TABLE_HEADING}</p>
+      <table className="map-view-who-holds">
+        <thead>
+          <tr>
+            <th>{WHO_HOLDS_COL_COUNCIL}</th>
+            <th>{WHO_HOLDS_COL_ASSETS}</th>
+            <th>{WHO_HOLDS_COL_HECTARES}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {payload.councils.map((row) => (
+            <tr key={row.code}>
+              <td>{row.name}</td>
+              <td>{row.asset_count}</td>
+              <td>{formatWhoHoldsHectares(row.area_ha)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 function ViewDetail({
   view,
   onClear,
@@ -573,6 +620,7 @@ function ViewDetail({
           </section>
         );
       })}
+      {view.id === "who-holds-scotland" ? <WhoHoldsTable /> : null}
       <div data-testid="map-view-key">
         {viewLayerIds(view).map((id) => {
           const entry = getMapLayer(id);

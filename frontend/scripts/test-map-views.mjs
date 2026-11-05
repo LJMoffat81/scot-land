@@ -16,7 +16,9 @@ await register(pathToFileURL(join(here, "ts-specifier-hook.mjs")).href, {
 });
 
 const views = await import(pathToFileURL(join(frontendRoot, "lib/mapViews.ts")).href);
+const whoHolds = await import(pathToFileURL(join(frontendRoot, "lib/whoHolds.ts")).href);
 const reg = await import(pathToFileURL(join(frontendRoot, "lib/mapLayerRegistry.ts")).href);
+const legend = await import(pathToFileURL(join(frontendRoot, "lib/landWorthCividis.mjs")).href);
 const url = await import(pathToFileURL(join(frontendRoot, "lib/mapUrlState.ts")).href);
 const groups = await import(pathToFileURL(join(frontendRoot, "lib/mapLayerGroups.ts")).href);
 
@@ -54,7 +56,7 @@ const SYN_B = { ...SYN_A, id: "syn-b", title: "Synthetic B", surface: "designati
 const SYN = [SYN_A, SYN_B];
 const BANNED_PHRASE = /value comes from location/i;
 
-// T1 shipped presets are valid and exact: one view only.
+// T1 shipped presets are valid and exact (access-to-services plus M5).
 t("T1", () => {
   assertViewPresets();
   assert.deepEqual(
@@ -69,6 +71,27 @@ t("T1", () => {
           "Travel times to a GP, shops, schools and a post office vary widely between Scotland's local areas.",
         sourceLine: "Scottish Government SIMD, 2020; OS Boundary-Line, 2026",
         doesNotShow: "land values, or travel times from any single home.",
+      },
+      {
+        id: "who-holds-scotland",
+        title: "Who holds Scotland",
+        surface: "who_holds",
+        overlays: ["councils"],
+        finding:
+          "Community-owned land is recorded by council in the official Scottish Government survey.",
+        sourceLine:
+          "Scottish Government, Community Ownership in Scotland 2024 (published November 2025); OS Boundary-Line, 2026",
+        doesNotShow: "named owners, holdings below council level, or a map of legal title.",
+        question: "Q4",
+        takeaway:
+          "Public records show community-owned land by council, and they do not say who holds most of the rest of Scotland's title. Georgists argue that whoever holds that title collects what the land itself earns.",
+        gaps: [
+          "Large land holdings of 1,000 hectares or more: no official open dataset exists, and the Land Reform (Scotland) Act 2025 duties are not in force.",
+          "A complete picture of who holds title: the Land Register is not finished, and Registers of Scotland INSPIRE parcels carry no owner names.",
+          "Public sector and Crown land: no verified open dataset is published.",
+          "Crofting map extents: the Crofting Commission publishes lists, but the map polygons are not openly redistributable.",
+          "Some community-owned assets have no published area.",
+        ],
       },
     ],
   );
@@ -192,7 +215,7 @@ t("T7", () => {
   assert.deepEqual(availableViews(new Set(), SYN).map((v) => v.id), ["syn-a", "syn-b"]);
   assert.deepEqual(availableViews(new Set(["4"]), SYN).map((v) => v.id), ["syn-a"]);
   assert.deepEqual(availableViews(new Set(["councils"]), SYN).map((v) => v.id), ["syn-b"]);
-  assert.deepEqual(availableViews(new Set(["access_services"])).map((v) => v.id), []);
+  assert.deepEqual(availableViews(new Set(["access_services"])).map((v) => v.id), ["who-holds-scotland"]);
   const fake = (id) => ({ ...getMapLayer(id), sourceCaption: id === "4" ? "Scot-LAND model · 2023" : "x" });
   assert.equal(viewIsEstimate(SYN_B, fake), true);
   assert.equal(viewIsEstimate(SYN_A, fake), false);
@@ -308,15 +331,115 @@ t("T12", () => {
   assert.match(takeaway.slice(firstStop), /\bGeorgists argue\b/);
 });
 
-// T13 M4 ships the framework only: no shipped view has a question, takeaway or gaps
-// (M5 adds the first), and no view adds a layer (context cap stays 6/6).
+// T13 M5 is the first shipped view with explainer fields; others stay unset.
 t("T13", () => {
+  const m5 = MAP_VIEW_PRESETS.find((v) => v.id === "who-holds-scotland");
+  assert.ok(m5, "who-holds-scotland missing");
+  assert.equal(m5.question, "Q4");
+  assert.equal(m5.surface, "who_holds");
+  assert.deepEqual(views.viewExplainerRows(m5), [
+    { kind: "question", text: "Policy question: Who holds the land" },
+    {
+      kind: "takeaway",
+      heading: "What this could mean",
+      text: m5.takeaway,
+    },
+    { kind: "gaps", heading: "What we can't see", items: [...m5.gaps] },
+  ]);
+  const firstStop = m5.takeaway.indexOf(".");
+  assert.ok(firstStop > 0 && !/\bGeorgists argue\b/.test(m5.takeaway.slice(0, firstStop)));
+  assert.match(m5.takeaway.slice(firstStop), /\bGeorgists argue\b/);
   for (const v of MAP_VIEW_PRESETS) {
+    if (v.id === "who-holds-scotland") continue;
     assert.equal(v.question, undefined, `${v.id} question`);
     assert.equal(v.takeaway, undefined, `${v.id} takeaway`);
     assert.equal(v.gaps, undefined, `${v.id} gaps`);
     assert.deepEqual(views.viewExplainerRows(v), []);
   }
+});
+
+
+// T14 M5 payload parser: isolated refusals, exact messages; synthetic fixtures only.
+t("T14", () => {
+  const { parseWhoHoldsPayload, WhoHoldsRefused, syntheticWhoHoldsPayload, WHO_HOLDS_BANDS } = whoHolds;
+  const ok = () => parseWhoHoldsPayload(syntheticWhoHoldsPayload());
+  ok();
+  const bad = (raw, reason) => {
+    assert.throws(() => parseWhoHoldsPayload(raw), (e) => {
+      return e instanceof WhoHoldsRefused && e.message === `WHO-HOLDS: REFUSED: ${reason}`;
+    });
+  };
+  bad([], "payload: expected object");
+  bad(syntheticWhoHoldsPayload({ vintage: "2024\u00a3" }), "payload contains a pound sign");
+  const gbp = syntheticWhoHoldsPayload();
+  gbp.source = { ...gbp.source, licence: "Open Government Licence with GBP note" };
+  bad(gbp, "payload contains a pound sign");
+  bad(syntheticWhoHoldsPayload({ group_name: "Trust" }), "extract must not contain owner names");
+  bad(syntheticWhoHoldsPayload({ extra: 1 }), "payload keys do not match contract");
+  const noCouncils = syntheticWhoHoldsPayload();
+  delete noCouncils.councils;
+  bad(noCouncils, "payload keys do not match contract");
+  bad(syntheticWhoHoldsPayload({ layer_id: "community_ownership" }), "layer_id: expected who_holds");
+  bad(syntheticWhoHoldsPayload({ level: "data_zone" }), "level: expected council");
+  bad(syntheticWhoHoldsPayload({ vintage: "2025" }), "vintage: expected 2024");
+  const src = syntheticWhoHoldsPayload();
+  src.source = { ...src.source, note: "x" };
+  bad(src, "source keys do not match contract");
+  const empty = syntheticWhoHoldsPayload({ councils: [] });
+  bad(empty, "councils: expected 32 councils");
+  const one = syntheticWhoHoldsPayload();
+  one.councils = [one.councils[0]];
+  bad(one, "councils: expected 32 councils");
+  const named = syntheticWhoHoldsPayload();
+  named.councils = named.councils.map((row, i) => (i === 0 ? { ...row, postcode: "EH1 1YZ" } : row));
+  bad(named, "extract must not contain owner names");
+  const extraRow = syntheticWhoHoldsPayload();
+  extraRow.councils = extraRow.councils.map((row, i) => (i === 0 ? { ...row, owner: "A" } : row));
+  bad(extraRow, "extract must not contain owner names");
+  const badCode = syntheticWhoHoldsPayload();
+  badCode.councils = badCode.councils.map((row, i) => (i === 0 ? { ...row, code: "E12000001" } : row));
+  bad(badCode, "council code: expected official council");
+  const dup = syntheticWhoHoldsPayload();
+  dup.councils = dup.councils.map((row, i) => (i === 1 ? { ...row, code: dup.councils[0].code } : row));
+  bad(dup, `council ${dup.councils[0].code}: listed twice`);
+  const band = syntheticWhoHoldsPayload();
+  band.councils = band.councils.map((row, i) => (i === 0 ? { ...row, band: "secret" } : row));
+  bad(band, `council ${band.councils[0].code}: unknown band`);
+  assert.equal(WHO_HOLDS_BANDS.length, 4);
+});
+
+// T15 M5 hectare display and cividis steps (imported ramp, not a hard-coded copy).
+t("T15", () => {
+  const {
+    formatWhoHoldsHectares,
+    whoHoldsCividisColors,
+    WHO_HOLDS_BANDS,
+    WHO_HOLDS_HA_LESS_THAN_ONE,
+  } = whoHolds;
+  assert.equal(formatWhoHoldsHectares(0), "0");
+  assert.equal(formatWhoHoldsHectares(0.4), WHO_HOLDS_HA_LESS_THAN_ONE);
+  assert.equal(formatWhoHoldsHectares(0.49), WHO_HOLDS_HA_LESS_THAN_ONE);
+  assert.equal(formatWhoHoldsHectares(0.5), "1");
+  assert.equal(formatWhoHoldsHectares(1), "1");
+  assert.equal(formatWhoHoldsHectares(1234.6), "1,235");
+  assert.equal(formatWhoHoldsHectares(999.5), "1,000");
+  assert.equal(formatWhoHoldsHectares(1000), "1,000");
+  assert.equal(WHO_HOLDS_HA_LESS_THAN_ONE, "Less than 1");
+  const colors = whoHoldsCividisColors();
+  assert.equal(colors.length, 4);
+  assert.equal(colors[0], legend.LAND_WORTH_CIVIDIS[legend.LAND_WORTH_CIVIDIS.length - 1]);
+  assert.equal(colors[3], legend.LAND_WORTH_CIVIDIS[0]);
+  const last = legend.LAND_WORTH_CIVIDIS.length - 1;
+  const expected = [0, 1, 2, 3].map(
+    (i) => legend.LAND_WORTH_CIVIDIS[last - Math.round((i * last) / 3)],
+  );
+  assert.deepEqual(colors, expected);
+  assert.deepEqual(WHO_HOLDS_BANDS.map((b) => b.color), expected);
+  const whoHoldsLayer = reg.MAP_LAYER_REGISTRY.find((e) => e.id === "who_holds");
+  assert.deepEqual(
+    whoHoldsLayer.classes.map((c) => c.color),
+    expected,
+  );
 });
 
 console.log(`test-map-views: ${n} groups passed`);

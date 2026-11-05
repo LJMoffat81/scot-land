@@ -333,8 +333,8 @@ def test_v11_publication_rules_and_check_router():
 
 
 # P-T5 named exceptions (exact path, no prefixes). Ruling 2 Nov 2026, renamed 4 Nov:
-# DZ-HEATMAP PR-A only (status layer). Any other new public route still fails P-T5.
-P_T5_NAMED_EXCEPTIONS = frozenset({"platform/dz-status"})
+# DZ-HEATMAP PR-A (status layer) and M5 who-holds (council facts). Any other new public route still fails P-T5.
+P_T5_NAMED_EXCEPTIONS = frozenset({"platform/dz-status", "platform/who-holds"})
 
 
 def _p_t5_key_allowed(key: str) -> bool:
@@ -343,13 +343,15 @@ def _p_t5_key_allowed(key: str) -> bool:
 
 
 def test_p_t5_named_exceptions_exact():
-    assert P_T5_NAMED_EXCEPTIONS == frozenset({"platform/dz-status"})
+    assert P_T5_NAMED_EXCEPTIONS == frozenset({"platform/dz-status", "platform/who-holds"})
 
 
 @pytest.mark.parametrize("key,allowed", [
     ("platform/dz-status", True),
+    ("platform/who-holds", True),
     ("v1/tiles/{layer_id}/{version}/{z}/{x}/{y}.pbf", True),
     ("platform/dz-status-extra", False),
+    ("platform/who-holds-extra", False),
     ("platform/dz-statu", False),
     ("platform/other", False),
     ("layers/open/new-layer", False),

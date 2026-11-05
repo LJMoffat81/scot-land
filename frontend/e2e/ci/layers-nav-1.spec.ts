@@ -21,6 +21,7 @@ registerOpenFreeMapFontStub();
 const HEADER_ORDER = [
   "LAND",
   "Sites",
+  "Who holds the land",
   "Natural resources",
   "Limits on use",
   "PLACES AND BOUNDARIES",
@@ -42,7 +43,7 @@ for (const viewport of [
 
       await openMap(page);
       await openLayers(page);
-      for (const key of ["land", "resources", "limits", "places"] as const) {
+      for (const key of ["land", "tenure", "resources", "limits", "places"] as const) {
         await ensureLayersGroupOpen(page, key);
       }
 
@@ -54,12 +55,14 @@ for (const viewport of [
         .allInnerTexts();
       expect(order.map((line) => line.trim())).toEqual([...HEADER_ORDER]);
       await expect(page.getByTestId("layers-nav-header")).toHaveCount(2);
-      await expect(page.getByTestId("layers-nav-subgroup")).toHaveCount(3);
+      await expect(page.getByTestId("layers-nav-subgroup")).toHaveCount(4);
       await expect(page.getByTestId("layers-nav-land-subtitle")).toHaveText(
         "Everything nature provides and no one made",
       );
       await expect(page.getByTestId("layers-nature-note")).toHaveCount(0);
-      await expect(page.getByTestId("layers-group-note-tenure")).toHaveCount(0);
+      await expect(page.getByTestId("layers-group-note-tenure")).toHaveText(
+        "Who holds land decides who collects its rent.",
+      );
       await expect(page.getByTestId("layers-group-note-limits")).toHaveText(
         LIMITS_ON_USE_NOTE,
       );

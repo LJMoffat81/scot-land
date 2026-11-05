@@ -29,18 +29,8 @@ export const LAND_WORTH_LEGEND_PALER = "Paler = less sure";
  * Colour-blind-safe cividis samples (matplotlib), lower → higher.
  * Used for Land worth legend bands only — never labelled with £.
  */
-export const LAND_WORTH_CIVIDIS: readonly string[] = [
-  "#00224e",
-  "#123570",
-  "#3b496c",
-  "#575d6d",
-  "#707173",
-  "#8a8678",
-  "#a59c74",
-  "#c3b369",
-  "#e1cc55",
-  "#fee838",
-] as const;
+import { LAND_WORTH_CIVIDIS } from "./landWorthCividis.mjs";
+export { LAND_WORTH_CIVIDIS };
 
 /** Site-count bands — keep in sync with mapLayerRegistry. No site-type classes. */
 export const VDL_LEGEND_SWATCHES: ReadonlyArray<{

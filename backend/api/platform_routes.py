@@ -27,6 +27,8 @@ from layers.open_stats import (
 )
 from layers.ledger import ledger_payload
 from georgist.dz_heatmap import public_status_payload as dz_status_payload
+from layers.who_holds import WhoHoldsError
+from layers.who_holds import public_payload as who_holds_payload
 from georgist.gbp_live import public_settings as gbp_live_public_settings
 from layers.platform import place_context, platform_catalog
 from layers.registers import registers_payload
@@ -873,6 +875,15 @@ def platform_dz_status() -> dict:
     if payload is None:
         raise HTTPException(status_code=404, detail="Not Found")
     return payload
+
+
+@router.get("/platform/who-holds")
+def platform_who_holds() -> dict:
+    """M5 — council-level community ownership; no names, no points, no pound sign."""
+    try:
+        return who_holds_payload()
+    except WhoHoldsError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
 @router.get("/platform/gaps")

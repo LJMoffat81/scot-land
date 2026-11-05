@@ -58,6 +58,7 @@ assert.deepEqual(liveIds, [
   "designations",
   "crofting",
   "who_holds",
+  "idle_land",
   "councils",
   "data_zones",
   "deprivation",

@@ -17,6 +17,7 @@ await register(pathToFileURL(join(here, "ts-specifier-hook.mjs")).href, {
 
 const views = await import(pathToFileURL(join(frontendRoot, "lib/mapViews.ts")).href);
 const whoHolds = await import(pathToFileURL(join(frontendRoot, "lib/whoHolds.ts")).href);
+const idleLand = await import(pathToFileURL(join(frontendRoot, "lib/idleLand.ts")).href);
 const reg = await import(pathToFileURL(join(frontendRoot, "lib/mapLayerRegistry.ts")).href);
 const legend = await import(pathToFileURL(join(frontendRoot, "lib/landWorthCividis.mjs")).href);
 const url = await import(pathToFileURL(join(frontendRoot, "lib/mapUrlState.ts")).href);
@@ -91,6 +92,27 @@ t("T1", () => {
           "Public sector and Crown land: no verified open dataset is published.",
           "Crofting map extents: the Crofting Commission publishes lists, but the map polygons are not openly redistributable.",
           "Some community-owned assets have no published area.",
+        ],
+      },
+      {
+        id: "idle-land",
+        title: "Vacant and derelict land",
+        surface: "idle_land",
+        overlays: ["councils"],
+        finding:
+          "Vacant and derelict land is recorded by council in the official Scottish Government survey.",
+        sourceLine:
+          "Scottish Government, Scottish Vacant and Derelict Land Survey 2025 (published September 2026); OS Boundary-Line, 2026",
+        doesNotShow: "named owners, housing land supply, or a map of legal title.",
+        question: "Q2",
+        takeaway:
+          "This land is recorded as vacant or derelict in the official survey. The Scottish Land Commission has asked whether tax could help bring such land back into use.",
+        gaps: [
+          "Housing land supply: no public map until the Improvement Service confirms the records can be shared.",
+          "A site-by-site picture of who holds vacant or derelict land: this view does not show owners.",
+          "Years recorded derelict on the map: the survey records when each site was first identified, but this view does not colour long-term derelict land separately.",
+          "Loch Lomond and the Trossachs National Park: seven sites and seven hectares sit outside the 32 council totals.",
+          "Five councils sent no 2025 return, so their latest figures are shown: 2022 for Orkney Islands, and 2024 for Clackmannanshire, Falkirk, Inverclyde and West Lothian.",
         ],
       },
     ],
@@ -215,7 +237,7 @@ t("T7", () => {
   assert.deepEqual(availableViews(new Set(), SYN).map((v) => v.id), ["syn-a", "syn-b"]);
   assert.deepEqual(availableViews(new Set(["4"]), SYN).map((v) => v.id), ["syn-a"]);
   assert.deepEqual(availableViews(new Set(["councils"]), SYN).map((v) => v.id), ["syn-b"]);
-  assert.deepEqual(availableViews(new Set(["access_services"])).map((v) => v.id), ["who-holds-scotland"]);
+  assert.deepEqual(availableViews(new Set(["access_services"])).map((v) => v.id), ["who-holds-scotland", "idle-land"]);
   const fake = (id) => ({ ...getMapLayer(id), sourceCaption: id === "4" ? "Scot-LAND model · 2023" : "x" });
   assert.equal(viewIsEstimate(SYN_B, fake), true);
   assert.equal(viewIsEstimate(SYN_A, fake), false);
@@ -349,8 +371,31 @@ t("T13", () => {
   const firstStop = m5.takeaway.indexOf(".");
   assert.ok(firstStop > 0 && !/\bGeorgists argue\b/.test(m5.takeaway.slice(0, firstStop)));
   assert.match(m5.takeaway.slice(firstStop), /\bGeorgists argue\b/);
+  const m2 = MAP_VIEW_PRESETS.find((v) => v.id === "idle-land");
+  assert.ok(m2, "idle-land missing");
+  assert.equal(m2.question, "Q2");
+  assert.equal(m2.surface, "idle_land");
+  assert.deepEqual(views.viewExplainerRows(m2), [
+    { kind: "question", text: "Policy question: Vacant and derelict land" },
+    {
+      kind: "takeaway",
+      heading: "What this could mean",
+      text: m2.takeaway,
+    },
+    { kind: "gaps", heading: "What we can't see", items: [...m2.gaps] },
+  ]);
+  const m2First = m2.takeaway.indexOf(".");
+  assert.ok(m2First > 0);
+  assert.equal(
+    m2.takeaway.slice(0, m2First + 1),
+    "This land is recorded as vacant or derelict in the official survey.",
+  );
+  assert.match(
+    m2.takeaway.slice(m2First),
+    /The Scottish Land Commission has asked whether tax could help bring such land back into use\./,
+  );
   for (const v of MAP_VIEW_PRESETS) {
-    if (v.id === "who-holds-scotland") continue;
+    if (v.id === "who-holds-scotland" || v.id === "idle-land") continue;
     assert.equal(v.question, undefined, `${v.id} question`);
     assert.equal(v.takeaway, undefined, `${v.id} takeaway`);
     assert.equal(v.gaps, undefined, `${v.id} gaps`);
@@ -440,6 +485,127 @@ t("T15", () => {
     whoHoldsLayer.classes.map((c) => c.color),
     expected,
   );
+});
+
+// T16 M2 payload parser: isolated refusals, exact messages; synthetic fixtures only.
+t("T16", () => {
+  const { parseIdleLandPayload, IdleLandRefused, syntheticIdleLandPayload, IDLE_LAND_BANDS } = idleLand;
+  const ok = () => parseIdleLandPayload(syntheticIdleLandPayload());
+  ok();
+  const bad = (raw, reason) => {
+    assert.throws(() => parseIdleLandPayload(raw), (e) => {
+      return e instanceof IdleLandRefused && e.message === `IDLE-LAND: REFUSED: ${reason}`;
+    });
+  };
+  bad([], "payload: expected object");
+  bad(syntheticIdleLandPayload({ vintage: "2025\u00a3" }), "payload contains a pound sign");
+  const gbp = syntheticIdleLandPayload();
+  gbp.source = { ...gbp.source, licence: "Open Government Licence with GBP note" };
+  bad(gbp, "payload contains a pound sign");
+  bad(syntheticIdleLandPayload({ group_name: "Trust" }), "extract must not contain owner names");
+  bad(syntheticIdleLandPayload({ extra: 1 }), "payload keys do not match contract");
+  const noCouncils = syntheticIdleLandPayload();
+  delete noCouncils.councils;
+  bad(noCouncils, "payload keys do not match contract");
+  bad(syntheticIdleLandPayload({ layer_id: "vdl" }), "layer_id: expected idle_land");
+  bad(syntheticIdleLandPayload({ level: "data_zone" }), "level: expected council");
+  bad(syntheticIdleLandPayload({ vintage: "2024" }), "vintage: expected 2025");
+  const src = syntheticIdleLandPayload();
+  src.source = { ...src.source, note: "x" };
+  bad(src, "source keys do not match contract");
+  const empty = syntheticIdleLandPayload({ councils: [] });
+  bad(empty, "councils: expected 32 councils");
+  const one = syntheticIdleLandPayload();
+  one.councils = [one.councils[0]];
+  bad(one, "councils: expected 32 councils");
+  const named = syntheticIdleLandPayload();
+  named.councils = named.councils.map((row, i) => (i === 0 ? { ...row, postcode: "EH1 1YZ" } : row));
+  bad(named, "extract must not contain owner names");
+  const extraRow = syntheticIdleLandPayload();
+  extraRow.councils = extraRow.councils.map((row, i) => (i === 0 ? { ...row, owner: "A" } : row));
+  bad(extraRow, "extract must not contain owner names");
+  const badCode = syntheticIdleLandPayload();
+  badCode.councils = badCode.councils.map((row, i) => (i === 0 ? { ...row, code: "E12000001" } : row));
+  bad(badCode, "council code: expected official council");
+  const dup = syntheticIdleLandPayload();
+  dup.councils = dup.councils.map((row, i) => (i === 1 ? { ...row, code: dup.councils[0].code } : row));
+  bad(dup, `council ${dup.councils[0].code}: listed twice`);
+  const band = syntheticIdleLandPayload();
+  band.councils = band.councils.map((row, i) => (i === 0 ? { ...row, band: "secret" } : row));
+  bad(band, `council ${band.councils[0].code}: unknown band`);
+  assert.equal(IDLE_LAND_BANDS.length, 4);
+});
+
+// T17 M2 hectare display and cividis steps (imported ramp, not a hard-coded copy).
+t("T17", () => {
+  const {
+    formatIdleLandHectares,
+    idleLandCividisColors,
+    IDLE_LAND_BANDS,
+    IDLE_LAND_HA_LESS_THAN_ONE,
+  } = idleLand;
+  assert.equal(formatIdleLandHectares(0), "0");
+  assert.equal(formatIdleLandHectares(0.4), IDLE_LAND_HA_LESS_THAN_ONE);
+  assert.equal(formatIdleLandHectares(0.49), IDLE_LAND_HA_LESS_THAN_ONE);
+  assert.equal(formatIdleLandHectares(0.5), "1");
+  assert.equal(formatIdleLandHectares(1), "1");
+  assert.equal(formatIdleLandHectares(1234.6), "1,235");
+  assert.equal(formatIdleLandHectares(999.5), "1,000");
+  assert.equal(formatIdleLandHectares(1000), "1,000");
+  assert.equal(IDLE_LAND_HA_LESS_THAN_ONE, "Less than 1");
+  const colors = idleLandCividisColors();
+  assert.equal(colors.length, 4);
+  assert.equal(colors[0], legend.LAND_WORTH_CIVIDIS[legend.LAND_WORTH_CIVIDIS.length - 1]);
+  assert.equal(colors[3], legend.LAND_WORTH_CIVIDIS[0]);
+  const last = legend.LAND_WORTH_CIVIDIS.length - 1;
+  const expected = [0, 1, 2, 3].map(
+    (i) => legend.LAND_WORTH_CIVIDIS[last - Math.round((i * last) / 3)],
+  );
+  assert.deepEqual(colors, expected);
+  assert.deepEqual(IDLE_LAND_BANDS.map((b) => b.color), expected);
+  const idleLandLayer = reg.MAP_LAYER_REGISTRY.find((e) => e.id === "idle_land");
+  assert.deepEqual(
+    idleLandLayer.classes.map((c) => c.color),
+    expected,
+  );
+});
+
+// T18 no user-facing "Idle"; S45 title and Q2 title are the same locked words.
+t("T18", () => {
+  const view = MAP_VIEW_PRESETS.find((v) => v.id === "idle-land");
+  assert.ok(view, "idle-land missing");
+  const layer = reg.MAP_LAYER_REGISTRY.find((e) => e.id === "idle_land");
+  assert.ok(layer, "idle_land missing");
+  const visible = [
+    view.title,
+    view.finding,
+    view.sourceLine,
+    view.doesNotShow,
+    view.takeaway,
+    ...(view.gaps ?? []),
+    layer.label,
+    layer.sourceCaption,
+    ...(layer.classes ?? []).map((c) => c.label),
+    idleLand.IDLE_LAND_TABLE_HEADING,
+    idleLand.IDLE_LAND_COL_COUNCIL,
+    idleLand.IDLE_LAND_COL_SITES,
+    idleLand.IDLE_LAND_COL_HECTARES,
+    idleLand.IDLE_LAND_HA_LESS_THAN_ONE,
+    ...idleLand.IDLE_LAND_BANDS.map((b) => b.label),
+  ];
+  for (const text of visible) {
+    assert.equal(typeof text, "string");
+    assert.doesNotMatch(text, /Idle/, `visible string contains Idle: ${text}`);
+  }
+  // Honest clash: S45 and the locked Q2 title are the same words.
+  // The explainer distinguishes them with VIEW_QUESTION_PREFIX, not a made-up title.
+  assert.equal(view.title, "Vacant and derelict land");
+  assert.equal(views.POLICY_QUESTIONS.Q2, "Vacant and derelict land");
+  assert.equal(view.title, views.POLICY_QUESTIONS.Q2);
+  assert.equal(layer.label, view.title);
+  const question = views.viewExplainerRows(view).find((row) => row.kind === "question");
+  assert.equal(question?.text, `${views.VIEW_QUESTION_PREFIX}${views.POLICY_QUESTIONS.Q2}`);
+  assert.equal(question?.text, "Policy question: Vacant and derelict land");
 });
 
 console.log(`test-map-views: ${n} groups passed`);

@@ -1,0 +1,25 @@
+name: External uptime
+
+# EXTERNAL-UPTIME-1: curl the public health URL from outside the home PC.
+# Schedule + manual only. Never pull_request or push, so it is never a PR check.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: external-uptime
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: External uptime (public health)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Curl public health
+        run: bash scripts/ops/uptime-external.sh "https://scot-land.scot/backend/health"

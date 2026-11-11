@@ -136,6 +136,15 @@ Each service in `docker-compose.home.yml` uses the Docker `json-file` log driver
 with `max-size: 10m` and `max-file: 5`. A noisy container therefore keeps at most
 about 50 MB of logs. There are no CPU or memory caps on these services.
 
+## External uptime check
+
+`.github/workflows/uptime.yml` curls `https://scot-land.scot/backend/health` from
+GitHub Actions hourly (`17 * * * *`), so it still fails when the office PC is off,
+asleep or offline. A run passes only on HTTP 200 with `"status":"ok"` in the body.
+GitHub emails the failure to the workflow's owner; there is no other alert.
+Scheduled runs come only from `main`, can be delayed, and GitHub disables the
+schedule after 60 days without repository activity.
+
 ## Post-deploy smoke
 
 After a successful safe deploy, still run the mandatory smoke when practical:

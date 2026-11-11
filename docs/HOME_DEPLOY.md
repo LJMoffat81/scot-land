@@ -130,6 +130,12 @@ Default URL: `https://scot-land.scot/backend/health`. Override with
 `SCOT_LAND_HEALTH_URL` (bash) or `-HealthUrl` (PowerShell). Failures append to
 `.deploy/uptime.log`.
 
+## Container logs
+
+Each service in `docker-compose.home.yml` uses the Docker `json-file` log driver
+with `max-size: 10m` and `max-file: 5`. A noisy container therefore keeps at most
+about 50 MB of logs. There are no CPU or memory caps on these services.
+
 ## Post-deploy smoke
 
 After a successful safe deploy, still run the mandatory smoke when practical:

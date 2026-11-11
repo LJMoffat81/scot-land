@@ -600,6 +600,23 @@ _E2E_FLAKE_1_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# LOOKUP-DEADLINES-1 — place lookup deadlines and retry state.
+_LOOKUP_DEADLINES_1_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/lib/api.ts",
+        "frontend/lib/placeCard.ts",
+        "frontend/components/ScotlandMap.tsx",
+        "frontend/components/PlaceCard.tsx",
+        "frontend/components/PlaceCardStub.tsx",
+        "frontend/components/RetryState.tsx",
+        "frontend/app/globals.css",
+        "frontend/app/map-chrome.css",
+        "frontend/scripts/test-lookup-deadlines-1.mjs",
+        "frontend/e2e/ci/lookup-deadlines-1.spec.ts",
+        "frontend/package.json",
+    ]
+)
+
 
 def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
@@ -630,6 +647,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _M4_STORY_VIEWS_FRONTEND_ALLOW
                 | _M5_WHO_HOLDS_FRONTEND_ALLOW
                 | _E2E_FLAKE_1_FRONTEND_ALLOW
+                | _LOOKUP_DEADLINES_1_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

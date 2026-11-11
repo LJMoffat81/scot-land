@@ -45,6 +45,7 @@
     "test:site-watch-d3-sea-click": "node --experimental-strip-types scripts/test-site-watch-d3-sea-click.mjs",
     "test:prereview-rent-groups": "node --experimental-strip-types scripts/test-prereview-rent-groups.mjs",
     "test:share-fix": "node scripts/test-share-fix.mjs",
+    "test:lookup-deadlines-1": "node --experimental-strip-types --import ./scripts/ts-specifier-register.mjs --test scripts/test-lookup-deadlines-1.mjs",
     "test:logo-fix": "node --experimental-strip-types scripts/test-logo-fix.mjs",
     "test:logo-h3": "node scripts/test-logo-h3.mjs",
     "test:basemap-err-1": "node --experimental-strip-types --import ./scripts/ts-specifier-register.mjs scripts/test-basemap-err-1.mjs",

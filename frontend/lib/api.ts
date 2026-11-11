@@ -11,12 +11,50 @@
 /** HTTP statuses retried for place lookup (SHARE-FIX). */
 export const PLACE_LOOKUP_RETRY_STATUSES = [502, 503, 504] as const;
 
+/** Per-request limit for place / postcode / geocode lookups. */
+export const LOOKUP_TIMEOUT_MS = 20_000;
+
+/** Data-zone point lookup must not hold the place card. */
+export const DATA_ZONE_AT_TIMEOUT_MS = 8_000;
+
+/** Whole submitted lookup chain (search through place card). */
+export const PLACE_LOOKUP_CHAIN_DEADLINE_MS = 30_000;
+
+/**
+ * Default for non-lookup calls. Below Cloudflare's 100s edge and above the
+ * proxy's 90s heavy timeout, so those calls behave as before.
+ */
+export const DEFAULT_API_TIMEOUT_MS = 95_000;
+
+/** Cloudflare origin timeout. Retried separately from 502/503/504. */
+const ORIGIN_TIMEOUT_STATUS = 524;
+
+export type ApiErrorKind =
+  | "timeout"
+  | "origin_timeout"
+  | "network"
+  | "http"
+  | "aborted";
+
 export type ApiFetchInit = RequestInit & {
   /** Retry these HTTP statuses with exponential backoff (place lookup). */
   retryStatuses?: readonly number[];
   /** Attempts including the first try (default 3 when retryStatuses set). */
   maxAttempts?: number;
+  /** Per-attempt deadline. Driven by setTimeout so tests can advance it. */
+  timeoutMs?: number;
 };
+
+/**
+ * Invalid, missing, zero and negative timeouts mean "use the caller's default".
+ * A computed chain remainder of 0 must not be passed here.
+ */
+export function normaliseTimeoutMs(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return fallback;
+  }
+  return Math.floor(value);
+}
 
 export function getApiBaseUrl(): string {
   if (typeof window !== "undefined") {
@@ -43,13 +81,26 @@ export function getApiBaseUrl(): string {
 export class ApiError extends Error {
   status?: number;
   url: string;
+  kind: ApiErrorKind;
 
-  constructor(message: string, url: string, status?: number) {
+  constructor(
+    message: string,
+    url: string,
+    status?: number,
+    kind?: ApiErrorKind,
+  ) {
     super(message);
     this.name = "ApiError";
     this.url = url;
     this.status = status;
+    this.kind = kind ?? (status != null ? "http" : "network");
   }
+}
+
+/** UI classification. Null for anything that is not an ApiError. */
+export function lookupErrorKind(err: unknown): ApiErrorKind | null {
+  if (!(err instanceof ApiError)) return null;
+  return err.kind;
 }
 
 /** Visitor copy after place-lookup retries exhaust (replaces "Service busy"). */
@@ -129,8 +180,49 @@ export function placeLookupBackoffMs(attemptIndex: number): number {
 
 function stripFetchInit(init?: ApiFetchInit): RequestInit {
   if (!init) return {};
-  const { retryStatuses: _r, maxAttempts: _m, ...rest } = init;
+  const {
+    retryStatuses: _r,
+    maxAttempts: _m,
+    timeoutMs: _t,
+    ...rest
+  } = init;
   return rest;
+}
+
+function bindCallerSignal(
+  caller: AbortSignal | null | undefined,
+  internal: AbortController,
+): () => void {
+  if (!caller) return () => {};
+  if (caller.aborted) {
+    internal.abort();
+    return () => {};
+  }
+  const onAbort = () => {
+    internal.abort();
+  };
+  caller.addEventListener("abort", onAbort);
+  return () => {
+    caller.removeEventListener("abort", onAbort);
+  };
+}
+
+function classifyFetchRejection(
+  err: unknown,
+  timedOut: boolean,
+  callerSignal: AbortSignal | null | undefined,
+  url: string,
+): never {
+  if (timedOut) {
+    throw new ApiError(TRY_AGAIN, url, undefined, "timeout");
+  }
+  if (callerSignal?.aborted) {
+    throw new ApiError(TRY_AGAIN, url, undefined, "aborted");
+  }
+  if (err instanceof TypeError) {
+    throw new ApiError(TRY_AGAIN, url, undefined, "network");
+  }
+  throw err;
 }
 
 export async function apiFetch(
@@ -146,13 +238,24 @@ export async function apiFetch(
   const maxAttempts =
     init?.maxAttempts ?? (retryStatuses.size > 0 ? 3 : 1);
   const fetchInit = stripFetchInit(init);
+  const timeoutMs = normaliseTimeoutMs(init?.timeoutMs, DEFAULT_API_TIMEOUT_MS);
+  const callerSignal = fetchInit.signal ?? null;
+  let originTimeoutRetries = 0;
 
   let lastError: unknown;
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const internal = new AbortController();
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      internal.abort();
+    }, timeoutMs);
+    const unlink = bindCallerSignal(callerSignal, internal);
     let response: Response;
     try {
       response = await fetch(url, {
         ...fetchInit,
+        signal: internal.signal,
         // Explicit so rewrites + CORS preflight stay simple
         credentials: fetchInit.credentials ?? "omit",
         headers: {
@@ -160,11 +263,27 @@ export async function apiFetch(
           ...(fetchInit.headers ?? {}),
         },
       });
-    } catch {
-      throw new ApiError(TRY_AGAIN, url);
+    } catch (err) {
+      classifyFetchRejection(err, timedOut, callerSignal, url);
+    } finally {
+      clearTimeout(timer);
+      unlink();
     }
 
     if (response.ok) return response;
+
+    if (response.status === ORIGIN_TIMEOUT_STATUS) {
+      const retryOrigin =
+        retryStatuses.size > 0 &&
+        originTimeoutRetries < 1 &&
+        attempt + 1 < maxAttempts;
+      if (retryOrigin) {
+        originTimeoutRetries += 1;
+        await sleep(placeLookupBackoffMs(attempt));
+        continue;
+      }
+      throw new ApiError(TRY_AGAIN, url, ORIGIN_TIMEOUT_STATUS, "origin_timeout");
+    }
 
     const retryable =
       retryStatuses.has(response.status) && attempt + 1 < maxAttempts;
@@ -199,10 +318,11 @@ export async function apiFetch(
 /** Place / search lookup with SHARE-FIX retries on 502/503/504. */
 export function placeLookupFetch(
   path: string,
-  init?: RequestInit,
+  init?: RequestInit & { timeoutMs?: number },
 ): Promise<Response> {
   return apiFetch(path, {
     ...init,
+    timeoutMs: normaliseTimeoutMs(init?.timeoutMs, LOOKUP_TIMEOUT_MS),
     retryStatuses: PLACE_LOOKUP_RETRY_STATUSES,
     maxAttempts: 3,
   });

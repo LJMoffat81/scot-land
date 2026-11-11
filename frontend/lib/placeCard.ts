@@ -3,7 +3,12 @@
  * UX-10 place card skeleton — Annual Ground Rent; DZ2022; no £ figures.
  */
 
-import { apiJson, isOutsideScotlandError } from "./api";
+import {
+  apiJson,
+  isOutsideScotlandError,
+  LOOKUP_TIMEOUT_MS,
+  normaliseTimeoutMs,
+} from "./api";
 export { formatPlaceCardGbpRange } from "./gbpLive";
 import { osgb36MapReference } from "./osgb36";
 import {
@@ -100,6 +105,9 @@ export const PLACE_CARD_ERROR_LINE =
   "Something went wrong. Please try again.";
 
 export const PLACE_CARD_TRY_AGAIN_LABEL = "Try again";
+
+/** Lookup deadline / origin / network / 5xx line (Wording & UX, 11 Nov 2026). */
+export const LOOKUP_ERROR_COPY = "We couldn't load this area just now.";
 
 /** Sea / outside Scotland titles (MAP-CARDS §5.2). */
 export const PLACE_CARD_SEA_TITLE = "Out at sea";
@@ -386,6 +394,8 @@ export type FetchPlaceCardArgs = {
   postcode?: string | null;
   /** Abort in-flight identify when a newer map/search select wins (MAP-CARDS 24). */
   signal?: AbortSignal;
+  /** Per-attempt limit. Omitted means LOOKUP_TIMEOUT_MS. */
+  timeoutMs?: number;
 };
 
 /**
@@ -704,6 +714,7 @@ export async function fetchPlaceCard({
   lng,
   postcode,
   signal,
+  timeoutMs,
 }: FetchPlaceCardArgs): Promise<PlaceCardPayload> {
   const params = new URLSearchParams({
     lat: String(lat),
@@ -713,7 +724,12 @@ export async function fetchPlaceCard({
   try {
     return await apiJson<PlaceCardPayload>(
       `/platform/place?${params.toString()}`,
-      { retryStatuses: [502, 503, 504], maxAttempts: 3, signal },
+      {
+        retryStatuses: [502, 503, 504],
+        maxAttempts: 3,
+        signal,
+        timeoutMs: normaliseTimeoutMs(timeoutMs, LOOKUP_TIMEOUT_MS),
+      },
     );
   } catch (err) {
     if (signal?.aborted) throw err;

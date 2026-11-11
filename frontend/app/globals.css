@@ -976,6 +976,24 @@ input {
   margin-top: 0.65rem;
 }
 
+.retry-state-button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.retry-state-line {
+  margin: 0;
+}
+
+.hud-search-dock .search-retry {
+  position: relative;
+  margin-top: 0.35rem;
+  padding: 0.45rem 0.6rem;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: var(--hud-shadow);
+}
+
 .place-agr-list,
 .place-constraint-list,
 .place-layer-list,

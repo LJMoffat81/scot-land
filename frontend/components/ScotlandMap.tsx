@@ -1506,6 +1506,7 @@ export default function ScotlandMap() {
     // Invalidate in-flight identify / search so a late place_card_v1 cannot
     // resurrect the sheet after Esc / × (mobile detent e2e).
     bumpLookupRef.current(false);
+    lastLookupRef.current = null;
     setSearchLookupError(null);
     setPlaceLookupError(null);
     setResult(null);
@@ -3740,20 +3741,36 @@ export default function ScotlandMap() {
       isScotlandViewCenter(bootLng, bootLat)
     ) {
       // URL deep-link is intentional navigation (like search → half), not a map tap.
-      void inspectRef.current(bootLat, bootLng, {
-        fly: true,
-        fromAddressSearch: true,
-        fromDeepLink: true,
-        keepCollapsed: panelCollapsedRef.current,
-      });
+      // A search that already started this point must not be fetched again when
+      // the URL write remounts the map.
+      const last = lastLookupRef.current;
+      const alreadyThisPoint =
+        last?.kind === "point" &&
+        Math.abs(last.lat - bootLat) < 0.00002 &&
+        Math.abs(last.lng - bootLng) < 0.00002;
+      if (!alreadyThisPoint) {
+        void inspectRef.current(bootLat, bootLng, {
+          fly: true,
+          fromAddressSearch: true,
+          fromDeepLink: true,
+          keepCollapsed: panelCollapsedRef.current,
+        });
+      }
     } else if (captured?.place && boot.center) {
       // place= + c= after rewrite — still identify at the captured centre.
-      void inspectRef.current(boot.center.lat, boot.center.lng, {
-        fly: true,
-        fromAddressSearch: true,
-        fromDeepLink: true,
-        keepCollapsed: panelCollapsedRef.current,
-      });
+      const last = lastLookupRef.current;
+      const alreadyThisPoint =
+        last?.kind === "point" &&
+        Math.abs(last.lat - boot.center.lat) < 0.00002 &&
+        Math.abs(last.lng - boot.center.lng) < 0.00002;
+      if (!alreadyThisPoint) {
+        void inspectRef.current(boot.center.lat, boot.center.lng, {
+          fly: true,
+          fromAddressSearch: true,
+          fromDeepLink: true,
+          keepCollapsed: panelCollapsedRef.current,
+        });
+      }
     } else if (boot.panel === "place" && boot.center) {
       // panel=place with a centre and no lat/lng pair — reopen that place.
       // A map-tap or search URL write remounts the map. If this card is

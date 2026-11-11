@@ -598,6 +598,68 @@ for (const viewport of WIDTHS) {
       }
     });
 
+    test("a rendered card is not replaced when the chain deadline passes", async ({ page }) => {
+      test.setTimeout(120_000);
+      const gate = attachConsoleGate(page);
+      const unexpected: string[] = [];
+      const hits: LookupHit[] = [];
+      const cardHold = new Hold();
+      await stubMapBasemap(page);
+      await routeShell(page, unexpected, hits, async (route, url) => {
+        const path = url.pathname;
+        if (path === "/backend/place") {
+          await fulfillJson(route, 200, {
+            kind: "postcode",
+            postcode: A.pc,
+            lat: A.lat,
+            lng: A.lng,
+            label: A.pc,
+          });
+          return;
+        }
+        if (path.startsWith("/backend/postcode/")) {
+          await fulfillJson(route, 200, {
+            postcode: { postcode: A.pc },
+            lat: A.lat,
+            lng: A.lng,
+            square: { lat: A.lat, lng: A.lng },
+          });
+          return;
+        }
+        if (path === "/backend/layers/context/data-zones/at") {
+          await fulfillJson(route, 200, dzOk());
+          return;
+        }
+        if (path === "/backend/platform/place") {
+          await cardHold.promise;
+          await fulfillJson(route, 200, cardBody(A.lat, A.lng, A.name));
+          return;
+        }
+        unexpected.push(path);
+        await fulfillJson(route, 200, {});
+      });
+      try {
+        await openMap(page);
+        const seen = page.waitForRequest(
+          (req) => new URL(req.url()).pathname === "/backend/platform/place",
+          { timeout: 10_000 },
+        );
+        await submit(page, A.q);
+        await seen;
+        await page.clock.runFor(5000);
+        cardHold.release();
+        await expect(page.getByTestId("place-card-place")).toHaveText(A.name);
+        await page.clock.runFor(26_000);
+        await expect(page.locator("[data-testid$='-retry-state']")).toHaveCount(0);
+        await expect(page.getByTestId("place-card-place")).toHaveText(A.name);
+        expect(unexpected).toEqual([]);
+        assertConsoleClean(gate);
+      } finally {
+        cardHold.release();
+        await nodePause();
+      }
+    });
+
     test("N4 a stalled data zone does not block the card", async ({ page }) => {
       test.setTimeout(120_000);
       const gate = attachConsoleGate(page);

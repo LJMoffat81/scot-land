@@ -24,6 +24,7 @@ import {
   PLACE_CARD_NO_MATCH,
   PLACE_CARD_TRY_AGAIN_LABEL,
   outsideScotlandPlaceCard,
+  type PlaceCardPayload,
 } from "@/lib/placeCard";
 import MapLayersDrawer from "./MapLayersDrawer";
 import MapPanelSlot, {
@@ -739,6 +740,15 @@ function settlePromise<T>(promise: Promise<T>): Promise<Settled<T>> {
   );
 }
 
+function sameLookupPoint(
+  aLat: number,
+  aLng: number,
+  bLat: number,
+  bLng: number,
+): boolean {
+  return Math.abs(aLat - bLat) < 0.00002 && Math.abs(aLng - bLng) < 0.00002;
+}
+
 function chainTimeLeft(startedAt: number): number {
   return Math.max(0, PLACE_LOOKUP_CHAIN_DEADLINE_MS - (Date.now() - startedAt));
 }
@@ -1420,6 +1430,14 @@ export default function ScotlandMap() {
     }
   }
 
+  /** The 30s chain timer must not fire after this generation has already finished. */
+  function finishLookupChain(gen: number) {
+    if (gen !== lookupGen.current) return;
+    clearChainDeadline();
+    chainAbortRef.current = null;
+    identifyAbortRef.current = null;
+  }
+
   function showChainTimeout(gen: number) {
     if (gen !== lookupGen.current) return;
     if (lookupStageRef.current === "card") {
@@ -1559,6 +1577,28 @@ export default function ScotlandMap() {
 
   // Public path for a point (map click, search, ?lat=&lng=): marker, optional fly,
   // shareable URL, lightweight place card. No modelled AGR £ / Wealth / tax on the public shell.
+  function publishSelectedZone(code: string | null) {
+    const trimmed = code?.trim() || "";
+    if (!trimmed) return;
+    selectedDzCodeRef.current = trimmed;
+    const map = mapRef.current;
+    if (!map) return;
+    const paint = buildSelectedZonePaint(trimmed, hoveredDzCodeRef.current);
+    const apply = (
+      id: string,
+      filter: unknown[],
+      paintProps: Record<string, unknown>,
+    ) => {
+      if (!hasMapLayer(map, id)) return;
+      map.setFilter(id, filter as ExpressionSpecification);
+      for (const [key, value] of Object.entries(paintProps)) {
+        map.setPaintProperty(id, key, value);
+      }
+    };
+    apply("tile-dz2022-selected-halo", paint.haloFilter, paint.haloPaint);
+    apply("tile-dz2022-selected-line", paint.outlineFilter, paint.outlinePaint);
+  }
+
   const selectPlace = useCallback(
     async (
       lat: number,
@@ -1676,7 +1716,7 @@ export default function ScotlandMap() {
       setPlaceStub((prev) => {
         if (gen !== lookupGen.current) return prev;
         const samePoint =
-          prev != null && prev.lat === lat && prev.lng === lng;
+          prev != null && sameLookupPoint(prev.lat, prev.lng, lat, lng);
         return {
           lat,
           lng,
@@ -1708,6 +1748,27 @@ export default function ScotlandMap() {
       const identifyAbort = chainAbortRef.current ?? new AbortController();
       chainAbortRef.current = identifyAbort;
       identifyAbortRef.current = identifyAbort;
+      const applyPlaceCard = (card: PlaceCardPayload) => {
+        if (gen !== lookupGen.current) return;
+        publishSelectedZone(card.data_zone?.code ?? null);
+        setPlaceStub((prev) => {
+          if (gen !== lookupGen.current) return prev;
+          if (!prev || !sameLookupPoint(prev.lat, prev.lng, lat, lng)) return prev;
+          return {
+            ...prev,
+            card,
+            dataZoneCode: prev.dataZoneCode || card.data_zone?.code || null,
+            dataZoneName: prev.dataZoneName || card.data_zone?.name || null,
+            dataZoneVintage:
+              prev.dataZoneVintage ??
+              (typeof card.data_zone?.vintage === "number"
+                ? card.data_zone.vintage
+                : null),
+            laName: prev.laName || card.council_name || null,
+            label: prev.label || card.place_label || null,
+          };
+        });
+      };
       const cardSettled = settlePromise(
         fetchPlaceCard({
           lat,
@@ -1719,7 +1780,13 @@ export default function ScotlandMap() {
             chainStartedAtRef.current,
           ),
         }),
-      );
+      ).then((result) => {
+        // The place card carries the zone code. Apply it as soon as it
+        // arrives so a slow or aborted data-zone read cannot leave the
+        // outline unset (MV-06).
+        if (result.ok) applyPlaceCard(result.value);
+        return result;
+      });
       try {
         if (!knownCode) {
           try {
@@ -1738,7 +1805,7 @@ export default function ScotlandMap() {
                 ),
               },
             );
-            if (gen !== lookupGen.current || identifyAbort.signal.aborted) return;
+            if (gen !== lookupGen.current) return;
             if (isEmptyDataZoneAt(data)) {
               clearChainDeadline();
               deadlineHitRef.current = false;
@@ -1754,9 +1821,10 @@ export default function ScotlandMap() {
             }
             const code = data.code?.trim() || null;
             const name = data.name?.trim() || null;
+            publishSelectedZone(code);
             setPlaceStub((prev) => {
               if (gen !== lookupGen.current) return prev;
-              return prev && prev.lat === lat && prev.lng === lng
+              return prev && sameLookupPoint(prev.lat, prev.lng, lat, lng)
                 ? {
                     ...prev,
                     dataZoneCode: code,
@@ -1771,7 +1839,9 @@ export default function ScotlandMap() {
             // unavailable: still load place_card_v1 so miss/unavailable is honest
             // and the UI can show one plain line instead of No-data rows.
             // An empty 200 body is not that miss: close the card and stay quiet.
-            if (identifyAbort.signal.aborted || gen !== lookupGen.current) return;
+            // An aborted data-zone read must not drop a place card that
+            // already has the zone code. Only a newer generation wins.
+            if (gen !== lookupGen.current) return;
             if (err instanceof SyntaxError) {
               markerRef.current?.remove();
               markerRef.current = null;
@@ -1789,28 +1859,8 @@ export default function ScotlandMap() {
         // Started before the data-zone lookup so a slow zone read cannot block it.
         const cardResult = await cardSettled;
         if (!cardResult.ok) throw cardResult.error;
-        const card = cardResult.value;
-        if (gen !== lookupGen.current || identifyAbort.signal.aborted) return;
-        setPlaceStub((prev) => {
-          if (gen !== lookupGen.current) return prev;
-          return prev && prev.lat === lat && prev.lng === lng
-            ? {
-                ...prev,
-                card,
-                dataZoneCode:
-                  prev.dataZoneCode || card.data_zone?.code || null,
-                dataZoneName:
-                  prev.dataZoneName || card.data_zone?.name || null,
-                dataZoneVintage:
-                  prev.dataZoneVintage ??
-                  (typeof card.data_zone?.vintage === "number"
-                    ? card.data_zone.vintage
-                    : null),
-                laName: prev.laName || card.council_name || null,
-                label: prev.label || card.place_label || null,
-              }
-            : prev;
-        });
+        if (gen !== lookupGen.current) return;
+        applyPlaceCard(cardResult.value);
       } catch (err) {
         // SW-019 belt-and-suspenders: clear spinner and show the plain line
         // if an outside-Scotland 400 still surfaces (e.g. /api/place.json).
@@ -1818,7 +1868,7 @@ export default function ScotlandMap() {
         if (isOutsideScotlandError(err)) {
           setPlaceStub((prev) => {
             if (gen !== lookupGen.current) return prev;
-            return prev && prev.lat === lat && prev.lng === lng
+            return prev && sameLookupPoint(prev.lat, prev.lng, lat, lng)
               ? { ...prev, card: outsideScotlandPlaceCard(lat, lng) }
               : prev;
           });
@@ -1828,7 +1878,10 @@ export default function ScotlandMap() {
         const failure = cardFailureFrom(err, deadlineHitRef.current);
         if (failure) setPlaceLookupError(failure);
       } finally {
-        if (gen === lookupGen.current) setPlaceLoading(false);
+        if (gen === lookupGen.current) {
+          setPlaceLoading(false);
+          finishLookupChain(gen);
+        }
       }
     },
     [],
@@ -2206,6 +2259,7 @@ export default function ScotlandMap() {
       });
     } catch (err) {
       if (generation !== lookupGen.current) return;
+      finishLookupChain(generation);
       if (err instanceof ApiError) {
         const failure = searchFailureFrom(err, deadlineHitRef.current);
         if (failure) {
@@ -2259,7 +2313,10 @@ export default function ScotlandMap() {
         });
         if (generation === lookupGen.current) setApiOk(true);
       } finally {
-        if (generation === lookupGen.current) setLoading(false);
+        if (generation === lookupGen.current) {
+          setLoading(false);
+          finishLookupChain(generation);
+        }
       }
       return;
     }
@@ -2355,7 +2412,10 @@ export default function ScotlandMap() {
         });
       }
     } finally {
-      if (generation === lookupGen.current) setLoading(false);
+      if (generation === lookupGen.current) {
+        setLoading(false);
+        finishLookupChain(generation);
+      }
     }
   };
 
@@ -2435,6 +2495,7 @@ export default function ScotlandMap() {
       // Always clear search chrome after a pick. `.hud-search.loading` is
       // `loading || suggesting`; a stale suggest race must not leave the
       // spinner stuck after the place card is already open.
+      finishLookupChain(generation);
       setLoading(false);
       setSuggesting(false);
     }
@@ -3693,18 +3754,17 @@ export default function ScotlandMap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyle]);
 
+  function chainInFlight(): boolean {
+    const controller = chainAbortRef.current;
+    return controller != null && !controller.signal.aborted;
+  }
+
   function bootPointSettled(lat: number, lng: number): boolean {
     const last = lastLookupRef.current;
-    const same =
+    return (
       last?.kind === "point" &&
-      Math.abs(last.lat - lat) < 0.00002 &&
-      Math.abs(last.lng - lng) < 0.00002;
-    if (!same) return false;
-    const stub = placeStubRef.current;
-    const hasCode = Boolean(stub?.dataZoneCode?.trim());
-    const inFlight =
-      chainAbortRef.current != null && !chainAbortRef.current.signal.aborted;
-    return hasCode || inFlight;
+      sameLookupPoint(last.lat, last.lng, lat, lng)
+    );
   }
 
   // Deep-link boot (?lat/lng/words) once mapReady — survives style remount.
@@ -3759,6 +3819,8 @@ export default function ScotlandMap() {
           if (isServiceFailure(err)) {
             void pingApi().then((s) => setApiOk(s.ok));
           }
+        } finally {
+          finishLookupChain(generation);
         }
       })();
     } else if (
@@ -3767,9 +3829,9 @@ export default function ScotlandMap() {
       isScotlandViewCenter(bootLng, bootLat)
     ) {
       // URL deep-link is intentional navigation (like search → half), not a map tap.
-      // Skip only when this point is already loading or already has a zone
-      // code. An aborted lookup with no code must run again (MV-06).
-      if (!bootPointSettled(bootLat, bootLng)) {
+      // A map-style remount must not abort the lookup already running for this
+      // point: that abort drops the zone code and the outline stays unset.
+      if (!chainInFlight() && !bootPointSettled(bootLat, bootLng)) {
         void inspectRef.current(bootLat, bootLng, {
           fly: true,
           fromAddressSearch: true,
@@ -3779,7 +3841,7 @@ export default function ScotlandMap() {
       }
     } else if (captured?.place && boot.center) {
       // place= + c= after rewrite — still identify at the captured centre.
-      if (!bootPointSettled(boot.center.lat, boot.center.lng)) {
+      if (!chainInFlight() && !bootPointSettled(boot.center.lat, boot.center.lng)) {
         void inspectRef.current(boot.center.lat, boot.center.lng, {
           fly: true,
           fromAddressSearch: true,

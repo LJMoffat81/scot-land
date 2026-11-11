@@ -797,6 +797,7 @@ export default function ScotlandMap() {
   const [activeSuggest, setActiveSuggest] = useState(-1);
   const suggestGen = useRef(0);
   const searchSubmitOwns = useRef(false);
+  const submittedQueryRef = useRef<string | null>(null);
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suggestAbort = useRef<AbortController | null>(null);
   const [addressLine, setAddressLine] = useState<string | null>(null);
@@ -2234,6 +2235,10 @@ export default function ScotlandMap() {
       setSuggestNote(POSTCODES_ONLY);
       return;
     }
+    // Own this text before any await. A late onChange from fill()+Enter must
+    // not start a second /place suggestion after the submit.
+    submittedQueryRef.current = q;
+    searchSubmitOwns.current = true;
     const coords = parseCoordinates(q);
     if (coords) {
       const generation = bumpLookupRef.current(true);
@@ -2486,6 +2491,13 @@ export default function ScotlandMap() {
   const scheduleSuggest = (value: string) => {
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
     const text = value.trim();
+    if (
+      searchSubmitOwns.current &&
+      submittedQueryRef.current != null &&
+      text === submittedQueryRef.current
+    ) {
+      return;
+    }
     if (text.length < 3) {
       searchSubmitOwns.current = false;
       suggestGen.current += 1;
@@ -3681,6 +3693,20 @@ export default function ScotlandMap() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyle]);
 
+  function bootPointSettled(lat: number, lng: number): boolean {
+    const last = lastLookupRef.current;
+    const same =
+      last?.kind === "point" &&
+      Math.abs(last.lat - lat) < 0.00002 &&
+      Math.abs(last.lng - lng) < 0.00002;
+    if (!same) return false;
+    const stub = placeStubRef.current;
+    const hasCode = Boolean(stub?.dataZoneCode?.trim());
+    const inFlight =
+      chainAbortRef.current != null && !chainAbortRef.current.signal.aborted;
+    return hasCode || inFlight;
+  }
+
   // Deep-link boot (?lat/lng/words) once mapReady — survives style remount.
   // Prefer the mount-time capture: layers URL sync may already have rewritten
   // lat/lng → c= by the time the style loads.
@@ -3741,14 +3767,9 @@ export default function ScotlandMap() {
       isScotlandViewCenter(bootLng, bootLat)
     ) {
       // URL deep-link is intentional navigation (like search → half), not a map tap.
-      // A search that already started this point must not be fetched again when
-      // the URL write remounts the map.
-      const last = lastLookupRef.current;
-      const alreadyThisPoint =
-        last?.kind === "point" &&
-        Math.abs(last.lat - bootLat) < 0.00002 &&
-        Math.abs(last.lng - bootLng) < 0.00002;
-      if (!alreadyThisPoint) {
+      // Skip only when this point is already loading or already has a zone
+      // code. An aborted lookup with no code must run again (MV-06).
+      if (!bootPointSettled(bootLat, bootLng)) {
         void inspectRef.current(bootLat, bootLng, {
           fly: true,
           fromAddressSearch: true,
@@ -3758,12 +3779,7 @@ export default function ScotlandMap() {
       }
     } else if (captured?.place && boot.center) {
       // place= + c= after rewrite — still identify at the captured centre.
-      const last = lastLookupRef.current;
-      const alreadyThisPoint =
-        last?.kind === "point" &&
-        Math.abs(last.lat - boot.center.lat) < 0.00002 &&
-        Math.abs(last.lng - boot.center.lng) < 0.00002;
-      if (!alreadyThisPoint) {
+      if (!bootPointSettled(boot.center.lat, boot.center.lng)) {
         void inspectRef.current(boot.center.lat, boot.center.lng, {
           fly: true,
           fromAddressSearch: true,

@@ -15,11 +15,14 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import MapCreditLine from "./MapCreditLine";
 import { layersAdd2Credit } from "@/lib/layersAdd2Credits";
 import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
+import RetryState from "./RetryState";
 import SiteNav, { SiteBrand } from "./SiteNav";
 import { fetchGbpLiveSettings } from "@/lib/gbpLive";
 import {
   fetchPlaceCard,
+  LOOKUP_ERROR_COPY,
   PLACE_CARD_NO_MATCH,
+  PLACE_CARD_TRY_AGAIN_LABEL,
   outsideScotlandPlaceCard,
 } from "@/lib/placeCard";
 import MapLayersDrawer from "./MapLayersDrawer";
@@ -30,6 +33,8 @@ import MapPanelSlot, {
 } from "./MapPanelSlot";
 import {
   ApiError,
+  DATA_ZONE_AT_TIMEOUT_MS,
+  LOOKUP_TIMEOUT_MS,
   TRY_AGAIN,
   apiFetch,
   apiJson,
@@ -44,6 +49,7 @@ import {
   parseCoordinates,
   visitorFacingError,
   getApiBaseUrl,
+  type ApiErrorKind,
 } from "../lib/api";
 import {
   DZ_STATUS_DEFAULT_ON,
@@ -696,6 +702,61 @@ function removePlotLevelMapBits(map: Map): void {
   }
 }
 
+type StoredPointOpts = {
+  fly?: boolean;
+  label?: string | null;
+  postcode?: string | null;
+  dataZoneCode?: string | null;
+  dataZoneName?: string | null;
+  dataZoneVintage?: number | null;
+  laName?: string | null;
+  population?: number | null;
+  popYear?: number | null;
+  dwellings?: number | null;
+  dwYear?: number | null;
+  fromAddressSearch?: boolean;
+  keepCollapsed?: boolean;
+  fromDeepLink?: boolean;
+};
+
+type LastLookup =
+  | { kind: "search"; q: string }
+  | { kind: "point"; lat: number; lng: number; opts: StoredPointOpts };
+
+type LookupFailure = {
+  kind: Exclude<ApiErrorKind, "aborted">;
+  status?: number;
+};
+
+function withoutGeneration(
+  opts: StoredPointOpts & { generation?: number },
+): StoredPointOpts {
+  const { generation: _generation, ...rest } = opts;
+  return rest;
+}
+
+function cardFailureFrom(err: ApiError): LookupFailure | null {
+  if (err.kind === "aborted") return null;
+  if (err.kind === "timeout" || err.kind === "network" || err.kind === "http") {
+    return { kind: err.kind, status: err.status };
+  }
+  const _exhaustive: never = err.kind;
+  return _exhaustive;
+}
+
+function searchFailureFrom(err: ApiError): LookupFailure | null {
+  if (err.kind === "aborted") return null;
+  if (err.kind === "timeout" || err.kind === "network") {
+    return { kind: err.kind, status: err.status };
+  }
+  if (err.kind === "http" && (err.status ?? 0) >= 500) {
+    return { kind: "http", status: err.status };
+  }
+  if (err.kind === "http") return null;
+  const _exhaustive: never = err.kind;
+  return _exhaustive;
+}
+
 export default function ScotlandMap() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
@@ -915,6 +976,18 @@ export default function ScotlandMap() {
   const [, setLayerBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchLookupError, setSearchLookupError] = useState<LookupFailure | null>(null);
+  const [placeLookupError, setPlaceLookupError] = useState<LookupFailure | null>(null);
+  const [retryBusy, setRetryBusy] = useState(false);
+  const [cardRetryAutoFocus, setCardRetryAutoFocus] = useState(false);
+  const [cardErrorFromSearch, setCardErrorFromSearch] = useState(false);
+  const lastLookupRef = useRef<LastLookup | null>(null);
+  const retryBusyRef = useRef(false);
+  const retryLookupRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (!placeLookupError || cardRetryAutoFocus || !cardErrorFromSearch) return;
+    document.getElementById("place-query")?.focus();
+  }, [placeLookupError, cardRetryAutoFocus, cardErrorFromSearch]);
   const [result, setResult] = useState<SquareResponse | null>(null);
   const [apiOk, setApiOk] = useState<boolean | null>(null);
   // Legacy ground-rent router mounted? null = not known yet. Its endpoints are never called when false.
@@ -1443,6 +1516,15 @@ export default function ScotlandMap() {
         typeof opts.generation === "number"
           ? opts.generation
           : ++lookupGen.current;
+      lastLookupRef.current = {
+        kind: "point",
+        lat,
+        lng,
+        opts: withoutGeneration(opts),
+      };
+      setSearchLookupError(null);
+      setPlaceLookupError(null);
+      setCardRetryAutoFocus(false);
       const map = mapRef.current;
       markerRef.current?.remove();
       if (map) {
@@ -1558,7 +1640,11 @@ export default function ScotlandMap() {
               vintage?: number;
             }>(
               `/layers/context/data-zones/at?lat=${encodeURIComponent(String(lat))}&lng=${encodeURIComponent(String(lng))}`,
-              { cache: "no-store", signal: identifyAbort.signal },
+              {
+                cache: "no-store",
+                signal: identifyAbort.signal,
+                timeoutMs: DATA_ZONE_AT_TIMEOUT_MS,
+              },
             );
             if (gen !== lookupGen.current || identifyAbort.signal.aborted) return;
             if (isEmptyDataZoneAt(data)) {
@@ -1573,6 +1659,18 @@ export default function ScotlandMap() {
             }
             const code = data.code?.trim() || null;
             const name = data.name?.trim() || null;
+            if (code) {
+              lastLookupRef.current = {
+                kind: "point",
+                lat,
+                lng,
+                opts: {
+                  ...withoutGeneration(opts),
+                  dataZoneCode: code,
+                  dataZoneName: name,
+                },
+              };
+            }
             setPlaceStub((prev) => {
               if (gen !== lookupGen.current) return prev;
               return prev && prev.lat === lat && prev.lng === lng
@@ -1610,6 +1708,7 @@ export default function ScotlandMap() {
           lng,
           postcode: opts.postcode,
           signal: identifyAbort.signal,
+          timeoutMs: LOOKUP_TIMEOUT_MS,
         });
         if (gen !== lookupGen.current || identifyAbort.signal.aborted) return;
         setPlaceStub((prev) => {
@@ -1635,15 +1734,23 @@ export default function ScotlandMap() {
       } catch (err) {
         // SW-019 belt-and-suspenders: clear spinner and show the plain line
         // if an outside-Scotland 400 still surfaces (e.g. /api/place.json).
-        if (isOutsideScotlandError(err) && gen === lookupGen.current) {
+        if (gen !== lookupGen.current) return;
+        if (isOutsideScotlandError(err)) {
           setPlaceStub((prev) => {
             if (gen !== lookupGen.current) return prev;
             return prev && prev.lat === lat && prev.lng === lng
               ? { ...prev, card: outsideScotlandPlaceCard(lat, lng) }
               : prev;
           });
+          return;
         }
-        /* other zone / place card failures are best-effort */
+        if (!(err instanceof ApiError)) throw err;
+        const failure = cardFailureFrom(err);
+        if (!failure) return;
+        const fromMap = !opts.fromAddressSearch && !opts.fromDeepLink;
+        setCardRetryAutoFocus(fromMap);
+        setCardErrorFromSearch(Boolean(opts.fromAddressSearch));
+        setPlaceLookupError(failure);
       } finally {
         if (gen === lookupGen.current) setPlaceLoading(false);
       }
@@ -1969,6 +2076,44 @@ export default function ScotlandMap() {
     setSuggesting(false);
   };
 
+  function showSearchLookupFailure(failure: LookupFailure) {
+    setSearchLookupError(failure);
+    setSuggestNote(null);
+    setSuggestions([]);
+    setActiveSuggest(-1);
+    setSuggesting(false);
+    setError(null);
+  }
+
+  function noteSearchCatch(err: unknown, generation: number) {
+    if (generation !== lookupGen.current) return;
+    if (err instanceof ApiError && err.kind === "aborted") return;
+    if (err instanceof ApiError) {
+      const failure = searchFailureFrom(err);
+      if (failure) {
+        showSearchLookupFailure(failure);
+        if (isServiceFailure(err)) {
+          void pingApi().then((s) => {
+            if (generation === lookupGen.current) setApiOk(s.ok);
+          });
+        }
+        return;
+      }
+    }
+    const msg = visitorFacingError(err);
+    setSearchLookupError(null);
+    setError(msg);
+    setSuggestNote(msg);
+    setSuggestions([]);
+    setActiveSuggest(-1);
+    setSuggesting(false);
+    if (isServiceFailure(err)) {
+      void pingApi().then((s) => {
+        if (generation === lookupGen.current) setApiOk(s.ok);
+      });
+    }
+  }
+
   // Postcode-only search (postcodes.io via /geocode/postcode) when the AGR place search is absent.
   const searchPostcode = async (q: string) => {
     const generation = ++lookupGen.current;
@@ -1977,16 +2122,22 @@ export default function ScotlandMap() {
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
     clearSuggestions();
     setError(null);
+    setSearchLookupError(null);
     if (!looksLikeFullPostcode(q)) {
       // Refuse line under the search box (error alone only shows in the place card).
       setSuggestNote(POSTCODES_ONLY);
       return;
     }
+    lastLookupRef.current = { kind: "search", q };
     setLoading(true);
     try {
       const body = await apiJson<{ postcode: string; lat: number; lng: number }>(
         `/geocode/postcode?q=${encodeURIComponent(q)}`,
-        { retryStatuses: [502, 503, 504], maxAttempts: 3 },
+        {
+          retryStatuses: [502, 503, 504],
+          maxAttempts: 3,
+          timeoutMs: LOOKUP_TIMEOUT_MS,
+        },
       );
       if (generation !== lookupGen.current) return;
       // SW-051: keep the user's postcode formatting (e.g. EH1 1YZ), not API compact.
@@ -1997,20 +2148,31 @@ export default function ScotlandMap() {
       });
     } catch (err) {
       if (generation !== lookupGen.current) return;
-      setError(
-        err instanceof ApiError && err.status === 503
-          ? "Postcode search is unavailable right now. Click the map instead."
-          : visitorFacingError(err),
-      );
+      if (err instanceof ApiError && err.kind === "aborted") return;
+      if (err instanceof ApiError) {
+        const failure = searchFailureFrom(err);
+        if (failure) {
+          showSearchLookupFailure(failure);
+          if (isServiceFailure(err)) {
+            void pingApi().then((s) => {
+              if (generation === lookupGen.current) setApiOk(s.ok);
+            });
+          }
+          return;
+        }
+      }
+      setSearchLookupError(null);
+      setError(visitorFacingError(err));
     } finally {
       if (generation === lookupGen.current) setLoading(false);
     }
   };
 
-  const runSearch = async () => {
-    const q = query.trim();
+  const runSearch = async (overrideQ?: string) => {
+    const q = (overrideQ ?? query).trim();
     // Idea 80 / T-P1: keep typed formatting, but drop leading/trailing space.
-    if (q !== query) setQuery(q);
+    if (overrideQ == null && q !== query) setQuery(q);
+    if (overrideQ != null) setQuery(q);
     if (!q) {
       // Idea 80 / T-P2: empty search is refused with the same postcode-only line.
       setSuggestNote(POSTCODES_ONLY);
@@ -2025,6 +2187,7 @@ export default function ScotlandMap() {
       clearSuggestions();
       setLoading(true);
       setError(null);
+      setSearchLookupError(null);
       try {
         await inspectRef.current(coords.lat, coords.lng, {
           fly: true,
@@ -2043,11 +2206,13 @@ export default function ScotlandMap() {
       return;
     }
     const generation = ++lookupGen.current;
+    lastLookupRef.current = { kind: "search", q };
     suggestGen.current += 1;
     searchSubmitOwns.current = true;
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
     setLoading(true);
     setError(null);
+    setSearchLookupError(null);
     clearSuggestions();
     try {
       const response = await placeLookupFetch(
@@ -2096,26 +2261,35 @@ export default function ScotlandMap() {
       }
       if (generation === lookupGen.current) setApiOk(true);
     } catch (err) {
-      if (generation !== lookupGen.current) return;
-      const msg = visitorFacingError(err);
-      setError(msg);
-      // SHARE-FIX: surface Try again under search when no place card is open.
-      setSuggestNote(msg);
-      setSuggestions([]);
-      setActiveSuggest(-1);
-      setSuggesting(false);
-      if (isServiceFailure(err)) {
-        void pingApi().then((s) => {
-          if (generation === lookupGen.current) setApiOk(s.ok);
-        });
-      }
+      noteSearchCatch(err, generation);
     } finally {
       if (generation === lookupGen.current) setLoading(false);
     }
   };
 
+  retryLookupRef.current = () => {
+    if (retryBusyRef.current) return;
+    const last = lastLookupRef.current;
+    if (!last) return;
+    retryBusyRef.current = true;
+    setRetryBusy(true);
+    setSearchLookupError(null);
+    setPlaceLookupError(null);
+    setCardRetryAutoFocus(false);
+    const finish = () => {
+      retryBusyRef.current = false;
+      setRetryBusy(false);
+    };
+    if (last.kind === "search") {
+      void runSearch(last.q).finally(finish);
+      return;
+    }
+    void selectPlace(last.lat, last.lng, last.opts).finally(finish);
+  };
+
   const chooseSuggestion = async (item: Suggestion) => {
     const generation = ++lookupGen.current;
+    lastLookupRef.current = { kind: "search", q: item.label };
     suggestGen.current += 1;
     searchSubmitOwns.current = true;
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
@@ -2128,6 +2302,7 @@ export default function ScotlandMap() {
       setQuery(item.label);
     }
     setError(null);
+    setSearchLookupError(null);
     setLoading(true);
     try {
       if (item.kind === "words" && item.words) {
@@ -2145,6 +2320,20 @@ export default function ScotlandMap() {
       if (generation === lookupGen.current) setApiOk(true);
     } catch (err) {
       if (generation !== lookupGen.current) return;
+      if (err instanceof ApiError && err.kind === "aborted") return;
+      if (err instanceof ApiError) {
+        const failure = searchFailureFrom(err);
+        if (failure) {
+          showSearchLookupFailure(failure);
+          if (isServiceFailure(err)) {
+            void pingApi().then((s) => {
+              if (generation === lookupGen.current) setApiOk(s.ok);
+            });
+          }
+          return;
+        }
+      }
+      setSearchLookupError(null);
       setError(visitorFacingError(err));
       if (isServiceFailure(err)) {
         void pingApi().then((s) => {
@@ -5797,7 +5986,11 @@ export default function ScotlandMap() {
         </button>
         <div
           className={
-            suggestions.length || suggestNote || suggesting || searchFocused
+            suggestions.length ||
+            suggestNote ||
+            suggesting ||
+            searchFocused ||
+            searchLookupError
               ? "hud-search-dock open"
               : "hud-search-dock"
           }
@@ -5827,6 +6020,7 @@ export default function ScotlandMap() {
             onChange={(event) => {
               setQuery(event.target.value);
               setSearchNoMatch(false);
+              setSearchLookupError(null);
               scheduleSuggest(event.target.value);
             }}
             onBlur={() => {
@@ -5901,7 +6095,12 @@ export default function ScotlandMap() {
           </button>
         </div>
         {searchNoMatch ? (
-          <p className="search-no-match" data-testid="search-no-match" role="alert">
+          <p
+            className="search-no-match"
+            data-testid="search-no-match"
+            role="status"
+            aria-live="polite"
+          >
             {PLACE_CARD_NO_MATCH}
           </p>
         ) : null}
@@ -5928,6 +6127,17 @@ export default function ScotlandMap() {
             ))}
           </ul>
         )}
+        {searchLookupError ? (
+          <RetryState
+            testIdPrefix="search"
+            className="search-retry"
+            message={LOOKUP_ERROR_COPY}
+            retryLabel={PLACE_CARD_TRY_AGAIN_LABEL}
+            onRetry={() => retryLookupRef.current()}
+            busy={retryBusy}
+            kind={searchLookupError.kind}
+          />
+        ) : null}
         </div>
         <SiteNav current="map" variant="map" />
       </header>
@@ -6016,7 +6226,15 @@ export default function ScotlandMap() {
             <PlaceCardStub
               place={placeStub}
               loading={placeLoading}
-              error={error}
+              error={placeLookupError ? "lookup" : error}
+              onRetry={() => retryLookupRef.current()}
+              errorKind={placeLookupError?.kind ?? null}
+              errorStatus={placeLookupError?.status ?? null}
+              retryBusy={retryBusy}
+              retryAutoFocus={Boolean(placeLookupError) && cardRetryAutoFocus}
+              returnFocusToQuery={
+                Boolean(placeLookupError) && cardErrorFromSearch && !cardRetryAutoFocus
+              }
               onClose={() => {
                 // Card × clears selection (not desktop collapse-to-tab).
                 clearPlace();

@@ -1,6 +1,7 @@
 "use client";
 
 import PlaceCard from "@/components/PlaceCard";
+import type { ApiErrorKind } from "@/lib/api";
 import {
   PLACE_CARD_HOW_WE_WORK_LABEL,
   PLACE_CARD_OUT_OF_SCOTLAND_LINE,
@@ -39,6 +40,12 @@ type PlaceCardStubProps = {
   place: PlaceStub;
   loading?: boolean;
   error?: string | null;
+  onRetry?: () => void;
+  errorKind?: ApiErrorKind | null;
+  errorStatus?: number | null;
+  retryBusy?: boolean;
+  retryAutoFocus?: boolean;
+  returnFocusToQuery?: boolean;
   onClose: () => void;
   /** SW-028: sea stub — close + national Scotland map view. */
   onShowScotland?: () => void;
@@ -55,6 +62,12 @@ export default function PlaceCardStub({
   place,
   loading = false,
   error = null,
+  onRetry,
+  errorKind = null,
+  errorStatus = null,
+  retryBusy = false,
+  retryAutoFocus = false,
+  returnFocusToQuery = false,
   onClose,
   onShowScotland,
   gridSquareLine = null,
@@ -76,6 +89,12 @@ export default function PlaceCardStub({
         }}
         isLoading={loading}
         error={error}
+        onRetry={onRetry}
+        errorKind={errorKind}
+        errorStatus={errorStatus}
+        retryBusy={retryBusy}
+        retryAutoFocus={retryAutoFocus}
+        returnFocusToQuery={returnFocusToQuery}
         onClose={onClose}
         floating
         className="place-card-stub"
@@ -134,6 +153,12 @@ export default function PlaceCardStub({
       data={merged}
       isLoading={loading}
       error={error}
+      onRetry={onRetry}
+      errorKind={errorKind}
+      errorStatus={errorStatus}
+      retryBusy={retryBusy}
+      retryAutoFocus={retryAutoFocus}
+      returnFocusToQuery={returnFocusToQuery}
       onClose={onClose}
       onShowScotland={onShowScotland}
       floating

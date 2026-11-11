@@ -14,10 +14,13 @@ import {
 } from "../lib/levelLadder";
 import { buildShareableMapUrl } from "../lib/mapUrlState";
 import { PLACE_CARD_ESTIMATE_LINE } from "../lib/siteNav";
+import type { ApiErrorKind } from "../lib/api";
+import RetryState from "./RetryState";
 import {
   PLACE_CARD_AGR_LABEL,
   PLACE_CARD_AGR_SCOPE_NOTE,
   PLACE_CARD_AGR_SUBTITLE,
+  LOOKUP_ERROR_COPY,
   PLACE_CARD_ERROR_LINE,
   PLACE_CARD_EXPERIMENTAL_FOOTER,
   PLACE_CARD_FACT_LINE,
@@ -66,6 +69,14 @@ export type PlaceCardProps = {
   onShowScotland?: () => void;
   /** Error state — retry the last lookup. */
   onRetry?: () => void;
+  /** Classified lookup failure. The error string itself is never rendered. */
+  errorKind?: ApiErrorKind | null;
+  errorStatus?: number | null;
+  retryBusy?: boolean;
+  /** Focus Try again only when the lookup began from a map tap or click. */
+  retryAutoFocus?: boolean;
+  /** Typed-search card errors keep the caret in the search box. */
+  returnFocusToQuery?: boolean;
   /** When true, render as a floating HUD card (map shell). Default: true. */
   floating?: boolean;
   /** Extra class on the aside (e.g. place-card-stub for map HUD selectors). */
@@ -88,6 +99,19 @@ export type PlaceCardProps = {
 };
 
 /** Visitor-safe CSS tone — never emit the raw API class string `shadow` in HTML. */
+function placeLookupMessage(
+  kind: ApiErrorKind | null | undefined,
+  status: number | null | undefined,
+): string {
+  if (kind === "timeout" || kind === "network") {
+    return LOOKUP_ERROR_COPY;
+  }
+  if (kind === "http" && typeof status === "number" && status >= 500) {
+    return LOOKUP_ERROR_COPY;
+  }
+  return PLACE_CARD_ERROR_LINE;
+}
+
 function placeTagTone(tag: PlaceRentTag): "market" | "proxy" | "estimate" {
   switch (tag) {
     case "market":
@@ -486,6 +510,11 @@ export function PlaceCard({
   onClose,
   onShowScotland,
   onRetry,
+  errorKind = null,
+  errorStatus = null,
+  retryBusy = false,
+  retryAutoFocus = false,
+  returnFocusToQuery = false,
   floating = true,
   className,
   dwellings = null,
@@ -661,7 +690,6 @@ export function PlaceCard({
         <div
           className="place-card-body place-card-state"
           data-testid="place-card-error"
-          role="alert"
         >
           {card && !seaMiss ? (
             <h2
@@ -676,18 +704,25 @@ export function PlaceCard({
               Place
             </h2>
           )}
-          <p className="place-card-error-line">{PLACE_CARD_ERROR_LINE}</p>
-          <button
-            type="button"
-            className="place-card-try-again"
-            data-testid="place-card-try-again"
-            onClick={() => {
+          <RetryState
+            testIdPrefix="place-card"
+            className="place-card-retry"
+            lineClassName="place-card-error-line"
+            buttonClassName="place-card-try-again"
+            buttonTestId="place-card-try-again"
+            message={placeLookupMessage(errorKind, errorStatus)}
+            retryLabel={PLACE_CARD_TRY_AGAIN_LABEL}
+            onRetry={() => {
               if (onRetry) onRetry();
               else if (onClose) onClose();
             }}
-          >
-            {PLACE_CARD_TRY_AGAIN_LABEL}
-          </button>
+            busy={retryBusy}
+            kind={errorKind}
+            autoFocus={retryAutoFocus}
+            returnFocusId={
+              returnFocusToQuery && !retryAutoFocus ? "place-query" : undefined
+            }
+          />
         </div>
       ) : null}
 

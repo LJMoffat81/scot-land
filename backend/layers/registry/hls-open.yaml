@@ -1,0 +1,77 @@
+id: hls-open
+title: "Housing land supply (Spatial Hub open data)"
+geography: scotland
+clip: land
+clip_keep_all: false
+unit: none
+licence: OGL-3.0
+vintage: "Spatial Hub open extract as of 6 Oct 2026, covering housing land audit years 2020/21 to 2024/25."
+attribution: >-
+  Housing Land Supply - Scotland (open data), Improvement Service Spatial Hub,
+  as of 6 Oct 2026. Contains OS data © Crown copyright and database right 2026
+  and Scottish local authority data from the Spatial Hub. Contains public
+  sector information licensed under the Open Government Licence v3.0.
+source:
+  # Manual drop only (signed-in Hub download, 6 Oct 2026). run_layer refuses a
+  # remote geojson_file URL, so nothing here fetches from the Hub; ingest with
+  # --from-file under gitignored data/external (ops, not this PR).
+  type: geojson_file
+  url: https://data.spatialhub.scot/dataset/housing_land_supply-is
+geometry: polygon
+refresh: {cron: "0 5 1 1 *", max_mb: 60, max_s: 600}
+serve: {mode: pmtiles, simplify_m: 2, precision_dp: 6, max_mb: 15}
+zoom: {min: 0, max: 14, low_zoom: coalesce}
+style:
+  fill: {fill-color: "#B8860B", fill-opacity: 0.25}
+  line: {line-color: "#B8860B", line-width: 1, line-opacity: 0.9}
+legend:
+  - {label: "Housing land supply site (open data)", color: "#B8860B"}
+lineage: {derived_from: [], method: source, roll_up_to: [council, scotland]}
+keep_fields: [local_auth, hla_year, site_refer]
+tiles:
+  budget:
+    total_mb: 15
+    tile_kb: 500
+    z0_7_mb: 2
+publish:
+  authority_field: local_auth
+  allow:
+    - {authority: "Aberdeen City", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Aberdeenshire", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Angus", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Argyll and Bute", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "City of Edinburgh", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Clackmannanshire", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Dumfries and Galloway", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Dundee City", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "East Ayrshire", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "East Dunbartonshire", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "East Lothian", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "East Renfrewshire", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Falkirk", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Fife", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Glasgow City", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Highland", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Inverclyde", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Loch Lomond and Trossachs National Park", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Midlothian", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Moray", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Na h-Eileanan an Iar", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "North Ayrshire", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Orkney Islands", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Perth and Kinross", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Renfrewshire", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Scottish Borders", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Shetland Islands", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "South Ayrshire", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "South Lanarkshire", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "Stirling", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "West Dunbartonshire", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+    - {authority: "West Lothian", licence_url: "https://data.spatialhub.scot/dataset/housing_land_supply-is"}
+  exclude:
+    - {authority: "North Lanarkshire", reason: "Council portal licence is view-only (finding H10); excluded by Project Lead ruling 13 Nov 2026"}
+
+# M1 admission test (charter v2 §4); context per PL ruling 13 Nov 2026 (cap 8).
+policy_question: []
+shows: context
+value_layer: false

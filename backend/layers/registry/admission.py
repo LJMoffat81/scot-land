@@ -11,7 +11,8 @@ from typing import Any, Mapping
 
 from layers.registry.loader import LayerEntry, RegistryError
 
-CONTEXT_CAP = 6
+# PLANNING-PUBLISH-1: raised 6 -> 8 by Project Lead ruling 13 Nov 2026 (hls-open, ldp-highland).
+CONTEXT_CAP = 8
 NON_COMMERCIAL_LICENCES = frozenset({"NSTA-OGL"})
 SUMMING_METHODS = frozenset({"sum", "area_weighted", "pop_weighted"})
 # Layers on main before M1 that may carry ``admission_gaps``. Literal ids, no

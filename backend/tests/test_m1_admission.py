@@ -27,7 +27,9 @@ EXPECTED_TAGS = {
     "crown-estate-leases": (["Q5"], "value_capture"),
     "dz2011": ([], "context"),
     "dz2022": ([], "context"),
+    "hls-open": ([], "context"),
     "hydro-sites": (["Q5"], "commons_rent"),
+    "ldp-highland": ([], "context"),
     "native-woodland": (["Q6"], "natural_capital"),
     "naturescot-designations": (["Q6"], "natural_capital"),
     "naturescot-sssi": (["Q6"], "natural_capital"),
@@ -292,7 +294,7 @@ def test_a20_context_cap(tmp_path):
     check_admission(load_registry(d))
     _clone(d, "repd", "zz-ctx-over", **ctx)
     entries = load_registry(d)
-    with pytest.raises(AdmissionError, match=r"^ADMISSION: context layers 7 > cap 6: "):
+    with pytest.raises(AdmissionError, match=r"^ADMISSION: context layers 9 > cap 8: "):
         check_admission(entries)
 
 

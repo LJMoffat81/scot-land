@@ -81,6 +81,11 @@ def _validate_entry(
         raise RegistryError(
             f"REGISTRY: {entry_id}: $.tiles: not allowed with serve.mode raster"
         )
+    # PLANNING-PUBLISH-1: publish allow-list refusals before schema (exact messages).
+    # Lazy import: publish.py imports RegistryError from this module.
+    from layers.registry.publish import check_publish_block
+
+    check_publish_block(entry_id, data)
     try:
         validator.validate(data)
     except ValidationError as exc:

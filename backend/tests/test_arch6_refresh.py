@@ -465,6 +465,7 @@ def test_run_weekly_refresh_orders_scotland_extent_first_and_skips_gated() -> No
     assert summary == {
         "refreshed": ["scotland-extent", "oil-fields"],
         "tiles_built": ["scotland-extent", "oil-fields"],
+        "skipped_manual": [],
     }
 
 

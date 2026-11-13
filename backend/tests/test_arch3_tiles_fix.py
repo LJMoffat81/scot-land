@@ -42,7 +42,9 @@ EXPECTED_UNGATED_PMTILES = [
     "crown-estate-leases",
     "dz2011",
     "dz2022",
+    "hls-open",
     "hydro-sites",
+    "ldp-highland",
     "native-woodland",
     "naturescot-designations",
     "naturescot-sssi",
@@ -89,7 +91,7 @@ def test_t1_build_all_selects_ungated_pmtiles(monkeypatch: pytest.MonkeyPatch) -
     ids = build_all()
     assert ids == EXPECTED_UNGATED_PMTILES
     assert built == EXPECTED_UNGATED_PMTILES
-    assert len(ids) == 20
+    assert len(ids) == 22
     for lid in ARCH3_FIX_IDS:
         assert lid in ids
 

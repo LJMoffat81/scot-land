@@ -277,10 +277,16 @@ def run_weekly_refresh(
     ordered = validate_refresh_schedules(reg)
     refreshed: list[str] = []
     tiles_built: list[str] = []
+    skipped_manual: list[str] = []
     for lid in ordered:
         entry = reg[lid]
         raw_entry = entry.raw if isinstance(entry, LayerEntry) else entry
         if raw_entry.get("gated_by"):
+            continue
+        # PLANNING-PUBLISH-1: geojson_file layers are manual drops (--from-file);
+        # the weekly runner never fetches them.
+        if (raw_entry.get("source") or {}).get("type") == "geojson_file":
+            skipped_manual.append(lid)
             continue
         try:
             receipt = runner(lid)
@@ -302,7 +308,11 @@ def run_weekly_refresh(
                     f"REFRESH: {lid}: tile build failed: {exc}"
                 ) from exc
             tiles_built.append(lid)
-    return {"refreshed": refreshed, "tiles_built": tiles_built}
+    return {
+        "refreshed": refreshed,
+        "tiles_built": tiles_built,
+        "skipped_manual": skipped_manual,
+    }
 
 
 def main(argv: list[str] | None = None) -> int:

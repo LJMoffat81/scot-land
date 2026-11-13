@@ -25,6 +25,7 @@ import psycopg2
 import psycopg2.extras
 
 from layers.registry.loader import RegistryError, registry
+from layers.registry.publish import publish_manifest_fields
 from tiles.measure import distinct_ids_at_zoom, measure_pmtiles
 from tiles.profiles import ProfileError, tippecanoe_flags
 from tiles.storage import LocalStorage, StorageError, load_storage
@@ -85,6 +86,25 @@ def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
         os.fsync(dir_fd)
     finally:
         os.close(dir_fd)
+
+
+def _receipt_vintage(layer_id: str, dataset_version: str) -> str | None:
+    """Fetch-time filled vintage from this build's ingest receipt (same dataset_version).
+
+    Lazy import: the ingest module loads the registry at import, and this read
+    is only needed while a tileset is published.
+    """
+    from etl.run_layer import _receipt_dir
+
+    path = _receipt_dir() / f"{layer_id}.receipt.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(data, dict) or data.get("dataset_version") != dataset_version:
+        return None
+    value = data.get("vintage")
+    return value if isinstance(value, str) else None
 
 
 def _load_manifest(path: Path) -> dict[str, Any]:
@@ -450,6 +470,12 @@ def build_tileset(
             "measure": raw.get("measure"),
             "source_layer": layer_id,
         }
+        # PLANNING-PUBLISH-1: vintage + coverage + licence URLs for PR-B.
+        entry_payload.update(
+            publish_manifest_fields(
+                raw, filled_vintage=_receipt_vintage(layer_id, dataset_version)
+            )
+        )
         disclosure = display_simplification(raw)
         if disclosure is not None:
             entry_payload["display_simplification"] = disclosure

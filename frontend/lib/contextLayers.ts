@@ -23,6 +23,9 @@ export const TILE_LAYER_IDS_ORDERED = [
   "oil-fields",
   "platforms",
   "pipelines",
+  // PLANNING-PUBLISH-1 PR-B: drawer rows `hls-open` / `ldp-highland` (manifest only).
+  "hls-open",
+  "ldp-highland",
 ] as const;
 
 export const TILE_LAYER_IDS: ReadonlySet<string> = new Set(TILE_LAYER_IDS_ORDERED);

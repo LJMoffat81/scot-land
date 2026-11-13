@@ -49,6 +49,9 @@ assert.deepEqual(liveIds, [
   "access_services",
   "flood",
   "vdl",
+  // PLANNING-PUBLISH-1 PR-B
+  "hls-open",
+  "ldp-highland",
   "grid3",
   "contaminated_land",
   "3",
@@ -244,7 +247,8 @@ assert.equal(
   false,
   "roadmap LDP/HLS come from LAYERS_ADD_WAITING",
 );
-assert.equal(LAYERS_ADD_WAITING.map((row) => row.id).join(","), "ldp,hls");
+// PLANNING-PUBLISH-1 PR-B: hls is on the map (hls-open); ldp stays (Highland only).
+assert.equal(LAYERS_ADD_WAITING.map((row) => row.id).join(","), "ldp");
 
 const mapSrc = readFileSync(
   join(frontendRoot, "components/ScotlandMap.tsx"),

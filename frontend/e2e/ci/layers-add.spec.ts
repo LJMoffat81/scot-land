@@ -1,12 +1,20 @@
 
-import { test, expect } from "./_fixtures";
-import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, ensureLayersGroupOpen, ensureMapZoomAtLeast, openLayers, openMap, stubMapCardsBackend } from "./_mapCardsHelpers";
+import { test, expect, routeManifestOverride } from "./_fixtures";
+import { registerOpenFreeMapFontStub, attachConsoleGate, assertConsoleClean, ensureLayersGroupOpen, ensureMapZoomAtLeast, openLayers, openMap, stubMapCardsBackend, getVisibleLayerIds, waitForMap } from "./_mapCardsHelpers";
+import {
+  defaultOnLayerIds,
+  getMapLayer,
+  LDP_HIGHLAND_COVERAGE_NOTE,
+} from "../../lib/mapLayerRegistry";
+import { parseTileManifest } from "../../lib/tileLayerFactory";
+import { buildMapAttributionPieces } from "../../lib/mapAttributionLine";
 import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
 
 /**
  * LAYERS-ADD-1 — registry rows default OFF; LDP/HLS on roadmap; no £; banned names.
+ * PLANNING-PUBLISH-1 PR-B (PB-*) — hls-open / ldp-highland rows, synthetic manifest only.
  * Accordion groups must be expanded before toggles exist in the DOM (MAP-CARDS).
  * Improvement Service rows are omitted when the extract is absent.
  */
@@ -151,9 +159,10 @@ for (const width of [1280, 390] as const) {
 
       await page.goto("/roadmap#map-layers");
       await expect(page.getByTestId("roadmap-waiting-ldp")).toBeVisible();
-      await expect(page.getByTestId("roadmap-waiting-hls")).toBeVisible();
+      // PLANNING-PUBLISH-1 PR-B: hls is on the map; ldp is Highland only.
+      await expect(page.getByTestId("roadmap-waiting-hls")).toHaveCount(0);
       await expect(page.getByTestId("roadmap-waiting-status-ldp")).toContainText(
-        "Waiting for permission to use the data",
+        "On the map for Highland only. For other councils, we're waiting for permission to use the data.",
       );
       await expect(page.locator("main")).not.toContainText(/£/);
       await expect(page.locator("main")).not.toContainText(/sepa_frm_maps/i);
@@ -224,3 +233,192 @@ test.describe("LAYERS-ADD-1 paint", () => {
     assertConsoleClean(gate);
   });
 });
+
+// ---- PLANNING-PUBLISH-1 PR-B ----
+
+const HLS_LEGEND = "Housing land supply site (open data)";
+const LDP_LEGEND = "Local Development Plan allocation (Highland only)";
+
+function entry(id: string, over: Record<string, unknown> = {}) {
+  return {
+    layer: id,
+    version: "2026-10-06.abcdef12",
+    minzoom: 0,
+    maxzoom: 14,
+    geometry: "polygon",
+    source_layer: id,
+    measure: null,
+    attribution: `SYNTH ${id} CREDIT`,
+    vintage: `SYNTH ${id} VINTAGE`,
+    style: {
+      fill: { "fill-color": "#6a7f2a", "fill-opacity": 0.3 },
+      line: { "line-color": "#6a7f2a", "line-width": 1.2, "line-opacity": 0.9 },
+    },
+    legend: [
+      { label: id === "hls-open" ? HLS_LEGEND : LDP_LEGEND, color: "#6a7f2a" },
+    ],
+    ...over,
+  };
+}
+
+async function serveManifest(page: Page, tilesets: Record<string, unknown>) {
+  await routeManifestOverride(page, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ schema: 1, tilesets }),
+    });
+  });
+  await page.route("**/backend/v1/tiles/**/*.mvt", (route) =>
+    route.fulfill({ status: 204, body: "" }),
+  );
+}
+
+async function openDrawer(page: Page) {
+  await openMap(page, "/?z=7&c=-4.5,57.3");
+  await waitForMap(page);
+  await openLayers(page);
+  await ensureLayersGroupOpen(page, "land");
+}
+
+test("PB-U1 registry: both rows default off; default set unchanged", () => {
+  expect(getMapLayer("hls-open")?.defaultOn).toBe(false);
+  expect(getMapLayer("ldp-highland")?.defaultOn).toBe(false);
+  expect(defaultOnLayerIds()).toEqual(["data_zones"]);
+  expect(getMapLayer("ldp-highland")?.legendNote).toBe(LDP_HIGHLAND_COVERAGE_NOTE);
+  // PL Q3: the HLS gap is never silent (exact text, WUX-locked 17:06 GMT).
+  expect(getMapLayer("hls-open")?.legendNote).toBe(
+    "North Lanarkshire is not shown, because the council's licence allows its housing land supply data to be viewed but not republished.",
+  );
+});
+
+test("PB-U2 manifest vintage and attribution fail closed", () => {
+  const ok = parseTileManifest({ schema: 1, tilesets: { "hls-open": entry("hls-open") } });
+  expect(ok.tilesets["hls-open"].vintage).toBe("SYNTH hls-open VINTAGE");
+  // Live §14 LDP vintage (13 Nov 2026) must pass the guard unchanged.
+  const ldpVintage = "Highland Council live data, last updated 19 Aug 2025";
+  const live = parseTileManifest({
+    schema: 1,
+    tilesets: { "ldp-highland": entry("ldp-highland", { vintage: ldpVintage }) },
+  });
+  expect(live.tilesets["ldp-highland"].vintage).toBe(ldpVintage);
+  for (const bad of ["", "  ", 12, true, [], {}, "as at {date}"]) {
+    expect(() =>
+      parseTileManifest({
+        schema: 1,
+        tilesets: { "hls-open": entry("hls-open", { vintage: bad }) },
+      }),
+    ).toThrowError(/^manifest: bad vintage hls-open$/);
+  }
+  for (const bad of ["", null, undefined, 7]) {
+    expect(() =>
+      parseTileManifest({
+        schema: 1,
+        tilesets: { "ldp-highland": entry("ldp-highland", { attribution: bad }) },
+      }),
+    ).toThrowError(/^manifest: bad attribution ldp-highland$/);
+  }
+});
+
+test("PB-U3 credit is manifest-only (no hard-coded fallback)", () => {
+  expect(buildMapAttributionPieces(["hls-open", "ldp-highland"], {})).toEqual(
+    buildMapAttributionPieces([], {}),
+  );
+  const pieces = buildMapAttributionPieces(["hls-open"], {
+    "hls-open": "SYNTH hls-open CREDIT",
+  });
+  expect(pieces.filter((p) => p.id === "hls-open")).toEqual([
+    { id: "hls-open", text: "SYNTH hls-open CREDIT" },
+  ]);
+});
+
+test("PB-E1 rows default off; toggle shows manifest legend, vintage, credit", async ({
+  page,
+  gate,
+}) => {
+  test.setTimeout(120_000);
+  attachConsoleGate(page);
+  await stubMapCardsBackend(page);
+  await serveManifest(page, {
+    "hls-open": entry("hls-open"),
+    "ldp-highland": entry("ldp-highland"),
+  });
+  await openDrawer(page);
+
+  for (const id of ["hls-open", "ldp-highland"]) {
+    await expect(page.getByTestId(`layer-toggle-${id}`)).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+  }
+  await expect(page.getByTestId("layer-toggle-data_zones")).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  let visible = await getVisibleLayerIds(page);
+  expect(visible.filter((id) => /hls-open|ldp-highland/.test(id))).toEqual([]);
+  await expect(page.getByTestId("map-attribution-line")).not.toContainText("SYNTH");
+
+  await page.getByTestId("layer-toggle-hls-open").click();
+  const hlsLegend = page.getByTestId("layer-inline-legend-hls-open");
+  await expect(hlsLegend).toContainText(HLS_LEGEND);
+  await expect(hlsLegend.getByTestId("layer-flood-extent-legend")).toHaveText(
+    "North Lanarkshire is not shown, because the council's licence allows its housing land supply data to be viewed but not republished.",
+  );
+  await page.getByTestId("layer-toggle-hls-open").click();
+  await expect(page.getByTestId("layer-toggle-hls-open")).toHaveAttribute(
+    "aria-checked",
+    "false",
+  );
+
+  await page.getByTestId("layer-toggle-ldp-highland").click();
+  const legend = page.getByTestId("layer-inline-legend-ldp-highland");
+  await expect(legend).toContainText(LDP_LEGEND);
+  await expect(legend).toContainText(LDP_HIGHLAND_COVERAGE_NOTE);
+  await expect(page.getByTestId("layer-vintage-ldp-highland")).toHaveText(
+    "SYNTH ldp-highland VINTAGE",
+  );
+  await expect(page.getByTestId("map-attribution-line")).toContainText(
+    "SYNTH ldp-highland CREDIT",
+  );
+  await expect
+    .poll(async () =>
+      (await getVisibleLayerIds(page)).filter((id) => /hls-open|ldp-highland/.test(id)),
+    )
+    .toEqual(["tile-ldp-highland-fill", "tile-ldp-highland-line"]);
+  assertConsoleClean(gate);
+});
+
+test("PB-N1 gated (absent from manifest) row is hidden, other row still works", async ({
+  page,
+  gate,
+}) => {
+  test.setTimeout(120_000);
+  attachConsoleGate(page);
+  await stubMapCardsBackend(page);
+  await serveManifest(page, { "ldp-highland": entry("ldp-highland") });
+  await openDrawer(page);
+  await expect(page.getByTestId("layer-toggle-ldp-highland")).toHaveCount(1);
+  await expect(page.getByTestId("layer-toggle-hls-open")).toHaveCount(0);
+  assertConsoleClean(gate);
+});
+
+for (const [name, over] of [
+  ["PB-N2 missing credit", { attribution: "" }],
+  ["PB-N3 templated vintage", { vintage: "as at {date}" }],
+] as const) {
+  test(`${name} fails the manifest closed; rows hidden`, async ({ page, gate }) => {
+    test.setTimeout(120_000);
+    attachConsoleGate(page);
+    await stubMapCardsBackend(page);
+    await serveManifest(page, {
+      "hls-open": entry("hls-open", over),
+      "ldp-highland": entry("ldp-highland"),
+    });
+    await openDrawer(page);
+    await expect(page.getByTestId("layer-notice")).toHaveText("One layer did not load.");
+    await expect(page.getByTestId("layer-toggle-hls-open")).toHaveCount(0);
+    await expect(page.getByTestId("layer-toggle-ldp-highland")).toHaveCount(0);
+    assertConsoleClean(gate);
+  });
+}

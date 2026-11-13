@@ -175,21 +175,19 @@ export const LAYERS_ADD_REGISTRY: LayersAddRegistryRow[] = [
   },
 ];
 
-/** Roadmap-only (LICENCE-ADDENDUM-1a). Never in Layers / tiles / credits. */
+/**
+ * Roadmap rows for planning layers not yet on the map everywhere.
+ * PLANNING-PUBLISH-1 PR-B: housing land supply is on the map (`hls-open`);
+ * LDP is on the map for Highland only (`ldp-highland`); other councils wait.
+ */
 export const LAYERS_ADD_WAITING = [
   {
     id: "ldp",
     title: "Planned development land",
     blurb: "Land councils have set aside for building",
-    status: "Waiting for permission to use the data",
-    statusShort: "Waiting for permission",
-  },
-  {
-    id: "hls",
-    title: "Land for new homes",
-    blurb: "Sites a council expects to be built for homes",
-    status: "Waiting for permission to use the data",
-    statusShort: "Waiting for permission",
+    status:
+      "On the map for Highland only. For other councils, we're waiting for permission to use the data.",
+    statusShort: "Highland only so far",
   },
 ] as const;
 

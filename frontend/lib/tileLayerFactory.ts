@@ -77,6 +77,8 @@ export type TileManifestEntry = {
   measure: string | null;
   source_layer: string;
   title?: string;
+  /** PLANNING-PUBLISH-1: data vintage line from the manifest (never a template). */
+  vintage?: string;
 };
 
 export type TileManifest = {
@@ -177,6 +179,17 @@ function parseEntry(key: string, raw: unknown): TileManifestEntry {
       : typeof raw.measure === "string"
         ? raw.measure
         : null;
+  let vintage: string | undefined;
+  if (raw.vintage !== undefined) {
+    if (
+      typeof raw.vintage !== "string" ||
+      raw.vintage.trim() === "" ||
+      /[{}]/.test(raw.vintage)
+    ) {
+      throw new TileManifestError(`manifest: bad vintage ${id}`);
+    }
+    vintage = raw.vintage.trim();
+  }
   const source_layer =
     typeof raw.source_layer === "string" && raw.source_layer
       ? raw.source_layer
@@ -193,6 +206,7 @@ function parseEntry(key: string, raw: unknown): TileManifestEntry {
     measure,
     source_layer,
     title: typeof raw.title === "string" ? raw.title : undefined,
+    ...(vintage !== undefined ? { vintage } : {}),
   };
 }
 

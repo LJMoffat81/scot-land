@@ -51,9 +51,9 @@ All endpoints are `GET`, need no key and return JSON unless noted. Viewport laye
 | `GET` | `/layers/open/data-zones` | `south`*, `west`*, `north`*, `east`*, `max_features` | 2011 Data Zone boundaries in the viewport (simplified GeoJSON). |
 | `GET` | `/layers/open/dz-context` | `vintage` | Data Zone house prices, SIMD and population density (OGL context). |
 | `GET` | `/layers/open/flood` | `south`*, `west`*, `north`*, `east`*, `max_features` | SEPA medium-likelihood river/coastal flood extents in the viewport (OGL). |
-| `GET` | `/layers/open/hla` | `south`*, `west`*, `north`*, `east`*, `max_features` | Housing Land Audit / Housing Land Supply polygons in the viewport (OGL). |
+| `GET` | `/layers/open/hla` | `south`*, `west`*, `north`*, `east`*, `max_features` | Legacy Housing Land Supply polygons in the viewport. Off by default (`LAYER_HLS_ENABLED`); the map uses tile layer `hls-open`. |
 | `GET` | `/layers/open/hydro` | `south`*, `west`*, `north`*, `east`*, `max_features` | SEPA hydropower CAR sites in the viewport (OGL → PostGIS). |
-| `GET` | `/layers/open/ldp` | `south`*, `west`*, `north`*, `east`*, `max_features` | LDP allocation polygons in the viewport (PostGIS, OGL ingest). |
+| `GET` | `/layers/open/ldp` | `south`*, `west`*, `north`*, `east`*, `max_features` | Legacy LDP allocation polygons in the viewport. Off by default (`LAYER_LDP_ENABLED`); the map uses tile layer `ldp-highland`. |
 | `GET` | `/layers/open/localities` | `south`*, `west`*, `north`*, `east`*, `max_features` | NRS Census 2022 Localities in the viewport (PostGIS). 503 when unloaded. |
 | `GET` | `/layers/open/native-woodland` | `south`*, `west`*, `north`*, `east`*, `max_features` | Native Woodland Survey of Scotland polygons (PostGIS ingest). |
 | `GET` | `/layers/open/naturescot-designations` | `south`*, `west`*, `north`*, `east`*, `max_features` | NatureScot SPA/SAC/NNR polygons (OGL-3.0). Constraint overlay — changes best use only; not a commons row. |

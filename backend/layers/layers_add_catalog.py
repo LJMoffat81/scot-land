@@ -454,7 +454,10 @@ def layers_add_entries() -> list[dict[str, Any]]:
             maxzoom=20,
             family="context",
             caption="Improvement Service · {YEAR}",
-            note="SSDI PSGA restriction — flagged OFF; roadmap only (1a).",
+            note=(
+                "Legacy national LDP product (SSDI PSGA): stays flagged OFF and is not used. "
+                "Highland allocations are published as tile layer ldp-highland (PLANNING-PUBLISH-1)."
+            ),
         ),
         _entry(
             layer_id="housing_land_supply",
@@ -471,12 +474,15 @@ def layers_add_entries() -> list[dict[str, Any]]:
             dz_aggregate="agg_hls",
             refresh="Annual",
             acquisition="manual_drop",
-            licence="PSGA / not commercially available",
+            licence="Not used (legacy row); the open extract hls-open is OGL-3.0",
             minzoom=10,
             maxzoom=20,
             family="context",
             caption="Improvement Service · {YEAR}",
-            note="SSDI PSGA restriction — flagged OFF; roadmap only (1a).",
+            note=(
+                "Legacy row: stays flagged OFF and is not used. The open Spatial Hub extract is "
+                "published as tile layer hls-open, with North Lanarkshire excluded (PLANNING-PUBLISH-1)."
+            ),
         ),
     ]
 
@@ -494,6 +500,21 @@ def public_layers_add_entries() -> list[dict[str, Any]]:
     ]
 
 
+# PSGA-COPY-CLEANUP-1: roadmap status per row. LDP reuses PR-B WUX strings 10/11
+# verbatim; HLS open data is live (hls-open), so its row no longer says "waiting".
+_WAITING_STATUS: dict[str, tuple[str, str]] = {
+    "ldp_allocations": (
+        "On the map for Highland only. For other councils, we're waiting for permission to use the data.",
+        "Highland only so far",
+    ),
+    "housing_land_supply": (
+        "On the map from open data. North Lanarkshire is not shown.",
+        "On the map",
+    ),
+}
+_WAITING_DEFAULT = ("Waiting for permission to use the data", "Waiting for permission")
+
+
 def waiting_for_permission_rows() -> list[dict[str, Any]]:
     """Roadmap rows: flagged and not public; exclude sepa_frm_maps entirely."""
     rows = []
@@ -507,8 +528,12 @@ def waiting_for_permission_rows() -> list[dict[str, Any]]:
                     "display_id": row.get("display_id"),
                     "title": row["title"],
                     "group": row["group"],
-                    "status_label": "Waiting for permission to use the data",
-                    "status_label_short": "Waiting for permission",
+                    "status_label": _WAITING_STATUS.get(
+                        row["layer_id"], _WAITING_DEFAULT
+                    )[0],
+                    "status_label_short": _WAITING_STATUS.get(
+                        row["layer_id"], _WAITING_DEFAULT
+                    )[1],
                 }
             )
     return rows

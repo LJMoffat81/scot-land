@@ -31,9 +31,9 @@ Every layer listed here is under the **Open Government Licence v3.0**, and **non
 
 | Layer | API path | Source | Licence | Rows loaded | Quality |
 |---|---|---|---|---|---|
-| LDP allocations | `/layers/open/ldp` | Highland Council Local Development Plan | OGL v3.0 | 652 | `official`, `partial` (Highland only) |
+| LDP allocations | tile layer `ldp-highland` (`/v1/tiles/manifest.json`); legacy `/layers/open/ldp` is off by default | Highland Council Local Development Plan | OGL v3.0 | Highland only | `official`, `partial` (Highland only; the Cairngorms National Park part is not in Highland's data) |
 | Vacant and derelict land | `/layers/open/vdl` | Scottish Vacant and Derelict Land Survey | OGL v3.0 | loaded | `official`, `context` |
-| Housing land audit | `/layers/open/hla` | Spatial Hub Scotland | OGL v3.0 | **not loaded** (returns 503) | — |
+| Housing land supply | tile layer `hls-open` (`/v1/tiles/manifest.json`); legacy `/layers/open/hla` is off by default | Improvement Service Spatial Hub, open data | OGL v3.0 | 32 planning authorities | `official`, `partial` (North Lanarkshire excluded: view-only council licence) |
 
 ## Ownership and tenure
 

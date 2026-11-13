@@ -71,7 +71,8 @@ assert.deepEqual(liveIds, [
   "green_belt",
   "school_catchments",
 ]);
-// LAYERS-ADD-1a: HLA / LDP are flagged OFF — roadmap only, not live switches.
+// LAYERS-ADD-1a: legacy hla / ldp ids are not live switches (the planning rows are
+// the manifest-only hls-open / ldp-highland, PLANNING-PUBLISH-1).
 assert.equal(
   MAP_LAYER_REGISTRY.find((e) => e.id === "hla"),
   undefined,
@@ -256,5 +257,90 @@ const mapSrc = readFileSync(
 );
 assert.match(mapSrc, /sepa_nfra_grid/);
 assert.match(mapSrc, /syncLayersAddPaint/);
+
+// CLEANUP-318 G6 — charter v2 §4 rule 1: pure context layers sit under "Places".
+// Source of truth: backend registry YAMLs tagged `shows: context`.
+{
+  const { readdirSync } = await import("node:fs");
+  const { REGISTRY_TILESETS_BY_DRAWER_ID } = await import(
+    pathToFileURL(join(frontendRoot, "lib/mapLayerRegistry.ts")).href
+  );
+  const registryDir = join(frontendRoot, "..", "backend", "layers", "registry");
+  const contextTilesets = readdirSync(registryDir)
+    .filter((name) => name.endsWith(".yaml"))
+    .map((name) => readFileSync(join(registryDir, name), "utf8"))
+    .filter((text) => /^shows:\s*context\s*$/m.test(text))
+    .map((text) => /^id:\s*(\S+)\s*$/m.exec(text)?.[1])
+    .sort();
+  // Parser sanity: must see the signed context set (cap 6), or the guard is blind.
+  assert.deepEqual(contextTilesets, [
+    "councils",
+    "dz2011",
+    "dz2022",
+    "scotland-extent",
+    "sepa-flood",
+    "settlements-2022",
+  ]);
+  const contextSet = new Set(contextTilesets);
+  // Context tilesets with no Layers row, and why (a new one must be placed or listed).
+  const NO_DRAWER_ROW = {
+    "scotland-extent": "permanent land-and-waters outline (TILE_BASE_OUTLINE_ID)",
+    "settlements-2022": "built-up mask input only",
+    "sepa-flood": "gated extent overlay; the flood row paints sepa_nfra_grid",
+    dz2011: "estimate-status switch, rendered inside the Places section",
+  };
+  const drawerSrc = readFileSync(
+    join(frontendRoot, "components/MapLayersDrawer.tsx"),
+    "utf8",
+  );
+  const limitsIds = [
+    ...(/LIMITS_ON_USE_LAYER_IDS = \[([^\]]*)\]/.exec(drawerSrc)?.[1] ?? "").matchAll(
+      /"([^"]+)"/g,
+    ),
+  ].map((m) => m[1]);
+  assert.ok(limitsIds.length > 0, "G6: LIMITS_ON_USE_LAYER_IDS not found");
+  const placed = new Set();
+  for (const entry of MAP_LAYER_REGISTRY) {
+    const keys = [
+      entry.id,
+      ...(entry.aliases ?? []),
+      ...(REGISTRY_TILESETS_BY_DRAWER_ID[entry.id] ?? []),
+    ];
+    const paintsContext = (entry.paintLayerIds ?? []).some((pid) =>
+      contextTilesets.some((ctx) => pid.startsWith(`tile-${ctx}-`)),
+    );
+    const hits = keys.filter((k) => contextSet.has(k));
+    if (hits.length === 0 && !paintsContext) continue;
+    assert.equal(
+      entry.group,
+      "places",
+      `G6: context layer row ${entry.id} must sit under Places, not ${entry.group}`,
+    );
+    assert.equal(
+      limitsIds.includes(entry.id),
+      false,
+      `G6: context layer row ${entry.id} must not be in Limits on use`,
+    );
+    for (const k of hits) placed.add(k);
+  }
+  const placesAt = drawerSrc.indexOf('data-testid="layers-nav-places"');
+  const dzStatusAt = drawerSrc.indexOf("layer-toggle-${DZ_STATUS_LAYER_ID}");
+  const footerAt = drawerSrc.indexOf('className="layers-panel-footer"');
+  assert.ok(
+    placesAt > 0 && dzStatusAt > placesAt && dzStatusAt < footerAt,
+    "G6: dz2011 status switch must render inside the Places section",
+  );
+  for (const ctx of contextTilesets) {
+    assert.ok(
+      placed.has(ctx) || ctx in NO_DRAWER_ROW,
+      `G6: context layer ${ctx} has no Places row and no NO_DRAWER_ROW reason`,
+    );
+    assert.equal(
+      placed.has(ctx) && ctx in NO_DRAWER_ROW,
+      false,
+      `G6: context layer ${ctx} is both placed and listed as rowless`,
+    );
+  }
+}
 
 console.log("test-map-layer-registry: ok");

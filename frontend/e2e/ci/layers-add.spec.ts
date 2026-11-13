@@ -7,7 +7,11 @@ import {
   LDP_HIGHLAND_COVERAGE_NOTE,
 } from "../../lib/mapLayerRegistry";
 import { parseTileManifest } from "../../lib/tileLayerFactory";
-import { buildMapAttributionPieces } from "../../lib/mapAttributionLine";
+import {
+  buildMapAttributionPieces,
+  shortLayerSourceName,
+} from "../../lib/mapAttributionLine";
+import { LAYERS_ADD_WAITING } from "../../lib/layersAddRegistry";
 import { type Page } from "@playwright/test";
 
 registerOpenFreeMapFontStub();
@@ -15,6 +19,7 @@ registerOpenFreeMapFontStub();
 /**
  * LAYERS-ADD-1 — registry rows default OFF; LDP/HLS on roadmap; no £; banned names.
  * PLANNING-PUBLISH-1 PR-B (PB-*) — hls-open / ldp-highland rows, synthetic manifest only.
+ *   Since PR-B only LDP stays on the roadmap (Highland is live); HLS is on the map.
  * Accordion groups must be expanded before toggles exist in the DOM (MAP-CARDS).
  * Improvement Service rows are omitted when the extract is absent.
  */
@@ -153,6 +158,8 @@ for (const width of [1280, 390] as const) {
       await expect(page.getByTestId("layer-toggle-hla")).toHaveCount(0);
       await expect(page.getByTestId("layer-toggle-ldp")).toHaveCount(0);
       const panel = page.getByTestId("layers-panel");
+      // CLEANUP-318 (from e2e/hla-not-loaded.spec.ts): legacy HLA overlay copy stays off the panel.
+      await expect(panel).not.toContainText("Housing land audit");
       await expect(panel).not.toContainText(/£/);
       await expect(panel).not.toContainText(/\bSIMD\b/);
       await expect(panel).not.toContainText(/\bNaPTAN\b/);
@@ -362,7 +369,7 @@ test("PB-E1 rows default off; toggle shows manifest legend, vintage, credit", as
   await page.getByTestId("layer-toggle-hls-open").click();
   const hlsLegend = page.getByTestId("layer-inline-legend-hls-open");
   await expect(hlsLegend).toContainText(HLS_LEGEND);
-  await expect(hlsLegend.getByTestId("layer-flood-extent-legend")).toHaveText(
+  await expect(hlsLegend.getByTestId("layer-legend-note-hls-open")).toHaveText(
     "North Lanarkshire is not shown, because the council's licence allows its housing land supply data to be viewed but not republished.",
   );
   await page.getByTestId("layer-toggle-hls-open").click();
@@ -374,7 +381,9 @@ test("PB-E1 rows default off; toggle shows manifest legend, vintage, credit", as
   await page.getByTestId("layer-toggle-ldp-highland").click();
   const legend = page.getByTestId("layer-inline-legend-ldp-highland");
   await expect(legend).toContainText(LDP_LEGEND);
-  await expect(legend).toContainText(LDP_HIGHLAND_COVERAGE_NOTE);
+  await expect(legend.getByTestId("layer-legend-note-ldp-highland")).toHaveText(
+    "Highland Council area only. The part inside Cairngorms National Park is not shown, because the Cairngorms National Park Authority prepares the plan there.",
+  );
   await expect(page.getByTestId("layer-vintage-ldp-highland")).toHaveText(
     "SYNTH ldp-highland VINTAGE",
   );
@@ -419,6 +428,156 @@ for (const [name, over] of [
     await expect(page.getByTestId("layer-notice")).toHaveText("One layer did not load.");
     await expect(page.getByTestId("layer-toggle-hls-open")).toHaveCount(0);
     await expect(page.getByTestId("layer-toggle-ldp-highland")).toHaveCount(0);
+    assertConsoleClean(gate);
+  });
+}
+
+// ---- CLEANUP-318: exact copy pins (PR-B strings 1-9, 11; WUX-locked 13 Nov 2026) ----
+
+const C318_COPY = {
+  hlsLabel: "Housing land supply sites",
+  hlsSubline:
+    "Sites where councils expect new homes to be built. This shows planning supply, not land value or ownership.",
+  hlsCaption: "Improvement Service Spatial Hub · open data",
+  ldpLabel: "Local Development Plan allocations (Highland only)",
+  ldpSubline:
+    "Land the Highland Local Development Plan allocates for a specific use. This is a planning designation, not land value or ownership.",
+  ldpCaption: "The Highland Council · open data",
+  ldpNote:
+    "Highland Council area only. The part inside Cairngorms National Park is not shown, because the Cairngorms National Park Authority prepares the plan there.",
+  hlsCredit: "Housing land supply: Improvement Service",
+  ldpCredit: "Highland development plan: The Highland Council",
+  ldpStatusShort: "Highland only so far",
+} as const;
+
+test("C318-U1 registry, credit and roadmap copy are exact literals", () => {
+  const hls = getMapLayer("hls-open");
+  const ldp = getMapLayer("ldp-highland");
+  expect(hls?.label).toBe(C318_COPY.hlsLabel);
+  expect(hls?.subline).toBe(C318_COPY.hlsSubline);
+  expect(hls?.sourceCaption).toBe(C318_COPY.hlsCaption);
+  expect(ldp?.label).toBe(C318_COPY.ldpLabel);
+  expect(ldp?.subline).toBe(C318_COPY.ldpSubline);
+  expect(ldp?.sourceCaption).toBe(C318_COPY.ldpCaption);
+  expect(ldp?.legendNote).toBe(C318_COPY.ldpNote);
+  expect(shortLayerSourceName({ id: "hls-open", text: "x" })).toBe(C318_COPY.hlsCredit);
+  expect(shortLayerSourceName({ id: "ldp-highland", text: "x" })).toBe(C318_COPY.ldpCredit);
+  expect(LAYERS_ADD_WAITING.map((row) => row.id)).toEqual(["ldp"]);
+  expect(LAYERS_ADD_WAITING[0].statusShort).toBe(C318_COPY.ldpStatusShort);
+  // Checked-on label: live feed only; every other row keeps "Data as of".
+  expect(ldp?.asOfLabel).toBe("Checked on");
+  expect(ldp?.extractAsOf).toBeUndefined();
+  // hls-open: fixed extract date from the registry (never the tile build date).
+  expect(hls?.extractAsOf).toBe("6 Oct 2026");
+  expect(hls?.asOfLabel).toBeUndefined();
+});
+
+// Live manifest versions on 13 Nov 2026: both rebuilt that day. The version date is
+// run_layer's fetch date (as_of), i.e. when we last pulled the source.
+const C318_LIVE_VERSIONS = {
+  "hls-open": "2026-11-13.0dcf8d9c",
+  "ldp-highland": "2026-11-13.006d7e43",
+} as const;
+
+test("C318-E1 drawer shows exact copy; coverage notes sit under the key; Checked on", async ({
+  page,
+  gate,
+}) => {
+  test.setTimeout(120_000);
+  attachConsoleGate(page);
+  await stubMapCardsBackend(page);
+  await serveManifest(page, {
+    "hls-open": entry("hls-open", { version: C318_LIVE_VERSIONS["hls-open"] }),
+    "ldp-highland": entry("ldp-highland", {
+      version: C318_LIVE_VERSIONS["ldp-highland"],
+    }),
+  });
+  await openDrawer(page);
+
+  await expect(page.getByTestId("layer-toggle-hls-open")).toHaveText(C318_COPY.hlsLabel);
+  await expect(page.getByTestId("layer-desc-hls-open")).toHaveText(C318_COPY.hlsSubline);
+  await expect(page.getByTestId("layer-toggle-ldp-highland")).toHaveText(C318_COPY.ldpLabel);
+  await expect(page.getByTestId("layer-desc-ldp-highland")).toHaveText(C318_COPY.ldpSubline);
+
+  for (const id of ["hls-open", "ldp-highland"] as const) {
+    await page.getByTestId(`layer-toggle-${id}`).click();
+    const legend = page.getByTestId(`layer-inline-legend-${id}`);
+    // The coverage note follows the colour key (WUX nit 4).
+    const noteAfterKey = await legend.evaluate((root, noteId) => {
+      const key = root.querySelector("ul.layer-legend");
+      const note = root.querySelector(`[data-testid="${noteId}"]`);
+      if (!key || !note) return "missing";
+      return key.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING
+        ? "after"
+        : "before";
+    }, `layer-legend-note-${id}`);
+    expect(noteAfterKey).toBe("after");
+  }
+  // hls-open: fixed extract date, although its tiles were rebuilt on 13 Nov 2026.
+  await expect(page.getByTestId("layer-source-caption-hls-open")).toHaveText(
+    "Improvement Service Spatial Hub · open data · Data as of 6 Oct 2026",
+  );
+  await expect(page.getByTestId("layer-asof-hls-open")).toHaveText(
+    " · Data as of 6 Oct 2026",
+  );
+  // ldp-highland is a live feed: the date we last pulled it (manifest version date).
+  await expect(page.getByTestId("layer-source-caption-ldp-highland")).toHaveText(
+    "The Highland Council · open data · Checked on 13 Nov 2026",
+  );
+  await expect(page.getByTestId("layer-asof-ldp-highland")).toHaveText(
+    " · Checked on 13 Nov 2026",
+  );
+  await expect(page.getByTestId("layer-legend-note-ldp-highland")).toHaveText(
+    C318_COPY.ldpNote,
+  );
+  await expect(page.getByTestId("layer-flood-extent-legend")).toHaveCount(0);
+  assertConsoleClean(gate);
+});
+
+test("C318-E2 roadmap short status is exact", async ({ page }) => {
+  await stubMapCardsBackend(page);
+  await page.goto("/roadmap#map-layers");
+  await expect(
+    page.getByTestId("roadmap-waiting-status-ldp").locator(".roadmap-waiting-status-short"),
+  ).toHaveText(C318_COPY.ldpStatusShort);
+});
+
+for (const width of [360, 390] as const) {
+  test(`C318-E3 @ ${width} Checked on caption wraps in full (no truncation)`, async ({
+    page,
+    gate,
+  }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width, height: 844 });
+    attachConsoleGate(page);
+    await stubMapCardsBackend(page);
+    // Single-digit day pins the format: no leading zero, 3-letter month, no full stop.
+    await serveManifest(page, {
+      "ldp-highland": entry("ldp-highland", { version: "2026-11-03.006d7e43" }),
+    });
+    await openDrawer(page);
+    await page.getByTestId("layer-toggle-ldp-highland").click();
+    const caption = page.getByTestId("layer-source-caption-ldp-highland");
+    await caption.scrollIntoViewIfNeeded();
+    await expect(caption).toBeVisible();
+    await expect(caption).toHaveText(
+      "The Highland Council · open data · Checked on 3 Nov 2026",
+    );
+    const box = await caption.evaluate((el) => {
+      const cs = getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      return {
+        overflowX: el.scrollWidth - el.clientWidth,
+        textOverflow: cs.textOverflow,
+        whiteSpace: cs.whiteSpace,
+        right: r.right,
+        vw: window.innerWidth,
+      };
+    });
+    expect(box.textOverflow).not.toBe("ellipsis");
+    expect(box.whiteSpace).not.toBe("nowrap");
+    expect(box.overflowX).toBeLessThanOrEqual(0);
+    expect(box.right).toBeLessThanOrEqual(box.vw);
     assertConsoleClean(gate);
   });
 }

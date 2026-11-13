@@ -1,0 +1,45 @@
+id: ldp-highland
+title: "Local development plan allocations (Highland)"
+geography: scotland
+clip: land
+clip_keep_all: false
+unit: none
+licence: OGL-3.0
+vintage: "Highland Council live data, last updated {date}"
+attribution: >-
+  Local Development Plan allocations, The Highland Council. Copyright Highland
+  Council. Contains Ordnance Survey data © Crown copyright and database right
+  2026. Contains public sector information licensed under the Open Government
+  Licence v3.0.
+source:
+  type: arcgis
+  url: >-
+    https://services1.arcgis.com/MfbPb778y5QTu2Wv/arcgis/rest/services/LocalDevelopmentPlanAllocations/FeatureServer/0/query
+  where: "1=1"
+  out_fields: "allocation,code,sda"
+  page_size: 1000
+geometry: polygon
+refresh: {cron: "0 5 2 * *", max_mb: 50, max_s: 600}
+serve: {mode: pmtiles, simplify_m: 2, precision_dp: 6, max_mb: 15}
+zoom: {min: 0, max: 14, low_zoom: coalesce}
+style:
+  fill: {fill-color: "#7B3F99", fill-opacity: 0.2}
+  line: {line-color: "#7B3F99", line-width: 1, line-opacity: 0.9}
+legend:
+  - {label: "Local Development Plan allocation (Highland only)", color: "#7B3F99"}
+lineage: {derived_from: [], method: source, roll_up_to: [council, scotland]}
+keep_fields: [allocation, code, sda]
+tiles:
+  budget:
+    total_mb: 5
+    tile_kb: 500
+    z0_7_mb: 1
+publish:
+  source_authority: Highland
+  allow:
+    - {authority: "Highland", licence_url: "https://map-highland.opendata.arcgis.com/datasets/b1872ca2e09d45f1bf632f2730113ea8_0/about"}
+
+# M1 admission test (charter v2 §4); context per PL ruling 13 Nov 2026 (cap 8).
+policy_question: []
+shows: context
+value_layer: false

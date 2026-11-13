@@ -23,13 +23,14 @@ import httpx
 import psycopg2
 import psycopg2.extras
 
-from etl.adapters.arcgis import fetch_arcgis
+from etl.adapters.arcgis import fetch_arcgis, fetch_layer_last_edit
 from etl.adapters.geojson_file import fetch_geojson_file
 from etl.adapters.os_boundary_line import fetch_os_boundary_line
 from etl.adapters.postgis_table import fetch_postgis_table
 from etl.check_dz2011_boundaries import PrecheckError, check_dz2011_rows
 from etl.build_scotland_extent import ExtentError
 from layers.registry.loader import LayerEntry, RegistryError, registry
+from layers.registry.publish import VINTAGE_DATE_SLOT, apply_publish_filter, fill_vintage
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SQL_DIR = Path(__file__).resolve().parent / "sql"
@@ -69,7 +70,12 @@ CLIP_ZONES: dict[str, tuple[str, ...]] = {
 }
 
 EXPECTED_SETTLEMENTS_2022 = 503
-EXPECTED_FEATURE_COUNTS = {"settlements-2022": EXPECTED_SETTLEMENTS_2022}
+# PLANNING-PUBLISH-1: 6,166 open HLS rows minus 220 North Lanarkshire (6 Oct 2026 extract).
+EXPECTED_HLS_OPEN = 5946
+EXPECTED_FEATURE_COUNTS = {
+    "settlements-2022": EXPECTED_SETTLEMENTS_2022,
+    "hls-open": EXPECTED_HLS_OPEN,
+}
 
 # DZ-HEATMAP PR-B0: per-layer checks run before any fetch (fail closed).
 PRECONDITIONS: dict[str, Callable[[Any], None]] = {"dz2011": check_dz2011_rows}
@@ -441,6 +447,20 @@ def _write_receipt(layer_id: str, payload: dict[str, Any]) -> Path:
     return path
 
 
+def _fetched_vintage(
+    entry: LayerEntry, *, from_file: Path | None, client: httpx.Client | None = None
+) -> str | None:
+    """WUX 13 Nov 2026: fill a {date} vintage from the live layer metadata at fetch."""
+    template = str(entry.raw.get("vintage") or "")
+    if VINTAGE_DATE_SLOT not in template:
+        return None
+    source = entry.raw.get("source") or {}
+    last_edit = None
+    if from_file is None and source.get("type") == "arcgis":
+        last_edit = fetch_layer_last_edit(str(source["url"]), client=client)
+    return fill_vintage(entry.id, template, last_edit)
+
+
 def _fetch_entry(
     entry: LayerEntry,
     *,
@@ -559,11 +579,20 @@ def run_layer(
         collection, raw_body, redacted_url = _fetch_entry(
             entry, from_file=from_file, conn=connection
         )
+        filled_vintage = _fetched_vintage(entry, from_file=from_file)
         fetch_s = time.monotonic() - fetch_t0
         features = list(collection.get("features") or [])
         if len(features) == 0:
             raise IngestError(
                 f"INGEST: {layer_id}: source returned 0 features ({redacted_url})"
+            )
+        # PLANNING-PUBLISH-1: per-authority allow-list before stage (fail closed).
+        features, publish_counts = apply_publish_filter(
+            layer_id, entry.raw.get("publish"), features
+        )
+        if len(features) == 0:
+            raise IngestError(
+                f"INGEST: {layer_id}: 0 features after publish allow-list"
             )
         expected_n = EXPECTED_FEATURE_COUNTS.get(layer_id)
         if expected_n is not None and len(features) != expected_n:
@@ -616,6 +645,10 @@ def run_layer(
             "dataset_version": version,
             "method": method,
         }
+        if publish_counts:
+            receipt["publish"] = publish_counts
+        if filled_vintage is not None:
+            receipt["vintage"] = filled_vintage
         _write_receipt(layer_id, receipt)
         return receipt
     except (

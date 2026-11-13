@@ -460,7 +460,7 @@ def test_b21_cli_subprocess(conn, tiles_env, monkeypatch, tmp_path):
         if (entry.raw.get("serve") or {}).get("mode") == "pmtiles"
         and not entry.raw.get("gated_by")
     )
-    assert len(expected) == 20
+    assert len(expected) == 22
 
     for idx, layer_id in enumerate(expected):
         raw = entries[layer_id].raw

@@ -84,3 +84,29 @@ def fetch_arcgis(
     }
     raw = b"".join(chunks) if chunks else b"{}"
     return collection, raw, logged_url
+
+
+def fetch_layer_last_edit(
+    query_url: str, *, client: httpx.Client | None = None, timeout_s: float = 30.0
+) -> Any:
+    """Raw ``editingInfo.dataLastEditDate`` from the layer metadata (``?f=json``).
+
+    ``query_url`` is the registry ``.../FeatureServer/<n>/query`` URL. Returns
+    None when the metadata cannot be read; the caller formats or falls back.
+    """
+    layer_url = query_url.rstrip("/")
+    if layer_url.endswith("/query"):
+        layer_url = layer_url[: -len("/query")]
+    owns_client = client is None
+    http = client or httpx.Client(timeout=timeout_s, follow_redirects=True)
+    try:
+        response = http.get(layer_url, params={"f": "json"})
+        response.raise_for_status()
+        payload = response.json()
+    except (httpx.HTTPError, ValueError):
+        return None
+    finally:
+        if owns_client:
+            http.close()
+    info = payload.get("editingInfo") if isinstance(payload, dict) else None
+    return info.get("dataLastEditDate") if isinstance(info, dict) else None

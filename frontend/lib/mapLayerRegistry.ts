@@ -246,6 +246,26 @@ const STOP_CLASSES: MapLayerLegendClass[] = [
  * Ids match ScotlandMap paint toggles where they already exist.
  * LAYERS-ADD-1: HLA/LDP gated off (roadmap); flood = NFRA grid (default off).
  */
+/** PLANNING-PUBLISH-1 PR-B: Highland LDP coverage gap (WUX). */
+/**
+ * PLANNING-PUBLISH-1 PR-B: hls-open coverage gap (WUX-locked 17:06 GMT, 13 Nov 2026). Reason from
+ * hls-open.yaml publish.exclude (view-only council licence, finding H10).
+ */
+export const HLS_OPEN_COVERAGE_NOTE =
+  "North Lanarkshire is not shown, because the council's licence allows its housing land supply data to be viewed but not republished.";
+
+export const LDP_HIGHLAND_COVERAGE_NOTE =
+  "Highland Council area only. The part inside Cairngorms National Park is not shown, because the Cairngorms National Park Authority prepares the plan there.";
+
+/**
+ * PLANNING-PUBLISH-1 PR-B: rows listed only while the tile manifest carries
+ * their tileset (a gated_by takedown drops it from the manifest).
+ */
+export const MANIFEST_ONLY_DRAWER_IDS: readonly string[] = [
+  "hls-open",
+  "ldp-highland",
+];
+
 export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
   {
     id: "1",
@@ -300,6 +320,34 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     chip: "proxy",
     defaultOn: false,
     coming: true,
+  },
+  {
+    id: "hls-open",
+    group: "land",
+    label: "Housing land supply sites",
+    subline:
+      "Sites where councils expect new homes to be built. This shows planning supply, not land value or ownership.",
+    minzoom: 0,
+    maxzoom: 20,
+    sourceCaption: "Improvement Service Spatial Hub · open data",
+    classes: [],
+    defaultOn: false,
+    legendNote: HLS_OPEN_COVERAGE_NOTE,
+    paintLayerIds: ["tile-hls-open-fill"],
+  },
+  {
+    id: "ldp-highland",
+    group: "land",
+    label: "Local Development Plan allocations (Highland only)",
+    subline:
+      "Land the Highland Local Development Plan allocates for a specific use. This is a planning designation, not land value or ownership.",
+    minzoom: 0,
+    maxzoom: 20,
+    sourceCaption: "The Highland Council · open data",
+    classes: [],
+    defaultOn: false,
+    legendNote: LDP_HIGHLAND_COVERAGE_NOTE,
+    paintLayerIds: ["tile-ldp-highland-fill"],
   },
   {
     id: "grid3",
@@ -566,6 +614,8 @@ export const REGISTRY_TILESETS_BY_DRAWER_ID: Readonly<
   councils: ["councils"],
   data_zones: ["dz2022"],
   "9": ["oil-fields", "platforms", "pipelines"],
+  "hls-open": ["hls-open"],
+  "ldp-highland": ["ldp-highland"],
 };
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {

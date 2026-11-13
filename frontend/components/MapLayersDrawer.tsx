@@ -142,6 +142,8 @@ export type MapLayersDrawerProps = {
   tileLegends?: Readonly<
     Record<string, readonly { label: string; color: string }[]>
   >;
+  /** PLANNING-PUBLISH-1 PR-B — tileset id → manifest vintage line. */
+  tileVintage?: Readonly<Record<string, string>>;
   /** VIEWS-1a — active story view slug, or null. */
   activeViewId?: string | null;
   /** VIEWS-1a — pick a view (sets its layers) or null to clear it. */
@@ -241,6 +243,7 @@ export default function MapLayersDrawer({
   className,
   title = "Map layers",
   tileAsOf,
+  tileVintage,
   tileLegends,
   activeViewId = null,
   onSelectView,
@@ -454,6 +457,7 @@ export default function MapLayersDrawer({
                 onFloodKindChange={onFloodKindChange}
                 onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
                 asOfDate={tileAsOf?.[layer.id]}
+                vintage={tileVintage?.[layer.id]}
                 manifestClasses={manifestLegendsForDrawerLayer(
                   layer.id,
                   tileLegends,
@@ -481,6 +485,7 @@ export default function MapLayersDrawer({
                 onFloodKindChange={onFloodKindChange}
                 onToggle={() => setEnabled(layer.id, !enabled[layer.id])}
                 asOfDate={tileAsOf?.[layer.id]}
+                vintage={tileVintage?.[layer.id]}
                 manifestClasses={manifestLegendsForDrawerLayer(
                   layer.id,
                   tileLegends,
@@ -853,6 +858,7 @@ function DrawerLayerRow({
   floodKind,
   onFloodKindChange,
   asOfDate,
+  vintage,
   manifestClasses,
 }: {
   layer: MapDrawerLayer;
@@ -862,6 +868,7 @@ function DrawerLayerRow({
   floodKind?: "river" | "coastal" | "surface";
   onFloodKindChange?: (kind: "river" | "coastal" | "surface") => void;
   asOfDate?: string;
+  vintage?: string;
   manifestClasses?: readonly MapLayerLegendClass[] | null;
 }) {
   const registry = getMapLayer(layer.id);
@@ -1005,6 +1012,11 @@ function DrawerLayerRow({
               </span>
             ) : null}
           </p>
+          {vintage ? (
+            <p className="layer-meta" data-testid={`layer-vintage-${layer.id}`}>
+              {vintage}
+            </p>
+          ) : null}
         </div>
       ) : null}
     </li>

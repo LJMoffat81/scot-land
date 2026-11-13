@@ -151,7 +151,11 @@ import {
   nextTogglePitch,
 } from "../lib/default3dView";
 import { councilOverlayBeforeId } from "../lib/mapLayerOrder";
-import { defaultOnLayerIds, MAP_LAYER_REGISTRY } from "../lib/mapLayerRegistry";
+import {
+  defaultOnLayerIds,
+  MANIFEST_ONLY_DRAWER_IDS,
+  MAP_LAYER_REGISTRY,
+} from "../lib/mapLayerRegistry";
 import {
   parseViewParam,
   viewLayerIds,
@@ -609,6 +613,9 @@ function activeRegistryLayerIds(opts: {
   if (opts.ledgerEnabled[WHO_HOLDS_LAYER_ID]) ids.push(WHO_HOLDS_LAYER_ID);
   if (opts.ledgerEnabled[IDLE_LAND_LAYER_ID]) ids.push(IDLE_LAND_LAYER_ID);
   if (opts.showGrid3) ids.push(GRID3_LAYER_ID);
+  for (const id of MANIFEST_ONLY_DRAWER_IDS) {
+    if (opts.ledgerEnabled[id]) ids.push(id);
+  }
   return ids;
 }
 
@@ -922,6 +929,12 @@ export default function ScotlandMap() {
   const [tileAsOf, setTileAsOf] = useState<Record<string, string>>({});
   /** ARCH-5a — tileset id → attribution from the tile manifest. */
   const [tileCredits, setTileCredits] = useState<Record<string, string>>({});
+  /** PLANNING-PUBLISH-1 PR-B — tileset id → manifest vintage line. */
+  const [tileVintage, setTileVintage] = useState<Record<string, string>>({});
+  /** PLANNING-PUBLISH-1 PR-B — manifest-only rows present in the manifest. */
+  const [manifestOnlyPresent, setManifestOnlyPresent] = useState<
+    ReadonlySet<string>
+  >(() => new Set());
   const showDataZonesRef = useRef(true);
   showDataZonesRef.current = showDataZones;
   const identifyAbortRef = useRef<AbortController | null>(null);
@@ -4376,11 +4389,17 @@ export default function ScotlandMap() {
         const built = buildTileLayers(manifest, TILE_LAYER_IDS_ORDERED);
         const legends: Record<string, TileLegendItem[]> = {};
         const credits: Record<string, string> = {};
+        const vintages: Record<string, string> = {};
         for (const id of TILE_LAYER_IDS_ORDERED) {
           const entry = manifest.tilesets[id];
           if (entry?.legend?.length) legends[id] = entry.legend;
           if (entry?.attribution) credits[id] = entry.attribution;
+          if (entry?.vintage) vintages[id] = entry.vintage;
         }
+        setTileVintage(vintages);
+        setManifestOnlyPresent(
+          new Set(MANIFEST_ONLY_DRAWER_IDS.filter((id) => manifest.tilesets[id])),
+        );
         tileLegendsRef.current = legends;
         setTileLegends(legends);
         setTileCredits(credits);
@@ -4819,6 +4838,23 @@ export default function ScotlandMap() {
       map.off("moveend", onMove);
     };
   }, [mapReady, showCesAquaculture, markTileUnavailable]);
+
+  // PLANNING-PUBLISH-1 PR-B: housing land supply / Highland LDP tile rows.
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    for (const id of MANIFEST_ONLY_DRAWER_IDS) {
+      const vis =
+        ledgerEnabled[id] && manifestOnlyPresent.has(id) ? "visible" : "none";
+      for (const suffix of ["fill", "line"] as const) {
+        const layerId = `tile-${id}-${suffix}`;
+        if (hasMapLayer(map, layerId)) {
+          map.setLayoutProperty(layerId, "visibility", vis);
+        }
+      }
+    }
+  }, [mapReady, ledgerEnabled, manifestOnlyPresent, tileLegends]);
 
   // Oil and gas switch paints tile-oil-fields-* (ARCH-2b vector tiles).
   useEffect(() => {
@@ -5835,6 +5871,10 @@ export default function ScotlandMap() {
     : desktopLayersOpen;
   /** Tile-unavailable ids for the drawer (builtup is not a switch). */
   const unavailableLayerIds = new Set<string>(tileUnavailableIds);
+  // PLANNING-PUBLISH-1 PR-B: absent (or gated) tileset → no row.
+  for (const id of MANIFEST_ONLY_DRAWER_IDS) {
+    if (!manifestOnlyPresent.has(id)) unavailableLayerIds.add(id);
+  }
 
   const suggestOpen =
     suggestions.length > 0 || Boolean(suggestNote) || suggesting;
@@ -6444,6 +6484,7 @@ export default function ScotlandMap() {
             onEnabledChange={onMapLayersChange}
             tileAsOf={tileAsOf}
             tileLegends={tileLegends}
+            tileVintage={tileVintage}
             activeViewId={viewInUrl}
             onSelectView={selectView}
             dzStatus={

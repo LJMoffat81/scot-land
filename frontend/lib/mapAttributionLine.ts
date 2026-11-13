@@ -149,6 +149,14 @@ export function buildMapAttributionPieces(
     pieces.push({ id: "9", text });
   }
 
+  // PLANNING-PUBLISH-1 PR-B: manifest credit only, no hard-coded fallback.
+  for (const key of ["hls-open", "ldp-highland"] as const) {
+    if (!on.has(key) || !tileCredits) continue;
+    const val = tileCredits[key];
+    if (val === undefined || val === null) continue;
+    pieces.push({ id: key, text: resolveTileCredit(key, "", tileCredits) });
+  }
+
   for (const id of on) {
     const credit = layersAdd2Credit(id);
     if (!credit) continue;
@@ -209,6 +217,11 @@ export function shortLayerSourceName(
       return "Crown Estate Scotland assets: CES";
     case "flood":
       return "Flood maps: SEPA";
+    // PLANNING-PUBLISH-1 PR-B (full credit text comes from the manifest).
+    case "hls-open":
+      return "Housing land supply: Improvement Service";
+    case "ldp-highland":
+      return "Highland development plan: The Highland Council";
     default: {
       const add2 = layersAdd2Credit(piece.id);
       if (!add2) return null;

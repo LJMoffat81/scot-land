@@ -430,6 +430,26 @@ for (const vp of [
         )
         .toBe(true);
 
+      await expect
+        .poll(
+          () =>
+            page.evaluate(() => {
+              const m = (
+                window as unknown as {
+                  __map: {
+                    getPaintProperty(layer: string, prop: string): unknown;
+                  };
+                }
+              ).__map;
+              return m.getPaintProperty(
+                "tile-dz2022-selected-line",
+                "line-opacity",
+              );
+            }),
+          { timeout: 20_000 },
+        )
+        .toBe(1);
+
       // Verify MV-06 selected zone outline (3 px #1A1A1A + 5 px #FFFFFF halo)
       const selectedPaint = await page.evaluate(() => {
         const m = (

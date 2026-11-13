@@ -57,6 +57,32 @@ export const BASEMAP_LOAD_NOTICE =
 /** No `style.load` within this long counts as a basemap failure. */
 export const BASEMAP_STYLE_TIMEOUT_MS = 15_000;
 
+/**
+ * MAP-LOAD-FAIL-STATE-1. Not configurable at run time (no URL or window
+ * override). Live origin stalls run about 90–100s and Cloudflare returns
+ * 524 at about 100s; 30s explains that in under a third of the wait. A
+ * slow load that finishes after 30s clears itself, so it cannot stick as
+ * a false failure. It is double BASEMAP_STYLE_TIMEOUT_MS, so a normal slow
+ * phone load that already passes the basemap check is not flagged, and the
+ * 15s basemap notice still comes first for a basemap-only fault. 20s is too
+ * tight for a cold map boot (style, sprite, glyphs and first tiles). 60s or
+ * more means most visitors have already left. The data-call limit is not a
+ * UX limit.
+ */
+export const MAP_LOAD_TIMEOUT_MS = 30_000;
+
+/** Shown with Try again when MapLibre `load` has not fired in time. */
+export const MAP_LOAD_FAIL_COPY = "The map didn't load. Please try again.";
+
+/** Drawer status while the map or the tile manifest is still loading. */
+export const LAYERS_LOADING_COPY = "Layers are still loading.";
+
+/** Drawer status when the map or the tile manifest failed to load. */
+export const LAYERS_FAIL_COPY = "Layers couldn't load.";
+
+/** Visible while the map is loading. Ellipsis is U+2026. */
+export const MAP_LOADING_COPY = "Loading the map\u2026";
+
 export type BasemapNoticeState = {
   styleLoaded: boolean;
   notice: boolean;

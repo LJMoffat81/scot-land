@@ -616,6 +616,19 @@ _LOOKUP_DEADLINES_1A_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# UX-PICKS-11NOV-1 — map load-fail, layers status, story drawer, tap targets,
+# search focus ring, MV-06 poll. Add-only allow-set.
+_UX_PICKS_11NOV_1_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/components/ScotlandMap.tsx",
+        "frontend/components/MapLayersDrawer.tsx",
+        "frontend/lib/mapBasemap.ts",
+        "frontend/app/map-chrome.css",
+        "frontend/e2e/ci/map-vision-1a.spec.ts",
+        "frontend/e2e/ci/ux-picks-11nov-1.spec.ts",
+    ]
+)
+
 
 def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
@@ -647,6 +660,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _M5_WHO_HOLDS_FRONTEND_ALLOW
                 | _E2E_FLAKE_1_FRONTEND_ALLOW
                 | _LOOKUP_DEADLINES_1A_FRONTEND_ALLOW
+                | _UX_PICKS_11NOV_1_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

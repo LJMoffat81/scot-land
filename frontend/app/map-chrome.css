@@ -1109,6 +1109,7 @@ button.basemap-switcher[aria-pressed="true"] {
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  padding-bottom: 1.5rem;
 }
 
 .map-panel-slot-focus {
@@ -1651,8 +1652,15 @@ button.basemap-switcher[aria-pressed="true"] {
 .map-cards-shell .map-panel-handle:focus-visible,
 .map-cards-shell .map-panel-slot-close:focus-visible,
 .map-cards-shell .map-panel-collapse-tab:focus-visible,
-.map-cards-shell .hud-search input:focus-visible,
 .map-cards-shell .hud-search-go:focus-visible {
+  outline: 3px solid #ffdd00;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 1px #0b1e3a;
+}
+
+/* SEARCH-FOCUS-CLEAN-1: the input outline was clipped by the pill's
+   overflow. Draw the same ring on the pill while the field is focused. */
+.map-cards-shell .hud-search:has(input:focus) {
   outline: 3px solid #ffdd00;
   outline-offset: 2px;
   box-shadow: 0 0 0 1px #0b1e3a;
@@ -2086,6 +2094,102 @@ button.basemap-switcher[aria-pressed="true"] {
   border-radius: 999px;
   background: #fff;
   cursor: pointer;
+  min-height: 44px;
+  min-width: 44px;
+  box-sizing: border-box;
+}
+[data-testid="map-layers-labels-link"] a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  min-width: 44px;
+}
+.map-view-idle-land,
+.map-view-who-holds {
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-bottom: 0.75rem;
+}
+.map-view-idle-land thead th,
+.map-view-who-holds thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+  border-bottom: 1px solid #334155;
+}
+.map-view-idle-land th:nth-child(n + 2),
+.map-view-idle-land td:nth-child(n + 2),
+.map-view-who-holds th:nth-child(n + 2),
+.map-view-who-holds td:nth-child(n + 2) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.map-view-idle-land th:nth-child(n + 2),
+.map-view-who-holds th:nth-child(n + 2) {
+  padding-left: 0.75rem;
+}
+.map-view-detail > .map-view-action {
+  position: sticky;
+  bottom: 0.5rem;
+  z-index: 1;
+  margin-top: 0.5rem;
+  margin-right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: bottom;
+  background: #fff;
+  box-shadow: 0 -0.75rem 1rem 0.25rem #fff;
+}
+.map-load-status {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  padding: 0.45rem 0.85rem;
+  background: #fff;
+  border-radius: 999px;
+  box-shadow: 0 4px 16px rgba(11, 30, 58, 0.16);
+  pointer-events: none;
+  text-align: center;
+}
+.map-load-fail {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(18rem, calc(100% - 7.5rem));
+  margin: 0;
+  padding: 1rem 1.1rem;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(11, 30, 58, 0.18);
+  text-align: center;
+}
+.map-load-fail .retry-state-line,
+.layers-panel .retry-state .retry-state-line {
+  margin: 0 0 0.65rem;
+}
+.map-load-fail .retry-state-button,
+.layers-panel .retry-state-button {
+  font: inherit;
+  padding: 0.25rem 0.625rem;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  background: #fff;
+  cursor: pointer;
+  min-height: 44px;
+  min-width: 44px;
+  box-sizing: border-box;
+}
+.layers-status-line {
+  margin: 0.25rem 0 0.5rem;
 }
 .map-view-button[aria-pressed="true"] {
   background: #0b2340;

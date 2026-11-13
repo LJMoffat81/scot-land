@@ -173,7 +173,8 @@ def catalog_layer() -> dict[str, Any] | None:
         "developer_note": (
             "LDP polygons from OGL Spatial Hub / authority portals into PostGIS. "
             "National coverage fragmented. Annual Ground Rent breakdown row 1a planning uplift. "
-            "LAYERS-ADD-1a: LAYER_LDP_ENABLED default OFF (PSGA / not commercially available)."
+            "LAYERS-ADD-1a: LAYER_LDP_ENABLED stays default OFF (legacy endpoint). Highland LDP "
+            "allocations are published as tile layer ldp-highland."
         ),
         "endpoint": "/layers/open/ldp",
         "licence": meta["licence"],

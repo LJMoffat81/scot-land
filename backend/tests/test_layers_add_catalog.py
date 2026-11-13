@@ -164,8 +164,16 @@ def test_waiting_for_permission_is_ldp_and_hls():
     waiting = waiting_for_permission_rows()
     ids = {row["layer_id"] for row in waiting}
     assert ids == {"ldp_allocations", "housing_land_supply"}
-    for row in waiting:
-        assert row["status_label"] == "Waiting for permission to use the data"
+    # PSGA-COPY-CLEANUP-1: exact per-row status (LDP = PR-B WUX strings 10/11).
+    by_id = {row["layer_id"]: row for row in waiting}
+    assert by_id["ldp_allocations"]["status_label"] == (
+        "On the map for Highland only. For other councils, we're waiting for permission to use the data."
+    )
+    assert by_id["ldp_allocations"]["status_label_short"] == "Highland only so far"
+    assert by_id["housing_land_supply"]["status_label"] == (
+        "On the map from open data. North Lanarkshire is not shown."
+    )
+    assert by_id["housing_land_supply"]["status_label_short"] == "On the map"
 
 
 def test_l14_v1_4_model_has_no_candidates_v15_import():

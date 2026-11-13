@@ -158,7 +158,8 @@ def _hla_catalog_layer() -> dict[str, Any] | None:
             "ingest of the OGL open product (503 when unloaded). Annual Ground Rent "
             "breakdown row 1a (planning uplift, already included in surface) — not a "
             "LayersPanel toggle. Audit polygons, not a title. No public money figures. "
-            "LAYERS-ADD-1a: LAYER_HLS_ENABLED (default OFF; PSGA restriction)."
+            "LAYERS-ADD-1a: LAYER_HLS_ENABLED stays default OFF (legacy endpoint). Open housing "
+            "land supply sites are published as tile layer hls-open (North Lanarkshire excluded)."
         ),
         "endpoint": "/layers/open/hla",
         "licence": "OGL-3.0",

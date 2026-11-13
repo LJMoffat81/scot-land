@@ -3,6 +3,7 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import ConfidenceTag from "@/components/ConfidenceTag";
 import MapRangeLegend from "@/components/MapRangeLegend";
+import RetryState from "@/components/RetryState";
 import DzStatusKey from "@/components/DzStatusKey";
 import { DZ_STATUS_KEY_TITLE, DZ_STATUS_LAYER_ID } from "@/lib/dzStatusLayer";
 import {
@@ -20,6 +21,11 @@ import {
   type MapDrawerLayer,
 } from "@/lib/mapLayerGroups";
 import { popDensityLegendProps } from "@/lib/popDensityLegend";
+import { PLACE_CARD_TRY_AGAIN_LABEL } from "@/lib/placeCard";
+import {
+  LAYERS_FAIL_COPY,
+  LAYERS_LOADING_COPY,
+} from "@/lib/mapBasemap";
 import { getApiBaseUrl } from "@/lib/api";
 import {
   fetchWhoHolds,
@@ -145,6 +151,13 @@ export type MapLayersDrawerProps = {
    * (dz2011 tiles not built). showKey only for a validated payload.
    */
   dzStatus?: { on: boolean; onToggle: () => void; showKey: boolean } | null;
+  /**
+   * LAYERS-EMPTY-STATE-1. Omitted means ready, so /layers-panel previews
+   * stay unchanged.
+   */
+  layersStatus?: "loading" | "failed" | "ready";
+  /** Remount the map (and re-fetch the manifest) from the drawer Try again. */
+  onRetryLayers?: () => void;
 };
 
 function asUnavailableSet(
@@ -232,7 +245,22 @@ export default function MapLayersDrawer({
   activeViewId = null,
   onSelectView,
   dzStatus = null,
+  layersStatus = "ready",
+  onRetryLayers,
 }: MapLayersDrawerProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const retryLayers = () => {
+    const retryButton = document.querySelector(
+      '[data-testid="layers-try-again"]',
+    );
+    if (
+      retryButton instanceof HTMLElement &&
+      document.activeElement === retryButton
+    ) {
+      panelRef.current?.focus({ preventScroll: true });
+    }
+    onRetryLayers?.();
+  };
   const unavailable = asUnavailableSet(unavailableIds);
   const views = availableViews(unavailable);
   const activeView = views.find((v) => v.id === activeViewId) ?? null;
@@ -311,11 +339,15 @@ export default function MapLayersDrawer({
 
   return (
     <div
+      ref={panelRef}
       className={["map-layers-drawer", "layers-panel", className]
         .filter(Boolean)
         .join(" ")}
       data-testid="layers-panel"
       data-drawer="map-layers"
+      role="region"
+      aria-label={title}
+      tabIndex={-1}
     >
       <div className="layers-panel-header">
         <p className="hud-tools-title">{title}</p>
@@ -331,6 +363,26 @@ export default function MapLayersDrawer({
           </button>
         ) : null}
       </div>
+
+      {layersStatus === "loading" ? (
+        <p
+          className="layers-status-line"
+          role="status"
+          aria-live="polite"
+          data-testid="layers-status-loading"
+        >
+          {LAYERS_LOADING_COPY}
+        </p>
+      ) : null}
+      {layersStatus === "failed" ? (
+        <RetryState
+          testIdPrefix="layers"
+          message={LAYERS_FAIL_COPY}
+          retryLabel={PLACE_CARD_TRY_AGAIN_LABEL}
+          onRetry={retryLayers}
+          buttonTestId="layers-try-again"
+        />
+      ) : null}
 
       {views.length > 0 ? (
         <section className="map-views" data-testid="map-views" aria-label={VIEWS_HEADING}>

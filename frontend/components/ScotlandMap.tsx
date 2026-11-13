@@ -130,6 +130,9 @@ import {
   BASEMAP_STYLE_TIMEOUT_MS,
   BASEMAP_SWITCHER_VISIBLE_LABEL,
   DEFAULT_MAP_BASEMAP,
+  MAP_LOAD_FAIL_COPY,
+  MAP_LOAD_TIMEOUT_MS,
+  MAP_LOADING_COPY,
   MAP_MAX_ZOOM,
   basemapStyleUrl,
   esriStyleAttributionText,
@@ -654,6 +657,37 @@ function mapPanelPadding(opts?: {
   };
 }
 
+/** Put a stored camera back. One correction pass cancels jumpTo bias. */
+function snapHeldCamera(
+  map: Map,
+  held: {
+    lng: number;
+    lat: number;
+    zoom: number;
+    pitch: number;
+    bearing: number;
+  },
+) {
+  const apply = (
+    lng: number,
+    lat: number,
+    zoom: number,
+    pitch: number,
+    bearing: number,
+  ) => {
+    map.jumpTo({ center: [lng, lat], zoom, pitch, bearing });
+  };
+  apply(held.lng, held.lat, held.zoom, held.pitch, held.bearing);
+  const center = map.getCenter();
+  apply(
+    held.lng - (center.lng - held.lng),
+    held.lat - (center.lat - held.lat),
+    held.zoom - (map.getZoom() - held.zoom),
+    held.pitch - (map.getPitch() - held.pitch),
+    held.bearing - (map.getBearing() - held.bearing),
+  );
+}
+
 /** MapLibre Marker defaults to aria-label on a bare div — set role="img". */
 function placeSelectedMarker(
   map: Map,
@@ -760,8 +794,17 @@ function searchFailureFrom(err: ApiError): LookupFailure | null {
 export default function ScotlandMap() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
+  const mapStageRef = useRef<HTMLDivElement | null>(null);
+  const snapCameraOnceRef = useRef(false);
   const lookupGen = useRef(0);
   const [mapReady, setMapReady] = useState(false);
+  const [mapLoadState, setMapLoadState] = useState<
+    "loading" | "ready" | "failed"
+  >("loading");
+  const [mapAttempt, setMapAttempt] = useState(0);
+  const [manifestState, setManifestState] = useState<
+    "pending" | "ok" | "failed"
+  >("pending");
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [suggestNote, setSuggestNote] = useState<string | null>(null);
@@ -1994,16 +2037,21 @@ export default function ScotlandMap() {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map) return;
-    map.easeTo({
-      padding: mapPanelPadding({
-        panelOpen:
-          (panelKind === "place" && !panelCollapsed) ||
-          (isNarrowPanel && panelKind === "layers"),
-        detent: panelDetent,
-        collapsed: panelCollapsed,
-      }),
-      duration: 0,
+    const padding = mapPanelPadding({
+      panelOpen:
+        (panelKind === "place" && !panelCollapsed) ||
+        (isNarrowPanel && panelKind === "layers"),
+      detent: panelDetent,
+      collapsed: panelCollapsed,
     });
+    if (snapCameraOnceRef.current && cameraPreserveRef.current) {
+      const held = cameraPreserveRef.current;
+      snapCameraOnceRef.current = false;
+      map.setPadding(padding);
+      snapHeldCamera(map, held);
+    } else {
+      map.easeTo({ padding, duration: 0 });
+    }
   }, [mapReady, panelKind, panelDetent, panelCollapsed, isNarrowPanel]);
 
   const openPostcode = async (postcode: string, generation: number) => {
@@ -2512,6 +2560,11 @@ export default function ScotlandMap() {
     let aerialTileFails = 0;
     const aerialWindowStart = Date.now();
     setBasemapNotice(false);
+    setMapLoadState("loading");
+    let mapLoadFired = false;
+    const mapLoadTimer = window.setTimeout(() => {
+      if (basemapAlive && !mapLoadFired) setMapLoadState("failed");
+    }, MAP_LOAD_TIMEOUT_MS);
     if (!bootAerial) setEsriAttribution(null);
     const basemapTimer = window.setTimeout(() => {
       if (basemapAlive && !basemapStyleLoaded) setBasemapNotice(true);
@@ -2589,6 +2642,9 @@ export default function ScotlandMap() {
     };
     map.on("style.load", onBasemapStyle);
     map.once("load", () => {
+      mapLoadFired = true;
+      window.clearTimeout(mapLoadTimer);
+      if (basemapAlive) setMapLoadState("ready");
       if (bootAerial) applyAerialAttribution();
     });
     const aerialWatchdog = bootAerial
@@ -2754,7 +2810,11 @@ export default function ScotlandMap() {
       map.resize();
       if (nextWidth < 40 || nextHeight < 40) return;
       const held = cameraPreserveRef.current;
-      if (held && nextWidth === held.width && nextHeight === held.height) {
+      if (
+        held &&
+        (snapCameraOnceRef.current ||
+          (nextWidth === held.width && nextHeight === held.height))
+      ) {
         return;
       }
       if (held) cameraPreserveRef.current = null;
@@ -3547,6 +3607,7 @@ export default function ScotlandMap() {
     return () => {
       basemapAlive = false;
       window.clearTimeout(basemapTimer);
+      window.clearTimeout(mapLoadTimer);
       if (aerialWatchdog !== undefined) window.clearTimeout(aerialWatchdog);
       map.off("style.load", onBasemapStyle);
       resizeObserver.disconnect();
@@ -3584,11 +3645,12 @@ export default function ScotlandMap() {
         }
       }
       // Allow deep-link boot on the next map instance (Strict Mode / style remount).
-      urlBootDoneRef.current = false;
+      // A Try again that stored the camera must not re-apply the rounded URL centre.
+      if (!snapCameraOnceRef.current) urlBootDoneRef.current = false;
     };
-    // Remount when basemap style changes (OpenFreeMap light ↔ Esri aerial).
+    // Remount when the basemap style or Try again (mapAttempt) changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapStyle]);
+  }, [mapStyle, mapAttempt]);
 
   // Deep-link boot (?lat/lng/words) once mapReady — survives style remount.
   // Prefer the mount-time capture: layers URL sync may already have rewritten
@@ -4225,6 +4287,7 @@ export default function ScotlandMap() {
     let cancelled = false;
     const ac = new AbortController();
     setOutlineBuilt(false);
+    setManifestState("pending");
     const isFetchAbort = (err: unknown): boolean =>
       (typeof err === "object" &&
         err !== null &&
@@ -4293,6 +4356,7 @@ export default function ScotlandMap() {
           (body as { ok?: unknown }).ok === false
         ) {
           setLayerNotice("One layer did not load.");
+          setManifestState("failed");
           return;
         }
         let manifest;
@@ -4302,9 +4366,11 @@ export default function ScotlandMap() {
           // TileManifestError / refusal → existing note; no retry.
           if (err instanceof TileManifestError) {
             setLayerNotice("One layer did not load.");
+            setManifestState("failed");
             return;
           }
           setLayerNotice("One layer did not load.");
+          setManifestState("failed");
           return;
         }
         const built = buildTileLayers(manifest, TILE_LAYER_IDS_ORDERED);
@@ -4319,6 +4385,7 @@ export default function ScotlandMap() {
         setTileLegends(legends);
         setTileCredits(credits);
         setTileAsOf(asOfMapForDrawerLayers(manifest.tilesets));
+        setManifestState("ok");
 
         setDzStatusSource(dzStatusTiles(manifest));
 
@@ -4457,7 +4524,10 @@ export default function ScotlandMap() {
       })
       .catch((err: unknown) => {
         if (isFetchAbort(err) || cancelled || ac.signal.aborted) return;
-        if (!cancelled) setLayerNotice("One layer did not load.");
+        if (!cancelled) {
+          setLayerNotice("One layer did not load.");
+          setManifestState("failed");
+        }
       });
 
     return () => {
@@ -5782,6 +5852,50 @@ export default function ScotlandMap() {
     .filter(Boolean)
     .join(" ");
 
+  const retryMapLoad = () => {
+    const retryButton = document.querySelector(
+      '[data-testid="map-load-try-again"]',
+    );
+    if (
+      retryButton instanceof HTMLElement &&
+      document.activeElement === retryButton
+    ) {
+      mapStageRef.current?.focus({ preventScroll: true });
+    }
+    const map = mapRef.current;
+    // map.loaded() flips false while sources settle. The load state is the
+    // record that this map instance has already fired `load`.
+    if (map && mapLoadState === "ready") {
+      try {
+        const c = map.getCenter();
+        const box = map.getContainer();
+        cameraPreserveRef.current = {
+          lng: c.lng,
+          lat: c.lat,
+          zoom: map.getZoom(),
+          pitch: map.getPitch(),
+          bearing: map.getBearing(),
+          width: box.clientWidth,
+          height: box.clientHeight,
+        };
+        snapCameraOnceRef.current = true;
+      } catch {
+        // Mid-remount / style-not-loaded: keep the last preserved camera
+        // rather than aborting the retry.
+      }
+    }
+    setMapLoadState("loading");
+    setManifestState("pending");
+    setMapAttempt((attempt) => attempt + 1);
+  };
+
+  const layersStatus: "loading" | "failed" | "ready" =
+    mapLoadState === "failed" || manifestState === "failed"
+      ? "failed"
+      : mapLoadState === "loading" || !mapReady || manifestState === "pending"
+        ? "loading"
+        : "ready";
+
   const selectBasemap = (next: MapBasemapId) => {
     if (next === mapStyle) return;
     const map = mapRef.current;
@@ -5838,13 +5952,21 @@ export default function ScotlandMap() {
 
   return (
     <div className={shellClass}>
-      <div className="map-stage">
-      <div className="map-wrap" key={mapStyle}>
+      <div
+        className="map-stage"
+        ref={mapStageRef}
+        role="region"
+        aria-label="Scotland map"
+        tabIndex={-1}
+        data-testid="map-region"
+      >
+      <div className="map-wrap" key={`${mapStyle}:${mapAttempt}`}>
         <div
           id="map"
           ref={mapContainer}
           role="application"
           aria-label="Scotland map"
+          aria-busy={mapLoadState === "loading" ? "true" : "false"}
         />
         {protectedSitesHint ? (
           <div className="map-zoom-hint-stack">
@@ -5877,6 +5999,27 @@ export default function ScotlandMap() {
           </div>
         ) : null}
       </div>
+
+      {mapLoadState === "loading" ? (
+        <p
+          className="map-load-status"
+          role="status"
+          aria-live="polite"
+          data-testid="map-loading"
+        >
+          {MAP_LOADING_COPY}
+        </p>
+      ) : null}
+      {mapLoadState === "failed" ? (
+        <RetryState
+          testIdPrefix="map-load"
+          className="map-load-fail"
+          message={MAP_LOAD_FAIL_COPY}
+          retryLabel={PLACE_CARD_TRY_AGAIN_LABEL}
+          onRetry={retryMapLoad}
+          buttonTestId="map-load-try-again"
+        />
+      ) : null}
 
       <div
         className={
@@ -6166,7 +6309,7 @@ export default function ScotlandMap() {
             <p>{AERIAL_UNAVAILABLE_NOTICE}</p>
           </div>
         ) : null}
-        {basemapNotice ? (
+        {basemapNotice && mapLoadState !== "failed" ? (
           <div
             className="basemap-notice"
             role="status"
@@ -6277,6 +6420,8 @@ export default function ScotlandMap() {
         >
           <MapLayersDrawer
             className="layers-panel-in-shell"
+            layersStatus={layersStatus}
+            onRetryLayers={retryMapLoad}
             mapZoom={mapZoom}
             popDensityKeyVisible={
               showCouncils && !showAgr && contextDataLoaded

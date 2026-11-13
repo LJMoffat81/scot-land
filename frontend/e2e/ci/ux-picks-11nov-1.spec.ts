@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page, Route, TestInfo } from "@playwright/test";
 import {
@@ -35,7 +35,6 @@ const EMPTY_MANIFEST = readFileSync(
   join(process.cwd(), "e2e", "ci", "fixtures", "tiles-manifest-empty.json"),
   "utf8",
 );
-const ARTIFACTS = "/opt/cursor/artifacts";
 
 const WIDTHS = [
   { width: 1280, height: 800, pitch: DEFAULT_3D_PITCH_DESKTOP },
@@ -67,8 +66,6 @@ async function saveShot(
   png: Buffer,
 ): Promise<void> {
   await testInfo.attach(name, { body: png, contentType: "image/png" });
-  mkdirSync(ARTIFACTS, { recursive: true });
-  writeFileSync(join(ARTIFACTS, `${name}.png`), png);
 }
 
 async function routeStyle(page: Page, ctl: StyleCtl): Promise<void> {
@@ -586,18 +583,15 @@ for (const vp of WIDTHS) {
       expect(Math.abs(after.pitch - before.pitch)).toBeLessThanOrEqual(1e-6);
     });
 
-    test("L5 the layers preview has no status line", async ({ page, gate }) => {
-      test.setTimeout(60_000);
-      // The CI build does not enable the internal preview, so the route 404s.
-      // The new status nodes must still be absent.
-      gate.expectError({
-        text: "Failed to load resource: the server responded with a status of 404 (Not Found)",
-        count: 1,
-      });
-      await stubMapCardsBackend(page);
-      await page.goto("/layers-panel");
-      await expect(page.getByTestId("layers-status-loading")).toHaveCount(0);
-      await expect(page.getByTestId("layers-retry-state")).toHaveCount(0);
+    test("L5 ScotlandMap passes layersStatus to MapLayersDrawer", () => {
+      const src = readFileSync(
+        join(process.cwd(), "components", "ScotlandMap.tsx"),
+        "utf8",
+      );
+      const start = src.indexOf("<MapLayersDrawer");
+      expect(start, "L5").toBeGreaterThanOrEqual(0);
+      const opening = src.slice(start, src.indexOf("/>", start));
+      expect(opening, "L5").toContain("layersStatus={layersStatus}");
     });
 
     test("L6 keyboard focus stays in the layers panel", async ({ page, gate }) => {

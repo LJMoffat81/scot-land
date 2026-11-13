@@ -12,9 +12,12 @@ from typing import Any, Mapping
 from layers.registry.loader import LayerEntry, RegistryError
 
 # PLANNING-PUBLISH-1: raised 6 -> 8 by Project Lead ruling 13 Nov 2026 (hls-open, ldp-highland).
-CONTEXT_CAP = 8
+# M1-CLOSE-1: back to 6 (charter v2 §4 rule 1) once hls-open and ldp-highland carry Q tags (PL ruling 13 Nov 2026).
+CONTEXT_CAP = 6
 NON_COMMERCIAL_LICENCES = frozenset({"NSTA-OGL"})
 SUMMING_METHODS = frozenset({"sum", "area_weighted", "pop_weighted"})
+# M1-CLOSE-1: the only net_of token that is not a named public take.
+NET_OF_NONE = "none"
 # Layers on main before M1 that may carry ``admission_gaps``. Literal ids, no
 # globs; a new layer must pass the test in full. Emptied by M1-VINTAGES: every
 # committed layer now declares its vintage.
@@ -85,6 +88,14 @@ def _check_entry(entry_id: str, raw: Mapping[str, Any]) -> None:
                 raise AdmissionError(
                     f"ADMISSION: {entry_id}: $.{key}: required for a value layer"
                 )
+        # M1-CLOSE-1: "none" declares that no public take is subtracted, so it
+        # cannot sit alongside a named public take.
+        net_of = raw["net_of"]
+        if NET_OF_NONE in net_of and len(net_of) > 1:
+            raise AdmissionError(
+                f"ADMISSION: {entry_id}: $.net_of: '{NET_OF_NONE}' cannot be combined "
+                "with other entries"
+            )
     else:
         for key in ("net_of", "overlaps_with"):
             if key in raw:
@@ -144,6 +155,12 @@ def _check_double_counting(entries: Mapping[str, LayerEntry]) -> None:
         ]
         for i, a in enumerate(parents):
             for b in parents[i + 1 :]:
+                # M1-CLOSE-1: the same value layer twice covers the same hectare twice.
+                if b == a:
+                    raise AdmissionError(
+                        f"ADMISSION: {entry_id}: $.lineage.derived_from: "
+                        f"sums value layer {a} twice"
+                    )
                 if b in (entries[a].raw.get("overlaps_with") or []):
                     raise AdmissionError(
                         f"ADMISSION: {entry_id}: $.lineage.derived_from: "

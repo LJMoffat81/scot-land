@@ -185,7 +185,7 @@ def test_pp_w0_committed_registry_loads():
     assert {r["authority"] for r in hls["exclude"]} == {"North Lanarkshire"}
     assert reg["ldp-highland"].raw["publish"]["source_authority"] == "Highland"
     context = [eid for eid, e in reg.items() if e.raw.get("shows") == "context"]
-    assert len(context) == 8
+    assert len(context) == 6
 
 
 def test_pp_r1_nl_in_allow_and_exclude(tmp_path):

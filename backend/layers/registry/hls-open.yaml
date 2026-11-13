@@ -71,7 +71,7 @@ publish:
   exclude:
     - {authority: "North Lanarkshire", reason: "Council portal licence is view-only (finding H10); excluded by Project Lead ruling 13 Nov 2026"}
 
-# M1 admission test (charter v2 §4); context per PL ruling 13 Nov 2026 (cap 8).
-policy_question: []
-shows: context
+# M1 admission test (charter v2 §4); M1-CLOSE-1 retag from charter v2 §3 Q2 and Q3 tables (PL ruling 13 Nov 2026).
+policy_question: [Q3, Q2]
+shows: unearned_uplift
 value_layer: false

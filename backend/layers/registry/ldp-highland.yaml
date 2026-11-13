@@ -39,7 +39,7 @@ publish:
   allow:
     - {authority: "Highland", licence_url: "https://map-highland.opendata.arcgis.com/datasets/b1872ca2e09d45f1bf632f2730113ea8_0/about"}
 
-# M1 admission test (charter v2 §4); context per PL ruling 13 Nov 2026 (cap 8).
-policy_question: []
-shows: context
+# M1 admission test (charter v2 §4); M1-CLOSE-1 retag from charter v2 §3 Q3 table (PL ruling 13 Nov 2026).
+policy_question: [Q3]
+shows: unearned_uplift
 value_layer: false

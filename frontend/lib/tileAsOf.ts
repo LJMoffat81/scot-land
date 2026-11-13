@@ -26,6 +26,8 @@ const DEFAULT_DRAWER_TILESET_MAPPING: Readonly<
   councils: ["councils"],
   data_zones: ["dz2022"],
   "9": ["oil-fields", "platforms", "pipelines"],
+  // CLEANUP-318 (CHECKED-ON-LABEL-1): live feed, shown as "Checked on <date>".
+  "ldp-highland": ["ldp-highland"],
 };
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {

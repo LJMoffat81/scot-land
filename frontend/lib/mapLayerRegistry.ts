@@ -78,8 +78,18 @@ export type MapLayerRegistryEntry = {
   subline?: string;
   /** Inline legend zoom gate copy when gated (defaults to LAYER_ZOOM_HINT). */
   zoomHint?: string;
-  /** Sentence shown with the class key. */
+  /** Sentence shown under the class key (coverage gaps, key captions). */
   legendNote?: string;
+  /**
+   * CLEANUP-318 (CHECKED-ON-LABEL-1): label before the manifest build date in
+   * the source caption. Live feeds use "Checked on"; default "Data as of".
+   */
+  asOfLabel?: "Checked on";
+  /**
+   * CLEANUP-318: fixed extract date ("D Mon YYYY") for static extracts. Wins over
+   * the manifest build date, so a tile rebuild never makes the data look newer.
+   */
+  extractAsOf?: string;
   /**
    * When the map is zoomed further in than this, the layer no longer paints
    * and the row shows zoomOutHint. AGR council fill stops above zoom 7.
@@ -242,18 +252,13 @@ const STOP_CLASSES: MapLayerLegendClass[] = [
 ];
 
 /**
- * Live Layers switches only — no Coming soon / Coming later rows.
- * Ids match ScotlandMap paint toggles where they already exist.
- * LAYERS-ADD-1: HLA/LDP gated off (roadmap); flood = NFRA grid (default off).
- */
-/** PLANNING-PUBLISH-1 PR-B: Highland LDP coverage gap (WUX). */
-/**
  * PLANNING-PUBLISH-1 PR-B: hls-open coverage gap (WUX-locked 17:06 GMT, 13 Nov 2026). Reason from
  * hls-open.yaml publish.exclude (view-only council licence, finding H10).
  */
 export const HLS_OPEN_COVERAGE_NOTE =
   "North Lanarkshire is not shown, because the council's licence allows its housing land supply data to be viewed but not republished.";
 
+/** PLANNING-PUBLISH-1 PR-B: Highland LDP coverage gap (WUX). */
 export const LDP_HIGHLAND_COVERAGE_NOTE =
   "Highland Council area only. The part inside Cairngorms National Park is not shown, because the Cairngorms National Park Authority prepares the plan there.";
 
@@ -266,6 +271,13 @@ export const MANIFEST_ONLY_DRAWER_IDS: readonly string[] = [
   "ldp-highland",
 ];
 
+/**
+ * Live Layers switches only — no Coming soon / Coming later rows.
+ * Ids match ScotlandMap paint toggles where they already exist.
+ * LAYERS-ADD-1: legacy hla/ldp overlays are not switches; planning rows are the
+ * manifest-only hls-open / ldp-highland (PLANNING-PUBLISH-1). flood = NFRA grid
+ * (default off), not the sepa-flood extent tileset.
+ */
 export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
   {
     id: "1",
@@ -333,6 +345,8 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     classes: [],
     defaultOn: false,
     legendNote: HLS_OPEN_COVERAGE_NOTE,
+    // Spatial Hub open extract date (hls-open.yaml); not the tile build date.
+    extractAsOf: "6 Oct 2026",
     paintLayerIds: ["tile-hls-open-fill"],
   },
   {
@@ -347,6 +361,7 @@ export const MAP_LAYER_REGISTRY: readonly MapLayerRegistryEntry[] = [
     classes: [],
     defaultOn: false,
     legendNote: LDP_HIGHLAND_COVERAGE_NOTE,
+    asOfLabel: "Checked on",
     paintLayerIds: ["tile-ldp-highland-fill"],
   },
   {

@@ -872,6 +872,7 @@ function DrawerLayerRow({
   manifestClasses?: readonly MapLayerLegendClass[] | null;
 }) {
   const registry = getMapLayer(layer.id);
+  const shownAsOf = registry?.extractAsOf ?? asOfDate;
   const legend: InlineLegendView | null =
     on && registry
       ? buildInlineLegendFromRegistry(registry, { mapZoom, manifestClasses })
@@ -981,11 +982,6 @@ function DrawerLayerRow({
           {legend.rampScale ? (
             <p className="layers-inline-legend-scale">{legend.rampScale}</p>
           ) : null}
-          {registry?.legendNote ? (
-            <p className="layer-meta" data-testid="layer-flood-extent-legend">
-              {registry.legendNote}
-            </p>
-          ) : null}
           <ul className="layer-legend" aria-label={`${layer.label} key`}>
             {legend.classes.map((row) => (
               <li key={`${layer.id}-${row.label}-${row.color}`}>
@@ -1001,14 +997,22 @@ function DrawerLayerRow({
               </li>
             ))}
           </ul>
+          {registry?.legendNote ? (
+            <p
+              className="layer-meta"
+              data-testid={`layer-legend-note-${layer.id}`}
+            >
+              {registry.legendNote}
+            </p>
+          ) : null}
           <p
             className="layer-meta layers-source-caption"
             data-testid={`layer-source-caption-${layer.id}`}
           >
             {legend.sourceCaption}
-            {asOfDate ? (
+            {shownAsOf ? (
               <span data-testid={`layer-asof-${layer.id}`}>
-                {` · Data as of ${asOfDate}`}
+                {` · ${registry?.asOfLabel ?? "Data as of"} ${shownAsOf}`}
               </span>
             ) : null}
           </p>

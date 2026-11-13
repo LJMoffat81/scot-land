@@ -98,7 +98,7 @@ for (const width of [1280, 390] as const) {
       await expect(page.getByTestId("flood-kind-coastal")).toBeVisible();
       await expect(page.getByTestId("flood-kind-surface")).toBeVisible();
       await toggle.click();
-      await expect(page.getByTestId("layer-flood-extent-legend")).toHaveText(
+      await expect(page.getByTestId("layer-legend-note-flood")).toHaveText(
         LEGEND,
       );
       await expect(page.getByTestId("layer-source-caption-flood")).toHaveText(

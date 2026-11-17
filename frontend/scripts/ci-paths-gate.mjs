@@ -40,6 +40,7 @@ export function runCli(argv, deps = {}) {
   let baseRef = null;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === "--push-main") mode = "push-main";
+    else if (argv[i] === "--no-changes") mode = mode === "push-main" ? mode : "no-changes";
     else if (argv[i] === "--base") {
       baseRef = argv[++i];
       mode = mode ?? "pull_request";
@@ -52,9 +53,15 @@ export function runCli(argv, deps = {}) {
     return 0;
   }
 
+  if (mode === "no-changes") {
+    writeGithubOutput(env, "false");
+    process.stdout.write("frontend=false\n");
+    return 0;
+  }
+
   if (!baseRef) {
     process.stderr.write(
-      "ci-paths-gate: need --push-main or --base <ref>\n",
+      "ci-paths-gate: need --push-main, --no-changes, or --base <ref>\n",
     );
     return 1;
   }

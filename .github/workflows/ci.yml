@@ -33,8 +33,13 @@ jobs:
           set -euo pipefail
           if [ "${{ github.event_name }}" = "push" ]; then
             node frontend/scripts/ci-paths-gate.mjs --push-main
-          else
+          elif [ "${{ github.event_name }}" = "pull_request" ]; then
             node frontend/scripts/ci-paths-gate.mjs --base "origin/${{ github.base_ref }}"
+          elif [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            node frontend/scripts/ci-paths-gate.mjs --no-changes
+          else
+            echo "ci-paths-gate: unsupported event ${{ github.event_name }}" >&2
+            exit 1
           fi
 
   guard:

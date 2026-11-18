@@ -3,8 +3,9 @@
  * Run: npm run test:ci-dedup-1a
  */
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync, existsSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join, dirname } from "node:path";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import test from "node:test";
@@ -100,6 +101,52 @@ test("P4b CLI with invalid base ref exits non-zero", () => {
   );
   assert.notEqual(res.status, 0, "invalid base must not exit 0");
   assert.match(res.stderr || "", /git diff failed/);
+});
+
+test("T1 Paths gate: schedule and workflow_dispatch use --no-changes, never empty base_ref", () => {
+  const m = ciYml.match(
+    /      - id: gate\n        name: Paths gate\n        run: \|\n([\s\S]*?)\n\n  guard:/,
+  );
+  assert.ok(m, "Paths gate run block not found before guard job");
+  const expected = `          set -euo pipefail
+          if [ "\${{ github.event_name }}" = "push" ]; then
+            node frontend/scripts/ci-paths-gate.mjs --push-main
+          elif [ "\${{ github.event_name }}" = "pull_request" ]; then
+            node frontend/scripts/ci-paths-gate.mjs --base "origin/\${{ github.base_ref }}"
+          elif [ "\${{ github.event_name }}" = "schedule" ] || [ "\${{ github.event_name }}" = "workflow_dispatch" ]; then
+            node frontend/scripts/ci-paths-gate.mjs --no-changes
+          else
+            echo "ci-paths-gate: unsupported event \${{ github.event_name }}" >&2
+            exit 1
+          fi`;
+  assert.equal(m[1], expected);
+  assert.match(m[1], /--no-changes/);
+  assert.doesNotMatch(
+    m[1],
+    /else\n\s+node frontend\/scripts\/ci-paths-gate\.mjs --base "origin\/\$\{\{ github\.base_ref \}\}"/,
+  );
+});
+
+test("T2 --no-changes exits 0 and writes frontend=false", () => {
+  const dir = mkdtempSync(join(tmpdir(), "sdb1-no-changes-"));
+  const outFile = join(dir, "github-output");
+  writeFileSync(outFile, "");
+  try {
+    const res = spawnSync(
+      process.execPath,
+      [join(frontendRoot, "scripts/ci-paths-gate.mjs"), "--no-changes"],
+      {
+        encoding: "utf8",
+        cwd: repoRoot,
+        env: { ...process.env, GITHUB_OUTPUT: outFile },
+      },
+    );
+    assert.equal(res.status, 0, `exit ${res.status} stderr=${res.stderr}`);
+    assert.equal(res.stdout, "frontend=false\n");
+    assert.equal(readFileSync(outFile, "utf8"), "frontend=false\n");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("P5 grep-invert on e2e; grep + continue-on-error on quarantine", () => {

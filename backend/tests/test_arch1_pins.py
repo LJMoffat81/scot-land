@@ -629,6 +629,13 @@ _UX_PICKS_11NOV_1_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# SCHEDULE-DETECT-BASE-1 — --no-changes flag on the paths gate (bookkeeping only).
+_SCHEDULE_DETECT_BASE_1_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/scripts/ci-paths-gate.mjs",
+    ]
+)
+
 
 def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
@@ -661,6 +668,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _E2E_FLAKE_1_FRONTEND_ALLOW
                 | _LOOKUP_DEADLINES_1A_FRONTEND_ALLOW
                 | _UX_PICKS_11NOV_1_FRONTEND_ALLOW
+                | _SCHEDULE_DETECT_BASE_1_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

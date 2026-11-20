@@ -550,3 +550,88 @@ for (const vp of [
     });
   });
 }
+
+// ---------------------------------------------------------------- S2 ----
+// UX-BATCH-2026-11-20 r2 (VD FAIL on #323): after a site tap the camera
+// recentres on the pin, so the half sheet and the search bar never hide it.
+
+/** Resolve once the map has no camera move pending and has rendered idle. */
+async function waitForCameraSettled(page: Page) {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        const map = (
+          window as unknown as {
+            __map: {
+              isMoving(): boolean;
+              once(type: string, fn: () => void): void;
+              triggerRepaint(): void;
+            };
+          }
+        ).__map;
+        if (!map.isMoving()) {
+          // Nothing in flight: one repaint gives a fresh idle to wait on.
+          map.once("idle", () => resolve());
+          map.triggerRepaint();
+          return;
+        }
+        map.once("moveend", () => map.once("idle", () => resolve()));
+      }),
+  );
+}
+
+for (const tap of [
+  { x: 195, y: 200 },
+  { x: 195, y: 650 },
+] as const) {
+  test.describe(`S2 site pin 390x844 tap ${tap.x},${tap.y}`, () => {
+    test.use({ viewport: { width: 390, height: 844 } });
+
+    test("S2 pin fully visible between the search bar and the sheet top", async ({
+      page,
+      gate,
+    }) => {
+      test.setTimeout(120_000);
+      attachConsoleGate(page);
+      await stubMapCardsBackend(page);
+      await serveSiteManifest(page);
+      await openSiteMap(page, "hls-open,ldp-highland");
+      await expectLayerVisible(page, "tile-hls-open-fill", true);
+      await expectLayerVisible(page, "tile-ldp-highland-fill", true);
+      await stubSiteHits(page, { hls: HLS_FULL, ldp: LDP_FULL });
+      await page
+        .locator(".maplibregl-canvas")
+        .click({ position: { x: tap.x, y: tap.y } });
+
+      await expect(page.getByTestId("site-card")).toBeVisible({ timeout: 15_000 });
+      const pin = page.getByRole("img", { name: "Selected place" });
+      await expect(pin).toHaveCount(1);
+      await waitForCameraSettled(page);
+
+      const search = page.locator(".hud-search").first();
+      const sheet = page.locator(".map-panel-slot--place").first();
+      await expect
+        .poll(
+          async () => {
+            const [p, s, h] = await Promise.all([
+              pin.boundingBox(),
+              search.boundingBox(),
+              sheet.boundingBox(),
+            ]);
+            if (!p || !s || !h) return "missing box";
+            const issues: string[] = [];
+            if (p.y < s.y + s.height) {
+              issues.push(`pin top ${p.y} above search bottom ${s.y + s.height}`);
+            }
+            if (p.y + p.height > h.y) {
+              issues.push(`pin bottom ${p.y + p.height} below sheet top ${h.y}`);
+            }
+            return issues.join("; ") || "ok";
+          },
+          { timeout: 10_000, message: `S2 pin after tap ${tap.x},${tap.y}` },
+        )
+        .toBe("ok");
+      assertConsoleClean(gate);
+    });
+  });
+}

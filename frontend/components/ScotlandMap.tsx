@@ -1020,6 +1020,11 @@ export default function ScotlandMap() {
   const [placeLoading, setPlaceLoading] = useState(false);
   // SITE-CLICK-FALLTHROUGH-1: HLS / LDP site card (no place lookup).
   const [siteCard, setSiteCard] = useState<SiteCardData | null>(null);
+  /** UX-BATCH r2: site-card camera target, consumed once by its effect. */
+  const pendingSiteCameraRef = useRef<{ lng: number; lat: number } | null>(
+    null,
+  );
+  const [siteCameraSeq, setSiteCameraSeq] = useState(0);
 
   const [contextOn, setContextOn] = useState<Record<string, boolean>>({});
   const contextOnRef = useRef(contextOn);
@@ -1849,6 +1854,10 @@ export default function ScotlandMap() {
       const map = mapRef.current;
       markerRef.current?.remove();
       markerRef.current = map ? placeSelectedMarker(map, lng, lat) : null;
+      // UX-BATCH r2: recentre on the pin once the half-sheet padding is set
+      // (effect below the padding effect, so its easeTo cannot cancel it).
+      pendingSiteCameraRef.current = { lng, lat };
+      setSiteCameraSeq((n) => n + 1);
       // Mobile: a map tap closes Layers and opens the card (SW-056 / SW-065).
       placeAsideRef.current = false;
       if (isNarrowPanelRef.current) narrowLayersOpenRef.current = false;
@@ -2112,6 +2121,33 @@ export default function ScotlandMap() {
       map.easeTo({ padding, duration: 0 });
     }
   }, [mapReady, panelKind, panelDetent, panelCollapsed, isNarrowPanel]);
+
+  // UX-BATCH r2: site card camera. Declared after the padding effect so, in
+  // the same commit, the padding easeTo runs first and cannot cancel this.
+  // Same camera as applyResult, current zoom kept.
+  useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    const target = pendingSiteCameraRef.current;
+    if (!map || !target) return;
+    pendingSiteCameraRef.current = null;
+    const cameraOpts = {
+      center: [target.lng, target.lat] as [number, number],
+      zoom: map.getZoom(),
+      essential: true,
+      padding: mapPanelPadding({
+        panelOpen: true,
+        detent: "half",
+        collapsed: false,
+      }),
+    };
+    // MV-20: jumpTo when prefers-reduced-motion
+    if (prefersReducedMotion()) {
+      map.jumpTo(cameraOpts);
+    } else {
+      map.flyTo(cameraOpts);
+    }
+  }, [mapReady, siteCameraSeq]);
 
   const openPostcode = async (postcode: string, generation: number) => {
     const response = await placeLookupFetch(

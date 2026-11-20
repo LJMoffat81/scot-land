@@ -13,7 +13,7 @@ test.describe("place card (internal preview)", () => {
       "Glasgow City",
     );
     await expect(page.getByTestId("place-card-figure")).toContainText(
-      "We're not showing amounts yet while we check our method.",
+      "We're not showing amounts while we check our method.",
     );
     await expect(
       page.getByTestId("place-card-land-values-coming-soon"),

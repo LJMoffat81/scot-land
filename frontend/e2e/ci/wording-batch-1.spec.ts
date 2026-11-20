@@ -14,7 +14,7 @@ const BANNED =
   /\b(natural capital|ledger|headline|shadow|yield|what3words)\b/i;
 
 const PRE_POUND =
-  "We're not showing amounts yet while we check our method.";
+  "We're not showing amounts while we check our method.";
 
 const HEALTH_OK = {
   status: "ok",
@@ -204,7 +204,7 @@ test.describe("WORDING-BATCH-1 place card + MAP-CARDS (1280)", () => {
     await expect(card.getByTestId("place-card-map-reference")).toHaveCount(0);
     await expect(card.getByTestId("place-card-figure")).toContainText(PRE_POUND);
     await expect(card.getByTestId("place-card-figure-status")).toHaveText(
-      "Not published yet",
+      "Not shown",
     );
     await expect(card.getByTestId("place-card-land-values-coming-soon")).toHaveCount(
       0,

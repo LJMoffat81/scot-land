@@ -183,7 +183,7 @@ assert.equal(gbp.formatGbpPerM2(0.12), "\u00a30.120 per m²");
   const placeCard = readSrc("lib/placeCard.ts");
   assert.match(
     placeCard,
-    /PLACE_CARD_PRE_POUND\s*=\s*"We're not showing amounts yet while we check our method\."/,
+    /PLACE_CARD_PRE_POUND\s*=\s*"We're not showing amounts while we check our method\."/,
   );
   assert.match(placeCard, /PLACE_CARD_RANK_BAND_ENABLED\s*=\s*false/);
 }

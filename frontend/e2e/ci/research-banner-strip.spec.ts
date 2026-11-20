@@ -185,7 +185,7 @@ test.describe("SW-016 research banner strip 390x844", () => {
       RESEARCH_BANNER_STRIP_COLLAPSED,
     );
     await expect(banner).not.toContainText(
-      "Annual Ground Rent figures are not published yet",
+      "Annual Ground Rent figures are not shown",
     );
 
     const contentBurger = page.getByTestId("site-nav-menu-btn");

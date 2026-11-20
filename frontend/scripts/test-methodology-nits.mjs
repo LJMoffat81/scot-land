@@ -15,9 +15,9 @@ const frontendRoot = join(here, "..");
 const EXACT_NRS =
   "National Records of Scotland: © Crown copyright 2026, licensed under the Open Government Licence v3.0";
 const EXACT_METHODOLOGY_BANNER =
-  "Research estimate. Scot-LAND is experimental. Annual Ground Rent figures are not published yet. They are not a bill or an official valuation.";
+  "Research estimate. Scot-LAND is experimental. Annual Ground Rent figures are not shown. They are not a bill or an official valuation.";
 const EXACT_SHARED_BANNER =
-  "Research estimate. Annual Ground Rent figures are not published yet. They are not a bill or an official valuation.";
+  "Research estimate. Annual Ground Rent figures are not shown. They are not a bill or an official valuation.";
 
 function walk(dir, out = []) {
   if (!existsSync(dir)) return out;

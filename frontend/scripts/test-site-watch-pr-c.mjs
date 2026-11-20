@@ -193,7 +193,7 @@ assert.doesNotMatch(method, /about half to double\s*\(/);
 const banner = readFileSync(join(frontendRoot, "lib/siteNav.ts"), "utf8");
 assert.match(
   banner,
-  /Annual Ground Rent figures are not published yet\. They are not a bill or an official valuation\./,
+  /Annual Ground Rent figures are not shown\. They are not a bill or an official valuation\./,
 );
 assert.doesNotMatch(banner, /still being built/);
 assert.doesNotMatch(banner, /rates bill|tax proposal/i);

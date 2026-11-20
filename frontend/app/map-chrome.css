@@ -2206,3 +2206,51 @@ button.basemap-switcher[aria-pressed="true"] {
   border: 1px solid #7d7c78;
   border-radius: 4px;
 }
+
+/* —— UX-BATCH-2026-11-20 —— */
+
+@media (max-width: 899px) {
+  /* CARD-FOOTER-OVERLAP-1: the sticky disclaimer sits flush on the sheet
+     bottom (no 1.5rem strip of card text under it), and scrolled-to rows
+     stop above it (scroll-padding = footer height, up to three lines). */
+  .map-panel-slot--place:not(.map-panel-slot--peek) .map-panel-slot-scroll {
+    padding-bottom: 0;
+    scroll-padding-bottom: 4rem;
+  }
+
+  .map-panel-slot.map-panel-slot--place:not(.map-panel-slot--peek) .place-card .place-card-experimental-footer,
+  .map-panel-slot.map-panel-slot--place:not(.map-panel-slot--peek) .hud-place .place-card-experimental-footer {
+    padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  /* STORY-MOBILE-FOOTER-CLIP-1: full-width solid bar behind the sticky
+     Share / Close pair, down to the sheet edge (the bar's own 1.5rem shadow
+     covers the scroll padding). Buttons stay sticky 8px above (locked D4/D7). */
+  .map-view-detail::after {
+    content: "";
+    display: block;
+    position: sticky;
+    bottom: 0;
+    z-index: 0;
+    height: 60px;
+    margin: -60px -12px 0;
+    background: #fff;
+    border-top: 1px solid var(--line, rgba(11, 30, 58, 0.12));
+    box-shadow: 0 1.5rem 0 0 #fff;
+    pointer-events: none;
+  }
+}
+
+/* SEARCH-HINT-CLIP-1: at phone widths the whole hint fits beside the Search
+   button (390px: 265px of hint in 273px). Layout only; hint text unchanged. */
+@media (max-width: 480px) {
+  .map-cards-shell .hud-search input {
+    padding-left: 0.75rem;
+    padding-right: 0.25rem;
+  }
+
+  .map-cards-shell .hud-search-go {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}

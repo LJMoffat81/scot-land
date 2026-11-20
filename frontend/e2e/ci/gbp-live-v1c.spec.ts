@@ -12,7 +12,7 @@ registerOpenFreeMapFontStub();
  */
 
 const PRE_POUND =
-  "We're not showing amounts yet while we check our method.";
+  "We're not showing amounts while we check our method.";
 
 const RENT_RATE_CARD =
   "Yearly rent: up to 4.5% of the land's value";
@@ -256,7 +256,7 @@ for (const viewport of [
       const card = page.getByTestId("place-card");
       const figure = card.getByTestId("place-card-figure");
       await expect(figure.getByTestId("place-card-figure-status")).toHaveText(
-        "Not published yet",
+        "Not shown",
       );
       await expect(figure).toContainText(PRE_POUND);
       await expect(card).not.toContainText("£");

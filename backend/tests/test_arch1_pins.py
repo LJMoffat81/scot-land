@@ -649,6 +649,34 @@ _UX_BATCH_2026_11_20_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# YET-WORDING-1 — banner, /methodology banner and three place-card strings
+# (W&UX 20 Nov text) plus the exact-literal pins for those strings only.
+# Add-only allow-set (bookkeeping; listed in the PR body).
+_YET_WORDING_1_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/e2e/ci/_mapCardsHelpers.ts",
+        "frontend/e2e/ci/frontend-batch-4.spec.ts",
+        "frontend/e2e/ci/gbp-live-v1.spec.ts",
+        "frontend/e2e/ci/gbp-live-v1b.spec.ts",
+        "frontend/e2e/ci/gbp-live-v1c.spec.ts",
+        "frontend/e2e/ci/map-cards-redesign-wording.spec.ts",
+        "frontend/e2e/ci/research-banner-strip.spec.ts",
+        "frontend/e2e/ci/site-nav-banner.spec.ts",
+        "frontend/e2e/ci/squares-shell-search.spec.ts",
+        "frontend/e2e/ci/ux10-1-place-card.spec.ts",
+        "frontend/e2e/ci/wording-batch-1.spec.ts",
+        "frontend/e2e/ci/yet-wording-1.spec.ts",
+        "frontend/e2e/place-card.spec.ts",
+        "frontend/lib/placeCard.ts",
+        "frontend/lib/siteNav.ts",
+        "frontend/scripts/test-gbp-live-v1.mjs",
+        "frontend/scripts/test-methodology-nits.mjs",
+        "frontend/scripts/test-site-rewrite-pr1.mjs",
+        "frontend/scripts/test-site-rewrite-pr2.mjs",
+        "frontend/scripts/test-site-watch-pr-c.mjs",
+    ]
+)
+
 
 def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
@@ -683,6 +711,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _UX_PICKS_11NOV_1_FRONTEND_ALLOW
                 | _SCHEDULE_DETECT_BASE_1_FRONTEND_ALLOW
                 | _UX_BATCH_2026_11_20_FRONTEND_ALLOW
+                | _YET_WORDING_1_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

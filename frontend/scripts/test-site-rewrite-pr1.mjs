@@ -47,11 +47,11 @@ assert.equal(
 assert.equal(RESEARCH_BANNER_LEAD, "Research estimate.");
 assert.equal(
   RESEARCH_BANNER_BODY,
-  "Annual Ground Rent figures are not published yet. They are not a bill or an official valuation.",
+  "Annual Ground Rent figures are not shown. They are not a bill or an official valuation.",
 );
 assert.equal(
   RESEARCH_BANNER_TEXT,
-  "Research estimate. Annual Ground Rent figures are not published yet. They are not a bill or an official valuation.",
+  "Research estimate. Annual Ground Rent figures are not shown. They are not a bill or an official valuation.",
 );
 assert.doesNotMatch(RESEARCH_BANNER_BODY, /experimental/i);
 assert.doesNotMatch(RESEARCH_BANNER_BODY, /still being built|rates bill|tax proposal/i);

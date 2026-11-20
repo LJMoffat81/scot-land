@@ -84,7 +84,7 @@ test.describe("squares shell", () => {
       "Annual Ground Rent",
     );
     await expect(page.getByTestId("place-card-figure")).toContainText(
-      "We're not showing amounts yet while we check our method.",
+      "We're not showing amounts while we check our method.",
     );
     // MAP-CARDS: covers-homes only inside the fold, not a top row testid
     await expect(page.getByTestId("place-card-covers-homes")).toHaveCount(0);

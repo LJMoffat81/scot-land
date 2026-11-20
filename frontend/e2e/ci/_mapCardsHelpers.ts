@@ -154,7 +154,7 @@ export const BANNED_VISIBLE =
   /\b(natural capital|ledger|what3words|map reference)\b/i;
 
 export const PRE_POUND =
-  "We're not showing amounts yet while we check our method.";
+  "We're not showing amounts while we check our method.";
 
 export const PLACE_FIXTURE = {
   contract: "place_card_v1",

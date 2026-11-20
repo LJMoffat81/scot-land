@@ -729,7 +729,7 @@ for (const viewport of VIEWPORTS) {
       await expect(card.getByTestId("place-card-figure-range")).toHaveCount(0);
       await expect(card.getByTestId("place-card-estimate-line")).toHaveCount(0);
       await expect(card.getByTestId("place-card-figure-status")).toHaveText(
-        "Not published yet",
+        "Not shown",
       );
       assertConsoleClean(gate);
     });

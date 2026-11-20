@@ -41,11 +41,11 @@ export const PLACE_CARD_AGR_SUBTITLE =
 
 /** Scope of the homes figure. Shown under the Annual Ground Rent line. */
 export const PLACE_CARD_AGR_SCOPE_NOTE =
-  "Covers land used for homes, as it is used today. Values for farm, business and development land will come later.";
+  "Covers land used for homes, as it is used today. Values for farm, business and development land are not shown.";
 
 /** Pre-£ answer line (MAP-CARDS §5 row 6). Rank band stays OFF. */
 export const PLACE_CARD_PRE_POUND =
-  "We're not showing amounts yet while we check our method.";
+  "We're not showing amounts while we check our method.";
 
 /** Rank band UI — OFF until the rent display flag is on (UX-10). */
 export const PLACE_CARD_RANK_BAND_ENABLED = false;
@@ -92,7 +92,7 @@ export const PLACE_CARD_FULLY_ESTIMATED =
 export const PLACE_CARD_MIN_DWELLINGS_TYPICAL = 20;
 
 /** Pre-£ answer status pill (MAP-CARDS §5 row 6) — once only. */
-export const PLACE_CARD_FIGURE_STATUS = "Not published yet";
+export const PLACE_CARD_FIGURE_STATUS = "Not shown";
 
 /** @deprecated Prefer PLACE_CARD_FIGURE_STATUS on the answer row. */
 export const PLACE_CARD_FIGURES_CHECKED = PLACE_CARD_FIGURE_STATUS;

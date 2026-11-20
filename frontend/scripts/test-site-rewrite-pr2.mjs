@@ -19,7 +19,7 @@ function readSrc(relPath) {
   const placeCard = readSrc("lib/placeCard.ts");
   assert.match(
     placeCard,
-    /PLACE_CARD_FIGURE_STATUS\s*=\s*"Not published yet"/,
+    /PLACE_CARD_FIGURE_STATUS\s*=\s*"Not shown"/,
   );
   assert.match(
     placeCard,
@@ -31,7 +31,7 @@ function readSrc(relPath) {
   );
   assert.match(
     placeCard,
-    /PLACE_CARD_PRE_POUND\s*=\s*"We're not showing amounts yet while we check our method\."/,
+    /PLACE_CARD_PRE_POUND\s*=\s*"We're not showing amounts while we check our method\."/,
   );
   assert.match(
     placeCard,

@@ -11,7 +11,7 @@ registerOpenFreeMapFontStub();
  */
 
 const PRE_POUND =
-  "We're not showing amounts yet while we check our method.";
+  "We're not showing amounts while we check our method.";
 const EXPERIMENTAL_FOOTER =
   "Experimental estimate, not an official valuation. It is not a bill, and it does not change what you pay.";
 const TYPICAL_HOME =
@@ -178,14 +178,14 @@ async function assertSkeletonCopy(page: Page) {
     "What the land under homes here is worth each year",
   );
   await expect(page.getByTestId("place-card-agr-scope")).toHaveText(
-    "Covers land used for homes, as it is used today. Values for farm, business and development land will come later.",
+    "Covers land used for homes, as it is used today. Values for farm, business and development land are not shown.",
   );
   await expect(page.getByTestId("place-card-agr-heading")).toHaveAttribute(
     "aria-label",
-    "Annual Ground Rent. What the land under homes here is worth each year. Covers land used for homes, as it is used today. Values for farm, business and development land will come later.",
+    "Annual Ground Rent. What the land under homes here is worth each year. Covers land used for homes, as it is used today. Values for farm, business and development land are not shown.",
   );
   await expect(page.getByTestId("place-card-figure-status")).toHaveText(
-    "Not published yet",
+    "Not shown",
   );
   await expect(page.getByTestId("place-card-figure")).toContainText(PRE_POUND);
   await expect(page.getByTestId("place-card-fact")).toHaveText(FACT);

@@ -23,10 +23,10 @@ for (const viewport of [
       await openPlaceViaCoords(page);
 
       const header = page.getByTestId("place-card-header");
-      await expect(header).toContainText(/not published yet|not showing amounts/i);
+      await expect(header).toContainText(/not shown|not showing amounts/i);
       const headerText = await header.innerText();
       expect(
-        countMatches(headerText, /not published yet|not showing amounts/i),
+        countMatches(headerText, /not shown|not showing amounts/i),
       ).toBeGreaterThanOrEqual(1);
 
       const body = await visibleMapText(page);

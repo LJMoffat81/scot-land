@@ -178,7 +178,7 @@ test.describe("site nav + research banner (rewrite PR1)", () => {
           "Research estimate.",
         );
         await expect(page.getByTestId("research-banner")).toContainText(
-          "Annual Ground Rent figures are not published yet",
+          "Annual Ground Rent figures are not shown",
         );
       }
       await expect(page.locator("body")).not.toContainText("not a rates bill");

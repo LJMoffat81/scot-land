@@ -15,6 +15,13 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import MapCreditLine from "./MapCreditLine";
 import { layersAdd2Credit } from "@/lib/layersAdd2Credits";
 import PlaceCardStub, { type PlaceStub } from "./PlaceCardStub";
+import SiteCard from "./SiteCard";
+import {
+  SITE_CARD_HLS_LAYER,
+  SITE_CARD_LDP_LAYER,
+  buildSiteCard,
+  type SiteCardData,
+} from "../lib/siteCard";
 import RetryState from "./RetryState";
 import SiteNav, { SiteBrand } from "./SiteNav";
 import { fetchGbpLiveSettings } from "@/lib/gbpLive";
@@ -1011,6 +1018,8 @@ export default function ScotlandMap() {
   // Public place card (stub). Modelled AGR £ / Wealth / tax stay off the public shell.
   const [placeStub, setPlaceStub] = useState<PlaceStub | null>(null);
   const [placeLoading, setPlaceLoading] = useState(false);
+  // SITE-CLICK-FALLTHROUGH-1: HLS / LDP site card (no place lookup).
+  const [siteCard, setSiteCard] = useState<SiteCardData | null>(null);
 
   const [contextOn, setContextOn] = useState<Record<string, boolean>>({});
   const contextOnRef = useRef(contextOn);
@@ -1493,6 +1502,7 @@ export default function ScotlandMap() {
     setError(null);
     setAddressLine(null);
     setPlaceStub(null);
+    setSiteCard(null);
     placeDetentMemory = null;
     setPlaceLoading(false);
     setGrid3Square(null);
@@ -1610,6 +1620,7 @@ export default function ScotlandMap() {
       }
       setError(null);
       setResult(null);
+      setSiteCard(null);
       setSearchNoMatch(false);
       // Desktop: Layers stays open in the right column and the card stays left.
       // Mobile: map tap / search closes Layers and opens the card (SW-056 / SW-065).
@@ -1815,6 +1826,41 @@ export default function ScotlandMap() {
   );
   const inspectRef = useRef(selectPlace);
   inspectRef.current = selectPlace;
+
+  /**
+   * SITE-CLICK-FALLTHROUGH-1: a click on a visible HLS / LDP site opens the
+   * site card from tile keep_fields only. No Data Zone or place lookup runs.
+   */
+  const openSiteCard = useCallback(
+    (lat: number, lng: number, data: SiteCardData) => {
+      // Invalidate any in-flight identify / search (same guard as clearPlace).
+      lookupGen.current += 1;
+      identifyAbortRef.current?.abort();
+      identifyAbortRef.current = null;
+      setResult(null);
+      setError(null);
+      setPlaceStub(null);
+      setPlaceLoading(false);
+      setPlaceLookupError(null);
+      setSearchLookupError(null);
+      setGrid3Square(null);
+      setSearchNoMatch(false);
+      setSiteCard(data);
+      const map = mapRef.current;
+      markerRef.current?.remove();
+      markerRef.current = map ? placeSelectedMarker(map, lng, lat) : null;
+      // Mobile: a map tap closes Layers and opens the card (SW-056 / SW-065).
+      placeAsideRef.current = false;
+      if (isNarrowPanelRef.current) narrowLayersOpenRef.current = false;
+      setPanelKind("place");
+      setPanelCollapsed(false);
+      placeDetentMemory = "half";
+      setPanelDetent("half");
+    },
+    [],
+  );
+  const openSiteCardRef = useRef(openSiteCard);
+  openSiteCardRef.current = openSiteCard;
 
   const openLayersPanel = useCallback(() => {
     const narrow = isNarrowPanelRef.current;
@@ -3442,6 +3488,29 @@ export default function ScotlandMap() {
       lng: number,
       point: maplibregl.Point,
     ) => {
+      // SITE-CLICK-FALLTHROUGH-1: visible HLS / LDP sites win over Data Zones.
+      const siteProps = (layerId: string) => {
+        if (
+          !hasMapLayer(map, layerId) ||
+          map.getLayoutProperty(layerId, "visibility") !== "visible"
+        ) {
+          return null;
+        }
+        const hit = map.queryRenderedFeatures(point, { layers: [layerId] })[0];
+        return (hit?.properties as Record<string, unknown> | undefined) ?? null;
+      };
+      const site = buildSiteCard(
+        siteProps(SITE_CARD_HLS_LAYER),
+        siteProps(SITE_CARD_LDP_LAYER),
+      );
+      if (site) {
+        dzHoverPopupRef.current?.remove();
+        layerPopupRef.current?.remove();
+        layerPopupRef.current = null;
+        openSiteCardRef.current(lat, lng, site);
+        return;
+      }
+
       // Data Zone click → place card (boundaries only; no AGR £).
       const dzHits =
         hasMapLayer(map, "tile-dz2022-fill") &&
@@ -5865,7 +5934,8 @@ export default function ScotlandMap() {
     };
   }, [mapReady, ledgerEnabled, spatialHubPresent, floodKind]);
 
-  const placeOpen = panelKind === "place" && Boolean(placeStub || result);
+  const placeOpen =
+    panelKind === "place" && Boolean(placeStub || result || siteCard);
   const layersOpen = isNarrowPanel
     ? panelKind === "layers"
     : desktopLayersOpen;
@@ -5988,6 +6058,7 @@ export default function ScotlandMap() {
     placeStub?.label ||
     placeStub?.dataZoneName ||
     placeStub?.card?.place_label ||
+    siteCard?.sections[0]?.heading ||
     null;
 
   return (
@@ -6433,6 +6504,19 @@ export default function ScotlandMap() {
               }
               mapZoom={mapZoom}
               floodLoaded={floodDzLoaded}
+            />
+          ) : null}
+          {!placeStub && siteCard ? (
+            <SiteCard
+              data={siteCard}
+              onClose={() => {
+                clearPlace();
+                setPanelKind("closed");
+                setPanelCollapsed(false);
+                replaceMapUrl({ panel: null, place: null });
+                panelHistoryRef.current = false;
+                setLiveMessage("Panel closed");
+              }}
             />
           ) : null}
         </MapPanelSlot>

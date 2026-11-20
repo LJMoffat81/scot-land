@@ -636,6 +636,19 @@ _SCHEDULE_DETECT_BASE_1_FRONTEND_ALLOW = frozenset(
     ]
 )
 
+# UX-BATCH-2026-11-20 — site card, card footer, story bar, search hint,
+# nav 44px. Add-only allow-set (bookkeeping; listed in the PR body).
+_UX_BATCH_2026_11_20_FRONTEND_ALLOW = frozenset(
+    [
+        "frontend/components/ScotlandMap.tsx",
+        "frontend/components/SiteCard.tsx",
+        "frontend/lib/siteCard.ts",
+        "frontend/app/globals.css",
+        "frontend/app/map-chrome.css",
+        "frontend/e2e/ci/ux-batch-2026-11-20.spec.ts",
+    ]
+)
+
 
 def test_p6_no_forbidden_frontend_or_shallow():
     changed = _files_changed_vs_main()
@@ -669,6 +682,7 @@ def test_p6_no_forbidden_frontend_or_shallow():
                 | _LOOKUP_DEADLINES_1A_FRONTEND_ALLOW
                 | _UX_PICKS_11NOV_1_FRONTEND_ALLOW
                 | _SCHEDULE_DETECT_BASE_1_FRONTEND_ALLOW
+                | _UX_BATCH_2026_11_20_FRONTEND_ALLOW
             ):
                 pytest.fail(f"P6: frontend file changed: {rel}")
             continue

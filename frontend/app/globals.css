@@ -4323,3 +4323,79 @@ code {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* —— UX-BATCH-2026-11-20 —— */
+
+/* SITE-CLICK-FALLTHROUGH-1: compact HLS / LDP site card (place-card shell). */
+.site-card .site-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.site-card .site-card-close {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 0.75rem;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.site-card .site-card-section + .site-card-section {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+}
+
+.site-card .site-card-heading {
+  margin: 0;
+  padding-top: 0.35rem;
+}
+
+.site-card .site-card-rows {
+  margin: 0.5rem 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.site-card .site-card-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 40%) 1fr;
+  gap: 0.5rem;
+}
+
+.site-card .site-card-row dt {
+  font-weight: 600;
+  color: var(--slrg-muted);
+}
+
+.site-card .site-card-row dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.site-card .site-card-note {
+  margin: 0.4rem 0 0.25rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+/* NAV-TAP-44-1: header links are ≥44px tall at every width they show. */
+.site-nav-page .site-nav-links a,
+.site-nav-map .site-nav-links a {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}

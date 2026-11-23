@@ -1,26 +1,18 @@
 # Work queue
 
-Plain-English queue for maintainers (Laurie and agents). Update on main after merges — not in feature PRs (avoids serial conflict churn). Dedicated QUEUE-only follow-up is OK when nothing else is ready to piggyback.
+Plain-English queue for maintainers (Laurie and agents). Update on main after merges — not in feature PRs (avoids serial conflict churn). Dedicated QUEUE-only follow-up is OK when nothing else is ready to piggyback. This file is also the sanctioned weekly docs sync path.
 
-**Cap:** ≤5 open non-draft PRs; one PR per item ID. No feature PRs are open. UI-FIX-4, VDL-DZ-2, and LAYERS-ADD-2 are in progress from main `b633b4ba` and do not count until a non-draft PR exists. This QUEUE sync opens as the 1st non-draft.
+**Cap:** ≤5 open non-draft PRs; one PR per item ID. As of this sync (`main` @ `7b84ccc3`, tip of #324): **no open PRs** (draft or non-draft). This QUEUE sync opens as the 1st non-draft.
 
 ## In progress
 
-Started from main `b633b4ba`. Pull requests are not open yet (still opening).
-
-| Item | Description | PR | Status |
-|------|-------------|----|--------|
-| UI-FIX-4 | Layers panel and mobile sheet polish | — | In progress from main `b633b4ba`; PR not opened yet |
-| VDL-DZ-2 | Small-count suppression and zone-only vacant and derelict text | — | In progress from main `b633b4ba`; PR not opened yet |
-| LAYERS-ADD-2 | Open-data sweep layers | — | In progress from main `b633b4ba`; PR not opened yet |
+None. GitHub shows no open PRs. Stale rows UI-FIX-4 / VDL-DZ-2 / LAYERS-ADD-2 were already merged (#183 / #182 / #184) and are listed under Recently merged.
 
 ## Next up (in order)
 
-| Item | Description | PR | Status |
-|------|-------------|----|--------|
-| WORDING-BATCH-2 | Wording follow-ups after WORDING-BATCH-1 | — | Not frozen; not started; no PR yet |
+Nothing confirmed open or frozen on GitHub for this sync. Do not invent statuses here — add rows only when a frozen item or open PR exists.
 
-### Frozen backlog
+### Frozen backlog (historical)
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
@@ -32,10 +24,32 @@ Started from main `b633b4ba`. Pull requests are not open yet (still opening).
 
 ## Recently merged
 
-Newest first.
+Newest first. Synced from GitHub through #324.
 
 | Item | Description | PR | Status |
 |------|-------------|----|--------|
+| YET-WORDING-1 | Replace five locked visitor strings | [#324](https://github.com/LJMoffat81/scot-land/pull/324) | Merged (`7b84ccc3`) |
+| UX-BATCH-2026-11-20 | Site card, card footer, story bar, search hint, nav 44 | [#323](https://github.com/LJMoffat81/scot-land/pull/323) | Merged (`370af2dd`) |
+| SCHEDULE-DETECT-BASE-1 | Explicit `--no-changes` path for schedule/dispatch in Detect frontend changes | [#322](https://github.com/LJMoffat81/scot-land/pull/322) | Merged (`bc8359bb`) |
+| CLEANUP-318 | WUX nits, exact-text pins, hls-open data-as-of date, G6 context guard | [#321](https://github.com/LJMoffat81/scot-land/pull/321) | Merged (`0cf7d179`) |
+| M1-CLOSE-1 | Close G1–G3, G4 limit tests, re-tag hls-open/ldp-highland, context cap 6 | [#320](https://github.com/LJMoffat81/scot-land/pull/320) | Merged (`5d0c4457`) |
+| PSGA-COPY-CLEANUP-1 | Reword legacy HLS and LDP display copy | [#319](https://github.com/LJMoffat81/scot-land/pull/319) | Merged (`2de80409`) |
+| PLANNING-PUBLISH-1 PR-B | Housing land supply and Highland plan rows | [#318](https://github.com/LJMoffat81/scot-land/pull/318) | Merged (`0b366689`) |
+| PLANNING-PUBLISH-1 PR-A | Publish allow-list for hls-open and ldp-highland | [#317](https://github.com/LJMoffat81/scot-land/pull/317) | Merged (`603fed8b`) |
+| Map load / search focus | Show when the map or layers fail to load; fix search focus ring | [#316](https://github.com/LJMoffat81/scot-land/pull/316) | Merged (`09683099`) |
+| EXTERNAL-UPTIME-1 | Hourly external health probe (`.github/workflows/uptime.yml`) | [#315](https://github.com/LJMoffat81/scot-land/pull/315) | Merged (`3e3b4968`) |
+| LOOKUP-DEADLINES-1a | Per-request lookup deadlines and locked error line | [#314](https://github.com/LJMoffat81/scot-land/pull/314) | Merged (`d1947f7d`) |
+| COMPOSE-LOGGING-3 | json-file log rotation on the home stack | [#313](https://github.com/LJMoffat81/scot-land/pull/313) | Merged (`10aa9e97`) |
+| E2E-FLAKE-1 | Stabilise search blur, downloads hit targets, basemap toggle | [#310](https://github.com/LJMoffat81/scot-land/pull/310) | Merged (`4c13d936`) |
+| M6 Carbon and land | Story view only (Q6 explainer) | [#309](https://github.com/LJMoffat81/scot-land/pull/309) | Merged (`2f51dbeb`) |
+| M2 Idle land | Vacant and derelict land council story view | [#308](https://github.com/LJMoffat81/scot-land/pull/308) | Merged (`ad97cca0`) |
+| M5 Who holds Scotland | Council community-ownership story view | [#307](https://github.com/LJMoffat81/scot-land/pull/307) | Merged (`0e114847`) |
+| M4 story-view framework | Explainer rows on view presets | [#306](https://github.com/LJMoffat81/scot-land/pull/306) | Merged (`0a316936`) |
+| DZ-HEATMAP PR-B | Estimate-status fill and key | [#305](https://github.com/LJMoffat81/scot-land/pull/305) | Merged (`59fa8ec5`) |
+| LAYERS-ADD-2 | Open-data sweep and council sources | [#184](https://github.com/LJMoffat81/scot-land/pull/184) | Merged (`54c4ba98`) |
+| UI-FIX-4 | Layers column, sheet, and card polish | [#183](https://github.com/LJMoffat81/scot-land/pull/183) | Merged (`052d6b3e`) |
+| VDL-DZ-2 | Small-count suppression and drop site overlay | [#182](https://github.com/LJMoffat81/scot-land/pull/182) | Merged (`df350f9f`) |
+| QUEUE sync | Sync after #177, #178, and #180 | [#181](https://github.com/LJMoffat81/scot-land/pull/181) | Merged (`1e9b302e`) |
 | LAYERS-FIX-1 | Empty layer switches; live protected sites and oil fields | [#180](https://github.com/LJMoffat81/scot-land/pull/180) | Merged (`b633b4ba`; tip `30a52013`) |
 | UI-FIX-3 | One close control and no empty place-card tail | [#178](https://github.com/LJMoffat81/scot-land/pull/178) | Merged (`2445c63`) |
 | VDL-DZ-1 | Data Zone totals only on `/layers/open/vdl` (no site-level fields) | [#177](https://github.com/LJMoffat81/scot-land/pull/177) | Merged (`86f8e5c`) |

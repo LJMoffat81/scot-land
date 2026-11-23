@@ -120,5 +120,5 @@ The public site is hosted on a local machine and published via a Cloudflare Tunn
 - **Public URL**: `https://www.scot-land.scot` / `https://scot-land.scot`
 - **Environment**: Docker Compose (`docker-compose.home.yml`) serves the app on port 3000.
 - **Safe deploy**: `scripts/ops/deploy-home.ps1` builds images first, health-checks a canary, then swaps; never stops `cloudflared`. See **`docs/HOME_DEPLOY.md`**.
-- **Uptime**: free local probe every 5 minutes (`scripts/ops/uptime-check.ps1` / `.sh`) — no paid vendor.
+- **Uptime**: free local probe every 5 minutes (`scripts/ops/uptime-check.ps1` / `.sh`), plus hourly external GitHub Actions check (`.github/workflows/uptime.yml`, #315) — no paid vendor. See **`docs/HOME_DEPLOY.md`** ("External uptime check").
 - **Note**: Vercel and Railway were used for earlier split deploys and are not the current public host.

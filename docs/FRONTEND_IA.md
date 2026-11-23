@@ -34,8 +34,11 @@ Raw spatial datasets live in the **Data** section. The map’s primary panel is 
 | **Data Zone boundaries** | Zone frame (publication grain) |
 | **Natural capital ledger** | Primary HUD — rows, checks, sceptic fields |
 | **Constraints toggles** | Paint only; £0; change best use |
+| **Site card** | Click a Housing land supply site or Highland LDP allocation → card from tile fields only (no Data Zone / place lookup; no disclaimer footer) |
 
 Paint via vector tiles / zoom-simplified geometry — not national raw GeoJSON. Ownership/cadastre outlines are context (who/outline), not extra rent rows.
+
+**Site card (#323):** distinct from the place card. Opening a visible `hls-open` Housing land supply site or `ldp-highland` allocation paints one site card from the clicked tile’s keep fields (Housing land supply first when both hit). It does not call the Data Zone or place lookup, and it has no disclaimer footer.
 
 ---
 
